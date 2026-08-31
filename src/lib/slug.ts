@@ -38,30 +38,54 @@ export function slugify(input: string): string {
     .replace(/-+$/g, '');
 }
 
-/** Short, URL-safe, collision-resistant enough for a slug suffix. */
-export function slugSuffix(length = 4): string {
-  const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789';
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+/**
+ * Random numeric id for the end of a slug — `ahmed-mahmoud-482913`.
+ *
+ * Random rather than sequential on purpose. A counter in a public URL leaks how
+ * many companies or agents exist and how fast they are being added, and it lets
+ * anyone walk the whole directory by incrementing. Six digits is a million
+ * values, and because the id only has to be unique alongside the name it
+ * follows, collisions are confined to people or companies who share a name.
+ *
+ * Rejection sampling rather than `% 10`: 256 is not a multiple of 10, so a
+ * plain modulo would make 0–5 appear slightly more often than 6–9.
+ */
+export function slugId(digits = 6): string {
+  const out: string[] = [];
+  const bytes = new Uint8Array(digits * 2);
+
+  while (out.length < digits) {
+    crypto.getRandomValues(bytes);
+    for (const byte of bytes) {
+      if (byte >= 250) continue; // 250 = 25 * 10, the largest unbiased range
+      out.push(String(byte % 10));
+      if (out.length === digits) break;
+    }
+  }
+
+  // Never start with 0 — a leading zero reads as a typo, and it silently
+  // shrinks the space if anything ever parses the id as a number.
+  if (out[0] === '0') out[0] = '1';
+
+  return out.join('');
 }
 
 /**
- * Job slugs read as `<title>-<district>-<suffix>`. The suffix keeps the slug
- * unique without a round trip, and keeps job slugs from ever colliding with a
+ * Job slugs read as `<title>-<district>-<id>`. The id keeps the slug unique
+ * without a round trip, and keeps job slugs from ever colliding with a
  * programmatic `<track>-<district>` landing page.
  */
 export function buildJobSlug(title: string, districtSlug: string): string {
   const base = slugify(title) || 'job';
-  return `${base}-${districtSlug}-${slugSuffix()}`;
+  return `${base}-${districtSlug}-${slugId()}`;
 }
 
 export function buildCompanySlug(name: string): string {
   const base = slugify(name) || 'company';
-  return `${base}-${slugSuffix(3)}`;
+  return `${base}-${slugId()}`;
 }
 
 export function buildAgentSlug(fullName: string): string {
   const base = slugify(fullName) || 'agent';
-  return `${base}-${slugSuffix()}`;
+  return `${base}-${slugId()}`;
 }

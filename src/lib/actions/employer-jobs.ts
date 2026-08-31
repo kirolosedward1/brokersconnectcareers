@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { buildJobSlug } from '@/lib/slug';
+import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import {
   BENEFITS,
@@ -115,17 +116,13 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     const districts = await getDistricts();
     const district = districts.find((d) => d.id === value.districtId);
 
-    const { data, error } = await supabase
-      .from('jobs')
-      .insert({
-        company_id: company.id,
-        slug: buildJobSlug(value.titleEn || value.titleAr, district?.slug ?? 'egypt'),
-        ...payload,
-      })
-      .select('id')
-      .single();
+    const { data, error } = await withUniqueSlug<{ id: string }>(
+      () => buildJobSlug(value.titleEn || value.titleAr, district?.slug ?? 'egypt'),
+      (slug) =>
+        supabase.from('jobs').insert({ company_id: company.id, slug, ...payload }).select('id').single(),
+    );
 
-    if (error) return { ok: false, error: mapJobError(error.message) };
+    if (error || !data) return { ok: false, error: mapJobError(error?.message ?? 'insert_failed') };
     jobId = data.id;
   }
 

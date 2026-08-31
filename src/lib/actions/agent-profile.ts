@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { buildAgentSlug } from '@/lib/slug';
+import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { normalisePhone, isValidPhone } from '@/lib/phone';
 import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
@@ -80,16 +81,12 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
     const { error } = await supabase.from('agent_profiles').update(payload).eq('id', existing.id);
     if (error) return { ok: false, error: error.message };
   } else {
-    const { data, error } = await supabase
-      .from('agent_profiles')
-      .insert({
-        user_id: user.id,
-        slug: buildAgentSlug(parsed.data.fullName),
-        ...payload,
-      })
-      .select('id')
-      .single();
-    if (error) return { ok: false, error: error.message };
+    const { data, error } = await withUniqueSlug<{ id: string }>(
+      () => buildAgentSlug(parsed.data.fullName),
+      (slug) =>
+        supabase.from('agent_profiles').insert({ user_id: user.id, slug, ...payload }).select('id').single(),
+    );
+    if (error || !data) return { ok: false, error: error?.message ?? 'insert_failed' };
     agentId = data.id;
   }
 

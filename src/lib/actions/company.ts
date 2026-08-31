@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { buildCompanySlug } from '@/lib/slug';
+import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 
@@ -52,17 +53,13 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
     return { ok: true, data: { id: existing.id } };
   }
 
-  const { data, error } = await supabase
-    .from('companies')
-    .insert({
-      owner_id: user.id,
-      slug: buildCompanySlug(parsed.data.nameEn || parsed.data.nameAr),
-      ...payload,
-    })
-    .select('id')
-    .single();
+  const { data, error } = await withUniqueSlug<{ id: string }>(
+    () => buildCompanySlug(parsed.data.nameEn || parsed.data.nameAr),
+    (slug) =>
+      supabase.from('companies').insert({ owner_id: user.id, slug, ...payload }).select('id').single(),
+  );
 
-  if (error) return { ok: false, error: error.message };
+  if (error || !data) return { ok: false, error: error?.message ?? 'insert_failed' };
 
   revalidatePath('/employer/company');
   return { ok: true, data: { id: data.id } };

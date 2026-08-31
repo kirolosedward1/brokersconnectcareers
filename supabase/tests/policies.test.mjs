@@ -19,9 +19,9 @@ await db.exec(`
 `);
 
 const liveJob = (
-  await db.query("select id from jobs where slug='property-consultant-primary-new-cairo-a1b2'")
+  await db.query("select id from jobs where slug='property-consultant-primary-new-cairo-562624'")
 ).rows[0].id;
-const unverifiedCo = (await db.query("select id from companies where slug='property-hub'")).rows[0].id;
+const unverifiedCo = (await db.query("select id from companies where slug='property-hub-297685'")).rows[0].id;
 
 // Deliberately the *unverified* company's pending listing: the post cap and the
 // owner-cannot-publish rules both need a job whose owner is not verified.
@@ -99,7 +99,7 @@ report.section('applications are private to the two parties');
     JSON.stringify(own.rows.length));
 
   const employer = await as(employerVerified, 'select job_id from applications');
-  const ownJobs = await as(employerVerified, "select id from jobs where company_id = (select id from companies where slug = 'al-rowad-real-estate')");
+  const ownJobs = await as(employerVerified, "select id from jobs where company_id = (select id from companies where slug = 'al-rowad-real-estate-309047')");
   const ownJobIds = new Set(ownJobs.rows.map((row) => row.id));
   report.check('the hiring employer sees applications to their jobs only',
     employer.rows.length >= 1 && employer.rows.every((row) => ownJobIds.has(row.job_id)),
@@ -131,8 +131,8 @@ report.section('an employer reaches their applicant, and only their applicant');
 
 report.section('the agent directory gate');
 {
-  const GATED = 'ahmed-mahmoud-x9y8'; // verified_employers_only
-  const PUBLIC = 'menna-sherif-p2q3'; // public
+  const GATED = 'ahmed-mahmoud-818804'; // verified_employers_only
+  const PUBLIC = 'menna-sherif-909521'; // public
 
   const anon = await as(null, 'select slug, is_unlocked, full_name from search_agents(null,null,null,null,60,0)', 'anon');
   const anonGated = anon.rows.find((row) => row.slug === GATED);
@@ -169,7 +169,7 @@ report.section('the agent directory gate');
 report.section('an employed agent can hide from their own employer');
 {
   // mostafa-elgendy is seeded `hidden` — this is the demo dataset's own proof.
-  const HIDDEN = 'mostafa-elgendy-v8w9';
+  const HIDDEN = 'mostafa-elgendy-339125';
 
   const verified = await as(employerVerified, 'select slug from search_agents(null,null,null,null,60,0)');
   report.check('a hidden profile is absent even for a verified employer',
