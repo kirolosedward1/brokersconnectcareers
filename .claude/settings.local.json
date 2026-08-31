@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(pnpm -v)",
+      "Bash(git --version)",
+      "Bash(pnpm install *)",
+      "Bash(supabase --version)",
+      "Bash(docker info *)"
+    ]
+  }
+}
