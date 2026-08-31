@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { CalendarDays, Clock } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { alternatesFor, routing, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, routing, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { getAllPosts } from '@/lib/blog';
 import { formatDate, isoDate } from '@/lib/utils';
@@ -12,7 +12,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   const t = await getTranslations({ locale, namespace: 'blog' });
   const path = '/blog';
 
@@ -26,9 +27,10 @@ export async function generateMetadata({
 export default async function BlogIndexPage({
   params,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const posts = getAllPosts(locale);

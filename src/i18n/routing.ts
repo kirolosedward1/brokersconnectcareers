@@ -27,6 +27,19 @@ export const routing = defineRouting({
   localeDetection: false,
 });
 
+/**
+ * Narrows the raw `params.locale` a route receives into our Locale union.
+ *
+ * Next's generated route types declare params as `Promise<{ locale: string }>`,
+ * so a page cannot declare the narrower union directly. This validates rather
+ * than casts: middleware and the root layout have already rejected unknown
+ * locales, and anything that somehow slipped past falls back to Arabic instead
+ * of propagating an impossible value.
+ */
+export function asLocale(value: string): Locale {
+  return (activeLocales as readonly string[]).includes(value) ? (value as Locale) : defaultLocale;
+}
+
 export function dirOf(locale: string): 'rtl' | 'ltr' {
   return locale === 'ar' ? 'rtl' : 'ltr';
 }

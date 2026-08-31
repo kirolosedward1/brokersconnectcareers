@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import type { Locale } from '@/i18n/routing';
+import { asLocale, type Locale } from '@/i18n/routing';
 import { SectionNav } from '@/components/section-nav';
 import { requireAdmin } from '@/lib/auth';
 
@@ -8,9 +8,10 @@ export default async function AdminLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   await requireAdmin(locale);

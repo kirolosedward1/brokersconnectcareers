@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Building2, Globe, MapPin, Users } from 'lucide-react';
-import { alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { JobCard } from '@/components/jobs/job-card';
 import { JsonLd } from '@/components/json-ld';
@@ -12,14 +12,15 @@ import { env } from '@/lib/env';
 import { truncate, toPlainText } from '@/lib/utils';
 import type { JobListItem } from '@/lib/queries/jobs';
 
-type Params = { locale: Locale; slug: string };
+type Params = { locale: string; slug: string };
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
-  const { locale, slug } = await params;
+  const { locale: rawLocale, slug } = await params;
+  const locale = asLocale(rawLocale);
   const company = await getCompanyBySlug(slug);
   if (!company) return {};
 
@@ -35,7 +36,8 @@ export async function generateMetadata({
 }
 
 export default async function CompanyPage({ params }: { params: Promise<Params> }) {
-  const { locale, slug } = await params;
+  const { locale: rawLocale, slug } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const company = await getCompanyBySlug(slug);

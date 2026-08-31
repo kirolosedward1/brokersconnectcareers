@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { ResolveReportButton } from '@/components/admin/resolve-report-button';
 import { requireAdmin } from '@/lib/auth';
@@ -19,9 +19,10 @@ type ReportRowWithJob = {
 export default async function AdminReportsPage({
   params,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
   await requireAdmin(locale);
 

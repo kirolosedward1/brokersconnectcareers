@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { ModerateJobActions } from '@/components/admin/moderate-job-actions';
 import { requireAdmin } from '@/lib/auth';
@@ -17,10 +17,11 @@ export default async function AdminJobsPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{ status?: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
   await requireAdmin(locale);
 

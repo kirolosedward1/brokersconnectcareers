@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Eye, MapPin, Plus, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { JobStatusActions } from '@/components/employer/job-status-actions';
@@ -22,9 +22,10 @@ const STATUS_VARIANT: Record<JobStatus, 'default' | 'primary' | 'success' | 'war
 export default async function EmployerJobsPage({
   params,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const viewer = await requireEmployer(locale);

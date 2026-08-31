@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { setRequestLocale } from 'next-intl/server';
-import type { Locale } from '@/i18n/routing';
+import { asLocale, type Locale } from '@/i18n/routing';
 import { JobForm } from '@/components/employer/job-form';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -10,9 +10,10 @@ import type { JobRow } from '@/lib/supabase/database.types';
 export default async function EditJobPage({
   params,
 }: {
-  params: Promise<{ locale: Locale; id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { locale, id } = await params;
+  const { locale: rawLocale, id } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
   await requireEmployer(locale);
 

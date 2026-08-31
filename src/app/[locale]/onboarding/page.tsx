@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
-import type { Locale } from '@/i18n/routing';
+import { asLocale, type Locale } from '@/i18n/routing';
 import { getViewer } from '@/lib/auth';
 import { OnboardingForm } from '@/components/auth/onboarding-form';
 import { AuthShell } from '../auth-shell';
@@ -11,7 +11,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   const t = await getTranslations({ locale, namespace: 'onboarding' });
   return { title: t('title'), robots: { index: false, follow: false } };
 }
@@ -20,10 +21,11 @@ export default async function OnboardingPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{ next?: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const viewer = await getViewer();

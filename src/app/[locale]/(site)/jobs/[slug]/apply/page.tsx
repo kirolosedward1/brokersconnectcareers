@@ -2,28 +2,30 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect, Link } from '@/i18n/navigation';
-import { localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { ApplyForm } from '@/components/jobs/apply-form';
 import { Button } from '@/components/ui/button';
 import { getJobBySlug } from '@/lib/queries/jobs';
 import { getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
-type Params = { locale: Locale; slug: string };
+type Params = { locale: string; slug: string };
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   const t = await getTranslations({ locale, namespace: 'apply' });
   // The apply form is a private step; the job page is the indexable surface.
   return { title: t('submit'), robots: { index: false, follow: true } };
 }
 
 export default async function ApplyPage({ params }: { params: Promise<Params> }) {
-  const { locale, slug } = await params;
+  const { locale: rawLocale, slug } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const job = await getJobBySlug(slug);

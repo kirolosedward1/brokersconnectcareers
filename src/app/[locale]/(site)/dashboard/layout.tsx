@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import type { Locale } from '@/i18n/routing';
+import { asLocale, type Locale } from '@/i18n/routing';
 import { SectionNav } from '@/components/section-nav';
 import { requireCandidate } from '@/lib/auth';
 
@@ -8,9 +8,10 @@ export default async function DashboardLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   // Bounces an unauthenticated visitor to sign-in and an employer to their own

@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import type { Locale } from '@/i18n/routing';
+import { asLocale, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { JobCard } from '@/components/jobs/job-card';
 import { requireCandidate } from '@/lib/auth';
@@ -10,9 +10,10 @@ import type { JobListItem } from '@/lib/queries/jobs';
 export default async function SavedJobsPage({
   params,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
   await requireCandidate(locale);
 

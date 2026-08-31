@@ -1,12 +1,13 @@
 import { redirect } from '@/i18n/navigation';
-import type { Locale } from '@/i18n/routing';
+import { asLocale, type Locale } from '@/i18n/routing';
 
 /** The section has no landing page of its own; send readers to its first tab. */
 export default async function AdminIndexPage({
   params,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   redirect({ href: '/admin/jobs', locale });
 }

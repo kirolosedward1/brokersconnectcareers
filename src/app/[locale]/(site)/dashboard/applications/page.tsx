@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Building2, MapPin } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { WithdrawButton } from '@/components/dashboard/withdraw-button';
@@ -21,9 +21,10 @@ const STATUS_VARIANT: Record<ApplicationStatus, 'default' | 'primary' | 'success
 export default async function ApplicationsPage({
   params,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
   await requireCandidate(locale);
 

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { ShieldCheck, UsersRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { alternatesFor, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
 import { AgentCard } from '@/components/agents/agent-card';
 import { AgentFilters } from '@/components/agents/agent-filters';
 import { Pagination } from '@/components/pagination';
@@ -16,7 +16,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   const t = await getTranslations({ locale, namespace: 'agents' });
   return {
     title: t('title'),
@@ -29,10 +30,11 @@ export default async function AgentsPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const filters = parseAgentFilters(await searchParams);

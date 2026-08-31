@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApplicantCard } from '@/components/employer/applicant-card';
@@ -24,9 +24,10 @@ const PIPELINE: ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired
 export default async function ApplicantsPage({
   params,
 }: {
-  params: Promise<{ locale: Locale; id: string }>;
+  params: Promise<{ locale: string; id: string }>;
 }) {
-  const { locale, id } = await params;
+  const { locale: rawLocale, id } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const viewer = await requireEmployer(locale);

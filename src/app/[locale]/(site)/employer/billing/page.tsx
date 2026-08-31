@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Check, Infinity as InfinityIcon } from 'lucide-react';
-import type { Locale } from '@/i18n/routing';
+import { asLocale, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ClaimFreePostButton } from '@/components/employer/claim-free-post';
@@ -11,8 +11,9 @@ import { POST_PACKS } from '@/lib/taxonomy';
 import { formatDate, formatEgp, formatNumber } from '@/lib/utils';
 import type { OrderRow } from '@/lib/supabase/database.types';
 
-export default async function BillingPage({ params }: { params: Promise<{ locale: Locale }> }) {
-  const { locale } = await params;
+export default async function BillingPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const viewer = await requireEmployer(locale);

@@ -1,5 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
-import type { Locale } from '@/i18n/routing';
+import { asLocale, type Locale } from '@/i18n/routing';
 import { Landing } from '@/components/home/landing';
 import { SignedInHome } from '@/components/home/signed-in-home';
 import { getViewer } from '@/lib/auth';
@@ -7,8 +7,9 @@ import { getDistricts } from '@/lib/queries/taxonomy';
 import { EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
 import { optional } from '@/lib/queries/error';
 
-export default async function HomePage({ params }: { params: Promise<{ locale: Locale }> }) {
-  const { locale } = await params;
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const viewer = await getViewer();

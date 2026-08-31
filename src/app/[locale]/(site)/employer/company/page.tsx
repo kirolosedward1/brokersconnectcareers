@@ -1,5 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
-import type { Locale } from '@/i18n/routing';
+import { asLocale, type Locale } from '@/i18n/routing';
 import { CompanyForm } from '@/components/employer/company-form';
 import { VerificationPanel } from '@/components/employer/verification-panel';
 import { requireEmployer } from '@/lib/auth';
@@ -10,9 +10,10 @@ import type { CompanyDocumentRow } from '@/lib/supabase/database.types';
 export default async function EmployerCompanyPage({
   params,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const viewer = await requireEmployer(locale);

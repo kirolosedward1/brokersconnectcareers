@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Download, Lock, MapPin, MessageCircle, UserRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { getAgentCard } from '@/lib/queries/agents';
@@ -13,14 +13,15 @@ import { CV_BUCKET, signedUrl } from '@/lib/storage';
 import { whatsappLink } from '@/lib/utils';
 import { employerToAgentOpener } from '@/lib/whatsapp';
 
-type Params = { locale: Locale; slug: string };
+type Params = { locale: string; slug: string };
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
-  const { locale, slug } = await params;
+  const { locale: rawLocale, slug } = await params;
+  const locale = asLocale(rawLocale);
   const agent = await getAgentCard(slug);
   if (!agent) return {};
 
@@ -39,7 +40,8 @@ export async function generateMetadata({
 }
 
 export default async function AgentPage({ params }: { params: Promise<Params> }) {
-  const { locale, slug } = await params;
+  const { locale: rawLocale, slug } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const agent = await getAgentCard(slug);

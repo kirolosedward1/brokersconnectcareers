@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { VerifyCompanyActions } from '@/components/admin/verify-company-actions';
 import { requireAdmin } from '@/lib/auth';
@@ -11,9 +11,10 @@ import type { CompanyRow, CompanyDocumentRow } from '@/lib/supabase/database.typ
 export default async function AdminCompaniesPage({
   params,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
   await requireAdmin(locale);
 

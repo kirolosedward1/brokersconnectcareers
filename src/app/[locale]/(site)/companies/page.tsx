@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Building2, MapPin } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { alternatesFor, localized, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, localized, type Locale } from '@/i18n/routing';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { Pagination } from '@/components/pagination';
 import { queryCompanies } from '@/lib/queries/companies';
@@ -12,7 +12,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   const t = await getTranslations({ locale, namespace: 'companies' });
   return {
     title: t('title'),
@@ -24,10 +25,11 @@ export default async function CompaniesPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const { q, page } = await searchParams;

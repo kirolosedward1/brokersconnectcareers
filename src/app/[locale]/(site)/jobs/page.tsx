@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { SearchX } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { alternatesFor, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
 import { JobCard } from '@/components/jobs/job-card';
 import { JobFilters, MobileFilters } from '@/components/jobs/job-filters';
 import { Pagination } from '@/components/pagination';
@@ -23,7 +23,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   const t = await getTranslations({ locale, namespace: 'jobs' });
   const tMeta = await getTranslations({ locale, namespace: 'meta' });
 
@@ -38,10 +39,11 @@ export default async function JobsPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
   searchParams: Promise<SearchParams>;
 }) {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const resolved = await searchParams;

@@ -1,13 +1,14 @@
 import { setRequestLocale } from 'next-intl/server';
-import type { Locale } from '@/i18n/routing';
+import { asLocale, type Locale } from '@/i18n/routing';
 import { AgentProfileForm } from '@/components/dashboard/agent-profile-form';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getDistricts, getDevelopers } from '@/lib/queries/taxonomy';
 import type { AgentProfileRow } from '@/lib/supabase/database.types';
 
-export default async function ProfilePage({ params }: { params: Promise<{ locale: Locale }> }) {
-  const { locale } = await params;
+export default async function ProfilePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: rawLocale } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const viewer = await requireCandidate(locale);

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { ArrowLeft, CalendarDays, Clock } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { routing, activeLocales, ENGLISH_ENABLED, type Locale } from '@/i18n/routing';
+import { asLocale, routing, activeLocales, ENGLISH_ENABLED, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { JsonLd } from '@/components/json-ld';
@@ -11,7 +11,7 @@ import { getAllPosts, getPost, getPostLocales, getPostSlugs } from '@/lib/blog';
 import { env } from '@/lib/env';
 import { formatDate, isoDate } from '@/lib/utils';
 
-type Params = { locale: Locale; slug: string };
+type Params = { locale: string; slug: string };
 
 /** Posts are files, so every one of them can be built ahead of time. */
 export function generateStaticParams() {
@@ -25,7 +25,8 @@ export async function generateMetadata({
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
-  const { locale, slug } = await params;
+  const { locale: rawLocale, slug } = await params;
+  const locale = asLocale(rawLocale);
   const post = getPost(slug, locale);
   if (!post) return {};
 
@@ -53,7 +54,8 @@ export async function generateMetadata({
 }
 
 export default async function BlogPostPage({ params }: { params: Promise<Params> }) {
-  const { locale, slug } = await params;
+  const { locale: rawLocale, slug } = await params;
+  const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const post = getPost(slug, locale);
