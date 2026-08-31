@@ -47,48 +47,46 @@ export default async function CompaniesPage({
           {t('empty')}
         </p>
       ) : (
-        <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-6 space-y-3">
           {companies.map((company) => {
             const openRoles = company.open_roles?.[0]?.count ?? 0;
             return (
               <li key={company.id}>
                 <Link
                   href={`/companies/${company.slug}`}
-                  className="block h-full rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/40"
+                  className="lift flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
                 >
-                  <div className="flex items-start gap-3">
-                    <span
-                      aria-hidden
-                      className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted"
-                    >
-                      <Building2 className="size-5 text-muted-foreground" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold">
+                  <span
+                    aria-hidden
+                    className="grid size-12 shrink-0 place-items-center rounded-xl bg-muted"
+                  >
+                    <Building2 className="size-6 text-muted-foreground" />
+                  </span>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-2 font-semibold">
+                      <span className="truncate">
                         {localized(locale, company.name_ar, company.name_en)}
+                      </span>
+                      <VerifiedBadge
+                        status={company.verification_status}
+                        label={t('verified')}
+                      />
+                    </p>
+
+                    {company.district ? (
+                      <p className="mt-1 inline-flex items-center gap-1 text-sm text-muted-foreground">
+                        <MapPin className="size-3.5" aria-hidden />
+                        {localized(locale, company.district.name_ar, company.district.name_en)}
                       </p>
-                      {company.district ? (
-                        <p className="mt-0.5 inline-flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin className="size-3.5" aria-hidden />
-                          {localized(
-                            locale,
-                            company.district.name_ar,
-                            company.district.name_en,
-                          )}
-                        </p>
-                      ) : null}
-                    </div>
+                    ) : null}
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <VerifiedBadge
-                      status={company.verification_status}
-                      label={t('verified')}
-                    />
-                    <span className="numeral text-sm text-muted-foreground">
-                      {t('openRoles', { count: openRoles })}
-                    </span>
-                  </div>
+                  {/* The open-role count is why someone opens a company page, so
+                      it sits at the end of the row where the eye lands last. */}
+                  <span className="numeral shrink-0 whitespace-nowrap rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+                    {t('openRoles', { count: openRoles })}
+                  </span>
                 </Link>
               </li>
             );

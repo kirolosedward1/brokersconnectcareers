@@ -92,7 +92,7 @@ export default async function AgentsPage({
               <p className="mt-4 font-medium">{t('empty')}</p>
             </div>
           ) : (
-            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="space-y-3">
               {agents.map((agent) => (
                 <li key={agent.id}>
                   <AgentCard agent={agent} locale={locale} districts={districtMap} />

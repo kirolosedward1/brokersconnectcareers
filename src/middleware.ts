@@ -40,7 +40,18 @@ export async function middleware(request: NextRequest) {
   // A redirect from the i18n layer has nothing to authorise yet.
   if (response.headers.get('location')) return response;
 
-  const { user } = await updateSession(request, response);
+  // updateSession never throws, but middleware runs on every request, so the
+  // call site is belt-and-braces: an unexpected failure here must not turn the
+  // whole site into a 500.
+  let user = null;
+  try {
+    ({ user } = await updateSession(request, response));
+  } catch (error) {
+    console.warn(
+      '[middleware] session refresh failed:',
+      error instanceof Error ? error.message : error,
+    );
+  }
   const { locale, path } = stripLocale(request.nextUrl.pathname);
 
   const needsAuth = PROTECTED.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));

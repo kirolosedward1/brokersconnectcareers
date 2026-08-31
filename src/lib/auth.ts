@@ -22,10 +22,24 @@ export type Viewer = {
  * /onboarding yet — the absence of the row is the signal.
  */
 export const getViewer = cache(async (): Promise<Viewer | null> => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // The site header calls this on every page, including the landing page, the
+  // blog and the legal pages, none of which need a database. Treat an
+  // unconfigured or unreachable Supabase as "nobody is signed in" rather than
+  // letting it 500 the entire site.
+  let supabase;
+  let user;
+  try {
+    supabase = await createClient();
+    ({
+      data: { user },
+    } = await supabase.auth.getUser());
+  } catch (error) {
+    console.warn(
+      '[auth] could not determine the current user:',
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
 
   if (!user) return null;
 
