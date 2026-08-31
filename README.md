@@ -55,6 +55,40 @@ move between versions, and a hand-rolled insert yields an account that cannot
 sign in. `scripts/seed-demo.mjs` creates them through the Auth admin API instead,
 then runs the SQL half.
 
+## Deploying to Vercel
+
+Import the repository in Vercel; the framework preset and build command are
+detected. Then set these environment variables (Settings → Environment
+Variables), for Production and Preview:
+
+| Variable | Value |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API → Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | the `sb_publishable_…` key |
+| `SUPABASE_SERVICE_ROLE_KEY` | the `sb_secret_…` key |
+| `NEXT_PUBLIC_SITE_URL` | your production URL, e.g. `https://brokersconnect.com` |
+| `CRON_SECRET` | any long random string |
+| `BILLING_ENABLED` | `false` |
+
+`DATABASE_URL` is **not** needed on Vercel — only the local setup scripts read
+it. Keep it out of the deployment.
+
+Two things that are easy to miss:
+
+**Set `NEXT_PUBLIC_SITE_URL` explicitly.** Without it the code falls back to
+`VERCEL_URL`, which is the per-deployment hostname, so canonicals, `hreflang`,
+the sitemap and the `JobPosting` structured data would all point at a preview
+URL rather than your domain.
+
+**Point Supabase Auth at the deployed site.** In Supabase → Authentication →
+URL Configuration, set Site URL to your production URL and add
+`https://your-domain/auth/callback` to the redirect allow-list. Until you do,
+confirmation emails and Google sign-in will send people to `localhost:3000`.
+
+The nightly expiry cron is already declared in `vercel.json` and runs at 01:00
+UTC. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
+variable is set; the route returns 401 to anything else.
+
 ## Commands
 
 | Command | What it does |
