@@ -54,8 +54,11 @@ export function raise(error: SupabaseError, context: string): never {
  * For reads a page can render without. A landing page should still tell someone
  * what the product is when the database is unreachable — losing a district list
  * is not a reason to serve a 500.
+ *
+ * Takes a PromiseLike rather than a Promise: Supabase's query builder is
+ * thenable but not a real Promise, so it does not satisfy Promise<T>.
  */
-export async function optional<T>(read: Promise<T>, fallback: T): Promise<T> {
+export async function optional<T>(read: PromiseLike<T>, fallback: T): Promise<T> {
   try {
     return await read;
   } catch (error) {

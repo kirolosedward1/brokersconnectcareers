@@ -75,6 +75,11 @@ it. Keep it out of the deployment.
 
 Two things that are easy to miss:
 
+**Set the Supabase variables before the first deploy, or expect a slow start.**
+The build itself no longer fails without them — `/sitemap.xml` is prerendered
+and degrades to static routes only — but every database-backed page will render
+its error state until they are set.
+
 **Set `NEXT_PUBLIC_SITE_URL` explicitly.** Without it the code falls back to
 `VERCEL_URL`, which is the per-deployment hostname, so canonicals, `hreflang`,
 the sitemap and the `JobPosting` structured data would all point at a preview
