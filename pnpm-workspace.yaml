@@ -1,4 +1,18 @@
+# Build-script approvals. Without these, pnpm reports ERR_PNPM_IGNORED_BUILDS —
+# a warning on pnpm 10, which is what Vercel currently uses, but an error on
+# pnpm 11, where it also fails `pnpm build` via the dependency-status check.
+# Recording the decision here keeps installs identical on both.
+#
+# All three arrive transitively: sharp and @parcel/watcher via next/next-intl,
+# @swc/core via the toolchain. None is required for a Vercel build — image
+# optimisation is handled by the platform — but building them is harmless and
+# keeps a local `pnpm start` able to optimise images too.
 allowBuilds:
-  '@parcel/watcher': set this to true or false
-  '@swc/core': set this to true or false
-  sharp: set this to true or false
+  '@parcel/watcher': true
+  '@swc/core': true
+  sharp: true
+
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@swc/core'
+  - sharp
