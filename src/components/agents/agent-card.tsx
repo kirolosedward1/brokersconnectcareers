@@ -33,7 +33,7 @@ export function AgentCard({
     .slice(0, 3);
 
   return (
-    <article className="lift relative flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30 sm:flex-row sm:items-center">
+    <article className="lift reveal relative flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30 sm:flex-row sm:items-center">
       <span
         aria-hidden
         className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-muted"

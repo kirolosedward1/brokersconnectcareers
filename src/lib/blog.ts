@@ -15,6 +15,8 @@ export type PostMeta = {
   author: string;
   tags: string[];
   readingMinutes: number;
+  /** Which cover illustration to draw. Falls back to one derived from the slug. */
+  cover: string | null;
 };
 
 export type Post = PostMeta & { html: string };
@@ -85,6 +87,7 @@ function readPost(slug: string, locale: Locale): Post | null {
     author: str('author'),
     tags: Array.isArray(data.tags) ? data.tags : [],
     readingMinutes: estimateReadingMinutes(body, locale),
+    cover: str('cover') || null,
     html: marked.parse(body, { async: false }) as string,
   };
 }

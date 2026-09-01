@@ -20,7 +20,7 @@ export function JobCard({ job, locale }: { job: JobListItem; locale: string }) {
   const district = localized(locale, job.district.name_ar, job.district.name_en);
 
   return (
-    <article className="lift group relative rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30">
+    <article className="lift reveal group relative rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

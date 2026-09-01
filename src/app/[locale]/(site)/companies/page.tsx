@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Building2, MapPin } from 'lucide-react';
+import { Briefcase, Building2, MapPin } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, localized, type Locale } from '@/i18n/routing';
 import { VerifiedBadge } from '@/components/verified-badge';
@@ -54,7 +54,7 @@ export default async function CompaniesPage({
               <li key={company.id}>
                 <Link
                   href={`/companies/${company.slug}`}
-                  className="lift flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
+                  className="lift reveal flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
                 >
                   <span
                     aria-hidden
@@ -83,9 +83,20 @@ export default async function CompaniesPage({
                   </div>
 
                   {/* The open-role count is why someone opens a company page, so
-                      it sits at the end of the row where the eye lands last. */}
-                  <span className="numeral shrink-0 whitespace-nowrap rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
-                    {t('openRoles', { count: openRoles })}
+                      it sits at the end of the row where the eye lands last.
+                      A briefcase and a numeral, not a sentence: down a list of
+                      companies this column is scanned, not read, and the full
+                      phrase wrapped to two lines on a phone. The sentence is
+                      still there for screen readers, which do have to read it. */}
+                  <span
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary"
+                    title={t('openRoles', { count: openRoles })}
+                  >
+                    <Briefcase className="size-4" aria-hidden />
+                    <span className="numeral" aria-hidden>
+                      {openRoles}
+                    </span>
+                    <span className="sr-only">{t('openRoles', { count: openRoles })}</span>
                   </span>
                 </Link>
               </li>

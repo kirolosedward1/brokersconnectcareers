@@ -7,6 +7,7 @@ import { asLocale, routing, activeLocales, ENGLISH_ENABLED, type Locale } from '
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { JsonLd } from '@/components/json-ld';
+import { CoverArt } from '@/components/blog/cover-art';
 import { getAllPosts, getPost, getPostLocales, getPostSlugs } from '@/lib/blog';
 import { env } from '@/lib/env';
 import { formatDate, isoDate } from '@/lib/utils';
@@ -92,6 +93,12 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
 
         <article>
           <header className="mb-10">
+            <CoverArt
+              slug={post.slug}
+              variant={post.cover}
+              className="mb-8 h-44 w-full rounded-2xl border border-border sm:h-56"
+            />
+
             <div className="flex flex-wrap gap-1.5">
               {post.tags.map((tag) => (
                 <Badge key={tag} variant="primary">

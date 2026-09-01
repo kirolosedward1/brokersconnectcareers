@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { CalendarDays, Clock } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, routing, type Locale } from '@/i18n/routing';
+import { CoverArt } from '@/components/blog/cover-art';
 import { Badge } from '@/components/ui/badge';
 import { getAllPosts } from '@/lib/blog';
 import { formatDate, isoDate } from '@/lib/utils';
@@ -53,7 +54,16 @@ export default async function BlogIndexPage({
         <ul className="space-y-4">
           {posts.map((post) => (
             <li key={post.slug}>
-              <article className="lift relative rounded-2xl border border-border bg-card p-6 shadow-sm hover:border-primary/30">
+              <article className="lift reveal relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm hover:border-primary/30 sm:flex">
+                {/* Fixed-height band on a phone, a fixed-width column from sm
+                    up, so the art never dictates how tall the card gets. */}
+                <CoverArt
+                  slug={post.slug}
+                  variant={post.cover}
+                  className="h-32 w-full shrink-0 border-b border-border/60 sm:h-auto sm:w-44 sm:border-b-0 sm:border-e"
+                />
+
+                <div className="p-6">
                 <div className="flex flex-wrap gap-1.5">
                   {post.tags.map((tag) => (
                     <Badge key={tag} variant="primary">
@@ -83,6 +93,7 @@ export default async function BlogIndexPage({
                     {t('readingTime', { count: post.readingMinutes })}
                   </span>
                 </p>
+                </div>
               </article>
             </li>
           ))}

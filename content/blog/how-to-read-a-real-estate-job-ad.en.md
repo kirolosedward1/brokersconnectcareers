@@ -3,7 +3,8 @@ title: How to read a real estate job ad
 description: Four things to look for in any property sales listing before you apply — and if they're missing, that absence is itself an answer.
 date: 2026-08-20
 author: Brokers Connect team
-tags: [advice, agents]
+cover: listing
+tags: [advice, consultants]
 ---
 
 Most real estate job ads in Egypt say the same things: "attractive package", "generous commission", "motivating work environment". None of that means anything, and anyone who has worked this market knows the gap between two roles can be thousands of pounds a month.

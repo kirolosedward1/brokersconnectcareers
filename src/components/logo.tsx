@@ -32,7 +32,12 @@ export function Logo({
   return (
     <span className={cn('flex items-center gap-2 font-semibold', className)}>
       <LogoMark className={markClassName} />
-      <span className="hidden sm:inline">{name}</span>
+      {/* The wordmark stays at every width. It used to drop below sm, which
+          left phones — most of this market — looking at two blue squares and
+          no name. It fits: at 360px the row is the mark, the wordmark, a
+          search icon and the menu button, and nothing else competes for the
+          space until sm, where the auth buttons appear. */}
+      <span className="text-[0.95rem] sm:text-base">{name}</span>
     </span>
   );
 }

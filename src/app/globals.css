@@ -342,6 +342,75 @@
     }
   }
 
+  /* --- Motion -------------------------------------------------------------
+     Two entrances, both opacity + a short translate only, so they stay on the
+     compositor and never trigger layout. Nothing here moves more than 12px:
+     the point is to give a section a moment of arrival, not to put on a show
+     over a job board someone is trying to read. */
+
+  @keyframes bc-rise {
+    from {
+      opacity: 0;
+      transform: translateY(0.6rem);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* On-load entrance for above-the-fold content. --rise-delay staggers a row
+     without needing a class per position. */
+  .rise-in {
+    animation: bc-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+
+  /* Scroll-driven entrance for sections further down.
+     Deliberately inside @supports and with no styles outside it: a browser
+     without view() timelines renders the element plainly visible rather than
+     stuck at the keyframe's starting opacity. An animation that can hide
+     content permanently is worse than no animation. The range closes at
+     `entry 85%` for the same reason — it finishes before the element is fully
+     on screen, so a section at the very bottom of a barely-scrollable page
+     cannot strand itself half-faded. */
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: bc-rise 1ms linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 85%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rise-in,
+    .reveal {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Footer sections: an accordion on phones, plain columns from sm up.
+     Stacked open, the footer is four lists and roughly a full screen of links
+     between the reader and the bottom of the page.
+
+     Done with <details> so it needs no JavaScript, which means the desktop
+     "always open" state cannot be an `open` attribute — CSS has no way to set
+     one. Instead the summary is hidden and the panel is forced visible.
+     content-visibility is set alongside display because browsers disagree
+     about which one they use to hide a closed disclosure's contents. */
+  @media (width >= 40rem) {
+    .footer-section > summary {
+      display: none;
+    }
+
+    .footer-section > .footer-section-body {
+      display: block;
+      content-visibility: visible;
+    }
+  }
+
   /* Flip a glyph that encodes direction (arrows, chevrons) when the document
      is RTL. Icons that do not encode direction must not use this. */
   [dir='rtl'] .rtl-flip {

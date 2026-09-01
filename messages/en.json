@@ -6,8 +6,8 @@
   },
   "nav": {
     "jobs": "Jobs",
-    "companies": "Companies",
-    "agents": "Agent directory",
+    "companies": "Real estate companies",
+    "agents": "Consultant directory",
     "postJob": "Post a job",
     "signIn": "Sign in",
     "signUp": "Sign up",
@@ -33,7 +33,7 @@
     "statSeats": "open seats",
     "statCompanies": "companies",
     "forEmployers": "For employers",
-    "forEmployersBody": "Put your role in front of agents who are actually looking. Free during launch.",
+    "forEmployersBody": "Put your role in front of consultants who are actually looking. Free during launch.",
     "forEmployersCta": "Post a job"
   },
   "jobs": {
@@ -122,7 +122,7 @@
   },
   "leadsSource": {
     "company_provided": "Company provides leads",
-    "self_generated": "Agent generates own leads",
+    "self_generated": "Consultant generates own leads",
     "hybrid": "Hybrid",
     "company_provided_short": "Company leads",
     "self_generated_short": "Self-generated",
@@ -142,7 +142,7 @@
     "mobile_allowance": "Mobile allowance"
   },
   "companies": {
-    "title": "Companies",
+    "title": "Real estate companies",
     "verified": "Verified",
     "unverified": "Unverified",
     "openRoles": "{count, plural, =0 {No open roles} one {1 open role} other {# open roles}}",
@@ -160,12 +160,12 @@
     }
   },
   "agents": {
-    "title": "Agent directory",
-    "subtitle": "Real estate agents working the Egyptian market, ranked by experience and track.",
+    "title": "Real estate consultant directory",
+    "subtitle": "Real estate consultants in the Egyptian market, ranked by experience and specialism.",
     "locked": "Full profiles are for verified employers",
     "lockedBody": "Verify your company to see names, contact details and CVs.",
     "lockedCta": "Verify your company",
-    "anonymous": "Real estate agent",
+    "anonymous": "Real estate consultant",
     "yearsExperience": "{count, plural, =0 {Under a year} one {1 year experience} other {# years experience}}",
     "availability": "Status",
     "tracks": "Tracks",
@@ -174,7 +174,7 @@
     "soldFor": "Has sold for",
     "contact": "Contact on WhatsApp",
     "downloadCv": "Download CV",
-    "empty": "No agents match your search.",
+    "empty": "No consultants match your search.",
     "notFound": "This profile is not available.",
     "whoSeesProfile": "Who can see your profile?"
   },
@@ -206,16 +206,20 @@
     "forgotPassword": "Forgot your password?",
     "resetPassword": "Reset password",
     "sendResetLink": "Send reset link",
-    "signOutConfirm": "Sign out"
+    "signOutConfirm": "Sign out",
+    "demoTitle": "Or try the platform without signing up",
+    "demoCandidate": "Demo login as a real estate consultant",
+    "demoEmployer": "Demo login as a real estate company",
+    "demoHint": "Shared demo accounts. Anything you change in them may be reset at any time."
   },
   "onboarding": {
     "title": "Finish your profile",
     "subtitle": "One step before you start.",
     "roleQuestion": "You are here as…",
-    "roleCandidate": "Looking for work",
-    "roleCandidateHint": "Browse jobs, apply in under a minute, and list yourself in the agent directory.",
-    "roleEmployer": "Hiring",
-    "roleEmployerHint": "Post jobs, manage applicants, and search the agent directory.",
+    "roleCandidate": "Real estate consultant",
+    "roleCandidateHint": "Browse jobs, apply in under a minute, and list yourself in the consultant directory.",
+    "roleEmployer": "Real estate company",
+    "roleEmployerHint": "Post jobs, manage applicants, and search the consultant directory.",
     "fullName": "Full name",
     "whatsapp": "WhatsApp number",
     "whatsappHint": "This market runs on WhatsApp. Your number is shown only to an employer you apply to.",
@@ -234,7 +238,7 @@
     "emptySaved": "You have not saved any jobs yet.",
     "appliedOn": "Applied {date}",
     "withdraw": "Withdraw",
-    "agentProfile": "Your agent directory profile",
+    "agentProfile": "Your consultant directory profile",
     "agentProfileHint": "Verified employers search this directory. You control who sees your profile."
   },
   "applicationStatus": {
@@ -254,7 +258,7 @@
     "cvOptional": "Optional — PDF or Word, up to 10 MB",
     "note": "Short note",
     "noteOptional": "Optional",
-    "submit": "Send application",
+    "submit": "Apply for this job",
     "success": "Application sent",
     "successBody": "The employer will reach you on WhatsApp at the number you gave.",
     "alreadyApplied": "You have already applied to this job.",
@@ -272,7 +276,7 @@
     "createCompanyFirst": "Create your company profile first",
     "createCompanyFirstBody": "We need your company details before your first job post.",
     "verification": "Company verification",
-    "verificationBody": "Upload your commercial register and tax card. Verification lifts your posting cap, unlocks the agent directory, and gives you one free post every month.",
+    "verificationBody": "Upload your commercial register and tax card. Verification lifts your posting cap, unlocks the consultant directory, and gives you one free post every month.",
     "uploadDoc": "Upload a document",
     "commercialRegister": "Commercial register",
     "taxCard": "Tax card",
@@ -313,7 +317,7 @@
     "commissionNote": "Commission detail",
     "commissionNoteHint": "When it is paid, and what it is calculated on.",
     "leadsSource": "Leads source",
-    "leadsSourceHint": "The single line agents care most about.",
+    "leadsSourceHint": "The single line consultants care most about.",
     "benefits": "Benefits",
     "descriptionAr": "Job description (Arabic)",
     "descriptionEn": "Job description (English)",
@@ -403,8 +407,8 @@
   },
   "footer": {
     "product": "Product",
-    "forCandidates": "For candidates",
-    "forEmployers": "For employers",
+    "forCandidates": "For consultants",
+    "forEmployers": "For companies",
     "about": "About",
     "privacy": "Privacy",
     "terms": "Terms",
@@ -431,7 +435,7 @@
   "landingPage": {
     "hero": {
       "eyebrow": "The specialist job market for Egyptian real estate",
-      "title": "Roles whose terms are written down before you apply",
+      "title": "Egypt's best real estate jobs platform",
       "subtitle": "Every listing here states the basic salary, the commission, and who supplies the leads. No \"attractive package\", no \"generous commission\".",
       "searchLabel": "Search jobs",
       "searchPlaceholder": "Property consultant, New Cairo…",
@@ -446,7 +450,7 @@
       "payTitle": "Pay and commission, in figures",
       "payBody": "Basic salary, commission rate, and when it is paid — in a structured card above the fold, not buried in the description.",
       "leadsTitle": "Who supplies the leads?",
-      "leadsBody": "Every listing says whether the company provides leads or the agent generates their own. It is the line agents care most about, and you can filter on it.",
+      "leadsBody": "Every listing says whether the company provides leads or the consultant generates their own. It is the line consultants care most about, and you can filter on it.",
       "seatsTitle": "The seat count is stated",
       "seatsBody": "One opening or twenty-five? The number is on the card before you open it, so you know what kind of role it is at a glance.",
       "freshTitle": "No dead listings",
@@ -467,14 +471,14 @@
       "candidate3Body": "Track where each application stands from your dashboard.",
       "employers": "If you're hiring",
       "employer1Title": "Verify your company",
-      "employer1Body": "Commercial register and tax card. Verification lifts your posting cap and unlocks the agent directory.",
+      "employer1Body": "Commercial register and tax card. Verification lifts your posting cap and unlocks the consultant directory.",
       "employer2Title": "Post with real detail",
       "employer2Body": "The form asks for pay, commission and leads source. That clarity is what brings serious applicants.",
       "employer3Title": "Talk to applicants",
       "employer3Body": "Every applicant in one pipeline, with a WhatsApp button and a pre-written opener."
     },
     "agentsBand": {
-      "title": "The agent directory: you decide who sees you",
+      "title": "The consultant directory: you decide who sees you",
       "body": "Employed and not ready for your company to know you're looking? Keep your profile completely hidden. Or show it to verified employers only — with no name and no photo for ordinary visitors.",
       "point1": "Public, verified employers only, or entirely hidden",
       "point2": "Visitors see experience, track and district — no name, no contact",
@@ -482,7 +486,7 @@
       "cta": "Create your profile"
     },
     "employerBand": {
-      "title": "Hiring real estate agents?",
+      "title": "Hiring real estate consultants?",
       "body": "Put your role in front of people actually looking in the Egyptian market. Posting is completely free during launch.",
       "cta": "Post a job",
       "secondary": "See who's hiring"
@@ -495,7 +499,7 @@
   },
   "blog": {
     "title": "Blog",
-    "subtitle": "Explainers and advice for working the Egyptian real estate market — for agents and for employers.",
+    "subtitle": "Explainers and advice for working the Egyptian real estate market — for consultants and for companies.",
     "empty": "No articles yet.",
     "readingTime": "{count} min read",
     "publishedOn": "Published {date}",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { Building2, UserRound } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
@@ -60,6 +61,37 @@ export function AuthForm({ mode, locale }: { mode: 'sign-in' | 'sign-up'; locale
       }
 
       // Onboarding decides for itself whether there is anything left to ask.
+      router.replace(next ?? '/onboarding', { locale });
+      router.refresh();
+    });
+  }
+
+  /**
+   * Shared demo accounts, seeded by scripts/seed-demo.mjs.
+   *
+   * The password is in the client bundle, which is fine and unavoidable: a
+   * button that logs anyone in without asking for credentials has, by
+   * definition, published them. What keeps this safe is what the accounts can
+   * reach — RLS confines them to their own rows, and a job they post lands in
+   * pending_review like anyone else's rather than going live.
+   */
+  const DEMO_PASSWORD = 'password123';
+  const DEMO_EMAILS = {
+    candidate: 'candidate1@demo.test',
+    employer: 'employer1@demo.test',
+  } as const;
+
+  function signInAsDemo(kind: keyof typeof DEMO_EMAILS) {
+    setError(null);
+    startTransition(async () => {
+      const { error: demoError } = await createClient().auth.signInWithPassword({
+        email: DEMO_EMAILS[kind],
+        password: DEMO_PASSWORD,
+      });
+      if (demoError) {
+        setError(demoError.message);
+        return;
+      }
       router.replace(next ?? '/onboarding', { locale });
       router.refresh();
     });
@@ -140,6 +172,41 @@ export function AuthForm({ mode, locale }: { mode: 'sign-in' | 'sign-up'; locale
           {pending ? tCommon('loading') : mode === 'sign-up' ? t('signUp') : t('signIn')}
         </Button>
       </form>
+
+      {/* Sign-in only. Offering a demo account on the sign-up screen would be
+          arguing against the thing that screen exists to do. */}
+      {mode === 'sign-in' ? (
+        <div className="rounded-xl border border-dashed border-border bg-muted/40 p-4">
+          <p className="text-center text-xs font-medium text-muted-foreground">{t('demoTitle')}</p>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full bg-card"
+              onClick={() => signInAsDemo('candidate')}
+              disabled={pending}
+            >
+              <UserRound aria-hidden />
+              {t('demoCandidate')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full bg-card"
+              onClick={() => signInAsDemo('employer')}
+              disabled={pending}
+            >
+              <Building2 aria-hidden />
+              {t('demoEmployer')}
+            </Button>
+          </div>
+
+          <p className="mt-3 text-center text-xs text-muted-foreground">{t('demoHint')}</p>
+        </div>
+      ) : null}
     </div>
   );
 }

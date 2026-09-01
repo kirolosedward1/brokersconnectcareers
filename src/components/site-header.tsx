@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { LayoutDashboard, Menu, Search, ShieldCheck, Users } from 'lucide-react';
+import { LayoutDashboard, Search, ShieldCheck, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { ENGLISH_ENABLED, type Locale } from '@/i18n/routing';
 import { getViewer } from '@/lib/auth';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { UserMenu } from '@/components/user-menu';
+import { MobileNav } from '@/components/mobile-nav';
 
 const NAV = [
   { href: '/jobs', key: 'jobs' },
@@ -85,17 +86,10 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
             </>
           )}
 
-          {/* Disclosure rather than a JS drawer: it works server-rendered, needs
-              no client state, and closes on navigation. */}
-          <details className="group relative md:hidden">
-            <summary
-              className="grid size-9 cursor-pointer list-none place-items-center rounded-lg transition-colors hover:bg-muted"
-              aria-label={t('menu')}
-            >
-              <Menu className="size-5" aria-hidden />
-            </summary>
-
-            <div className="absolute end-0 top-full z-50 mt-2 w-56 rounded-2xl border border-border bg-popover p-1.5 shadow-lg">
+          {/* Still a disclosure, so it works server-rendered with no JavaScript.
+              MobileNav adds what a bare <details> cannot do: close on a
+              client-side navigation, on an outside tap, and on Escape. */}
+          <MobileNav label={t('menu')}>
               {NAV.map((item) => (
                 <Link
                   key={item.href}
@@ -134,14 +128,13 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
                 </Link>
               )}
 
-              <Link
-                href="/employer/jobs/new"
-                className="bg-brand-gradient mt-1 block rounded-lg px-3 py-2 text-center text-sm font-medium text-primary-foreground"
-              >
-                {t('postJob')}
-              </Link>
-            </div>
-          </details>
+            <Link
+              href="/employer/jobs/new"
+              className="bg-brand-gradient mt-1 block rounded-lg px-3 py-2 text-center text-sm font-medium text-primary-foreground"
+            >
+              {t('postJob')}
+            </Link>
+          </MobileNav>
         </div>
       </div>
     </header>

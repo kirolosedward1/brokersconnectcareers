@@ -3,7 +3,8 @@ title: Primary or resale? The real difference is in the working day
 description: Both tracks deal in the same property. The shape of the day, the income and the skills they reward are not the same at all.
 date: 2026-08-14
 author: Brokers Connect team
-tags: [tracks, agents]
+cover: compare
+tags: [tracks, consultants]
 ---
 
 The first decision facing anyone entering Egyptian real estate is primary sales or resale. That choice shapes your working day far more than it shapes your LinkedIn title.

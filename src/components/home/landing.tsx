@@ -74,21 +74,21 @@ export async function Landing({
         <div className="relative mx-auto max-w-6xl px-4 py-16 sm:py-20">
           <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr]">
             <div className="text-center lg:text-start">
-              <Badge variant="primary" size="lg" className="mb-6">
+              <Badge variant="primary" size="lg" className="rise-in mb-6">
                 {t('hero.eyebrow')}
               </Badge>
 
-              <h1 className="text-3xl font-bold leading-[1.25] text-balance sm:text-5xl sm:leading-[1.18]">
+              <h1 className="rise-in [--rise-delay:70ms] text-3xl font-bold leading-[1.25] text-balance sm:text-5xl sm:leading-[1.18]">
                 {t('hero.title')}
               </h1>
 
-              <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground lg:mx-0">
+              <p className="rise-in [--rise-delay:140ms] mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground lg:mx-0">
                 {t('hero.subtitle')}
               </p>
 
               <form
                 action={action}
-                className="mx-auto mt-8 flex max-w-xl flex-col gap-2 sm:flex-row lg:mx-0"
+                className="rise-in [--rise-delay:210ms] mx-auto mt-8 flex max-w-xl flex-col gap-2 sm:flex-row lg:mx-0"
               >
                 <div className="relative flex-1">
                   <Search
@@ -108,7 +108,7 @@ export async function Landing({
                 </Button>
               </form>
 
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+              <div className="rise-in [--rise-delay:280ms] mt-6 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
                 <span className="text-sm text-muted-foreground">{t('hero.popular')}</span>
                 {JOB_TRACKS.slice(0, 4).map((track) => (
                   <Link key={track} href={{ pathname: '/jobs', query: { track } }}>
@@ -119,7 +119,7 @@ export async function Landing({
                 ))}
               </div>
 
-              <p className="mt-7 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+              <p className="rise-in [--rise-delay:350ms] mt-7 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Check className="size-4 text-success" aria-hidden />
                 {t('hero.trustNoSpam')}
               </p>
@@ -127,7 +127,7 @@ export async function Landing({
 
             {/* Decorative: the copy beside it already says everything this
                 conveys, so it carries no alt text. */}
-            <div className="relative">
+            <div className="rise-in [--rise-delay:240ms] relative">
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-8 rounded-[3rem] bg-[radial-gradient(closest-side,var(--brand-cyan),transparent)] opacity-25 blur-2xl"
@@ -160,7 +160,7 @@ export async function Landing({
 
     return (
       <section className="mx-auto max-w-6xl px-4 py-20" aria-labelledby="features-heading">
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="reveal mx-auto max-w-2xl text-center">
           <h2 id="features-heading" className="text-2xl font-bold text-balance sm:text-3xl">
             {t('features.title')}
           </h2>
@@ -169,7 +169,7 @@ export async function Landing({
           </p>
         </div>
 
-        <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="reveal mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map(({ icon: Icon, title, body, accent }) => (
             <li
               key={title}
@@ -225,7 +225,7 @@ export async function Landing({
     return (
       <section className="border-y border-border bg-muted/40" aria-labelledby="how-heading">
         <div className="mx-auto max-w-6xl px-4 py-20">
-          <h2 id="how-heading" className="mb-10 text-center text-2xl font-bold sm:text-3xl">
+          <h2 id="how-heading" className="reveal mb-10 text-center text-2xl font-bold sm:text-3xl">
             {t('how.title')}
           </h2>
 
@@ -317,11 +317,11 @@ export async function Landing({
     return (
       <section className="border-y border-border bg-muted/40" aria-labelledby="browse-heading">
         <div className="mx-auto max-w-6xl px-4 py-16">
-          <h2 id="browse-heading" className="text-center text-lg font-semibold">
+          <h2 id="browse-heading" className="reveal text-center text-lg font-semibold">
             {t('browse.title')}
           </h2>
 
-          <div className="mt-8 grid gap-10 sm:grid-cols-2">
+          <div className="reveal mt-8 grid gap-10 sm:grid-cols-2">
             <div>
               <h3 className="text-sm font-medium text-muted-foreground">{t('browse.byTrack')}</h3>
               <ul className="mt-3 flex flex-wrap gap-2">
@@ -364,7 +364,7 @@ export async function Landing({
   async function EmployerBand() {
     return (
       <section className="mx-auto max-w-6xl px-4 py-20">
-        <div className="bg-brand-gradient relative overflow-hidden rounded-[1.75rem] px-6 py-16 text-center text-primary-foreground shadow-lg">
+        <div className="bg-brand-gradient reveal relative overflow-hidden rounded-[1.75rem] px-6 py-16 text-center text-primary-foreground shadow-lg">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] [background-size:2.5rem_2.5rem] [mask-image:radial-gradient(30rem_16rem_at_50%_0%,black,transparent)]"
