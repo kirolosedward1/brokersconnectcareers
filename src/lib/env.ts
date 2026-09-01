@@ -22,9 +22,16 @@ export const env = {
   get supabaseServiceRoleKey() {
     return required('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY);
   },
+  /**
+   * `||`, not `??`. A variable declared in a hosting dashboard and left blank
+   * arrives as an empty string, not as undefined — which production proved by
+   * serving `Sitemap: /sitemap.xml` and `<loc>/</loc>`, both invalid, because
+   * an empty NEXT_PUBLIC_SITE_URL beat the VERCEL_URL fallback that exists
+   * precisely so this cannot happen.
+   */
   get siteUrl() {
     return (
-      process.env.NEXT_PUBLIC_SITE_URL ??
+      process.env.NEXT_PUBLIC_SITE_URL ||
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
     ).replace(/\/$/, '');
   },

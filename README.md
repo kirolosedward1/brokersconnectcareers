@@ -73,7 +73,12 @@ Variables), for Production and Preview:
 `DATABASE_URL` is **not** needed on Vercel — only the local setup scripts read
 it. Keep it out of the deployment.
 
-Two things that are easy to miss:
+Three things that are easy to miss:
+
+**Give every variable a value, or do not create it.** A variable added with the
+name filled in and the value box left blank is not absent — it arrives as an
+empty string, which is a value, and it silently wins over any fallback the code
+has. Production ran this way and served `Sitemap: /sitemap.xml`.
 
 **Set the Supabase variables before the first deploy, or expect a slow start.**
 The build itself no longer fails without them — `/sitemap.xml` is prerendered

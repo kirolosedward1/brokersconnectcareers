@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { unstable_rethrow } from 'next/navigation';
 import { env } from '@/lib/env';
 import { createPublicClient } from '@/lib/supabase/public';
 import { ENGLISH_ENABLED } from '@/i18n/routing';
@@ -78,6 +79,8 @@ async function fromDatabase(): Promise<DbRows> {
       districts: districts.data ?? [],
     };
   } catch (error) {
+    unstable_rethrow(error);
+
     console.warn(
       '[sitemap] database unavailable, emitting static routes only:',
       error instanceof Error ? error.message : error,

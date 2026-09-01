@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { unstable_rethrow } from 'next/navigation';
 import { redirect } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
@@ -34,6 +35,13 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
       data: { user },
     } = await supabase.auth.getUser());
   } catch (error) {
+    // Next signals control flow by throwing: redirect, notFound, and the
+    // dynamic-server-usage error that reading cookies raises during static
+    // generation. Catching those turns a page that should have been marked
+    // dynamic into one rendered as though nobody were signed in. Only a real
+    // failure to reach Supabase should fall through to "signed out".
+    unstable_rethrow(error);
+
     console.warn(
       '[auth] could not determine the current user:',
       error instanceof Error ? error.message : error,
