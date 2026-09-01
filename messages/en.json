@@ -390,6 +390,7 @@
     "goHome": "Back to home",
     "error": "Something went wrong",
     "errorBody": "We could not complete that. Please try again.",
+    "errorReference": "Error reference",
     "retry": "Try again",
     "saveSuccess": "Saved",
     "new": "New"
