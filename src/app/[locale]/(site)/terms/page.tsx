@@ -1,24 +1,25 @@
 import type { Metadata } from 'next';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { asLocale, type Locale } from '@/i18n/routing';
-import { LegalPlaceholder } from '@/components/legal-placeholder';
+import { setRequestLocale } from 'next-intl/server';
+import { asLocale, alternatesFor } from '@/i18n/routing';
+import { LegalDocument } from '@/components/legal-document';
+import { getLegalDoc } from '@/lib/legal';
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale: rawLocale } = await params;
-  const locale = asLocale(rawLocale);
-  const t = await getTranslations({ locale, namespace: 'footer' });
-  return { title: t('terms'), robots: { index: false, follow: true } };
+  const locale = asLocale((await params).locale);
+  const doc = getLegalDoc('terms', locale);
+  return {
+    title: doc?.title,
+    robots: { index: true, follow: true },
+    alternates: alternatesFor('/terms', locale),
+  };
 }
 
 export default async function TermsPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale: rawLocale } = await params;
-  const locale = asLocale(rawLocale);
+  const locale = asLocale((await params).locale);
   setRequestLocale(locale);
-  const t = await getTranslations('footer');
-
-  return <LegalPlaceholder title={t('terms')} />;
+  return <LegalDocument doc={getLegalDoc('terms', locale)} locale={locale} />;
 }

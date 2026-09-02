@@ -527,5 +527,32 @@
       "notify_status": "Application and listing status emails",
       "notify_digest": "Weekly job roundup"
     }
+  },
+  "legal": {
+    "lastUpdated": "Last updated:",
+    "missing": "This document is not available right now",
+    "missingBody": "Please try again shortly."
+  },
+  "account": {
+    "title": "Account settings",
+    "subtitle": "What we email you, a copy of your data, and deleting your account.",
+    "emailsTitle": "Emails we send you",
+    "emailsBody": "Turn any of these off, and back on whenever you like.",
+    "notifyApplications": "New applicant on one of your roles",
+    "notifyApplicationsHint": "An email as soon as someone applies to a listing of yours.",
+    "notifyStatus": "Application and listing updates",
+    "notifyStatusHint": "When a company moves your application, or your listing is reviewed.",
+    "notifyDigest": "Weekly job roundup",
+    "notifyDigestHint": "New roles matching your track and district, once a week.",
+    "exportTitle": "A copy of your data",
+    "exportBody": "A file with your account, applications and profile, in a format any tool can read.",
+    "exportCta": "Download my data",
+    "deleteTitle": "Delete account",
+    "deleteBody": "This removes your account, profile, applications and uploaded files. It cannot be undone.",
+    "deleteConfirmLabel": "Type {word} to confirm.",
+    "deleteConfirmWord": "delete",
+    "deleteCta": "Delete my account permanently",
+    "deleteBlockedCompany": "Your account owns a company. Deleting it would remove the company, every listing it published, and every application other people sent you — that is their data too, not only yours. Contact us and we will handle it properly.",
+    "deleteUnavailable": "We could not delete the account just now. Please try again later."
   }
 }

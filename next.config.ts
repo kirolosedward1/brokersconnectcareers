@@ -17,6 +17,11 @@ const nextConfig: NextConfig = {
    */
   outputFileTracingIncludes: {
     '/sitemap.xml': ['./content/**/*'],
+    // The legal pages read their markdown off disk at request time, same as the
+    // blog. Traced explicitly rather than trusted to inference, because these
+    // two are linked from the footer of every page on the site.
+    '/[locale]/(site)/privacy': ['./content/legal/**/*'],
+    '/[locale]/(site)/terms': ['./content/legal/**/*'],
   },
   images: {
     remotePatterns: [

@@ -19,6 +19,7 @@ const NAV = [
 export async function SiteHeader({ locale }: { locale: Locale }) {
   const t = await getTranslations('nav');
   const tMeta = await getTranslations('meta');
+  const tAccount = await getTranslations('account');
   const viewer = await getViewer();
   const role = viewer?.profile?.role;
 
@@ -72,6 +73,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               <UserMenu
                 name={viewer.profile.full_name}
                 signOutLabel={t('signOut')}
+                accountLabel={tAccount('title')}
                 locale={locale}
               />
             </>

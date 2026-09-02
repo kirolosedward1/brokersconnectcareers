@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { LogOut, User } from 'lucide-react';
-import { useRouter } from '@/i18n/navigation';
+import { LogOut, Settings, User } from 'lucide-react';
+import { Link, useRouter } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button';
 export function UserMenu({
   name,
   signOutLabel,
+  accountLabel,
   locale,
 }: {
   name: string;
   signOutLabel: string;
+  accountLabel: string;
   locale: Locale;
 }) {
   const router = useRouter();
@@ -52,6 +54,20 @@ export function UserMenu({
             role="menu"
             className="absolute end-0 z-20 mt-1 w-48 rounded-lg border border-border bg-popover p-1 shadow-lg"
           >
+            {/* Where the privacy policy says these rights are exercised, so it
+                has to be reachable without knowing the URL. */}
+            <Link
+              role="menuitem"
+              href="/dashboard/account"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-start text-sm transition-colors hover:bg-muted"
+            >
+              <Settings className="size-4" aria-hidden />
+              {accountLabel}
+            </Link>
+
+            <div className="my-1 h-px bg-border" />
+
             <button
               role="menuitem"
               type="button"
