@@ -2,9 +2,11 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { SearchX } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, localized, type Locale } from '@/i18n/routing';
 import { JobCard } from '@/components/jobs/job-card';
 import { JobFilters, MobileFilters } from '@/components/jobs/job-filters';
+import { SaveSearch } from '@/components/jobs/save-search';
+import { getViewer } from '@/lib/auth';
 import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import { SortSelect } from '@/components/jobs/sort-select';
@@ -50,13 +52,26 @@ export default async function JobsPage({
   const filters = parseJobFilters(resolved);
   const activeCount = countActiveFilters(filters);
 
-  const [{ jobs, total, pageCount }, districts, governorates] = await Promise.all([
+  const [{ jobs, total, pageCount }, districts, governorates, viewer] = await Promise.all([
     queryJobs(filters),
     getDistricts(),
     getGovernorates(),
+    getViewer(),
   ]);
 
   const t = await getTranslations('jobs');
+  const tTrack = await getTranslations('track');
+
+  // A name the reader would recognise in a list a month from now. Their own
+  // search words if they typed any, otherwise the filters that narrowed it.
+  const defaultSearchLabel = (() => {
+    if (filters.q) return filters.q;
+    const parts: string[] = [];
+    if (filters.tracks[0]) parts.push(tTrack(filters.tracks[0]));
+    const district = districts.find((item) => item.slug === filters.districtSlugs[0]);
+    if (district) parts.push(localized(locale, district.name_ar, district.name_en));
+    return parts.join(' · ') || t('title');
+  })();
 
   const buildHref = (page: number) => {
     const search = serializeJobFilters({ ...filters, page });
@@ -75,11 +90,19 @@ export default async function JobsPage({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold">{t('title')}</h1>
-        <p className="numeral mt-1 text-sm text-muted-foreground">
-          {t('resultsCount', { count: total })}
-        </p>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <p className="numeral mt-1 text-sm text-muted-foreground">
+            {t('resultsCount', { count: total })}
+          </p>
+        </div>
+
+        {/* Only once the reader has narrowed something down. Offering to save an
+            unfiltered list is offering to email them the whole board weekly. */}
+        {activeCount > 0 ? (
+          <SaveSearch signedIn={Boolean(viewer)} defaultLabel={defaultSearchLabel} />
+        ) : null}
       </header>
 
       <div className="mb-4 lg:hidden">

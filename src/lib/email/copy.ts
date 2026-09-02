@@ -62,6 +62,15 @@ export const emailCopy = {
       labelJob: 'الوظيفة',
     },
 
+    digest: {
+      subject: (count: number, label: string) =>
+        count === 1 ? `وظيفة جديدة في «${label}»` : `${count} وظايف جديدة في «${label}»`,
+      preheader: 'وظايف جديدة تطابق البحث المحفوظ عندك.',
+      heading: 'في جديد في بحثك',
+      body: (label: string) => `دي الوظايف اللي نزلت الأسبوع ده وبتطابق «${label}».`,
+      cta: 'شوفهم كلهم',
+      labelSearch: 'البحث',
+    },
     status: {
       new: 'جديد',
       shortlisted: 'في القائمة المختصرة',
@@ -118,6 +127,15 @@ export const emailCopy = {
       labelJob: 'Role',
     },
 
+    digest: {
+      subject: (count: number, label: string) =>
+        count === 1 ? `A new role in “${label}”` : `${count} new roles in “${label}”`,
+      preheader: 'New roles matching your saved search.',
+      heading: 'New in your saved search',
+      body: (label: string) => `These went live this week and match “${label}”.`,
+      cta: 'See them all',
+      labelSearch: 'Search',
+    },
     status: {
       new: 'New',
       shortlisted: 'Shortlisted',

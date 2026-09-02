@@ -21,6 +21,9 @@ export const JOBS_PER_PAGE = 20;
 
 export type JobSort = 'newest' | 'salary' | 'seats';
 
+/** Anything shaped like the Supabase client's `.from()` entry point. */
+type SupabaseLikeClient = Awaited<ReturnType<typeof createClient>>;
+
 export type JobFilters = {
   q: string;
   tracks: JobTrack[];
@@ -125,12 +128,21 @@ const LIST_SELECT = `
   district:districts!inner (id, governorate_id, name_ar, name_en, slug)
 `;
 
-export async function queryJobs(filters: JobFilters): Promise<{
+/**
+ * `client` lets a caller with no request context — the weekly alert job — run
+ * exactly this query rather than a second copy of it. Passing the public
+ * client there is deliberate: an alert email must never contain a listing the
+ * recipient could not see for themselves.
+ */
+export async function queryJobs(
+  filters: JobFilters,
+  client?: SupabaseLikeClient,
+): Promise<{
   jobs: JobListItem[];
   total: number;
   pageCount: number;
 }> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const districts = await getDistricts();
 
   // Resolve district and governorate slugs to ids up front — the taxonomy is

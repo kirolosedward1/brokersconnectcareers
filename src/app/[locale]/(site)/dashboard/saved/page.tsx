@@ -3,9 +3,11 @@ import { Link } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { JobCard } from '@/components/jobs/job-card';
+import { SavedSearchList } from '@/components/dashboard/saved-search-list';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import type { JobListItem } from '@/lib/queries/jobs';
+import type { SavedSearchRow } from '@/lib/supabase/database.types';
 
 export default async function SavedJobsPage({
   params,
@@ -36,27 +38,43 @@ export default async function SavedJobsPage({
     .map((row) => row.job)
     .filter(Boolean);
 
+  const { data: searchRows } = await supabase
+    .from('saved_searches')
+    .select('*')
+    .order('created_at', { ascending: false });
+
   const t = await getTranslations('dashboard');
   const tJobs = await getTranslations('jobs');
-
-  if (jobs.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-border py-16 text-center">
-        <p className="font-medium">{t('emptySaved')}</p>
-        <Button asChild className="mt-5">
-          <Link href="/jobs">{tJobs('title')}</Link>
-        </Button>
-      </div>
-    );
-  }
+  const tSearch = await getTranslations('savedSearch');
 
   return (
-    <ul className="space-y-3">
-      {jobs.map((job) => (
-        <li key={job.id}>
-          <JobCard job={job} locale={locale} />
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-10">
+      <section>
+        <h2 className="mb-1 font-semibold">{tSearch('title')}</h2>
+        <p className="mb-4 text-sm text-muted-foreground">{tSearch('weekly')}</p>
+        <SavedSearchList searches={(searchRows ?? []) as SavedSearchRow[]} />
+      </section>
+
+      <section>
+        <h2 className="mb-4 font-semibold">{t('saved')}</h2>
+
+        {jobs.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border py-16 text-center">
+            <p className="font-medium">{t('emptySaved')}</p>
+            <Button asChild className="mt-5">
+              <Link href="/jobs">{tJobs('title')}</Link>
+            </Button>
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {jobs.map((job) => (
+              <li key={job.id}>
+                <JobCard job={job} locale={locale} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }

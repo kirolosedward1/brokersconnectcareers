@@ -554,5 +554,20 @@
     "deleteCta": "Delete my account permanently",
     "deleteBlockedCompany": "Your account owns a company. Deleting it would remove the company, every listing it published, and every application other people sent you — that is their data too, not only yours. Contact us and we will handle it properly.",
     "deleteUnavailable": "We could not delete the account just now. Please try again later."
+  },
+  "savedSearch": {
+    "cta": "Alert me",
+    "labelField": "Search name",
+    "saved": "Saved",
+    "alreadySaved": "You have already saved this search.",
+    "cap": "You have reached the limit of 10 saved searches. Delete one to save another.",
+    "noFilters": "Pick some filters first.",
+    "title": "Saved searches",
+    "empty": "No saved searches yet. Filter the jobs, then press “Alert me”.",
+    "alertsOn": "Alerts on",
+    "alertsOff": "Alerts off",
+    "openSearch": "Open search",
+    "remove": "Delete",
+    "weekly": "A weekly email with new roles matching this search."
   }
 }

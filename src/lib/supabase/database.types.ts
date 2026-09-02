@@ -163,6 +163,17 @@ export type AgentProfileRow = Timestamped & {
   visibility: AgentVisibility;
 };
 
+export type SavedSearchRow = Timestamped & {
+  id: string;
+  candidate_id: string;
+  label: string;
+  /** The canonical query string, minus page and sort. Parsed by parseJobFilters. */
+  query: string;
+  alerts: boolean;
+  /** Written by the alert job only; the guard rejects an owner touching it. */
+  last_sent_at: string | null;
+};
+
 export type SavedJobRow = Timestamped & {
   candidate_id: string;
   job_id: string;
@@ -272,6 +283,10 @@ export type Database = {
       applications: Table<ApplicationRow, Insertable<ApplicationRow, 'job_id' | 'candidate_id'>>;
       agent_profiles: Table<AgentProfileRow, Insertable<AgentProfileRow, 'user_id' | 'slug'>>;
       agent_developers: Table<{ agent_id: string; developer_id: number }, { agent_id: string; developer_id: number }>;
+      saved_searches: Table<
+        SavedSearchRow,
+        Insertable<SavedSearchRow, 'candidate_id' | 'label'>
+      >;
       saved_jobs: Table<SavedJobRow, Insertable<SavedJobRow, 'candidate_id' | 'job_id'>>;
       reports: Table<ReportRow, Insertable<ReportRow, 'reason'>>;
       orders: Table<OrderRow, Insertable<OrderRow, 'company_id' | 'pack_key' | 'credits' | 'amount_egp'>>;

@@ -241,6 +241,37 @@ report.section('unauthenticated writes do not crash the guards');
   await db.exec('reset request.jwt.claims');
 }
 
+report.section('saved searches are private to their owner');
+{
+  // Seeded outside as(), because as() rolls every probe back.
+  await db.exec(`insert into saved_searches (candidate_id, label, query)
+                 values ('${candidate}', 'بيع أول التجمع', 'track=primary&district=new-cairo')`);
+
+  const r = await as(candidate, `select id from saved_searches`);
+  report.check('the owner sees their own', r.ok && r.rows.length === 1, r.error);
+
+  const r2 = await as(OUTSIDER, `select id from saved_searches`);
+  report.check('another user sees none of them', r2.ok && r2.rows.length === 0, r2.error);
+
+  const r3 = await as(OUTSIDER, `update saved_searches set label='مسروق' returning id`);
+  report.check('nor can edit them', r3.ok && r3.rows.length === 0, r3.error);
+
+  const r4 = await as(candidate, `update saved_searches set last_sent_at=now()`);
+  report.check('the owner cannot fake last_sent_at', !r4.ok, r4.ok ? 'update was allowed' : r4.error);
+
+  const r5 = await as(candidate, `update saved_searches set alerts=false returning alerts`);
+  report.check('but can turn its alerts off', r5.ok && r5.rows.length === 1, r5.error);
+
+  // Nine more takes the owner to the cap of ten; the eleventh must be refused.
+  await db.exec(`insert into saved_searches (candidate_id, label, query)
+                 select '${candidate}', 'بحث ' || g, 'q=' || g from generate_series(1, 9) g`);
+  const r6 = await as(candidate, `insert into saved_searches (candidate_id, label, query)
+                                  values ('${candidate}', 'واحد زيادة', 'q=over')`);
+  report.check('and cannot save more than ten', !r6.ok, r6.ok ? 'insert was allowed' : r6.error);
+
+  await db.exec(`delete from saved_searches`);
+}
+
 report.section('the nightly expiry cron');
 {
   await db.exec("update jobs set expires_at = now() - interval '1 day' where status='active'");

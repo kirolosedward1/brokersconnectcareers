@@ -296,3 +296,49 @@ export async function notifyEmployerOfModeration(
 function asMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
+
+
+/**
+ * The weekly roundup for one saved search.
+ *
+ * Takes the matching jobs rather than finding them, so the alert job owns the
+ * "what is new since last time" question and this owns only the message. It
+ * still checks the recipient's preference, because a digest is the one message
+ * here that is closest to marketing and the least excusable to get wrong.
+ */
+export async function sendSavedSearchDigest(args: {
+  userId: string;
+  label: string;
+  query: string;
+  jobs: { title: string; company: string }[];
+}): Promise<SendOutcome> {
+  if (args.jobs.length === 0) return 'skipped';
+
+  try {
+    const admin = createAdminClient();
+    const to = await recipient(admin, args.userId, 'notify_digest');
+    if (!to) return 'skipped';
+
+    const t = copyFor(to.locale).digest;
+
+    return sendEmail(
+      compose({
+        to,
+        preference: 'notify_digest',
+        subject: t.subject(args.jobs.length, args.label),
+        preheader: t.preheader,
+        heading: t.heading,
+        paragraphs: [t.body(args.label)],
+        // One row per role: the title, and who is hiring for it.
+        facts: args.jobs.map((job) => [job.title, job.company] as [string, string]),
+        button: {
+          label: t.cta,
+          href: `${env.siteUrl}/jobs${args.query ? `?${args.query}` : ''}`,
+        },
+      }),
+    );
+  } catch (error) {
+    console.warn('[email] saved-search digest failed:', asMessage(error));
+    return 'failed';
+  }
+}
