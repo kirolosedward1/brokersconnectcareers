@@ -312,6 +312,20 @@ export type Database = {
       increment_job_view: { Args: { job_slug: string }; Returns: undefined };
       claim_monthly_free_post: { Args: Empty; Returns: boolean };
       expire_stale_jobs: { Args: Empty; Returns: number };
+      /**
+       * Returns what happened rather than void: the webhook needs to tell a
+       * first delivery from a retry, and every outcome here is a 200.
+       */
+      settle_order: {
+        Args: { p_order_id: string; p_paymob_order_id: string | null; p_success: boolean };
+        Returns:
+          | 'paid'
+          | 'failed'
+          | 'unknown_order'
+          | 'already_paid'
+          | 'already_failed'
+          | 'already_refunded';
+      };
     };
     Enums: {
       user_role: UserRole;

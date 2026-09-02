@@ -272,6 +272,49 @@ report.section('saved searches are private to their owner');
   await db.exec(`delete from saved_searches`);
 }
 
+report.section('a retried payment webhook cannot sell the same pack twice');
+{
+  const before = (await db.query(`select post_credits from companies where id='${unverifiedCo}'`)).rows[0].post_credits;
+
+  const orderId = (
+    await db.query(`insert into orders (company_id, pack_key, credits, amount_egp)
+                    values ('${unverifiedCo}', 'bulk', 1, 3000) returning id`)
+  ).rows[0].id;
+
+  const first = (await db.query(`select public.settle_order('${orderId}', 'pm_test_1', true) as r`)).rows[0].r;
+  report.check('the first delivery settles it', first === 'paid', `got ${first}`);
+
+  const afterFirst = (await db.query(`select post_credits from companies where id='${unverifiedCo}'`)).rows[0].post_credits;
+  report.check('and grants the credits', afterFirst === before + 1, `${before} -> ${afterFirst}`);
+
+  const second = (await db.query(`select public.settle_order('${orderId}', 'pm_test_1', true) as r`)).rows[0].r;
+  report.check('the retry is refused', second === 'already_paid', `got ${second}`);
+
+  const afterSecond = (await db.query(`select post_credits from companies where id='${unverifiedCo}'`)).rows[0].post_credits;
+  report.check('and grants nothing the second time', afterSecond === afterFirst, `${afterFirst} -> ${afterSecond}`);
+
+  // A second row cannot claim the same provider order id.
+  const dupe = await as(admin, `insert into orders (company_id, pack_key, credits, amount_egp, paymob_order_id)
+                                values ('${unverifiedCo}', 'single', 1, 1000, 'pm_test_1')`);
+  report.check('nor can a second order claim that payment', !dupe.ok, dupe.ok ? 'insert was allowed' : dupe.error);
+
+  // A failed payment grants nothing.
+  const failedId = (
+    await db.query(`insert into orders (company_id, pack_key, credits, amount_egp)
+                    values ('${unverifiedCo}', 'single', 1, 1000) returning id`)
+  ).rows[0].id;
+  const failed = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', false) as r`)).rows[0].r;
+  const afterFailed = (await db.query(`select post_credits from companies where id='${unverifiedCo}'`)).rows[0].post_credits;
+  report.check('a declined payment settles as failed', failed === 'failed', `got ${failed}`);
+  report.check('and grants no credits', afterFailed === afterSecond, `${afterSecond} -> ${afterFailed}`);
+
+  // And no signed-in user can reach it.
+  const byUser = await as(employerUnverified, `select public.settle_order('${failedId}', 'pm_x', true)`);
+  report.check('an employer cannot settle their own order', !byUser.ok, byUser.ok ? 'call was allowed' : byUser.error);
+
+  await db.exec(`delete from orders`);
+}
+
 report.section('the nightly expiry cron');
 {
   await db.exec("update jobs set expires_at = now() - interval '1 day' where status='active'");
