@@ -12,10 +12,12 @@ export type CompanyListItem = CompanyRow & {
 export async function queryCompanies({
   q,
   verifiedOnly,
+  districtId,
   page = 1,
 }: {
   q?: string;
   verifiedOnly?: boolean;
+  districtId?: number;
   page?: number;
 }): Promise<{ companies: CompanyListItem[]; total: number; pageCount: number }> {
   const supabase = await createClient();
@@ -36,6 +38,7 @@ export async function queryCompanies({
 
   if (q) query = query.or(`name_ar.ilike.%${q}%,name_en.ilike.%${q}%`);
   if (verifiedOnly) query = query.eq('verification_status', 'verified');
+  if (districtId) query = query.eq('district_id', districtId);
 
   const from = (page - 1) * COMPANIES_PER_PAGE;
   const { data, error, count } = await query

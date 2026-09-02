@@ -1,9 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
+import { notifyEmployerOfModeration } from '@/lib/email/notify';
 
 /**
  * Every action here runs through the caller's own session, not the service
@@ -59,6 +61,10 @@ export async function moderateJob(input: unknown): Promise<ActionResult> {
     }
     return { ok: false, error: error.message };
   }
+
+  // The employer has been waiting on this decision; it is the one moderation
+  // outcome they actually need pushed to them rather than discovered.
+  after(() => notifyEmployerOfModeration(parsed.data.jobId, parsed.data.approve, parsed.data.note));
 
   revalidatePath('/admin/jobs');
   revalidatePath('/jobs');

@@ -5,7 +5,9 @@ import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, localized, type Locale } from '@/i18n/routing';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { Pagination } from '@/components/pagination';
+import { CompanyFilters } from '@/components/companies/company-filters';
 import { queryCompanies } from '@/lib/queries/companies';
+import { getDistricts } from '@/lib/queries/taxonomy';
 
 export async function generateMetadata({
   params,
@@ -26,21 +28,38 @@ export default async function CompaniesPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; district?: string; verified?: string; page?: string }>;
 }) {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
-  const { q, page } = await searchParams;
+  const { q, district, verified, page } = await searchParams;
   const current = Math.max(1, Number.parseInt(page ?? '1', 10) || 1);
-  const { companies, pageCount } = await queryCompanies({ q, page: current });
+
+  const districts = await getDistricts();
+  // The URL carries a slug because that is what a person can read and share;
+  // the query wants the id.
+  const districtId = district ? districts.find((item) => item.slug === district)?.id : undefined;
+
+  const { companies, pageCount } = await queryCompanies({
+    q,
+    districtId,
+    verifiedOnly: verified === '1',
+    page: current,
+  });
 
   const t = await getTranslations('companies');
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="text-2xl font-bold">{t('title')}</h1>
+
+      <CompanyFilters
+        locale={locale}
+        districts={districts}
+        action={locale === 'ar' ? '/companies' : `/${locale}/companies`}
+      />
 
       {companies.length === 0 ? (
         <p className="mt-8 rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">

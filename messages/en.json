@@ -99,7 +99,8 @@
     "governorate": "Governorate",
     "any": "Any",
     "showResults": "Show results",
-    "activeFilters": "Active filters"
+    "activeFilters": "Active filters",
+    "verifiedOnly": "Verified only"
   },
   "track": {
     "primary": "Primary sales",
@@ -509,5 +510,22 @@
     "ctaTitle": "See what's open right now",
     "ctaBody": "Every listing states the basic salary, the commission, and who supplies the leads.",
     "ctaButton": "Browse jobs"
+  },
+  "unsubscribe": {
+    "title": "Turn off emails",
+    "confirm": "Turn these emails off?",
+    "confirmBody": "We will stop sending you this kind of message. You can turn it back on any time from your account settings.",
+    "button": "Yes, turn them off",
+    "done": "Done — those emails are off.",
+    "doneBody": "You can turn them back on any time from your account settings.",
+    "invalid": "That link is not valid.",
+    "invalidBody": "It may be incomplete or out of date. You can change this from your account settings.",
+    "failed": "We could not turn those emails off just now.",
+    "failedBody": "Try again shortly, or change it from your account settings.",
+    "kinds": {
+      "notify_applications": "New applicant emails",
+      "notify_status": "Application and listing status emails",
+      "notify_digest": "Weekly job roundup"
+    }
   }
 }

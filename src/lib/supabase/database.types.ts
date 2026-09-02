@@ -47,6 +47,14 @@ export type ProfileRow = Timestamped & {
   whatsapp_phone: string;
   avatar_url: string | null;
   locale: 'ar' | 'en';
+  /** Employer: a candidate applied to one of my jobs. */
+  notify_applications: boolean;
+  /** Candidate: my application moved, or moderation decided on my job. */
+  notify_status: boolean;
+  /** Candidate: the weekly roundup of matching roles. */
+  notify_digest: boolean;
+  /** Credential for the unsubscribe link, which has no session to rely on. */
+  unsubscribe_token: string;
 };
 
 export type GovernorateRow = {

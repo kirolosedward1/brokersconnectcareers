@@ -1,11 +1,16 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { normalisePhone, isValidPhone } from '@/lib/phone';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
+import {
+  notifyCandidateOfStatus,
+  notifyEmployerOfApplication,
+} from '@/lib/email/notify';
 import type { ApplicationStatus, ExperienceBand } from '@/lib/supabase/database.types';
 
 const applySchema = z.object({
@@ -48,18 +53,27 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
     .update({ full_name: parsed.data.fullName, whatsapp_phone: phone })
     .eq('id', user.id);
 
-  const { error } = await supabase.from('applications').insert({
-    job_id: parsed.data.jobId,
-    candidate_id: user.id,
-    experience_band: parsed.data.experienceBand as ExperienceBand,
-    cv_path: parsed.data.cvPath || null,
-    note: parsed.data.note || null,
-  });
+  const { data: created, error } = await supabase
+    .from('applications')
+    .insert({
+      job_id: parsed.data.jobId,
+      candidate_id: user.id,
+      experience_band: parsed.data.experienceBand as ExperienceBand,
+      cv_path: parsed.data.cvPath || null,
+      note: parsed.data.note || null,
+    })
+    .select('id')
+    .single();
 
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_applied' };
     return { ok: false, error: error.message };
   }
+
+  // after() runs once the response is on its way, so the applicant is not kept
+  // waiting on an SMTP round trip — and a mail failure cannot turn a recorded
+  // application into an error on their screen.
+  if (created) after(() => notifyEmployerOfApplication(created.id));
 
   revalidatePath('/dashboard/applications');
   return { ok: true };
@@ -94,6 +108,8 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     .eq('id', parsed.data.applicationId);
 
   if (error) return { ok: false, error: error.message };
+
+  after(() => notifyCandidateOfStatus(parsed.data.applicationId));
 
   revalidatePath('/employer/jobs');
   return { ok: true };

@@ -127,7 +127,7 @@ export async function Landing({
 
             {/* Decorative: the copy beside it already says everything this
                 conveys, so it carries no alt text. */}
-            <div className="rise-in [--rise-delay:240ms] relative">
+            <div className="rise-in [--rise-delay:240ms] relative lg:-me-12 lg:w-[calc(100%+3rem)]">
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-8 rounded-[3rem] bg-[radial-gradient(closest-side,var(--brand-cyan),transparent)] opacity-25 blur-2xl"
@@ -139,7 +139,7 @@ export async function Landing({
                 height={1143}
                 priority
                 sizes="(max-width: 1024px) 90vw, 45vw"
-                className="relative mx-auto h-auto w-full max-w-lg lg:max-w-none"
+                className="relative mx-auto h-auto w-full max-w-xl lg:max-w-none"
               />
             </div>
           </div>

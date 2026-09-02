@@ -88,6 +88,19 @@ report.section('verification and credits are granted, never claimed');
   report.check('nobody self-assigns the admin role', !r5.ok, r5.ok ? 'update was allowed' : r5.error);
 }
 
+report.section('unsubscribe tokens are not user-writable');
+{
+  const r = await as(OUTSIDER, `update profiles set unsubscribe_token=gen_random_uuid() where id='${OUTSIDER}'`);
+  report.check('an owner cannot rotate their own token', !r.ok, r.ok ? 'update was allowed' : r.error);
+
+  const r2 = await as(OUTSIDER, `update profiles set unsubscribe_token=gen_random_uuid() where id='${candidate}'`);
+  report.check('nor anyone else\'s', !r2.ok || r2.rows?.length === 0, r2.ok && r2.rows?.length ? 'update was allowed' : r2.error);
+
+  // The switches themselves are the point: the owner must be able to set them.
+  const r3 = await as(OUTSIDER, `update profiles set notify_digest=false where id='${OUTSIDER}' returning notify_digest`);
+  report.check('but can turn their own notifications off', r3.ok && r3.rows.length === 1, r3.error);
+}
+
 report.section('applications are private to the two parties');
 {
   await db.exec(`insert into applications (job_id, candidate_id, experience_band)

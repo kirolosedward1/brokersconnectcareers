@@ -391,26 +391,6 @@
     }
   }
 
-  /* Footer sections: an accordion on phones, plain columns from sm up.
-     Stacked open, the footer is four lists and roughly a full screen of links
-     between the reader and the bottom of the page.
-
-     Done with <details> so it needs no JavaScript, which means the desktop
-     "always open" state cannot be an `open` attribute — CSS has no way to set
-     one. Instead the summary is hidden and the panel is forced visible.
-     content-visibility is set alongside display because browsers disagree
-     about which one they use to hide a closed disclosure's contents. */
-  @media (width >= 40rem) {
-    .footer-section > summary {
-      display: none;
-    }
-
-    .footer-section > .footer-section-body {
-      display: block;
-      content-visibility: visible;
-    }
-  }
-
   /* Flip a glyph that encodes direction (arrows, chevrons) when the document
      is RTL. Icons that do not encode direction must not use this. */
   [dir='rtl'] .rtl-flip {
