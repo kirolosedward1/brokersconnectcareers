@@ -7,6 +7,7 @@ import { alternatesFor, activeLocales, dirOf, type Locale } from '@/i18n/routing
 import { env } from '@/lib/env';
 import { SiteHeader } from '@/components/site-header';
 import '../globals.css';
+import { Analytics } from '@/components/analytics';
 
 const arabic = IBM_Plex_Sans_Arabic({
   subsets: ['arabic', 'latin'],
@@ -72,6 +73,7 @@ export default async function LocaleLayout({
           <SiteHeader locale={locale as Locale} />
           {children}
         </NextIntlClientProvider>
+        <Analytics />
       </body>
     </html>
   );

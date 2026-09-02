@@ -8,7 +8,7 @@ import { JsonLd } from '@/components/json-ld';
 import { jobPostingJsonLd } from '@/lib/seo/job-posting';
 import { getJobBySlug } from '@/lib/queries/jobs';
 import { parseLandingSlug } from '@/lib/taxonomy';
-import { getDistrictBySlug } from '@/lib/queries/taxonomy';
+import { getDistrictBySlug, getGovernorates } from '@/lib/queries/taxonomy';
 import { recordJobView } from '@/lib/actions/jobs';
 import { truncate, toPlainText } from '@/lib/utils';
 import type { DistrictRow, JobTrack } from '@/lib/supabase/database.types';
@@ -109,10 +109,19 @@ export default async function JobOrLandingPage({ params }: { params: Promise<Par
     void recordJobView(slug).catch(() => {});
   }
 
+  // Google matches "jobs near me" on the region, which for Egypt is the
+  // governorate. The job carries only its district, so the name is resolved
+  // from the cached taxonomy rather than added to every job query.
+  const governorates = await getGovernorates();
+  const governorate = governorates.find((item) => item.id === job.district.governorate_id);
+  const governorateName = governorate
+    ? localized(locale, governorate.name_ar, governorate.name_en)
+    : null;
+
   return (
     <>
       {/* Structured data only for listings that are genuinely open. */}
-      {isOpen ? <JsonLd data={jobPostingJsonLd(job, locale)} /> : null}
+      {isOpen ? <JsonLd data={jobPostingJsonLd(job, locale, governorateName)} /> : null}
       {isOpen ? null : <ClosedNotice />}
       <JobDetailView job={job} locale={locale} />
     </>

@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { applyToJob } from '@/lib/actions/applications';
 import type { ExperienceBand } from '@/lib/supabase/database.types';
+import { track } from '@/lib/analytics';
 
 const MAX_CV_BYTES = 10 * 1024 * 1024;
 const CV_TYPES = [
@@ -108,6 +109,12 @@ export function ApplyForm({
         setErrors(result.fieldErrors ?? { form: tCommon('errorBody') });
         return;
       }
+
+      // The half of view -> apply that a page view cannot see. No properties:
+      // the only one available here is the job id, and a per-job breakdown is
+      // high-cardinality noise in an analytics dashboard. The ratio is the
+      // question; the listing that produced it is a database query.
+      track('apply_completed');
 
       setDone(true);
       router.refresh();
