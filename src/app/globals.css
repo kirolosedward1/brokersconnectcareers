@@ -5,10 +5,10 @@
    other: an inline script in the root layout that runs before the first paint,
    and the ThemeToggle in the footer.
 
-   The default is the reader's OS setting; choosing light or dark stores an
-   override, and choosing "match system" removes it again. Deciding before
-   paint is what keeps the page from flashing light and repainting dark, which
-   is worse than having no dark mode at all. */
+   The site is light by default, whatever the reader's OS says. Dark applies
+   only on an explicit choice, or on an explicit choice to follow the system.
+   Deciding before paint is what keeps a dark-mode reader's page from flashing
+   light and repainting, which is worse than having no dark mode at all. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------------------------------------------------------------------------

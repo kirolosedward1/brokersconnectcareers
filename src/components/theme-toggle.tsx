@@ -16,9 +16,9 @@ export const THEME_STORAGE_KEY = 'bc-theme';
 /**
  * Apply a choice to the document.
  *
- * `system` deliberately stores nothing to interrogate later — it removes the
- * key entirely, so a reader who picks it goes back to being governed by the OS
- * even if they change that OS setting afterwards.
+ * Every choice is stored, including `system`. No stored value means light —
+ * the site's default is light rather than "whatever the OS says", so
+ * following the OS has to be a positive choice with a value of its own.
  */
 export function applyTheme(theme: Theme) {
   const dark =
@@ -28,8 +28,7 @@ export function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle('dark', dark);
 
   try {
-    if (theme === 'system') localStorage.removeItem(THEME_STORAGE_KEY);
-    else localStorage.setItem(THEME_STORAGE_KEY, theme);
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
   } catch {
     // Private mode, or storage disabled. The class is already set, so the
     // choice holds for this page; it just will not survive a reload.
@@ -45,10 +44,9 @@ const OPTIONS: { value: Theme; icon: typeof Sun; key: 'light' | 'dark' | 'system
 /**
  * Three states, not a switch.
  *
- * A two-way toggle forces a reader who never had an opinion to acquire one:
- * whichever way it starts, half of them are now pinned to a theme they did not
- * choose. "Follow my system" is the honest default and has to stay reachable
- * after someone has strayed from it.
+ * The site is light by default. Dark and "follow my system" are both there,
+ * but neither happens unless somebody asks for it — a reader who has never
+ * touched this gets light, whatever their OS is set to.
  *
  * Renders nothing until mounted, because the server cannot know what the
  * browser stored and rendering the wrong state first is worse than a beat of
@@ -65,7 +63,8 @@ export function ThemeToggle() {
     } catch {
       /* unreadable storage reads as "no choice made" */
     }
-    setTheme(stored === 'light' || stored === 'dark' ? stored : 'system');
+    // Absent or unrecognised reads as light, matching the boot script.
+    setTheme(stored === 'dark' || stored === 'system' ? stored : 'light');
   }, []);
 
   // Track the OS while the reader is on `system`, so a machine that flips at
