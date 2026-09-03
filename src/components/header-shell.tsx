@@ -67,7 +67,9 @@ export function HeaderShell({ children }: { children: React.ReactNode }) {
         overHero ? 'fixed inset-x-0 top-0' : 'sticky top-0',
         floating
           ? 'border-b border-transparent bg-transparent text-white'
-          : 'border-b border-border/70 bg-background/80 shadow-xs backdrop-blur-xl',
+          // Solid, not translucent. A blurred header over a scrolling list of
+          // job cards means the type behind it shows through the type in it.
+          : 'border-b border-border/70 bg-background shadow-xs',
       )}
     >
       {children}

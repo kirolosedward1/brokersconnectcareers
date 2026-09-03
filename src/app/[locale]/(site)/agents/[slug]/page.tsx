@@ -5,10 +5,12 @@ import { Download, Lock, MapPin, MessageCircle, UserRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
+import { AgentCv } from '@/components/agents/agent-cv';
 import { Button } from '@/components/ui/button';
 import { getAgentCard } from '@/lib/queries/agents';
 import { getDistrictMap, getDevelopers } from '@/lib/queries/taxonomy';
 import { getViewer } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
 import { CV_BUCKET, signedUrl } from '@/lib/storage';
 import { whatsappLink } from '@/lib/utils';
 import { employerToAgentOpener } from '@/lib/whatsapp';
@@ -51,6 +53,16 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
     getDistrictMap(),
     getDevelopers(),
     getViewer(),
+  ]);
+
+  // Read through the reader's own session. RLS decides what comes back, so a
+  // gated profile yields empty arrays here rather than needing a check below.
+  const supabase = await createClient();
+  const [experience, education, certifications, profileRow] = await Promise.all([
+    supabase.from('agent_experience').select('*').eq('agent_id', agent.id).order('started', { ascending: false }),
+    supabase.from('agent_education').select('*').eq('agent_id', agent.id).order('graduated', { ascending: false }),
+    supabase.from('agent_certifications').select('*').eq('agent_id', agent.id).order('issued', { ascending: false }),
+    supabase.from('agent_profiles').select('summary_ar, summary_en, units_closed, volume_egp').eq('id', agent.id).maybeSingle(),
   ]);
 
   const t = await getTranslations('agents');
@@ -206,6 +218,17 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
           </div>
         ) : null}
       </dl>
+
+      <AgentCv
+        locale={locale}
+        summary={localized(locale, profileRow.data?.summary_ar, profileRow.data?.summary_en) || null}
+        unitsClosed={profileRow.data?.units_closed ?? null}
+        volumeEgp={profileRow.data?.volume_egp ?? null}
+        experience={experience.data ?? []}
+        education={education.data ?? []}
+        certifications={certifications.data ?? []}
+        districts={districts}
+      />
     </div>
   );
 }

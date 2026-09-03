@@ -150,6 +150,40 @@ export type ApplicationRow = Timestamped & {
   decision_note: string | null;
 };
 
+export type AgentExperienceRow = Timestamped & {
+  id: string;
+  agent_id: string;
+  company_name: string;
+  title: string;
+  track: JobTrack | null;
+  district_id: number | null;
+  started: string;
+  /** Null means current. A separate flag would be a second truth that drifts. */
+  ended: string | null;
+  highlights: string | null;
+  sort_order: number;
+};
+
+export type AgentEducationRow = Timestamped & {
+  id: string;
+  agent_id: string;
+  institution: string;
+  degree: string | null;
+  field: string | null;
+  graduated: number | null;
+  sort_order: number;
+};
+
+export type AgentCertificationRow = Timestamped & {
+  id: string;
+  agent_id: string;
+  name: string;
+  issuer: string | null;
+  issued: string | null;
+  expires: string | null;
+  sort_order: number;
+};
+
 export type AgentProfileRow = Timestamped & {
   id: string;
   user_id: string;
@@ -163,6 +197,12 @@ export type AgentProfileRow = Timestamped & {
   cv_path: string | null;
   availability: AgentAvailability;
   visibility: AgentVisibility;
+  /** The objective, in the consultant's own words. */
+  summary_ar: string | null;
+  summary_en: string | null;
+  units_closed: number | null;
+  /** Self-reported closed value in EGP. The platform does not verify it. */
+  volume_egp: number | null;
 };
 
 export type SavedSearchRow = Timestamped & {
@@ -283,6 +323,18 @@ export type Database = {
       >;
       job_developers: Table<{ job_id: string; developer_id: number }, { job_id: string; developer_id: number }>;
       applications: Table<ApplicationRow, Insertable<ApplicationRow, 'job_id' | 'candidate_id'>>;
+      agent_experience: Table<
+        AgentExperienceRow,
+        Insertable<AgentExperienceRow, 'agent_id' | 'company_name' | 'title' | 'started'>
+      >;
+      agent_education: Table<
+        AgentEducationRow,
+        Insertable<AgentEducationRow, 'agent_id' | 'institution'>
+      >;
+      agent_certifications: Table<
+        AgentCertificationRow,
+        Insertable<AgentCertificationRow, 'agent_id' | 'name'>
+      >;
       agent_profiles: Table<AgentProfileRow, Insertable<AgentProfileRow, 'user_id' | 'slug'>>;
       agent_developers: Table<{ agent_id: string; developer_id: number }, { agent_id: string; developer_id: number }>;
       saved_searches: Table<
@@ -314,6 +366,7 @@ export type Database = {
       increment_job_view: { Args: { job_slug: string }; Returns: undefined };
       claim_monthly_free_post: { Args: Empty; Returns: boolean };
       expire_stale_jobs: { Args: Empty; Returns: number };
+      profile_completeness: { Args: { p_agent_id: string }; Returns: number };
       /**
        * Returns what happened rather than void: the webhook needs to tell a
        * first delivery from a retry, and every outcome here is a 200.

@@ -205,6 +205,63 @@ report.section('the agent directory gate');
   report.check('while a public row is readable directly', rawPublic.rows.length === 1);
 }
 
+report.section('a CV section never outlives the gate on its profile');
+{
+  // hiddenAgent's profile is invisible to everyone but its owner. Its work
+  // history names an employer, which is the most identifying field on the page.
+  const hiddenId = (
+    await db.query(`select id from agent_profiles where user_id = '${hiddenAgent}'`)
+  ).rows[0].id;
+  const publicId = (
+    await db.query(`select id from agent_profiles where user_id = '${publicAgent}'`)
+  ).rows[0].id;
+
+  await db.exec(`
+    insert into agent_experience (agent_id, company_name, title, started)
+    values ('${hiddenId}', 'شركة صاحب العمل الحالي', 'استشاري أول', '2023-01-01'),
+           ('${publicId}',  'شركة معلنة',            'استشاري',     '2022-01-01');
+    insert into agent_education (agent_id, institution)
+    values ('${hiddenId}', 'جامعة القاهرة');
+    insert into agent_certifications (agent_id, name)
+    values ('${hiddenId}', 'شهادة وسيط عقاري');
+  `);
+
+  const r = await as(OUTSIDER, `select company_name from agent_experience`);
+  report.check(
+    'a stranger sees no hidden employer name',
+    r.ok && !r.rows.some((row) => row.company_name.includes('الحالي')),
+    JSON.stringify(r.rows),
+  );
+  report.check('but does see the public one', r.ok && r.rows.length === 1, r.error);
+
+  const r2 = await as(employerVerified, `select company_name from agent_experience`);
+  report.check(
+    'nor does a verified employer',
+    r2.ok && !r2.rows.some((row) => row.company_name.includes('الحالي')),
+    JSON.stringify(r2.rows),
+  );
+
+  const r3 = await as(OUTSIDER, `select institution from agent_education`);
+  report.check('education is gated too', r3.ok && r3.rows.length === 0, JSON.stringify(r3.rows));
+
+  const r4 = await as(OUTSIDER, `select name from agent_certifications`);
+  report.check('and certifications', r4.ok && r4.rows.length === 0, JSON.stringify(r4.rows));
+
+  // The owner sees their own row and the public one — two, not one.
+  const r5 = await as(hiddenAgent, `select company_name from agent_experience`);
+  report.check(
+    'the owner still sees their own',
+    r5.ok && r5.rows.some((row) => row.company_name.includes('الحالي')),
+    JSON.stringify(r5.rows),
+  );
+
+  const r6 = await as(OUTSIDER, `insert into agent_experience (agent_id, company_name, title, started)
+                                 values ('${publicId}', 'مزوّر', 'مزوّر', '2024-01-01')`);
+  report.check('nobody writes onto another profile', !r6.ok, r6.ok ? 'insert was allowed' : r6.error);
+
+  await db.exec(`delete from agent_experience; delete from agent_education; delete from agent_certifications;`);
+}
+
 report.section('an employed agent can hide from their own employer');
 {
   // mostafa-elgendy is seeded `hidden` — this is the demo dataset's own proof.
