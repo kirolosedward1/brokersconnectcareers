@@ -569,5 +569,11 @@
     "openSearch": "Open search",
     "remove": "Delete",
     "weekly": "A weekly email with new roles matching this search."
+  },
+  "theme": {
+    "label": "Appearance",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "Match system"
   }
 }

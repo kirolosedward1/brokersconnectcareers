@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { Logo } from '@/components/logo';
 import { JOB_TRACKS } from '@/lib/taxonomy';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 /**
  * Four columns, every link visible at every width.
@@ -94,9 +95,17 @@ export async function SiteFooter() {
         </nav>
       </div>
 
-      <div className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-        <span className="numeral">{new Date().getFullYear()}</span> · {tMeta('siteName')} ·{' '}
-        {t('rights')}
+      <div className="border-t border-border py-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 text-xs text-muted-foreground sm:flex-row sm:justify-between">
+          <p>
+            <span className="numeral">{new Date().getFullYear()}</span> · {tMeta('siteName')} ·{' '}
+            {t('rights')}
+          </p>
+
+          {/* In the footer rather than the header: it is a preference somebody
+              sets once, not a control they reach for on every page. */}
+          <ThemeToggle />
+        </div>
       </div>
     </footer>
   );

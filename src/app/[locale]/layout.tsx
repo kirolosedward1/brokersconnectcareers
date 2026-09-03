@@ -68,6 +68,22 @@ export default async function LocaleLayout({
       className={`${arabic.variable} ${latin.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        {/*
+          Runs before the first paint. Without it the document renders light,
+          then repaints dark once React hydrates — a flash that is worse than
+          not offering dark mode at all. Inline and synchronous on purpose:
+          this must finish before the body is painted, so it cannot be a
+          component or a deferred script.
+
+          The key and the logic here mirror applyTheme in theme-toggle.tsx.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('bc-theme');var d=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="flex min-h-dvh flex-col">
         <NextIntlClientProvider>
           <SiteHeader locale={locale as Locale} />

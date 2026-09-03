@@ -1,15 +1,14 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-/* Dark mode is built and complete but not switched on: nothing adds `.dark` to
-   the document yet. Two ways to enable it, whenever that call gets made:
+/* Dark mode is on. `.dark` is put on <html> by two things that agree with each
+   other: an inline script in the root layout that runs before the first paint,
+   and the ThemeToggle in the footer.
 
-     - follow the OS setting: add `@media (prefers-color-scheme: dark)` around
-       the `.dark` block below, or widen this variant to include it;
-     - offer a toggle: set `class="dark"` on <html> from a theme control.
-
-   Left off deliberately so the site does not change appearance for half your
-   visitors without that being a decision someone made. */
+   The default is the reader's OS setting; choosing light or dark stores an
+   override, and choosing "match system" removes it again. Deciding before
+   paint is what keeps the page from flashing light and repainting dark, which
+   is worse than having no dark mode at all. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------------------------------------------------------------------------
