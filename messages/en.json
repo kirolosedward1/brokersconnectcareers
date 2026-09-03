@@ -505,7 +505,7 @@
     "tabs": {
       "label": "Choose your side",
       "candidates": "I'm looking for work",
-      "employers": "I'm hiring"
+      "employers": "I need to hire"
     },
     "employerHero": {
       "eyebrow": "For real estate companies in Egypt",
@@ -532,7 +532,11 @@
       "seatsTitle": "Say how many seats",
       "seatsBody": "One opening and twenty-five are different propositions. The number is on the card, and candidates filter on it.",
       "freshTitle": "Listings close themselves",
-      "freshBody": "Thirty days and it expires automatically, so nobody applies to a role you filled two months ago."
+      "freshBody": "Thirty days and it expires automatically, so nobody applies to a role you filled two months ago.",
+      "proofLabel": "Required in every listing",
+      "proofSalary": "Basic salary",
+      "proofCommission": "Commission rate",
+      "proofLeads": "Lead source"
     }
   },
   "blog": {

@@ -8,6 +8,7 @@ import { Logo } from '@/components/logo';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { UserMenu } from '@/components/user-menu';
 import { MobileNav } from '@/components/mobile-nav';
+import { HeaderShell } from '@/components/header-shell';
 
 const NAV = [
   { href: '/jobs', key: 'jobs' },
@@ -25,8 +26,13 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
 
   const dashboardHref = role === 'employer' ? '/employer/jobs' : '/dashboard/applications';
 
+  // Nav items need a light hover when the header is sitting on the film and
+  // the usual muted one everywhere else. Defined once rather than repeated.
+  const navItemClass =
+    'rounded-lg px-3 py-2 transition-colors hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15';
+
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 shadow-xs backdrop-blur-xl">
+    <HeaderShell>
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4">
         <Link href="/" className="shrink-0">
           <Logo name={tMeta('siteName')} />
@@ -36,9 +42,9 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
             end of the row — three links plus auth plus a CTA does not fit on a
             360px phone, and this market is overwhelmingly mobile. */}
         <nav className="ms-2 hidden items-center gap-1 text-sm md:flex">
-          {NAV.map((item) => (
-            <Link key={item.href} href={item.href} className="rounded-lg px-3 py-2 transition-colors hover:bg-muted">
-              {t(item.key)}
+          {NAV.map((link) => (
+            <Link key={link.href} href={link.href} className={navItemClass}>
+              {t(link.key)}
             </Link>
           ))}
         </nav>
@@ -47,7 +53,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           <Link
             href="/jobs"
             aria-label={t('jobs')}
-            className="rounded-lg p-2 transition-colors hover:bg-muted md:hidden"
+            className="rounded-lg p-2 transition-colors hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15 md:hidden"
           >
             <Search className="size-4" />
           </Link>
@@ -139,6 +145,6 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           </MobileNav>
         </div>
       </div>
-    </header>
+    </HeaderShell>
   );
 }

@@ -95,32 +95,73 @@ export async function EmployerLanding({
           </p>
         </div>
 
-        <ul className="reveal mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Six equal cards made six equal claims, and one of these is the
+            argument the other five support. The grid gives it the room to say
+            so: a wide lead card that shows the three fields rather than
+            asserting them, then a descending rhythm of supporting points. */}
+        <div className="reveal mt-12 grid gap-4 lg:grid-cols-6">
+          <article className="lift relative overflow-hidden rounded-2xl border border-primary/25 bg-primary/[0.04] p-7 shadow-sm lg:col-span-4">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-[0.07] bg-[radial-gradient(24rem_14rem_at_85%_0%,var(--brand-blue),transparent_70%)]"
+            />
+            <span
+              aria-hidden
+              className="bg-brand-gradient relative grid size-12 place-items-center rounded-xl text-primary-foreground shadow-[var(--shadow-primary)]"
+            >
+              <Target className="size-6" />
+            </span>
+
+            <h3 className="relative mt-5 text-xl font-semibold">
+              {t('employerWhy.clarityTitle')}
+            </h3>
+            <p className="relative mt-2 max-w-lg leading-relaxed text-muted-foreground">
+              {t('employerWhy.clarityBody')}
+            </p>
+
+            <p className="relative mt-6 text-xs font-medium uppercase tracking-wide text-primary">
+              {t('employerWhy.proofLabel')}
+            </p>
+            <ul className="relative mt-2 flex flex-wrap gap-2">
+              {(['proofSalary', 'proofCommission', 'proofLeads'] as const).map((key) => (
+                <li
+                  key={key}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-card px-3 py-1.5 text-sm font-medium shadow-xs"
+                >
+                  <Check className="size-3.5 text-primary" aria-hidden />
+                  {t(`employerWhy.${key}`)}
+                </li>
+              ))}
+            </ul>
+          </article>
+
+          <article className="lift rounded-2xl border border-border bg-card p-6 shadow-sm lg:col-span-2">
+            <span
+              aria-hidden
+              className="grid size-11 place-items-center rounded-xl bg-muted text-muted-foreground"
+            >
+              <Users className="size-5" />
+            </span>
+            <h3 className="mt-4 font-semibold">{t('employerWhy.nicheTitle')}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              {t('employerWhy.nicheBody')}
+            </p>
+          </article>
+
           {(
             [
-              [Target, 'clarityTitle', 'clarityBody', true],
-              [Users, 'nicheTitle', 'nicheBody', true],
-              [ClipboardList, 'pipelineTitle', 'pipelineBody', false],
-              [BadgeCheck, 'verifiedTitle', 'verifiedBody', false],
-              [Users, 'seatsTitle', 'seatsBody', false],
-              [CalendarClock, 'freshTitle', 'freshBody', false],
+              [ClipboardList, 'pipelineTitle', 'pipelineBody'],
+              [BadgeCheck, 'verifiedTitle', 'verifiedBody'],
+              [Users, 'seatsTitle', 'seatsBody'],
             ] as const
-          ).map(([Icon, title, body, accent]) => (
-            <li
+          ).map(([Icon, title, body]) => (
+            <article
               key={title}
-              className={
-                accent
-                  ? 'lift rounded-2xl border border-primary/25 bg-primary/[0.04] p-6 shadow-sm'
-                  : 'lift rounded-2xl border border-border bg-card p-6 shadow-sm'
-              }
+              className="lift rounded-2xl border border-border bg-card p-6 shadow-sm lg:col-span-2"
             >
               <span
                 aria-hidden
-                className={
-                  accent
-                    ? 'bg-brand-gradient grid size-11 place-items-center rounded-xl text-primary-foreground shadow-[var(--shadow-primary)]'
-                    : 'grid size-11 place-items-center rounded-xl bg-muted text-muted-foreground'
-                }
+                className="grid size-11 place-items-center rounded-xl bg-muted text-muted-foreground"
               >
                 <Icon className="size-5" />
               </span>
@@ -128,9 +169,26 @@ export async function EmployerLanding({
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {t(`employerWhy.${body}`)}
               </p>
-            </li>
+            </article>
           ))}
-        </ul>
+
+          {/* The last one is a rule the platform enforces on the employer's
+              behalf, so it reads as a closing line rather than a sixth tile. */}
+          <article className="lift flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm sm:flex-row sm:items-center lg:col-span-6">
+            <span
+              aria-hidden
+              className="grid size-11 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground"
+            >
+              <CalendarClock className="size-5" />
+            </span>
+            <div>
+              <h3 className="font-semibold">{t('employerWhy.freshTitle')}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                {t('employerWhy.freshBody')}
+              </p>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section className="border-y border-border bg-muted/40" aria-labelledby="employer-how">
