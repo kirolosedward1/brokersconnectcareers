@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import {
   ArrowRight,
@@ -6,8 +5,10 @@ import {
   CalendarClock,
   Check,
   EyeOff,
+  MapPin,
   MessageCircle,
   Search,
+  Sparkles,
   Target,
   Users,
   Zap,
@@ -22,6 +23,7 @@ import {
   EmployerIllustration,
   VisibilityIllustration,
 } from '@/components/home/illustrations';
+import { HeroVideo } from '@/components/home/hero-video';
 import { buildLandingSlug, JOB_TRACKS } from '@/lib/taxonomy';
 import type { DistrictRow } from '@/lib/supabase/database.types';
 
@@ -42,6 +44,7 @@ export async function Landing({
 }) {
   const t = await getTranslations('landingPage');
   const tTrack = await getTranslations('track');
+  const tFilters = await getTranslations('filters');
 
   return (
     <>
@@ -61,92 +64,115 @@ export async function Landing({
     const action = locale === 'ar' ? '/jobs' : '/en/jobs';
 
     return (
-      <section className="relative overflow-hidden border-b border-border">
+      <section className="relative isolate overflow-hidden">
+        {/* The gradient is the hero's actual background. The film, when the
+            reader's connection can afford it, sits on top of it — which is why
+            this is a full brand treatment and not a grey placeholder. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(58rem_30rem_at_72%_-12%,var(--brand-blue),transparent_68%),radial-gradient(38rem_22rem_at_15%_10%,var(--brand-cyan),transparent_70%)] opacity-[0.13]"
+          className="absolute inset-0 -z-20 bg-[linear-gradient(135deg,#0b1020_0%,#141c3a_45%,#0e2b47_100%)]"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.3] [mask-image:radial-gradient(45rem_22rem_at_60%_0%,black,transparent)] [background-image:linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] [background-size:3rem_3rem]"
+          className="absolute inset-0 -z-20 opacity-60 bg-[radial-gradient(60rem_32rem_at_75%_-10%,var(--brand-blue),transparent_70%),radial-gradient(40rem_24rem_at_10%_110%,var(--brand-cyan),transparent_75%)]"
         />
 
-        <div className="relative mx-auto max-w-6xl px-4 py-16 sm:py-20">
-          <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr]">
-            <div className="text-center lg:text-start">
-              <Badge variant="primary" size="lg" className="rise-in mb-6">
-                {t('hero.eyebrow')}
-              </Badge>
+        <div aria-hidden className="absolute inset-0 -z-10">
+          <HeroVideo src="/media/hero.mp4" />
+        </div>
 
-              <h1 className="rise-in [--rise-delay:70ms] text-3xl font-bold leading-[1.25] text-balance sm:text-5xl sm:leading-[1.18]">
-                {t('hero.title')}
-              </h1>
+        {/* Two overlays doing different jobs: the flat one guarantees a
+            contrast floor whatever frame is showing, the vertical one keeps
+            the type legible against the brighter middle of the shot and hands
+            off cleanly to the section below. */}
+        <div aria-hidden className="absolute inset-0 -z-10 bg-slate-950/65" />
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(8,12,24,0.85)_0%,rgba(8,12,24,0.45)_40%,rgba(8,12,24,0.92)_100%)]"
+        />
 
-              <p className="rise-in [--rise-delay:140ms] mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground lg:mx-0">
-                {t('hero.subtitle')}
-              </p>
+        <div className="relative mx-auto flex min-h-[38rem] max-w-4xl flex-col items-center justify-center px-4 py-24 text-center sm:min-h-[42rem]">
+          <span className="rise-in inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium text-white backdrop-blur-sm">
+            <Sparkles className="size-3.5" aria-hidden />
+            {t('hero.eyebrow')}
+          </span>
 
-              <form
-                action={action}
-                className="rise-in [--rise-delay:210ms] mx-auto mt-8 flex max-w-xl flex-col gap-2 sm:flex-row lg:mx-0"
-              >
-                <div className="relative flex-1">
-                  <Search
-                    className="pointer-events-none absolute inset-y-0 start-3.5 my-auto size-4 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <input
-                    type="search"
-                    name="q"
-                    placeholder={t('hero.searchPlaceholder')}
-                    aria-label={t('hero.searchLabel')}
-                    className="h-12 w-full rounded-lg border border-input bg-card ps-10 pe-4 text-base shadow-sm placeholder:text-muted-foreground"
-                  />
-                </div>
-                <Button type="submit" size="lg" className="h-12 shrink-0 px-7">
-                  {t('hero.cta')}
-                </Button>
-              </form>
+          <h1 className="rise-in [--rise-delay:70ms] mt-6 text-4xl font-bold leading-[1.15] text-balance text-white sm:text-6xl">
+            {t('hero.title')}
+          </h1>
 
-              <div className="rise-in [--rise-delay:280ms] mt-6 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-                <span className="text-sm text-muted-foreground">{t('hero.popular')}</span>
-                {JOB_TRACKS.slice(0, 4).map((track) => (
-                  <Link key={track} href={{ pathname: '/jobs', query: { track } }}>
-                    <Badge variant="outline" size="lg" className="bg-card hover:bg-muted">
-                      {tTrack(track)}
-                    </Badge>
-                  </Link>
-                ))}
+          <p className="rise-in [--rise-delay:140ms] mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-white/75">
+            {t('hero.subtitle')}
+          </p>
+
+          {/* The centrepiece. One row on desktop — what, where, go — and a
+              stack on a phone, where a three-column search bar becomes three
+              unreadable slivers. */}
+          <form
+            action={action}
+            className="rise-in [--rise-delay:210ms] mt-10 w-full max-w-3xl rounded-2xl border border-white/15 bg-white/10 p-2 shadow-2xl backdrop-blur-md sm:rounded-full"
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search
+                  className="pointer-events-none absolute inset-y-0 start-4 my-auto size-4 text-muted-foreground"
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  name="q"
+                  placeholder={t('hero.searchPlaceholder')}
+                  aria-label={t('hero.searchLabel')}
+                  className="h-13 w-full rounded-xl border-0 bg-white px-4 ps-11 text-base text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-primary sm:rounded-full"
+                />
               </div>
 
-              <p className="rise-in [--rise-delay:350ms] mt-7 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Check className="size-4 text-success" aria-hidden />
-                {t('hero.trustNoSpam')}
-              </p>
-            </div>
+              <div className="relative sm:w-52">
+                <MapPin
+                  className="pointer-events-none absolute inset-y-0 start-4 my-auto size-4 text-muted-foreground"
+                  aria-hidden
+                />
+                <select
+                  name="district"
+                  aria-label={t('browse.byDistrict')}
+                  defaultValue=""
+                  className="h-13 w-full appearance-none rounded-xl border-0 bg-white px-4 ps-11 text-base text-slate-900 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary sm:rounded-full"
+                >
+                  <option value="">{tFilters('any')}</option>
+                  {districts.slice(0, 12).map((district) => (
+                    <option key={district.id} value={district.slug}>
+                      {localized(locale, district.name_ar, district.name_en)}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Decorative: the copy beside it already says everything this
-                conveys, so it carries no alt text. */}
-            <div className="rise-in [--rise-delay:240ms] relative lg:-me-12 lg:w-[calc(100%+3rem)]">
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-8 rounded-[3rem] bg-[radial-gradient(closest-side,var(--brand-cyan),transparent)] opacity-25 blur-2xl"
-              />
-              <Image
-                src="/brand/hero-job-search.png"
-                alt=""
-                width={2000}
-                height={1143}
-                priority
-                sizes="(max-width: 1024px) 90vw, 45vw"
-                className="relative mx-auto h-auto w-full max-w-xl lg:max-w-none"
-              />
+              <Button type="submit" size="lg" className="h-13 shrink-0 rounded-xl px-8 sm:rounded-full">
+                {t('hero.cta')}
+              </Button>
             </div>
+          </form>
+
+          <div className="rise-in [--rise-delay:280ms] mt-7 flex flex-wrap items-center justify-center gap-2">
+            <span className="text-sm text-white/60">{t('hero.popular')}</span>
+            {JOB_TRACKS.slice(0, 4).map((track) => (
+              <Link key={track} href={{ pathname: '/jobs', query: { track } }}>
+                <span className="inline-flex rounded-full border border-white/20 bg-white/5 px-3.5 py-1.5 text-sm text-white/90 transition-colors hover:border-white/40 hover:bg-white/15">
+                  {tTrack(track)}
+                </span>
+              </Link>
+            ))}
           </div>
+
+          <p className="rise-in [--rise-delay:350ms] mt-8 inline-flex items-center gap-1.5 text-sm text-white/60">
+            <Check className="size-4 text-emerald-400" aria-hidden />
+            {t('hero.trustNoSpam')}
+          </p>
         </div>
       </section>
     );
   }
+
 
   async function Features() {
     const items = [
