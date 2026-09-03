@@ -150,6 +150,53 @@ export type ApplicationRow = Timestamped & {
   decision_note: string | null;
 };
 
+export type CandidateSummary = {
+  applications_total: number;
+  applications_new: number;
+  applications_moved: number;
+  applications_hired: number;
+  replies: number;
+  saved_jobs: number;
+  saved_searches: number;
+  alerts_on: number;
+  profile_completeness: number;
+  has_profile: boolean;
+  open_jobs: number;
+};
+
+/** `has_company: false` is a real state: the account exists before the company does. */
+export type EmployerSummary =
+  | { has_company: false }
+  | {
+      has_company: true;
+      live_jobs: number;
+      pending_jobs: number;
+      draft_jobs: number;
+      expiring_soon: number;
+      total_views: number;
+      seats_advertised: number;
+      applicants_total: number;
+      applicants_new: number;
+      applicants_7d: number;
+      applicants_prev_7d: number;
+      credits: number;
+      verification: VerificationStatus;
+    };
+
+export type AdminSummary = {
+  queue_total: number;
+  queue_over_24h: number;
+  reports_open: number;
+  companies_pending: number;
+  companies_total: number;
+  live_jobs: number;
+  candidates: number;
+  employers: number;
+  signups_7d: number;
+  published_7d: number;
+  applications_7d: number;
+};
+
 export type AgentExperienceRow = Timestamped & {
   id: string;
   agent_id: string;
@@ -367,6 +414,15 @@ export type Database = {
       claim_monthly_free_post: { Args: Empty; Returns: boolean };
       expire_stale_jobs: { Args: Empty; Returns: number };
       profile_completeness: { Args: { p_agent_id: string }; Returns: number };
+
+      /**
+       * One round trip per dashboard. Each scopes itself to auth.uid()
+       * internally — there is no argument saying whose numbers to fetch, so
+       * there is nothing to forge.
+       */
+      candidate_summary: { Args: Empty; Returns: CandidateSummary };
+      employer_summary: { Args: Empty; Returns: EmployerSummary };
+      admin_summary: { Args: Empty; Returns: AdminSummary };
       /**
        * Returns what happened rather than void: the webhook needs to tell a
        * first delivery from a retry, and every outcome here is a 200.

@@ -398,6 +398,42 @@ report.section('a retried payment webhook cannot sell the same pack twice');
   await db.exec(`delete from orders`);
 }
 
+report.section('dashboard summaries answer for the caller, and only the caller');
+{
+  const r = await as(candidate, `select public.candidate_summary() as s`);
+  report.check('a candidate gets their own summary', r.ok && r.rows.length === 1, r.error);
+
+  const r2 = await as(employerVerified, `select public.employer_summary() as s`);
+  const emp = r2.rows[0]?.s;
+  report.check('an employer gets theirs', r2.ok && emp?.has_company === true, JSON.stringify(emp));
+  report.check(
+    'scoped to their own company only',
+    r2.ok && typeof emp?.applicants_total === 'number' && typeof emp?.credits === 'number',
+    JSON.stringify(emp),
+  );
+
+  // A candidate has no company; that is a real state, not an error.
+  const r3 = await as(candidate, `select public.employer_summary() as s`);
+  report.check(
+    'somebody with no company gets zeroes, not a crash',
+    r3.ok && r3.rows[0]?.s?.has_company === false,
+    r3.error ?? JSON.stringify(r3.rows[0]?.s),
+  );
+
+  // The moderation numbers are the whole platform's; only an admin may read them.
+  const r4 = await as(employerVerified, `select public.admin_summary()`);
+  report.check('an employer cannot read the admin summary', !r4.ok, r4.ok ? 'call was allowed' : r4.error);
+
+  const r5 = await as(candidate, `select public.admin_summary()`);
+  report.check('nor can a candidate', !r5.ok, r5.ok ? 'call was allowed' : r5.error);
+
+  const r6 = await as(admin, `select public.admin_summary() as s`);
+  report.check('an admin can', r6.ok && typeof r6.rows[0]?.s?.queue_total === 'number', r6.error);
+
+  const r7 = await as(null, `select public.candidate_summary()`, 'anon');
+  report.check('and anonymous reaches none of them', !r7.ok, r7.ok ? 'call was allowed' : r7.error);
+}
+
 report.section('the nightly expiry cron');
 {
   await db.exec("update jobs set expires_at = now() - interval '1 day' where status='active'");
