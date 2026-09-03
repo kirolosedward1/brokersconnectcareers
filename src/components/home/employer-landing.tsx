@@ -29,11 +29,19 @@ import { formatEgp, formatNumber } from '@/lib/utils';
 export async function EmployerLanding({
   locale,
   consultantCount,
+  signedIn,
 }: {
   locale: Locale;
   consultantCount: number;
+  /** Decides where "post a job" goes for somebody with no account yet. */
+  signedIn: boolean;
 }) {
   const t = await getTranslations('landingPage');
+
+  // A signed-out visitor sent to the posting form bounces off the auth wall and
+  // arrives at a generic sign-in, having lost the fact that they are an
+  // employer. Send them through the employer door instead.
+  const postHref = signedIn ? '/employer/jobs/new' : '/sign-up/employer';
 
   return (
     <>
@@ -49,7 +57,7 @@ export async function EmployerLanding({
 
         <div className="rise-in [--rise-delay:280ms] mt-10 flex flex-wrap items-center justify-center gap-3">
           <Button asChild size="lg" className="h-13 rounded-full px-8">
-            <Link href="/employer/jobs/new">{t('employerHero.cta')}</Link>
+            <Link href={postHref}>{t('employerHero.cta')}</Link>
           </Button>
           <Button
             asChild
@@ -232,7 +240,7 @@ export async function EmployerLanding({
           </p>
           <div className="relative mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" variant="secondary">
-              <Link href="/employer/jobs/new">{t('employerBand.cta')}</Link>
+              <Link href={postHref}>{t('employerBand.cta')}</Link>
             </Button>
           </div>
         </div>

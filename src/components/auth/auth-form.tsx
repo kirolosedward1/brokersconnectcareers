@@ -10,7 +10,20 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/field';
 
-export function AuthForm({ mode, locale }: { mode: 'sign-in' | 'sign-up'; locale: Locale }) {
+export function AuthForm({
+  mode,
+  locale,
+  audience,
+}: {
+  mode: 'sign-in' | 'sign-up';
+  locale: Locale;
+  /**
+   * Which door this was. Passed to onboarding so the role arrives
+   * pre-selected — never used to decide anything for an existing account,
+   * whose role is already stored.
+   */
+  audience?: 'candidate' | 'employer';
+}) {
   const t = useTranslations('auth');
   const tValidation = useTranslations('validation');
   const tCommon = useTranslations('common');
@@ -18,6 +31,11 @@ export function AuthForm({ mode, locale }: { mode: 'sign-in' | 'sign-up'; locale
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get('next') ?? undefined;
+
+  // Onboarding is where a new account chooses its role; if the door already
+  // implied one, hand it over. An existing account skips onboarding entirely,
+  // so this can never override a stored role.
+  const onboarding = audience ? `/onboarding?role=${audience}` : '/onboarding';
 
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
@@ -61,7 +79,7 @@ export function AuthForm({ mode, locale }: { mode: 'sign-in' | 'sign-up'; locale
       }
 
       // Onboarding decides for itself whether there is anything left to ask.
-      router.replace(next ?? '/onboarding', { locale });
+      router.replace(next ?? onboarding, { locale });
       router.refresh();
     });
   }
@@ -92,7 +110,7 @@ export function AuthForm({ mode, locale }: { mode: 'sign-in' | 'sign-up'; locale
         setError(demoError.message);
         return;
       }
-      router.replace(next ?? '/onboarding', { locale });
+      router.replace(next ?? onboarding, { locale });
       router.refresh();
     });
   }
@@ -101,6 +119,7 @@ export function AuthForm({ mode, locale }: { mode: 'sign-in' | 'sign-up'; locale
     startTransition(async () => {
       const callback = new URL('/auth/callback', window.location.origin);
       if (next) callback.searchParams.set('next', next);
+      else if (audience) callback.searchParams.set('next', onboarding);
 
       const { error: oauthError } = await createClient().auth.signInWithOAuth({
         provider: 'google',

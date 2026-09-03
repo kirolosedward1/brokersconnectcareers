@@ -13,10 +13,13 @@ import { completeOnboarding } from '@/lib/actions/onboarding';
 export function OnboardingForm({
   locale,
   defaultName,
+  defaultRole,
   next,
 }: {
   locale: Locale;
   defaultName: string;
+  /** Pre-selects the account type when the sign-up door already implied one. */
+  defaultRole?: 'candidate' | 'employer';
   next?: string;
 }) {
   const t = useTranslations('onboarding');
@@ -24,7 +27,7 @@ export function OnboardingForm({
   const tCommon = useTranslations('common');
 
   const router = useRouter();
-  const [role, setRole] = useState<'candidate' | 'employer'>('candidate');
+  const [role, setRole] = useState<'candidate' | 'employer'>(defaultRole ?? 'candidate');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
 

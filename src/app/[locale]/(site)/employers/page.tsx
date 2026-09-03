@@ -3,8 +3,9 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale, alternatesFor } from '@/i18n/routing';
 import { EmployerLanding } from '@/components/home/employer-landing';
 import { createClient } from '@/lib/supabase/server';
+import { getViewer } from '@/lib/auth';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
@@ -50,5 +51,13 @@ export default async function EmployersPage({
     /* zero is an honest fallback */
   }
 
-  return <EmployerLanding locale={locale} consultantCount={consultantCount} />;
+  const viewer = await getViewer();
+
+  return (
+    <EmployerLanding
+      locale={locale}
+      consultantCount={consultantCount}
+      signedIn={Boolean(viewer)}
+    />
+  );
 }

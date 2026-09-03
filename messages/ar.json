@@ -217,7 +217,16 @@
     "panelPoint2": "التقديم مجاني، ومفيش رسوم على الباحثين عن عمل",
     "panelPoint3": "انت اللي بتحدد مين يشوف ملفك في دليل الاستشاريين",
     "backHome": "رجوع للرئيسية",
-    "haveAccount": "عندك حساب بالفعل؟"
+    "haveAccount": "عندك حساب بالفعل؟",
+    "panelTitleEmployer": "وظّف استشاريين بيدوّروا فعلاً",
+    "panelEmployer1": "إعلانك بيوصل لناس شغلها عقارات، مش لموقع وظائف عام",
+    "panelEmployer2": "كل المتقدمين في قائمة واحدة، مع واتساب وسيرة ذاتية",
+    "panelEmployer3": "النشر مجاني خلال فترة الإطلاق",
+    "signInTitleEmployer": "أهلاً بيك تاني",
+    "signUpTitleEmployer": "سجّل شركتك",
+    "signUpTitleCandidate": "اعمل حسابك كاستشاري",
+    "preselectedCandidate": "هتكمّل كاستشاري عقارات.",
+    "preselectedEmployer": "هتكمّل كشركة عقارات."
   },
   "onboarding": {
     "title": "كمّل بياناتك",

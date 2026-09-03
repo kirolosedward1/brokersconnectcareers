@@ -181,6 +181,30 @@ section('endpoints that change things refuse to on a GET');
 }
 
 // ---------------------------------------------------------------------------
+section('each side of the marketplace has its own door');
+{
+  for (const path of ['/sign-in/candidate', '/sign-in/employer', '/sign-up/candidate', '/sign-up/employer']) {
+    const { status } = await get(path);
+    check(`${path} -> 200`, status === 200, `got ${status}`);
+  }
+
+  // The neutral routes stay, so every existing link and email still resolves.
+  for (const path of ['/sign-in', '/sign-up']) {
+    const { status } = await get(path);
+    check(`${path} still works`, status === 200, `got ${status}`);
+  }
+
+  const bogus = await get('/sign-up/recruiter');
+  check('an unknown audience 404s', bogus.status === 404, `got ${bogus.status}`);
+
+  const employer = await get('/sign-up/employer');
+  check(
+    'the employer door offers the employer argument',
+    employer.body.includes('وظّف') || employer.body.includes('Hire'),
+  );
+}
+
+// ---------------------------------------------------------------------------
 section('the two landing pages are distinct and cross-linked');
 {
   const candidate = await get('/');

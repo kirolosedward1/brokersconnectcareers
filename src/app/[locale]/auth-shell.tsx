@@ -17,9 +17,29 @@ import { Logo } from '@/components/logo';
  * they do it. Below lg it disappears rather than stacking — on a phone it
  * would push the form under the fold.
  */
-export async function AuthShell({ children }: { children: React.ReactNode }) {
+export type Audience = 'candidate' | 'employer';
+
+export async function AuthShell({
+  children,
+  audience,
+}: {
+  children: React.ReactNode;
+  /** Swaps the panel's argument. Omitted on the neutral routes. */
+  audience?: Audience;
+}) {
   const t = await getTranslations('auth');
   const tMeta = await getTranslations('meta');
+
+  const panel =
+    audience === 'employer'
+      ? {
+          title: t('panelTitleEmployer'),
+          points: ['panelEmployer1', 'panelEmployer2', 'panelEmployer3'] as const,
+        }
+      : {
+          title: t('panelTitle'),
+          points: ['panelPoint1', 'panelPoint2', 'panelPoint3'] as const,
+        };
 
   return (
     <main className="grid min-h-dvh lg:grid-cols-2">
@@ -51,11 +71,11 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
 
         <div className="relative flex h-full flex-col justify-center gap-8 px-14 text-primary-foreground">
           <p className="max-w-md text-3xl font-bold leading-snug text-balance">
-            {t('panelTitle')}
+            {panel.title}
           </p>
 
           <ul className="space-y-4">
-            {(['panelPoint1', 'panelPoint2', 'panelPoint3'] as const).map((key) => (
+            {panel.points.map((key) => (
               <li key={key} className="flex items-start gap-3">
                 <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-white/20">
                   <Check className="size-3.5" />

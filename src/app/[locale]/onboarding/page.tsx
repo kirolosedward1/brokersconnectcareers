@@ -22,7 +22,7 @@ export default async function OnboardingPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; role?: string }>;
 }) {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
@@ -39,7 +39,13 @@ export default async function OnboardingPage({
     });
   }
 
-  const { next } = await searchParams;
+  const { next, role } = await searchParams;
+
+  // Pre-selected, not decided. The account type cannot be changed once the
+  // profile exists, and a permanent choice should not be made by a URL the
+  // person may never have read — so the question still appears, already
+  // answered, and they can change it.
+  const defaultRole = role === 'employer' || role === 'candidate' ? role : undefined;
   const t = await getTranslations('onboarding');
 
   return (
@@ -51,6 +57,7 @@ export default async function OnboardingPage({
           <OnboardingForm
             locale={locale}
             defaultName={viewer!.suggestedName}
+            defaultRole={defaultRole}
             next={next && next.startsWith('/') ? next : undefined}
           />
         </div>

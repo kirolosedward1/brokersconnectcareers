@@ -217,7 +217,16 @@
     "panelPoint2": "Applying is free, and always will be for candidates",
     "panelPoint3": "You decide who can see your profile in the consultant directory",
     "backHome": "Back to home",
-    "haveAccount": "Already have an account?"
+    "haveAccount": "Already have an account?",
+    "panelTitleEmployer": "Hire consultants who are actually looking",
+    "panelEmployer1": "Your listing reaches people who work in property, not a general job site",
+    "panelEmployer2": "Every applicant in one list, with WhatsApp and their CV",
+    "panelEmployer3": "Posting is free during launch",
+    "signInTitleEmployer": "Welcome back",
+    "signUpTitleEmployer": "Register your company",
+    "signUpTitleCandidate": "Create your consultant account",
+    "preselectedCandidate": "You will continue as a real estate consultant.",
+    "preselectedEmployer": "You will continue as a real estate company."
   },
   "onboarding": {
     "title": "Finish your profile",
