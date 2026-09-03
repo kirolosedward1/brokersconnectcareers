@@ -59,12 +59,9 @@ export default async function AgentsPage({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <header>
-        <h1 className="text-2xl font-bold">{t('title')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('subtitle')}</p>
-        <p className="numeral mt-2 text-sm text-muted-foreground">
-          {tJobs('resultsCount', { count: total })}
-        </p>
+      <header className="max-w-2xl">
+        <h1 className="text-3xl font-bold">{t('title')}</h1>
+        <p className="mt-2 text-lg leading-relaxed text-muted-foreground">{t('subtitle')}</p>
       </header>
 
       {showGate ? (
@@ -80,19 +77,30 @@ export default async function AgentsPage({
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[16rem_1fr]">
-        <aside>
-          <AgentFilters locale={locale} districts={districts} activeCount={activeCount} />
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_18rem] lg:gap-8">
+        {/* First in the DOM so a phone gets the filters above the results, but
+            placed in the second column on desktop, where a filter rail belongs
+            beside the list rather than in front of it. */}
+        <aside className="lg:col-start-2 lg:row-start-1">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:sticky lg:top-24">
+            <AgentFilters locale={locale} districts={districts} activeCount={activeCount} />
+          </div>
         </aside>
 
-        <div>
+        <div className="lg:col-start-1 lg:row-start-1">
+          {/* The count sits with the results rather than under the title: it
+              describes the list, and it changes when the filters do. */}
+          <p className="numeral mb-4 text-sm text-muted-foreground">
+            {tJobs('resultsCount', { count: total })}
+          </p>
+
           {agents.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border py-16 text-center">
               <UsersRound className="mx-auto size-8 text-muted-foreground" aria-hidden />
               <p className="mt-4 font-medium">{t('empty')}</p>
             </div>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {agents.map((agent) => (
                 <li key={agent.id}>
                   <AgentCard agent={agent} locale={locale} districts={districtMap} />

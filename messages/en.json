@@ -493,7 +493,10 @@
       "employer2Title": "Post with real detail",
       "employer2Body": "The form asks for pay, commission and leads source. That clarity is what brings serious applicants.",
       "employer3Title": "Talk to applicants",
-      "employer3Body": "Every applicant in one pipeline, with a WhatsApp button and a pre-written opener."
+      "employer3Body": "Every applicant in one pipeline, with a WhatsApp button and a pre-written opener.",
+      "candidate1Takeaway": "Stop applying to everything.",
+      "candidate2Takeaway": "You will not retype your details.",
+      "candidate3Takeaway": "The company comes to you."
     },
     "agentsBand": {
       "title": "The consultant directory: you decide who sees you",

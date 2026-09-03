@@ -5,7 +5,6 @@ import {
   Check,
   ClipboardList,
   LayoutGrid,
-  Sparkles,
   Target,
   Users,
 } from 'lucide-react';
@@ -39,12 +38,8 @@ export async function EmployerLanding({
   return (
     <>
       <HeroShell>
-        <span className="rise-in [--rise-delay:70ms] inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium text-white backdrop-blur-sm">
-          <Sparkles className="size-3.5" aria-hidden />
-          {t('employerHero.eyebrow')}
-        </span>
 
-        <h1 className="rise-in [--rise-delay:140ms] mt-6 text-4xl font-bold leading-[1.15] text-balance text-white sm:text-6xl">
+        <h1 className="rise-in mt-2 text-4xl font-bold leading-[1.15] text-balance text-white sm:text-6xl">
           {t('employerHero.title')}
         </h1>
 

@@ -8,7 +8,6 @@ import {
   MapPin,
   MessageCircle,
   Search,
-  Sparkles,
   Target,
   Users,
   Zap,
@@ -17,13 +16,10 @@ import { Link } from '@/i18n/navigation';
 import { localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs } from '@/components/ui/tabs';
-import {
-  CandidateIllustration,
-  EmployerIllustration,
-  VisibilityIllustration,
-} from '@/components/home/illustrations';
+import { VisibilityIllustration } from '@/components/home/illustrations';
 import { HeroShell } from '@/components/home/hero-shell';
+import { TimelineSteps } from '@/components/home/timeline-steps';
+import { ApplyStep, FilterStep, TrackStep } from '@/components/home/candidate-steps';
 import { buildLandingSlug, JOB_TRACKS } from '@/lib/taxonomy';
 import type { DistrictRow } from '@/lib/supabase/database.types';
 
@@ -65,12 +61,8 @@ export async function Landing({
 
     return (
       <HeroShell>
-        <span className="rise-in [--rise-delay:70ms] inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium text-white backdrop-blur-sm">
-          <Sparkles className="size-3.5" aria-hidden />
-          {t('hero.eyebrow')}
-        </span>
 
-        <h1 className="rise-in [--rise-delay:140ms] mt-6 text-4xl font-bold leading-[1.15] text-balance text-white sm:text-6xl">
+        <h1 className="rise-in mt-2 text-4xl font-bold leading-[1.15] text-balance text-white sm:text-6xl">
           {t('hero.title')}
         </h1>
 
@@ -213,67 +205,41 @@ export async function Landing({
   }
 
   async function HowItWorks() {
-    const columns = [
-      {
-        id: 'candidates',
-        heading: 'how.candidates',
-        illustration: <CandidateIllustration className="h-auto w-full max-w-md" />,
-        steps: [
-          ['how.candidate1Title', 'how.candidate1Body'],
-          ['how.candidate2Title', 'how.candidate2Body'],
-          ['how.candidate3Title', 'how.candidate3Body'],
-        ],
-      },
-      {
-        id: 'employers',
-        heading: 'how.employers',
-        illustration: <EmployerIllustration className="h-auto w-full max-w-md" />,
-        steps: [
-          ['how.employer1Title', 'how.employer1Body'],
-          ['how.employer2Title', 'how.employer2Body'],
-          ['how.employer3Title', 'how.employer3Body'],
-        ],
-      },
-    ] as const;
-
     return (
-      <section className="border-y border-border bg-muted/40" aria-labelledby="how-heading">
-        <div className="mx-auto max-w-6xl px-4 py-20">
-          <h2 id="how-heading" className="reveal mb-10 text-center text-2xl font-bold sm:text-3xl">
+      <section className="border-y border-border bg-background" aria-labelledby="how-heading">
+        <div className="mx-auto max-w-5xl px-4 py-24">
+          <h2
+            id="how-heading"
+            className="reveal mb-14 text-center text-3xl font-bold text-balance sm:text-4xl"
+          >
             {t('how.title')}
           </h2>
 
-          {/* Two audiences, one section. Tabs rather than columns so neither
-              side reads as a footnote to the other. */}
-          <Tabs
-            tabs={columns.map((column) => ({ id: column.id, label: t(column.heading) }))}
-            panels={columns.map((column) => (
-              <div
-                key={column.id}
-                className="grid items-center gap-10 lg:grid-cols-[1fr_1.05fr]"
-              >
-                <ol className="space-y-7">
-                  {column.steps.map(([title, body], index) => (
-                    <li key={title} className="flex gap-4">
-                      <span
-                        aria-hidden
-                        className="bg-brand-gradient numeral grid size-9 shrink-0 place-items-center rounded-full text-sm font-semibold text-primary-foreground shadow-[var(--shadow-primary)]"
-                      >
-                        {index + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-semibold">{t(title)}</p>
-                        <p className="mt-1.5 leading-relaxed text-muted-foreground">{t(body)}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-
-                <div className="order-first flex justify-center lg:order-last">
-                  {column.illustration}
-                </div>
-              </div>
-            ))}
+          <TimelineSteps
+            className="reveal"
+            steps={[
+              {
+                key: 'candidate1',
+                title: t('how.candidate1Title'),
+                body: t('how.candidate1Body'),
+                takeaway: t('how.candidate1Takeaway'),
+                illustration: <FilterStep className="h-auto w-full" />,
+              },
+              {
+                key: 'candidate2',
+                title: t('how.candidate2Title'),
+                body: t('how.candidate2Body'),
+                takeaway: t('how.candidate2Takeaway'),
+                illustration: <ApplyStep className="h-auto w-full" />,
+              },
+              {
+                key: 'candidate3',
+                title: t('how.candidate3Title'),
+                body: t('how.candidate3Body'),
+                takeaway: t('how.candidate3Takeaway'),
+                illustration: <TrackStep className="h-auto w-full" />,
+              },
+            ]}
           />
         </div>
       </section>
