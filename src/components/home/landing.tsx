@@ -160,9 +160,6 @@ export async function Landing({
           <h2 id="features-heading" className="text-3xl font-bold text-balance sm:text-4xl">
             {t('features.title')}
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
-            {t('features.subtitle')}
-          </p>
         </div>
 
         {/* Columns rather than cards, matching the employer side: an icon, a

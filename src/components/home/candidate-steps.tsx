@@ -1,158 +1,157 @@
+import {
+  Accent,
+  BLUE,
+  Bloom,
+  Card,
+  Chip,
+  CYAN,
+  Defs,
+  Line,
+  MUTED,
+  OK,
+  SOFT,
+  Tick,
+  svgProps,
+} from './illustration-kit';
+
 /**
- * One illustration per step of the candidate flow.
+ * One drawing per step of the candidate flow, from the same kit as everything
+ * else — same radii, same stroke, same bar height, same shadow.
  *
- * Same reasoning as the employer set: each picture is the screen its step
- * describes, drawn so it inherits the theme rather than shipping three more
- * PNGs. All decorative — the step text carries the meaning.
+ * Each is the screen its step describes. Decorative to assistive technology;
+ * the step text carries the meaning.
  */
 
-const BLUE = 'var(--brand-blue)';
-const CYAN = 'var(--brand-cyan)';
-const LINE = 'var(--border)';
-const SURFACE = 'var(--card)';
-const MUTED = 'var(--muted)';
-const SOFT = 'var(--muted-foreground)';
-const OK = 'var(--success)';
+const VIEW = '0 0 460 300';
 
-const svgProps = {
-  viewBox: '0 0 440 300',
-  role: 'presentation' as const,
-  'aria-hidden': true,
-  focusable: 'false' as const,
-};
-
-function Defs({ id }: { id: string }) {
-  return (
-    <defs>
-      <linearGradient id={`${id}-g`} x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor={BLUE} />
-        <stop offset="100%" stopColor={CYAN} />
-      </linearGradient>
-    </defs>
-  );
-}
-
-/** Step 1 — narrowing the board down to the roles worth reading. */
+/** Step 1 — the board narrowing to the roles worth reading. */
 export function FilterStep({ className }: { className?: string }) {
+  const id = 'bc-cand-filter';
   return (
-    <svg {...svgProps} className={className}>
-      <Defs id="bc-cand-filter" />
+    <svg viewBox={VIEW} className={className} {...svgProps}>
+      <Defs id={id} />
+      <Bloom id={id} cx={350} cy={64} r={140} />
+      <Bloom id={id} cx={70} cy={250} r={110} second />
 
-      {/* The filter rail, with the salary switch thrown */}
-      <rect x="24" y="30" width="118" height="240" rx="16" fill={SURFACE} stroke={LINE} strokeWidth="2" />
-      <rect x="44" y="52" width="56" height="8" rx="4" fill={SOFT} opacity="0.5" />
-      <rect x="44" y="76" width="78" height="20" rx="10" fill={BLUE} opacity="0.12" />
-      <rect x="44" y="76" width="34" height="20" rx="10" fill={BLUE} />
-      <rect x="44" y="108" width="78" height="20" rx="10" fill={MUTED} />
-      <rect x="44" y="140" width="78" height="20" rx="10" fill={MUTED} />
-      <rect x="44" y="176" width="56" height="8" rx="4" fill={SOFT} opacity="0.5" />
-      <rect x="44" y="196" width="78" height="20" rx="10" fill={CYAN} opacity="0.45" />
-      <rect x="44" y="228" width="78" height="20" rx="10" fill={MUTED} />
+      {/* The rail, with the salary switch thrown */}
+      <Card id={id} x={26} y={34} w={122} h={232} raised />
+      <Line x={48} y={58} w={56} strong />
+      <Chip x={48} y={80} w={78} on />
+      <Chip x={48} y={112} w={78} />
+      <Chip x={48} y={144} w={62} />
+      <Line x={48} y={184} w={48} strong />
+      <rect x={48} y={202} width={78} height={22} rx={11} fill={CYAN} opacity={0.35} />
+      <Chip x={48} y={234} w={70} />
 
-      {/* Two matching listings, the first in focus */}
-      <rect x="166" y="42" width="250" height="96" rx="16" fill={SURFACE} stroke={BLUE} strokeWidth="2.5" />
-      <rect x="188" y="66" width="116" height="10" rx="5" fill={SOFT} />
-      <rect x="188" y="86" width="80" height="8" rx="4" fill={SOFT} opacity="0.4" />
-      <rect x="188" y="108" width="92" height="16" rx="8" fill={BLUE} opacity="0.12" />
-      <rect x="292" y="108" width="64" height="16" rx="8" fill={CYAN} opacity="0.35" />
-      <rect x="344" y="62" width="52" height="36" rx="10" fill="url(#bc-cand-filter-g)" />
-      <text x="370" y="86" textAnchor="middle" fontSize="15" fontWeight="700" fill="white">
+      {/* Two matches, the first in focus */}
+      <Card id={id} x={174} y={40} w={260} h={104} raised accent />
+      <Line x={198} y={66} w={122} strong />
+      <Line x={198} y={86} w={84} />
+      <rect x={198} y={108} width={96} height={20} rx={10} fill={BLUE} opacity={0.1} />
+      <rect x={304} y={108} width={66} height={20} rx={10} fill={CYAN} opacity={0.3} />
+      <Accent id={id} x={366} y={60} w={50} h={36} rx={11} />
+      <text x={391} y={84} textAnchor="middle" fontSize="15" fontWeight="700" fill="white">
         25
       </text>
 
-      <rect x="166" y="156" width="250" height="96" rx="16" fill={SURFACE} stroke={LINE} strokeWidth="2" opacity="0.7" />
-      <rect x="188" y="180" width="96" height="10" rx="5" fill={SOFT} opacity="0.5" />
-      <rect x="188" y="200" width="70" height="8" rx="4" fill={SOFT} opacity="0.3" />
-      <rect x="188" y="222" width="92" height="16" rx="8" fill={MUTED} />
+      <Card id={id} x={174} y={162} w={260} h={104} />
+      <Line x={198} y={188} w={104} />
+      <Line x={198} y={208} w={72} />
+      <rect x={198} y={230} width={96} height={20} rx={10} fill={MUTED} />
     </svg>
   );
 }
 
-/** Step 2 — three fields and a CV, and that is the whole application. */
+/** Step 2 — three fields and an optional CV, and that is the application. */
 export function ApplyStep({ className }: { className?: string }) {
+  const id = 'bc-cand-apply';
   return (
-    <svg {...svgProps} className={className}>
-      <Defs id="bc-cand-apply" />
+    <svg viewBox={VIEW} className={className} {...svgProps}>
+      <Defs id={id} />
+      <Bloom id={id} cx={360} cy={64} r={130} />
+      <Bloom id={id} cx={90} cy={250} r={110} second />
 
-      <rect x="88" y="26" width="264" height="248" rx="18" fill={SURFACE} stroke={LINE} strokeWidth="2" />
-      <rect x="112" y="52" width="96" height="10" rx="5" fill={SOFT} />
+      <Card id={id} x={78} y={26} w={276} h={248} raised />
+      <Line x={104} y={52} w={100} strong />
 
       {[86, 132, 178].map((y, index) => (
         <g key={y}>
-          <rect x="112" y={y} width="70" height="7" rx="3.5" fill={SOFT} opacity="0.4" />
-          <rect x="112" y={y + 14} width="216" height="24" rx="8" fill={MUTED} />
-          <rect
-            x="124"
-            y={y + 22}
-            width={[86, 104, 62][index]}
-            height="8"
-            rx="4"
-            fill={BLUE}
-            opacity="0.45"
-          />
+          <Line x={104} y={y} w={68} />
+          <rect x={104} y={y + 14} width={224} height={26} rx={9} fill={MUTED} />
+          <Line x={118} y={y + 23} w={[90, 108, 66][index]} color={BLUE} strong />
         </g>
       ))}
 
-      {/* The CV is optional — dashed, not required */}
+      {/* Optional, so it is drawn as optional */}
       <rect
-        x="112"
-        y="222"
-        width="216"
-        height="30"
-        rx="10"
+        x={104}
+        y={226}
+        width={224}
+        height={32}
+        rx={10}
         fill="none"
-        stroke={LINE}
-        strokeWidth="2"
+        stroke={SOFT}
+        strokeWidth={1.5}
         strokeDasharray="6 5"
+        opacity={0.4}
       />
-      <circle cx="134" cy="237" r="7" fill={CYAN} opacity="0.5" />
-      <rect x="150" y="233" width="72" height="7" rx="3.5" fill={SOFT} opacity="0.35" />
+      <circle cx={126} cy={242} r={7} fill={CYAN} opacity={0.5} />
+      <Line x={142} y={238} w={74} />
 
       {/* Under a minute */}
-      <circle cx="372" cy="70" r="34" fill="url(#bc-cand-apply-g)" />
-      <path d="M372 52 v20 l13 8" fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={382} cy={64} r={34} fill={`url(#${id}-brand)`} filter={`url(#${id}-lift-sm)`} />
+      <path
+        d="M382 46 v18 l12 8"
+        fill="none"
+        stroke="white"
+        strokeWidth={5.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
-/** Step 3 — the employer comes to you, on WhatsApp. */
+/** Step 3 — the statuses move, and the company writes first. */
 export function TrackStep({ className }: { className?: string }) {
+  const id = 'bc-cand-track';
   return (
-    <svg {...svgProps} className={className}>
-      <Defs id="bc-cand-track" />
+    <svg viewBox={VIEW} className={className} {...svgProps}>
+      <Defs id={id} />
+      <Bloom id={id} cx={90} cy={64} r={130} />
+      <Bloom id={id} cx={370} cy={250} r={120} second />
 
-      <rect x="24" y="40" width="236" height="220" rx="18" fill={SURFACE} stroke={LINE} strokeWidth="2" />
-      <rect x="46" y="64" width="80" height="9" rx="4.5" fill={SOFT} opacity="0.5" />
+      <Card id={id} x={26} y={36} w={248} h={228} raised />
+      <Line x={50} y={60} w={84} strong />
 
       {[
-        { y: 92, fill: OK, w: 62 },
-        { y: 146, fill: BLUE, w: 48 },
-        { y: 200, fill: SOFT, w: 54 },
+        { y: 88, fill: OK, w: 58 },
+        { y: 142, fill: BLUE, w: 46 },
+        { y: 196, fill: SOFT, w: 52 },
       ].map((row) => (
         <g key={row.y}>
-          <rect x="46" y={row.y} width="192" height="40" rx="12" fill={MUTED} />
-          <rect x="62" y={row.y + 12} width="84" height="8" rx="4" fill={SOFT} opacity="0.45" />
-          <rect x="62" y={row.y + 25} width="52" height="6" rx="3" fill={SOFT} opacity="0.25" />
+          <rect x={50} y={row.y} width={200} height={42} rx={12} fill={MUTED} />
+          <Line x={68} y={row.y + 12} w={88} strong={row.fill !== SOFT} />
+          <Line x={68} y={row.y + 27} w={54} />
           <rect
-            x={238 - row.w - 12}
+            x={250 - row.w - 14}
             y={row.y + 12}
             width={row.w}
-            height="16"
-            rx="8"
+            height={18}
+            rx={9}
             fill={row.fill}
-            opacity={row.fill === SOFT ? 0.25 : 0.85}
+            opacity={row.fill === SOFT ? 0.18 : 0.85}
           />
         </g>
       ))}
 
       {/* The message that actually arrives */}
-      <path
-        d="M292 92 h108 a16 16 0 0 1 16 16 v66 a16 16 0 0 1 -16 16 h-78 l-22 22 v-22 h-8 a16 16 0 0 1 -16 -16 v-66 a16 16 0 0 1 16 -16 z"
-        fill="url(#bc-cand-track-g)"
-      />
-      <rect x="308" y="116" width="74" height="8" rx="4" fill="white" opacity="0.9" />
-      <rect x="308" y="134" width="58" height="8" rx="4" fill="white" opacity="0.65" />
-      <rect x="308" y="152" width="44" height="8" rx="4" fill="white" opacity="0.45" />
+      <Accent id={id} x={306} y={86} w={126} h={104} rx={16} />
+      <rect x={326} y={112} width={82} height={8} rx={4} fill="white" opacity={0.9} />
+      <rect x={326} y={130} width={64} height={8} rx={4} fill="white" opacity={0.6} />
+      <rect x={326} y={148} width={46} height={8} rx={4} fill="white" opacity={0.4} />
+
+      <Tick cx={306} cy={86} r={15} color={OK} />
     </svg>
   );
 }
