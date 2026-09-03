@@ -8,6 +8,15 @@ import { cn } from '@/lib/utils';
 const OVER_HERO = ['/', '/employers'];
 
 /**
+ * The pages that render no site header at all.
+ *
+ * A nav bar full of links is an invitation to wander off mid-task, which is
+ * the last thing a half-finished sign-up needs. AuthShell puts a logo and one
+ * way back where the header would have been.
+ */
+const NO_HEADER = ['/sign-in', '/sign-up'];
+
+/**
  * The header's chrome.
  *
  * On the two landing pages it lifts off the page and sits on the film: no
@@ -31,6 +40,7 @@ const OVER_HERO = ['/', '/employers'];
 export function HeaderShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const overHero = OVER_HERO.includes(pathname);
+  const hidden = NO_HEADER.includes(pathname);
 
   const [scrolled, setScrolled] = useState(false);
 
@@ -44,6 +54,8 @@ export function HeaderShell({ children }: { children: React.ReactNode }) {
   }, [overHero]);
 
   const floating = overHero && !scrolled;
+
+  if (hidden) return null;
 
   return (
     <header

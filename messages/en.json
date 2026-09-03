@@ -211,7 +211,13 @@
     "demoTitle": "Or try the platform without signing up",
     "demoCandidate": "Demo login as a real estate consultant",
     "demoEmployer": "Demo login as a real estate company",
-    "demoHint": "Shared demo accounts. Anything you change in them may be reset at any time."
+    "demoHint": "Shared demo accounts. Anything you change in them may be reset at any time.",
+    "panelTitle": "The job market built for Egyptian real estate",
+    "panelPoint1": "Every listing states the salary, the commission and the lead source",
+    "panelPoint2": "Applying is free, and always will be for candidates",
+    "panelPoint3": "You decide who can see your profile in the consultant directory",
+    "backHome": "Back to home",
+    "haveAccount": "Already have an account?"
   },
   "onboarding": {
     "title": "Finish your profile",
@@ -464,7 +470,13 @@
       "applyTitle": "Apply in under a minute",
       "applyBody": "Name, WhatsApp number, experience band. The CV is optional and there is no cover letter.",
       "whatsappTitle": "Contact is WhatsApp",
-      "whatsappBody": "Employers reach you directly on WhatsApp. Nothing lost to a spam folder."
+      "whatsappBody": "Employers reach you directly on WhatsApp. Nothing lost to a spam folder.",
+      "kindPay": "The numbers",
+      "kindLeads": "Leads",
+      "kindSeats": "Seats",
+      "kindFresh": "Freshness",
+      "kindApply": "Applying",
+      "kindWhatsapp": "Contact"
     },
     "how": {
       "title": "How it works",

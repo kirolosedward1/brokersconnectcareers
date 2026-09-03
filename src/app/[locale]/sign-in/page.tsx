@@ -25,19 +25,20 @@ export default async function SignInPage({ params }: { params: Promise<{ locale:
 
   return (
     <AuthShell>
-        <div className="mx-auto w-full max-w-sm px-4">
-        <h1 className="text-2xl font-bold">{t('signInTitle')}</h1>
-        <div className="mt-6">
-          <Suspense>
-            <AuthForm mode="sign-in" locale={locale} />
-          </Suspense>
-        </div>
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+      <div className="mx-auto w-full max-w-sm">
+        <h1 className="text-3xl font-bold">{t('signInTitle')}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           {t('noAccount')}{' '}
           <Link href="/sign-up" className="font-medium text-primary hover:underline">
             {t('signUp')}
           </Link>
         </p>
+
+        <div className="mt-8">
+          <Suspense>
+            <AuthForm mode="sign-in" locale={locale} />
+          </Suspense>
+        </div>
       </div>
     </AuthShell>
   );

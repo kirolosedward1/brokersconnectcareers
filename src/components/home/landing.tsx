@@ -146,48 +146,65 @@ export async function Landing({
   }
 
   async function Features() {
+    // The two the whole product is built around lead; the rest support them.
     const items = [
-      { icon: Banknote, title: 'features.payTitle', body: 'features.payBody', accent: true },
-      { icon: Target, title: 'features.leadsTitle', body: 'features.leadsBody', accent: true },
-      { icon: Users, title: 'features.seatsTitle', body: 'features.seatsBody', accent: false },
-      { icon: CalendarClock, title: 'features.freshTitle', body: 'features.freshBody', accent: false },
-      { icon: Zap, title: 'features.applyTitle', body: 'features.applyBody', accent: false },
-      { icon: MessageCircle, title: 'features.whatsappTitle', body: 'features.whatsappBody', accent: false },
+      { icon: Banknote, kind: 'kindPay', title: 'payTitle', body: 'payBody', lead: true },
+      { icon: Target, kind: 'kindLeads', title: 'leadsTitle', body: 'leadsBody', lead: true },
+      { icon: Users, kind: 'kindSeats', title: 'seatsTitle', body: 'seatsBody', lead: false },
+      { icon: CalendarClock, kind: 'kindFresh', title: 'freshTitle', body: 'freshBody', lead: false },
+      { icon: Zap, kind: 'kindApply', title: 'applyTitle', body: 'applyBody', lead: false },
+      {
+        icon: MessageCircle,
+        kind: 'kindWhatsapp',
+        title: 'whatsappTitle',
+        body: 'whatsappBody',
+        lead: false,
+      },
     ] as const;
 
     return (
-      <section className="mx-auto max-w-6xl px-4 py-20" aria-labelledby="features-heading">
+      <section className="mx-auto max-w-6xl px-4 py-24" aria-labelledby="features-heading">
         <div className="reveal mx-auto max-w-2xl text-center">
-          <h2 id="features-heading" className="text-2xl font-bold text-balance sm:text-3xl">
+          <h2 id="features-heading" className="text-3xl font-bold text-balance sm:text-4xl">
             {t('features.title')}
           </h2>
-          <p className="mt-3 text-lg leading-relaxed text-muted-foreground">
+          <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
             {t('features.subtitle')}
           </p>
         </div>
 
-        <ul className="reveal mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map(({ icon: Icon, title, body, accent }) => (
-            <li
-              key={title}
-              className={
-                accent
-                  ? 'lift rounded-2xl border border-primary/25 bg-primary/[0.04] p-6 shadow-sm'
-                  : 'lift rounded-2xl border border-border bg-card p-6 shadow-sm'
-              }
-            >
+        {/* Columns rather than cards, matching the employer side: an icon, a
+            category word, a heading, the body. Two coloured tiles mark the
+            arguments the other four support. */}
+        <ul className="reveal mt-16 grid gap-x-10 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map(({ icon: Icon, kind, title, body, lead }) => (
+            <li key={title}>
               <span
                 aria-hidden
                 className={
-                  accent
+                  lead
                     ? 'bg-brand-gradient grid size-11 place-items-center rounded-xl text-primary-foreground shadow-[var(--shadow-primary)]'
                     : 'grid size-11 place-items-center rounded-xl bg-muted text-muted-foreground'
                 }
               >
                 <Icon className="size-5" />
               </span>
-              <h3 className="mt-4 font-semibold">{t(title)}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t(body)}</p>
+
+              <p
+                className={
+                  lead
+                    ? 'mt-5 text-sm font-medium text-primary'
+                    : 'mt-5 text-sm font-medium text-muted-foreground'
+                }
+              >
+                {t(`features.${kind}`)}
+              </p>
+
+              <h3 className="mt-1.5 text-lg font-semibold leading-snug text-balance">
+                {t(`features.${title}`)}
+              </h3>
+
+              <p className="mt-3 leading-relaxed text-muted-foreground">{t(`features.${body}`)}</p>
             </li>
           ))}
         </ul>
