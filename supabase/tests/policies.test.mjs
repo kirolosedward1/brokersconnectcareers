@@ -133,6 +133,32 @@ report.section('applications are private to the two parties');
   report.check('but can move it through the pipeline', move.ok && move.rows.length >= 1, move.error);
 }
 
+report.section('an employer may explain a decision, and nothing more');
+{
+  const appId = (
+    await db.query(`select id from applications where job_id='${liveJob}' limit 1`)
+  ).rows[0]?.id;
+
+  if (!appId) {
+    report.check('found an application to move', false, 'no seeded application on the live job');
+  } else {
+    const r = await as(employerVerified, `update applications
+      set status='rejected', decision_note='الخبرة أقل من المطلوب للدور ده'
+      where id='${appId}' returning decision_note`);
+    report.check('the owner can move it and say why', r.ok && r.rows.length === 1, r.error);
+
+    const r2 = await as(employerVerified, `update applications set cv_path='other/cv.pdf' where id='${appId}'`);
+    report.check("but still cannot touch the candidate's CV", !r2.ok, r2.ok ? 'update was allowed' : r2.error);
+
+    const r3 = await as(employerVerified, `update applications set note='rewritten' where id='${appId}'`);
+    report.check('nor rewrite their note', !r3.ok, r3.ok ? 'update was allowed' : r3.error);
+
+    // The candidate has no update policy at all, so this matches zero rows.
+    const r4 = await as(candidate, `update applications set status='hired' where id='${appId}' returning id`);
+    report.check('and the candidate cannot hire themselves', r4.ok && r4.rows.length === 0, r4.error);
+  }
+}
+
 report.section('an employer reaches their applicant, and only their applicant');
 {
   const visible = await as(employerVerified, `select whatsapp_phone from profiles where id='${candidate}'`);

@@ -46,6 +46,7 @@ type ApplicationForEmployer = {
 type ApplicationForCandidate = {
   id: string;
   status: ApplicationStatus;
+  decision_note: string | null;
   candidate_id: string;
   job: {
     title_ar: string;
@@ -197,7 +198,7 @@ export async function notifyCandidateOfStatus(applicationId: string): Promise<Se
     const { data } = await admin
       .from('applications')
       .select(
-        'id, status, candidate_id, job:jobs (title_ar, title_en, company:companies (name_ar, name_en))',
+        'id, status, decision_note, candidate_id, job:jobs (title_ar, title_en, company:companies (name_ar, name_en))',
       )
       .eq('id', applicationId)
       .maybeSingle();
@@ -226,7 +227,9 @@ export async function notifyCandidateOfStatus(applicationId: string): Promise<Se
         subject: t.subject(title),
         preheader: t.preheader,
         heading: t.heading,
-        paragraphs: [t.body(title, company)],
+        paragraphs: application.decision_note
+          ? [t.body(title, company), application.decision_note]
+          : [t.body(title, company)],
         facts: [
           [t.labelJob, title],
           [t.labelCompany, company],

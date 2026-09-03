@@ -14,6 +14,7 @@ type ApplicantRow = {
   status: ApplicationStatus;
   created_at: string;
   note: string | null;
+  decision_note: string | null;
   cv_path: string | null;
   experience_band: ExperienceBand | null;
   candidate: { full_name: string; whatsapp_phone: string } | null;
@@ -45,7 +46,7 @@ export default async function ApplicantsPage({
     .from('applications')
     .select(
       `
-      id, status, created_at, note, cv_path, experience_band,
+      id, status, created_at, note, decision_note, cv_path, experience_band,
       candidate:profiles (full_name, whatsapp_phone)
     `,
     )

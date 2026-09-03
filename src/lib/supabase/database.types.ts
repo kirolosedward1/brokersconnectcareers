@@ -146,6 +146,8 @@ export type ApplicationRow = Timestamped & {
   note: string | null;
   experience_band: ExperienceBand | null;
   employer_viewed_at: string | null;
+  /** The employer's reason for the current status. The candidate sees it. */
+  decision_note: string | null;
 };
 
 export type AgentProfileRow = Timestamped & {

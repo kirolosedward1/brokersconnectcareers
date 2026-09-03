@@ -91,6 +91,8 @@ export async function withdrawApplication(applicationId: string): Promise<Action
 const statusSchema = z.object({
   applicationId: z.string().uuid(),
   status: z.enum(['new', 'shortlisted', 'interview', 'hired', 'rejected']),
+  /** Optional, and deliberately so — a required field becomes "not a fit" forever. */
+  decisionNote: z.string().trim().max(500).optional().nullable(),
 });
 
 /** Employer pipeline move. RLS restricts this to jobs the caller owns. */
@@ -104,6 +106,7 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     .update({
       status: parsed.data.status as ApplicationStatus,
       employer_viewed_at: new Date().toISOString(),
+      decision_note: parsed.data.decisionNote?.trim() || null,
     })
     .eq('id', parsed.data.applicationId);
 
@@ -112,5 +115,6 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
   after(() => notifyCandidateOfStatus(parsed.data.applicationId));
 
   revalidatePath('/employer/jobs');
+  revalidatePath('/dashboard/applications');
   return { ok: true };
 }

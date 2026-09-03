@@ -240,7 +240,8 @@
     "appliedOn": "Applied {date}",
     "withdraw": "Withdraw",
     "agentProfile": "Your consultant directory profile",
-    "agentProfileHint": "Verified employers search this directory. You control who sees your profile."
+    "agentProfileHint": "Verified employers search this directory. You control who sees your profile.",
+    "decisionFromCompany": "Message from the company"
   },
   "applicationStatus": {
     "new": "New",
@@ -294,7 +295,11 @@
     "pipelineCount": "{count} applicants",
     "freePostClaim": "Claim this month's free post",
     "freePostClaimed": "This month's free post has been claimed.",
-    "postCapBlocked": "You already have an active listing. Unverified companies may keep only one."
+    "postCapBlocked": "You already have an active listing. Unverified companies may keep only one.",
+    "decisionNote": "Reason (optional)",
+    "decisionNoteHint": "The applicant sees this. One clear line beats silence.",
+    "decisionNotePlaceholder": "e.g. Less experience than this role needs — we have kept your profile for future openings.",
+    "decisionNoteSaved": "Saved"
   },
   "jobForm": {
     "basics": "Basics",

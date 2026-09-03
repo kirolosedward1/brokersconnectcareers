@@ -33,7 +33,7 @@ export default async function ApplicationsPage({
     .from('applications')
     .select(
       `
-      id, status, created_at,
+      id, status, created_at, decision_note,
       job:jobs (
         slug, title_ar, title_en,
         company:companies (name_ar, name_en, slug),
@@ -46,6 +46,7 @@ export default async function ApplicationsPage({
   const applications = (data ?? []) as unknown as {
     id: string;
     status: ApplicationStatus;
+    decision_note: string | null;
     created_at: string;
     job: {
       slug: string;
@@ -104,6 +105,17 @@ export default async function ApplicationsPage({
                 {tStatus(application.status)}
               </Badge>
             </div>
+
+            {/* The reason, when the company gave one. This is the whole point
+                of the board: a decision you can act on rather than guess at. */}
+            {application.decision_note ? (
+              <div className="mt-4 rounded-lg border border-border bg-muted/50 p-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {t('decisionFromCompany')}
+                </p>
+                <p className="mt-1 text-sm leading-relaxed">{application.decision_note}</p>
+              </div>
+            ) : null}
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
               <time

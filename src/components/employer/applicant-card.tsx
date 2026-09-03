@@ -34,6 +34,7 @@ export function ApplicantCard({
     status: ApplicationStatus;
     created_at: string;
     note: string | null;
+    decision_note: string | null;
     cv_path: string | null;
     experience_band: ExperienceBand | null;
     candidate: { full_name: string; whatsapp_phone: string } | null;
@@ -46,23 +47,40 @@ export function ApplicantCard({
   const tStatus = useTranslations('applicationStatus');
   const tExp = useTranslations('experienceBand');
   const tJobs = useTranslations('jobs');
+  const tCommon = useTranslations('common');
 
   const router = useRouter();
   const [status, setStatus] = useState(application.status);
+  const [reason, setReason] = useState(application.decision_note ?? '');
+  const [savedReason, setSavedReason] = useState(application.decision_note ?? '');
   const [pending, startTransition] = useTransition();
 
   const candidate = application.candidate;
 
-  function onStatusChange(event: React.ChangeEvent<HTMLSelectElement>) {
-    const next = event.target.value as ApplicationStatus;
-    const previous = status;
+  function save(next: ApplicationStatus, decisionNote: string) {
+    const previousStatus = status;
+    const previousReason = savedReason;
     setStatus(next);
+    setSavedReason(decisionNote);
 
     startTransition(async () => {
-      const result = await setApplicationStatus({ applicationId: application.id, status: next });
-      if (!result.ok) setStatus(previous);
-      else router.refresh();
+      const result = await setApplicationStatus({
+        applicationId: application.id,
+        status: next,
+        decisionNote,
+      });
+      if (!result.ok) {
+        setStatus(previousStatus);
+        setSavedReason(previousReason);
+        setReason(previousReason);
+        return;
+      }
+      router.refresh();
     });
+  }
+
+  function onStatusChange(event: React.ChangeEvent<HTMLSelectElement>) {
+    save(event.target.value as ApplicationStatus, reason);
   }
 
   return (
@@ -138,6 +156,39 @@ export function ApplicantCard({
           </Select>
         </label>
       </div>
+
+      {/* Shown once a decision has been made. Not on `new`, where there is
+          nothing to explain yet, and never required — a mandatory field here
+          fills up with "not a fit", which looks like an answer and is not. */}
+      {status !== 'new' ? (
+        <div className="mt-4 border-t border-border pt-4">
+          <label htmlFor={`reason-${application.id}`} className="text-xs font-medium text-muted-foreground">
+            {t('decisionNote')}
+          </label>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t('decisionNoteHint')}</p>
+
+          <div className="mt-2 flex flex-wrap items-start gap-2">
+            <textarea
+              id={`reason-${application.id}`}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              maxLength={500}
+              rows={2}
+              placeholder={t('decisionNotePlaceholder')}
+              className="min-w-0 flex-1 rounded-lg border border-input bg-background p-2.5 text-sm shadow-xs"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={pending || reason.trim() === savedReason.trim()}
+              onClick={() => save(status, reason)}
+            >
+              {reason.trim() === savedReason.trim() && savedReason ? t('decisionNoteSaved') : tCommon('save')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </article>
   );
 }
