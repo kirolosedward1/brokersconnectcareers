@@ -10,11 +10,14 @@ const OVER_HERO = ['/', '/employers'];
 /**
  * The pages that render no site header at all.
  *
- * A nav bar full of links is an invitation to wander off mid-task, which is
- * the last thing a half-finished sign-up needs. AuthShell puts a logo and one
- * way back where the header would have been.
+ * Two different reasons. On the auth screens a nav bar full of links is an
+ * invitation to wander off mid-task, which is the last thing a half-finished
+ * sign-up needs. Everything under /dashboard, /employer and /admin has its own
+ * chrome — a rail and a top bar — and stacking the marketing header above that
+ * would give the console two headers.
  */
 const NO_HEADER = ['/sign-in', '/sign-up'];
+const NO_HEADER_PREFIXES = ['/dashboard', '/employer', '/admin'];
 
 /**
  * The header's chrome.
@@ -40,7 +43,9 @@ const NO_HEADER = ['/sign-in', '/sign-up'];
 export function HeaderShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const overHero = OVER_HERO.includes(pathname);
-  const hidden = NO_HEADER.includes(pathname);
+  const hidden =
+    NO_HEADER.includes(pathname) ||
+    NO_HEADER_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 
   const [scrolled, setScrolled] = useState(false);
 

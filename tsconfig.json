@@ -19,5 +19,6 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "//": "The ' 2.ts' / ' 3.ts' patterns exclude iCloud's duplicate files. This project lives under ~/Documents, which iCloud syncs, and it periodically duplicates generated files inside .next/types with a numbered suffix. Those duplicates then fail typecheck with 'Duplicate identifier' or a missing-file error that looks like a real break and is not.",
+  "exclude": ["node_modules", "**/* [0-9].ts", "**/* [0-9].tsx"]
 }
