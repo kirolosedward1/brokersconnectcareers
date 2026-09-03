@@ -31,6 +31,12 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
   const navItemClass =
     'rounded-lg px-3 py-2 transition-colors hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15';
 
+  // Ghost buttons inherit their colour, which is white while the header sits on
+  // the film — and their default hover is `bg-muted`, a near-white. White text
+  // on a near-white pill is invisible, so the hover has to invert with the
+  // header rather than staying the page's.
+  const ghostOnFilm = 'group-data-[over-hero]/header:hover:bg-white/15';
+
   return (
     <HeaderShell>
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4">
@@ -61,7 +67,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           {ENGLISH_ENABLED ? <LocaleSwitcher locale={locale} label={t('language')} /> : null}
 
           {role === 'admin' ? (
-            <Button asChild variant="ghost" size="sm" className="hidden lg:inline-flex">
+            <Button asChild variant="ghost" size="sm" className={`hidden lg:inline-flex ${ghostOnFilm}`}>
               <Link href="/admin/jobs">
                 <ShieldCheck /> {t('admin')}
               </Link>
@@ -70,7 +76,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
 
           {viewer?.profile ? (
             <>
-              <Button asChild variant="ghost" size="sm" className="hidden lg:inline-flex">
+              <Button asChild variant="ghost" size="sm" className={`hidden lg:inline-flex ${ghostOnFilm}`}>
                 <Link href={dashboardHref}>
                   {role === 'employer' ? <Users /> : <LayoutDashboard />}
                   {role === 'employer' ? t('employerArea') : t('dashboard')}
@@ -85,7 +91,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
             </>
           ) : (
             <>
-              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+              <Button asChild variant="ghost" size="sm" className={`hidden sm:inline-flex ${ghostOnFilm}`}>
                 <Link href="/sign-in">{t('signIn')}</Link>
               </Button>
               <Button asChild size="sm" className="hidden sm:inline-flex">

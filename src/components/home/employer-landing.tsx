@@ -4,6 +4,7 @@ import {
   CalendarClock,
   Check,
   ClipboardList,
+  LayoutGrid,
   Sparkles,
   Target,
   Users,
@@ -12,7 +13,8 @@ import { Link } from '@/i18n/navigation';
 import { type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { HeroShell } from '@/components/home/hero-shell';
-import { EmployerIllustration } from '@/components/home/illustrations';
+import { StepTabs } from '@/components/home/step-tabs';
+import { ContactStep, PostStep, VerifyStep } from '@/components/home/employer-steps';
 import { POST_PACKS } from '@/lib/taxonomy';
 import { BILLING_ENABLED } from '@/lib/env';
 import { formatEgp, formatNumber } from '@/lib/utils';
@@ -85,140 +87,112 @@ export async function EmployerLanding({
         </p>
       </HeroShell>
 
-      <section className="mx-auto max-w-6xl px-4 py-20" aria-labelledby="employer-why">
+      <section className="mx-auto max-w-6xl px-4 py-24" aria-labelledby="employer-why">
         <div className="reveal mx-auto max-w-2xl text-center">
-          <h2 id="employer-why" className="text-2xl font-bold text-balance sm:text-3xl">
+          <h2 id="employer-why" className="text-3xl font-bold text-balance sm:text-4xl">
             {t('employerWhy.title')}
           </h2>
-          <p className="mt-3 text-lg leading-relaxed text-muted-foreground">
+          <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
             {t('employerWhy.subtitle')}
           </p>
         </div>
 
-        {/* Six equal cards made six equal claims, and one of these is the
-            argument the other five support. The grid gives it the room to say
-            so: a wide lead card that shows the three fields rather than
-            asserting them, then a descending rhythm of supporting points. */}
-        <div className="reveal mt-12 grid gap-4 lg:grid-cols-6">
-          <article className="lift relative overflow-hidden rounded-2xl border border-primary/25 bg-primary/[0.04] p-7 shadow-sm lg:col-span-4">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 opacity-[0.07] bg-[radial-gradient(24rem_14rem_at_85%_0%,var(--brand-blue),transparent_70%)]"
-            />
-            <span
-              aria-hidden
-              className="bg-brand-gradient relative grid size-12 place-items-center rounded-xl text-primary-foreground shadow-[var(--shadow-primary)]"
-            >
-              <Target className="size-6" />
-            </span>
-
-            <h3 className="relative mt-5 text-xl font-semibold">
-              {t('employerWhy.clarityTitle')}
-            </h3>
-            <p className="relative mt-2 max-w-lg leading-relaxed text-muted-foreground">
-              {t('employerWhy.clarityBody')}
-            </p>
-
-            <p className="relative mt-6 text-xs font-medium uppercase tracking-wide text-primary">
-              {t('employerWhy.proofLabel')}
-            </p>
-            <ul className="relative mt-2 flex flex-wrap gap-2">
-              {(['proofSalary', 'proofCommission', 'proofLeads'] as const).map((key) => (
-                <li
-                  key={key}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-card px-3 py-1.5 text-sm font-medium shadow-xs"
-                >
-                  <Check className="size-3.5 text-primary" aria-hidden />
-                  {t(`employerWhy.${key}`)}
-                </li>
-              ))}
-            </ul>
-          </article>
-
-          <article className="lift rounded-2xl border border-border bg-card p-6 shadow-sm lg:col-span-2">
-            <span
-              aria-hidden
-              className="grid size-11 place-items-center rounded-xl bg-muted text-muted-foreground"
-            >
-              <Users className="size-5" />
-            </span>
-            <h3 className="mt-4 font-semibold">{t('employerWhy.nicheTitle')}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              {t('employerWhy.nicheBody')}
-            </p>
-          </article>
-
+        {/* No cards. Six bordered tiles gave six claims the same weight and put
+            a box around each one; columns let the type do the work, and the
+            one coloured tile says which argument the other five support. */}
+        <ul className="reveal mt-16 grid gap-x-10 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
           {(
             [
-              [ClipboardList, 'pipelineTitle', 'pipelineBody'],
-              [BadgeCheck, 'verifiedTitle', 'verifiedBody'],
-              [Users, 'seatsTitle', 'seatsBody'],
+              [Target, 'kindClarity', 'clarityTitle', 'clarityBody', true],
+              [Users, 'kindNiche', 'nicheTitle', 'nicheBody', false],
+              [ClipboardList, 'kindPipeline', 'pipelineTitle', 'pipelineBody', false],
+              [BadgeCheck, 'kindVerified', 'verifiedTitle', 'verifiedBody', false],
+              [LayoutGrid, 'kindSeats', 'seatsTitle', 'seatsBody', false],
+              [CalendarClock, 'kindFresh', 'freshTitle', 'freshBody', false],
             ] as const
-          ).map(([Icon, title, body]) => (
-            <article
-              key={title}
-              className="lift rounded-2xl border border-border bg-card p-6 shadow-sm lg:col-span-2"
-            >
+          ).map(([Icon, kind, title, body, lead]) => (
+            <li key={title}>
               <span
                 aria-hidden
-                className="grid size-11 place-items-center rounded-xl bg-muted text-muted-foreground"
+                className={
+                  lead
+                    ? 'bg-brand-gradient grid size-11 place-items-center rounded-xl text-primary-foreground shadow-[var(--shadow-primary)]'
+                    : 'grid size-11 place-items-center rounded-xl bg-muted text-muted-foreground'
+                }
               >
                 <Icon className="size-5" />
               </span>
-              <h3 className="mt-4 font-semibold">{t(`employerWhy.${title}`)}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+
+              <p
+                className={
+                  lead
+                    ? 'mt-5 text-sm font-medium text-primary'
+                    : 'mt-5 text-sm font-medium text-muted-foreground'
+                }
+              >
+                {t(`employerWhy.${kind}`)}
+              </p>
+
+              <h3 className="mt-1.5 text-lg font-semibold leading-snug text-balance">
+                {t(`employerWhy.${title}`)}
+              </h3>
+
+              <p className="mt-3 leading-relaxed text-muted-foreground">
                 {t(`employerWhy.${body}`)}
               </p>
-            </article>
-          ))}
 
-          {/* The last one is a rule the platform enforces on the employer's
-              behalf, so it reads as a closing line rather than a sixth tile. */}
-          <article className="lift flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm sm:flex-row sm:items-center lg:col-span-6">
-            <span
-              aria-hidden
-              className="grid size-11 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground"
-            >
-              <CalendarClock className="size-5" />
-            </span>
-            <div>
-              <h3 className="font-semibold">{t('employerWhy.freshTitle')}</h3>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                {t('employerWhy.freshBody')}
-              </p>
-            </div>
-          </article>
-        </div>
+              {/* Only under the lead: the three fields the form insists on,
+                  shown rather than asserted. */}
+              {lead ? (
+                <ul className="mt-4 flex flex-wrap gap-2">
+                  {(['proofSalary', 'proofCommission', 'proofLeads'] as const).map((key) => (
+                    <li
+                      key={key}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
+                    >
+                      <Check className="size-3.5" aria-hidden />
+                      {t(`employerWhy.${key}`)}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="border-y border-border bg-muted/40" aria-labelledby="employer-how">
-        <div className="mx-auto max-w-6xl px-4 py-20">
-          <h2 id="employer-how" className="reveal mb-10 text-center text-2xl font-bold sm:text-3xl">
+        <div className="mx-auto max-w-6xl px-4 py-24">
+          <h2
+            id="employer-how"
+            className="reveal mb-12 text-center text-3xl font-bold text-balance sm:text-4xl"
+          >
             {t('how.title')}
           </h2>
 
-          <div className="reveal grid items-center gap-12 lg:grid-cols-2">
-            <EmployerIllustration className="mx-auto h-auto w-full max-w-md" />
-
-            <ol className="space-y-6">
-              {(['employer1', 'employer2', 'employer3'] as const).map((step, index) => (
-                <li key={step} className="flex gap-4">
-                  <span
-                    aria-hidden
-                    className="bg-brand-gradient numeral grid size-9 shrink-0 place-items-center rounded-xl font-bold text-primary-foreground"
-                  >
-                    {formatNumber(index + 1, locale)}
-                  </span>
-                  <div>
-                    <h3 className="font-semibold">{t(`how.${step}Title`)}</h3>
-                    <p className="mt-1 leading-relaxed text-muted-foreground">
-                      {t(`how.${step}Body`)}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
+          <StepTabs
+            className="reveal"
+            steps={[
+              {
+                key: 'employer1',
+                title: t('how.employer1Title'),
+                body: t('how.employer1Body'),
+                illustration: <VerifyStep className="h-auto w-full max-w-lg" />,
+              },
+              {
+                key: 'employer2',
+                title: t('how.employer2Title'),
+                body: t('how.employer2Body'),
+                illustration: <PostStep className="h-auto w-full max-w-lg" />,
+              },
+              {
+                key: 'employer3',
+                title: t('how.employer3Title'),
+                body: t('how.employer3Body'),
+                illustration: <ContactStep className="h-auto w-full max-w-lg" />,
+              },
+            ]}
+          />
         </div>
       </section>
 

@@ -536,7 +536,13 @@
       "proofLabel": "Required in every listing",
       "proofSalary": "Basic salary",
       "proofCommission": "Commission rate",
-      "proofLeads": "Lead source"
+      "proofLeads": "Lead source",
+      "kindClarity": "Clarity",
+      "kindNiche": "Focus",
+      "kindPipeline": "Pipeline",
+      "kindVerified": "Verification",
+      "kindSeats": "Seats",
+      "kindFresh": "Freshness"
     }
   },
   "blog": {

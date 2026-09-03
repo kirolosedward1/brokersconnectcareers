@@ -1,58 +1,73 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
- * The hero's background film — loaded only when it is not a tax on the reader.
+ * The hero's background film. Always present, always looping.
  *
- * The file is 13 MB. On a Cairo 4G connection that is several seconds of the
- * visitor's data allowance spent on decoration, before they have seen a single
- * job. So it is not in the markup at all until the client has said it can
- * afford it, and the gradient underneath is the real design rather than a
- * placeholder: on a phone, on a metered connection, or for anyone who has
- * asked their system for less motion, the gradient is simply what the hero
- * looks like, and nothing is missing.
+ * It used to load only on a fast desktop connection, because the file is 13 MB
+ * and that is a real cost on a Cairo mobile plan. That gating is gone by
+ * request: the film is now part of the design everywhere, so the fix for the
+ * weight is to compress the file, not to hide it.
  *
- * Everything here fails toward not downloading. An unknown connection is
- * treated as an expensive one.
+ * The one thing still honoured is prefers-reduced-motion, and even that does
+ * not remove the video — it holds it on its first frame. Somebody who has
+ * asked their system for less motion gets the image without the movement,
+ * which is the accessible reading of "always there" rather than an exception
+ * to it.
  */
 export function HeroVideo({ src }: { src: string }) {
-  const [play, setPlay] = useState(false);
+  const ref = useRef<HTMLVideoElement>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // A phone is both the likeliest metered connection and the screen where a
-    // wide landscape shot is mostly cropped away.
-    if (window.matchMedia('(max-width: 1023px)').matches) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const video = ref.current;
+    if (!video) return;
 
-    const connection = (
-      navigator as Navigator & {
-        connection?: { saveData?: boolean; effectiveType?: string };
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    const apply = () => {
+      if (reduced.matches) {
+        video.pause();
+        return;
       }
-    ).connection;
+      // Autoplay can be refused — a fresh tab in the background, iOS in low
+      // power mode — and the promise rejects rather than throwing. Asking
+      // again on the next interaction is the whole recovery.
+      void video.play().catch(() => {});
+    };
 
-    if (connection?.saveData) return;
-    if (connection?.effectiveType && !/4g/.test(connection.effectiveType)) return;
+    apply();
+    reduced.addEventListener('change', apply);
 
-    setPlay(true);
+    // A tab restored from the background often comes back paused.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') apply();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      reduced.removeEventListener('change', apply);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
-
-  if (!play) return null;
 
   return (
     <video
+      ref={ref}
       src={src}
       autoPlay
       muted
       loop
       playsInline
-      // The gradient is already painted; this only has to arrive eventually.
-      preload="none"
+      // Muted autoplay needs the data before it can start; `metadata` would
+      // leave the first frame stalled on a slow connection.
+      preload="auto"
       aria-hidden
       tabIndex={-1}
       onCanPlay={() => setReady(true)}
-      className={`absolute inset-0 size-full object-cover transition-opacity duration-1000 ${
+      onLoadedData={() => setReady(true)}
+      className={`absolute inset-0 size-full object-cover transition-opacity duration-700 ${
         ready ? 'opacity-100' : 'opacity-0'
       }`}
     />

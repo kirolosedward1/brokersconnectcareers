@@ -536,7 +536,13 @@
       "proofLabel": "إجباري في كل إعلان",
       "proofSalary": "الراتب الأساسي",
       "proofCommission": "نسبة العمولة",
-      "proofLeads": "مصدر العملاء"
+      "proofLeads": "مصدر العملاء",
+      "kindClarity": "الوضوح",
+      "kindNiche": "التخصص",
+      "kindPipeline": "المتابعة",
+      "kindVerified": "التوثيق",
+      "kindSeats": "الشواغر",
+      "kindFresh": "الصلاحية"
     }
   },
   "blog": {
