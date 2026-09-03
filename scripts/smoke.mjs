@@ -56,6 +56,7 @@ section('every public route answers');
 for (const path of [
   '/',
   '/jobs',
+  '/employers',
   '/companies',
   '/agents',
   '/blog',
@@ -101,6 +102,7 @@ section('robots and sitemap are absolute and complete');
     locs.some((l) => l.includes('/blog/')),
     `${locs.length} urls, none under /blog/`,
   );
+  check('the employer landing is in it', locs.some((l) => l.endsWith('/employers')));
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +178,19 @@ section('endpoints that change things refuse to on a GET');
     webhook.status === 400 || webhook.status === 401 || webhook.status === 503,
     `got ${webhook.status}`,
   );
+}
+
+// ---------------------------------------------------------------------------
+section('the two landing pages are distinct and cross-linked');
+{
+  const candidate = await get('/');
+  const employer = await get('/employers');
+
+  const h1 = (body) => body.match(/<h1[^>]*>(.*?)<\/h1>/s)?.[1].replace(/<[^>]+>/g, '').trim();
+
+  check('each has its own h1', Boolean(h1(candidate.body)) && h1(candidate.body) !== h1(employer.body), `${h1(candidate.body)} / ${h1(employer.body)}`);
+  check('the candidate page links to the employer one', candidate.body.includes('href="/employers"'));
+  check('and back again', employer.body.includes('href="/"'));
 }
 
 // ---------------------------------------------------------------------------

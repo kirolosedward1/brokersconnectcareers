@@ -501,6 +501,38 @@
       "title": "Browse quickly",
       "byTrack": "By track",
       "byDistrict": "By district"
+    },
+    "tabs": {
+      "label": "Choose your side",
+      "candidates": "I'm looking for work",
+      "employers": "I'm hiring"
+    },
+    "employerHero": {
+      "eyebrow": "For real estate companies in Egypt",
+      "title": "Hire consultants who are actually looking",
+      "subtitle": "Post with the salary, the commission and the lead source spelled out. That clarity is what separates a serious applicant from someone trying their luck.",
+      "cta": "Post a job",
+      "ctaSecondary": "Browse the consultant directory",
+      "trustFree": "Posting is free during launch",
+      "stat1": "consultants in the directory",
+      "stat2": "day listing life",
+      "stat3": "commission on a hire"
+    },
+    "employerWhy": {
+      "title": "Why a listing here brings better people",
+      "subtitle": "Clarity is not a luxury — it is what saves you interviews that were never going anywhere.",
+      "clarityTitle": "They know the terms before they apply",
+      "clarityBody": "Salary, commission and lead source are in the listing, so anyone who applies has already agreed to them. Fewer people walk after the first interview.",
+      "nicheTitle": "Real estate only",
+      "nicheBody": "Not a general job site. Everyone searching here is searching for property work specifically.",
+      "pipelineTitle": "Every applicant in one place",
+      "pipelineBody": "One list, a status per applicant, a WhatsApp button with the opener written, and CVs behind short-lived links.",
+      "verifiedTitle": "Verification counts",
+      "verifiedBody": "Upload your commercial register and tax card for a verified badge, a higher posting cap, and access to the consultant directory.",
+      "seatsTitle": "Say how many seats",
+      "seatsBody": "One opening and twenty-five are different propositions. The number is on the card, and candidates filter on it.",
+      "freshTitle": "Listings close themselves",
+      "freshBody": "Thirty days and it expires automatically, so nobody applies to a role you filled two months ago."
     }
   },
   "blog": {

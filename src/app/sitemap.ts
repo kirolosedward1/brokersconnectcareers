@@ -97,6 +97,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry('/jobs', { changeFrequency: 'hourly', priority: 0.9 }),
     entry('/companies', { changeFrequency: 'daily', priority: 0.6 }),
     entry('/agents', { changeFrequency: 'daily', priority: 0.6 }),
+    entry('/employers', { changeFrequency: 'monthly', priority: 0.8 }),
     entry('/blog', { changeFrequency: 'weekly', priority: 0.6 }),
   ];
 
