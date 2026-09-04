@@ -183,3 +183,37 @@ export async function getDocumentUrl(documentId: string): Promise<ActionResult<{
 
   return { ok: true, data: { url } };
 }
+
+const approvalSchema = z.object({
+  userId: z.string().uuid(),
+  status: z.enum(['approved', 'pending', 'rejected']),
+  note: z.string().trim().max(500).optional(),
+});
+
+/**
+ * Approve, hold or suspend an account.
+ *
+ * Goes through set_account_approval rather than an UPDATE, because the rules
+ * that make this safe — admin only, never an admin as the target, never
+ * yourself — live in that function, and an UPDATE here would be a second place
+ * to keep them. The guard trigger refuses the column to everyone else anyway;
+ * this is the one door.
+ */
+export async function setAccountApproval(input: unknown): Promise<ActionResult> {
+  const parsed = approvalSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { error } = await supabase.rpc('set_account_approval', {
+    p_user: parsed.data.userId,
+    p_status: parsed.data.status,
+    p_note: parsed.data.note ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/admin/users');
+  revalidatePath('/admin');
+  return { ok: true };
+}

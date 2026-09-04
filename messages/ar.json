@@ -367,7 +367,9 @@
     "decisionNote": "سبب القرار (اختياري)",
     "decisionNoteHint": "هيوصل للمتقدم. سطر واضح أحسن بكتير من صمت.",
     "decisionNotePlaceholder": "مثال: الخبرة أقل من المطلوب للدور ده، بس ملفك محفوظ عندنا لأي فرصة جاية.",
-    "decisionNoteSaved": "اتحفظ"
+    "decisionNoteSaved": "اتحفظ",
+    "pendingTitle": "حسابك تحت المراجعة",
+    "pendingBody": "بنراجع بيانات الشركة قبل ما تنشر أول إعلان. كمّل ملف الشركة وارفع السجل التجاري عشان المراجعة تعدّي أسرع."
   },
   "jobForm": {
     "basics": "الأساسيات",
@@ -418,7 +420,20 @@
     "reportReason": "السبب",
     "feature": "تمييز الإعلان",
     "unfeature": "إلغاء التمييز",
-    "postCapBlocked": "الشركة دي مش موثّقة وعندها إعلان فعّال بالفعل. وثّقها الأول أو اقفل إعلانها الحالي."
+    "postCapBlocked": "الشركة دي مش موثّقة وعندها إعلان فعّال بالفعل. وثّقها الأول أو اقفل إعلانها الحالي.",
+    "users": "الحسابات",
+    "usersLede": "الموافقة على الشركات وإدارة كل الحسابات.",
+    "approveAccount": "فعّل الحساب",
+    "suspendAccount": "أوقف الحساب",
+    "confirmReject": "أكّد الإيقاف",
+    "filterAll": "الكل",
+    "filterPending": "مستنية مراجعة",
+    "filterRejected": "موقوفة",
+    "approval": {
+      "approved": "مفعّل",
+      "pending": "تحت المراجعة",
+      "rejected": "موقوف"
+    }
   },
   "reportReason": {
     "fake_listing": "إعلان وهمي",
@@ -734,5 +749,20 @@
     "volumeEgp": "إجمالي المبيعات (جنيه)",
     "recordHint": "أرقام بتقولها انت. المنصة مابتتحقق منها.",
     "completeness": "اكتمال الملف"
+  },
+  "notifications": {
+    "title": "التنبيهات",
+    "lede": "كل اللي حصل على حسابك.",
+    "empty": "مفيش تنبيهات لسه.",
+    "seeAll": "شوف الكل",
+    "markAllRead": "علّم الكل كمقروء",
+    "application_received": "متقدم جديد على {subject}",
+    "applicationMoved": "طلبك في {title} بقى: {status}",
+    "application_moved": "طلبك اتحرّك",
+    "job_published": "إعلان {subject} اتنشر",
+    "job_rejected": "إعلان {subject} محتاج تعديل",
+    "company_verified": "تم توثيق {subject}",
+    "account_approved": "حسابك اتفعّل",
+    "account_rejected": "حسابك اتوقف مؤقتاً"
   }
 }

@@ -163,6 +163,145 @@ report.section('an employer may explain a decision, and nothing more');
   }
 }
 
+report.section('notifications are written by the platform, not by their reader');
+{
+  const live = (
+    await db.query("select id, company_id from jobs where status='active' and expires_at > now() limit 1")
+  ).rows[0];
+  const owner = (
+    await db.query(`select owner_id from companies where id='${live.company_id}'`)
+  ).rows[0].owner_id;
+
+  const before = (
+    await db.query(`select count(*)::int n from notifications where user_id='${owner}'`)
+  ).rows[0].n;
+
+  await db.exec(`insert into applications (job_id, candidate_id, experience_band)
+                 values ('${live.id}', '${OUTSIDER}', 'mid_3_5')
+                 on conflict (job_id, candidate_id) do nothing`);
+
+  const after = (
+    await db.query(`select count(*)::int n from notifications where user_id='${owner}'`)
+  ).rows[0].n;
+  report.check('an application tells the company that owns the listing',
+    after === before + 1, `${before} → ${after}`);
+
+  const app = (
+    await db.query(`select id, candidate_id from applications where job_id='${live.id}' limit 1`)
+  ).rows[0];
+  await db.exec(`update applications set status='shortlisted' where id='${app.id}'`);
+  const moved = (
+    await db.query(`select kind, payload->>'status' as status from notifications
+                     where user_id='${app.candidate_id}' order by created_at desc limit 1`)
+  ).rows[0];
+  report.check('and moving it tells the candidate',
+    moved?.kind === 'application_moved' && moved.status === 'shortlisted', JSON.stringify(moved));
+
+  // The whole reason there is no insert policy: a row that looks like it came
+  // from the platform must not be writable by the person reading it.
+  const forge = await as(candidate,
+    `insert into notifications (user_id, kind) values ('${candidate}','account_approved') returning id`);
+  report.check('nobody can write their own notification',
+    !forge.ok, forge.ok ? 'insert was allowed' : forge.error);
+
+  const tamper = await as(app.candidate_id,
+    `update notifications set kind='account_approved' where user_id='${app.candidate_id}'`);
+  report.check('nor rewrite one they were sent',
+    !tamper.ok && /only read_at is user-writable/.test(tamper.error ?? ''),
+    tamper.ok ? 'update was allowed' : tamper.error);
+
+  const read = await as(app.candidate_id,
+    `update notifications set read_at=now() where user_id='${app.candidate_id}' returning id`);
+  report.check('but can mark it read', read.ok && read.rows.length >= 1, read.error);
+
+  const peek = await as(candidate,
+    `select count(*)::int as n from notifications where user_id <> '${candidate}'`);
+  report.check("and sees nobody else's", peek.ok && peek.rows[0].n === 0, JSON.stringify(peek.rows[0]));
+
+  const anon = await as(null, 'select count(*)::int as n from notifications', 'anon');
+  report.check('anonymous sees none', !anon.ok || anon.rows[0].n === 0, JSON.stringify(anon.rows[0]));
+}
+
+report.section('a company waits for a person; a consultant does not');
+{
+  const roles = (
+    await db.query('select role, approval_status, count(*)::int n from profiles group by 1,2')
+  ).rows;
+  const at = (role, status) => roles.find((r) => r.role === role && r.approval_status === status)?.n ?? 0;
+
+  report.check('every candidate is approved on arrival',
+    at('candidate', 'pending') === 0 && at('candidate', 'approved') > 0, JSON.stringify(roles));
+
+  // The seed approves all but one, so both states are exercised.
+  report.check('and employers are held for review',
+    at('employer', 'pending') > 0, JSON.stringify(roles));
+
+  const PENDING = '99999999-0000-0000-0000-000000000001';
+  const PENDING_CO = 'bbbbbbbb-0000-0000-0000-000000000001';
+  const district = (await db.query('select id from districts limit 1')).rows[0].id;
+
+  await db.exec(`
+    insert into auth.users (id, email) values ('${PENDING}', 'pending@demo.test');
+    insert into profiles (id, role, full_name, whatsapp_phone)
+      values ('${PENDING}', 'employer', 'شركة تحت المراجعة', '+201000000099');
+    insert into companies (id, owner_id, name_ar, slug)
+      values ('${PENDING_CO}', '${PENDING}', 'شركة تحت المراجعة', 'pending-co-1');
+  `);
+
+  const started = (
+    await db.query(`select approval_status from profiles where id = '${PENDING}'`)
+  ).rows[0].approval_status;
+  report.check('a new company account starts pending', started === 'pending', started);
+
+  const selfApprove = await as(PENDING,
+    `update profiles set approval_status='approved' where id='${PENDING}'`);
+  report.check('and cannot approve itself',
+    !selfApprove.ok && /approval is an admin action/.test(selfApprove.error ?? ''),
+    selfApprove.ok ? 'update was allowed' : selfApprove.error);
+
+  const draft = (slug) => `insert into jobs
+    (company_id, title_ar, slug, track, employment_type, experience_band, district_id,
+     commission_type, leads_source, description_ar, status)
+    values ('${PENDING_CO}','وظيفة','${slug}','primary','full_time','junior_1_3',${district},
+            'split','company_provided','وصف','pending_review') returning id`;
+
+  // The gate that matters. A pending company can still build its profile and
+  // upload documents — it just cannot put a listing in front of anyone.
+  const post = await as(PENDING, draft('pending-job-1'));
+  report.check('a pending company cannot create a listing',
+    !post.ok && /row-level security/.test(post.error ?? ''),
+    post.ok ? 'insert was allowed' : post.error);
+
+  const byEmployer = await as(employerVerified, `select public.set_account_approval('${PENDING}','approved')`);
+  report.check('an employer cannot approve anybody',
+    !byEmployer.ok, byEmployer.ok ? 'call was allowed' : byEmployer.error);
+
+  const byCandidate = await as(candidate, `select public.set_account_approval('${PENDING}','approved')`);
+  report.check('nor can a candidate', !byCandidate.ok, byCandidate.ok ? 'call was allowed' : byCandidate.error);
+
+  const selfAdmin = await as(admin, `select public.set_account_approval('${admin}','rejected')`);
+  report.check('and an admin cannot change their own',
+    !selfAdmin.ok && /own approval/.test(selfAdmin.error ?? ''),
+    selfAdmin.ok ? 'call was allowed' : selfAdmin.error);
+
+  await db.exec(`update profiles set approval_status='approved' where id='${PENDING}'`);
+  const post2 = await as(PENDING, draft('pending-job-2'));
+  report.check('once approved, the same company can', post2.ok, post2.error);
+
+  // Suspension has to bite for candidates too, or moderation has no answer to
+  // somebody spraying applications.
+  await db.exec(`update profiles set approval_status='rejected' where id='${candidate}'`);
+  const live = (
+    await db.query("select id from jobs where status='active' and expires_at > now() limit 1")
+  ).rows[0].id;
+  const apply = await as(candidate,
+    `insert into applications (job_id, candidate_id, experience_band)
+     values ('${live}','${candidate}','mid_3_5') returning id`);
+  report.check('a suspended candidate cannot apply',
+    !apply.ok, apply.ok ? 'insert was allowed' : apply.error);
+  await db.exec(`update profiles set approval_status='approved' where id='${candidate}'`);
+}
+
 report.section('only candidates apply');
 {
   const liveOther = (

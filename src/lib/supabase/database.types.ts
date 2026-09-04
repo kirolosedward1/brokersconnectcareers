@@ -55,6 +55,15 @@ export type ProfileRow = Timestamped & {
   notify_digest: boolean;
   /** Credential for the unsubscribe link, which has no session to rely on. */
   unsubscribe_token: string;
+  /**
+   * Whether this account may act. Candidates arrive approved; companies wait
+   * for an admin, because the side that collects CVs and phone numbers is the
+   * side worth checking by hand. Separate from company verification, which
+   * asks whether the papers are real rather than whether the account may post.
+   */
+  approval_status: ApprovalStatus;
+  approval_note: string | null;
+  approved_at: string | null;
 };
 
 export type GovernorateRow = {
@@ -216,6 +225,42 @@ export type EmployerTrend =
 
 export type AdminTrend = {
   days: { d: string; signups: number; published: number; applications: number }[];
+};
+
+export type ApprovalStatus = 'approved' | 'pending' | 'rejected';
+
+export type NotificationKind =
+  | 'application_received'
+  | 'application_moved'
+  | 'job_published'
+  | 'job_rejected'
+  | 'company_verified'
+  | 'account_approved'
+  | 'account_rejected';
+
+/**
+ * The payload holds data, never a rendered sentence — the site is read in two
+ * languages and a sentence stored at write time is wrong for half the readers
+ * forever. Every field is optional because it is a snapshot of whatever the
+ * event had to hand.
+ */
+export type NotificationRow = {
+  id: string;
+  user_id: string;
+  kind: NotificationKind;
+  payload: {
+    job_id?: string;
+    slug?: string;
+    title_ar?: string;
+    title_en?: string | null;
+    name_ar?: string;
+    name_en?: string | null;
+    status?: string;
+    note?: string | null;
+  };
+  href: string | null;
+  read_at: string | null;
+  created_at: string;
 };
 
 export type AgentExperienceRow = Timestamped & {
@@ -391,6 +436,13 @@ export type Database = {
       >;
       job_developers: Table<{ job_id: string; developer_id: number }, { job_id: string; developer_id: number }>;
       applications: Table<ApplicationRow, Insertable<ApplicationRow, 'job_id' | 'candidate_id'>>;
+      /**
+       * No Insertable worth naming: nothing in the app writes one. Every row
+       * comes from a trigger, and the table has no insert policy on purpose —
+       * an account that can write its own notification can write one that
+       * appears to come from the platform.
+       */
+      notifications: Table<NotificationRow, never>;
       agent_experience: Table<
         AgentExperienceRow,
         Insertable<AgentExperienceRow, 'agent_id' | 'company_name' | 'title' | 'started'>
@@ -446,6 +498,12 @@ export type Database = {
       admin_summary: { Args: Empty; Returns: AdminSummary };
       employer_trend: { Args: Empty; Returns: EmployerTrend };
       admin_trend: { Args: Empty; Returns: AdminTrend };
+      set_account_approval: {
+        Args: { p_user: string; p_status: ApprovalStatus; p_note?: string | null };
+        Returns: undefined;
+      };
+      /** Returns how many rows it marked, so the caller can say nothing changed. */
+      mark_notifications_read: { Args: Empty; Returns: number };
       /**
        * Returns what happened rather than void: the webhook needs to tell a
        * first delivery from a retry, and every outcome here is a 200.

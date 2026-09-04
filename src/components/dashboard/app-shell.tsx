@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  Bell,
   Bookmark,
   Briefcase,
   Building2,
@@ -14,6 +15,7 @@ import {
   PanelLeftClose,
   Settings,
   ShieldCheck,
+  UserCog,
   UserRound,
   X,
 } from 'lucide-react';
@@ -41,6 +43,8 @@ const ICONS = {
   queue: FileCheck2,
   reports: Flag,
   admin: ShieldCheck,
+  users: UserCog,
+  notifications: Bell,
   settings: Settings,
 } as const;
 
@@ -70,12 +74,20 @@ export function AppShell({
   name,
   roleLabel,
   locale,
+  bell,
   children,
 }: {
   groups: AppNavGroup[];
   name: string;
   roleLabel: string;
   locale: Locale;
+  /**
+   * Server-rendered, and passed in rather than fetched here. The count and the
+   * list are read under the viewer's own session in the layout; duplicating
+   * that in client state would be a second source of truth that goes stale the
+   * moment anything else marks one read.
+   */
+  bell?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const t = useTranslations('dashboard');
@@ -220,6 +232,8 @@ export function AppShell({
           </button>
 
           <div className="ms-auto flex items-center gap-3">
+            {bell}
+
             <div className="text-end">
               <p className="text-sm font-medium leading-tight">{name}</p>
               <p className="text-xs text-muted-foreground">{roleLabel}</p>

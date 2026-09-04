@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import {
   AlertTriangle,
+  Clock,
   BadgeCheck,
   CreditCard,
   Eye,
@@ -46,7 +47,7 @@ export default async function EmployerOverviewPage({
   const locale = asLocale((await params).locale);
   setRequestLocale(locale);
 
-  await requireEmployer(locale);
+  const viewer = await requireEmployer(locale);
   const supabase = await createClient();
 
   // Two round trips that do not depend on each other, so they go together.
@@ -59,6 +60,7 @@ export default async function EmployerOverviewPage({
 
   const t = await getTranslations('dashboard');
   const tCompanies = await getTranslations('companies');
+  const tEmployer = await getTranslations('employer');
   const n = (value: number) => formatNumber(value, locale);
 
   if (!s || !s.has_company) {
@@ -101,6 +103,23 @@ export default async function EmployerOverviewPage({
         <h1 className="text-2xl font-bold">{t('overview')}</h1>
         <p className="mt-1 text-muted-foreground">{t('employerLede')}</p>
       </header>
+
+      {/* Said once, at the top, in the place the work is. A company whose
+          account is still being reviewed will otherwise discover it by having
+          the listing form refuse them, with no explanation of what to do about
+          it — so this says what is happening and what moves it along. */}
+      {viewer.profile.approval_status !== 'approved' ? (
+        <div className="rounded-2xl border border-warning/40 bg-warning-muted p-5">
+          <p className="flex items-center gap-2 font-semibold">
+            <Clock className="size-4" aria-hidden />
+            {tEmployer('pendingTitle')}
+          </p>
+          <p className="mt-2 text-sm leading-relaxed">{tEmployer('pendingBody')}</p>
+          <Button asChild size="sm" variant="outline" className="mt-4">
+            <Link href="/employer/company">{tEmployer('company')}</Link>
+          </Button>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <StatTile

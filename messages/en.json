@@ -367,7 +367,9 @@
     "decisionNote": "Reason (optional)",
     "decisionNoteHint": "The applicant sees this. One clear line beats silence.",
     "decisionNotePlaceholder": "e.g. Less experience than this role needs — we have kept your profile for future openings.",
-    "decisionNoteSaved": "Saved"
+    "decisionNoteSaved": "Saved",
+    "pendingTitle": "Your account is under review",
+    "pendingBody": "We check company details before the first listing goes out. Complete your company profile and upload your commercial registry to move it along."
   },
   "jobForm": {
     "basics": "Basics",
@@ -418,7 +420,20 @@
     "reportReason": "Reason",
     "feature": "Feature listing",
     "unfeature": "Remove feature",
-    "postCapBlocked": "This company is unverified and already has an active listing. Verify it first, or close the existing post."
+    "postCapBlocked": "This company is unverified and already has an active listing. Verify it first, or close the existing post.",
+    "users": "Accounts",
+    "usersLede": "Approve companies and manage every account.",
+    "approveAccount": "Approve",
+    "suspendAccount": "Suspend",
+    "confirmReject": "Confirm suspension",
+    "filterAll": "All",
+    "filterPending": "Awaiting review",
+    "filterRejected": "Suspended",
+    "approval": {
+      "approved": "Active",
+      "pending": "Under review",
+      "rejected": "Suspended"
+    }
   },
   "reportReason": {
     "fake_listing": "Fake listing",
@@ -734,5 +749,20 @@
     "volumeEgp": "Total closed value (EGP)",
     "recordHint": "Self-reported. The platform does not verify these.",
     "completeness": "Profile completeness"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "lede": "Everything that happened on your account.",
+    "empty": "Nothing yet.",
+    "seeAll": "See all",
+    "markAllRead": "Mark all read",
+    "application_received": "New applicant for {subject}",
+    "applicationMoved": "Your application for {title} is now: {status}",
+    "application_moved": "Your application moved",
+    "job_published": "{subject} is live",
+    "job_rejected": "{subject} needs changes",
+    "company_verified": "{subject} is verified",
+    "account_approved": "Your account is active",
+    "account_rejected": "Your account is suspended"
   }
 }

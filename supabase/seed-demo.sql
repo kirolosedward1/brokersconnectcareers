@@ -350,6 +350,22 @@ begin
   where slug in ('senior-sales-manager-new-capital-693189', 'property-consultant-6th-of-october-765377');
 
   -- ---------------------------------------------------------------------------
+  -- Approvals
+  --
+  -- Every employer account starts pending now (migration 16), which would
+  -- leave the demo company unable to post the listings inserted above. These
+  -- represent established companies, so they are approved — except the last
+  -- one, deliberately, so the admin's review queue has something real in it to
+  -- look at rather than an empty state.
+  -- ---------------------------------------------------------------------------
+
+  update profiles
+     set approval_status = 'approved', approved_at = now() - interval '20 days'
+   where id in (select value::uuid from jsonb_each_text(u))
+     and role = 'employer'
+     and id <> (u->>'employer7')::uuid;
+
+  -- ---------------------------------------------------------------------------
   -- History, so the thirty-day charts have something to draw.
   --
   -- Everything above lands in one transaction: every account, listing and
