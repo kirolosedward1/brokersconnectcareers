@@ -248,7 +248,13 @@
     "whatsappPlaceholder": "+201001234567",
     "locale": "لغة الواجهة",
     "submit": "يلا نبدأ",
-    "roleLocked": "مش هتقدر تغيّر نوع الحساب بعد ما تعمله."
+    "roleLocked": "مش هتقدر تغيّر نوع الحساب بعد ما تعمله.",
+    "companySection": "بيانات الشركة",
+    "companyName": "اسم الشركة",
+    "companyWebsite": "الموقع الإلكتروني",
+    "companyDistrict": "المنطقة",
+    "companyHeadcount": "حجم الشركة",
+    "companyReviewNote": "بنراجع بيانات كل شركة قبل أول إعلان. ده بياخد وقت قصير، وهيوصلك تنبيه أول ما يخلص."
   },
   "dashboard": {
     "title": "لوحة التحكم",

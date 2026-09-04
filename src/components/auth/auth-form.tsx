@@ -54,7 +54,19 @@ export function AuthForm({
   // Onboarding is where a new account chooses its role; if the door already
   // implied one, hand it over. An existing account skips onboarding entirely,
   // so this can never override a stored role.
-  const onboarding = audience ? `/onboarding?role=${audience}` : '/onboarding';
+  /**
+   * An object, not a string with a `?` in it.
+   *
+   * next-intl's router takes the string form as a whole pathname, so
+   * `/onboarding?role=employer` arrived as a path with no query and the role
+   * was silently dropped — every company that came through the employer door
+   * landed on onboarding with "consultant" pre-selected. The href for the
+   * OAuth callback still has to be a string, hence the two shapes.
+   */
+  const onboarding = audience
+    ? ({ pathname: '/onboarding', query: { role: audience } } as const)
+    : ({ pathname: '/onboarding' } as const);
+  const onboardingHref = audience ? `/onboarding?role=${audience}` : '/onboarding';
 
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
@@ -146,7 +158,7 @@ export function AuthForm({
     startTransition(async () => {
       const callback = new URL('/auth/callback', window.location.origin);
       if (next) callback.searchParams.set('next', next);
-      else if (audience) callback.searchParams.set('next', onboarding);
+      else if (audience) callback.searchParams.set('next', onboardingHref);
 
       const { error: oauthError } = await createClient().auth.signInWithOAuth({
         provider: 'google',

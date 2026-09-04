@@ -248,7 +248,13 @@
     "whatsappPlaceholder": "+201001234567",
     "locale": "Interface language",
     "submit": "Get started",
-    "roleLocked": "Account type cannot be changed once set."
+    "roleLocked": "Account type cannot be changed once set.",
+    "companySection": "Company details",
+    "companyName": "Company name",
+    "companyWebsite": "Website",
+    "companyDistrict": "Area",
+    "companyHeadcount": "Company size",
+    "companyReviewNote": "We review every company before its first listing. It does not take long, and you will be notified when it is done."
   },
   "dashboard": {
     "title": "Dashboard",

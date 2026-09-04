@@ -7,24 +7,31 @@ import { useRouter } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select } from '@/components/ui/field';
+import { localized } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
+import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { completeOnboarding } from '@/lib/actions/onboarding';
+import type { DistrictRow } from '@/lib/supabase/database.types';
 
 export function OnboardingForm({
   locale,
   defaultName,
   defaultRole,
+  districts,
   next,
 }: {
   locale: Locale;
   defaultName: string;
   /** Pre-selects the account type when the sign-up door already implied one. */
   defaultRole?: 'candidate' | 'employer';
+  /** For the company block, which only appears for an employer. */
+  districts: DistrictRow[];
   next?: string;
 }) {
   const t = useTranslations('onboarding');
   const tValidation = useTranslations('validation');
   const tCommon = useTranslations('common');
+  const tHeadcount = useTranslations('companies.headcountBand');
 
   const router = useRouter();
   const [role, setRole] = useState<'candidate' | 'employer'>(defaultRole ?? 'candidate');
@@ -41,6 +48,15 @@ export function OnboardingForm({
         fullName: String(form.get('fullName') ?? ''),
         whatsapp: String(form.get('whatsapp') ?? ''),
         locale: String(form.get('locale') ?? locale),
+        company:
+          role === 'employer'
+            ? {
+                nameAr: String(form.get('companyName') ?? ''),
+                website: String(form.get('companyWebsite') ?? '') || null,
+                headcountBand: String(form.get('companyHeadcount') ?? '') || null,
+                districtId: String(form.get('companyDistrict') ?? '') || null,
+              }
+            : undefined,
       });
 
       if (!result.ok) {
@@ -48,9 +64,11 @@ export function OnboardingForm({
         return;
       }
 
-      // Employers need a company before they can do anything useful.
+      // The company now exists by the time we get here, so an employer lands
+      // on their overview — where the "under review" banner is — rather than on
+      // a company form asking again for what they just typed.
       const destination =
-        next ?? (result.data!.role === 'employer' ? '/employer/company' : '/dashboard/applications');
+        next ?? (result.data!.role === 'employer' ? '/employer' : '/dashboard/applications');
       router.replace(destination, { locale });
       router.refresh();
     });
@@ -112,6 +130,61 @@ export function OnboardingForm({
           className="numeral"
         />
       </Field>
+
+      {/* Only for a company, and only the fields a reviewer needs. The account
+          is held for review, and a row carrying an email and nothing else
+          gives whoever opens the queue nothing to decide on. */}
+      {role === 'employer' ? (
+        <fieldset className="space-y-4 rounded-xl border border-border bg-muted/30 p-4">
+          <legend className="px-1 text-sm font-medium">{t('companySection')}</legend>
+
+          <Field
+            label={t('companyName')}
+            htmlFor="companyName"
+            error={errors.company ? tValidation('required') : undefined}
+          >
+            <Input id="companyName" name="companyName" required maxLength={160} />
+          </Field>
+
+          <Field label={t('companyWebsite')} hint={tCommon('optional')} htmlFor="companyWebsite">
+            <Input
+              id="companyWebsite"
+              name="companyWebsite"
+              type="url"
+              dir="ltr"
+              inputMode="url"
+              placeholder="https://"
+              maxLength={200}
+            />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t('companyDistrict')} htmlFor="companyDistrict">
+              <Select id="companyDistrict" name="companyDistrict" defaultValue="">
+                <option value="">{tCommon('optional')}</option>
+                {districts.map((district) => (
+                  <option key={district.id} value={district.id}>
+                    {localized(locale, district.name_ar, district.name_en)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label={t('companyHeadcount')} htmlFor="companyHeadcount">
+              <Select id="companyHeadcount" name="companyHeadcount" defaultValue="">
+                <option value="">{tCommon('optional')}</option>
+                {HEADCOUNT_BANDS.map((band) => (
+                  <option key={band} value={band}>
+                    {tHeadcount(band)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+
+          <p className="text-xs text-muted-foreground">{t('companyReviewNote')}</p>
+        </fieldset>
+      ) : null}
 
       <Field label={t('locale')} htmlFor="locale">
         <Select id="locale" name="locale" defaultValue={locale}>

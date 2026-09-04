@@ -3,6 +3,8 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { getViewer } from '@/lib/auth';
+import { getDistricts } from '@/lib/queries/taxonomy';
+import { optional } from '@/lib/queries/error';
 import { OnboardingForm } from '@/components/auth/onboarding-form';
 import { AuthShell } from '../auth-shell';
 
@@ -48,6 +50,10 @@ export default async function OnboardingPage({
   const defaultRole = role === 'employer' || role === 'candidate' ? role : undefined;
   const t = await getTranslations('onboarding');
 
+  // Needed only for the company block, but fetched unconditionally: the role
+  // is chosen in the browser, so the server cannot know which form is coming.
+  const districts = await optional(getDistricts(), []);
+
   return (
     <AuthShell>
         <div className="mx-auto w-full max-w-lg px-4">
@@ -58,6 +64,7 @@ export default async function OnboardingPage({
             locale={locale}
             defaultName={viewer!.suggestedName}
             defaultRole={defaultRole}
+            districts={districts}
             next={next && next.startsWith('/') ? next : undefined}
           />
         </div>
