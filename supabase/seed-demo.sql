@@ -349,5 +349,99 @@ begin
   select (u->>'candidate1')::uuid, id from jobs
   where slug in ('senior-sales-manager-new-capital-693189', 'property-consultant-6th-of-october-765377');
 
+  -- ---------------------------------------------------------------------------
+  -- History, so the thirty-day charts have something to draw.
+  --
+  -- Everything above lands in one transaction: every account, listing and
+  -- application carries the same second. A month-long chart drawn from that is
+  -- one spike against twenty-nine empty days, which reads as a broken chart
+  -- rather than a quiet month.
+  --
+  -- The offsets are arithmetic on a row number, not random, so reseeding
+  -- reproduces the same picture and yesterday's screenshot still compares.
+  --
+  -- Every statement here names the demo rows explicitly. The guard at the top
+  -- of this file means it should never meet a database with real accounts in
+  -- it — but "should never" is not a reason for an UPDATE with no WHERE, and
+  -- rewriting a real member's join date would be silent and irreversible.
+  --
+  -- Order matters: accounts move first, then listings, and applications are
+  -- generated last from both — clamped so nobody applies to a listing that had
+  -- not been published, or from an account that did not yet exist.
+  -- ---------------------------------------------------------------------------
+
+  -- Accounts across roughly two months, so the admin sign-ups series has a
+  -- slope rather than a wall on day thirty.
+  with ordered as (
+    select id, row_number() over (order by id) as rn
+      from profiles
+     where id in (select value::uuid from jsonb_each_text(u))
+  )
+  update profiles p
+     set created_at = now() - (((o.rn * 7) % 58) || ' days')::interval
+    from ordered o
+   where o.id = p.id;
+
+  with ordered as (
+    select id, row_number() over (order by slug) as rn
+      from jobs
+     where status = 'active'
+       and company_id = any (array[co_rowad, co_hub, co_capital, co_nile,
+                                   co_safwa, co_westgate, co_skyline])
+  )
+  update jobs j set
+    published_at = now() - (((o.rn * 3) % 25) || ' days')::interval,
+    expires_at   = now() - (((o.rn * 3) % 25) || ' days')::interval + interval '30 days',
+    -- Views run well ahead of applications, which is the only reason the
+    -- view-to-apply comparison on the employer dashboard says anything.
+    view_count   = 60 + (o.rn * 47) % 400
+  from ordered o
+  where o.id = j.id;
+
+  -- A month of arrivals rather than thirty at once. `on conflict do nothing`
+  -- because a candidate can only apply to a listing once and the pipeline
+  -- inserted above already claimed some of these pairs.
+  insert into applications (job_id, candidate_id, status, experience_band, created_at)
+  select j.id,
+         c.id,
+         'new'::application_status,
+         'junior_1_3'::experience_band,
+         greatest(
+           now() - (((j.rn * 7 + c.rn * 3) % 27) || ' days')::interval
+                 - (((j.rn * 5 + c.rn * 11) % 11) || ' hours')::interval,
+           j.published_at + interval '4 hours',
+           c.created_at   + interval '2 hours'
+         )
+    from (select id, published_at, row_number() over (order by slug) as rn
+            from jobs
+           where status = 'active'
+             and company_id = any (array[co_rowad, co_hub, co_capital, co_nile,
+                                         co_safwa, co_westgate, co_skyline])) j
+    cross join (select id, created_at, row_number() over (order by id) as rn
+                  from profiles
+                 where role = 'candidate'
+                   and id in (select value::uuid from jsonb_each_text(u))) c
+   where (j.rn * 3 + c.rn * 5) % 4 = 0
+  on conflict (job_id, candidate_id) do nothing;
+
+  -- The hand-written pipeline still carries this second. Spread it over the
+  -- last week so the recent end of the chart is not a single tall bar.
+  with ordered as (
+    select a.id, a.job_id, row_number() over (order by a.id) as rn
+      from applications a
+      join jobs j on j.id = a.job_id
+     where a.created_at > now() - interval '1 minute'
+       and j.company_id = any (array[co_rowad, co_hub, co_capital, co_nile,
+                                     co_safwa, co_westgate, co_skyline])
+  )
+  update applications a
+     set created_at = greatest(
+           now() - ((o.rn % 7) || ' days')::interval
+                 - (((o.rn * 5) % 19) || ' hours')::interval,
+           (select j.published_at + interval '6 hours' from jobs j where j.id = o.job_id)
+         )
+    from ordered o
+   where o.id = a.id;
+
   raise notice 'demo data inserted';
 end $$;

@@ -12,10 +12,11 @@ import {
 } from 'lucide-react';
 import { asLocale } from '@/i18n/routing';
 import { StatTile } from '@/components/dashboard/stat-tile';
+import { TrendChart } from '@/components/dashboard/trend-chart';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
-import type { AdminSummary } from '@/lib/supabase/database.types';
+import type { AdminSummary, AdminTrend } from '@/lib/supabase/database.types';
 
 export async function generateMetadata({
   params,
@@ -45,8 +46,12 @@ export default async function AdminOverviewPage({
   await requireAdmin(locale);
   const supabase = await createClient();
 
-  const { data } = await supabase.rpc('admin_summary');
+  const [{ data }, { data: trendData }] = await Promise.all([
+    supabase.rpc('admin_summary'),
+    supabase.rpc('admin_trend'),
+  ]);
   const s = (data ?? null) as AdminSummary | null;
+  const trend = (trendData ?? null) as AdminTrend | null;
 
   const t = await getTranslations('dashboard');
   const n = (value: number) => formatNumber(value, locale);
@@ -112,6 +117,40 @@ export default async function AdminOverviewPage({
           icon={Building2}
         />
       </div>
+
+      {/* One axis, three series. Whether the two sides of the marketplace are
+          growing at the same rate is the question here, and it is invisible
+          when each number sits on its own tile. */}
+      {trend ? (
+        <TrendChart
+          id="admin-activity"
+          title={t('trendActivityTitle')}
+          hint={t('trendActivityHint')}
+          days={trend.days.map((day) => day.d)}
+          series={[
+            {
+              key: 'applications',
+              label: t('statApplications'),
+              tone: 'primary',
+              values: trend.days.map((day) => day.applications),
+            },
+            {
+              key: 'published',
+              label: t('trendPublished'),
+              tone: 'success',
+              values: trend.days.map((day) => day.published),
+            },
+            {
+              key: 'signups',
+              label: t('trendSignups'),
+              tone: 'warning',
+              values: trend.days.map((day) => day.signups),
+            },
+          ]}
+          locale={locale}
+          empty={t('trendEmpty')}
+        />
+      ) : null}
     </div>
   );
 }

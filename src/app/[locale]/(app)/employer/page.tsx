@@ -14,10 +14,12 @@ import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { EmptyDashboard, StatTile } from '@/components/dashboard/stat-tile';
+import { TrendChart } from '@/components/dashboard/trend-chart';
+import { ConversionBars } from '@/components/dashboard/conversion-bars';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
-import type { EmployerSummary } from '@/lib/supabase/database.types';
+import type { EmployerSummary, EmployerTrend } from '@/lib/supabase/database.types';
 
 export async function generateMetadata({
   params,
@@ -47,8 +49,13 @@ export default async function EmployerOverviewPage({
   await requireEmployer(locale);
   const supabase = await createClient();
 
-  const { data } = await supabase.rpc('employer_summary');
+  // Two round trips that do not depend on each other, so they go together.
+  const [{ data }, { data: trendData }] = await Promise.all([
+    supabase.rpc('employer_summary'),
+    supabase.rpc('employer_trend'),
+  ]);
   const s = (data ?? null) as EmployerSummary | null;
+  const trend = (trendData ?? null) as EmployerTrend | null;
 
   const t = await getTranslations('dashboard');
   const tCompanies = await getTranslations('companies');
@@ -157,6 +164,31 @@ export default async function EmployerOverviewPage({
           tone={s.verification === 'verified' ? 'good' : 'warn'}
         />
       </div>
+
+      {/* Below the tiles, not above them. The numbers are what needs acting on
+          today; the shape of the month is context for them. */}
+      {trend && trend.has_company ? (
+        <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+          <TrendChart
+            id="employer-applications"
+            title={t('trendApplicationsTitle')}
+            hint={t('trendApplicationsHint')}
+            days={trend.days.map((day) => day.d)}
+            series={[
+              {
+                key: 'applications',
+                label: t('statApplicants'),
+                tone: 'primary',
+                values: trend.days.map((day) => day.applications),
+              },
+            ]}
+            locale={locale}
+            empty={t('trendEmpty')}
+          />
+
+          <ConversionBars rows={trend.conversion} locale={locale} />
+        </div>
+      ) : null}
     </div>
   );
 }

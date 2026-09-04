@@ -290,7 +290,19 @@
     "vsLastWeek": "مقارنة بالأسبوع اللي فات",
     "statSeats": "شواغر معلنة",
     "statVerification": "حالة التوثيق",
-    "statCompanies": "إجمالي الشركات"
+    "statCompanies": "إجمالي الشركات",
+    "trendApplicationsTitle": "المتقدمين خلال 30 يوم",
+    "trendApplicationsHint": "كل يوم لوحده، بما فيهم الأيام اللي مافيهاش تقديمات.",
+    "trendActivityTitle": "نشاط المنصة خلال 30 يوم",
+    "trendActivityHint": "التقديمات والإعلانات والحسابات الجديدة على نفس المحور.",
+    "trendPublished": "إعلانات اتنشرت",
+    "trendSignups": "حسابات جديدة",
+    "trendEmpty": "مافيش نشاط خلال آخر 30 يوم.",
+    "conversionTitle": "من مشاهدة لتقديم",
+    "conversionHint": "نسبة اللي شافوا الإعلان وقدّموا فعلاً، مقارنة بين إعلاناتك المنشورة.",
+    "conversionEmpty": "مفيش إعلانات منشورة دلوقتي.",
+    "conversionCounts": "تقديمات: {applications} · مشاهدات: {views}",
+    "conversionAll": "كل الإعلانات"
   },
   "applicationStatus": {
     "new": "جديد",

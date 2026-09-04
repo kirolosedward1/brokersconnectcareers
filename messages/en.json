@@ -290,7 +290,19 @@
     "vsLastWeek": "vs last week",
     "statSeats": "Seats advertised",
     "statVerification": "Verification",
-    "statCompanies": "Companies"
+    "statCompanies": "Companies",
+    "trendApplicationsTitle": "Applicants over 30 days",
+    "trendApplicationsHint": "Every day counted, including the ones with nothing.",
+    "trendActivityTitle": "Platform activity over 30 days",
+    "trendActivityHint": "Applications, listings and new accounts on one axis.",
+    "trendPublished": "Listings published",
+    "trendSignups": "New accounts",
+    "trendEmpty": "No activity in the last 30 days.",
+    "conversionTitle": "Views to applications",
+    "conversionHint": "How many readers went on to apply — your live listings, compared.",
+    "conversionEmpty": "No live listings right now.",
+    "conversionCounts": "Applications: {applications} · Views: {views}",
+    "conversionAll": "All listings"
   },
   "applicationStatus": {
     "new": "New",

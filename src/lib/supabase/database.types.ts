@@ -197,6 +197,27 @@ export type AdminSummary = {
   applications_7d: number;
 };
 
+export type EmployerConversionRow = {
+  id: string;
+  slug: string;
+  title_ar: string;
+  title_en: string | null;
+  views: number;
+  applications: number;
+};
+
+export type EmployerTrend =
+  | { has_company: false }
+  | {
+      has_company: true;
+      days: { d: string; applications: number }[];
+      conversion: EmployerConversionRow[];
+    };
+
+export type AdminTrend = {
+  days: { d: string; signups: number; published: number; applications: number }[];
+};
+
 export type AgentExperienceRow = Timestamped & {
   id: string;
   agent_id: string;
@@ -423,6 +444,8 @@ export type Database = {
       candidate_summary: { Args: Empty; Returns: CandidateSummary };
       employer_summary: { Args: Empty; Returns: EmployerSummary };
       admin_summary: { Args: Empty; Returns: AdminSummary };
+      employer_trend: { Args: Empty; Returns: EmployerTrend };
+      admin_trend: { Args: Empty; Returns: AdminTrend };
       /**
        * Returns what happened rather than void: the webhook needs to tell a
        * first delivery from a retry, and every outcome here is a 200.

@@ -29,6 +29,15 @@ export function formatDate(value: string | Date, locale: string): string {
   }).format(date);
 }
 
+/** Day and month only — for a chart axis, where the year is the same on every tick. */
+export function formatDayMonth(value: string | Date, locale: string): string {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  return new Intl.DateTimeFormat(NUMBER_LOCALE(locale), {
+    day: 'numeric',
+    month: 'short',
+  }).format(date);
+}
+
 /** ISO 8601 date, for schema.org and <time datetime>. */
 export function isoDate(value: string | Date | null | undefined): string | undefined {
   if (!value) return undefined;

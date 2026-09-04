@@ -103,8 +103,12 @@ report.section('unsubscribe tokens are not user-writable');
 
 report.section('applications are private to the two parties');
 {
+  // The point is that such an application exists, not that this line created
+  // it — the demo seed spreads applications across candidates and may already
+  // have claimed this pair.
   await db.exec(`insert into applications (job_id, candidate_id, experience_band)
-                 values ('${liveJob}', '${candidate}', 'mid_3_5')`);
+                 values ('${liveJob}', '${candidate}', 'mid_3_5')
+                 on conflict (job_id, candidate_id) do nothing`);
 
   const own = await as(candidate, 'select id, candidate_id from applications');
   report.check('the candidate sees their own and only their own',
@@ -164,7 +168,23 @@ report.section('an employer reaches their applicant, and only their applicant');
   const visible = await as(employerVerified, `select whatsapp_phone from profiles where id='${candidate}'`);
   report.check('the hiring employer sees the phone number', visible.rows.length === 1);
 
-  const hidden = await as(employerUnverified, `select whatsapp_phone from profiles where id='${candidate}'`);
+  // Computed, not a fixture. The seed spreads applications across companies,
+  // so "an employer this candidate never applied to" is a query — pinning it
+  // to a named account tests whichever relationship the seed happens to have.
+  const unrelated = (
+    await db.query(`
+      select c.owner_id from companies c
+      where not exists (
+        select 1 from applications a
+          join jobs j on j.id = a.job_id
+         where j.company_id = c.id and a.candidate_id = '${candidate}'
+      )
+      limit 1`)
+  ).rows[0]?.owner_id;
+
+  report.check('found an employer with no claim on this candidate', Boolean(unrelated));
+
+  const hidden = await as(unrelated, `select whatsapp_phone from profiles where id='${candidate}'`);
   report.check('an unrelated employer does not', hidden.rows.length === 0);
 }
 
@@ -432,6 +452,65 @@ report.section('dashboard summaries answer for the caller, and only the caller')
 
   const r7 = await as(null, `select public.candidate_summary()`, 'anon');
   report.check('and anonymous reaches none of them', !r7.ok, r7.ok ? 'call was allowed' : r7.error);
+}
+
+report.section('dashboard trends are gap-free and scoped like the summaries');
+{
+  const r = await as(employerVerified, `select public.employer_trend() as s`);
+  const trend = r.rows[0]?.s;
+  report.check('an employer gets a thirty-day window', r.ok && trend?.days?.length === 30, r.error);
+
+  // The whole point of generate_series: a day nobody applied is a zero, not a
+  // missing point that a chart would draw straight through.
+  const dates = (trend?.days ?? []).map((day) => day.d);
+  const contiguous = dates.every((d, i) => {
+    if (i === 0) return true;
+    const gap = (Date.parse(d) - Date.parse(dates[i - 1])) / 86_400_000;
+    return gap === 1;
+  });
+  report.check('with every day in it, including the empty ones', contiguous, JSON.stringify(dates.slice(0, 3)));
+
+  // Scoping is the security property here, so it is checked against the
+  // database rather than against another call to the same function.
+  const own = (
+    await db.query(`
+      select count(*)::int as n
+        from applications a
+        join jobs j on j.id = a.job_id
+       where j.company_id = (select id from companies where slug = 'al-rowad-real-estate-309047')
+         and a.created_at >= ((now() at time zone 'Africa/Cairo')::date - 29)`)
+  ).rows[0].n;
+  const charted = (trend?.days ?? []).reduce((total, day) => total + day.applications, 0);
+  const platform = (await db.query('select count(*)::int as n from applications')).rows[0].n;
+
+  report.check('counting their own applications and nobody else\'s',
+    charted === own && charted < platform, `charted ${charted}, own ${own}, platform ${platform}`);
+
+  const ownJobs = await as(employerVerified,
+    "select id from jobs where company_id = (select id from companies where slug = 'al-rowad-real-estate-309047')");
+  const ownIds = new Set(ownJobs.rows.map((row) => row.id));
+  report.check('and comparing only their own live listings',
+    (trend?.conversion ?? []).length > 0 && trend.conversion.every((row) => ownIds.has(row.id)),
+    JSON.stringify(trend?.conversion?.length));
+
+  const noCompany = await as(candidate, `select public.employer_trend() as s`);
+  report.check('somebody with no company gets the empty shape, not a crash',
+    noCompany.ok && noCompany.rows[0]?.s?.has_company === false, noCompany.error);
+
+  const byEmployer = await as(employerVerified, `select public.admin_trend()`);
+  report.check('an employer cannot read the platform trend',
+    !byEmployer.ok, byEmployer.ok ? 'call was allowed' : byEmployer.error);
+
+  const byCandidate = await as(candidate, `select public.admin_trend()`);
+  report.check('nor can a candidate', !byCandidate.ok, byCandidate.ok ? 'call was allowed' : byCandidate.error);
+
+  const byAdmin = await as(admin, `select public.admin_trend() as s`);
+  report.check('an admin can, over the same window',
+    byAdmin.ok && byAdmin.rows[0]?.s?.days?.length === 30, byAdmin.error);
+
+  const anonEmployer = await as(null, `select public.employer_trend()`, 'anon');
+  const anonAdmin = await as(null, `select public.admin_trend()`, 'anon');
+  report.check('and anonymous reaches neither', !anonEmployer.ok && !anonAdmin.ok);
 }
 
 report.section('the nightly expiry cron');
