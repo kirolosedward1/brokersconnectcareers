@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { CompanyLogo } from '@/components/companies/company-logo';
 import { CompensationCard, LeadsSourceBadge } from '@/components/jobs/compensation';
 import { JobCard } from '@/components/jobs/job-card';
 import { SaveJobButton } from '@/components/jobs/save-job-button';
@@ -29,6 +30,18 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
   const description = localized(locale, job.description_ar, job.description_en);
   const companyName = localized(locale, job.company.name_ar, job.company.name_en);
   const districtName = localized(locale, job.district.name_ar, job.district.name_en);
+
+  /**
+   * Applying is a candidate action, so the button is a candidate's button.
+   *
+   * A signed-out reader still sees it — they are the people this page is for,
+   * and the apply route sends them through sign-in with their destination
+   * kept. It is only a signed-in employer or admin who is offered something
+   * else, because for them the button leads nowhere: the database refuses the
+   * application (see migration 15) whatever the interface shows.
+   */
+  const role = viewer?.profile?.role;
+  const canApply = !role || role === 'candidate';
 
   // Has this candidate already applied? Cheap, and it changes the primary CTA.
   let alreadyApplied = false;
@@ -69,7 +82,14 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
         <div className="min-w-0">
           <header>
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
+              <div className="flex min-w-0 items-start gap-3">
+                <CompanyLogo
+                  name={companyName}
+                  logoUrl={job.company.logo_url}
+                  seed={job.company.slug}
+                  className="mt-0.5"
+                />
+                <div className="min-w-0">
                 <h1 className="text-2xl font-bold leading-tight text-balance">{title}</h1>
                 <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                   <Link
@@ -90,6 +110,7 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
                     {districtName}
                   </span>
                 </p>
+                </div>
               </div>
 
               <div className="rounded-lg bg-primary/10 px-4 py-3 text-center">
@@ -120,7 +141,11 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            {alreadyApplied ? (
+            {!canApply ? (
+              <p className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+                {tApply('employerCannotApply')}
+              </p>
+            ) : alreadyApplied ? (
               <Button variant="secondary" size="lg" disabled>
                 {t('applied')}
               </Button>
@@ -201,7 +226,15 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <p className="font-medium">{companyName}</p>
+              <div className="flex items-center gap-3">
+                <CompanyLogo
+                  name={companyName}
+                  logoUrl={job.company.logo_url}
+                  seed={job.company.slug}
+                  size="sm"
+                />
+                <p className="min-w-0 font-medium">{companyName}</p>
+              </div>
               {job.company.about_ar || job.company.about_en ? (
                 <p className="leading-relaxed text-muted-foreground">
                   {localized(locale, job.company.about_ar, job.company.about_en)}
@@ -214,6 +247,7 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
           </Card>
 
           {/* Sticky apply on mobile: the CTA should never be a scroll away. */}
+          {canApply ? (
           <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background p-3 lg:hidden">
             {alreadyApplied ? (
               <Button variant="secondary" className="w-full" disabled>
@@ -225,6 +259,7 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
               </Button>
             )}
           </div>
+          ) : null}
         </aside>
       </div>
 

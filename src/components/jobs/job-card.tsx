@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { CompanyLogo } from '@/components/companies/company-logo';
 import { LeadsSourceBadge, SalaryLine } from '@/components/jobs/compensation';
 import { formatNumber } from '@/lib/utils';
 import type { JobListItem } from '@/lib/queries/jobs';
@@ -22,6 +23,15 @@ export function JobCard({ job, locale }: { job: JobListItem; locale: string }) {
   return (
     <article className="lift reveal group relative rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30">
       <div className="flex items-start gap-3">
+        {/* The company's mark, so a listings page is scannable by who is
+            hiring and not only by job title. */}
+        <CompanyLogo
+          name={company}
+          logoUrl={job.company.logo_url}
+          seed={job.company.slug}
+          size="sm"
+        />
+
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-base font-semibold leading-snug">

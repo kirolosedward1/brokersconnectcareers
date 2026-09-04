@@ -69,19 +69,19 @@ export function StatTile({
     <Link
       href={href}
       className={cn(
-        'lift group/tile flex flex-col rounded-2xl border p-5 shadow-sm transition-colors',
+        'lift group/tile relative flex flex-col rounded-xl border p-4 shadow-sm transition-colors',
         t.tile,
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <span aria-hidden className={cn('grid size-10 place-items-center rounded-xl', t.icon)}>
-          <Icon className="size-5" />
+      <div className="flex items-start justify-between gap-2">
+        <span aria-hidden className={cn('grid size-8 place-items-center rounded-lg', t.icon)}>
+          <Icon className="size-4" />
         </span>
 
         {delta && delta.direction !== 'flat' ? (
           <span
             className={cn(
-              'numeral inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+              'numeral inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium',
               delta.direction === 'up'
                 ? 'bg-success/12 text-success'
                 : 'bg-destructive/10 text-destructive',
@@ -93,16 +93,17 @@ export function StatTile({
         ) : null}
       </div>
 
-      <p className={cn('numeral mt-4 text-3xl font-bold leading-none', t.value)}>{value}</p>
-      <p className="mt-2 text-sm font-medium">{label}</p>
-      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
+      <p className={cn('numeral mt-3 text-2xl font-bold leading-none', t.value)}>{value}</p>
+      <p className="mt-1.5 text-[13px] font-medium leading-snug">{label}</p>
+      {hint ? <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</p> : null}
 
-      <span
+      {/* The affordance without the height. This used to be a row of its own
+          at the foot of every tile, which cost a line of space on all nine of
+          them to say something the hover state already says. */}
+      <ArrowLeft
         aria-hidden
-        className="mt-4 inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors group-hover/tile:text-primary"
-      >
-        <ArrowLeft className="rtl-flip size-3.5" />
-      </span>
+        className="rtl-flip absolute bottom-3 end-3 size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover/tile:opacity-100"
+      />
     </Link>
   );
 }

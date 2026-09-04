@@ -4,20 +4,31 @@ import { useEffect, useState } from 'react';
 import { usePathname } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
 
-/** The pages whose hero the header sits on top of. */
-const OVER_HERO = ['/', '/employers'];
+/**
+ * The pages whose hero the header sits on top of.
+ *
+ * `/` is conditional, which is the whole reason this takes a prop. The home
+ * page only draws a hero for somebody who is not signed in — a signed-in
+ * reader gets a listings feed — and a transparent header with white type over
+ * a white feed is an invisible header lying on top of the first heading.
+ */
+const ALWAYS_OVER_HERO = ['/employers'];
 
 /**
  * The pages that render no site header at all.
  *
  * Two different reasons. On the auth screens a nav bar full of links is an
  * invitation to wander off mid-task, which is the last thing a half-finished
- * sign-up needs. Everything under /dashboard, /employer and /admin has its own
- * chrome — a rail and a top bar — and stacking the marketing header above that
- * would give the console two headers.
+ * sign-up needs — and those screens draw their own logo, so a site header
+ * above one is two logos on the same page. Everything under /dashboard,
+ * /employer and /admin has its own chrome — a rail and a top bar — and
+ * stacking the marketing header above that would give the console two headers.
+ *
+ * Matched by prefix, all of them. These were exact matches, which covered
+ * /sign-up but not /sign-up/employer — so the split doors, added later, each
+ * came with a header the plain ones did not have.
  */
-const NO_HEADER = ['/sign-in', '/sign-up'];
-const NO_HEADER_PREFIXES = ['/dashboard', '/employer', '/admin'];
+const NO_HEADER_PREFIXES = ['/sign-in', '/sign-up', '/dashboard', '/employer', '/admin'];
 
 /**
  * The header's chrome.
@@ -40,12 +51,19 @@ const NO_HEADER_PREFIXES = ['/dashboard', '/employer', '/admin'];
  * Fixed rather than sticky while over the hero, so the film starts at the top
  * of the viewport instead of below a reserved 4rem strip.
  */
-export function HeaderShell({ children }: { children: React.ReactNode }) {
+export function HeaderShell({
+  hasHomeHero,
+  children,
+}: {
+  /** Whether `/` is currently drawing its hero — false once signed in. */
+  hasHomeHero: boolean;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
-  const overHero = OVER_HERO.includes(pathname);
-  const hidden =
-    NO_HEADER.includes(pathname) ||
-    NO_HEADER_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const overHero = ALWAYS_OVER_HERO.includes(pathname) || (pathname === '/' && hasHomeHero);
+  const hidden = NO_HEADER_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 
   const [scrolled, setScrolled] = useState(false);
 

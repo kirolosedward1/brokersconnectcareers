@@ -34,7 +34,12 @@
     "statCompanies": "companies",
     "forEmployers": "For employers",
     "forEmployersBody": "Put your role in front of consultants who are actually looking. Free during launch.",
-    "forEmployersCta": "Post a job"
+    "forEmployersCta": "Post a job",
+    "welcome": "Welcome, {name}",
+    "welcomeLede": "What's new in the market.",
+    "newestJobs": "Newest",
+    "hiringStrip": "Hiring? Manage your listings and applicants here.",
+    "hiringJobs": "My listings"
   },
   "jobs": {
     "title": "Jobs",
@@ -81,9 +86,9 @@
     "leadsSource": "Leads",
     "benefits": "Benefits",
     "noBenefits": "No benefits stated",
-    "salaryRange": "EGP {min} – {max}",
-    "salaryFrom": "From EGP {min}",
-    "salaryUpTo": "Up to EGP {max}"
+    "salaryRange": "EGP <v>{min}</v> – <v>{max}</v>",
+    "salaryFrom": "From EGP <v>{min}</v>",
+    "salaryUpTo": "Up to EGP <v>{max}</v>"
   },
   "filters": {
     "search": "Keyword",
@@ -130,7 +135,7 @@
     "hybrid_short": "Hybrid"
   },
   "commissionType": {
-    "percentage": "{value}% commission",
+    "percentage": "<v>{value}</v>% commission",
     "split": "Commission split",
     "undisclosed": "Undisclosed",
     "none": "No commission"
@@ -226,7 +231,8 @@
     "signUpTitleEmployer": "Register your company",
     "signUpTitleCandidate": "Create your consultant account",
     "preselectedCandidate": "You will continue as a real estate consultant.",
-    "preselectedEmployer": "You will continue as a real estate company."
+    "preselectedEmployer": "You will continue as a real estate company.",
+    "passwordConfirm": "Confirm password"
   },
   "onboarding": {
     "title": "Finish your profile",
@@ -326,7 +332,8 @@
     "successBody": "The employer will reach you on WhatsApp at the number you gave.",
     "alreadyApplied": "You have already applied to this job.",
     "signInRequired": "Sign in to apply",
-    "viewApplications": "Track your applications"
+    "viewApplications": "Track your applications",
+    "employerCannotApply": "You're signed in as a company. Applying is for consultants only."
   },
   "employer": {
     "company": "Company profile",
@@ -353,7 +360,7 @@
     "closeJob": "Close listing",
     "reopenJob": "Reopen listing",
     "editJob": "Edit",
-    "pipelineCount": "{count} applicants",
+    "pipelineCount": "<v>{count}</v> applicants",
     "freePostClaim": "Claim this month's free post",
     "freePostClaimed": "This month's free post has been claimed.",
     "postCapBlocked": "You already have an active listing. Unverified companies may keep only one.",
@@ -489,7 +496,8 @@
     "salaryOrder": "Maximum salary must be above the minimum",
     "commissionRequired": "Enter the commission percentage",
     "fileTooLarge": "That file is too large",
-    "fileType": "That file type is not supported"
+    "fileType": "That file type is not supported",
+    "passwordMismatch": "The two passwords do not match."
   },
   "jobStatus": {
     "draft": "Draft",

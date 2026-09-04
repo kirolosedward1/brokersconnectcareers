@@ -65,7 +65,7 @@ export default async function AdminOverviewPage({
         <p className="mt-1 text-muted-foreground">{t('adminLede')}</p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <StatTile
           label={t('statQueue')}
           value={n(s.queue_total)}

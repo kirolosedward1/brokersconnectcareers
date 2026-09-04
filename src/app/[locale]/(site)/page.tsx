@@ -28,5 +28,14 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     pageCount: 0,
   });
 
-  return <SignedInHome locale={locale} districts={districts} jobs={jobs} total={total} />;
+  return (
+    <SignedInHome
+      locale={locale}
+      name={viewer.profile.full_name}
+      role={viewer.profile.role}
+      districts={districts}
+      jobs={jobs}
+      total={total}
+    />
+  );
 }

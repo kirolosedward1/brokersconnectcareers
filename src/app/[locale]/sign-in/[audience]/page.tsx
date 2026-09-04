@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { AuthForm } from '@/components/auth/auth-form';
+import { AudienceSwitch } from '@/components/auth/audience-switch';
 import { AuthShell, type Audience } from '../../auth-shell';
 
 const AUDIENCES = ['candidate', 'employer'] as const;
@@ -65,6 +66,10 @@ export default async function AudienceSignInPage({
         </p>
 
         <div className="mt-8">
+          <AudienceSwitch mode="sign-in" active={audience} />
+        </div>
+
+        <div className="mt-6">
           <Suspense>
             <AuthForm mode="sign-in" locale={locale} />
           </Suspense>

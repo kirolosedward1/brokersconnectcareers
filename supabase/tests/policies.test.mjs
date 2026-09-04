@@ -163,6 +163,51 @@ report.section('an employer may explain a decision, and nothing more');
   }
 }
 
+report.section('only candidates apply');
+{
+  const liveOther = (
+    await db.query(`
+      select j.id from jobs j
+       where j.status = 'active' and j.expires_at > now()
+         and j.company_id <> (select id from companies where slug = 'al-rowad-real-estate-309047')
+       limit 1`)
+  ).rows[0].id;
+
+  // The apply page redirects employers, but a redirect is a convenience for a
+  // wrong turn, not a control. This is the check that actually holds.
+  const r = await as(employerVerified,
+    `insert into applications (job_id, candidate_id, experience_band)
+     values ('${liveOther}', '${employerVerified}', 'mid_3_5') returning id`);
+  report.check('an employer cannot apply to a listing',
+    !r.ok && /row-level security/.test(r.error ?? ''), r.ok ? 'insert was allowed' : r.error);
+
+  const own = (
+    await db.query(`
+      select j.id from jobs j
+       where j.status = 'active' and j.expires_at > now()
+         and j.company_id = (select id from companies where slug = 'al-rowad-real-estate-309047')
+       limit 1`)
+  ).rows[0].id;
+
+  const r2 = await as(employerVerified,
+    `insert into applications (job_id, candidate_id, experience_band)
+     values ('${own}', '${employerVerified}', 'mid_3_5') returning id`);
+  report.check('nor to their own', !r2.ok, r2.ok ? 'insert was allowed' : r2.error);
+
+  const r3 = await as(admin,
+    `insert into applications (job_id, candidate_id, experience_band)
+     values ('${liveOther}', '${admin}', 'mid_3_5') returning id`);
+  report.check('nor can an admin apply as themselves through the candidate policy',
+    !r3.ok || r3.rows.length === 1, r3.error);
+
+  // And the thing the policy exists to allow still works.
+  const r4 = await as(candidate,
+    `insert into applications (job_id, candidate_id, experience_band)
+     values ('${liveOther}', '${candidate}', 'mid_3_5')
+     on conflict (job_id, candidate_id) do nothing returning id`);
+  report.check('a candidate still can', r4.ok, r4.error);
+}
+
 report.section('an employer reaches their applicant, and only their applicant');
 {
   const visible = await as(employerVerified, `select whatsapp_phone from profiles where id='${candidate}'`);

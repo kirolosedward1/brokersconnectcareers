@@ -34,7 +34,12 @@
     "statCompanies": "شركة",
     "forEmployers": "لأصحاب العمل",
     "forEmployersBody": "انشر وظيفتك قدّام استشاريين بيدوّروا فعلاً. مجاناً خلال فترة الإطلاق.",
-    "forEmployersCta": "انشر وظيفة"
+    "forEmployersCta": "انشر وظيفة",
+    "welcome": "أهلاً {name}",
+    "welcomeLede": "شوف الجديد في سوق العقارات.",
+    "newestJobs": "الأحدث",
+    "hiringStrip": "بتوظّف؟ إدارة إعلاناتك والمتقدمين من هنا.",
+    "hiringJobs": "إعلاناتي"
   },
   "jobs": {
     "title": "الوظائف",
@@ -81,9 +86,9 @@
     "leadsSource": "مصدر العملاء",
     "benefits": "المزايا",
     "noBenefits": "مفيش مزايا مذكورة",
-    "salaryRange": "{min} – {max} جنيه",
-    "salaryFrom": "من {min} جنيه",
-    "salaryUpTo": "حتى {max} جنيه"
+    "salaryRange": "<v>{min}</v> – <v>{max}</v> جنيه",
+    "salaryFrom": "من <v>{min}</v> جنيه",
+    "salaryUpTo": "حتى <v>{max}</v> جنيه"
   },
   "filters": {
     "search": "بحث بالكلمات",
@@ -130,7 +135,7 @@
     "hybrid_short": "مشترك"
   },
   "commissionType": {
-    "percentage": "نسبة {value}٪",
+    "percentage": "نسبة <v>{value}</v>٪",
     "split": "تقسيم عمولة",
     "undisclosed": "غير معلنة",
     "none": "لا توجد عمولة"
@@ -226,7 +231,8 @@
     "signUpTitleEmployer": "سجّل شركتك",
     "signUpTitleCandidate": "اعمل حسابك كاستشاري",
     "preselectedCandidate": "هتكمّل كاستشاري عقارات.",
-    "preselectedEmployer": "هتكمّل كشركة عقارات."
+    "preselectedEmployer": "هتكمّل كشركة عقارات.",
+    "passwordConfirm": "تأكيد كلمة المرور"
   },
   "onboarding": {
     "title": "كمّل بياناتك",
@@ -326,7 +332,8 @@
     "successBody": "صاحب العمل هيكلمك على واتساب على الرقم اللي كتبته.",
     "alreadyApplied": "انت قدّمت على الوظيفة دي قبل كده.",
     "signInRequired": "سجّل دخولك عشان تقدّم",
-    "viewApplications": "تابع طلباتك"
+    "viewApplications": "تابع طلباتك",
+    "employerCannotApply": "انت داخل بحساب شركة. التقديم على الوظائف للاستشاريين بس."
   },
   "employer": {
     "company": "ملف الشركة",
@@ -353,7 +360,7 @@
     "closeJob": "اقفل الإعلان",
     "reopenJob": "افتح الإعلان تاني",
     "editJob": "عدّل",
-    "pipelineCount": "{count} متقدم",
+    "pipelineCount": "<v>{count}</v> متقدم",
     "freePostClaim": "استلم إعلانك المجاني بتاع الشهر ده",
     "freePostClaimed": "استلمت الإعلان المجاني بتاع الشهر ده.",
     "postCapBlocked": "عندك إعلان فعّال بالفعل. الشركات غير الموثّقة تقدر تنشر إعلان واحد بس.",
@@ -489,7 +496,8 @@
     "salaryOrder": "أعلى راتب لازم يكون أكبر من أقله",
     "commissionRequired": "اكتب نسبة العمولة",
     "fileTooLarge": "حجم الملف أكبر من المسموح",
-    "fileType": "نوع الملف ده مش مدعوم"
+    "fileType": "نوع الملف ده مش مدعوم",
+    "passwordMismatch": "كلمتا المرور مش زي بعض."
   },
   "jobStatus": {
     "draft": "مسودة",

@@ -102,7 +102,7 @@ export default async function EmployerOverviewPage({
         <p className="mt-1 text-muted-foreground">{t('employerLede')}</p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <StatTile
           label={t('statApplicantsNew')}
           value={n(s.applicants_new)}

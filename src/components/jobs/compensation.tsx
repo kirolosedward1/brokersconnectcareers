@@ -24,16 +24,30 @@ export function SalaryLine({ job, locale }: { job: Comp; locale: string }) {
     return <span className="text-muted-foreground">{t('commissionOnly')}</span>;
   }
 
+  // Only the digits are isolated, never the phrase around them.
+  //
+  // Wrapping the whole string in `.numeral` forced it left-to-right, and an
+  // Arabic reader starting from the right then met the currency word first and
+  // the range high-to-low: "pounds 10,000 – 7,000". A range has to follow the
+  // reading direction; each number inside it still has to run left-to-right.
+  // Hence a tag around the numbers in the message rather than a class around
+  // the sentence — which also leaves the word order to the translation.
+  const num = (chunks: React.ReactNode) => <span className="numeral">{chunks}</span>;
+
   const value =
     min != null && max != null
-      ? t('salaryRange', { min: formatEgp(min, locale), max: formatEgp(max, locale) })
+      ? t.rich('salaryRange', {
+          min: formatEgp(min, locale),
+          max: formatEgp(max, locale),
+          v: num,
+        })
       : min != null
-        ? t('salaryFrom', { min: formatEgp(min, locale) })
-        : t('salaryUpTo', { max: formatEgp(max!, locale) });
+        ? t.rich('salaryFrom', { min: formatEgp(min, locale), v: num })
+        : t.rich('salaryUpTo', { max: formatEgp(max!, locale), v: num });
 
   return (
     <span>
-      <span className="numeral font-semibold">{value}</span>{' '}
+      <span className="font-semibold">{value}</span>{' '}
       <span className="text-muted-foreground">{t('perMonth')}</span>
     </span>
   );
@@ -44,11 +58,12 @@ export function CommissionLine({ job, locale }: { job: Comp; locale: string }) {
 
   if (job.commission_type === 'percentage' && job.commission_value != null) {
     return (
-      <span className="numeral">
-        {t('percentage', {
+      <span>
+        {t.rich('percentage', {
           value: new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', {
             maximumFractionDigits: 2,
           }).format(job.commission_value),
+          v: (chunks) => <span className="numeral">{chunks}</span>,
         })}
       </span>
     );

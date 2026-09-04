@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { AuthForm } from '@/components/auth/auth-form';
+import { AudienceSwitch } from '@/components/auth/audience-switch';
 import { AuthShell } from '../auth-shell';
 
 export async function generateMetadata({
@@ -35,6 +36,10 @@ export default async function SignUpPage({ params }: { params: Promise<{ locale:
         </p>
 
         <div className="mt-8">
+          <AudienceSwitch mode="sign-up" />
+        </div>
+
+        <div className="mt-6">
           <Suspense>
             <AuthForm mode="sign-up" locale={locale} />
           </Suspense>

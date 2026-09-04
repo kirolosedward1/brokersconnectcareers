@@ -142,7 +142,12 @@ export default async function EmployerJobsPage({
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/employer/jobs/${job.id}/applicants`}>
                       <Users />
-                      <span className="numeral">{t('pipelineCount', { count: applicants })}</span>
+                      <span>
+                        {t.rich('pipelineCount', {
+                          count: applicants,
+                          v: (chunks) => <span className="numeral">{chunks}</span>,
+                        })}
+                      </span>
                     </Link>
                   </Button>
                   <Button asChild variant="ghost" size="sm">

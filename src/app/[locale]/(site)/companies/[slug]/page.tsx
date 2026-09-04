@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Building2, Globe, MapPin, Users } from 'lucide-react';
+import { Globe, MapPin, Users } from 'lucide-react';
 import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
 import { VerifiedBadge } from '@/components/verified-badge';
+import { CompanyLogo } from '@/components/companies/company-logo';
 import { JobCard } from '@/components/jobs/job-card';
 import { JsonLd } from '@/components/json-ld';
 import { getCompanyBySlug } from '@/lib/queries/companies';
@@ -95,12 +96,7 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
 
       <div className="mx-auto max-w-5xl px-4 py-8">
         <header className="flex flex-wrap items-start gap-4">
-          <span
-            aria-hidden
-            className="grid size-16 shrink-0 place-items-center rounded-xl bg-muted"
-          >
-            <Building2 className="size-7 text-muted-foreground" />
-          </span>
+          <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} size="lg" />
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">

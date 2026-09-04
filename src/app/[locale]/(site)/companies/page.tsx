@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Briefcase, Building2, MapPin } from 'lucide-react';
+import { Briefcase, MapPin } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, localized, type Locale } from '@/i18n/routing';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { Pagination } from '@/components/pagination';
 import { CompanyFilters } from '@/components/companies/company-filters';
+import { CompanyLogo } from '@/components/companies/company-logo';
 import { queryCompanies } from '@/lib/queries/companies';
 import { getDistricts } from '@/lib/queries/taxonomy';
 
@@ -75,12 +76,11 @@ export default async function CompaniesPage({
                   href={`/companies/${company.slug}`}
                   className="lift reveal flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
                 >
-                  <span
-                    aria-hidden
-                    className="grid size-12 shrink-0 place-items-center rounded-xl bg-muted"
-                  >
-                    <Building2 className="size-6 text-muted-foreground" />
-                  </span>
+                  <CompanyLogo
+                    name={localized(locale, company.name_ar, company.name_en)}
+                    logoUrl={company.logo_url}
+                    seed={company.slug}
+                  />
 
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-2 font-semibold">
