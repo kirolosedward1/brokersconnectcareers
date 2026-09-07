@@ -2,23 +2,31 @@ import type { Metadata, Viewport } from 'next';
 import { notFound } from 'next/navigation';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { IBM_Plex_Sans_Arabic, Inter } from 'next/font/google';
+import { IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { alternatesFor, activeLocales, dirOf, type Locale } from '@/i18n/routing';
 import { env } from '@/lib/env';
 import { SiteHeader } from '@/components/site-header';
 import '../globals.css';
 import { Analytics } from '@/components/analytics';
 
-const arabic = IBM_Plex_Sans_Arabic({
+/**
+ * One family, both scripts.
+ *
+ * IBM Plex Sans Arabic is the Arabic companion to IBM Plex Sans and ships the
+ * Latin glyphs too, which is why the latin subset is loaded here. A second
+ * Latin face used to sit alongside it — Inter, 55 KB across three files —
+ * purely so numerals could be set in something other than the body font. On a
+ * market this mobile that is an eleventh of the page's weight to draw digits
+ * in a typeface almost nobody could pick out of a line-up next to Plex's own.
+ *
+ * Named --font-plex rather than --font-arabic because it is no longer only the
+ * Arabic font, and because the old name collided with the theme token that
+ * referenced it.
+ */
+const plex = IBM_Plex_Sans_Arabic({
   subsets: ['arabic', 'latin'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-arabic',
-  display: 'swap',
-});
-
-const latin = Inter({
-  subsets: ['latin'],
-  variable: '--font-latin',
+  variable: '--font-plex',
   display: 'swap',
 });
 
@@ -102,7 +110,7 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       dir={dirOf(locale)}
-      className={`${arabic.variable} ${latin.variable}`}
+      className={plex.variable}
       suppressHydrationWarning
     >
       <head>

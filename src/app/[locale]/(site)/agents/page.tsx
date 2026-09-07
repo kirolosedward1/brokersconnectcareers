@@ -100,13 +100,19 @@ export default async function AgentsPage({
               <p className="mt-4 font-medium">{t('empty')}</p>
             </div>
           ) : (
-            <ul className="space-y-4">
+            <>
+              {/* Same reason as the board: the cards are h3s, so without a
+                  heading for the region the page skips h1 to h3. */}
+              <h2 className="sr-only">{tJobs('resultsCount', { count: total })}</h2>
+
+              <ul className="space-y-4">
               {agents.map((agent) => (
                 <li key={agent.id}>
                   <AgentCard agent={agent} locale={locale} districts={districtMap} />
                 </li>
               ))}
-            </ul>
+              </ul>
+            </>
           )}
 
           <Pagination

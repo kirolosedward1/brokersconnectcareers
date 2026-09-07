@@ -144,6 +144,12 @@ export default async function JobsPage({
             </div>
           ) : (
             <>
+              {/* The results are their own region, and each card's title is an
+                  h3 — so without this the page jumps h1 to h3 and a screen
+                  reader's heading list has a hole where "the results" should
+                  be. Visually silent because the count above already says it. */}
+              <h2 className="sr-only">{t('resultsCount', { count: total })}</h2>
+
               <ul className="space-y-3">
                 {jobs.map((job) => (
                   <li key={job.id}>

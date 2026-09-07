@@ -168,8 +168,8 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-primary: var(--shadow-primary);
 
-  --font-sans: var(--font-latin), ui-sans-serif, system-ui, sans-serif;
-  --font-arabic: var(--font-arabic), var(--font-latin), ui-sans-serif, sans-serif;
+  --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: var(--font-plex), ui-sans-serif, sans-serif;
 }
 
 @layer base {

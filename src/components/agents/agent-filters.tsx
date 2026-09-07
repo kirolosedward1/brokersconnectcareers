@@ -72,7 +72,11 @@ export function AgentFilters({
 
       <fieldset>
         <legend className="mb-2 text-sm font-semibold">{tAgents('availability')}</legend>
+        {/* The legend names the group, not the control inside it, so a screen
+            reader reaches this select and announces "combo box" with nothing
+            else. Labelled explicitly with the same words the legend shows. */}
         <Select
+          aria-label={tAgents('availability')}
           value={searchParams.get('availability') ?? ''}
           onChange={(event) => setSingle('availability', event.target.value)}
         >
@@ -88,6 +92,7 @@ export function AgentFilters({
       <fieldset>
         <legend className="mb-2 text-sm font-semibold">{t('experienceBand')}</legend>
         <Select
+          aria-label={t('experienceBand')}
           value={searchParams.get('years') ?? ''}
           onChange={(event) => setSingle('years', event.target.value)}
         >
