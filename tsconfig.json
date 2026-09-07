@@ -19,6 +19,6 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "//": "The ' 2.ts' / ' 3.ts' patterns exclude iCloud's duplicate files. This project lives under ~/Documents, which iCloud syncs, and it periodically duplicates generated files inside .next/types with a numbered suffix. Those duplicates then fail typecheck with 'Duplicate identifier' or a missing-file error that looks like a real break and is not.",
-  "exclude": ["node_modules", "**/* [0-9].ts", "**/* [0-9].tsx"]
+  "//": "The ' ?.ts' patterns exclude iCloud's duplicate files. This project lives under ~/Documents, which iCloud syncs, and it duplicates generated files inside .next/types as 'routes.d 2.ts' and the like while the build is writing them. Those duplicates fail typecheck with 'Duplicate identifier', which looks like a real break and is not. Note the glob: TypeScript supports only *, ? and **/ — it does NOT support [0-9] character classes, so the earlier '**/* [0-9].ts' matched nothing and this was never actually excluded. Verified by running tsc with the duplicates present.",
+  "exclude": ["node_modules", "**/* ?.ts", "**/* ?.tsx"]
 }

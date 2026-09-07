@@ -71,7 +71,15 @@ for (const path of [
 
 // ---------------------------------------------------------------------------
 section('private routes stay private');
-for (const path of ['/dashboard', '/dashboard/account', '/employer', '/admin', '/onboarding']) {
+for (const path of [
+  '/dashboard',
+  '/dashboard/account',
+  '/employer',
+  '/admin',
+  '/admin/users',
+  '/notifications',
+  '/onboarding',
+]) {
   const { status, headers } = await get(path);
   const location = headers.get('location') ?? '';
   check(
@@ -91,7 +99,11 @@ section('robots and sitemap are absolute and complete');
     /^Sitemap:\s*https?:\/\//m.test(robots.body),
     robots.body.split('\n').find((line) => line.startsWith('Sitemap')) ?? '<none>',
   );
-  check('it disallows the private areas', robots.body.includes('/dashboard'));
+  // Every private prefix, not just the first one. Checking a single path let
+  // /notifications ship crawlable — it was added to the app and not here.
+  const privatePrefixes = ['/dashboard', '/employer', '/admin', '/notifications', '/onboarding', '/api'];
+  const uncovered = privatePrefixes.filter((prefix) => !robots.body.includes(`Disallow: ${prefix}`));
+  check('it disallows every private area', uncovered.length === 0, uncovered.join(', '));
 
   const sitemap = await get('/sitemap.xml');
   const locs = [...sitemap.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);

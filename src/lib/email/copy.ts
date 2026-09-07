@@ -62,6 +62,23 @@ export const emailCopy = {
       labelJob: 'الوظيفة',
     },
 
+    accountApproved: {
+      subject: 'حسابك اتفعّل',
+      preheader: 'تقدر تنشر إعلاناتك دلوقتي.',
+      heading: 'حسابك اتفعّل',
+      body: 'راجعنا بيانات شركتك، والحساب بقى مفعّل. تقدر تنشر أول إعلان دلوقتي.',
+      cta: 'انشر وظيفة',
+    },
+
+    accountRejected: {
+      subject: 'حسابك متوقف مؤقتاً',
+      preheader: 'محتاجين نراجع بيانات الشركة تاني.',
+      heading: 'حسابك متوقف مؤقتاً',
+      body: 'وقّفنا الحساب مؤقتاً لحد ما نراجع البيانات تاني.',
+      reason: (note: string) => `السبب: ${note}`,
+      contact: 'لو ده مش صح، ردّ على الرسالة دي وهنراجعها.',
+    },
+
     digest: {
       subject: (count: number, label: string) =>
         count === 1 ? `وظيفة جديدة في «${label}»` : `${count} وظايف جديدة في «${label}»`,
@@ -125,6 +142,23 @@ export const emailCopy = {
       reason: (note: string) => `Reason: ${note}`,
       cta: 'Edit listing',
       labelJob: 'Role',
+    },
+
+    accountApproved: {
+      subject: 'Your account is active',
+      preheader: 'You can publish listings now.',
+      heading: 'Your account is active',
+      body: 'We have reviewed your company details and your account is now active. You can publish your first listing.',
+      cta: 'Post a job',
+    },
+
+    accountRejected: {
+      subject: 'Your account is suspended',
+      preheader: 'We need to look at your company details again.',
+      heading: 'Your account is suspended',
+      body: 'We have suspended the account while we look at the details again.',
+      reason: (note: string) => `Reason: ${note}`,
+      contact: 'If this looks wrong, reply to this email and we will take another look.',
     },
 
     digest: {

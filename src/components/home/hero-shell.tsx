@@ -24,7 +24,7 @@ export function HeroShell({ children }: { children: React.ReactNode }) {
       />
 
       <div aria-hidden className="absolute inset-0 -z-10">
-        <HeroVideo src="/media/hero.mp4" />
+        <HeroVideo src="/media/hero.mp4" poster="/media/hero-poster.jpg" />
       </div>
 
       {/* Two overlays doing different jobs: the flat one guarantees a contrast

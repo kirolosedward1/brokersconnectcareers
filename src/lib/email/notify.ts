@@ -296,6 +296,80 @@ export async function notifyEmployerOfModeration(
   }
 }
 
+/**
+ * An employer is told what the review decided.
+ *
+ * The one message here that ignores notification preferences, and the one that
+ * carries no unsubscribe link.
+ *
+ * Those preferences cover a stream of things that keep happening — applicants,
+ * status changes, a weekly digest — and turning them off is a reasonable thing
+ * to want. This is not that. It is the answer to a question the person asked
+ * by signing up, and it arrives once. Suppressing it would leave somebody
+ * waiting forever on a decision that was already made, with an account that
+ * looks broken and no way to find out why. Transactional mail is exempt for
+ * exactly this reason, so the footer offers no unsubscribe rather than
+ * offering one that would be ignored.
+ *
+ * It is also the only notice that reliably reaches them: an employer waiting
+ * to be approved is, by definition, not sitting in the console watching a bell.
+ */
+export async function notifyAccountDecision(
+  userId: string,
+  approved: boolean,
+  note?: string | null,
+): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('locale, role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (!profile) return 'skipped';
+
+    const { data, error } = await admin.auth.admin.getUserById(userId);
+    if (error || !data.user?.email) return 'skipped';
+
+    const locale = localeOf(profile.locale);
+    const c = copyFor(locale);
+    const t = approved ? c.accountApproved : c.accountRejected;
+
+    // Annotated, or the array narrows to the literal type of the first copy
+    // string and refuses the reason and contact lines pushed after it.
+    const paragraphs: string[] = [t.body];
+    if (!approved) {
+      if (note) paragraphs.push(c.accountRejected.reason(note));
+      paragraphs.push(c.accountRejected.contact);
+    }
+
+    const shared = {
+      heading: t.heading,
+      paragraphs,
+      button: approved
+        ? { label: c.accountApproved.cta, href: `${env.siteUrl}/employer/jobs/new` }
+        : undefined,
+      footerNote: c.footerNote,
+    };
+
+    return sendEmail({
+      to: data.user.email,
+      subject: t.subject,
+      html: renderEmail({
+        locale,
+        siteName: c.siteName,
+        preheader: t.preheader,
+        ...shared,
+      }),
+      text: renderText(shared),
+    });
+  } catch (error) {
+    console.warn('[email] account decision notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
 function asMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

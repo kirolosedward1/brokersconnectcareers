@@ -5,7 +5,7 @@ import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
-import { notifyEmployerOfModeration } from '@/lib/email/notify';
+import { notifyAccountDecision, notifyEmployerOfModeration } from '@/lib/email/notify';
 
 /**
  * Every action here runs through the caller's own session, not the service
@@ -212,6 +212,19 @@ export async function setAccountApproval(input: unknown): Promise<ActionResult> 
     p_note: parsed.data.note ?? null,
   });
   if (error) return { ok: false, error: error.message };
+
+  // The in-app notification is written by a trigger, but somebody waiting to be
+  // approved is not sitting in the console watching a bell. Pending accounts
+  // are exactly the ones that need pushing to.
+  if (parsed.data.status !== 'pending') {
+    after(() =>
+      notifyAccountDecision(
+        parsed.data.userId,
+        parsed.data.status === 'approved',
+        parsed.data.note,
+      ),
+    );
+  }
 
   revalidatePath('/admin/users');
   revalidatePath('/admin');

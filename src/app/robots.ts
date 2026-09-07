@@ -7,7 +7,15 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
       // Private surfaces and anything whose URL carries a signed token.
-      disallow: ['/dashboard', '/employer', '/admin', '/onboarding', '/auth', '/api'],
+      disallow: [
+        '/dashboard',
+        '/employer',
+        '/admin',
+        '/notifications',
+        '/onboarding',
+        '/auth',
+        '/api',
+      ],
     },
     sitemap: `${env.siteUrl}/sitemap.xml`,
     host: env.siteUrl,
