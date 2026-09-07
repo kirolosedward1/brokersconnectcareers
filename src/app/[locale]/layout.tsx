@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { notFound } from 'next/navigation';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
@@ -22,6 +22,21 @@ const latin = Inter({
   display: 'swap',
 });
 
+/**
+ * The colour a phone paints its own chrome with, above and below the page.
+ *
+ * Two values, because the site has two themes and one of them would look
+ * broken under the other's bar — a brand-blue status bar over a dark page
+ * reads as a rendering fault rather than as branding. The dark value is the
+ * page's own surface, so the bar disappears into it.
+ */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#1a3fd4' },
+    { media: '(prefers-color-scheme: dark)', color: '#0d1117' },
+  ],
+};
+
 export function generateStaticParams() {
   return activeLocales.map((locale) => ({ locale }));
 }
@@ -44,6 +59,27 @@ export async function generateMetadata({
       siteName: t('siteName'),
       locale: locale === 'ar' ? 'ar_EG' : 'en_US',
       alternateLocale: locale === 'ar' ? 'en_US' : 'ar_EG',
+      /**
+       * A static card, not a generated one.
+       *
+       * Links here are shared far more often than they are typed, and in this
+       * market that mostly means WhatsApp — which showed a grey box with a URL
+       * under it until now.
+       *
+       * next/og was the obvious way to draw it per page, and it cannot: Satori
+       * shapes Arabic letters correctly but reverses the words on any wrapped
+       * line and puts trailing punctuation on the wrong side. A listing card
+       * with visibly broken Arabic on it is worse than no card. This one is
+       * rendered by scripts/og-card.swift through CoreText, which gets bidi
+       * right, and committed.
+       */
+      images: [{ url: '/brand/og.jpg', width: 1200, height: 630, alt: t('tagline') }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${t('siteName')} — ${t('tagline')}`,
+      description: t('defaultDescription'),
+      images: ['/brand/og.jpg'],
     },
     robots: { index: true, follow: true },
   };
@@ -60,6 +96,7 @@ export default async function LocaleLayout({
   if (!hasLocale(activeLocales, locale)) notFound();
 
   setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'nav' });
 
   return (
     <html
@@ -89,6 +126,23 @@ export default async function LocaleLayout({
       </head>
       <body className="flex min-h-dvh flex-col">
         <NextIntlClientProvider>
+          {/*
+            The first thing a keyboard reaches, and invisible until it does.
+            Without it, getting to the content on any page means tabbing past
+            the logo, four nav links, a search button, the theme toggle and the
+            menu — every time.
+
+            A plain anchor, not a Link: the target is on the page already, and
+            routing through the client router would scroll without moving
+            focus, which is the half of the job that actually matters.
+          */}
+          <a
+            href="#main"
+            className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+          >
+            {t('skipToContent')}
+          </a>
+
           <SiteHeader locale={locale as Locale} />
           {children}
         </NextIntlClientProvider>
