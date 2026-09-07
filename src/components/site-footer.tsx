@@ -18,7 +18,20 @@ export async function SiteFooter() {
   const tTrack = await getTranslations('track');
   const tMeta = await getTranslations('meta');
 
-  const linkClass = 'transition-colors hover:text-foreground';
+  /**
+   * Padded to a 24px tap target, not just styled.
+   *
+   * These were 21px tall in a stack with 8px between them, which is a fiddly
+   * thing to hit on a phone and below WCAG 2.2's 24px minimum. The exception
+   * for links inline in a sentence does not apply — this is a navigation list,
+   * and every item in it is a target in its own right.
+   *
+   * `inline-flex` with vertical padding rather than a taller line-height, so
+   * the text keeps its own spacing and only the hit area grows. The lists
+   * lose their gap to compensate, leaving the footer the same height it was.
+   */
+  const linkClass =
+    'inline-flex min-h-6 items-center py-1 transition-colors hover:text-foreground';
 
   return (
     <footer className="mt-16 border-t border-border bg-muted/40">
@@ -32,7 +45,7 @@ export async function SiteFooter() {
           <p id="footer-product" className="text-sm font-medium">
             {t('product')}
           </p>
-          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+          <ul className="mt-2 text-sm text-muted-foreground">
             <li>
               <Link href="/jobs" className={linkClass}>
                 {tNav('jobs')}
@@ -65,7 +78,7 @@ export async function SiteFooter() {
           <p id="footer-tracks" className="text-sm font-medium">
             {t('forCandidates')}
           </p>
-          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+          <ul className="mt-2 text-sm text-muted-foreground">
             {JOB_TRACKS.slice(0, 5).map((track) => (
               <li key={track}>
                 <Link href={{ pathname: '/jobs', query: { track } }} className={linkClass}>
@@ -80,7 +93,7 @@ export async function SiteFooter() {
           <p id="footer-legal" className="text-sm font-medium">
             {t('about')}
           </p>
-          <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+          <ul className="mt-2 text-sm text-muted-foreground">
             <li>
               <Link href="/privacy" className={linkClass}>
                 {t('privacy')}
