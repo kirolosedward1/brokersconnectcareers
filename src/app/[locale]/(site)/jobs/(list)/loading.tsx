@@ -5,6 +5,14 @@ import { CardListSkeleton, Skeleton } from '@/components/ui/skeleton';
  *
  * It mirrors the real page's two-column frame — filter rail beside results —
  * so the layout does not jump when the listings land.
+ *
+ * The (list) route group is why this file is here rather than one level up. A
+ * loading file wraps its whole segment, children included, so at /jobs it also
+ * covered /jobs/[slug] and /jobs/[slug]/apply — and opening a shared listing
+ * emitted a filter rail and a column of fake result cards before the role
+ * appeared. Checked in the streamed HTML: the board's fallback came first, the
+ * listing's second, the actual listing third. The group takes the board out of
+ * its children's path without changing a single URL.
  */
 export default function JobsLoading() {
   return (
