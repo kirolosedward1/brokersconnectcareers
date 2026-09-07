@@ -10,7 +10,7 @@ import { getJobBySlug } from '@/lib/queries/jobs';
 import { parseLandingSlug } from '@/lib/taxonomy';
 import { getDistrictBySlug, getGovernorates } from '@/lib/queries/taxonomy';
 import { recordJobView } from '@/lib/actions/jobs';
-import { truncate, toPlainText } from '@/lib/utils';
+import { formatEgp, truncate, toPlainText } from '@/lib/utils';
 import type { DistrictRow, JobTrack } from '@/lib/supabase/database.types';
 import type { JobDetail } from '@/lib/queries/jobs';
 
@@ -68,16 +68,37 @@ export async function generateMetadata({
     const title = localized(locale, job.title_ar, job.title_en);
     const company = localized(locale, job.company.name_ar, job.company.name_en);
     const district = localized(locale, job.district.name_ar, job.district.name_en);
-    const description = truncate(
-      toPlainText(localized(locale, job.description_ar, job.description_en)),
-      160,
-    );
+    /**
+     * The pay leads the preview, not the prose.
+     *
+     * This site exists on the claim that a listing states the salary, the
+     * commission source and the district before anybody applies — and a link
+     * shared on WhatsApp was previewing the first 160 characters of the job
+     * description, which is the one part of a listing that reads like every
+     * other listing. The facts go first; the prose fills what is left.
+     */
+    const tComp = await getTranslations({ locale, namespace: 'compensation' });
+    const tLeads = await getTranslations({ locale, namespace: 'leadsSource' });
+    // The currency word on its own. The salary messages carry it inline, but
+    // those hold rich tags for the digits and cannot be read as plain strings.
+    const tCommon = await getTranslations({ locale, namespace: 'common' });
+
+    const money =
+      job.basic_salary_min != null && job.basic_salary_max != null
+        ? `${formatEgp(job.basic_salary_min, locale)} – ${formatEgp(job.basic_salary_max, locale)} ${tCommon('egp')} ${tComp('perMonth')}`
+        : job.basic_salary_min != null
+          ? `${formatEgp(job.basic_salary_min, locale)}+ ${tCommon('egp')} ${tComp('perMonth')}`
+          : tComp('commissionOnly');
+
+    const facts = [money, tLeads(`${job.leads_source}_short`), district].join(' · ');
+    const prose = toPlainText(localized(locale, job.description_ar, job.description_en));
+    const description = truncate(`${facts} — ${prose}`, 200);
 
     return {
       title: `${title} — ${company} — ${district}`,
       description,
       alternates: alternatesFor(`/jobs/${slug}`, locale),
-      openGraph: { title, description, type: 'article' },
+      openGraph: { title: `${title} — ${company}`, description, type: 'article' },
       // An expired listing must not be indexed as if it were open.
       robots: job.status === 'active' ? undefined : { index: false, follow: true },
     };
