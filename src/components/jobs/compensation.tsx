@@ -55,11 +55,16 @@ export function SalaryLine({ job, locale }: { job: Comp; locale: string }) {
 
 export function CommissionLine({ job, locale }: { job: Comp; locale: string }) {
   const t = useTranslations('commissionType');
+  // The formatted "2.5% commission" lives in `compensation`, not here. This
+  // namespace holds the four plain labels the enum needs for dropdowns and
+  // filters; a value and a label are different strings and conflating them
+  // broke every place that wanted the label.
+  const tComp = useTranslations('compensation');
 
   if (job.commission_type === 'percentage' && job.commission_value != null) {
     return (
       <span>
-        {t.rich('percentage', {
+        {tComp.rich('commissionPercent', {
           value: new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', {
             maximumFractionDigits: 2,
           }).format(job.commission_value),

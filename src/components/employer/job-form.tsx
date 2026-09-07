@@ -66,6 +66,7 @@ export function JobForm({
   const tExp = useTranslations('experienceBand');
   const tLeads = useTranslations('leadsSource');
   const tCommission = useTranslations('commissionType');
+  const tCompensation = useTranslations('compensation');
   const tBenefit = useTranslations('benefits');
   const tFilters = useTranslations('filters');
   const tEmployer = useTranslations('employer');
@@ -284,7 +285,7 @@ export function JobForm({
               <Select id="commissionType" value={values.commissionType} onChange={set('commissionType')}>
                 {COMMISSION_TYPES.map((type) => (
                   <option key={type} value={type}>
-                    {type === 'percentage' ? tCommission('percentage', { value: '%' }) : tCommission(type)}
+                    {tCommission(type)}
                   </option>
                 ))}
               </Select>
@@ -463,7 +464,10 @@ export function JobForm({
                 <dt className="text-xs text-muted-foreground">{t('commissionType')}</dt>
                 <dd className="numeral">
                   {values.commissionType === 'percentage'
-                    ? tCommission('percentage', { value: values.commissionValue || '0' })
+                    ? tCompensation.rich('commissionPercent', {
+                        value: values.commissionValue || '0',
+                        v: (chunks) => <span className="numeral">{chunks}</span>,
+                      })
                     : tCommission(values.commissionType)}
                 </dd>
               </div>

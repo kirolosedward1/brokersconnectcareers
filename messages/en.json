@@ -89,7 +89,8 @@
     "noBenefits": "No benefits stated",
     "salaryRange": "EGP <v>{min}</v> – <v>{max}</v>",
     "salaryFrom": "From EGP <v>{min}</v>",
-    "salaryUpTo": "Up to EGP <v>{max}</v>"
+    "salaryUpTo": "Up to EGP <v>{max}</v>",
+    "commissionPercent": "<v>{value}</v>% commission"
   },
   "filters": {
     "search": "Keyword",
@@ -136,7 +137,7 @@
     "hybrid_short": "Hybrid"
   },
   "commissionType": {
-    "percentage": "<v>{value}</v>% commission",
+    "percentage": "Percentage",
     "split": "Commission split",
     "undisclosed": "Undisclosed",
     "none": "No commission"

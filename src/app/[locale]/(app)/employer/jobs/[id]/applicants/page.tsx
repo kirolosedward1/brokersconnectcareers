@@ -69,7 +69,10 @@ export default async function ApplicantsPage({
         <div>
           <h2 className="text-lg font-semibold">{jobTitle}</h2>
           <p className="numeral mt-1 text-sm text-muted-foreground">
-            {t('pipelineCount', { count: applications.length })}
+            {t.rich('pipelineCount', {
+              count: applications.length,
+              v: (chunks) => <span className="numeral">{chunks}</span>,
+            })}
           </p>
         </div>
         <Button asChild variant="outline" size="sm">

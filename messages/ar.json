@@ -89,7 +89,8 @@
     "noBenefits": "مفيش مزايا مذكورة",
     "salaryRange": "<v>{min}</v> – <v>{max}</v> جنيه",
     "salaryFrom": "من <v>{min}</v> جنيه",
-    "salaryUpTo": "حتى <v>{max}</v> جنيه"
+    "salaryUpTo": "حتى <v>{max}</v> جنيه",
+    "commissionPercent": "نسبة <v>{value}</v>٪"
   },
   "filters": {
     "search": "بحث بالكلمات",
@@ -136,7 +137,7 @@
     "hybrid_short": "مشترك"
   },
   "commissionType": {
-    "percentage": "نسبة <v>{value}</v>٪",
+    "percentage": "نسبة",
     "split": "تقسيم عمولة",
     "undisclosed": "غير معلنة",
     "none": "لا توجد عمولة"
