@@ -119,10 +119,21 @@ export default async function AllApplicantsPage({
     ? localized(locale, viewer.company.name_ar, viewer.company.name_en)
     : '';
 
+  /**
+   * One row that scrolls sideways on a phone, wrapping only when there is room.
+   *
+   * Wrapping was the first version and it was wrong: six stages and one chip
+   * per listing wrapped to five rows, which ate more than half of a 375px
+   * screen before a single applicant appeared — on the screen whose entire
+   * purpose is seeing who applied without hunting.
+   */
+  const row = 'flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-x-visible';
+
   const chip = (active: boolean) =>
-    active
-      ? 'rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground'
-      : 'rounded-full border border-border px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground';
+    (active
+      ? 'bg-primary text-primary-foreground font-medium'
+      : 'border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground') +
+    ' shrink-0 rounded-full px-3.5 py-1.5 text-sm';
 
   const href = (next: { stage?: string; job?: string }) => {
     const search = new URLSearchParams();
@@ -139,7 +150,7 @@ export default async function AllApplicantsPage({
         <p className="mt-1 text-muted-foreground">{t('allApplicantsLede')}</p>
       </header>
 
-      <nav className="flex flex-wrap gap-2" aria-label={t('allApplicants')}>
+      <nav className={row} aria-label={tStatus('new')}>
         <Link href={href({ job: jobFilter })} aria-current={!stage ? 'page' : undefined} className={chip(!stage)}>
           {tFilters('any')}
         </Link>
@@ -156,13 +167,13 @@ export default async function AllApplicantsPage({
       </nav>
 
       {jobs.length > 1 ? (
-        <nav className="flex flex-wrap gap-2" aria-label={t('jobs')}>
+        <nav className={row} aria-label={t('jobs')}>
           <Link
             href={href({ stage })}
             aria-current={!jobFilter ? 'page' : undefined}
             className={chip(!jobFilter)}
           >
-            {t('jobs')}
+            {t('allListings')}
           </Link>
           {jobs.map((item) => (
             <Link
