@@ -481,6 +481,12 @@
       "bulk": "Bulk",
       "mass_hiring": "Mass hiring",
       "featured_addon": "Featured add-on"
+    },
+    "orderStatus": {
+      "pending": "Awaiting payment",
+      "paid": "Paid",
+      "failed": "Failed",
+      "refunded": "Refunded"
     }
   },
   "common": {

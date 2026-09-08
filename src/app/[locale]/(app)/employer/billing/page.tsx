@@ -138,8 +138,18 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
                   {formatDate(order.created_at, locale)}
                 </span>
                 <span className="numeral">{formatEgp(order.amount_egp, locale)}</span>
-                <Badge variant={order.status === 'paid' ? 'success' : 'default'}>
-                  {order.status}
+                {/* Was the raw column: an employer read "paid" and "failed"
+                    in English on an otherwise Arabic invoice list. */}
+                <Badge
+                  variant={
+                    order.status === 'paid'
+                      ? 'success'
+                      : order.status === 'failed'
+                        ? 'destructive'
+                        : 'default'
+                  }
+                >
+                  {t(`orderStatus.${order.status}`)}
                 </Badge>
               </li>
             ))}

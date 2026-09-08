@@ -481,6 +481,12 @@
       "bulk": "باقة موسّعة",
       "mass_hiring": "توظيف جماعي",
       "featured_addon": "تمييز إعلان"
+    },
+    "orderStatus": {
+      "pending": "في انتظار الدفع",
+      "paid": "مدفوعة",
+      "failed": "فشلت",
+      "refunded": "مسترجعة"
     }
   },
   "common": {
