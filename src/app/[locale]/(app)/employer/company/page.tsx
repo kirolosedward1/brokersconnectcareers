@@ -1,7 +1,8 @@
 import { setRequestLocale } from 'next-intl/server';
-import { asLocale, type Locale } from '@/i18n/routing';
+import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { CompanyForm } from '@/components/employer/company-form';
 import { VerificationPanel } from '@/components/employer/verification-panel';
+import { LogoUpload } from '@/components/employer/logo-upload';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getDistricts } from '@/lib/queries/taxonomy';
@@ -32,6 +33,18 @@ export default async function EmployerCompanyPage({
 
   return (
     <div className="space-y-8">
+      {/* Above the form, because it is the one field on this page that shows
+          up everywhere else — the board, the directory, every listing. It
+          needs a company row to attach a file to, so it waits for one. */}
+      {viewer.company ? (
+        <LogoUpload
+          companyId={viewer.company.id}
+          companyName={localized(locale, viewer.company.name_ar, viewer.company.name_en)}
+          companySlug={viewer.company.slug}
+          logoUrl={viewer.company.logo_url}
+        />
+      ) : null}
+
       <CompanyForm locale={locale} company={viewer.company} districts={districts} />
 
       {viewer.company ? (

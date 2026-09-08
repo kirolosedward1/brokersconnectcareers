@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { CV_BUCKET } from '@/lib/buckets';
 import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
 import { saveAgentProfile } from '@/lib/actions/agent-profile';
 import type {
@@ -81,7 +82,7 @@ export function AgentProfileForm({
         const extension = file.name.split('.').pop()?.toLowerCase() ?? 'pdf';
         const path = `${profile.id}/${crypto.randomUUID()}.${extension}`;
         const { error } = await createClient()
-          .storage.from('cvs')
+          .storage.from(CV_BUCKET)
           .upload(path, file, { contentType: file.type });
 
         if (error) {

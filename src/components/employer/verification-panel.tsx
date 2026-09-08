@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
+import { COMPANY_DOCS_BUCKET } from '@/lib/buckets';
 import { recordCompanyDocument } from '@/lib/actions/company';
 import type { CompanyDocumentRow, VerificationStatus } from '@/lib/supabase/database.types';
 
@@ -54,7 +55,7 @@ export function VerificationPanel({
         const path = `${companyId}/${docType}-${crypto.randomUUID()}.${extension}`;
 
         const { error: uploadError } = await createClient()
-          .storage.from('company-documents')
+          .storage.from(COMPANY_DOCS_BUCKET)
           .upload(path, file, { contentType: file.type });
 
         if (uploadError) {

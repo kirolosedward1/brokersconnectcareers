@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { COMPANY_LOGOS_BUCKET } from '@/lib/storage';
 import { buildCompanySlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
@@ -63,6 +64,50 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
 
   revalidatePath('/employer/company');
   return { ok: true, data: { id: data.id } };
+}
+
+const logoSchema = z.object({
+  companyId: z.string().uuid(),
+  /** Null clears it, which is how "remove logo" is expressed. */
+  storagePath: z.string().trim().min(1).max(512).nullable(),
+});
+
+/**
+ * Points the company at a logo the browser has already uploaded.
+ *
+ * The upload itself happens client-side, straight into the public bucket
+ * under the company's own folder, where a storage policy checks ownership.
+ * This records the resulting public URL — the column holds a URL rather than
+ * a path because the logo is rendered in places that have no session to mint
+ * one with: a shared preview, a search result, an email.
+ */
+export async function saveCompanyLogo(input: unknown): Promise<ActionResult> {
+  const parsed = logoSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const url = parsed.data.storagePath
+    ? supabase.storage.from(COMPANY_LOGOS_BUCKET).getPublicUrl(parsed.data.storagePath).data
+        .publicUrl
+    : null;
+
+  // Through the caller's session, so row-level security confirms the company
+  // is theirs rather than this function taking the id on trust.
+  const { error } = await supabase
+    .from('companies')
+    .update({ logo_url: url })
+    .eq('id', parsed.data.companyId);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/employer/company');
+  revalidatePath('/companies');
+  return { ok: true };
 }
 
 const documentSchema = z.object({

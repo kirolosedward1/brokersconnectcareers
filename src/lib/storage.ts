@@ -1,9 +1,9 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-export const CV_BUCKET = 'cvs';
-export const COMPANY_DOCS_BUCKET = 'company-documents';
-export const COMPANY_LOGOS_BUCKET = 'company-logos';
+// Re-exported so server-side callers keep one import for "storage things",
+// while the names themselves stay reachable from the browser.
+export { CV_BUCKET, COMPANY_DOCS_BUCKET, COMPANY_LOGOS_BUCKET } from '@/lib/buckets';
 
 /**
  * Mints a short-lived signed URL with the service role.

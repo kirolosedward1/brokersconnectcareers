@@ -385,7 +385,11 @@
     "pendingBody": "We check company details before the first listing goes out. Complete your company profile and upload your commercial registry to move it along.",
     "allApplicants": "All applicants",
     "allApplicantsLede": "Everyone who applied to your listings, newest first.",
-    "allListings": "All listings"
+    "allListings": "All listings",
+    "logo": "Company logo",
+    "logoHint": "PNG, JPG or SVG, up to 2 MB. Shown beside your company name everywhere.",
+    "logoUpload": "Upload logo",
+    "logoReplace": "Replace logo"
   },
   "jobForm": {
     "basics": "Basics",

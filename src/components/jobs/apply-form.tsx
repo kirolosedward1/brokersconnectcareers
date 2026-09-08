@@ -7,6 +7,7 @@ import { Link, useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
+import { CV_BUCKET } from '@/lib/buckets';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { applyToJob } from '@/lib/actions/applications';
 import type { ExperienceBand } from '@/lib/supabase/database.types';
@@ -82,7 +83,7 @@ export function ApplyForm({
         const path = `${userId}/${crypto.randomUUID()}.${extension}`;
 
         const { error: uploadError } = await createClient()
-          .storage.from('cvs')
+          .storage.from(CV_BUCKET)
           .upload(path, file, { upsert: false, contentType: file.type });
 
         if (uploadError) {
