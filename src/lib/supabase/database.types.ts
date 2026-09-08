@@ -232,6 +232,7 @@ export type AdminTrend = {
 export type ApprovalStatus = 'approved' | 'pending' | 'rejected';
 
 export type NotificationKind =
+  | 'application_submitted'
   | 'application_received'
   | 'application_moved'
   | 'job_published'

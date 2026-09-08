@@ -750,6 +750,56 @@ report.section('dashboard trends are gap-free and scoped like the summaries');
   report.check('and anonymous reaches neither', !anonEmployer.ok && !anonAdmin.ok);
 }
 
+report.section('applying tells both sides, not just the employer');
+{
+  // Before the rate-limit section, which fills this candidate's daily window.
+  const target = (
+    await db.query(`
+      select j.id, c.owner_id from jobs j join companies c on c.id = j.company_id
+       where j.status = 'active'
+         and j.id not in (select job_id from applications where candidate_id = '${candidate}')
+       limit 1
+    `)
+  ).rows[0];
+
+  // Counted as a delta: other candidates in the seed have applied to this
+  // listing already, so the employer's total is not 0 to begin with.
+  const employerNotices = async () =>
+    (
+      await db.query(`
+        select count(*)::int as n from notifications
+         where user_id = '${target.owner_id}' and kind = 'application_received'
+           and payload->>'job_id' = '${target.id}'
+      `)
+    ).rows[0].n;
+
+  const before = await employerNotices();
+  await db.exec(
+    `insert into applications (job_id, candidate_id) values ('${target.id}','${candidate}')`,
+  );
+  const after = await employerNotices();
+
+  report.check(`the employer is told somebody applied (${before} → ${after})`,
+    after === before + 1);
+
+  const forCandidate = await db.query(`
+    select payload from notifications
+     where user_id = '${candidate}' and kind = 'application_submitted'
+       and payload->>'job_id' = '${target.id}'
+  `);
+  report.check('and the applicant is told it landed', forCandidate.rows.length === 1);
+
+  // Data, not prose: the feed is bilingual and builds its own sentence.
+  const payload = forCandidate.rows[0]?.payload ?? {};
+  report.check('with the company in the payload, not a rendered sentence',
+    Boolean(payload.title_ar) && Boolean(payload.company_ar) && !payload.message,
+    JSON.stringify(payload));
+
+  const leaked = await as(publicAgent,
+    `select count(*)::int as n from notifications where user_id = '${candidate}'`);
+  report.check('and nobody else can read it', leaked.ok && leaked.rows[0].n === 0, leaked.error);
+}
+
 report.section('reports need an account, and an account has limits');
 {
   const anon = await as(null, `insert into reports (job_id, reason) values ('${liveJob}','spam')`, 'anon');

@@ -20,6 +20,17 @@ export const emailCopy = {
     footerNote: 'وصلتك الرسالة دي لأنك مسجّل في بروكرز كونكت.',
     unsubscribe: 'وقّف الإشعارات دي',
 
+    applicationReceived: {
+      subject: (job: string) => `وصل طلبك على ${job}`,
+      preheader: 'استلمنا طلبك.',
+      heading: 'استلمنا طلبك',
+      body: (job: string, company: string) =>
+        `بعتنا طلبك على وظيفة «${job}» لشركة ${company}. الشركة هتشوفه وتردّ من خلال المنصة، وهنبلّغك أول ما يتحرّك.`,
+      cta: 'تابع طلباتك',
+      labelJob: 'الوظيفة',
+      labelCompany: 'الشركة',
+    },
+
     newApplication: {
       subject: (job: string) => `متقدم جديد على ${job}`,
       preheader: 'حد قدّم على وظيفة عندك.',
@@ -101,6 +112,17 @@ export const emailCopy = {
     siteName: 'Brokers Connect',
     footerNote: 'You are receiving this because you have a Brokers Connect account.',
     unsubscribe: 'Turn off these emails',
+
+    applicationReceived: {
+      subject: (job: string) => `We have your application for ${job}`,
+      preheader: 'Your application was received.',
+      heading: 'We have your application',
+      body: (job: string, company: string) =>
+        `Your application for “${job}” at ${company} is with them now. They review it on the platform, and we will tell you the moment it moves.`,
+      cta: 'Track your applications',
+      labelJob: 'Job',
+      labelCompany: 'Company',
+    },
 
     newApplication: {
       subject: (job: string) => `New applicant for ${job}`,

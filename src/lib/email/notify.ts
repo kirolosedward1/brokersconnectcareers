@@ -43,6 +43,18 @@ type ApplicationForEmployer = {
   } | null;
 };
 
+type ApplicationReceipt = {
+  id: string;
+  candidate_id: string;
+  job: {
+    id: string;
+    slug: string;
+    title_ar: string;
+    title_en: string | null;
+    company: { name_ar: string; name_en: string | null } | null;
+  } | null;
+};
+
 type ApplicationForCandidate = {
   id: string;
   status: ApplicationStatus;
@@ -186,6 +198,64 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
     );
   } catch (error) {
     console.warn('[email] employer application notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+/**
+ * Candidate: their application landed.
+ *
+ * The counterpart to notifyEmployerOfApplication, and it should always have
+ * been written at the same time. Sent on notify_status rather than a
+ * preference of its own — somebody who has turned off "tell me when my
+ * application moves" has said what they want, and a receipt is the first
+ * movement.
+ */
+export async function notifyCandidateOfApplication(applicationId: string): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+
+    const { data } = await admin
+      .from('applications')
+      .select(
+        'id, candidate_id, job:jobs (id, slug, title_ar, title_en, company:companies (name_ar, name_en))',
+      )
+      .eq('id', applicationId)
+      .maybeSingle();
+
+    const application = data as unknown as ApplicationReceipt | null;
+    const job = application?.job;
+    if (!application || !job) return 'skipped';
+
+    const to = await recipient(admin, application.candidate_id, 'notify_status');
+    if (!to) return 'skipped';
+
+    const t = copyFor(to.locale).applicationReceived;
+    const title = localized(to.locale, job.title_ar, job.title_en);
+    const company = job.company
+      ? localized(to.locale, job.company.name_ar, job.company.name_en)
+      : '';
+
+    return sendEmail(
+      compose({
+        to,
+        preference: 'notify_status',
+        subject: t.subject(title),
+        preheader: t.preheader,
+        heading: t.heading,
+        paragraphs: [t.body(title, company)],
+        facts: [
+          [t.labelJob, title],
+          [t.labelCompany, company],
+        ],
+        button: {
+          label: t.cta,
+          href: `${env.siteUrl}/dashboard/applications`,
+        },
+      }),
+    );
+  } catch (error) {
+    console.warn('[email] application receipt failed:', asMessage(error));
     return 'failed';
   }
 }

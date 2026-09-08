@@ -23,6 +23,7 @@ import type { NotificationKind, NotificationRow } from '@/lib/supabase/database.
  * than only the ones created after the change.
  */
 const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }>> = {
+  application_submitted: Send,
   application_received: UserRound,
   application_moved: Send,
   job_published: FileCheck2,
@@ -33,6 +34,7 @@ const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }
 };
 
 const TONES: Record<NotificationKind, string> = {
+  application_submitted: 'bg-success-muted text-success',
   application_received: 'bg-primary/10 text-primary',
   application_moved: 'bg-primary/10 text-primary',
   job_published: 'bg-success-muted text-success',

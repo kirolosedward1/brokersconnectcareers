@@ -8,6 +8,7 @@ import { normalisePhone, isValidPhone } from '@/lib/phone';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 import {
+  notifyCandidateOfApplication,
   notifyCandidateOfStatus,
   notifyEmployerOfApplication,
 } from '@/lib/email/notify';
@@ -76,7 +77,13 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
   // after() runs once the response is on its way, so the applicant is not kept
   // waiting on an SMTP round trip — and a mail failure cannot turn a recorded
   // application into an error on their screen.
-  if (created) after(() => notifyEmployerOfApplication(created.id));
+  if (created) {
+    after(() => notifyEmployerOfApplication(created.id));
+    // The applicant hears back too. Until now the next thing they heard was
+    // whatever an employer eventually did, which on a listing nobody opens is
+    // nothing at all.
+    after(() => notifyCandidateOfApplication(created.id));
+  }
 
   revalidatePath('/dashboard/applications');
   return { ok: true };
