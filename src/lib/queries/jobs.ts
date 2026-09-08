@@ -16,6 +16,7 @@ import type {
   JobTrack,
   LeadsSource,
 } from '@/lib/supabase/database.types';
+import { searchText } from '@/lib/search/arabic';
 
 export const JOBS_PER_PAGE = 20;
 
@@ -178,7 +179,13 @@ export async function queryJobs(
     .gt('expires_at', new Date().toISOString());
 
   if (filters.q) {
-    query = query.textSearch('search_vector', filters.q, { type: 'websearch', config: 'simple' });
+    // Folded the same way the index was. Without this the query keeps its
+    // harakat, its hamza and its ال while the index has none of them, and an
+    // exact match on the screen is a miss in the database.
+    query = query.textSearch('search_vector', searchText(filters.q), {
+      type: 'websearch',
+      config: 'simple',
+    });
   }
   if (filters.tracks.length) query = query.in('track', filters.tracks);
   if (filters.leadsSources.length) query = query.in('leads_source', filters.leadsSources);

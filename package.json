@@ -19,11 +19,12 @@
     "doctor": "node scripts/doctor.mjs",
     "db:rehearse": "node scripts/db-rehearse.mjs",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
-    "test:db": "node supabase/tests/schema.test.mjs && node supabase/tests/policies.test.mjs && node --experimental-strip-types supabase/tests/hmac.test.mjs",
+    "test:db": "node supabase/tests/schema.test.mjs && node supabase/tests/policies.test.mjs && node --experimental-strip-types supabase/tests/hmac.test.mjs && pnpm test:search",
     "test:hmac": "node --experimental-strip-types supabase/tests/hmac.test.mjs",
     "smoke": "node scripts/smoke.mjs",
     "test:messages": "node scripts/messages.mjs",
-    "check": "pnpm typecheck && pnpm test:messages && pnpm test:db"
+    "check": "pnpm typecheck && pnpm test:messages && pnpm test:db",
+    "test:search": "node --experimental-strip-types supabase/tests/search.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",
