@@ -21,8 +21,6 @@
     "skipToContent": "تخطَّ إلى المحتوى"
   },
   "home": {
-    "heroTitle": "وظائف العقارات في مصر، بشروط واضحة",
-    "heroSubtitle": "كل إعلان بيوضّح الراتب الأساسي ونسبة العمولة ومصدر العملاء قبل ما تقدّم.",
     "searchPlaceholder": "دوّر على وظيفة، شركة، أو منطقة",
     "searchButton": "دوّر",
     "browseAll": "شوف كل الوظائف",
@@ -32,10 +30,6 @@
     "byDistrict": "حسب المنطقة",
     "statJobs": "وظيفة منشورة",
     "statSeats": "فرصة خالية",
-    "statCompanies": "شركة",
-    "forEmployers": "لأصحاب العمل",
-    "forEmployersBody": "انشر وظيفتك قدّام استشاريين بيدوّروا فعلاً. مجاناً خلال فترة الإطلاق.",
-    "forEmployersCta": "انشر وظيفة",
     "welcome": "أهلاً {name}",
     "welcomeLede": "شوف الجديد في سوق العقارات.",
     "newestJobs": "الأحدث",
@@ -55,7 +49,6 @@
     "saved": "محفوظة",
     "share": "مشاركة",
     "report": "بلّغ عن الإعلان",
-    "seats": "{count, plural, one {وظيفة خالية واحدة} two {وظيفتان خاليتان} few {# وظائف خالية} many {# وظيفة خالية} other {# وظيفة خالية}}",
     "postedOn": "نُشرت في {date}",
     "expiresOn": "تنتهي في {date}",
     "views": "{count} مشاهدة",
@@ -64,7 +57,6 @@
     "requirements": "المطلوب",
     "developers": "مشروعات المطورين",
     "similarJobs": "وظائف زيها",
-    "moreFromCompany": "وظائف تانية في {company}",
     "sortNewest": "الأحدث",
     "sortSalary": "الأعلى راتباً",
     "sortSeats": "الأكثر شواغر",
@@ -109,7 +101,6 @@
     "governorate": "المحافظة",
     "any": "الكل",
     "showResults": "شوف النتايج",
-    "activeFilters": "عوامل التصفية المفعّلة",
     "verifiedOnly": "الموثّقة بس"
   },
   "track": {
@@ -187,7 +178,6 @@
     "contact": "كلّمه على واتساب",
     "downloadCv": "نزّل السيرة الذاتية",
     "empty": "مفيش استشاريين مطابقين لبحثك.",
-    "notFound": "الملف ده مش متاح.",
     "whoSeesProfile": "من يرى ملفك؟",
     "viewProfile": "شوف الملف الكامل",
     "unitsClosedShort": "{count} وحدة مباعة"
@@ -240,7 +230,11 @@
     "signUpTitleCandidate": "اعمل حسابك كاستشاري",
     "preselectedCandidate": "هتكمّل كاستشاري عقارات.",
     "preselectedEmployer": "هتكمّل كشركة عقارات.",
-    "passwordConfirm": "تأكيد كلمة المرور"
+    "passwordConfirm": "تأكيد كلمة المرور",
+    "errBadCredentials": "الإيميل أو كلمة المرور مش مظبوطين.",
+    "errEmailTaken": "الإيميل ده مسجّل عندنا بالفعل. جرّب تسجّل الدخول.",
+    "errEmailUnconfirmed": "لازم تأكّد إيميلك الأول. بصّ في رسايلك.",
+    "errTooMany": "محاولات كتير في وقت قصير. استنّى شوية وجرّب تاني."
   },
   "onboarding": {
     "title": "كمّل بياناتك",
@@ -350,7 +344,6 @@
     "success": "طلبك اتبعت",
     "successBody": "صاحب العمل هيكلمك على واتساب على الرقم اللي كتبته.",
     "alreadyApplied": "انت قدّمت على الوظيفة دي قبل كده.",
-    "signInRequired": "سجّل دخولك عشان تقدّم",
     "viewApplications": "تابع طلباتك",
     "employerCannotApply": "انت داخل بحساب شركة. التقديم على الوظائف للاستشاريين بس.",
     "rateLimit": "قدّمت على وظائف كتير النهاردة. جرّب تاني بكرة."
@@ -489,7 +482,6 @@
     "seatsUpTo": "حتى {count} وظيفة خالية",
     "unlimitedSeats": "عدد غير محدود من الشواغر",
     "days": "{count} يوماً",
-    "featuredAddon": "تمييز الإعلان",
     "orders": "الطلبات",
     "packName": {
       "single": "إعلان واحد",
@@ -510,15 +502,9 @@
     "save": "حفظ",
     "cancel": "إلغاء",
     "delete": "حذف",
-    "edit": "تعديل",
     "submit": "إرسال",
-    "confirm": "تأكيد",
-    "close": "إغلاق",
     "back": "رجوع",
     "optional": "اختياري",
-    "required": "مطلوب",
-    "yes": "نعم",
-    "no": "لا",
     "all": "الكل",
     "egp": "جنيه",
     "notFound": "الصفحة مش موجودة",
@@ -528,8 +514,7 @@
     "errorBody": "مقدرناش نكمّل العملية. جرّب تاني.",
     "errorReference": "كود العطل",
     "retry": "جرّب تاني",
-    "saveSuccess": "تم الحفظ",
-    "new": "جديد"
+    "saveSuccess": "تم الحفظ"
   },
   "landing": {
     "title": "وظائف {track} في {district}",
@@ -540,7 +525,6 @@
   "footer": {
     "product": "بروكرز كونكت",
     "forCandidates": "لاستشاريي العقارات",
-    "forEmployers": "لشركات العقارات",
     "about": "عن بروكرز كونكت",
     "privacy": "سياسة الخصوصية",
     "terms": "شروط الاستخدام",
@@ -685,7 +669,6 @@
     "subtitle": "شروحات ونصايح للشغل في السوق العقاري المصري — لاستشاريي العقارات ولشركات العقارات.",
     "empty": "لسه مفيش مقالات.",
     "readingTime": "{count} دقيقة قراءة",
-    "publishedOn": "نُشر في {date}",
     "backToBlog": "كل المقالات",
     "moreReading": "اقرا كمان",
     "writtenBy": "بقلم {author}",
@@ -748,7 +731,6 @@
     "empty": "لسه مافيش بحث محفوظ. فلتر الوظائف وبعدين اضغط «نبّهني بالجديد».",
     "alertsOn": "التنبيهات شغّالة",
     "alertsOff": "التنبيهات واقفة",
-    "openSearch": "افتح البحث",
     "remove": "امسح",
     "weekly": "رسالة أسبوعية بالوظائف الجديدة اللي تطابق البحث ده."
   },

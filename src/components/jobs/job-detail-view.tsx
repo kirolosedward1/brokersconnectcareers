@@ -11,6 +11,7 @@ import { CompensationCard, LeadsSourceBadge } from '@/components/jobs/compensati
 import { JobCard } from '@/components/jobs/job-card';
 import { SaveJobButton } from '@/components/jobs/save-job-button';
 import { ReportJobDialog } from '@/components/jobs/report-job-dialog';
+import { ShareJobButton } from '@/components/jobs/share-job-button';
 import { formatDate, formatNumber, isoDate } from '@/lib/utils';
 import { getSimilarJobs, type JobDetail } from '@/lib/queries/jobs';
 import { getViewer } from '@/lib/auth';
@@ -160,6 +161,7 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
               canSave={Boolean(viewer?.profile)}
               labels={{ save: t('save'), saved: t('saved') }}
             />
+            <ShareJobButton title={title} />
             <ReportJobDialog
               jobId={job.id}
               jobSlug={job.slug}
@@ -244,7 +246,7 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
                   {localized(locale, job.company.about_ar, job.company.about_en)}
                 </p>
               ) : null}
-              <Button asChild variant="outline" size="sm" className="w-full">
+              <Button asChild variant="outline" className="w-full">
                 <Link href={`/companies/${job.company.slug}`}>{tCompanies('title')}</Link>
               </Button>
             </CardContent>

@@ -29,6 +29,30 @@ function GoogleMark() {
   );
 }
 
+/**
+ * Supabase speaks English, and this page does not.
+ *
+ * Every auth failure was reaching the reader as whatever string GoTrue
+ * returned — "Invalid login credentials" on an otherwise Arabic sign-in form.
+ * The same class of bug as an untranslated status enum, and worse placed: it
+ * lands on the one screen where somebody is already unsure whether they did
+ * something wrong.
+ *
+ * Matched on substrings rather than codes because GoTrue's error codes are not
+ * stable across versions and its messages have been. Anything unrecognised
+ * falls through to the generic line rather than to English — a reader is
+ * better served by "something went wrong" in their own language than by a
+ * precise sentence in one they may not read.
+ */
+const AUTH_ERRORS: { match: RegExp; namespace: 'auth' | 'validation'; key: string }[] = [
+  { match: /invalid login credentials/i, namespace: 'auth', key: 'errBadCredentials' },
+  { match: /already registered|already been registered|user already exists/i, namespace: 'auth', key: 'errEmailTaken' },
+  { match: /email not confirmed|confirm your email/i, namespace: 'auth', key: 'errEmailUnconfirmed' },
+  { match: /for security purposes|rate limit|too many requests/i, namespace: 'auth', key: 'errTooMany' },
+  { match: /unable to validate email|invalid format/i, namespace: 'validation', key: 'invalidEmail' },
+  { match: /password should be at least/i, namespace: 'validation', key: 'passwordShort' },
+];
+
 export function AuthForm({
   mode,
   locale,
@@ -46,6 +70,13 @@ export function AuthForm({
   const t = useTranslations('auth');
   const tValidation = useTranslations('validation');
   const tCommon = useTranslations('common');
+
+  /** GoTrue's English, turned back into the language of the page. */
+  const readable = (message: string) => {
+    const known = AUTH_ERRORS.find((entry) => entry.match.test(message));
+    if (!known) return tCommon('errorBody');
+    return known.namespace === 'auth' ? t(known.key) : tValidation(known.key);
+  };
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -101,7 +132,7 @@ export function AuthForm({
           options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
         });
         if (signUpError) {
-          setError(signUpError.message);
+          setError(readable(signUpError.message));
           return;
         }
         // With email confirmation enabled there is no session yet.
@@ -112,7 +143,7 @@ export function AuthForm({
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) {
-          setError(signInError.message);
+          setError(readable(signInError.message));
           return;
         }
       }

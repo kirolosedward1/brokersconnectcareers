@@ -55,7 +55,7 @@ export function ReportJobDialog({ jobId, signedIn, jobSlug }: { jobId: string; s
 
   if (!signedIn) {
     return (
-      <Button asChild variant="ghost" size="sm">
+      <Button asChild variant="ghost">
         <a href={`/sign-in?next=${encodeURIComponent(`/jobs/${jobSlug}`)}`}>
           <Flag />
           {t('report')}
@@ -66,7 +66,7 @@ export function ReportJobDialog({ jobId, signedIn, jobSlug }: { jobId: string; s
 
   return (
     <>
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="ghost" onClick={() => setOpen(true)}>
         <Flag />
         {t('report')}
       </Button>

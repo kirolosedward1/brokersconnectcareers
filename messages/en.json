@@ -21,8 +21,6 @@
     "skipToContent": "Skip to content"
   },
   "home": {
-    "heroTitle": "Real estate jobs in Egypt, on stated terms",
-    "heroSubtitle": "Every listing shows the basic salary, the commission, and who supplies the leads — before you apply.",
     "searchPlaceholder": "Search a role, company or district",
     "searchButton": "Search",
     "browseAll": "Browse all jobs",
@@ -32,10 +30,6 @@
     "byDistrict": "By district",
     "statJobs": "live jobs",
     "statSeats": "open seats",
-    "statCompanies": "companies",
-    "forEmployers": "For employers",
-    "forEmployersBody": "Put your role in front of consultants who are actually looking. Free during launch.",
-    "forEmployersCta": "Post a job",
     "welcome": "Welcome, {name}",
     "welcomeLede": "What's new in the market.",
     "newestJobs": "Newest",
@@ -55,7 +49,6 @@
     "saved": "Saved",
     "share": "Share",
     "report": "Report this listing",
-    "seats": "{count, plural, one {1 open seat} other {# open seats}}",
     "postedOn": "Posted {date}",
     "expiresOn": "Closes {date}",
     "views": "{count} views",
@@ -64,7 +57,6 @@
     "requirements": "Requirements",
     "developers": "Developer portfolio",
     "similarJobs": "Similar jobs",
-    "moreFromCompany": "More roles at {company}",
     "sortNewest": "Newest",
     "sortSalary": "Highest salary",
     "sortSeats": "Most seats",
@@ -109,7 +101,6 @@
     "governorate": "Governorate",
     "any": "Any",
     "showResults": "Show results",
-    "activeFilters": "Active filters",
     "verifiedOnly": "Verified only"
   },
   "track": {
@@ -187,7 +178,6 @@
     "contact": "Contact on WhatsApp",
     "downloadCv": "Download CV",
     "empty": "No consultants match your search.",
-    "notFound": "This profile is not available.",
     "whoSeesProfile": "Who can see your profile?",
     "viewProfile": "View full profile",
     "unitsClosedShort": "{count} units closed"
@@ -240,7 +230,11 @@
     "signUpTitleCandidate": "Create your consultant account",
     "preselectedCandidate": "You will continue as a real estate consultant.",
     "preselectedEmployer": "You will continue as a real estate company.",
-    "passwordConfirm": "Confirm password"
+    "passwordConfirm": "Confirm password",
+    "errBadCredentials": "That email and password do not match.",
+    "errEmailTaken": "That email is already registered. Try signing in.",
+    "errEmailUnconfirmed": "Confirm your email first — check your inbox.",
+    "errTooMany": "Too many attempts in a short time. Wait a moment and try again."
   },
   "onboarding": {
     "title": "Finish your profile",
@@ -350,7 +344,6 @@
     "success": "Application sent",
     "successBody": "The employer will reach you on WhatsApp at the number you gave.",
     "alreadyApplied": "You have already applied to this job.",
-    "signInRequired": "Sign in to apply",
     "viewApplications": "Track your applications",
     "employerCannotApply": "You're signed in as a company. Applying is for consultants only.",
     "rateLimit": "You have applied to a lot of jobs today. Try again tomorrow."
@@ -489,7 +482,6 @@
     "seatsUpTo": "Up to {count} seats",
     "unlimitedSeats": "Unlimited seats",
     "days": "{count} days",
-    "featuredAddon": "Featured placement",
     "orders": "Orders",
     "packName": {
       "single": "Single",
@@ -510,15 +502,9 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
-    "edit": "Edit",
     "submit": "Submit",
-    "confirm": "Confirm",
-    "close": "Close",
     "back": "Back",
     "optional": "optional",
-    "required": "required",
-    "yes": "Yes",
-    "no": "No",
     "all": "All",
     "egp": "EGP",
     "notFound": "Page not found",
@@ -528,8 +514,7 @@
     "errorBody": "We could not complete that. Please try again.",
     "errorReference": "Error reference",
     "retry": "Try again",
-    "saveSuccess": "Saved",
-    "new": "New"
+    "saveSuccess": "Saved"
   },
   "landing": {
     "title": "{track} jobs in {district}",
@@ -540,7 +525,6 @@
   "footer": {
     "product": "Product",
     "forCandidates": "For consultants",
-    "forEmployers": "For companies",
     "about": "About",
     "privacy": "Privacy",
     "terms": "Terms",
@@ -685,7 +669,6 @@
     "subtitle": "Explainers and advice for working the Egyptian real estate market — for consultants and for companies.",
     "empty": "No articles yet.",
     "readingTime": "{count} min read",
-    "publishedOn": "Published {date}",
     "backToBlog": "All articles",
     "moreReading": "More reading",
     "writtenBy": "By {author}",
@@ -748,7 +731,6 @@
     "empty": "No saved searches yet. Filter the jobs, then press “Alert me”.",
     "alertsOn": "Alerts on",
     "alertsOff": "Alerts off",
-    "openSearch": "Open search",
     "remove": "Delete",
     "weekly": "A weekly email with new roles matching this search."
   },

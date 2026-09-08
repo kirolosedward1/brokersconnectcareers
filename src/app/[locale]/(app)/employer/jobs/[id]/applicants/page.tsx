@@ -36,7 +36,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const locale = asLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: 'employer' });
-  return { title: t('allApplicants'), robots: { index: false, follow: false } };
+  // This page is one listing's applicants; allApplicants belongs to the
+  // cross-listing inbox, and using it here titled both pages the same.
+  return { title: t('applicants'), robots: { index: false, follow: false } };
 }
 
 export default async function ApplicantsPage({

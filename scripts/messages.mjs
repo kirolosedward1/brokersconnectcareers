@@ -10,11 +10,18 @@
  * "commissionType.percentage" in production for exactly as long as it took
  * somebody to open it.
  *
- *   1. ar and en carry the same keys.
+ *   1. ar and en carry the same keys, with the same placeholders.
  *   2. No message containing a tag is read with plain t().
+ *   3. Every key a component asks for exists.
+ *   4. Every key the catalogue holds is asked for.
+ *   5. No `.numeral` — which forces left-to-right — wraps a translated string.
  *
- * The second is a grep, not a parse. It looks for `t('key')`-shaped calls that
- * are not `t.rich(`, which catches the mistake without a TypeScript program.
+ * All of them are greps, not parses: `t('key')`-shaped calls, matched without
+ * a TypeScript program. Checks 3 and 4 are the same scan run in opposite
+ * directions, and the pair matters more than either half. One catches a raw
+ * key path rendering on a page. The other catches copy written for a feature
+ * nobody built — which is how this codebase carried the words for a password
+ * reset for months without carrying the reset.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -194,6 +201,97 @@ console.log('\n— every key a component asks for exists');
 
   check(`every literal key resolves (${checked} call sites)`, missing.length === 0,
     [...new Set(missing)].join('; '));
+}
+
+/**
+ * Keys the catalogue keeps on purpose, with nothing calling them yet.
+ *
+ * Every entry is copy written for work that is planned and named, not copy
+ * left behind. An allowlist rather than silence, so each exception is a
+ * decision somebody wrote down and has to keep re-justifying.
+ */
+const PLANNED = new Map([
+  ['auth.forgotPassword', 'password reset — round 4, track 1'],
+  ['auth.resetPassword', 'password reset — round 4, track 1'],
+  ['auth.sendResetLink', 'password reset — round 4, track 1'],
+  ['filters.governorate', 'governorate filter — round 4, track 5'],
+]);
+
+console.log('\n— every key in the catalogue is asked for');
+{
+  // The direction this check was missing for months. Going the other way
+  // proves nothing renders a raw key path; going this way proves the
+  // catalogue is not carrying copy for features that were never built.
+  //
+  // It is the check that would have said, the week the copy landed, that
+  // auth.forgotPassword had no caller — which is how a job board shipped with
+  // no way to recover a password.
+  const ar = new Map(flatten(load('ar')));
+
+  const sources = [];
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry)) sources.push(full);
+    }
+  })(join(ROOT, 'src'));
+
+  const used = new Set();
+  /**
+   * Namespaces and prefixes reached by a key built at runtime, which no grep
+   * can resolve. Two shapes, both detected rather than listed by hand:
+   * `t(`orderStatus.${x}`)` contributes the prefix it starts with, and
+   * `t(someVariable)` contributes its whole namespace.
+   */
+  const dynamic = new Set();
+
+  for (const file of sources) {
+    const text = readFileSync(file, 'utf8');
+
+    const namespaces = new Map();
+    const binding =
+      /(?:const|let)\s+(\w+)\s*=\s*(?:await\s+)?(?:useTranslations|getTranslations)\s*\(\s*(?:\{[^}]*namespace:\s*)?['"`]([\w.]+)['"`]/g;
+    for (const match of text.matchAll(binding)) {
+      const list = namespaces.get(match[1]) ?? [];
+      list.push(match[2]);
+      namespaces.set(match[1], list);
+    }
+
+    for (const [variable, list] of namespaces) {
+      for (const match of text.matchAll(
+        new RegExp(`\\b${variable}(?:\\.rich)?\\((['"])([\\w.]+)\\1`, 'g'),
+      )) {
+        for (const namespace of list) used.add(`${namespace}.${match[2]}`);
+      }
+
+      // t(`stem.${…}`) — everything under the static stem is reachable.
+      for (const match of text.matchAll(
+        new RegExp('\\b' + variable + '(?:\\.rich)?\\(\\s*`([\\w.]*)\\$\\{', 'g'),
+      )) {
+        for (const namespace of list) dynamic.add(`${namespace}.${match[1]}`);
+      }
+
+      // t(value) — an identifier, not a string. The whole namespace is in play.
+      if (new RegExp('\\b' + variable + '(?:\\.rich)?\\(\\s*[A-Za-z_$]').test(text)) {
+        for (const namespace of list) dynamic.add(`${namespace}.`);
+      }
+    }
+  }
+
+  const prefixes = [...dynamic];
+  const orphans = [...ar.keys()].filter(
+    (key) =>
+      !used.has(key) &&
+      !PLANNED.has(key) &&
+      !prefixes.some((prefix) => key.startsWith(prefix)),
+  );
+
+  check(`no key in the catalogue is unreachable (${ar.size} keys, ${PLANNED.size} planned)`,
+    orphans.length === 0, orphans.join(', '));
+
+  const stale = [...PLANNED.keys()].filter((key) => !ar.has(key));
+  check('and nothing is allowlisted that no longer exists', stale.length === 0, stale.join(', '));
 }
 
 console.log('\n— no translated phrase is forced left-to-right');
