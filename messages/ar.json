@@ -318,7 +318,9 @@
     "conversionHint": "نسبة اللي شافوا الإعلان وقدّموا فعلاً، مقارنة بين إعلاناتك المنشورة.",
     "conversionEmpty": "مفيش إعلانات منشورة دلوقتي.",
     "conversionCounts": "تقديمات: {applications} · مشاهدات: {views}",
-    "conversionAll": "كل الإعلانات"
+    "conversionAll": "كل الإعلانات",
+    "seeAll": "شوف الكل",
+    "openRoles": "وظائف مفتوحة دلوقتي"
   },
   "applicationStatus": {
     "new": "جديد",

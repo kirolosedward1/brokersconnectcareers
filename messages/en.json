@@ -318,7 +318,9 @@
     "conversionHint": "How many readers went on to apply — your live listings, compared.",
     "conversionEmpty": "No live listings right now.",
     "conversionCounts": "Applications: {applications} · Views: {views}",
-    "conversionAll": "All listings"
+    "conversionAll": "All listings",
+    "seeAll": "See all",
+    "openRoles": "Open roles"
   },
   "applicationStatus": {
     "new": "New",
