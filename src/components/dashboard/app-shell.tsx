@@ -54,7 +54,20 @@ export type AppIcon = keyof typeof ICONS;
 
 export type AppNavGroup = {
   label: string;
-  items: { href: string; label: string; icon: AppIcon }[];
+  items: {
+    href: string;
+    label: string;
+    icon: AppIcon;
+    /**
+     * How many things are waiting behind this link.
+     *
+     * Derived state, never an event log: it is counted at render and it goes
+     * down when the work is done. That rules out anything cumulative — a
+     * candidate's total replies would sit there forever, teaching people to
+     * ignore the badges that do mean something.
+     */
+    badge?: number;
+  }[];
 };
 
 /**
@@ -135,9 +148,11 @@ export function AppShell({
               </p>
             )}
             <ul className="space-y-1">
-              {group.items.map(({ href, label, icon }) => {
+              {group.items.map(({ href, label, icon, badge }) => {
                 const Icon = ICONS[icon];
                 const active = pathname === href;
+                const waiting = badge && badge > 0 ? badge : null;
+
                 return (
                   <li key={href}>
                     <Link
@@ -145,7 +160,7 @@ export function AppShell({
                       aria-current={active ? 'page' : undefined}
                       title={collapsed ? label : undefined}
                       className={cn(
-                        'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                        'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
                         active
                           ? 'bg-brand-gradient text-primary-foreground shadow-[var(--shadow-primary)]'
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -154,6 +169,29 @@ export function AppShell({
                     >
                       <Icon className="size-[1.15rem] shrink-0" aria-hidden />
                       {collapsed ? <span className="sr-only">{label}</span> : label}
+
+                      {/* Collapsed, the count has nowhere to sit, so it becomes
+                          a dot on the icon — still says "something here",
+                          which is the whole job at that width. */}
+                      {waiting ? (
+                        collapsed ? (
+                          <span
+                            aria-hidden
+                            className="absolute end-2 top-2 size-2 rounded-full bg-destructive"
+                          />
+                        ) : (
+                          <span
+                            className={cn(
+                              'numeral ms-auto rounded-full px-1.5 text-xs font-semibold leading-5',
+                              active
+                                ? 'bg-white/25 text-primary-foreground'
+                                : 'bg-destructive/12 text-destructive',
+                            )}
+                          >
+                            {waiting > 99 ? '99+' : waiting}
+                          </span>
+                        )
+                      ) : null}
                     </Link>
                   </li>
                 );

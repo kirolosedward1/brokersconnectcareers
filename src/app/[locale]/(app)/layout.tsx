@@ -6,7 +6,12 @@ import { NotificationBell } from '@/components/notifications/notification-bell';
 import { NotificationItem } from '@/components/notifications/notification-item';
 import { Link } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
-import type { NotificationRow } from '@/lib/supabase/database.types';
+import { optional } from '@/lib/queries/error';
+import type {
+  AdminSummary,
+  EmployerSummary,
+  NotificationRow,
+} from '@/lib/supabase/database.types';
 import { getViewer } from '@/lib/auth';
 
 /**
@@ -58,6 +63,34 @@ export default async function AppLayout({
   ]);
   const notifications = (recent ?? []) as NotificationRow[];
 
+  /**
+   * What is waiting, for the badges on the rail.
+   *
+   * One summary call, chosen by role, and only for the two roles that have
+   * queues. A candidate gets none: the numbers available for them — total
+   * applications, total replies — only ever go up, and a badge that never
+   * clears teaches people to ignore the badges that do.
+   *
+   * Wrapped so the console still renders if the call fails. A rail without
+   * counts is a rail; a rail that throws is a locked-out user.
+   */
+  const [adminSummary, employerSummary] = await Promise.all([
+    role === 'admin'
+      ? optional(supabase.rpc('admin_summary').then((r) => r.data), null)
+      : Promise.resolve(null),
+    // Admins get this one too. The rail shows them both areas, so scoping the
+    // applicant count to `role === 'employer'` would leave an admin who also
+    // runs a company with a badge on the moderation queues and none on their
+    // own applicants — a rule with a hole in it rather than a rule.
+    role === 'admin' || role === 'employer'
+      ? optional(supabase.rpc('employer_summary').then((r) => r.data), null)
+      : Promise.resolve(null),
+  ]);
+
+  const adminCounts = adminSummary as AdminSummary | null;
+  const employer = employerSummary as EmployerSummary | null;
+  const employerCounts = employer && employer.has_company ? employer : null;
+
   const t = await getTranslations('dashboard');
   const tNotifications = await getTranslations('notifications');
   const tEmployer = await getTranslations('employer');
@@ -80,7 +113,12 @@ export default async function AppLayout({
     label: tNav('employerArea'),
     items: [
       { href: '/employer', label: t('overview'), icon: 'overview' },
-      { href: '/employer/applicants', label: tEmployer('allApplicants'), icon: 'applicants' },
+      {
+        href: '/employer/applicants',
+        label: tEmployer('allApplicants'),
+        icon: 'applicants',
+        badge: employerCounts?.applicants_new,
+      },
       { href: '/employer/jobs', label: tEmployer('jobs'), icon: 'applications' },
       { href: '/employer/company', label: tEmployer('company'), icon: 'company' },
       { href: '/employer/billing', label: tEmployer('billing'), icon: 'billing' },
@@ -91,10 +129,30 @@ export default async function AppLayout({
     label: tAdmin('title'),
     items: [
       { href: '/admin', label: t('overview'), icon: 'admin' },
-      { href: '/admin/jobs', label: tAdmin('jobsQueue'), icon: 'queue' },
-      { href: '/admin/companies', label: tAdmin('companiesQueue'), icon: 'company' },
-      { href: '/admin/reports', label: tAdmin('reports'), icon: 'reports' },
-      { href: '/admin/users', label: tAdmin('users'), icon: 'users' },
+      {
+        href: '/admin/jobs',
+        label: tAdmin('jobsQueue'),
+        icon: 'queue',
+        badge: adminCounts?.queue_total,
+      },
+      {
+        href: '/admin/companies',
+        label: tAdmin('companiesQueue'),
+        icon: 'company',
+        badge: adminCounts?.companies_pending,
+      },
+      {
+        href: '/admin/reports',
+        label: tAdmin('reports'),
+        icon: 'reports',
+        badge: adminCounts?.reports_open,
+      },
+      {
+        href: '/admin/users',
+        label: tAdmin('users'),
+        icon: 'users',
+        badge: adminCounts?.accounts_pending,
+      },
     ],
   };
 

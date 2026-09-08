@@ -197,6 +197,8 @@ export type AdminSummary = {
   queue_over_24h: number;
   reports_open: number;
   companies_pending: number;
+  /** Employer accounts between signing up and being allowed to post. */
+  accounts_pending: number;
   companies_total: number;
   live_jobs: number;
   candidates: number;
