@@ -118,7 +118,7 @@ export async function AgentCv({
                       {job.company_name}
                       {district ? ` · ${localized(locale, district.name_ar, district.name_en)}` : ''}
                     </p>
-                    <p className="numeral mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {month(job.started)} — {job.ended ? month(job.ended) : t('present')}
                       {job.track ? ` · ${tTrack(job.track)}` : ''}
                     </p>

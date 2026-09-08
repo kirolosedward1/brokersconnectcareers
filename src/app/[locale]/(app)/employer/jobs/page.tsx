@@ -119,8 +119,12 @@ export default async function EmployerJobsPage({
                           {formatNumber(job.view_count, locale)}
                         </span>
                       ) : null}
+                      {/* No `.numeral` on the expiry. It forces left-to-right,
+                          and this is a sentence rather than a figure — "تنتهي
+                          في 13 سبتمبر" came out with the date before the words.
+                          A date inside RTL prose orders itself correctly. */}
                       {job.expires_at && job.status === 'active' ? (
-                        <time dateTime={isoDate(job.expires_at)} className="numeral">
+                        <time dateTime={isoDate(job.expires_at)}>
                           {tJobs('expiresOn', { date: formatDate(job.expires_at, locale) })}
                         </time>
                       ) : null}

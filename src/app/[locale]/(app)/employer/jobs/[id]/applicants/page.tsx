@@ -88,7 +88,7 @@ export default async function ApplicantsPage({
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">{jobTitle}</h2>
-          <p className="numeral mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             {t.rich('pipelineCount', {
               count: applications.length,
               v: (chunks) => <span className="numeral">{chunks}</span>,

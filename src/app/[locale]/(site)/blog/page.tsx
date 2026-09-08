@@ -88,7 +88,7 @@ export default async function BlogIndexPage({
                     <CalendarDays className="size-3.5" aria-hidden />
                     {formatDate(post.date, locale)}
                   </time>
-                  <span className="numeral inline-flex items-center gap-1">
+                  <span className="inline-flex items-center gap-1">
                     <Clock className="size-3.5" aria-hidden />
                     {t('readingTime', { count: post.readingMinutes })}
                   </span>

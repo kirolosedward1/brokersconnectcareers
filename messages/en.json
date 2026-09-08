@@ -453,7 +453,8 @@
       "approved": "Active",
       "pending": "Under review",
       "rejected": "Suspended"
-    }
+    },
+    "waiting": "{days, plural, =0 {today} one {waiting 1 day} other {waiting # days}}"
   },
   "reportReason": {
     "fake_listing": "Fake listing",

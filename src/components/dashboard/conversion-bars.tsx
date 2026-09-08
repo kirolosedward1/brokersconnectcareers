@@ -71,7 +71,7 @@ export async function ConversionBars({
                     />
                   </div>
 
-                  <p className="numeral mt-1.5 text-xs text-muted-foreground">
+                  <p className="mt-1.5 text-xs text-muted-foreground">
                     {t('conversionCounts', {
                       applications: n(row.applications),
                       views: n(row.views),

@@ -119,7 +119,7 @@ export default async function JobsPage({
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{t('title')}</h1>
-          <p className="numeral mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             {t('resultsCount', { count: total })}
           </p>
         </div>
@@ -191,7 +191,7 @@ export default async function JobsPage({
 
               <Pagination page={filters.page} pageCount={pageCount} buildHref={buildHref} />
 
-              <p className="numeral mt-4 text-center text-xs text-muted-foreground">
+              <p className="mt-4 text-center text-xs text-muted-foreground">
                 {t('page', { page: formatNumber(filters.page, locale), total: formatNumber(pageCount, locale) })}
               </p>
             </>

@@ -117,7 +117,7 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
             )}
           </h1>
           {headline ? <p className="mt-1 text-muted-foreground">{headline}</p> : null}
-          <p className="numeral mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             {t('yearsExperience', { count: agent.years_experience })}
           </p>
         </div>

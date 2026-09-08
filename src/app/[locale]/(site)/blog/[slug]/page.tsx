@@ -121,7 +121,7 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
                 <CalendarDays className="size-3.5" aria-hidden />
                 {formatDate(post.date, locale)}
               </time>
-              <span className="numeral inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1">
                 <Clock className="size-3.5" aria-hidden />
                 {t('readingTime', { count: post.readingMinutes })}
               </span>
@@ -153,7 +153,7 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
                     className="lift block h-full rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
                   >
                     <p className="font-medium leading-snug">{item.title}</p>
-                    <p className="numeral mt-2 text-xs text-muted-foreground">
+                    <p className="mt-2 text-xs text-muted-foreground">
                       {t('readingTime', { count: item.readingMinutes })}
                     </p>
                   </Link>

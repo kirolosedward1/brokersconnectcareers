@@ -59,12 +59,38 @@ console.log('\n— the two catalogues agree');
 
   // A placeholder present in one language and missing in the other renders as
   // a blank where a number should be.
-  // Argument names only. A bare `\{(\\w+)` also matches the literal "1" in
-  // `one {1 vacancy}`, which made every plural message look mismatched — the
-  // Arabic branches spell their numbers and the English ones do not. An
-  // argument is always followed by a comma or a closing brace.
+  /**
+   * Argument names only.
+   *
+   * Two things get mistaken for arguments and both had to be excluded, each
+   * after a real message tripped the check.
+   *
+   * The literal "1" in `one {1 vacancy}` — the Arabic branches spell their
+   * numbers and the English ones do not, so every plural message looked
+   * mismatched. Requiring a comma or closing brace after the name fixed that.
+   *
+   * And a single-word branch body: `=0 {today}` is indistinguishable from
+   * `{today}` once you are only pattern-matching braces. So the plural and
+   * select branches are stripped first, innermost outward, and what remains
+   * is the argument list.
+   */
+  const stripBranches = (value) => {
+    let text = String(value);
+    // No \b in front of `=`: it is not a word character, so there is no
+    // boundary between the preceding space and it, and the `=0 {…}` branch
+    // survived. Arabic passed anyway because its branch text is not \w —
+    // which is precisely the kind of luck that hides a broken check.
+    const branch = /(?:=\d+|\b(?:zero|one|two|few|many|other)\b)\s*\{[^{}]*\}/g;
+    let previous;
+    do {
+      previous = text;
+      text = text.replace(branch, '');
+    } while (text !== previous);
+    return text;
+  };
+
   const placeholders = (value) =>
-    [...new Set([...String(value).matchAll(/\{(\w+)\s*[,}]/g)].map((m) => m[1]))]
+    [...new Set([...stripBranches(value).matchAll(/\{(\w+)\s*[,}]/g)].map((m) => m[1]))]
       .sort()
       .join(',');
   const mismatched = [...ar.entries()]
@@ -168,6 +194,73 @@ console.log('\n— every key a component asks for exists');
 
   check(`every literal key resolves (${checked} call sites)`, missing.length === 0,
     [...new Set(missing)].join('; '));
+}
+
+console.log('\n— no translated phrase is forced left-to-right');
+{
+  /**
+   * `.numeral` sets `direction: ltr`. That is right for a figure and wrong for
+   * a sentence: wrap a translated string in it and an Arabic reader meets the
+   * last word first — a salary range reads high-to-low, "تنتهي في {date}"
+   * puts the date before the words.
+   *
+   * I shipped this bug on the job card, fixed it, and then wrote it again
+   * from scratch in three other places within the day. Hence a check rather
+   * than a resolution to be careful.
+   *
+   * It looks for a `numeral` class whose element contains a translator call.
+   * Numbers passed *into* a message are fine and common — `t('x', { count })`
+   * — so only a `t(...)` inside the numeral element counts.
+   */
+  const sources = [];
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx$/.test(entry)) sources.push(full);
+    }
+  })(join(ROOT, 'src'));
+
+  const offenders = [];
+  for (const file of sources) {
+    const text = readFileSync(file, 'utf8');
+    const lines = text.split('\n');
+
+    lines.forEach((line, index) => {
+      if (!/className=(?:"|{`|')[^"'`]*\bnumeral\b/.test(line)) return;
+      const call = /\b[a-zA-Z]*[tT](?:\.rich)?\((['"`])[\w.]+\1/;
+      const rest = line.slice(line.search(/\bnumeral\b/));
+
+      /**
+       * The element's own body, found by indentation.
+       *
+       * JSX here is indentation-formatted, so the element ends at the first
+       * following line indented no further than its opening tag. That is what
+       * separates "inside this numeral" from "underneath it", and both
+       * earlier attempts got it wrong in opposite directions: a fixed
+       * three-line window named twenty-five files, most of them a numeral
+       * holding a bare figure with unrelated prose below; checking only the
+       * first child then missed the real one, where an icon comes first and
+       * the translated string second.
+       */
+      const indent = line.search(/\S/);
+      const body = [rest];
+      if (/>\s*$/.test(line) && !/\/>\s*$/.test(line)) {
+        for (let i = index + 1; i < lines.length && i < index + 12; i += 1) {
+          const next = lines[i];
+          if (next.trim() && next.search(/\S/) <= indent) break;
+          body.push(next);
+        }
+      }
+
+      if (body.some((entry) => call.test(entry))) {
+        offenders.push(`${file.replace(ROOT + '/', '')}:${index + 1}`);
+      }
+    });
+  }
+
+  check(`no .numeral wraps a translated string (${sources.length} components)`,
+    offenders.length === 0, offenders.join('; '));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

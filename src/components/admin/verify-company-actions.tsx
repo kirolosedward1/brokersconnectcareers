@@ -44,7 +44,7 @@ export function VerifyCompanyActions({
           onClick={() => openDocument(documentId)}
         >
           <ExternalLink />
-          <span className="numeral">
+          <span >
             {t('viewDocument')} {index + 1}
           </span>
         </Button>

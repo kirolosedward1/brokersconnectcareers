@@ -453,7 +453,8 @@
       "approved": "مفعّل",
       "pending": "تحت المراجعة",
       "rejected": "موقوف"
-    }
+    },
+    "waiting": "{days, plural, =0 {النهاردة} one {مستنية يوم} two {مستنية يومين} few {مستنية # أيام} many {مستنية # يوم} other {مستنية # يوم}}"
   },
   "reportReason": {
     "fake_listing": "إعلان وهمي",

@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { Clock } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,13 @@ export default async function AdminJobsPage({
   const tTrack = await getTranslations('track');
   const tLeads = await getTranslations('leadsSource');
   const tCompanies = await getTranslations('companies');
+  const tCompensation = await getTranslations('compensation');
+  const tCommission = await getTranslations('commissionType');
+  const tCommon = await getTranslations('common');
+
+  /** Whole days a listing has been sitting in the queue. */
+  const waitingDays = (since: string) =>
+    Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000));
 
   return (
     <div>
@@ -89,6 +97,17 @@ export default async function AdminJobsPage({
                     <span>·</span>
                     <span>{localized(locale, job.district.name_ar, job.district.name_en)}</span>
                     <span className="numeral">· {formatDate(job.created_at, locale)}</span>
+
+                    {/* How long this has been waiting. admin_summary counts
+                        the queue over 24 hours because a backlog that is not
+                        moving is the thing worth knowing, and until now the
+                        queue itself made a reviewer work it out from a date. */}
+                    {filter === 'pending_review' ? (
+                      <Badge variant={waitingDays(job.created_at) >= 1 ? 'destructive' : 'default'}>
+                        <Clock aria-hidden />
+                        {t('waiting', { days: waitingDays(job.created_at) })}
+                      </Badge>
+                    ) : null}
                   </p>
                 </div>
 
@@ -102,13 +121,57 @@ export default async function AdminJobsPage({
               </div>
 
               <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                <div className="numeral">
-                  {job.basic_salary_min != null || job.basic_salary_max != null
-                    ? `${formatEgp(job.basic_salary_min ?? 0, locale)} – ${formatEgp(job.basic_salary_max ?? 0, locale)}`
-                    : '—'}
+                {/* An open-ended range is stated as open-ended. `?? 0` printed
+                    "0 – 15,000" for a role with no floor, which is a number
+                    the employer never entered and a reviewer might act on. */}
+                <div>
+                  <dt className="sr-only">{tCompensation('basicSalary')}</dt>
+                  {/* Only the digits are isolated, never the phrase.
+                      The first version of this line put the whole string in
+                      `.numeral`, which forces left-to-right — the same bug
+                      fixed on the job card earlier today, rewritten from
+                      scratch here within the hour. An Arabic reader met the
+                      currency word first and the range high to low. */}
+                  <dd>
+                    {job.basic_salary_min != null && job.basic_salary_max != null ? (
+                      <>
+                        <span className="numeral">{formatEgp(job.basic_salary_min, locale)}</span>
+                        {' – '}
+                        <span className="numeral">{formatEgp(job.basic_salary_max, locale)}</span>{' '}
+                        {tCommon('egp')}
+                      </>
+                    ) : job.basic_salary_min != null ? (
+                      <>
+                        <span className="numeral">{formatEgp(job.basic_salary_min, locale)}+</span>{' '}
+                        {tCommon('egp')}
+                      </>
+                    ) : job.basic_salary_max != null ? (
+                      <>
+                        {'≤ '}
+                        <span className="numeral">{formatEgp(job.basic_salary_max, locale)}</span>{' '}
+                        {tCommon('egp')}
+                      </>
+                    ) : (
+                      tCompensation('noBasicSalary')
+                    )}
+                  </dd>
                 </div>
-                <div className="numeral">
-                  {job.commission_type === 'percentage' ? `${job.commission_value}%` : job.commission_type}
+
+                {/* This printed the raw column for anything but a percentage,
+                    so a reviewer read "split" and "none" in English on an
+                    otherwise Arabic screen. Seven of eighteen demo listings. */}
+                <div>
+                  <dt className="sr-only">{tCompensation('commission')}</dt>
+                  <dd>
+                    {job.commission_type === 'percentage' && job.commission_value != null ? (
+                      tCompensation.rich('commissionPercent', {
+                        value: String(job.commission_value),
+                        v: (chunks) => <span className="numeral">{chunks}</span>,
+                      })
+                    ) : (
+                      tCommission(job.commission_type)
+                    )}
+                  </dd>
                 </div>
               </dl>
 

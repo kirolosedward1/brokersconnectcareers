@@ -200,17 +200,17 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
             {job.published_at ? (
               <span className="inline-flex items-center gap-1">
                 <CalendarClock className="size-3.5" aria-hidden />
-                <time dateTime={isoDate(job.published_at)} className="numeral">
+                <time dateTime={isoDate(job.published_at)} >
                   {t('postedOn', { date: formatDate(job.published_at, locale) })}
                 </time>
               </span>
             ) : null}
             {job.expires_at ? (
-              <time dateTime={isoDate(job.expires_at)} className="numeral">
+              <time dateTime={isoDate(job.expires_at)} >
                 {t('expiresOn', { date: formatDate(job.expires_at, locale) })}
               </time>
             ) : null}
-            <span className="numeral inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1">
               <Eye className="size-3.5" aria-hidden />
               {t('views', { count: formatNumber(job.view_count, locale) })}
             </span>

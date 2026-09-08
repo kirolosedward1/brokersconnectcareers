@@ -60,7 +60,7 @@ export function ProfileRecordForm({
         </div>
 
         <div className="min-w-40">
-          <p className="numeral text-sm font-medium">
+          <p className="text-sm font-medium">
             {t('completeness')} · {completeness}%
           </p>
           <div

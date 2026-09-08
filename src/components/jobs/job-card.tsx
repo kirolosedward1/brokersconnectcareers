@@ -134,7 +134,7 @@ export function JobCard({
       <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-sm">
         <SalaryLine job={job} locale={locale} />
         <span aria-hidden className="text-muted-foreground">·</span>
-        <span className="numeral inline-flex items-baseline gap-1 font-medium text-primary">
+        <span className="inline-flex items-baseline gap-1 font-medium text-primary">
           {formatNumber(job.seats, locale)}
           <span className="text-xs font-normal text-muted-foreground">
             {t('seatsLabel', { count: job.seats })}

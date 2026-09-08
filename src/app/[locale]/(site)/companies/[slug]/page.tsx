@@ -156,7 +156,7 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
         ) : null}
 
         <section className="mt-10" aria-labelledby="roles-heading">
-          <h2 id="roles-heading" className="numeral text-lg font-semibold">
+          <h2 id="roles-heading" className="text-lg font-semibold">
             {t('openRoles', { count: jobs.length })}
           </h2>
 
