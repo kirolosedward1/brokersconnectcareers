@@ -1,4 +1,4 @@
-import { formatDayMonth, formatNumber } from '@/lib/utils';
+import { formatDayMonth, formatNumber } from "@/lib/utils";
 
 /**
  * A thirty-day chart, drawn rather than imported.
@@ -30,14 +30,14 @@ export type TrendSeries = {
   key: string;
   label: string;
   /** A theme token, not a hex value, so the line themes with everything else. */
-  tone: 'primary' | 'success' | 'warning';
+  tone: "primary" | "success" | "warning";
   values: number[];
 };
 
-const TONE: Record<TrendSeries['tone'], string> = {
-  primary: 'var(--primary)',
-  success: 'var(--success)',
-  warning: 'var(--warning)',
+const TONE: Record<TrendSeries["tone"], string> = {
+  primary: "var(--primary)",
+  success: "var(--success)",
+  warning: "var(--warning)",
 };
 
 /**
@@ -95,13 +95,18 @@ export function TrendChart({
       <figcaption className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div>
           <h2 className="font-semibold">{title}</h2>
-          {hint ? <p className="mt-0.5 text-sm text-muted-foreground">{hint}</p> : null}
+          {hint ? (
+            <p className="mt-0.5 text-sm text-muted-foreground">{hint}</p>
+          ) : null}
         </div>
 
         {series.length > 1 ? (
           <ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {series.map((s) => (
-              <li key={s.key} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <li
+                key={s.key}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground"
+              >
                 <span
                   aria-hidden
                   className="size-2.5 rounded-full"
@@ -115,7 +120,9 @@ export function TrendChart({
       </figcaption>
 
       {peak === 0 ? (
-        <p className="grid h-40 place-items-center text-sm text-muted-foreground">{empty}</p>
+        <p className="grid h-40 place-items-center text-sm text-muted-foreground">
+          {empty}
+        </p>
       ) : (
         <div className="mt-5" dir="ltr" aria-hidden>
           <div className="flex gap-2">
@@ -142,9 +149,24 @@ export function TrendChart({
               >
                 <defs>
                   {series.map((s) => (
-                    <linearGradient key={s.key} id={`${id}-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={TONE[s.tone]} stopOpacity={0.22} />
-                      <stop offset="100%" stopColor={TONE[s.tone]} stopOpacity={0} />
+                    <linearGradient
+                      key={s.key}
+                      id={`${id}-${s.key}`}
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor={TONE[s.tone]}
+                        stopOpacity={0.22}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={TONE[s.tone]}
+                        stopOpacity={0}
+                      />
                     </linearGradient>
                   ))}
                 </defs>
@@ -163,7 +185,9 @@ export function TrendChart({
                 ))}
 
                 {series.map((s) => {
-                  const line = s.values.map((v, i) => `${i ? 'L' : 'M'} ${x(i)} ${y(v)}`).join(' ');
+                  const line = s.values
+                    .map((v, i) => `${i ? "L" : "M"} ${x(i)} ${y(v)}`)
+                    .join(" ");
                   return (
                     <g key={s.key}>
                       {/* Filled only when it is the one series on the chart.
@@ -202,8 +226,10 @@ export function TrendChart({
                     <title>
                       {[
                         axis(day),
-                        ...series.map((s) => `${s.label}: ${n(s.values[index] ?? 0)}`),
-                      ].join('\n')}
+                        ...series.map(
+                          (s) => `${s.label}: ${n(s.values[index] ?? 0)}`,
+                        ),
+                      ].join("\n")}
                     </title>
                   </rect>
                 ))}
@@ -216,7 +242,7 @@ export function TrendChart({
                   key={s.key}
                   className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
                   style={{
-                    left: '100%',
+                    left: "100%",
                     top: `${y(s.values.at(-1) ?? 0)}%`,
                     background: TONE[s.tone],
                   }}
@@ -233,30 +259,39 @@ export function TrendChart({
         </div>
       )}
 
-      {/* The chart, as something a screen reader can actually read. */}
-      <table className="sr-only">
-        <caption>{title}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{axis(days[0])}</th>
-            {series.map((s) => (
-              <th key={s.key} scope="col">
-                {s.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {days.map((day, index) => (
-            <tr key={day}>
-              <th scope="row">{axis(day)}</th>
+      {/* The chart, as something a screen reader can actually read.
+          The sr-only lives on a wrapping div, not on the table. sr-only works
+          by pinning an absolutely-positioned box to 1px and hiding its
+          overflow — and a table ignores a height smaller than its rows, so
+          putting the class on the <table> left a 952px invisible element
+          hanging past the end of the page. Every console page carrying a chart
+          scrolled roughly 440px into nothing. A div honours the 1px and clips
+          the table inside it, which is what the class assumed all along. */}
+      <div className="sr-only">
+        <table>
+          <caption>{title}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{axis(days[0])}</th>
               {series.map((s) => (
-                <td key={s.key}>{n(s.values[index] ?? 0)}</td>
+                <th key={s.key} scope="col">
+                  {s.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {days.map((day, index) => (
+              <tr key={day}>
+                <th scope="row">{axis(day)}</th>
+                {series.map((s) => (
+                  <td key={s.key}>{n(s.values[index] ?? 0)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }

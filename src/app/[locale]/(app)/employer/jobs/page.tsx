@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { BriefcaseBusiness, Eye, MapPin, Plus, Users } from 'lucide-react';
+import { BriefcaseBusiness, Eye, MapPin, Pencil, Plus, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -160,9 +160,9 @@ export default async function EmployerJobsPage({
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Button asChild variant="outline" size="sm">
+                  <Button asChild variant="outline">
                     <Link href={`/employer/jobs/${job.id}/applicants`}>
-                      <Users />
+                      <Users aria-hidden />
                       <span>
                         {t.rich('pipelineCount', {
                           count: applicants,
@@ -171,8 +171,11 @@ export default async function EmployerJobsPage({
                       </span>
                     </Link>
                   </Button>
-                  <Button asChild variant="ghost" size="sm">
-                    <Link href={`/employer/jobs/${job.id}/edit`}>{t('editJob')}</Link>
+                  <Button asChild variant="ghost">
+                    <Link href={`/employer/jobs/${job.id}/edit`}>
+                      <Pencil aria-hidden />
+                      {t('editJob')}
+                    </Link>
                   </Button>
                   <JobStatusActions
                     jobId={job.id}

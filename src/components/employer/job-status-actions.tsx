@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
+import { Archive, RotateCcw, SendHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { transitionJob } from '@/lib/actions/employer-jobs';
 import type { JobStatus } from '@/lib/supabase/database.types';
@@ -46,7 +47,8 @@ export function JobStatusActions({
   if (status === 'active') {
     return (
       <>
-        <Button variant="ghost" size="sm" disabled={pending} onClick={() => move('closed')}>
+        <Button variant="ghost" disabled={pending} onClick={() => move('closed')}>
+          <Archive aria-hidden />
           {labels.close}
         </Button>
         {errorNote}
@@ -57,7 +59,8 @@ export function JobStatusActions({
   if (status === 'draft' || status === 'rejected') {
     return (
       <>
-        <Button variant="secondary" size="sm" disabled={pending} onClick={() => move('pending_review')}>
+        <Button variant="secondary" disabled={pending} onClick={() => move('pending_review')}>
+          <SendHorizontal className="rtl-flip" aria-hidden />
           {labels.submit}
         </Button>
         {errorNote}
@@ -68,7 +71,8 @@ export function JobStatusActions({
   if (status === 'expired' || status === 'closed') {
     return (
       <>
-        <Button variant="secondary" size="sm" disabled={pending} onClick={() => move('pending_review')}>
+        <Button variant="secondary" disabled={pending} onClick={() => move('pending_review')}>
+          <RotateCcw aria-hidden />
           {labels.reopen}
         </Button>
         {errorNote}
