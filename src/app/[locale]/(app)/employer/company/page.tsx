@@ -1,4 +1,5 @@
-import { setRequestLocale } from 'next-intl/server';
+import type { Metadata } from 'next';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { CompanyForm } from '@/components/employer/company-form';
 import { VerificationPanel } from '@/components/employer/verification-panel';
@@ -7,6 +8,16 @@ import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import type { CompanyDocumentRow } from '@/lib/supabase/database.types';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: 'employer' });
+  return { title: t('company'), robots: { index: false, follow: false } };
+}
 
 export default async function EmployerCompanyPage({
   params,
@@ -31,8 +42,15 @@ export default async function EmployerCompanyPage({
     documents = (data ?? []) as CompanyDocumentRow[];
   }
 
+  const t = await getTranslations('employer');
+
   return (
     <div className="space-y-8">
+      <header>
+        <h1 className="text-2xl font-bold">{t('company')}</h1>
+        <p className="mt-1 text-muted-foreground">{t('companyLede')}</p>
+      </header>
+
       {/* Above the form, because it is the one field on this page that shows
           up everywhere else — the board, the directory, every listing. It
           needs a company row to attach a file to, so it waits for one. */}

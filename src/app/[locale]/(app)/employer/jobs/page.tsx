@@ -1,5 +1,6 @@
+import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Eye, MapPin, Plus, Users } from 'lucide-react';
+import { BriefcaseBusiness, Eye, MapPin, Plus, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +19,16 @@ const STATUS_VARIANT: Record<JobStatus, 'default' | 'primary' | 'success' | 'war
   closed: 'default',
   rejected: 'destructive',
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: 'employer' });
+  return { title: t('jobs'), robots: { index: false, follow: false } };
+}
 
 export default async function EmployerJobsPage({
   params,
@@ -64,18 +75,26 @@ export default async function EmployerJobsPage({
   })[];
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <p className="numeral text-sm text-muted-foreground">
-          {tJobs('resultsCount', { count: jobs.length })}
-        </p>
-        <Button asChild>
+    <div className="space-y-6">
+      {/* Stacked on a phone rather than wrapped: justify-between put the
+          button alone on the second line and shoved it to the far edge, which
+          reads as a mistake. */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{t('jobs')}</h1>
+          <p className="mt-1 text-muted-foreground">{t('jobsLede')}</p>
+        </div>
+        <Button asChild className="self-start">
           <Link href="/employer/jobs/new">
             <Plus />
             {t('newJob')}
           </Link>
         </Button>
-      </div>
+      </header>
+
+      <p className="numeral text-sm text-muted-foreground">
+        {tJobs('resultsCount', { count: jobs.length })}
+      </p>
 
       {jobs.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
@@ -90,9 +109,9 @@ export default async function EmployerJobsPage({
             const applicants = job.applications?.[0]?.count ?? 0;
             return (
               <li key={job.id} className="rounded-xl border border-border bg-card p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
                   <div className="min-w-0">
-                    <h2 className="font-semibold">
+                    <h2 className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 font-semibold">
                       {job.status === 'active' ? (
                         <Link href={`/jobs/${job.slug}`} className="hover:underline">
                           {localized(locale, job.title_ar, job.title_en)}
@@ -100,6 +119,7 @@ export default async function EmployerJobsPage({
                       ) : (
                         localized(locale, job.title_ar, job.title_en)
                       )}
+                      <Badge variant={STATUS_VARIANT[job.status]}>{tStatus(job.status)}</Badge>
                     </h2>
 
                     <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -109,9 +129,10 @@ export default async function EmployerJobsPage({
                           {localized(locale, job.district.name_ar, job.district.name_en)}
                         </span>
                       ) : null}
-                      <span className="numeral inline-flex items-center gap-1">
-                        <Users className="size-3.5" aria-hidden />
-                        {formatNumber(job.seats, locale)}
+                      <span className="inline-flex items-center gap-1">
+                        <BriefcaseBusiness className="size-3.5" aria-hidden />
+                        <span className="numeral">{formatNumber(job.seats, locale)}</span>
+                        {tJobs('seatsLabel', { count: job.seats })}
                       </span>
                       {job.status === 'active' ? (
                         <span className="numeral inline-flex items-center gap-1">
@@ -136,10 +157,6 @@ export default async function EmployerJobsPage({
                       </p>
                     ) : null}
                   </div>
-
-                  <Badge variant={STATUS_VARIANT[job.status]} size="lg">
-                    {tStatus(job.status)}
-                  </Badge>
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">

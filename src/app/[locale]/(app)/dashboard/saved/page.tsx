@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
@@ -8,6 +9,16 @@ import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import type { JobListItem } from '@/lib/queries/jobs';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: 'dashboard' });
+  return { title: t('saved'), robots: { index: false, follow: false } };
+}
 
 export default async function SavedJobsPage({
   params,
@@ -55,6 +66,11 @@ export default async function SavedJobsPage({
 
   return (
     <div className="space-y-10">
+      <header>
+        <h1 className="text-2xl font-bold">{t('saved')}</h1>
+        <p className="mt-1 text-muted-foreground">{t('savedLede')}</p>
+      </header>
+
       <section>
         <h2 className="mb-1 font-semibold">{tSearch('title')}</h2>
         <p className="mb-4 text-sm text-muted-foreground">{tSearch('weekly')}</p>

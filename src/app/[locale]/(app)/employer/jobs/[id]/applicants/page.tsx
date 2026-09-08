@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
@@ -27,6 +28,16 @@ type ApplicantRow = {
 };
 
 const PIPELINE: ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: 'employer' });
+  return { title: t('allApplicants'), robots: { index: false, follow: false } };
+}
 
 export default async function ApplicantsPage({
   params,
@@ -87,7 +98,7 @@ export default async function ApplicantsPage({
     <div>
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">{jobTitle}</h2>
+          <h1 className="text-xl font-bold">{jobTitle}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {t.rich('pipelineCount', {
               count: applications.length,
@@ -112,10 +123,10 @@ export default async function ApplicantsPage({
 
             return (
               <section key={stage} aria-labelledby={`stage-${stage}`}>
-                <h3 id={`stage-${stage}`} className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                <h2 id={`stage-${stage}`} className="mb-3 flex items-center gap-2 text-sm font-semibold">
                   {tStatus(stage)}
                   <Badge className="numeral">{inStage.length}</Badge>
-                </h3>
+                </h2>
                 <ul className="space-y-3">
                   {inStage.map((application) => (
                     <li key={application.id}>

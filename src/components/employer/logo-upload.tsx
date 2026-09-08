@@ -100,23 +100,28 @@ export function LogoUpload({
     });
   }
 
+  // Three items on one flex line squeezed the hint into a ~90px column on a
+  // phone, where it wrapped to five lines between the preview and the buttons.
+  // The buttons drop below instead.
   return (
-    <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-4">
-      <CompanyLogo name={companyName} logoUrl={logoUrl} seed={companySlug} size="lg" />
+    <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
+        <CompanyLogo name={companyName} logoUrl={logoUrl} seed={companySlug} size="lg" />
 
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{t('logo')}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{t('logoHint')}</p>
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{t('logo')}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t('logoHint')}</p>
 
-        {error ? (
-          <p role="alert" className="mt-2 text-sm text-destructive">
-            {error}
-          </p>
-        ) : null}
+          {error ? (
+            <p role="alert" className="mt-2 text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+        </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Button asChild variant="outline" size="sm" disabled={pending}>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button asChild variant="outline" disabled={pending}>
           {/* A label, not a button that clicks a hidden input: the label is
               the control, so it works from the keyboard on its own. */}
           <label className="cursor-pointer">
@@ -133,7 +138,7 @@ export function LogoUpload({
         </Button>
 
         {logoUrl ? (
-          <Button variant="ghost" size="sm" onClick={remove} disabled={pending}>
+          <Button variant="ghost" size="icon" onClick={remove} disabled={pending}>
             <Trash2 />
             <span className="sr-only">{tCommon('delete')}</span>
           </Button>

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Building2, MapPin } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
@@ -17,6 +18,16 @@ const STATUS_VARIANT: Record<ApplicationStatus, 'default' | 'primary' | 'success
   hired: 'success',
   rejected: 'destructive',
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: 'dashboard' });
+  return { title: t('applications'), robots: { index: false, follow: false } };
+}
 
 export default async function ApplicationsPage({
   params,
@@ -60,19 +71,22 @@ export default async function ApplicationsPage({
   const t = await getTranslations('dashboard');
   const tStatus = await getTranslations('applicationStatus');
 
-  if (applications.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-border py-16 text-center">
-        <p className="font-medium">{t('emptyApplications')}</p>
-        <Button asChild className="mt-5">
-          <Link href="/jobs">{t('emptyApplicationsCta')}</Link>
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <ul className="space-y-3">
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-bold">{t('applications')}</h1>
+        <p className="mt-1 text-muted-foreground">{t('applicationsLede')}</p>
+      </header>
+
+      {applications.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border py-16 text-center">
+          <p className="font-medium">{t('emptyApplications')}</p>
+          <Button asChild className="mt-5">
+            <Link href="/jobs">{t('emptyApplicationsCta')}</Link>
+          </Button>
+        </div>
+      ) : (
+        <ul className="space-y-3">
       {applications.map((application) => {
         const job = application.job;
         if (!job) return null;
@@ -130,9 +144,11 @@ export default async function ApplicationsPage({
                 <WithdrawButton applicationId={application.id} label={t('withdraw')} />
               ) : null}
             </div>
-          </li>
-        );
-      })}
-    </ul>
+            </li>
+          );
+        })}
+        </ul>
+      )}
+    </div>
   );
 }

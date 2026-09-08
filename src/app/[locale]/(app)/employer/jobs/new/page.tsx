@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect, Link } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
@@ -5,6 +6,16 @@ import { Button } from '@/components/ui/button';
 import { JobForm } from '@/components/employer/job-form';
 import { requireEmployer } from '@/lib/auth';
 import { getDistricts, getDevelopers } from '@/lib/queries/taxonomy';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: 'employer' });
+  return { title: t('newJob'), robots: { index: false, follow: false } };
+}
 
 export default async function NewJobPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
@@ -29,12 +40,19 @@ export default async function NewJobPage({ params }: { params: Promise<{ locale:
   const [districts, developers] = await Promise.all([getDistricts(), getDevelopers()]);
 
   return (
-    <JobForm
-      locale={locale}
-      job={null}
-      districts={districts}
-      developers={developers}
-      selectedDeveloperIds={[]}
-    />
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-bold">{t('newJob')}</h1>
+        <p className="mt-1 text-muted-foreground">{t('newJobLede')}</p>
+      </header>
+
+      <JobForm
+        locale={locale}
+        job={null}
+        districts={districts}
+        developers={developers}
+        selectedDeveloperIds={[]}
+      />
+    </div>
   );
 }

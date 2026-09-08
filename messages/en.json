@@ -321,7 +321,10 @@
     "conversionCounts": "Applications: {applications} · Views: {views}",
     "conversionAll": "All listings",
     "seeAll": "See all",
-    "openRoles": "Open roles"
+    "openRoles": "Open roles",
+    "applicationsLede": "Every job you have applied to, and where it stands.",
+    "savedLede": "The listings you saved and the alerts you asked for.",
+    "profileLede": "The profile companies see when you apply."
   },
   "applicationStatus": {
     "new": "New",
@@ -389,7 +392,12 @@
     "logo": "Company logo",
     "logoHint": "PNG, JPG or SVG, up to 2 MB. Shown beside your company name everywhere.",
     "logoUpload": "Upload logo",
-    "logoReplace": "Replace logo"
+    "logoReplace": "Replace logo",
+    "jobsLede": "All your listings and where each one stands.",
+    "companyLede": "Your company as candidates see it.",
+    "newJobLede": "Fill in the details and the listing goes for review.",
+    "editJobTitle": "Edit listing",
+    "editJobLede": "Any change sends the listing back for review before it shows again."
   },
   "jobForm": {
     "basics": "Basics",
@@ -490,7 +498,8 @@
       "paid": "Paid",
       "failed": "Failed",
       "refunded": "Refunded"
-    }
+    },
+    "lede": "Your listing credits and your order history."
   },
   "common": {
     "loading": "Loading…",

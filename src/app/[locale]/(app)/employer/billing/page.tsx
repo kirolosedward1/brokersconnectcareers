@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Check, Infinity as InfinityIcon } from 'lucide-react';
 import { asLocale, type Locale } from '@/i18n/routing';
@@ -10,6 +11,16 @@ import { BILLING_ENABLED } from '@/lib/env';
 import { POST_PACKS } from '@/lib/taxonomy';
 import { formatDate, formatEgp, formatNumber } from '@/lib/utils';
 import type { OrderRow } from '@/lib/supabase/database.types';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: 'billing' });
+  return { title: t('title'), robots: { index: false, follow: false } };
+}
 
 export default async function BillingPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
@@ -48,6 +59,11 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
 
   return (
     <div className="space-y-8">
+      <header>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <p className="mt-1 text-muted-foreground">{t('lede')}</p>
+      </header>
+
       {/* Billing is built and reachable; it is simply priced at zero until the
           board has candidate volume. */}
       {BILLING_ENABLED ? null : (

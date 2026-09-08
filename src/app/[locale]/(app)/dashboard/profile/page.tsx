@@ -1,4 +1,5 @@
-import { setRequestLocale } from 'next-intl/server';
+import type { Metadata } from 'next';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { AgentProfileForm } from '@/components/dashboard/agent-profile-form';
 import { CvEditor } from '@/components/dashboard/cv-editor';
@@ -12,6 +13,16 @@ import type {
   AgentExperienceRow,
   AgentProfileRow,
 } from '@/lib/supabase/database.types';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: 'dashboard' });
+  return { title: t('profile'), robots: { index: false, follow: false } };
+}
 
 export default async function ProfilePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
@@ -45,8 +56,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
       ])
     : [null, null, null, null];
 
+  const t = await getTranslations('dashboard');
+
   return (
     <div className="space-y-8">
+      <header>
+        <h1 className="text-2xl font-bold">{t('profile')}</h1>
+        <p className="mt-1 text-muted-foreground">{t('profileLede')}</p>
+      </header>
+
       <AgentProfileForm
         locale={locale}
         profile={viewer.profile}
