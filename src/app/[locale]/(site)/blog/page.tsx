@@ -84,7 +84,7 @@ export default async function BlogIndexPage({
                 <p className="mt-2 leading-relaxed text-muted-foreground">{post.description}</p>
 
                 <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <time dateTime={isoDate(post.date)} className="numeral inline-flex items-center gap-1">
+                  <time dateTime={isoDate(post.date)} className="inline-flex items-center gap-1">
                     <CalendarDays className="size-3.5" aria-hidden />
                     {formatDate(post.date, locale)}
                   </time>

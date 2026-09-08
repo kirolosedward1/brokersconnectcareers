@@ -92,7 +92,7 @@ export default async function EmployerJobsPage({
         </Button>
       </header>
 
-      <p className="numeral text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         {tJobs('resultsCount', { count: jobs.length })}
       </p>
 

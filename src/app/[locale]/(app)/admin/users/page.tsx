@@ -175,7 +175,7 @@ export default async function AdminUsersPage({
                     <p className="mt-1 text-xs text-muted-foreground">
                       {roleLabel(profile.role)}
                       <span aria-hidden> · </span>
-                      <span className="numeral">{formatDate(profile.created_at, locale)}</span>
+                      <span>{formatDate(profile.created_at, locale)}</span>
                     </p>
 
                     {profile.approval_note ? (

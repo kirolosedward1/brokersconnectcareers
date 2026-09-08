@@ -119,7 +119,7 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
                 <div className="inline-flex items-center gap-1.5">
                   <dt className="sr-only">{t('headcount')}</dt>
                   <Users className="size-3.5" aria-hidden />
-                  <dd className="numeral">
+                  <dd>
                     {t(`headcountBand.${company.headcount_band}`)}
                   </dd>
                 </div>

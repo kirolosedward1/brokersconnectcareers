@@ -135,7 +135,7 @@ export function ApplicantCard({
             {application.experience_band ? (
               <Badge variant="outline">{tExp(application.experience_band)}</Badge>
             ) : null}
-            <time dateTime={isoDate(application.created_at)} className="numeral">
+            <time dateTime={isoDate(application.created_at)}>
               {tJobs('postedOn', { date: formatDate(application.created_at, locale) })}
             </time>
           </p>
@@ -159,7 +159,7 @@ export function ApplicantCard({
             <p className="text-sm font-medium group-hover/profile:text-primary">{headline}</p>
           ) : null}
 
-          <p className="numeral mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span>{tAgents('yearsExperience', { count: profile.years_experience })}</span>
 
             {profile.tracks.length ? (
@@ -179,7 +179,7 @@ export function ApplicantCard({
 
           {/* Self-reported, and the directory says so on the profile itself. */}
           {profile.units_closed != null || profile.volume_egp != null ? (
-            <p className="numeral mt-1.5 flex flex-wrap gap-x-3 text-xs font-medium">
+            <p className="mt-1.5 flex flex-wrap gap-x-3 text-xs font-medium">
               {profile.units_closed != null ? (
                 <span>
                   {tAgents('unitsClosedShort', {

@@ -76,7 +76,7 @@ export default async function AdminReportsPage({
                   '—'
                 )}
               </h2>
-              <p className="numeral mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {formatDate(report.created_at, locale)}
               </p>
             </div>

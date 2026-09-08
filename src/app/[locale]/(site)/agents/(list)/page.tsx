@@ -98,7 +98,7 @@ export default async function AgentsPage({
         <div className="lg:col-start-1 lg:row-start-1">
           {/* The count sits with the results rather than under the title: it
               describes the list, and it changes when the filters do. */}
-          <p className="numeral mb-4 text-sm text-muted-foreground">
+          <p className="mb-4 text-sm text-muted-foreground">
             {tJobs('resultsCount', { count: total })}
           </p>
 

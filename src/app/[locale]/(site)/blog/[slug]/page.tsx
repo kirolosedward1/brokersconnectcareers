@@ -117,7 +117,7 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
 
             <p className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-5 text-sm text-muted-foreground">
               <span>{t('writtenBy', { author: post.author })}</span>
-              <time dateTime={isoDate(post.date)} className="numeral inline-flex items-center gap-1">
+              <time dateTime={isoDate(post.date)} className="inline-flex items-center gap-1">
                 <CalendarDays className="size-3.5" aria-hidden />
                 {formatDate(post.date, locale)}
               </time>

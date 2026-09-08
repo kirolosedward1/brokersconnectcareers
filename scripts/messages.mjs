@@ -306,9 +306,22 @@ console.log('\n— no translated phrase is forced left-to-right');
    * from scratch in three other places within the day. Hence a check rather
    * than a resolution to be careful.
    *
-   * It looks for a `numeral` class whose element contains a translator call.
+   * It looks for a `numeral` class whose element renders localised words.
    * Numbers passed *into* a message are fine and common — `t('x', { count })`
-   * — so only a `t(...)` inside the numeral element counts.
+   * — so only a call whose *result* lands inside the numeral element counts.
+   *
+   * Two things count. Any of the file's own translator variables, discovered
+   * from their useTranslations/getTranslations binding rather than guessed at
+   * by name: the first version of this matched `[a-zA-Z]*[tT]\(`, which
+   * requires the variable to end in a t, so it saw `t(` and quietly missed
+   * `tJobs(`, `tCommon(`, `tStatus(` and every other. It passed for weeks with
+   * two live bugs in front of it — a results count and a blog date, both
+   * reading backwards in Arabic.
+   *
+   * And `formatDate`, which is not a translator but returns a month name:
+   * "20 أغسطس 2026" is prose with digits in it, not a figure. formatNumber and
+   * formatEgp return digits and separators only, so they belong in a numeral
+   * and are deliberately not listed.
    */
   const sources = [];
   (function walk(dir) {
@@ -324,10 +337,27 @@ console.log('\n— no translated phrase is forced left-to-right');
     const text = readFileSync(file, 'utf8');
     const lines = text.split('\n');
 
+    // The translator variables this file actually binds, so the check does not
+    // have to guess what they are called.
+    const translators = new Set(['formatDate']);
+    for (const match of text.matchAll(
+      /(?:const|let)\s+(\w+)\s*=\s*(?:await\s+)?(?:useTranslations|getTranslations)\s*\(/g,
+    )) {
+      translators.add(match[1]);
+    }
+    const call = new RegExp(
+      `\\b(?:${[...translators].join('|')})(?:\\.rich)?\\(`,
+    );
+
     lines.forEach((line, index) => {
       if (!/className=(?:"|{`|')[^"'`]*\bnumeral\b/.test(line)) return;
-      const call = /\b[a-zA-Z]*[tT](?:\.rich)?\((['"`])[\w.]+\1/;
-      const rest = line.slice(line.search(/\bnumeral\b/));
+      // Stop at the element's own closing tag. Without this a numeral that
+      // opens and closes on one line swallowed whatever followed it on that
+      // line — the footer's `<span class="numeral">{year}</span> · {siteName}`
+      // was reported for a translator call that is not inside the span at all.
+      let rest = line.slice(line.search(/\bnumeral\b/));
+      const closes = rest.indexOf('</');
+      if (closes !== -1) rest = rest.slice(0, closes);
 
       /**
        * The element's own body, found by indentation.

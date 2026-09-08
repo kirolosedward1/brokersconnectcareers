@@ -100,6 +100,7 @@ export function ProfileRecordForm({
               min={0}
               max={100000}
               defaultValue={agent.units_closed ?? ''}
+              className="numeral"
             />
           </Field>
           <Field label={t('volumeEgp')} htmlFor="volumeEgp">
@@ -110,6 +111,7 @@ export function ProfileRecordForm({
               min={0}
               step={1000}
               defaultValue={agent.volume_egp ?? ''}
+              className="numeral"
             />
           </Field>
         </div>

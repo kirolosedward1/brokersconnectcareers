@@ -454,15 +454,22 @@ export function JobForm({
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-xs text-muted-foreground">{tFilters('hasBasicSalary')}</dt>
-                <dd className="numeral">
-                  {values.basicSalaryMin || values.basicSalaryMax
-                    ? `${values.basicSalaryMin || '—'} – ${values.basicSalaryMax || '—'}`
-                    : tFilters('hasBasicSalaryNo')}
+                <dd>
+                  {values.basicSalaryMin || values.basicSalaryMax ? (
+                    /* A bare range carries the isolation itself. On the whole
+                       <dd> it also caught the "no basic salary" phrase in the
+                       other branch, and read that backwards. */
+                    <span className="numeral">
+                      {`${values.basicSalaryMin || '—'} – ${values.basicSalaryMax || '—'}`}
+                    </span>
+                  ) : (
+                    tFilters('hasBasicSalaryNo')
+                  )}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">{t('commissionType')}</dt>
-                <dd className="numeral">
+                <dd>
                   {values.commissionType === 'percentage'
                     ? tCompensation.rich('commissionPercent', {
                         value: values.commissionValue || '0',

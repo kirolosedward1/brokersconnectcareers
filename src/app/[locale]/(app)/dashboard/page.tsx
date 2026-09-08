@@ -203,7 +203,7 @@ export default async function DashboardOverviewPage({
                       ? localized(locale, application.job.title_ar, application.job.title_en)
                       : '—'}
                   </p>
-                  <p className="numeral mt-0.5 truncate text-sm text-muted-foreground">
+                  <p className="mt-0.5 truncate text-sm text-muted-foreground">
                     {application.job?.company
                       ? localized(
                           locale,

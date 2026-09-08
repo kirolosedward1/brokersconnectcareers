@@ -89,7 +89,7 @@ export async function NotificationItem({
         ) : null}
 
         {!compact ? (
-          <span className="numeral mt-1 block text-xs text-muted-foreground">
+          <span className="mt-1 block text-xs text-muted-foreground">
             {formatDate(notification.created_at, locale)}
           </span>
         ) : null}

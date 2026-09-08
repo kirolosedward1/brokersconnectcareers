@@ -310,7 +310,14 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
               <Input id="field" name="field" maxLength={120} />
             </Field>
             <Field label={t('graduated')} htmlFor="graduated">
-              <Input id="graduated" name="graduated" type="number" min={1950} max={2100} />
+              <Input
+                id="graduated"
+                name="graduated"
+                type="number"
+                min={1950}
+                max={2100}
+                className="numeral"
+              />
             </Field>
             <div className="sm:col-span-2">
               <Button type="submit" size="sm" disabled={pending}>

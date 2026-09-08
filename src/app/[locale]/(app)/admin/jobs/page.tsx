@@ -114,7 +114,7 @@ export default async function AdminJobsPage({
                     ) : null}
                     <span>·</span>
                     <span>{localized(locale, job.district.name_ar, job.district.name_en)}</span>
-                    <span className="numeral">· {formatDate(job.created_at, locale)}</span>
+                    <span>· {formatDate(job.created_at, locale)}</span>
 
                     {/* How long this has been waiting. admin_summary counts
                         the queue over 24 hours because a backlog that is not

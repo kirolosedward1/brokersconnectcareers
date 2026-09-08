@@ -37,7 +37,7 @@ export async function LegalDocument({
         {doc.updated ? (
           <p className="mt-3 text-sm text-muted-foreground">
             {t('lastUpdated')}{' '}
-            <time dateTime={isoDate(doc.updated)} className="numeral">
+            <time dateTime={isoDate(doc.updated)}>
               {formatDate(doc.updated, locale)}
             </time>
           </p>

@@ -150,7 +150,7 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
             {orders.map((order) => (
               <li key={order.id} className="flex items-center justify-between gap-3 p-4 text-sm">
                 <span>{t(`packName.${order.pack_key}`)}</span>
-                <span className="numeral text-muted-foreground">
+                <span className="text-muted-foreground">
                   {formatDate(order.created_at, locale)}
                 </span>
                 <span className="numeral">{formatEgp(order.amount_egp, locale)}</span>

@@ -50,7 +50,7 @@ export async function TrackDistrictLanding({
         <p className="mt-2 max-w-2xl leading-relaxed text-muted-foreground">
           {t('subtitle', { track: trackName, district: districtName })}
         </p>
-        <p className="numeral mt-3 text-sm text-muted-foreground">
+        <p className="mt-3 text-sm text-muted-foreground">
           {tJobs('resultsCount', { count: total })}
         </p>
       </header>
