@@ -134,7 +134,7 @@ export function AppShell({
 
   const rail = (
     <div className="flex h-full flex-col gap-6 p-4">
-      <Link href="/" className="flex items-center gap-2.5 px-2 py-1">
+      <Link href="/" className="flex min-h-11 items-center gap-2.5 px-2">
         <LogoMark className="size-8" />
         {collapsed ? null : <span className="font-semibold">{tNav('dashboard')}</span>}
       </Link>
@@ -160,7 +160,7 @@ export function AppShell({
                       aria-current={active ? 'page' : undefined}
                       title={collapsed ? label : undefined}
                       className={cn(
-                        'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                        'relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors',
                         active
                           ? 'bg-brand-gradient text-primary-foreground shadow-[var(--shadow-primary)]'
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -205,7 +205,7 @@ export function AppShell({
         type="button"
         onClick={signOut}
         className={cn(
-          'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-destructive',
+          'flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-destructive',
           collapsed && 'justify-center px-2',
         )}
       >
@@ -241,7 +241,7 @@ export function AppShell({
               type="button"
               onClick={() => setOpen(false)}
               aria-label={tNav('menu')}
-              className="absolute end-3 top-3 rounded-lg p-2 text-muted-foreground hover:bg-muted"
+              className="absolute end-2 top-2 grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
             >
               <X className="size-5" aria-hidden />
             </button>
@@ -256,7 +256,7 @@ export function AppShell({
             type="button"
             onClick={() => setOpen(true)}
             aria-label={tNav('menu')}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted lg:hidden"
+            className="grid size-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted lg:hidden"
           >
             <Menu className="size-5" aria-hidden />
           </button>
@@ -266,7 +266,7 @@ export function AppShell({
             onClick={() => setCollapsed((v) => !v)}
             aria-label={t('overview')}
             aria-pressed={collapsed}
-            className="hidden rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted lg:block"
+            className="hidden size-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted lg:grid"
           >
             <PanelLeftClose className={cn('size-5 transition-transform', collapsed && 'rotate-180')} aria-hidden />
           </button>

@@ -65,7 +65,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           {ENGLISH_ENABLED ? <LocaleSwitcher locale={locale} label={t('language')} /> : null}
 
           {role === 'admin' ? (
-            <Button asChild variant="ghost" size="sm" className={`hidden lg:inline-flex ${ghostOnFilm}`}>
+            <Button asChild variant="ghost" className={`hidden lg:inline-flex ${ghostOnFilm}`}>
               <Link href="/admin/jobs">
                 <ShieldCheck /> {t('admin')}
               </Link>
@@ -74,7 +74,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
 
           {viewer?.profile ? (
             <>
-              <Button asChild variant="ghost" size="sm" className={`hidden lg:inline-flex ${ghostOnFilm}`}>
+              <Button asChild variant="ghost" className={`hidden lg:inline-flex ${ghostOnFilm}`}>
                 <Link href={dashboardHref}>
                   {role === 'employer' ? <Users /> : <LayoutDashboard />}
                   {role === 'employer' ? t('employerArea') : t('dashboard')}
@@ -89,10 +89,10 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
             </>
           ) : (
             <>
-              <Button asChild variant="ghost" size="sm" className={`hidden sm:inline-flex ${ghostOnFilm}`}>
+              <Button asChild variant="ghost" className={`hidden sm:inline-flex ${ghostOnFilm}`}>
                 <Link href="/sign-in">{t('signIn')}</Link>
               </Button>
-              <Button asChild size="sm" className="hidden sm:inline-flex">
+              <Button asChild className="hidden sm:inline-flex">
                 <Link href="/employer/jobs/new">{t('postJob')}</Link>
               </Button>
             </>

@@ -59,7 +59,7 @@ export default async function NotFound() {
           <li key={href}>
             <Link
               href={href}
-              className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium transition-colors hover:border-primary/40 hover:bg-muted"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium transition-colors hover:border-primary/40 hover:bg-muted"
             >
               <Icon className="size-4 text-muted-foreground" aria-hidden />
               {label}

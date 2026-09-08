@@ -62,17 +62,21 @@ export function NotificationBell({
       <summary
         ref={summaryRef}
         aria-label={label}
-        className="relative grid size-9 cursor-pointer list-none place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&::-webkit-details-marker]:hidden"
+        className="relative grid size-11 cursor-pointer list-none place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&::-webkit-details-marker]:hidden"
       >
-        <Bell className="size-[1.15rem]" aria-hidden />
+        {/* The badge hangs off the icon, not off the 44px hit area, or it
+            would sit adrift in the corner of an empty box. */}
+        <span className="relative grid place-items-center">
+          <Bell className="size-[1.15rem]" aria-hidden />
 
-        {/* Capped, because the count is a prompt to look, not a statistic —
-            and "99+" fits where "1,204" does not. */}
-        {unread > 0 ? (
-          <span className="numeral absolute -top-0.5 end-0 grid min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-4 text-destructive-foreground">
-            {unread > 99 ? '99+' : unread}
-          </span>
-        ) : null}
+          {/* Capped, because the count is a prompt to look, not a statistic —
+              and "99+" fits where "1,204" does not. */}
+          {unread > 0 ? (
+            <span className="numeral absolute -top-1.5 -end-1.5 grid min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-4 text-destructive-foreground">
+              {unread > 99 ? '99+' : unread}
+            </span>
+          ) : null}
+        </span>
       </summary>
 
       <div className="absolute end-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-popover shadow-lg">

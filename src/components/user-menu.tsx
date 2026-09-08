@@ -35,6 +35,7 @@ export function UserMenu({
       <Button
         variant="ghost"
         size="sm"
+        className="h-11 min-w-11"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"

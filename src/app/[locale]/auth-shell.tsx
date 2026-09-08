@@ -45,13 +45,13 @@ export async function AuthShell({
     <main id="main" tabIndex={-1} className="grid min-h-dvh lg:grid-cols-2">
       <div className="flex flex-col px-6 py-10 sm:px-12">
         <div className="flex items-center justify-between gap-4">
-          <Link href="/" aria-label={tMeta('siteName')}>
+          <Link href="/" aria-label={tMeta('siteName')} className="flex min-h-11 items-center">
             <Logo name={tMeta('siteName')} />
           </Link>
 
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="rtl-flip size-4" aria-hidden />
             {t('backHome')}

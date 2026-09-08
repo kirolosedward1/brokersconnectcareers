@@ -139,12 +139,12 @@ export async function SignedInHome({
       {hiring ? (
         <section className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.04] p-4">
           <p className="me-auto text-sm font-medium">{t("hiringStrip")}</p>
-          <Button asChild size="sm" variant="outline">
+          <Button asChild variant="outline">
             <Link href="/employer/jobs">
               <Briefcase /> {t("hiringJobs")}
             </Link>
           </Button>
-          <Button asChild size="sm">
+          <Button asChild>
             <Link href="/employer/jobs/new">
               <Send /> {tNav("postJob")}
             </Link>
@@ -238,7 +238,10 @@ export async function SignedInHome({
           <ul className="mt-3 flex flex-wrap gap-2">
             {JOB_TRACKS.map((track) => (
               <li key={track}>
-                <Link href={{ pathname: "/jobs", query: { track } }}>
+                <Link
+                  href={{ pathname: "/jobs", query: { track } }}
+                  className="inline-flex min-h-11 items-center"
+                >
                   <Badge variant="outline" size="lg">
                     {tTrack(track)}
                   </Badge>
@@ -257,6 +260,7 @@ export async function SignedInHome({
               <li key={district.id}>
                 <Link
                   href={`/jobs/${buildLandingSlug("primary", district.slug)}`}
+                  className="inline-flex min-h-11 items-center"
                 >
                   <Badge variant="outline" size="lg">
                     {localized(locale, district.name_ar, district.name_en)}

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
@@ -7,6 +8,16 @@ import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
 import type { CompanyRow, CompanyDocumentRow } from '@/lib/supabase/database.types';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: 'admin' });
+  return { title: t('companiesQueue'), robots: { index: false, follow: false } };
+}
 
 export default async function AdminCompaniesPage({
   params,
@@ -35,16 +46,19 @@ export default async function AdminCompaniesPage({
   const t = await getTranslations('admin');
   const tEmployer = await getTranslations('employer');
 
-  if (companies.length === 0) {
-    return (
-      <p className="rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
-        {t('emptyQueue')}
-      </p>
-    );
-  }
-
   return (
-    <ul className="space-y-3">
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-bold">{t('companiesQueue')}</h1>
+        <p className="mt-1 text-muted-foreground">{t('companiesQueueLede')}</p>
+      </header>
+
+      {companies.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
+          {t('emptyQueue')}
+        </p>
+      ) : (
+        <ul className="space-y-3">
       {companies.map((company) => (
         <li key={company.id} className="rounded-xl border border-border bg-card p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -78,6 +92,8 @@ export default async function AdminCompaniesPage({
           </div>
         </li>
       ))}
-    </ul>
+        </ul>
+      )}
+    </div>
   );
 }

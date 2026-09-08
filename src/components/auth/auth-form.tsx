@@ -256,7 +256,6 @@ export function AuthForm({
             <Button
               type="button"
               variant="outline"
-              size="sm"
               className="w-full bg-card"
               onClick={() => signInAsDemo('candidate')}
               disabled={pending}
@@ -267,7 +266,6 @@ export function AuthForm({
             <Button
               type="button"
               variant="outline"
-              size="sm"
               className="w-full bg-card"
               onClick={() => signInAsDemo('employer')}
               disabled={pending}

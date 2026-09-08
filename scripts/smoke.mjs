@@ -231,6 +231,59 @@ section('the two landing pages are distinct and cross-linked');
 }
 
 // ---------------------------------------------------------------------------
+section('every page announces what it is');
+{
+  // Written after finding three pages — /admin/companies, /admin/reports and
+  // /admin/jobs — that rendered with no h1 at all and the site's default
+  // <title>, so a screen reader landing on the verification queue was told
+  // only the name of the website. Each queue was reachable and worked, and
+  // said nothing about where you were.
+  //
+  // Those three are behind a session, so this loop cannot reach them; they
+  // were fixed by hand. What it does is stop the same thing happening on the
+  // public site, which is where it would cost readers and search engines.
+  //
+  // Only markup-level checks live here. Contrast and tap-target size need
+  // layout, which needs a browser; they are measured against a running build
+  // rather than faked with a regex.
+  const strip = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+  for (const path of [
+    '/',
+    '/jobs',
+    '/employers',
+    '/companies',
+    '/agents',
+    '/blog',
+    '/sign-in',
+    '/sign-up',
+    '/privacy',
+    '/terms',
+  ]) {
+    const { body } = await get(path);
+
+    const h1s = body.match(/<h1[\b >]/g) ?? [];
+    check(`${path} has exactly one h1`, h1s.length === 1, `found ${h1s.length}`);
+
+    const title = strip(body.match(/<title[^>]*>(.*?)<\/title>/s)?.[1] ?? '');
+    // Every page's title is "<page> | <site>" or, for the home page, the site
+    // name plus its tagline. A title with neither separator is a page that
+    // never set one and fell through to the layout default.
+    check(`${path} has its own <title>`, /[|—]/.test(title), title || '(none)');
+
+    // A decorative image declares itself with alt="", so the check is for the
+    // attribute's presence, not its content.
+    const imgs = body.match(/<img\b[^>]*>/g) ?? [];
+    const unlabelled = imgs.filter((tag) => !/\balt=/.test(tag));
+    check(`${path} labels every img`, unlabelled.length === 0, unlabelled[0]?.slice(0, 90));
+
+    const ids = [...body.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
+    const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+    check(`${path} has no duplicate ids`, dupes.length === 0, [...new Set(dupes)].join(', '));
+  }
+}
+
+// ---------------------------------------------------------------------------
 section('the closed English side stays closed');
 {
   const en = await get('/en/jobs');

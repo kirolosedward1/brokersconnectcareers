@@ -176,9 +176,12 @@ export default async function AppLayout({
       groups={groups}
       bell={
         <NotificationBell label={tNotifications('title')} unread={unread ?? 0}>
-          <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+          <div className="flex items-center justify-between gap-2 border-b border-border ps-3 pe-1.5 py-1">
             <p className="text-sm font-semibold">{tNotifications('title')}</p>
-            <Link href="/notifications" className="text-xs font-medium text-primary hover:underline">
+            <Link
+              href="/notifications"
+              className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-xs font-medium text-primary hover:underline"
+            >
               {tNotifications('seeAll')}
             </Link>
           </div>

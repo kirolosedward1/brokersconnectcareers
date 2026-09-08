@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Clock } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
@@ -13,6 +14,16 @@ type QueueRow = JobRow & {
   company: { name_ar: string; name_en: string | null; slug: string; verification_status: string };
   district: { name_ar: string; name_en: string };
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: 'admin' });
+  return { title: t('jobsQueue'), robots: { index: false, follow: false } };
+}
 
 export default async function AdminJobsPage({
   params,
@@ -58,17 +69,24 @@ export default async function AdminJobsPage({
     Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000));
 
   return (
-    <div>
-      <nav className="mb-6 flex gap-2">
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-bold">{t('jobsQueue')}</h1>
+        <p className="mt-1 text-muted-foreground">{t('jobsQueueLede')}</p>
+      </header>
+
+      <nav className="flex flex-wrap gap-2" aria-label={t('jobsQueue')}>
         <Link
           href={{ pathname: '/admin/jobs', query: {} }}
-          className={`rounded-md px-3 py-1.5 text-sm ${filter === 'pending_review' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+          aria-current={filter === 'pending_review' ? 'page' : undefined}
+          className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm ${filter === 'pending_review' ? 'bg-primary text-primary-foreground' : 'border border-border hover:bg-muted'}`}
         >
           {t('jobsQueue')}
         </Link>
         <Link
           href={{ pathname: '/admin/jobs', query: { status: 'active' } }}
-          className={`rounded-md px-3 py-1.5 text-sm ${filter === 'active' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+          aria-current={filter === 'active' ? 'page' : undefined}
+          className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm ${filter === 'active' ? 'bg-primary text-primary-foreground' : 'border border-border hover:bg-muted'}`}
         >
           {tJobs('title')}
         </Link>

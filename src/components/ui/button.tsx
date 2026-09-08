@@ -22,11 +22,17 @@ const buttonVariants = cva(
         destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:opacity-90',
         success: 'bg-success text-success-foreground shadow-sm hover:opacity-90',
       },
+      // 44px, not 40. Two reasons that point the same way: it is the touch
+      // target this market's overwhelmingly mobile traffic needs, and it is
+      // the height of Input and Select, so a button beside a field now lines
+      // up with it instead of sitting 4px short. `sm` stays small on purpose —
+      // it is the size for table rows and secondary chrome, where a full-height
+      // button would shout.
       size: {
-        default: 'h-10 px-4 py-2',
+        default: 'h-11 px-4 py-2',
         sm: 'h-8 rounded-lg px-3 text-xs',
         lg: 'h-12 rounded-xl px-6 text-base',
-        icon: 'size-10',
+        icon: 'size-11',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

@@ -39,7 +39,7 @@ export function NavLink({
       href={href}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'rounded-lg px-3 py-2 transition-colors',
+        'inline-flex min-h-11 items-center rounded-lg px-3 transition-colors',
         block ? 'flex min-h-11 items-center text-sm' : '',
         active
           ? 'bg-primary/10 font-medium text-primary group-data-[over-hero]/header:bg-white/20 group-data-[over-hero]/header:text-white'

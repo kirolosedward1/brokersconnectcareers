@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
@@ -15,6 +16,16 @@ type ReportRowWithJob = {
   created_at: string;
   job: { slug: string; title_ar: string; title_en: string | null; status: string } | null;
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: 'admin' });
+  return { title: t('reports'), robots: { index: false, follow: false } };
+}
 
 export default async function AdminReportsPage({
   params,
@@ -38,16 +49,19 @@ export default async function AdminReportsPage({
   const t = await getTranslations('admin');
   const tReason = await getTranslations('reportReason');
 
-  if (reports.length === 0) {
-    return (
-      <p className="rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
-        {t('emptyQueue')}
-      </p>
-    );
-  }
-
   return (
-    <ul className="space-y-3">
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-bold">{t('reports')}</h1>
+        <p className="mt-1 text-muted-foreground">{t('reportsLede')}</p>
+      </header>
+
+      {reports.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
+          {t('emptyQueue')}
+        </p>
+      ) : (
+        <ul className="space-y-3">
       {reports.map((report) => (
         <li key={report.id} className="rounded-xl border border-border bg-card p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -81,6 +95,8 @@ export default async function AdminReportsPage({
           </div>
         </li>
       ))}
-    </ul>
+        </ul>
+      )}
+    </div>
   );
 }

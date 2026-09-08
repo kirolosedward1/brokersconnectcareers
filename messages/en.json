@@ -427,8 +427,11 @@
   "admin": {
     "title": "Admin",
     "jobsQueue": "Job moderation",
+    "jobsQueueLede": "Review new listings before they go live.",
     "companiesQueue": "Company verification",
+    "companiesQueueLede": "Check company paperwork and verify the ones that hold up.",
     "reports": "Reports",
+    "reportsLede": "Reader reports on listings, oldest first.",
     "approve": "Approve",
     "reject": "Reject",
     "rejectReason": "Reason for rejection",
