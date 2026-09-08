@@ -75,7 +75,8 @@
     "expired": "This listing has closed",
     "expiredBody": "It is no longer accepting applications. Browse what is open now.",
     "seatsLabel": "{count, plural, one {open seat} other {open seats}}",
-    "featured": "Featured"
+    "featured": "Featured",
+    "closedShort": "Closed"
   },
   "compensation": {
     "title": "Pay and commission",

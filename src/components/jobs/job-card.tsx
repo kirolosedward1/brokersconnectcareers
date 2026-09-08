@@ -1,12 +1,12 @@
 import { useTranslations } from 'next-intl';
-import { BookmarkCheck, CheckCheck, MapPin, Star } from 'lucide-react';
+import { BookmarkCheck, CheckCheck, CircleSlash, MapPin, Star } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { LeadsSourceBadge, SalaryLine } from '@/components/jobs/compensation';
-import { formatNumber } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import type { JobListItem } from '@/lib/queries/jobs';
 
 export function JobCard({
@@ -30,12 +30,31 @@ export function JobCard({
   const t = useTranslations('jobs');
   const tCompanies = useTranslations('companies');
 
+  /**
+   * Whether this listing is still taking applications.
+   *
+   * Derived here rather than passed in, because the card already holds the
+   * status and the expiry and every caller would otherwise have to remember
+   * the same rule. The board only ever renders live roles, so this shows up
+   * where it matters: a saved list, where a role can close after it was
+   * bookmarked and used to look identical to one still open.
+   */
+  const closed =
+    job.status !== 'active' || (job.expires_at != null && new Date(job.expires_at) <= new Date());
+
   const title = localized(locale, job.title_ar, job.title_en);
   const company = localized(locale, job.company.name_ar, job.company.name_en);
   const district = localized(locale, job.district.name_ar, job.district.name_en);
 
   return (
-    <article className="lift reveal group relative rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30">
+    <article
+      className={cn(
+        'lift reveal group relative rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30',
+        // Still readable, still clickable — just no longer competing with the
+        // roles somebody can actually apply to.
+        closed && 'opacity-70',
+      )}
+    >
       <div className="flex items-start gap-3">
         {/* The company's mark, so a listings page is scannable by who is
             hiring and not only by job title. */}
@@ -71,6 +90,13 @@ export function JobCard({
                 already is. Applied wins when both are true: having applied is
                 the stronger fact, and two badges on one card is the noise this
                 is meant to save. */}
+            {closed ? (
+              <Badge variant="default">
+                <CircleSlash aria-hidden />
+                {t('closedShort')}
+              </Badge>
+            ) : null}
+
             {applied ? (
               <Badge variant="success">
                 <CheckCheck aria-hidden />

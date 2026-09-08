@@ -75,7 +75,8 @@
     "expired": "الإعلان ده اتقفل",
     "expiredBody": "مابقاش مفتوح للتقديم. شوف الوظائف المتاحة دلوقتي.",
     "seatsLabel": "{count, plural, one {وظيفة خالية} two {وظيفتان خاليتان} few {وظائف خالية} many {وظيفة خالية} other {وظيفة خالية}}",
-    "featured": "إعلان مميّز"
+    "featured": "إعلان مميّز",
+    "closedShort": "اتقفل"
   },
   "compensation": {
     "title": "الراتب والعمولة",

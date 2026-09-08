@@ -43,6 +43,12 @@ export default async function SavedJobsPage({
     .select('*')
     .order('created_at', { ascending: false });
 
+  // Which of these were applied to. This is a list somebody curated by hand,
+  // so "did I already apply to that one" is the question they arrive with —
+  // and it was answerable only by opening each listing.
+  const { data: mine } = await supabase.from('applications').select('job_id');
+  const appliedTo = new Set((mine ?? []).map((row) => row.job_id));
+
   const t = await getTranslations('dashboard');
   const tJobs = await getTranslations('jobs');
   const tSearch = await getTranslations('savedSearch');
@@ -69,7 +75,9 @@ export default async function SavedJobsPage({
           <ul className="space-y-3">
             {jobs.map((job) => (
               <li key={job.id}>
-                <JobCard job={job} locale={locale} />
+                {/* `saved` is not passed: every card here is saved, so the
+                    badge would be on all of them and mean nothing. */}
+                <JobCard job={job} locale={locale} applied={appliedTo.has(job.id)} />
               </li>
             ))}
           </ul>
