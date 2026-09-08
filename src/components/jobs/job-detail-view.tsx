@@ -246,9 +246,18 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
             </CardContent>
           </Card>
 
-          {/* Sticky apply on mobile: the CTA should never be a scroll away. */}
+          {/* Sticky apply on mobile: the CTA should never be a scroll away.
+              data-apply-bar is read by one rule in globals.css, which gives the
+              footer room to clear this. Without it the bar sat over the last
+              73px of the document at maximum scroll, so the theme switcher and
+              the copyright line were unreachable on a phone — on every listing
+              on the site. Padding anything inside <main> cannot fix that: the
+              footer is still the last thing in the document. */}
           {canApply ? (
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background p-3 lg:hidden">
+          <div
+            data-apply-bar
+            className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background p-3 lg:hidden"
+          >
             {alreadyApplied ? (
               <Button variant="secondary" className="w-full" disabled>
                 {t('applied')}

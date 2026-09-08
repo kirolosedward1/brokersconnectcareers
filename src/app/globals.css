@@ -390,6 +390,16 @@
     }
   }
 
+  /* A fixed bottom bar covers the end of the document, and no amount of
+     scrolling reveals what is under it. The listing page's mobile apply bar
+     marks itself, and the footer below it reserves the height back. Scoped to
+     the breakpoint the bar itself uses. */
+  @media (width < 64rem) {
+    body:has([data-apply-bar]) footer {
+      padding-bottom: 6rem;
+    }
+  }
+
   /* Flip a glyph that encodes direction (arrows, chevrons) when the document
      is RTL. Icons that do not encode direction must not use this. */
   [dir='rtl'] .rtl-flip {
