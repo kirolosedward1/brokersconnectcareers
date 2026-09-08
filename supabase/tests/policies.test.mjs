@@ -750,6 +750,94 @@ report.section('dashboard trends are gap-free and scoped like the summaries');
   report.check('and anonymous reaches neither', !anonEmployer.ok && !anonAdmin.ok);
 }
 
+report.section('a company is a team, not a login');
+{
+  const COLLEAGUE = '66666666-6666-6666-6666-666666666666';
+  await db.exec(`
+    insert into auth.users (id, email) values ('${COLLEAGUE}', 'colleague@demo.test');
+    insert into profiles (id, role, full_name, whatsapp_phone)
+      values ('${COLLEAGUE}', 'employer', 'زميلة', '+201666666666');
+  `);
+
+  const alRowad = (
+    await db.query("select id from companies where slug = 'al-rowad-real-estate-455213'")
+  ).rows[0]?.id ?? (await db.query('select id from companies limit 1')).rows[0].id;
+
+  const before = await as(COLLEAGUE,
+    `select count(*)::int as n from applications a join jobs j on j.id = a.job_id
+      where j.company_id = '${alRowad}'`);
+  report.check('somebody outside the company sees none of its applicants',
+    before.ok && before.rows[0].n === 0, before.error);
+
+  // The owner adds them. Through the policy, as the product would.
+  const invite = await as(employerVerified,
+    `insert into company_members (company_id, user_id, role)
+       values ('${alRowad}','${COLLEAGUE}','recruiter') returning role`);
+  report.check('an admin can add a colleague', invite.ok && invite.rows.length === 1, invite.error);
+
+  await db.exec(
+    `insert into company_members (company_id, user_id, role)
+       values ('${alRowad}','${COLLEAGUE}','recruiter') on conflict do nothing`,
+  );
+
+  const after = await as(COLLEAGUE,
+    `select count(*)::int as n from applications a join jobs j on j.id = a.job_id
+      where j.company_id = '${alRowad}'`);
+  report.check(`and then they see the company's applicants (0 → ${after.rows[0]?.n})`,
+    after.ok && after.rows[0].n > 0, after.error);
+
+  const rosterOutsider = await as(candidate,
+    `select count(*)::int as n from company_members where company_id = '${alRowad}'`);
+  report.check('the roster is not public', rosterOutsider.ok && rosterOutsider.rows[0].n === 0);
+
+  // A recruiter works the listings; the company record is an admin's.
+  const recruiterEdit = await as(COLLEAGUE,
+    `update companies set about_ar = 'x' where id = '${alRowad}' returning id`);
+  report.check('a recruiter cannot edit the company record',
+    recruiterEdit.ok && recruiterEdit.rows.length === 0, 'the update matched a row');
+
+  const recruiterInvite = await as(COLLEAGUE,
+    `insert into company_members (company_id, user_id, role)
+       values ('${alRowad}','${OUTSIDER}','recruiter')`);
+  report.check('nor add anybody else', !recruiterInvite.ok, 'the insert was allowed');
+
+  // Ownership is the anchor. An admin may not unpick it.
+  const ownerId = (await db.query(`select owner_id from companies where id = '${alRowad}'`)).rows[0].owner_id;
+
+  const removeOwner = await as(employerVerified,
+    `delete from company_members where company_id = '${alRowad}' and user_id = '${ownerId}'`);
+  report.check('the owner cannot be removed from their own company',
+    !removeOwner.ok && /company_owner_membership/.test(removeOwner.error ?? ''), removeOwner.error);
+
+  const demoteOwner = await as(employerVerified,
+    `update company_members set role = 'recruiter'
+      where company_id = '${alRowad}' and user_id = '${ownerId}'`);
+  report.check('nor demoted',
+    !demoteOwner.ok && /company_owner_membership/.test(demoteOwner.error ?? ''), demoteOwner.error);
+
+  // A consultant with employer powers could read applications to their own
+  // listings, which is the hole migration 15 closed.
+  const addCandidate = await as(employerVerified,
+    `insert into company_members (company_id, user_id, role)
+       values ('${alRowad}','${candidate}','recruiter')`);
+  report.check('a candidate account cannot be made a member',
+    !addCandidate.ok && /company_member_role/.test(addCandidate.error ?? ''), addCandidate.error);
+
+  // And the thing that broke twenty-three assertions when it was missing.
+  const fresh = (
+    await db.query(`
+      insert into companies (owner_id, name_ar, slug, verification_status, post_credits)
+      values ('${COLLEAGUE}', 'شركة جديدة', 'new-co-fixture', 'unverified', 0)
+      returning id
+    `)
+  ).rows[0].id;
+  const seeded = await db.query(
+    `select role from company_members where company_id = '${fresh}' and user_id = '${COLLEAGUE}'`,
+  );
+  report.check('creating a company makes its creator an admin of it',
+    seeded.rows[0]?.role === 'admin', JSON.stringify(seeded.rows));
+}
+
 report.section('applying tells both sides, not just the employer');
 {
   // Before the rate-limit section, which fills this candidate's daily window.

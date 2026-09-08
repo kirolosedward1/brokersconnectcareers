@@ -4,6 +4,7 @@ import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { CompanyForm } from '@/components/employer/company-form';
 import { VerificationPanel } from '@/components/employer/verification-panel';
 import { LogoUpload } from '@/components/employer/logo-upload';
+import { TeamSettings, type TeamMember } from '@/components/employer/team-settings';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getDistricts } from '@/lib/queries/taxonomy';
@@ -32,14 +33,44 @@ export default async function EmployerCompanyPage({
   const districts = await getDistricts();
 
   let documents: CompanyDocumentRow[] = [];
+  let team: TeamMember[] = [];
+  let canManageTeam = false;
+
   if (viewer.company) {
     const supabase = await createClient();
-    const { data } = await supabase
-      .from('company_documents')
-      .select('*')
-      .eq('company_id', viewer.company.id)
-      .order('created_at', { ascending: false });
-    documents = (data ?? []) as CompanyDocumentRow[];
+    const [{ data: docs }, { data: roster }] = await Promise.all([
+      supabase
+        .from('company_documents')
+        .select('*')
+        .eq('company_id', viewer.company.id)
+        .order('created_at', { ascending: false }),
+      // RLS already scopes this to companies the caller belongs to; the filter
+      // is for the query planner, not for authorisation.
+      supabase
+        .from('company_members')
+        .select('user_id, role, created_at, profile:profiles (full_name)')
+        .eq('company_id', viewer.company.id)
+        .order('created_at', { ascending: true }),
+    ]);
+
+    documents = (docs ?? []) as CompanyDocumentRow[];
+
+    const rows = (roster ?? []) as unknown as {
+      user_id: string;
+      role: 'admin' | 'recruiter';
+      profile: { full_name: string } | null;
+    }[];
+
+    team = rows.map((row) => ({
+      userId: row.user_id,
+      name: row.profile?.full_name ?? '—',
+      role: row.role,
+      isOwner: row.user_id === viewer.company!.owner_id,
+    }));
+
+    canManageTeam = rows.some(
+      (row) => row.user_id === viewer.userId && row.role === 'admin',
+    );
   }
 
   const t = await getTranslations('employer');
@@ -72,6 +103,8 @@ export default async function EmployerCompanyPage({
           documents={documents}
         />
       ) : null}
+
+      {viewer.company ? <TeamSettings members={team} canManage={canManageTeam} /> : null}
     </div>
   );
 }

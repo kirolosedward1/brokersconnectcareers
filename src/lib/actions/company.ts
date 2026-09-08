@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_LOGOS_BUCKET } from '@/lib/storage';
 import { buildCompanySlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
@@ -153,4 +154,88 @@ export async function claimMonthlyFreePost(): Promise<ActionResult<{ claimed: bo
 
   revalidatePath('/employer/billing');
   return { ok: true, data: { claimed: Boolean(data) } };
+}
+
+// ---------------------------------------------------------------------------
+// The team
+// ---------------------------------------------------------------------------
+
+const memberSchema = z.object({
+  email: z.string().trim().email(),
+  role: z.enum(['admin', 'recruiter']),
+});
+
+/**
+ * Add a colleague to the company by email address.
+ *
+ * Adding an *existing* account only. Creating one for somebody who has never
+ * signed up needs an invitation email, and no mail leaves this platform until
+ * a sending domain is verified — so an invite flow built today would be a
+ * button that silently does nothing. When the address is unknown the answer
+ * says so and says what to do instead, which is a complete feature rather than
+ * a broken half of a better one.
+ *
+ * The email lookup needs the service role, because profiles carries no address
+ * — the addresses live in auth.users, which the anon and authenticated roles
+ * cannot read. Authorisation is not delegated to that client, though: the
+ * membership row is inserted through the *caller's* session, so
+ * company_members_manage decides whether they may, and a recruiter trying this
+ * is refused by the database rather than by this function remembering to ask.
+ */
+export async function addCompanyMember(input: unknown): Promise<ActionResult> {
+  const parsed = memberSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+
+  const admin = createAdminClient();
+  const { data: found } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+  const match = found?.users.find(
+    (candidate) => candidate.email?.toLowerCase() === parsed.data.email.toLowerCase(),
+  );
+  if (!match) return { ok: false, error: 'no_account' };
+  if (match.id === user.id) return { ok: false, error: 'already_member' };
+
+  const { error } = await supabase
+    .from('company_members')
+    .insert({ company_id: companyId, user_id: match.id, role: parsed.data.role });
+
+  if (error) {
+    if (error.code === '23505') return { ok: false, error: 'already_member' };
+    if (error.message.includes('company_member_role')) return { ok: false, error: 'not_employer' };
+    return { ok: false, error: 'forbidden' };
+  }
+
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+export async function removeCompanyMember(userId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+
+  const { error } = await supabase
+    .from('company_members')
+    .delete()
+    .eq('company_id', companyId)
+    .eq('user_id', userId);
+
+  if (error) {
+    // The trigger's refusal, which is the one an admin will actually meet.
+    if (error.message.includes('company_owner_membership')) {
+      return { ok: false, error: 'owner' };
+    }
+    return { ok: false, error: 'forbidden' };
+  }
+
+  revalidatePath('/employer/company');
+  return { ok: true };
 }

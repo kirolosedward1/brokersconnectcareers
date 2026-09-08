@@ -116,6 +116,14 @@ export type CompanyDocumentRow = Timestamped & {
   reviewed_at: string | null;
 };
 
+export type CompanyMemberRole = 'admin' | 'recruiter';
+
+export type CompanyMemberRow = Timestamped & {
+  company_id: string;
+  user_id: string;
+  role: CompanyMemberRole;
+};
+
 export type JobRow = Timestamped & {
   id: string;
   company_id: string;
@@ -421,6 +429,10 @@ export type Database = {
         CompanyDocumentRow,
         Insertable<CompanyDocumentRow, 'company_id' | 'doc_type' | 'storage_path'>
       >;
+      company_members: Table<
+        CompanyMemberRow,
+        Insertable<CompanyMemberRow, 'company_id' | 'user_id'>
+      >;
       jobs: Table<
         JobRow,
         Insertable<
@@ -488,6 +500,8 @@ export type Database = {
       get_agent_card: { Args: { p_slug: string }; Returns: AgentCardDetail[] };
       increment_job_view: { Args: { job_slug: string }; Returns: undefined };
       claim_monthly_free_post: { Args: Empty; Returns: boolean };
+      /** The company the caller belongs to, resolved through membership. */
+      my_company_id: { Args: Empty; Returns: string | null };
       expire_stale_jobs: { Args: Empty; Returns: number };
       profile_completeness: { Args: { p_agent_id: string }; Returns: number };
 

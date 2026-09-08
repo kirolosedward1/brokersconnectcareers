@@ -193,5 +193,38 @@ create trigger company_members_10_guard
   before insert or update or delete on company_members
   for each row execute function public.guard_company_membership();
 
+-- ---------------------------------------------------------------------------
+-- Whoever creates a company is its first admin
+-- ---------------------------------------------------------------------------
+--
+-- The backfill above covers every company that already exists, and nothing
+-- else. Without this, the next company created after this migration would have
+-- no members at all — and since owns_company() now resolves through
+-- membership, its own owner would be locked out of the company they had just
+-- made. The policy suite found this immediately: its fixtures are seeded after
+-- the migrations run, so every one of them arrived memberless and twenty-three
+-- assertions failed at once.
+--
+-- SECURITY DEFINER because of the ordering: at the instant this runs, the
+-- creator is not yet an admin of anything, so company_members_manage would
+-- refuse the very row that makes them one.
+create or replace function public.add_owner_as_member()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into company_members (company_id, user_id, role)
+  values (new.id, new.owner_id, 'admin')
+  on conflict do nothing;
+  return new;
+end;
+$$;
+
+create trigger companies_20_add_owner_member
+  after insert on companies
+  for each row execute function public.add_owner_as_member();
+
 grant select, insert, update, delete on company_members to authenticated;
 grant select on company_members to anon;
