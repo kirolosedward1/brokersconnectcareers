@@ -38,7 +38,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
   return (
     <HeaderShell hasHomeHero={!viewer?.profile}>
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4">
-        <Link href="/" className="shrink-0">
+        <Link href="/" className="flex min-h-11 shrink-0 items-center">
           <Logo name={tMeta('siteName')} />
         </Link>
 
@@ -57,7 +57,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           <Link
             href="/jobs"
             aria-label={t('jobs')}
-            className="rounded-lg p-2 transition-colors hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15 md:hidden"
+            className="grid size-11 place-items-center rounded-lg transition-colors hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15 md:hidden"
           >
             <Search className="size-4" />
           </Link>
@@ -114,14 +114,14 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
                 <>
                   <Link
                     href={dashboardHref}
-                    className="block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                    className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
                   >
                     {role === 'employer' ? t('employerArea') : t('dashboard')}
                   </Link>
                   {role === 'admin' ? (
                     <Link
                       href="/admin/jobs"
-                      className="block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                      className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
                     >
                       {t('admin')}
                     </Link>
@@ -130,7 +130,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               ) : (
                 <Link
                   href="/sign-in"
-                  className="block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                  className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
                 >
                   {t('signIn')}
                 </Link>
@@ -138,7 +138,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
 
             <Link
               href="/employer/jobs/new"
-              className="bg-brand-gradient mt-1 block rounded-lg px-3 py-2 text-center text-sm font-medium text-primary-foreground"
+              className="bg-brand-gradient mt-1 flex min-h-11 items-center justify-center rounded-lg px-3 text-center text-sm font-medium text-primary-foreground"
             >
               {t('postJob')}
             </Link>

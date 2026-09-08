@@ -65,7 +65,7 @@ export function MobileNav({ label, children }: { label: string; children: React.
     <details ref={ref} className="group relative md:hidden">
       <summary
         ref={summaryRef as React.RefObject<HTMLElement>}
-        className="grid size-9 cursor-pointer list-none place-items-center rounded-lg transition-colors hover:bg-muted [&::-webkit-details-marker]:hidden"
+        className="grid size-11 cursor-pointer list-none place-items-center rounded-lg transition-colors hover:bg-muted [&::-webkit-details-marker]:hidden"
         aria-label={label}
       >
         <Menu
@@ -74,7 +74,12 @@ export function MobileNav({ label, children }: { label: string; children: React.
         />
       </summary>
 
-      <div className="animate-in fade-in slide-in-from-top-1 absolute end-0 top-full z-50 mt-2 w-56 rounded-2xl border border-border bg-popover p-1.5 shadow-lg duration-150">
+      {/* text-popover-foreground is load-bearing, not tidiness. On the two
+          pages where the header floats over a dark hero it carries text-white,
+          and this panel inherited it while drawing its own light ground — so
+          the whole phone menu rendered white on white on the two landing
+          pages, the first thing a new visitor on a phone opens. */}
+      <div className="animate-in fade-in slide-in-from-top-1 text-popover-foreground absolute end-0 top-full z-50 mt-2 w-56 rounded-2xl border border-border bg-popover p-1.5 shadow-lg duration-150">
         {children}
       </div>
     </details>

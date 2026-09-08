@@ -39,7 +39,7 @@ export function HomeTabs() {
             href={href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors sm:px-5',
+              'inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors sm:px-5',
               active
                 ? 'bg-white text-slate-900 shadow-sm'
                 : 'text-white/75 hover:bg-white/10 hover:text-white',

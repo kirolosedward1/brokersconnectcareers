@@ -121,7 +121,7 @@ export async function Landing({
         <div className="rise-in [--rise-delay:350ms] mt-7 flex flex-wrap items-center justify-center gap-2">
           <span className="text-sm text-white/60">{t('hero.popular')}</span>
           {JOB_TRACKS.slice(0, 4).map((track) => (
-            <Link key={track} href={{ pathname: '/jobs', query: { track } }}>
+            <Link key={track} href={{ pathname: '/jobs', query: { track } }} className="inline-flex min-h-11 items-center">
               <span className="inline-flex rounded-full border border-white/20 bg-white/5 px-3.5 py-1.5 text-sm text-white/90 transition-colors hover:border-white/40 hover:bg-white/15">
                 {tTrack(track)}
               </span>
@@ -304,7 +304,7 @@ export async function Landing({
               <ul className="mt-3 flex flex-wrap gap-2">
                 {JOB_TRACKS.map((track) => (
                   <li key={track}>
-                    <Link href={{ pathname: '/jobs', query: { track } }}>
+                    <Link href={{ pathname: '/jobs', query: { track } }} className="inline-flex min-h-11 items-center">
                       <Badge variant="outline" size="lg" className="bg-card shadow-xs transition-colors hover:border-primary/40 hover:bg-background">
                         {tTrack(track)}
                       </Badge>
@@ -323,7 +323,7 @@ export async function Landing({
                     crawlable page is the one that gets the internal link. */}
                 {districts.slice(0, 12).map((district) => (
                   <li key={district.id}>
-                    <Link href={`/jobs/${buildLandingSlug('primary', district.slug)}`}>
+                    <Link href={`/jobs/${buildLandingSlug('primary', district.slug)}`} className="inline-flex min-h-11 items-center">
                       <Badge variant="outline" size="lg" className="bg-card shadow-xs transition-colors hover:border-primary/40 hover:bg-background">
                         {localized(locale, district.name_ar, district.name_en)}
                       </Badge>

@@ -78,7 +78,7 @@ export function ThemeToggle() {
   }, [theme]);
 
   if (theme === null) {
-    return <div className="size-9" aria-hidden />;
+    return <div className="h-12 w-[8.75rem]" aria-hidden />;
   }
 
   return (
@@ -100,13 +100,13 @@ export function ThemeToggle() {
             applyTheme(value);
           }}
           className={cn(
-            'grid size-7 place-items-center rounded-md transition-colors',
+            'grid size-11 place-items-center rounded-md transition-colors',
             theme === value
               ? 'bg-primary/10 text-primary'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground',
           )}
         >
-          <Icon className="size-3.5" aria-hidden />
+          <Icon className="size-4" aria-hidden />
         </button>
       ))}
     </div>

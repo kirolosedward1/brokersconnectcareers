@@ -117,7 +117,7 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
             aria-labelledby={`${id}-tab-${index}`}
             hidden={index !== active}
             tabIndex={0}
-            className="grid h-full place-items-center outline-none"
+            className="grid h-full place-items-center rounded-2xl"
           >
             {step.illustration}
           </div>

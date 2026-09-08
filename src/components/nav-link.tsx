@@ -40,7 +40,7 @@ export function NavLink({
       aria-current={active ? 'page' : undefined}
       className={cn(
         'rounded-lg px-3 py-2 transition-colors',
-        block ? 'block text-sm' : '',
+        block ? 'flex min-h-11 items-center text-sm' : '',
         active
           ? 'bg-primary/10 font-medium text-primary group-data-[over-hero]/header:bg-white/20 group-data-[over-hero]/header:text-white'
           : 'hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15',

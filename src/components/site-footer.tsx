@@ -19,19 +19,24 @@ export async function SiteFooter() {
   const tMeta = await getTranslations('meta');
 
   /**
-   * Padded to a 24px tap target, not just styled.
+   * Padded to a 36px tap target, not just styled.
    *
    * These were 21px tall in a stack with 8px between them, which is a fiddly
    * thing to hit on a phone and below WCAG 2.2's 24px minimum. The exception
    * for links inline in a sentence does not apply — this is a navigation list,
    * and every item in it is a target in its own right.
    *
+   * 36 rather than the 44 the rest of the site now uses. Four stacked columns
+   * of six links each is where a blanket 44 stops being an accessibility win:
+   * it adds about 300px of footer on a phone, and pushes the links a reader
+   * actually wants further from the content they were reading. 36 clears the
+   * AA minimum by half again and keeps the footer a footer.
+   *
    * `inline-flex` with vertical padding rather than a taller line-height, so
-   * the text keeps its own spacing and only the hit area grows. The lists
-   * lose their gap to compensate, leaving the footer the same height it was.
+   * the text keeps its own spacing and only the hit area grows.
    */
   const linkClass =
-    'inline-flex min-h-6 items-center py-1 transition-colors hover:text-foreground';
+    'inline-flex min-h-9 items-center py-1 transition-colors hover:text-foreground';
 
   return (
     <footer className="mt-16 border-t border-border bg-muted/40">
