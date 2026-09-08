@@ -80,6 +80,7 @@ export default async function AppLayout({
     label: tNav('employerArea'),
     items: [
       { href: '/employer', label: t('overview'), icon: 'overview' },
+      { href: '/employer/applicants', label: tEmployer('allApplicants'), icon: 'applicants' },
       { href: '/employer/jobs', label: tEmployer('jobs'), icon: 'applications' },
       { href: '/employer/company', label: tEmployer('company'), icon: 'company' },
       { href: '/employer/billing', label: tEmployer('billing'), icon: 'billing' },

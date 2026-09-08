@@ -125,14 +125,16 @@ export default async function EmployerOverviewPage({
         <StatTile
           label={t('statApplicantsNew')}
           value={n(s.applicants_new)}
-          href="/employer/jobs"
+          // Was /employer/jobs — a list of listings, one click short of the
+          // applicants the tile is counting.
+          href="/employer/applicants?stage=new"
           icon={Users}
           tone={s.applicants_new > 0 ? 'accent' : 'default'}
         />
         <StatTile
           label={t('statApplicants7d')}
           value={n(s.applicants_7d)}
-          href="/employer/jobs"
+          href="/employer/applicants"
           icon={Send}
           hint={delta ? t('vsLastWeek') : undefined}
           delta={delta}

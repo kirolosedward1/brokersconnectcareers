@@ -77,6 +77,7 @@ for (const path of [
   '/employer',
   '/admin',
   '/admin/users',
+  '/employer/applicants',
   '/notifications',
   '/onboarding',
 ]) {

@@ -372,6 +372,59 @@ report.section('an employer reaches their applicant, and only their applicant');
   report.check('an unrelated employer does not', hidden.rows.length === 0);
 }
 
+report.section('the applicant inbox shows a profile only if the reader may see it');
+{
+  // The employer's applicant list embeds each candidate's directory profile so
+  // a reviewer can judge somebody without opening a filename. Applying must
+  // not become a way around the visibility a consultant chose: a hidden
+  // profile has to stay hidden from the very employer it applied to.
+  const live = (
+    await db.query(`
+      select j.id from jobs j
+       where j.status = 'active' and j.expires_at > now()
+         and j.company_id = (select id from companies where slug = 'al-rowad-real-estate-309047')
+       limit 1`)
+  ).rows[0].id;
+
+  const hiddenOwner = (
+    await db.query(`select user_id from agent_profiles where visibility = 'hidden' limit 1`)
+  ).rows[0]?.user_id;
+  const publicOwner = (
+    await db.query(`select user_id from agent_profiles where visibility = 'public' limit 1`)
+  ).rows[0]?.user_id;
+
+  report.check('the fixtures include a hidden and a public consultant',
+    Boolean(hiddenOwner) && Boolean(publicOwner));
+
+  // Both apply to the same listing, so the only difference between them is
+  // the visibility each one chose.
+  await db.exec(`
+    insert into applications (job_id, candidate_id, experience_band)
+      values ('${live}', '${hiddenOwner}', 'mid_3_5'), ('${live}', '${publicOwner}', 'mid_3_5')
+      on conflict (job_id, candidate_id) do nothing;
+  `);
+
+  const embed = (owner) => `
+    select a.id, p.slug
+      from applications a
+      join profiles pr on pr.id = a.candidate_id
+      left join agent_profiles p on p.user_id = pr.id
+     where a.job_id = '${live}' and a.candidate_id = '${owner}'`;
+
+  const seesPublic = await as(employerVerified, embed(publicOwner));
+  report.check('a public applicant brings their profile with them',
+    seesPublic.ok && seesPublic.rows[0]?.slug != null, JSON.stringify(seesPublic.rows[0]));
+
+  const seesHidden = await as(employerVerified, embed(hiddenOwner));
+  report.check('a hidden applicant does not, even to the employer they applied to',
+    seesHidden.ok && seesHidden.rows.length === 1 && seesHidden.rows[0].slug === null,
+    JSON.stringify(seesHidden.rows[0]));
+
+  // And the application itself is still there — the gate hides the profile,
+  // not the person, or the employer would lose an applicant entirely.
+  report.check('the application is still visible', seesHidden.rows.length === 1);
+}
+
 report.section('the agent directory gate');
 {
   const GATED = 'ahmed-mahmoud-818804'; // verified_employers_only

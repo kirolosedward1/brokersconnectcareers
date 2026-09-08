@@ -4,7 +4,9 @@ import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ApplicantCard } from '@/components/employer/applicant-card';
+import { ApplicantCard, type ApplicantProfile } from '@/components/employer/applicant-card';
+import { getDistricts } from '@/lib/queries/taxonomy';
+import { optional } from '@/lib/queries/error';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import type { ApplicationStatus, ExperienceBand } from '@/lib/supabase/database.types';
@@ -17,7 +19,11 @@ type ApplicantRow = {
   decision_note: string | null;
   cv_path: string | null;
   experience_band: ExperienceBand | null;
-  candidate: { full_name: string; whatsapp_phone: string } | null;
+  candidate: {
+    full_name: string;
+    whatsapp_phone: string;
+    agent_profiles: ApplicantProfile | null;
+  } | null;
 };
 
 const PIPELINE: ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
@@ -47,13 +53,27 @@ export default async function ApplicantsPage({
     .select(
       `
       id, status, created_at, note, decision_note, cv_path, experience_band,
-      candidate:profiles (full_name, whatsapp_phone)
+      candidate:profiles (
+        full_name,
+        whatsapp_phone,
+        agent_profiles (
+          slug, headline_ar, headline_en, years_experience,
+          tracks, district_ids, units_closed, volume_egp
+        )
+      )
     `,
     )
     .eq('job_id', id)
     .order('created_at', { ascending: false });
 
   const applications = (data ?? []) as unknown as ApplicantRow[];
+
+  // Resolved once and passed down. Each profile carries district ids; turning
+  // them into names is a lookup every card would otherwise repeat.
+  const districts = await optional(getDistricts(), []);
+  const districtName = new Map(districts.map((d) => [d.id, localized(locale, d.name_ar, d.name_en)]));
+  const namesFor = (ids: number[] | undefined) =>
+    (ids ?? []).map((id) => districtName.get(id)).filter((name): name is string => Boolean(name));
 
   const t = await getTranslations('employer');
   const tStatus = await getTranslations('applicationStatus');
@@ -104,6 +124,7 @@ export default async function ApplicantsPage({
                         jobTitle={jobTitle}
                         companyName={companyName}
                         locale={locale}
+                        districtNames={namesFor(application.candidate?.agent_profiles?.district_ids)}
                       />
                     </li>
                   ))}

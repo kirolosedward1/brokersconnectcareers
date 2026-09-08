@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   UserCog,
   UserRound,
+  Users,
   X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -36,6 +37,7 @@ import { cn } from '@/lib/utils';
 const ICONS = {
   overview: LayoutDashboard,
   applications: Briefcase,
+  applicants: Users,
   saved: Bookmark,
   profile: UserRound,
   company: Building2,

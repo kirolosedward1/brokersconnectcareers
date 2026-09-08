@@ -2,16 +2,29 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Download, FileX2, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Download, FileX2, MessageCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/field';
-import { formatDate, isoDate, whatsappLink } from '@/lib/utils';
+import { Link } from '@/i18n/navigation';
+import { localized } from '@/i18n/routing';
+import { formatDate, formatEgp, formatNumber, isoDate, whatsappLink } from '@/lib/utils';
 import { employerOpener } from '@/lib/whatsapp';
 import { setApplicationStatus } from '@/lib/actions/applications';
-import type { ApplicationStatus, ExperienceBand } from '@/lib/supabase/database.types';
+import type { ApplicationStatus, ExperienceBand, JobTrack } from '@/lib/supabase/database.types';
 import type { Locale } from '@/i18n/routing';
+
+export type ApplicantProfile = {
+  slug: string;
+  headline_ar: string | null;
+  headline_en: string | null;
+  years_experience: number;
+  tracks: JobTrack[];
+  district_ids: number[];
+  units_closed: number | null;
+  volume_egp: number | null;
+};
 
 const STATUSES: ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
 
@@ -28,6 +41,7 @@ export function ApplicantCard({
   jobTitle,
   companyName,
   locale,
+  districtNames,
 }: {
   application: {
     id: string;
@@ -37,17 +51,35 @@ export function ApplicantCard({
     decision_note: string | null;
     cv_path: string | null;
     experience_band: ExperienceBand | null;
-    candidate: { full_name: string; whatsapp_phone: string } | null;
+    candidate: {
+      full_name: string;
+      whatsapp_phone: string;
+      /**
+       * Null when this consultant has no directory profile, and also when
+       * they have one this employer may not see.
+       *
+       * Nothing here decides which. The embed runs under the employer's own
+       * session and row-level security drops a profile set to hidden, or to
+       * verified-employers-only for an unverified company, before it is ever
+       * returned — so a card with no profile link is a card where the answer
+       * was already no.
+       */
+      agent_profiles: ApplicantProfile | null;
+    } | null;
   };
   jobTitle: string;
   companyName: string;
   locale: Locale;
+  /** Names for the districts this consultant works, resolved by the page. */
+  districtNames: string[];
 }) {
   const t = useTranslations('employer');
   const tStatus = useTranslations('applicationStatus');
   const tExp = useTranslations('experienceBand');
   const tJobs = useTranslations('jobs');
   const tCommon = useTranslations('common');
+  const tAgents = useTranslations('agents');
+  const tTrack = useTranslations('track');
 
   const router = useRouter();
   const [status, setStatus] = useState(application.status);
@@ -56,6 +88,8 @@ export function ApplicantCard({
   const [pending, startTransition] = useTransition();
 
   const candidate = application.candidate;
+  const profile = candidate?.agent_profiles ?? null;
+  const headline = profile ? localized(locale, profile.headline_ar, profile.headline_en) : '';
 
   function save(next: ApplicationStatus, decisionNote: string) {
     const previousStatus = status;
@@ -102,6 +136,60 @@ export function ApplicantCard({
           {tStatus(status)}
         </Badge>
       </div>
+
+      {/* Who this actually is.
+          The site already holds the work history, the districts and the
+          record; the hiring screen used to show a name and a phone number and
+          leave the rest to a filename. */}
+      {profile ? (
+        <Link
+          href={`/agents/${profile.slug}`}
+          className="group/profile mt-3 block rounded-xl border border-border p-3 transition-colors hover:border-primary/40 hover:bg-muted/60"
+        >
+          {headline ? (
+            <p className="text-sm font-medium group-hover/profile:text-primary">{headline}</p>
+          ) : null}
+
+          <p className="numeral mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span>{tAgents('yearsExperience', { count: profile.years_experience })}</span>
+
+            {profile.tracks.length ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>{profile.tracks.map((track) => tTrack(track)).join('، ')}</span>
+              </>
+            ) : null}
+
+            {districtNames.length ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>{districtNames.join('، ')}</span>
+              </>
+            ) : null}
+          </p>
+
+          {/* Self-reported, and the directory says so on the profile itself. */}
+          {profile.units_closed != null || profile.volume_egp != null ? (
+            <p className="numeral mt-1.5 flex flex-wrap gap-x-3 text-xs font-medium">
+              {profile.units_closed != null ? (
+                <span>
+                  {tAgents('unitsClosedShort', {
+                    count: formatNumber(profile.units_closed, locale),
+                  })}
+                </span>
+              ) : null}
+              {profile.volume_egp != null ? (
+                <span>{formatEgp(profile.volume_egp, locale)} {tCommon('egp')}</span>
+              ) : null}
+            </p>
+          ) : null}
+
+          <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
+            {tAgents('viewProfile')}
+            <ArrowLeft className="rtl-flip size-3" aria-hidden />
+          </span>
+        </Link>
+      ) : null}
 
       {application.note ? (
         <p className="mt-3 rounded-lg bg-muted p-3 text-sm leading-relaxed">{application.note}</p>

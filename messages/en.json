@@ -184,7 +184,9 @@
     "downloadCv": "Download CV",
     "empty": "No consultants match your search.",
     "notFound": "This profile is not available.",
-    "whoSeesProfile": "Who can see your profile?"
+    "whoSeesProfile": "Who can see your profile?",
+    "viewProfile": "View full profile",
+    "unitsClosedShort": "{count} units closed"
   },
   "availability": {
     "open_to_offers": "Open to offers",
@@ -377,7 +379,9 @@
     "decisionNotePlaceholder": "e.g. Less experience than this role needs — we have kept your profile for future openings.",
     "decisionNoteSaved": "Saved",
     "pendingTitle": "Your account is under review",
-    "pendingBody": "We check company details before the first listing goes out. Complete your company profile and upload your commercial registry to move it along."
+    "pendingBody": "We check company details before the first listing goes out. Complete your company profile and upload your commercial registry to move it along.",
+    "allApplicants": "All applicants",
+    "allApplicantsLede": "Everyone who applied to your listings, newest first."
   },
   "jobForm": {
     "basics": "Basics",
