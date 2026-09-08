@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import { Briefcase, MapPin, Star, Users } from 'lucide-react';
+import { BookmarkCheck, CheckCheck, MapPin, Star } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -9,11 +9,25 @@ import { LeadsSourceBadge, SalaryLine } from '@/components/jobs/compensation';
 import { formatNumber } from '@/lib/utils';
 import type { JobListItem } from '@/lib/queries/jobs';
 
-export function JobCard({ job, locale }: { job: JobListItem; locale: string }) {
+export function JobCard({
+  job,
+  locale,
+  applied = false,
+  saved = false,
+}: {
+  job: JobListItem;
+  locale: string;
+  /**
+   * What the reader has already done with this listing.
+   *
+   * Both default to false, which is what a signed-out visitor and every
+   * non-board use of this card get — the home page and the saved list pass
+   * neither, and neither needs to.
+   */
+  applied?: boolean;
+  saved?: boolean;
+}) {
   const t = useTranslations('jobs');
-  const tTrack = useTranslations('track');
-  const tType = useTranslations('employmentType');
-  const tExp = useTranslations('experienceBand');
   const tCompanies = useTranslations('companies');
 
   const title = localized(locale, job.title_ar, job.title_en);
@@ -52,6 +66,22 @@ export function JobCard({ job, locale }: { job: JobListItem; locale: string }) {
                 {t('featured')}
               </Badge>
             ) : null}
+
+            {/* What the reader already did, next to the title where the eye
+                already is. Applied wins when both are true: having applied is
+                the stronger fact, and two badges on one card is the noise this
+                is meant to save. */}
+            {applied ? (
+              <Badge variant="success">
+                <CheckCheck aria-hidden />
+                {t('applied')}
+              </Badge>
+            ) : saved ? (
+              <Badge variant="outline">
+                <BookmarkCheck aria-hidden />
+                {t('saved')}
+              </Badge>
+            ) : null}
           </div>
 
           <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
@@ -68,33 +98,35 @@ export function JobCard({ job, locale }: { job: JobListItem; locale: string }) {
           </p>
         </div>
 
-        {/* The seats count is how this market reads a listing, so it gets the
-            most prominent corner of the card. */}
-        <div className="bg-brand-gradient shrink-0 rounded-xl px-3.5 py-2.5 text-center text-primary-foreground shadow-[var(--shadow-primary)]">
-          <p className="numeral text-xl font-bold leading-none">
-            {formatNumber(job.seats, locale)}
-          </p>
-          <p className="mt-1 text-[11px] leading-tight opacity-90">
-            {t('seatsLabel', { count: job.seats })}
-          </p>
-        </div>
       </div>
 
-      <p className="mt-4 text-sm">
+      {/* The pay and how many of them, on one line.
+          Seats used to be a gradient panel in the corner, which outweighed the
+          job title and forced it to wrap on a phone. It is a number people
+          scan, not a headline — so it reads as one, beside the figure it
+          belongs next to. */}
+      <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-sm">
         <SalaryLine job={job} locale={locale} />
+        <span aria-hidden className="text-muted-foreground">·</span>
+        <span className="numeral inline-flex items-baseline gap-1 font-medium text-primary">
+          {formatNumber(job.seats, locale)}
+          <span className="text-xs font-normal text-muted-foreground">
+            {t('seatsLabel', { count: job.seats })}
+          </span>
+        </span>
       </p>
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      {/* One chip, not four.
+          Track, employment type and experience band are the dimensions the
+          filter rail already offers — repeating them on every result that
+          matched them is restating the question as the answer. They are on the
+          listing itself, where somebody has decided to read.
+
+          Where the leads come from stays, because it is the claim this board
+          is built on and the one thing a reader cannot infer from their own
+          filters. */}
+      <div className="mt-2.5">
         <LeadsSourceBadge job={job} />
-        <Badge variant="outline">
-          <Briefcase aria-hidden />
-          {tTrack(job.track)}
-        </Badge>
-        <Badge variant="outline">{tType(job.employment_type)}</Badge>
-        <Badge variant="outline">
-          <Users aria-hidden />
-          {tExp(job.experience_band)}
-        </Badge>
       </div>
     </article>
   );

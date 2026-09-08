@@ -7,6 +7,7 @@ import { JobCard } from '@/components/jobs/job-card';
 import { JobFilters, MobileFilters } from '@/components/jobs/job-filters';
 import { SaveSearch } from '@/components/jobs/save-search';
 import { getViewer } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
 import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import { SortSelect } from '@/components/jobs/sort-select';
@@ -58,6 +59,31 @@ export default async function JobsPage({
     getGovernorates(),
     getViewer(),
   ]);
+
+  /**
+   * Which of these the reader has already applied to or saved.
+   *
+   * Two small reads keyed to the ids on this page, not a join on the listing
+   * query — the board is public and cached per filter, and folding a
+   * per-reader column into it would make every result set personal.
+   *
+   * Skipped entirely for a signed-out visitor, who has no answer to give.
+   */
+  const jobIds = jobs.map((job) => job.id);
+  let appliedIds = new Set<string>();
+  let savedIds = new Set<string>();
+
+  if (viewer?.profile && jobIds.length) {
+    const supabase = await createClient();
+    const [{ data: applied }, { data: saved }] = await Promise.all([
+      supabase.from('applications').select('job_id').in('job_id', jobIds),
+      supabase.from('saved_jobs').select('job_id').in('job_id', jobIds),
+    ]);
+    // Row-level security scopes both to this reader; no candidate_id filter is
+    // written here, for the same reason it is not written on the inbox.
+    appliedIds = new Set((applied ?? []).map((row) => row.job_id));
+    savedIds = new Set((saved ?? []).map((row) => row.job_id));
+  }
 
   const t = await getTranslations('jobs');
   const tTrack = await getTranslations('track');
@@ -153,7 +179,12 @@ export default async function JobsPage({
               <ul className="space-y-3">
                 {jobs.map((job) => (
                   <li key={job.id}>
-                    <JobCard job={job} locale={locale} />
+                    <JobCard
+                      job={job}
+                      locale={locale}
+                      applied={appliedIds.has(job.id)}
+                      saved={savedIds.has(job.id)}
+                    />
                   </li>
                 ))}
               </ul>
