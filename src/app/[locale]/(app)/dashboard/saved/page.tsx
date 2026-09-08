@@ -71,14 +71,14 @@ export default async function SavedJobsPage({
         <p className="mt-1 text-muted-foreground">{t('savedLede')}</p>
       </header>
 
-      <section>
-        <h2 className="mb-1 font-semibold">{tSearch('title')}</h2>
-        <p className="mb-4 text-sm text-muted-foreground">{tSearch('weekly')}</p>
-        <SavedSearchList searches={(searchRows ?? []) as SavedSearchRow[]} />
-      </section>
-
-      <section>
-        <h2 className="mb-4 font-semibold">{t('saved')}</h2>
+      {/* The saved listings first, and with no heading of its own: the page
+          is already called "saved jobs", and a section repeating the h1 word
+          for word told a reader nothing they had not just read. Saved searches
+          are the secondary thing here, so they follow. */}
+      <section aria-labelledby="saved-jobs-heading">
+        <h2 id="saved-jobs-heading" className="sr-only">
+          {t('saved')}
+        </h2>
 
         {jobs.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border py-16 text-center">
@@ -98,6 +98,12 @@ export default async function SavedJobsPage({
             ))}
           </ul>
         )}
+      </section>
+
+      <section>
+        <h2 className="mb-1 font-semibold">{tSearch('title')}</h2>
+        <p className="mb-4 text-sm text-muted-foreground">{tSearch('weekly')}</p>
+        <SavedSearchList searches={(searchRows ?? []) as SavedSearchRow[]} />
       </section>
     </div>
   );
