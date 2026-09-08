@@ -76,7 +76,9 @@
     "expiredBody": "مابقاش مفتوح للتقديم. شوف الوظائف المتاحة دلوقتي.",
     "seatsLabel": "{count, plural, one {وظيفة خالية} two {وظيفتان خاليتان} few {وظائف خالية} many {وظيفة خالية} other {وظيفة خالية}}",
     "featured": "إعلان مميّز",
-    "closedShort": "اتقفل"
+    "closedShort": "اتقفل",
+    "alreadyReported": "بلّغت عن الإعلان ده قبل كده.",
+    "reportRateLimit": "بلّغت عن إعلانات كتير النهاردة. جرّب تاني بكرة."
   },
   "compensation": {
     "title": "الراتب والعمولة",
@@ -350,7 +352,8 @@
     "alreadyApplied": "انت قدّمت على الوظيفة دي قبل كده.",
     "signInRequired": "سجّل دخولك عشان تقدّم",
     "viewApplications": "تابع طلباتك",
-    "employerCannotApply": "انت داخل بحساب شركة. التقديم على الوظائف للاستشاريين بس."
+    "employerCannotApply": "انت داخل بحساب شركة. التقديم على الوظائف للاستشاريين بس.",
+    "rateLimit": "قدّمت على وظائف كتير النهاردة. جرّب تاني بكرة."
   },
   "employer": {
     "company": "ملف الشركة",

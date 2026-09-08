@@ -160,7 +160,11 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
               canSave={Boolean(viewer?.profile)}
               labels={{ save: t('save'), saved: t('saved') }}
             />
-            <ReportJobDialog jobId={job.id} />
+            <ReportJobDialog
+              jobId={job.id}
+              jobSlug={job.slug}
+              signedIn={Boolean(viewer?.profile)}
+            />
           </div>
 
           <section className="mt-8" aria-labelledby="description-heading">

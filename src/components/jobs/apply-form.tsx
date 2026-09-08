@@ -107,6 +107,10 @@ export function ApplyForm({
           setErrors({ form: t('alreadyApplied') });
           return;
         }
+        if (result.error === 'rate_limit') {
+          setErrors({ form: t('rateLimit') });
+          return;
+        }
         setErrors(result.fieldErrors ?? { form: tCommon('errorBody') });
         return;
       }

@@ -750,6 +750,141 @@ report.section('dashboard trends are gap-free and scoped like the summaries');
   report.check('and anonymous reaches neither', !anonEmployer.ok && !anonAdmin.ok);
 }
 
+report.section('reports need an account, and an account has limits');
+{
+  const anon = await as(null, `insert into reports (job_id, reason) values ('${liveJob}','spam')`, 'anon');
+  report.check('a signed-out visitor cannot file a report',
+    !anon.ok, anon.ok ? 'insert was allowed' : anon.error);
+
+  const spoof = await as(candidate,
+    `insert into reports (job_id, reporter_id, reason) values ('${liveJob}','${OUTSIDER}','spam')`);
+  report.check('nor can a reader file one under somebody else\'s name',
+    !spoof.ok, spoof.ok ? 'insert was allowed' : spoof.error);
+
+  const first = await as(candidate,
+    `insert into reports (job_id, reporter_id, reason) values ('${liveJob}','${candidate}','spam') returning id`);
+  report.check('a signed-in reader can', first.ok && first.rows.length === 1, first.error);
+
+  // Committed, so the duplicate probe has something to collide with. Probes
+  // roll back; setup has to persist.
+  await db.exec(`insert into reports (job_id, reporter_id, reason) values ('${liveJob}','${candidate}','spam')`);
+
+  const dupe = await as(candidate,
+    `insert into reports (job_id, reporter_id, reason) values ('${liveJob}','${candidate}','duplicate')`);
+  report.check('but not twice on the same listing',
+    !dupe.ok && /reports_one_per_reporter_per_job/.test(dupe.error ?? ''), dupe.error);
+
+  // Enough listings to reach the cap on distinct ones, so what stops the last
+  // report is the cap and not the unique index. Cloned through a temp copy of
+  // a real row, which keeps every not-null and check constraint satisfied
+  // without this test having to know the column list.
+  await db.exec(`
+    create temp table rl_job as select * from jobs where id = '${liveJob}';
+    do $$
+    declare
+      i int;
+      cols text;
+    begin
+      -- Every column the table will actually accept. jobs.search_vector is
+      -- generated, so a bare "insert ... select *" is rejected; asking the
+      -- catalogue keeps this test from having to know that, or to be edited
+      -- the next time a column is added.
+      select string_agg(quote_ident(column_name), ', ' order by ordinal_position)
+        into cols
+        from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'jobs'
+         and is_generated = 'NEVER';
+
+      for i in 1..45 loop
+        update rl_job
+           set id = gen_random_uuid(),
+               slug = 'rate-limit-fixture-' || lpad(i::text, 2, '0'),
+               status = 'draft';
+        execute format('insert into jobs (%s) select %s from rl_job', cols, cols);
+      end loop;
+    end $$;
+  `);
+
+  const rlJobs = (
+    await db.query("select id from jobs where slug like 'rate-limit-fixture-%' order by slug")
+  ).rows.map((row) => row.id);
+
+  for (const id of rlJobs.slice(0, 9)) {
+    await db.exec(`insert into reports (job_id, reporter_id, reason) values ('${id}','${candidate}','spam')`);
+  }
+
+  const eleventh = await as(candidate,
+    `insert into reports (job_id, reporter_id, reason) values ('${rlJobs[9]}','${candidate}','spam')`);
+  report.check('the tenth report in a day is the last one',
+    !eleventh.ok && /report_rate_limit/.test(eleventh.error ?? ''), eleventh.error);
+
+  const other = await as(publicAgent,
+    `insert into reports (job_id, reporter_id, reason) values ('${rlJobs[9]}','${publicAgent}','spam') returning id`);
+  report.check('and the cap is per account, not per listing',
+    other.ok && other.rows.length === 1, other.error);
+}
+
+report.section('applications are capped per day too');
+{
+  // Counted inside the trigger's own window, not over the whole table. The
+  // seeded applications are older than a day and correctly do not count, which
+  // is the difference between a rolling limit and a lifetime quota.
+  const inWindow = `
+    select count(*)::int as n from applications
+     where candidate_id = '${candidate}' and created_at > now() - interval '1 day'
+  `;
+  const held = (await db.query(inWindow)).rows[0].n;
+
+  const fixtures = (
+    await db.query(`
+      select id from jobs
+       where slug like 'rate-limit-fixture-%'
+         and id not in (select job_id from applications where candidate_id = '${candidate}')
+       order by slug
+    `)
+  ).rows.map((row) => row.id);
+
+  const needed = 30 - held;
+  for (const id of fixtures.slice(0, needed)) {
+    await db.exec(`insert into applications (job_id, candidate_id) values ('${id}','${candidate}')`);
+  }
+
+  const atCap = (await db.query(inWindow)).rows[0].n;
+  report.check(`thirty applications in a day are allowed (${atCap})`, atCap === 30);
+
+  // service_role, so this proves the trigger holds even for a caller that RLS
+  // does not apply to — the cap is a property of the table, not of a policy.
+  const overCap = await as(null,
+    `insert into applications (job_id, candidate_id) values ('${fixtures[needed]}','${candidate}')`,
+    'service_role');
+  report.check('the thirty-first is refused',
+    !overCap.ok && /application_rate_limit/.test(overCap.error ?? ''), overCap.error);
+
+  const different = await as(null,
+    `insert into applications (job_id, candidate_id) values ('${fixtures[needed]}','${publicAgent}') returning id`,
+    'service_role');
+  report.check('and a different candidate is unaffected',
+    different.ok && different.rows.length === 1, different.error);
+
+  // Age one row out of the window. A rolling limit has to let yesterday go;
+  // a lifetime quota would not, and the difference is invisible until the
+  // day somebody who applied thirty times last month cannot apply again.
+  await db.exec(`
+    update applications set created_at = now() - interval '2 days'
+     where id = (
+       select id from applications
+        where candidate_id = '${candidate}' and created_at > now() - interval '1 day'
+        limit 1
+     )
+  `);
+  const rolled = await as(null,
+    `insert into applications (job_id, candidate_id) values ('${fixtures[needed]}','${candidate}') returning id`,
+    'service_role');
+  report.check('and the window rolls — yesterday stops counting',
+    rolled.ok && rolled.rows.length === 1, rolled.error);
+}
+
 report.section('the nightly expiry cron');
 {
   await db.exec("update jobs set expires_at = now() - interval '1 day' where status='active'");

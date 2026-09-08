@@ -50,6 +50,18 @@ const reportSchema = z.object({
   detail: z.string().trim().max(1000).optional(),
 });
 
+/**
+ * Reporting is something an account does.
+ *
+ * It used to accept `reporter_id: null`, which read as friendlier and was
+ * unworkable: nobody to rate-limit, nobody to ask a follow-up question, and
+ * nobody who can be wrong twice. The queue those rows land in is read by a
+ * person, which is exactly what makes it worth flooding.
+ *
+ * The distinct outcomes are named rather than collapsed into one failure,
+ * because "you already reported this" and "something went wrong" ask the
+ * reader for completely different next steps.
+ */
 export async function reportJob(input: unknown): Promise<ActionResult> {
   const parsed = reportSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
@@ -59,14 +71,22 @@ export async function reportJob(input: unknown): Promise<ActionResult> {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
   const { error } = await supabase.from('reports').insert({
     job_id: parsed.data.jobId,
-    reporter_id: user?.id ?? null,
+    reporter_id: user.id,
     reason: parsed.data.reason,
     detail: parsed.data.detail || null,
   });
 
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    if (error.message.includes('report_rate_limit')) return { ok: false, error: 'rate_limit' };
+    // The unique index on (job_id, reporter_id).
+    if (error.code === '23505') return { ok: false, error: 'already_reported' };
+    return { ok: false, error: error.message };
+  }
+
   return { ok: true };
 }
 

@@ -76,7 +76,9 @@
     "expiredBody": "It is no longer accepting applications. Browse what is open now.",
     "seatsLabel": "{count, plural, one {open seat} other {open seats}}",
     "featured": "Featured",
-    "closedShort": "Closed"
+    "closedShort": "Closed",
+    "alreadyReported": "You have already reported this listing.",
+    "reportRateLimit": "You have reported a lot of listings today. Try again tomorrow."
   },
   "compensation": {
     "title": "Pay and commission",
@@ -350,7 +352,8 @@
     "alreadyApplied": "You have already applied to this job.",
     "signInRequired": "Sign in to apply",
     "viewApplications": "Track your applications",
-    "employerCannotApply": "You're signed in as a company. Applying is for consultants only."
+    "employerCannotApply": "You're signed in as a company. Applying is for consultants only.",
+    "rateLimit": "You have applied to a lot of jobs today. Try again tomorrow."
   },
   "employer": {
     "company": "Company profile",

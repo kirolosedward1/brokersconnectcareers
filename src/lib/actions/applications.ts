@@ -67,6 +67,9 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
 
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_applied' };
+    if (error.message.includes('application_rate_limit')) {
+      return { ok: false, error: 'rate_limit' };
+    }
     return { ok: false, error: error.message };
   }
 

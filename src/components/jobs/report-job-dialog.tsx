@@ -8,7 +8,12 @@ import { Field, Select, Textarea } from '@/components/ui/field';
 import { REPORT_REASONS } from '@/lib/taxonomy';
 import { reportJob } from '@/lib/actions/jobs';
 
-export function ReportJobDialog({ jobId }: { jobId: string }) {
+/**
+ * Reporting needs an account now, so this has a signed-out state: a link to
+ * sign in that comes back to the listing, rather than a form that accepts the
+ * report and then refuses it.
+ */
+export function ReportJobDialog({ jobId, signedIn, jobSlug }: { jobId: string; signedIn: boolean; jobSlug: string }) {
   const t = useTranslations('jobs');
   const tReason = useTranslations('reportReason');
   const tAdmin = useTranslations('admin');
@@ -33,13 +38,30 @@ export function ReportJobDialog({ jobId }: { jobId: string }) {
         setSent(true);
         setError(null);
       } else {
-        setError(tCommon('errorBody'));
+        setError(
+          result.error === 'already_reported'
+            ? t('alreadyReported')
+            : result.error === 'rate_limit'
+              ? t('reportRateLimit')
+              : tCommon('errorBody'),
+        );
       }
     });
   }
 
   if (sent) {
     return <p className="text-sm text-success">{tCommon('saveSuccess')}</p>;
+  }
+
+  if (!signedIn) {
+    return (
+      <Button asChild variant="ghost" size="sm">
+        <a href={`/sign-in?next=${encodeURIComponent(`/jobs/${jobSlug}`)}`}>
+          <Flag />
+          {t('report')}
+        </a>
+      </Button>
+    );
   }
 
   return (
