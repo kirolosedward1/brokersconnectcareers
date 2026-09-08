@@ -152,6 +152,7 @@
   },
   "companies": {
     "title": "Real estate companies",
+    "lede": "The companies hiring on Brokers Connect, and which of them are verified.",
     "verified": "Verified",
     "unverified": "Unverified",
     "openRoles": "{count, plural, =0 {No open roles} one {1 open role} other {# open roles}}",

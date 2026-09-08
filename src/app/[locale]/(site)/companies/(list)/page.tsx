@@ -55,6 +55,7 @@ export default async function CompaniesPage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="text-2xl font-bold">{t('title')}</h1>
+      <p className="mt-1 text-muted-foreground">{t('lede')}</p>
 
       <CompanyFilters
         locale={locale}

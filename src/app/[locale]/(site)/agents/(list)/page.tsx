@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
 import { AgentCard } from '@/components/agents/agent-card';
 import { AgentFilters } from '@/components/agents/agent-filters';
+import { MobileFilters } from '@/components/mobile-filters';
 import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import { getDistricts, getDistrictMap } from '@/lib/queries/taxonomy';
@@ -77,11 +78,18 @@ export default async function AgentsPage({
         </div>
       ) : null}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_18rem] lg:gap-8">
-        {/* First in the DOM so a phone gets the filters above the results, but
-            placed in the second column on desktop, where a filter rail belongs
-            beside the list rather than in front of it. */}
-        <aside className="lg:col-start-2 lg:row-start-1">
+      {/* Behind a disclosure on a phone. Expanded, this rail is two selects,
+          six specialisation checkboxes and a district list — fifteen controls
+          between the heading and the first consultant, on the page whose job
+          is to show consultants. */}
+      <div className="mt-6 lg:hidden">
+        <MobileFilters count={activeCount}>
+          <AgentFilters locale={locale} districts={districts} activeCount={activeCount} />
+        </MobileFilters>
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:mt-8 lg:grid-cols-[1fr_18rem] lg:gap-8">
+        <aside className="hidden lg:col-start-2 lg:row-start-1 lg:block">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:sticky lg:top-24">
             <AgentFilters locale={locale} districts={districts} activeCount={activeCount} />
           </div>

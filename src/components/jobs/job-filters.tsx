@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
@@ -251,25 +251,5 @@ function Choice({
       />
       <span>{label}</span>
     </label>
-  );
-}
-
-/** Mobile disclosure wrapper — the same filters, behind a button. */
-export function MobileFilters({ children, count }: { children: React.ReactNode; count: number }) {
-  const t = useTranslations('jobs');
-
-  return (
-    <details className="group rounded-xl border border-border bg-card lg:hidden">
-      <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-sm font-medium">
-        <SlidersHorizontal className="size-4" aria-hidden />
-        {t('filters')}
-        {count > 0 ? (
-          <span className="numeral rounded bg-primary px-1.5 text-xs text-primary-foreground">
-            {count}
-          </span>
-        ) : null}
-      </summary>
-      <div className="border-t border-border p-4">{children}</div>
-    </details>
   );
 }
