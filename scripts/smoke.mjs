@@ -231,6 +231,32 @@ section('the two landing pages are distinct and cross-linked');
 }
 
 // ---------------------------------------------------------------------------
+section('a locked-out user has a way back in');
+{
+  // The site carried the words for a password reset — auth.forgotPassword and
+  // two more — for months without carrying the reset. These assert the door
+  // exists and is reachable from where somebody stuck would look for it.
+  const forgot = await get('/sign-in/forgot');
+  check('/sign-in/forgot -> 200', forgot.status === 200, `got ${forgot.status}`);
+  check('and asks for an email', /name="email"/.test(forgot.body));
+
+  const signIn = await get('/sign-in');
+  check('sign-in links to it', signIn.body.includes('href="/sign-in/forgot"'));
+
+  // A static segment has to beat /sign-in/[audience], which would otherwise
+  // treat "forgot" as an unknown audience and 404.
+  const bogus = await get('/sign-in/recruiter');
+  check('while an unknown audience still 404s', bogus.status === 404, `got ${bogus.status}`);
+
+  const setter = await get('/sign-in/new-password');
+  check('/sign-in/new-password -> 200', setter.status === 200, `got ${setter.status}`);
+  check(
+    'and offers no password field without a session',
+    !/type="password"/.test(setter.body) && setter.body.includes('href="/sign-in/forgot"'),
+  );
+}
+
+// ---------------------------------------------------------------------------
 section('every page announces what it is');
 {
   // Written after finding three pages — /admin/companies, /admin/reports and

@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { Building2, UserRound } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useRouter } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -251,6 +251,17 @@ export function AuthForm({
             dir="ltr"
           />
         </Field>
+
+        {/* Sign-in only, and under the field it rescues. The copy for this has
+            been in the catalogue since long before the screen it points at
+            existed. */}
+        {mode === 'sign-in' ? (
+          <p className="-mt-1 text-end text-sm">
+            <Link href="/sign-in/forgot" className="font-medium text-primary hover:underline">
+              {t('forgotPassword')}
+            </Link>
+          </p>
+        ) : null}
 
         {mode === 'sign-up' ? (
           <Field label={t('passwordConfirm')} htmlFor="passwordConfirm">

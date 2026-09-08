@@ -234,7 +234,15 @@
     "errBadCredentials": "That email and password do not match.",
     "errEmailTaken": "That email is already registered. Try signing in.",
     "errEmailUnconfirmed": "Confirm your email first — check your inbox.",
-    "errTooMany": "Too many attempts in a short time. Wait a moment and try again."
+    "errTooMany": "Too many attempts in a short time. Wait a moment and try again.",
+    "forgotTitle": "Forgot your password?",
+    "forgotBody": "Enter your email and we will send you a link to set a new one.",
+    "resetSent": "If that email is registered, a link is on its way. Check your spam folder too.",
+    "newPasswordTitle": "Set a new password",
+    "newPasswordBody": "Choose a new password for this account.",
+    "passwordUpdated": "Your password has been changed.",
+    "backToSignIn": "Back to sign in",
+    "linkExpired": "That link has expired or has already been used. Ask for a new one."
   },
   "onboarding": {
     "title": "Finish your profile",
@@ -718,7 +726,16 @@
     "deleteConfirmWord": "delete",
     "deleteCta": "Delete my account permanently",
     "deleteBlockedCompany": "Your account owns a company. Deleting it would remove the company, every listing it published, and every application other people sent you — that is their data too, not only yours. Contact us and we will handle it properly.",
-    "deleteUnavailable": "We could not delete the account just now. Please try again later."
+    "deleteUnavailable": "We could not delete the account just now. Please try again later.",
+    "passwordTitle": "Password",
+    "passwordBody": "Change your password. You will stay signed in on this device.",
+    "newPassword": "New password",
+    "passwordSaved": "Your password has been changed.",
+    "emailTitle": "Email",
+    "emailBody": "We send a confirmation to both the old and the new address. Nothing changes until you confirm.",
+    "newEmail": "New email",
+    "emailPending": "Confirmation sent. Open the new address and confirm from there.",
+    "oauthOnly": "This account signs in with Google, so there is no password to change."
   },
   "savedSearch": {
     "cta": "Alert me",

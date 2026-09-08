@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale } from '@/i18n/routing';
 import { AccountSettings } from '@/components/dashboard/account-settings';
+import { CredentialsSettings } from '@/components/dashboard/credentials-settings';
 import { requireProfile } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
 
 export async function generateMetadata({
   params,
@@ -26,12 +28,23 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
   const viewer = await requireProfile(locale);
   const t = await getTranslations('account');
 
+  // Which identities the account actually has. A Google-only account has no
+  // password to change, and offering the form anyway would let somebody set
+  // one they can never use, since the sign-in button next to it does not ask.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const hasPassword = (user?.identities ?? []).some((identity) => identity.provider === 'email');
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="text-2xl font-bold">{t('title')}</h1>
       <p className="mt-2 text-muted-foreground">{t('subtitle')}</p>
 
-      <div className="mt-8">
+      <div className="mt-8 space-y-8">
+        <CredentialsSettings email={viewer.email ?? ''} hasPassword={hasPassword} />
+
         <AccountSettings
           locale={locale}
           isEmployer={viewer.profile.role === 'employer'}
