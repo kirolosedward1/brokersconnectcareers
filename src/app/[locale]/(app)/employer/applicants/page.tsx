@@ -213,6 +213,7 @@ export default async function AllApplicantsPage({
                 jobTitle={row.job ? localized(locale, row.job.title_ar, row.job.title_en) : ''}
                 companyName={companyName}
                 locale={locale}
+                headingLevel={2}
                 districtNames={namesFor(row.candidate?.agent_profiles?.district_ids)}
               />
             </li>

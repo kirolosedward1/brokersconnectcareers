@@ -42,6 +42,7 @@ export function ApplicantCard({
   companyName,
   locale,
   districtNames,
+  headingLevel = 3,
 }: {
   application: {
     id: string;
@@ -72,7 +73,15 @@ export function ApplicantCard({
   locale: Locale;
   /** Names for the districts this consultant works, resolved by the page. */
   districtNames: string[];
+  /**
+   * The card's own heading level, because the two pages that use it nest it
+   * differently: on a listing's applicants the cards sit inside stage sections
+   * with their own h2, and on the cross-listing inbox they sit directly under
+   * the page's h1. Fixed at h3, the inbox skipped a level.
+   */
+  headingLevel?: 2 | 3;
 }) {
+  const Heading = headingLevel === 2 ? 'h2' : 'h3';
   const t = useTranslations('employer');
   const tStatus = useTranslations('applicationStatus');
   const tExp = useTranslations('experienceBand');
@@ -121,7 +130,7 @@ export function ApplicantCard({
     <article className="rounded-xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-semibold">{candidate?.full_name ?? '—'}</h3>
+          <Heading className="font-semibold">{candidate?.full_name ?? '—'}</Heading>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             {application.experience_band ? (
               <Badge variant="outline">{tExp(application.experience_band)}</Badge>
