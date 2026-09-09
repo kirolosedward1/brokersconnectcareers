@@ -16,11 +16,26 @@ export function VerifyCompanyActions({
   documentIds: string[];
 }) {
   const t = useTranslations('admin');
+  const tCommon = useTranslations('common');
   const router = useRouter();
 
   const [note, setNote] = useState('');
   const [rejecting, setRejecting] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  /** Both buttons run the same decision; only the verdict differs. */
+  function decide(approve: boolean) {
+    startTransition(async () => {
+      setFailed(false);
+      const result = await verifyCompany({ companyId, approve, note: approve ? undefined : note });
+      if (!result.ok) {
+        setFailed(true);
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   /**
    * Documents are never linked directly. The URL is minted on click and lives
@@ -54,12 +69,7 @@ export function VerifyCompanyActions({
         variant="success"
         size="sm"
         disabled={pending}
-        onClick={() =>
-          startTransition(async () => {
-            await verifyCompany({ companyId, approve: true });
-            router.refresh();
-          })
-        }
+        onClick={() => decide(true)}
       >
         {t('verify')}
       </Button>
@@ -77,12 +87,7 @@ export function VerifyCompanyActions({
             variant="destructive"
             size="sm"
             disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                await verifyCompany({ companyId, approve: false, note });
-                router.refresh();
-              })
-            }
+            onClick={() => decide(false)}
           >
             {t('reject')}
           </Button>
@@ -92,6 +97,14 @@ export function VerifyCompanyActions({
           {t('reject')}
         </Button>
       )}
+
+      {/* A verification that silently failed leaves a reviewer believing the
+          queue is shorter than it is. */}
+      {failed ? (
+        <span role="alert" className="w-full text-sm text-destructive">
+          {tCommon('errorBody')}
+        </span>
+      ) : null}
     </div>
   );
 }

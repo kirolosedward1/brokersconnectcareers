@@ -30,11 +30,19 @@ export function ApprovalActions({
 
   const [note, setNote] = useState('');
   const [rejecting, setRejecting] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function apply(next: ApprovalStatus, reason?: string) {
     startTransition(async () => {
-      await setAccountApproval({ userId, status: next, note: reason });
+      setFailed(false);
+      const result = await setAccountApproval({ userId, status: next, note: reason });
+      // An approval that quietly failed leaves an employer waiting on a
+      // decision the reviewer believes they already made.
+      if (!result.ok) {
+        setFailed(true);
+        return;
+      }
       setRejecting(false);
       setNote('');
       router.refresh();
@@ -61,6 +69,12 @@ export function ApprovalActions({
         <Button variant="ghost" size="sm" disabled={pending} onClick={() => setRejecting(false)}>
           {tCommon('cancel')}
         </Button>
+
+      {failed ? (
+        <span role="alert" className="w-full text-sm text-destructive">
+          {tCommon('errorBody')}
+        </span>
+      ) : null}
       </div>
     );
   }
@@ -79,6 +93,12 @@ export function ApprovalActions({
           <X />
           {t('suspendAccount')}
         </Button>
+      ) : null}
+
+      {failed ? (
+        <span role="alert" className="w-full text-sm text-destructive">
+          {tCommon('errorBody')}
+        </span>
       ) : null}
     </div>
   );
