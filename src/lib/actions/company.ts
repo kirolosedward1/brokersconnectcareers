@@ -40,19 +40,29 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
     district_id: parsed.data.districtId || null,
   };
 
-  const { data: existing } = await supabase
-    .from('companies')
-    .select('id')
-    .eq('owner_id', user.id)
-    .maybeSingle();
+  // Through membership, not ownership. Keyed on owner_id this returned null for
+  // a recruiter, who then fell through to the create branch below and made
+  // themselves a second, empty company instead of editing the one they belong
+  // to. Membership finds the company they are actually in; RLS decides whether
+  // they may change it.
+  const { data: existing } = await supabase.rpc('my_company_id');
 
   if (existing) {
     // The slug is deliberately not regenerated on rename — it is a public URL
     // that other sites may already link to.
-    const { error } = await supabase.from('companies').update(payload).eq('id', existing.id);
+    const { data: saved, error } = await supabase
+      .from('companies')
+      .update(payload)
+      .eq('id', existing)
+      .select('id');
+
     if (error) return { ok: false, error: error.message };
+    // companies_update_own is admin-only, so a recruiter reaches zero rows
+    // rather than an error, and was previously told it saved.
+    if (!saved?.length) return { ok: false, error: 'forbidden' };
+
     revalidatePath('/employer/company');
-    return { ok: true, data: { id: existing.id } };
+    return { ok: true, data: { id: existing } };
   }
 
   const { data, error } = await withUniqueSlug<{ id: string }>(

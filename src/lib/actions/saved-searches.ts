@@ -54,8 +54,16 @@ export async function saveSearch(input: unknown): Promise<ActionResult<{ id: str
 
 export async function deleteSavedSearch(id: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from('saved_searches').delete().eq('id', id);
+  // RLS scopes this to the caller's own searches, and filtering to zero rows is
+  // not an error — so deleting somebody else's reported success.
+  const { data: removed, error } = await supabase
+    .from('saved_searches')
+    .delete()
+    .eq('id', id)
+    .select('id');
+
   if (error) return { ok: false, error: error.message };
+  if (!removed?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/dashboard/saved');
   return { ok: true };
@@ -68,12 +76,14 @@ export async function setSearchAlerts(input: unknown): Promise<ActionResult> {
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: changed, error } = await supabase
     .from('saved_searches')
     .update({ alerts: parsed.data.alerts })
-    .eq('id', parsed.data.id);
+    .eq('id', parsed.data.id)
+    .select('id');
 
   if (error) return { ok: false, error: error.message };
+  if (!changed?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/dashboard/saved');
   return { ok: true };

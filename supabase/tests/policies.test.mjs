@@ -596,6 +596,13 @@ report.section('saved searches are private to their owner');
   const r3 = await as(OUTSIDER, `update saved_searches set label='مسروق' returning id`);
   report.check('nor can edit them', r3.ok && r3.rows.length === 0, r3.error);
 
+  // The premise the action now relies on. A delete RLS filters away is not an
+  // error — it matches nothing — so deleteSavedSearch has to ask what it
+  // removed rather than trust the absence of an error.
+  const r3b = await as(OUTSIDER, `delete from saved_searches returning id`);
+  report.check('nor delete them, and the refusal is zero rows rather than an error',
+    r3b.ok && r3b.rows.length === 0, r3b.error);
+
   const r4 = await as(candidate, `update saved_searches set last_sent_at=now()`);
   report.check('the owner cannot fake last_sent_at', !r4.ok, r4.ok ? 'update was allowed' : r4.error);
 

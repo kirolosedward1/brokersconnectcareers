@@ -86,7 +86,7 @@ export async function setJobFeatured(input: unknown): Promise<ActionResult> {
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
-  const { error } = await supabase
+  const { data: featured, error } = await supabase
     .from('jobs')
     .update({
       is_featured: parsed.data.featured,
@@ -96,9 +96,11 @@ export async function setJobFeatured(input: unknown): Promise<ActionResult> {
         ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
         : null,
     })
-    .eq('id', parsed.data.jobId);
+    .eq('id', parsed.data.jobId)
+    .select('id');
 
   if (error) return { ok: false, error: error.message };
+  if (!featured?.length) return { ok: false, error: 'not_found' };
 
   revalidatePath('/admin/jobs');
   return { ok: true };
@@ -121,15 +123,18 @@ export async function verifyCompany(input: unknown): Promise<ActionResult> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { error } = await supabase
+  const { data: verified, error } = await supabase
     .from('companies')
     .update({
       verification_status: parsed.data.approve ? 'verified' : 'rejected',
       verified_at: parsed.data.approve ? new Date().toISOString() : null,
     })
-    .eq('id', parsed.data.companyId);
+    .eq('id', parsed.data.companyId)
+    .select('id');
 
   if (error) return { ok: false, error: error.message };
+  // A company id that matches nothing is not a completed review.
+  if (!verified?.length) return { ok: false, error: 'not_found' };
 
   await supabase
     .from('company_documents')
@@ -155,16 +160,18 @@ export async function resolveReport(reportId: string): Promise<ActionResult> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { error } = await supabase
+  const { data: resolved, error } = await supabase
     .from('reports')
     .update({
       resolved: true,
       resolved_by: user?.id ?? null,
       resolved_at: new Date().toISOString(),
     })
-    .eq('id', reportId);
+    .eq('id', reportId)
+    .select('id');
 
   if (error) return { ok: false, error: error.message };
+  if (!resolved?.length) return { ok: false, error: 'not_found' };
 
   revalidatePath('/admin/reports');
   return { ok: true };

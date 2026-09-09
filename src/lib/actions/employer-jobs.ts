@@ -110,8 +110,16 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
   let jobId = value.id;
 
   if (jobId) {
-    const { error } = await supabase.from('jobs').update(payload).eq('id', jobId);
+    // .select() so a listing the caller does not belong to is a refusal rather
+    // than a save that quietly changed nothing. RLS filtering an update to zero
+    // rows produces no error.
+    const { data: saved, error } = await supabase
+      .from('jobs')
+      .update(payload)
+      .eq('id', jobId)
+      .select('id');
     if (error) return { ok: false, error: mapJobError(error.message) };
+    if (!saved?.length) return { ok: false, error: 'forbidden' };
   } else {
     const districts = await getDistricts();
     const district = districts.find((d) => d.id === value.districtId);
@@ -151,12 +159,15 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: moved, error } = await supabase
     .from('jobs')
     .update({ status: parsed.data.status })
-    .eq('id', parsed.data.jobId);
+    .eq('id', parsed.data.jobId)
+    .select('id');
 
   if (error) return { ok: false, error: mapJobError(error.message) };
+  // Closing a listing that is not yours reported success and closed nothing.
+  if (!moved?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/employer/jobs');
   return { ok: true };
