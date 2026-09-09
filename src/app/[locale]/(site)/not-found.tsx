@@ -2,6 +2,7 @@ import { getTranslations, getLocale } from 'next-intl/server';
 import { Briefcase, Building2, Search, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { ChipRow } from '@/components/ui/chip-row';
 
 /**
  * The 404, treated as a place somebody arrived rather than a wall.
@@ -54,19 +55,20 @@ export default async function NotFound() {
         </Button>
       </form>
 
-      <ul className="mt-8 flex flex-wrap justify-center gap-2">
+      {/* Centred and wrapping, which is how the hero stranded its last chip on
+          an empty line. Three today, and the list grows. */}
+      <ChipRow center className="mt-8 justify-center">
         {elsewhere.map(({ href, label, icon: Icon }) => (
-          <li key={href}>
-            <Link
-              href={href}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium transition-colors hover:border-primary/40 hover:bg-muted"
-            >
-              <Icon className="size-4 text-muted-foreground" aria-hidden />
-              {label}
-            </Link>
-          </li>
+          <Link
+            key={href}
+            href={href}
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium transition-colors hover:border-primary/40 hover:bg-muted"
+          >
+            <Icon className="size-4 text-muted-foreground" aria-hidden />
+            {label}
+          </Link>
         ))}
-      </ul>
+      </ChipRow>
     </div>
   );
 }

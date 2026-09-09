@@ -15,6 +15,7 @@ import { Link } from '@/i18n/navigation';
 import { localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Chip, ChipRow } from '@/components/ui/chip-row';
 import { VisibilityIllustration } from '@/components/home/illustrations';
 import { HeroShell } from '@/components/home/hero-shell';
 import { TimelineSteps } from '@/components/home/timeline-steps';
@@ -118,15 +119,22 @@ export async function Landing({
           </div>
         </form>
 
-        <div className="rise-in [--rise-delay:350ms] mt-7 flex flex-wrap items-center justify-center gap-2">
-          <span className="text-sm text-white/60">{t('hero.popular')}</span>
-          {JOB_TRACKS.slice(0, 4).map((track) => (
-            <Link key={track} href={{ pathname: '/jobs', query: { track } }} className="inline-flex min-h-11 items-center">
-              <span className="inline-flex rounded-full border border-white/20 bg-white/5 px-3.5 py-1.5 text-sm text-white/90 transition-colors hover:border-white/40 hover:bg-white/15">
-                {tTrack(track)}
-              </span>
-            </Link>
-          ))}
+        {/* The label sits above the row rather than inside it. In the row it
+            was one more thing competing for the line, and it is the item that
+            must never be the one scrolled out of view. */}
+        <div className="rise-in [--rise-delay:350ms] mt-7">
+          <p className="text-center text-sm text-white/60">{t('hero.popular')}</p>
+          <ChipRow center className="mt-2.5">
+            {JOB_TRACKS.slice(0, 4).map((track) => (
+              <Link
+                key={track}
+                href={{ pathname: '/jobs', query: { track } }}
+                className="inline-flex min-h-11 shrink-0 items-center"
+              >
+                <Chip tone="onDark">{tTrack(track)}</Chip>
+              </Link>
+            ))}
+          </ChipRow>
         </div>
 
         <p className="rise-in [--rise-delay:420ms] mt-8 inline-flex items-center gap-1.5 text-sm text-white/60">
