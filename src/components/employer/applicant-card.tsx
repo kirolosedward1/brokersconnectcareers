@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, Download, FileX2, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Download, FileX2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import { employerOpener } from '@/lib/whatsapp';
 import { setApplicationStatus } from '@/lib/actions/applications';
 import type { ApplicationStatus, ExperienceBand, JobTrack } from '@/lib/supabase/database.types';
 import type { Locale } from '@/i18n/routing';
+import { WhatsAppMark } from '@/components/brand-marks';
+import { Avatar } from '@/components/ui/avatar';
 
 export type ApplicantProfile = {
   slug: string;
@@ -55,6 +57,7 @@ export function ApplicantCard({
     candidate: {
       full_name: string;
       whatsapp_phone: string;
+      avatar_url: string | null;
       /**
        * Null when this consultant has no directory profile, and also when
        * they have one this employer may not see.
@@ -129,16 +132,28 @@ export function ApplicantCard({
   return (
     <article className="rounded-xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Heading className="font-semibold">{candidate?.full_name ?? '—'}</Heading>
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {application.experience_band ? (
-              <Badge variant="outline">{tExp(application.experience_band)}</Badge>
-            ) : null}
-            <time dateTime={isoDate(application.created_at)}>
-              {tJobs('postedOn', { date: formatDate(application.created_at, locale) })}
-            </time>
-          </p>
+        <div className="flex min-w-0 items-center gap-3">
+          {/* Seeded on the directory slug where there is one, so the same
+              person keeps the same colour across every listing they apply to
+              — and on the name otherwise, which is all there is to go on. */}
+          <Avatar
+            name={candidate?.full_name ?? '—'}
+            src={candidate?.avatar_url}
+            seed={profile?.slug ?? candidate?.full_name}
+            size="md"
+          />
+
+          <div className="min-w-0">
+            <Heading className="font-semibold">{candidate?.full_name ?? '—'}</Heading>
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              {application.experience_band ? (
+                <Badge variant="outline">{tExp(application.experience_band)}</Badge>
+              ) : null}
+              <time dateTime={isoDate(application.created_at)}>
+                {tJobs('postedOn', { date: formatDate(application.created_at, locale) })}
+              </time>
+            </p>
+          </div>
         </div>
 
         <Badge variant={STATUS_VARIANT[status]} size="lg">
@@ -221,7 +236,7 @@ export function ApplicantCard({
               target="_blank"
               rel="noopener noreferrer"
             >
-              <MessageCircle />
+              <WhatsAppMark />
               {t('whatsappCandidate')}
             </a>
           </Button>

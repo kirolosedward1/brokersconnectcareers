@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Download, Lock, MapPin, MessageCircle, UserRound } from 'lucide-react';
+import { Download, Lock, MapPin, UserRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/server';
 import { CV_BUCKET, signedUrl } from '@/lib/storage';
 import { whatsappLink } from '@/lib/utils';
 import { employerToAgentOpener } from '@/lib/whatsapp';
+import { WhatsAppMark } from '@/components/brand-marks';
 
 type Params = { locale: string; slug: string };
 
@@ -141,7 +142,7 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
           {contactUrl ? (
             <Button asChild size="lg">
               <a href={contactUrl} target="_blank" rel="noopener noreferrer">
-                <MessageCircle />
+                <WhatsAppMark className="size-5 shrink-0" />
                 {t('contact')}
               </a>
             </Button>

@@ -423,7 +423,8 @@
     "teamNoAccount": "No account with that email. Ask them to sign up first, then add them here.",
     "teamAlreadyMember": "They are already on the team.",
     "teamNotEmployer": "That email belongs to a consultant account, not a company one.",
-    "teamCannotRemoveOwner": "The account owner cannot be removed from their own company."
+    "teamCannotRemoveOwner": "The account owner cannot be removed from their own company.",
+    "stageFilter": "Filter by stage"
   },
   "jobForm": {
     "basics": "Basics",

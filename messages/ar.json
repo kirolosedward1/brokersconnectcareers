@@ -423,7 +423,8 @@
     "teamNoAccount": "مفيش حساب بالإيميل ده. خلّي زميلك يسجّل الأول، وبعدين ضيفه من هنا.",
     "teamAlreadyMember": "الشخص ده في الفريق بالفعل.",
     "teamNotEmployer": "الإيميل ده لحساب استشاري، مش لحساب شركة.",
-    "teamCannotRemoveOwner": "مينفعش تشيل صاحب الحساب من شركته."
+    "teamCannotRemoveOwner": "مينفعش تشيل صاحب الحساب من شركته.",
+    "stageFilter": "تصفية حسب المرحلة"
   },
   "jobForm": {
     "basics": "الأساسيات",

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Field, Input, Select } from '@/components/ui/field';
 import { addCompanyMember, removeCompanyMember } from '@/lib/actions/company';
 import type { CompanyMemberRole } from '@/lib/supabase/database.types';
+import { Avatar } from '@/components/ui/avatar';
 
 export type TeamMember = {
   userId: string;
@@ -104,12 +105,7 @@ export function TeamSettings({
             key={member.userId}
             className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3"
           >
-            <span
-              aria-hidden
-              className="bg-brand-gradient grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold text-primary-foreground"
-            >
-              {member.name.trim().charAt(0)}
-            </span>
+            <Avatar name={member.name} seed={member.userId} />
 
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{member.name}</span>

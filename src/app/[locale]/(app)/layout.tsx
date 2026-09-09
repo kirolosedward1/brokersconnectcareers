@@ -202,6 +202,7 @@ export default async function AppLayout({
         </NotificationBell>
       }
       name={profile.full_name}
+      avatarUrl={profile.avatar_url}
       roleLabel={role === 'employer' ? tOnboarding('roleEmployer') : role === 'admin' ? tAdmin('title') : tOnboarding('roleCandidate')}
       locale={locale}
     >

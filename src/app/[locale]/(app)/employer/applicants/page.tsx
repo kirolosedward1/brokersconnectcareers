@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ApplicantCard, type ApplicantProfile } from '@/components/employer/applicant-card';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { formatNumber } from '@/lib/utils';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
 import type { ApplicationStatus, ExperienceBand } from '@/lib/supabase/database.types';
@@ -32,6 +33,7 @@ type Row = {
   candidate: {
     full_name: string;
     whatsapp_phone: string;
+    avatar_url: string | null;
     agent_profiles: ApplicantProfile | null;
   } | null;
   job: { id: string; title_ar: string; title_en: string | null } | null;
@@ -78,6 +80,7 @@ export default async function AllApplicantsPage({
       candidate:profiles (
         full_name,
         whatsapp_phone,
+        avatar_url,
         agent_profiles (
           slug, headline_ar, headline_en, years_experience,
           tracks, district_ids, units_closed, volume_egp
@@ -97,6 +100,21 @@ export default async function AllApplicantsPage({
 
   const { data } = await query;
   const rows = (data ?? []) as unknown as Row[];
+
+  // One column, no stage filter: what each chip is worth before it is clicked.
+  // The list above is already narrowed by ?stage=, so it cannot answer this —
+  // and "who applied" is a question about the whole pipeline, not the slice
+  // currently on screen. RLS scopes it to this company's listings, same as the
+  // list; the job filter is honoured so the counts match what a click gives.
+  let counter = supabase.from('applications').select('status').limit(2000);
+  if (jobFilter) counter = counter.eq('job_id', jobFilter);
+  const { data: statuses } = await counter;
+
+  const stageCount = new Map<string, number>();
+  for (const item of (statuses ?? []) as { status: string }[]) {
+    stageCount.set(item.status, (stageCount.get(item.status) ?? 0) + 1);
+  }
+  const totalCount = (statuses ?? []).length;
 
   const districts = await optional(getDistricts(), []);
   const districtName = new Map(
@@ -135,6 +153,28 @@ export default async function AllApplicantsPage({
       : 'border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground') +
     ' shrink-0 rounded-full px-3.5 py-1.5 text-sm';
 
+  /**
+   * A hue per stage, matching what the badge on each card already means:
+   * blue is untouched, violet is picked out, amber is in progress, green is
+   * hired, red is closed. The chips and the badges disagreeing about what
+   * "shortlisted" looks like would be worse than either choice alone.
+   *
+   * One lightness across the set, chosen so white text clears 4.5:1 — the chip
+   * paints its own ground, so this holds in both themes without a dark variant
+   * and without a token that only exists inside a media query.
+   */
+  const STAGE_COLOUR: Record<(typeof STAGES)[number], string> = {
+    new: 'oklch(0.55 0.16 266)',
+    shortlisted: 'oklch(0.55 0.16 300)',
+    interview: 'oklch(0.52 0.13 70)',
+    hired: 'oklch(0.50 0.13 155)',
+    rejected: 'oklch(0.55 0.17 27)',
+  };
+
+  const stageChip = (active: boolean) =>
+    'shrink-0 rounded-full ps-3 pe-2.5 py-1.5 text-sm inline-flex items-center gap-2 transition-colors ' +
+    (active ? 'font-medium text-white' : 'border border-border hover:bg-muted');
+
   const href = (next: { stage?: string; job?: string }) => {
     const search = new URLSearchParams();
     if (next.stage) search.set('stage', next.stage);
@@ -150,20 +190,51 @@ export default async function AllApplicantsPage({
         <p className="mt-1 text-muted-foreground">{t('allApplicantsLede')}</p>
       </header>
 
-      <nav className={row} aria-label={tStatus('new')}>
-        <Link href={href({ job: jobFilter })} aria-current={!stage ? 'page' : undefined} className={chip(!stage)}>
+      <nav className={row} aria-label={t('stageFilter')}>
+        <Link
+          href={href({ job: jobFilter })}
+          aria-current={!stage ? 'page' : undefined}
+          className={stageChip(!stage) + (stage ? ' text-muted-foreground' : '')}
+          style={!stage ? { backgroundColor: 'oklch(0.45 0.02 265)' } : undefined}
+        >
           {tFilters('any')}
+          <span className="numeral rounded-full bg-black/15 px-1.5 text-xs font-semibold tabular-nums">
+            {formatNumber(totalCount, locale)}
+          </span>
         </Link>
-        {STAGES.map((value) => (
-          <Link
-            key={value}
-            href={href({ stage: value, job: jobFilter })}
-            aria-current={stage === value ? 'page' : undefined}
-            className={chip(stage === value)}
-          >
-            {tStatus(value)}
-          </Link>
-        ))}
+
+        {STAGES.map((value) => {
+          const active = stage === value;
+          const count = stageCount.get(value) ?? 0;
+          return (
+            <Link
+              key={value}
+              href={href({ stage: value, job: jobFilter })}
+              aria-current={active ? 'page' : undefined}
+              className={stageChip(active) + (active ? '' : ' text-muted-foreground')}
+              style={active ? { backgroundColor: STAGE_COLOUR[value] } : undefined}
+            >
+              {/* The colour, carried on an inactive chip too — otherwise the
+                  stage only has an identity once you are already in it. */}
+              {active ? null : (
+                <span
+                  aria-hidden
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: STAGE_COLOUR[value] }}
+                />
+              )}
+              {tStatus(value)}
+              <span
+                className={
+                  'numeral rounded-full px-1.5 text-xs font-semibold tabular-nums ' +
+                  (active ? 'bg-black/15' : 'bg-muted text-foreground')
+                }
+              >
+                {formatNumber(count, locale)}
+              </span>
+            </Link>
+          );
+        })}
       </nav>
 
       {jobs.length > 1 ? (

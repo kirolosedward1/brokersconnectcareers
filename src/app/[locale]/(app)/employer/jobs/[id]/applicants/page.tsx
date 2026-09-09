@@ -23,6 +23,7 @@ type ApplicantRow = {
   candidate: {
     full_name: string;
     whatsapp_phone: string;
+    avatar_url: string | null;
     agent_profiles: ApplicantProfile | null;
   } | null;
 };
@@ -69,6 +70,7 @@ export default async function ApplicantsPage({
       candidate:profiles (
         full_name,
         whatsapp_phone,
+        avatar_url,
         agent_profiles (
           slug, headline_ar, headline_en, years_experience,
           tracks, district_ids, units_closed, volume_egp

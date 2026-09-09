@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname, useRouter } from '@/i18n/navigation';
+import { Avatar } from '@/components/ui/avatar';
 import type { Locale } from '@/i18n/routing';
 import { LogoMark } from '@/components/logo';
 import { createClient } from '@/lib/supabase/client';
@@ -87,6 +88,7 @@ export type AppNavGroup = {
 export function AppShell({
   groups,
   name,
+  avatarUrl,
   roleLabel,
   locale,
   bell,
@@ -94,6 +96,7 @@ export function AppShell({
 }: {
   groups: AppNavGroup[];
   name: string;
+  avatarUrl: string | null;
   roleLabel: string;
   locale: Locale;
   /**
@@ -278,12 +281,7 @@ export function AppShell({
               <p className="text-sm font-medium leading-tight">{name}</p>
               <p className="text-xs text-muted-foreground">{roleLabel}</p>
             </div>
-            <span
-              aria-hidden
-              className="bg-brand-gradient grid size-9 place-items-center rounded-full text-sm font-bold text-primary-foreground"
-            >
-              {name.trim().charAt(0)}
-            </span>
+            <Avatar name={name} src={avatarUrl} />
           </div>
         </header>
 

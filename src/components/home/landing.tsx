@@ -6,7 +6,6 @@ import {
   Check,
   EyeOff,
   MapPin,
-  MessageCircle,
   Search,
   Target,
   Users,
@@ -22,6 +21,7 @@ import { TimelineSteps } from '@/components/home/timeline-steps';
 import { ApplyStep, FilterStep, TrackStep } from '@/components/home/candidate-steps';
 import { buildLandingSlug, JOB_TRACKS } from '@/lib/taxonomy';
 import type { DistrictRow } from '@/lib/supabase/database.types';
+import { WhatsAppMark } from '@/components/brand-marks';
 
 /**
  * The signed-out landing page.
@@ -146,7 +146,9 @@ export async function Landing({
       { icon: CalendarClock, kind: 'kindFresh', title: 'freshTitle', body: 'freshBody', lead: false },
       { icon: Zap, kind: 'kindApply', title: 'applyTitle', body: 'applyBody', lead: false },
       {
-        icon: MessageCircle,
+        // The feature is "they reach you on WhatsApp", so it carries the mark
+        // people recognise rather than a generic speech bubble.
+        icon: WhatsAppMark,
         kind: 'kindWhatsapp',
         title: 'whatsappTitle',
         body: 'whatsappBody',
