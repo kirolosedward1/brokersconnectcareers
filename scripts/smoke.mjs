@@ -231,6 +231,40 @@ section('the two landing pages are distinct and cross-linked');
 }
 
 // ---------------------------------------------------------------------------
+section('the sign-in screen offers only what works');
+{
+  // "Continue with Google" was rendered unconditionally while the provider was
+  // never enabled, so every click returned "provider is not enabled" — on the
+  // first screen a new user meets, from the most trustworthy-looking control
+  // on it. The invariant is not "no Google button"; it is that the button and
+  // the auth server agree.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    console.log('  SKIP  provider check (no Supabase credentials in this environment)');
+  } else {
+    const settings = await fetch(`${supabaseUrl}/auth/v1/settings`, {
+      headers: { apikey: anonKey },
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .catch(() => null);
+
+    const googleEnabled = settings?.external?.google === true;
+
+    for (const path of ['/sign-in', '/sign-up', '/sign-in/candidate', '/sign-up/employer']) {
+      const { body } = await get(path);
+      const offered = /Continue with Google|المتابعة بجوجل/.test(body);
+      check(
+        `${path} offers Google only when it is enabled`,
+        offered === googleEnabled,
+        `button ${offered ? 'shown' : 'hidden'}, provider ${googleEnabled ? 'on' : 'off'}`,
+      );
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 section('a locked-out user has a way back in');
 {
   // The site carried the words for a password reset — auth.forgotPassword and

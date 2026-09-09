@@ -6,6 +6,7 @@ import { asLocale, type Locale } from '@/i18n/routing';
 import { AuthForm } from '@/components/auth/auth-form';
 import { AudienceSwitch } from '@/components/auth/audience-switch';
 import { AuthShell } from '../auth-shell';
+import { enabledProviders } from '@/lib/auth-providers';
 
 export async function generateMetadata({
   params,
@@ -22,6 +23,8 @@ export default async function SignUpPage({ params }: { params: Promise<{ locale:
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
+
+  const { google: googleEnabled } = await enabledProviders();
   const t = await getTranslations('auth');
 
   return (
@@ -41,7 +44,7 @@ export default async function SignUpPage({ params }: { params: Promise<{ locale:
 
         <div className="mt-6">
           <Suspense>
-            <AuthForm mode="sign-up" locale={locale} />
+            <AuthForm mode="sign-up" locale={locale} googleEnabled={googleEnabled} />
           </Suspense>
         </div>
       </div>

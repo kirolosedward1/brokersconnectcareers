@@ -57,6 +57,7 @@ export function AuthForm({
   mode,
   locale,
   audience,
+  googleEnabled = false,
 }: {
   mode: 'sign-in' | 'sign-up';
   locale: Locale;
@@ -66,6 +67,12 @@ export function AuthForm({
    * whose role is already stored.
    */
   audience?: 'candidate' | 'employer';
+  /**
+   * Whether the auth server will actually accept a Google sign-in. Asked of
+   * GoTrue by the page that renders this, not assumed — the button spent its
+   * whole life returning "provider is not enabled".
+   */
+  googleEnabled?: boolean;
 }) {
   const t = useTranslations('auth');
   const tValidation = useTranslations('validation');
@@ -209,23 +216,29 @@ export function AuthForm({
 
   return (
     <div className="space-y-5">
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        size="lg"
-        onClick={signInWithGoogle}
-        disabled={pending}
-      >
-        <GoogleMark />
-        {t('continueWithGoogle')}
-      </Button>
+      {googleEnabled ? (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            size="lg"
+            onClick={signInWithGoogle}
+            disabled={pending}
+          >
+            <GoogleMark />
+            {t('continueWithGoogle')}
+          </Button>
 
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        {t('or')}
-        <span className="h-px flex-1 bg-border" />
-      </div>
+          {/* The separator belongs to the button. Without one there is nothing
+              above the form for "or" to separate it from. */}
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            {t('or')}
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </>
+      ) : null}
 
       <form onSubmit={onSubmit} className="space-y-4">
         <Field label={t('email')} htmlFor="email">

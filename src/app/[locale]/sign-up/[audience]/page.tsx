@@ -7,6 +7,7 @@ import { asLocale } from '@/i18n/routing';
 import { AuthForm } from '@/components/auth/auth-form';
 import { AudienceSwitch } from '@/components/auth/audience-switch';
 import { AuthShell, type Audience } from '../../auth-shell';
+import { enabledProviders } from '@/lib/auth-providers';
 
 const AUDIENCES = ['candidate', 'employer'] as const;
 
@@ -54,6 +55,8 @@ export default async function AudienceSignUpPage({
   const audience = parse(rawAudience);
   setRequestLocale(locale);
 
+  const { google: googleEnabled } = await enabledProviders();
+
   const t = await getTranslations('auth');
 
   return (
@@ -75,7 +78,7 @@ export default async function AudienceSignUpPage({
 
         <div className="mt-6">
           <Suspense>
-            <AuthForm mode="sign-up" locale={locale} audience={audience} />
+            <AuthForm mode="sign-up" locale={locale} audience={audience} googleEnabled={googleEnabled} />
           </Suspense>
         </div>
       </div>
