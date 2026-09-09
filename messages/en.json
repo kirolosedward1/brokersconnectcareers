@@ -242,7 +242,12 @@
     "newPasswordBody": "Choose a new password for this account.",
     "passwordUpdated": "Your password has been changed.",
     "backToSignIn": "Back to sign in",
-    "linkExpired": "That link has expired or has already been used. Ask for a new one."
+    "linkExpired": "That link has expired or has already been used. Ask for a new one.",
+    "checkEmailTitle": "We sent you a confirmation email",
+    "checkEmailSpam": "If it has not arrived within a minute, check your spam folder.",
+    "resendConfirmation": "Send it again",
+    "resendSent": "Sent again. If it still has not arrived, try again shortly.",
+    "resendWait": "Wait a moment before asking for another."
   },
   "onboarding": {
     "title": "Finish your profile",

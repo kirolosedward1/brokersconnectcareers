@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Building2, UserRound } from 'lucide-react';
+import { Building2, MailCheck, RefreshCw, UserRound } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Link, useRouter } from '@/i18n/navigation';
@@ -108,6 +108,9 @@ export function AuthForm({
 
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
+  /** Kept so the confirmation can be sent again without retyping it. */
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [resent, setResent] = useState<'sent' | 'wait' | null>(null);
   const [pending, startTransition] = useTransition();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -144,6 +147,7 @@ export function AuthForm({
         }
         // With email confirmation enabled there is no session yet.
         if (!data.session) {
+          setPendingEmail(email);
           setCheckEmail(true);
           return;
         }
@@ -206,11 +210,64 @@ export function AuthForm({
     });
   }
 
+  /**
+   * The end of sign-up, and until now a dead end.
+   *
+   * This project requires email confirmation and sends it through whatever
+   * mail is configured, which today means it can be slow or filtered. A screen
+   * that says "check your email" and offers nothing else strands the one
+   * person it is talking to — they cannot sign in, cannot try again, and have
+   * no way to ask for another. So: name the spam folder, and offer to send it
+   * again. Supabase rate-limits the resend itself, which is the answer the
+   * button gives when it is pressed too often.
+   */
   if (checkEmail) {
     return (
-      <p className="rounded-lg border border-success/30 bg-success-muted p-4 text-sm">
-        {t('checkEmail')}
-      </p>
+      <div className="space-y-4">
+        <div className="rounded-xl border border-success/30 bg-success-muted p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <MailCheck className="size-4 shrink-0" aria-hidden />
+            {t('checkEmailTitle')}
+          </p>
+          <p className="mt-2 text-sm">{t('checkEmail')}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t('checkEmailSpam')}</p>
+        </div>
+
+        {resent === 'sent' ? (
+          <p className="text-sm font-medium text-success">{t('resendSent')}</p>
+        ) : resent === 'wait' ? (
+          <p role="alert" className="text-sm text-destructive">
+            {t('resendWait')}
+          </p>
+        ) : null}
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={pending}
+          onClick={() => {
+            setResent(null);
+            startTransition(async () => {
+              const { error: resendError } = await createClient().auth.resend({
+                type: 'signup',
+                email: pendingEmail,
+                options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+              });
+              setResent(resendError ? 'wait' : 'sent');
+            });
+          }}
+        >
+          <RefreshCw aria-hidden />
+          {pending ? tCommon('loading') : t('resendConfirmation')}
+        </Button>
+
+        <p className="text-center text-sm">
+          <Link href="/sign-in" className="font-medium text-primary hover:underline">
+            {t('backToSignIn')}
+          </Link>
+        </p>
+      </div>
     );
   }
 
