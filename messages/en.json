@@ -400,7 +400,7 @@
     "allApplicantsLede": "Everyone who applied to your listings, newest first.",
     "allListings": "All listings",
     "logo": "Company logo",
-    "logoHint": "PNG, JPG or SVG, up to 2 MB. Shown beside your company name everywhere.",
+    "logoHint": "PNG, JPG or WebP, up to 2 MB. Shown beside your company name everywhere.",
     "logoUpload": "Upload logo",
     "logoReplace": "Replace logo",
     "jobsLede": "All your listings and where each one stands.",

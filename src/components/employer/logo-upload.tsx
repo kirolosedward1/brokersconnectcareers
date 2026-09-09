@@ -23,7 +23,20 @@ import { saveCompanyLogo } from '@/lib/actions/company';
  * action only records the resulting URL.
  */
 const MAX_BYTES = 2 * 1024 * 1024;
-const TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+/**
+ * No SVG, deliberately.
+ *
+ * The logo renders through next/image everywhere it appears, and next/image
+ * refuses an SVG source unless `dangerouslyAllowSVG` is set — it answers 400.
+ * So an SVG logo was accepted by this form, accepted by the bucket, stored,
+ * and then broken on the board, the directory and every listing.
+ *
+ * The fix is to stop accepting it rather than to set that flag. The flag is
+ * named the way it is because an SVG is a document that can carry script, and
+ * these are uploaded by anybody who registers a company. PNG, JPEG and WebP
+ * cover every real logo.
+ */
+const TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 export function LogoUpload({
   companyId,
