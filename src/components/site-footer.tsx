@@ -36,7 +36,10 @@ export async function SiteFooter() {
    * the text keeps its own spacing and only the hit area grows.
    */
   const linkClass =
-    'inline-flex min-h-9 items-center py-1 transition-colors hover:text-foreground';
+    // min-h-11, matching the header and NavLink. The footer was the only place
+    // in the product still on 36px, and it is a column of small links that
+    // people tap on a phone — the worst place to be under the target size.
+    'inline-flex min-h-11 items-center py-1 transition-colors hover:text-foreground';
 
   return (
     <footer className="mt-16 border-t border-border bg-muted/40">

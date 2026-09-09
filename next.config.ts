@@ -5,6 +5,16 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
   /**
+   * `pnpm build` and `pnpm dev` share .next by default, so running a
+   * production build while the dev server is up deletes the chunks the dev
+   * server is still serving. Every page then 500s with "Cannot find module
+   * ./9755.js", which reads exactly like a broken application and is not one.
+   *
+   * Set NEXT_DIST_DIR to give one of them somewhere else to live. Unset — which
+   * is every CI run and every deploy — nothing changes.
+   */
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  /**
    * The blog is read off disk at request time, and Next only bundles files it
    * can see being read. It resolves content/blog for the blog routes, where the
    * slug comes from generateStaticParams, but not for the sitemap, which just
