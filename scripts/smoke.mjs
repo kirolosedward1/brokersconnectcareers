@@ -344,6 +344,26 @@ section('every page announces what it is');
 }
 
 // ---------------------------------------------------------------------------
+section('a URL with no record behind it is never indexable');
+{
+  // These stream, so Next cannot send a 404 after the headers are gone — the
+  // status is a soft 404 and stays one unless the skeletons go. What actually
+  // keeps them out of the index is the noindex, so that is what is asserted.
+  // /blog is the control: no loading.tsx, no streaming, a real 404.
+  for (const path of [
+    '/jobs/no-such-listing',
+    '/companies/no-such-company',
+    '/agents/no-such-consultant',
+  ]) {
+    const { body } = await get(path);
+    check(`${path} is served noindex`, /<meta name="robots" content="noindex/.test(body));
+  }
+
+  const blog = await get('/blog/no-such-post');
+  check('/blog/* still returns a real 404', blog.status === 404, `got ${blog.status}`);
+}
+
+// ---------------------------------------------------------------------------
 section('the closed English side stays closed');
 {
   const en = await get('/en/jobs');

@@ -104,7 +104,20 @@ export async function generateMetadata({
     };
   }
 
-  return {};
+  // notFound() here rather than returning empty metadata, so a missing record
+  // takes one path instead of rendering a page with no title and then failing
+  // in the body.
+  //
+  // It does NOT make the status a 404, and I tried: this route streams, so the
+  // headers are gone before either check runs and Next can only serve the
+  // not-found UI under a 200. Metadata streams with it, so moving the check
+  // earlier changes nothing. The only way to a real 404 here is to delete
+  // loading.tsx and give up the skeleton on the three page types that most
+  // need one, which is a worse trade than a soft 404 that carries
+  // `robots: noindex` — Google never indexes these, and what is left is a
+  // Search Console warning rather than a penalty. /blog returns a true 404
+  // only because it has no loading.tsx and therefore does not stream.
+  notFound();
 }
 
 export default async function JobOrLandingPage({ params }: { params: Promise<Params> }) {
