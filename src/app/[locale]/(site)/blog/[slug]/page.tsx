@@ -147,12 +147,16 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
             </h2>
             <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {more.map((item) => (
-                <li key={item.slug}>
+                /* min-w-0, or the track refuses to shrink below the longest
+                   word in the title: a grid item's default min-width is auto,
+                   and one unbroken word then pushes the card off the page.
+                   break-words handles the word itself. */
+                <li key={item.slug} className="min-w-0">
                   <Link
                     href={`/blog/${item.slug}`}
                     className="lift block h-full rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
                   >
-                    <p className="font-medium leading-snug">{item.title}</p>
+                    <p className="font-medium leading-snug break-words">{item.title}</p>
                     <p className="mt-2 text-xs text-muted-foreground">
                       {t('readingTime', { count: item.readingMinutes })}
                     </p>

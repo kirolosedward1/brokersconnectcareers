@@ -110,7 +110,10 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
             className="ps-9"
           />
         </div>
-        <Button type="submit" variant="secondary">
+        {/* Disabled while the navigation is in flight. It only re-runs a
+            search rather than writing anything, but on a slow connection a
+            button that does not react invites a second press. */}
+        <Button type="submit" variant="secondary" disabled={pending}>
           {t('showResults')}
         </Button>
       </form>
