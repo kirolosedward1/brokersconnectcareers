@@ -34,7 +34,7 @@ export default async function EmployerCompanyPage({
 
   let documents: CompanyDocumentRow[] = [];
   let team: TeamMember[] = [];
-  let canManageTeam = false;
+  let isCompanyAdmin = false;
 
   if (viewer.company) {
     const supabase = await createClient();
@@ -68,7 +68,7 @@ export default async function EmployerCompanyPage({
       isOwner: row.user_id === viewer.company!.owner_id,
     }));
 
-    canManageTeam = rows.some(
+    isCompanyAdmin = rows.some(
       (row) => row.user_id === viewer.userId && row.role === 'admin',
     );
   }
@@ -85,7 +85,10 @@ export default async function EmployerCompanyPage({
       {/* Above the form, because it is the one field on this page that shows
           up everywhere else — the board, the directory, every listing. It
           needs a company row to attach a file to, so it waits for one. */}
-      {viewer.company ? (
+      {/* The logo lives on the company record, which companies_update_own makes
+          an admin's. Offered to a recruiter it would upload the file and then
+          save nothing. */}
+      {viewer.company && isCompanyAdmin ? (
         <LogoUpload
           companyId={viewer.company.id}
           companyName={localized(locale, viewer.company.name_ar, viewer.company.name_en)}
@@ -94,9 +97,16 @@ export default async function EmployerCompanyPage({
         />
       ) : null}
 
-      <CompanyForm locale={locale} company={viewer.company} districts={districts} />
+      {isCompanyAdmin || !viewer.company ? (
+        <CompanyForm locale={locale} company={viewer.company} districts={districts} />
+      ) : null}
 
-      {viewer.company ? (
+      {/* Admins only, and not out of tidiness: the commercial register and the
+          tax card are an admin's since migration 24, so a recruiter opening
+          this page would meet an empty panel and an upload the database
+          refuses. Nothing here decides who may — this only stops offering a
+          control that will say no. */}
+      {viewer.company && isCompanyAdmin ? (
         <VerificationPanel
           companyId={viewer.company.id}
           status={viewer.company.verification_status}
@@ -104,7 +114,7 @@ export default async function EmployerCompanyPage({
         />
       ) : null}
 
-      {viewer.company ? <TeamSettings members={team} canManage={canManageTeam} /> : null}
+      {viewer.company ? <TeamSettings members={team} canManage={isCompanyAdmin} /> : null}
     </div>
   );
 }

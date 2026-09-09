@@ -823,6 +823,33 @@ report.section('a company is a team, not a login');
   report.check('a candidate account cannot be made a member',
     !addCandidate.ok && /company_member_role/.test(addCandidate.error ?? ''), addCandidate.error);
 
+  // What a recruiter must NOT inherit. Migration 22 widened owns_company()
+  // and swept these along with the listings; migration 24 pulled them back.
+  const docs = await as(COLLEAGUE,
+    `select count(*)::int as n from company_documents where company_id = '${alRowad}'`);
+  report.check('a recruiter cannot read the company\'s verification documents',
+    docs.ok && docs.rows[0].n === 0, docs.error);
+
+  const orders = await as(COLLEAGUE,
+    `select count(*)::int as n from orders where company_id = '${alRowad}'`);
+  report.check('nor what the company has been charged',
+    orders.ok && orders.rows[0].n === 0, orders.error);
+
+  const grants = await as(COLLEAGUE,
+    `select count(*)::int as n from monthly_free_post_grants where company_id = '${alRowad}'`);
+  report.check('nor the free-post ledger', grants.ok && grants.rows[0].n === 0, grants.error);
+
+  // But the listings, which is the entire point of being a member.
+  const listings = await as(COLLEAGUE,
+    `select count(*)::int as n from jobs where company_id = '${alRowad}'`);
+  report.check('while the listings are theirs to work on',
+    listings.ok && listings.rows[0].n > 0, listings.error);
+
+  // And an admin member still reaches the paperwork.
+  const ownerDocs = await as(employerVerified,
+    `select count(*)::int as n from company_documents where company_id = '${alRowad}'`);
+  report.check('an admin still reaches the paperwork', ownerDocs.ok, ownerDocs.error);
+
   // And the thing that broke twenty-three assertions when it was missing.
   const fresh = (
     await db.query(`

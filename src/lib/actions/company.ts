@@ -99,12 +99,19 @@ export async function saveCompanyLogo(input: unknown): Promise<ActionResult> {
 
   // Through the caller's session, so row-level security confirms the company
   // is theirs rather than this function taking the id on trust.
-  const { error } = await supabase
+  //
+  // .select() is not decoration. An update that RLS filters to zero rows comes
+  // back with no error at all, so without asking what it changed this returned
+  // ok for a save that saved nothing — and since migration 24 made the company
+  // record admin-only, a recruiter is exactly who would meet that.
+  const { data: updated, error } = await supabase
     .from('companies')
     .update({ logo_url: url })
-    .eq('id', parsed.data.companyId);
+    .eq('id', parsed.data.companyId)
+    .select('id');
 
   if (error) return { ok: false, error: error.message };
+  if (!updated?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/employer/company');
   revalidatePath('/companies');
