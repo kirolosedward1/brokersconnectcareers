@@ -10,6 +10,7 @@ import {
   FileCheck2,
   Flag,
   LayoutDashboard,
+  Mail,
   LogOut,
   Menu,
   PanelLeftClose,
@@ -47,6 +48,7 @@ const ICONS = {
   reports: Flag,
   admin: ShieldCheck,
   users: UserCog,
+  email: Mail,
   notifications: Bell,
   settings: Settings,
 } as const;

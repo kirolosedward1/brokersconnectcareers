@@ -5,7 +5,11 @@ import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
-import { notifyAccountDecision, notifyEmployerOfModeration } from '@/lib/email/notify';
+import {
+  notifyAccountDecision,
+  notifyCompanyVerification,
+  notifyEmployerOfModeration,
+} from '@/lib/email/notify';
 
 /**
  * Every action here runs through the caller's own session, not the service
@@ -146,6 +150,11 @@ export async function verifyCompany(input: unknown): Promise<ActionResult> {
     })
     .eq('company_id', parsed.data.companyId)
     .eq('status', 'pending');
+
+  // The owner is told what the review decided. Transactional: a company left
+  // waiting on verification has no other way to find out, and the bell only
+  // helps somebody who is already logged in and looking.
+  after(() => notifyCompanyVerification(parsed.data.companyId, parsed.data.approve, parsed.data.note));
 
   revalidatePath('/admin/companies');
   revalidatePath('/companies');

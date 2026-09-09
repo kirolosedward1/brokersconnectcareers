@@ -492,7 +492,18 @@
       "pending": "تحت المراجعة",
       "rejected": "موقوف"
     },
-    "waiting": "{days, plural, =0 {النهاردة} one {مستنية يوم} two {مستنية يومين} few {مستنية # أيام} many {مستنية # يوم} other {مستنية # يوم}}"
+    "waiting": "{days, plural, =0 {النهاردة} one {مستنية يوم} two {مستنية يومين} few {مستنية # أيام} many {مستنية # يوم} other {مستنية # يوم}}",
+    "emailActivity": "نشاط البريد",
+    "emailActivityLede": "كل رسالة اتبعتت من المنصة، وإيه اللي حصلها.",
+    "emailAll": "الكل",
+    "emailEmpty": "مافيش رسايل لسه.",
+    "emailRecipient": "المستلم",
+    "emailTemplate": "القالب",
+    "emailStatusColumn": "الحالة",
+    "emailSentAt": "اتبعتت",
+    "emailDeliveredAt": "اتسلّمت",
+    "emailError": "السبب",
+    "emailPreviewHint": "تقدر تشوف شكل كل القوالب من"
   },
   "reportReason": {
     "fake_listing": "إعلان وهمي",
@@ -829,5 +840,14 @@
     "company_verified": "تم توثيق {subject}",
     "account_approved": "حسابك اتفعّل",
     "account_rejected": "حسابك اتوقف مؤقتاً"
+  },
+  "emailStatus": {
+    "queued": "في الطابور",
+    "sent": "اتبعتت",
+    "delivered": "وصلت",
+    "bounced": "مرتدّة",
+    "complained": "اتبلّغ عنها",
+    "failed": "فشلت",
+    "suppressed": "موقوفة"
   }
 }

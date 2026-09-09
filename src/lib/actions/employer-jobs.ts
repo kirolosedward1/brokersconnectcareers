@@ -15,6 +15,8 @@ import {
   LEADS_SOURCES,
 } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
+import { after } from 'next/server';
+import { notifyJobSubmitted } from '@/lib/email/notify';
 
 const jobSchema = z
   .object({
@@ -139,6 +141,14 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     await supabase
       .from('job_developers')
       .insert(value.developerIds.map((developerId) => ({ job_id: jobId!, developer_id: developerId })));
+  }
+
+  // Only when it actually entered the queue. Saving a draft is not an event
+  // anybody needs an email about, and re-saving a listing already in review
+  // is deduplicated on the job id rather than sending a second receipt.
+  if (status === 'pending_review') {
+    const submitted = jobId!;
+    after(() => notifyJobSubmitted(submitted));
   }
 
   revalidatePath('/employer/jobs');

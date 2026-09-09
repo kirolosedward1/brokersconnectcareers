@@ -7,6 +7,8 @@ import { buildCompanySlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
+import { after } from 'next/server';
+import { notifyWelcome } from '@/lib/email/notify';
 
 /**
  * A company answers more questions than a consultant does.
@@ -115,6 +117,10 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
       );
     }
   }
+
+  // The account exists whether or not this goes out — after() runs once the
+  // response is on its way, and notifyWelcome swallows its own failures.
+  after(() => notifyWelcome(user.id));
 
   return { ok: true, data: { role: parsed.data.role } };
 }

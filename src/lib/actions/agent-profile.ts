@@ -8,6 +8,8 @@ import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { normalisePhone, isValidPhone } from '@/lib/phone';
 import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
+import { after } from 'next/server';
+import { notifyProfileReady, notifyVisibilityChanged } from '@/lib/email/notify';
 
 const schema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -58,7 +60,7 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
 
   const { data: existing } = await supabase
     .from('agent_profiles')
-    .select('id, slug, cv_path')
+    .select('id, slug, cv_path, visibility')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -76,6 +78,7 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
   };
 
   let agentId = existing?.id;
+  let createdSlug: string | null = null;
 
   if (existing) {
     const { error } = await supabase.from('agent_profiles').update(payload).eq('id', existing.id);
@@ -88,6 +91,12 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
     );
     if (error || !data) return { ok: false, error: error?.message ?? 'insert_failed' };
     agentId = data.id;
+    const { data: created } = await supabase
+      .from('agent_profiles')
+      .select('slug')
+      .eq('id', data.id)
+      .maybeSingle();
+    createdSlug = created?.slug ?? null;
   }
 
   if (agentId) {
@@ -100,6 +109,19 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
         })),
       );
     }
+  }
+
+  // Two different events, and only one of them can be true on a given save.
+  //
+  // Visibility is compared against what was there rather than sent on every
+  // save: this form is where a consultant edits their headline, and a "your
+  // visibility changed" email every time they fix a typo is exactly the kind
+  // of noise that gets a sender muted.
+  if (createdSlug) {
+    const slug = createdSlug;
+    after(() => notifyProfileReady(user.id, slug, parsed.data.visibility));
+  } else if (existing && existing.visibility !== parsed.data.visibility) {
+    after(() => notifyVisibilityChanged(user.id, parsed.data.visibility));
   }
 
   revalidatePath('/dashboard/profile');

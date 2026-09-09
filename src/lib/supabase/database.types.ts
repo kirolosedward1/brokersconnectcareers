@@ -340,6 +340,57 @@ export type SavedSearchRow = Timestamped & {
   last_sent_at: string | null;
 };
 
+export type EmailStatus =
+  | 'queued'
+  | 'sent'
+  | 'delivered'
+  | 'bounced'
+  | 'complained'
+  | 'failed'
+  | 'suppressed';
+
+/**
+ * The outbox. Metadata only — no message body is stored, because the question
+ * it exists to answer is "did it go and what happened to it".
+ */
+export type EmailLogRow = {
+  id: string;
+  dedupe_key: string | null;
+  template: string;
+  recipient: string;
+  user_id: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  status: EmailStatus;
+  attempts: number;
+  provider_id: string | null;
+  error: string | null;
+  created_at: string;
+  sent_at: string | null;
+  delivered_at: string | null;
+};
+
+export type EmailSuppressionRow = {
+  email: string;
+  reason: 'hard_bounce' | 'complaint';
+  created_at: string;
+};
+
+/** What email_activity() returns — the outbox minus the recipient's user id. */
+export type EmailActivityRow = {
+  id: string;
+  template: string;
+  recipient: string;
+  status: EmailStatus;
+  attempts: number;
+  entity_type: string | null;
+  entity_id: string | null;
+  error: string | null;
+  created_at: string;
+  sent_at: string | null;
+  delivered_at: string | null;
+};
+
 export type SavedJobRow = Timestamped & {
   candidate_id: string;
   job_id: string;
@@ -483,6 +534,17 @@ export type Database = {
         { company_id: string; period: string; granted_at: string },
         { company_id: string; period: string; granted_at?: string }
       >;
+      /**
+       * Written through claim_email/record_email_attempt rather than a plain
+       * insert, so the unique dedupe key is claimed in one statement. RLS is on
+       * with no policies at all: the only readers are the service role and
+       * admins going through email_activity().
+       */
+      email_log: Table<EmailLogRow, never>;
+      email_suppressions: Table<
+        EmailSuppressionRow,
+        { email: string; reason: 'hard_bounce' | 'complaint'; created_at?: string }
+      >;
     };
     Views: Empty;
     Functions: {
@@ -522,6 +584,49 @@ export type Database = {
       /** Returns how many rows it marked, so the caller can say nothing changed. */
       mark_notifications_read: { Args: Empty; Returns: number };
       /**
+       * Claims the right to send one message. Returns the outbox row id, or
+       * null when somebody already holds this dedupe key or the address is
+       * suppressed — which are both "do not send", not errors.
+       */
+      claim_email: {
+        Args: {
+          p_dedupe_key: string | null;
+          p_template: string;
+          p_recipient: string;
+          p_user_id?: string | null;
+          p_entity_type?: string | null;
+          p_entity_id?: string | null;
+        };
+        Returns: string | null;
+      };
+      record_email_attempt: {
+        Args: {
+          p_id: string;
+          p_status: EmailStatus;
+          p_provider_id?: string | null;
+          p_error?: string | null;
+          p_exhaust?: boolean;
+        };
+        Returns: undefined;
+      };
+      release_email_claim: { Args: { p_id: string }; Returns: undefined };
+      pending_emails: {
+        Args: { p_limit?: number };
+        Returns: { id: string; template: string; entity_id: string | null; attempts: number }[];
+      };
+      mark_email_delivered: {
+        Args: { p_provider_id: string; p_status: EmailStatus };
+        Returns: number;
+      };
+      email_activity: {
+        Args: { p_limit?: number; p_status?: EmailStatus | null };
+        Returns: EmailActivityRow[];
+      };
+      email_activity_summary: {
+        Args: Empty;
+        Returns: { status: EmailStatus; count: number }[];
+      };
+      /**
        * Returns what happened rather than void: the webhook needs to tell a
        * first delivery from a retry, and every outcome here is a 200.
        */
@@ -537,6 +642,7 @@ export type Database = {
       };
     };
     Enums: {
+      email_status: EmailStatus;
       user_role: UserRole;
       job_track: JobTrack;
       employment_type: EmploymentType;

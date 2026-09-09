@@ -91,11 +91,13 @@ export async function GET(request: NextRequest) {
 
       const outcome = await sendSavedSearchDigest({
         userId: search.candidate_id,
+        searchId: search.id,
         label: search.label,
         query: search.query,
         jobs: fresh.map((job) => ({
           title: localized(locale, job.title_ar, job.title_en),
           company: localized(locale, job.company?.name_ar, job.company?.name_en),
+          slug: job.slug,
         })),
       });
 

@@ -8,6 +8,7 @@ import { normalisePhone, isValidPhone } from '@/lib/phone';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 import {
+  notifyApplicationWithdrawn,
   notifyCandidateOfApplication,
   notifyCandidateOfStatus,
   notifyEmployerOfApplication,
@@ -91,6 +92,20 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
 
 export async function withdrawApplication(applicationId: string): Promise<ActionResult> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Read the title before the delete, not after: withdrawing removes the row,
+  // and the confirmation has to name the role the person just withdrew from.
+  // Through the caller's session, so this reads nothing RLS would not already
+  // show them.
+  const { data: before } = await supabase
+    .from('applications')
+    .select('id, job:jobs (title_ar, title_en)')
+    .eq('id', applicationId)
+    .maybeSingle();
+
   // Same reason as the pipeline move: a delete RLS filters to zero rows is not
   // an error, so "withdrawn" was reported for an application still sitting in
   // an employer's inbox.
@@ -103,9 +118,26 @@ export async function withdrawApplication(applicationId: string): Promise<Action
   if (error) return { ok: false, error: error.message };
   if (!removed?.length) return { ok: false, error: 'forbidden' };
 
+  const job = (before as unknown as WithdrawnJob | null)?.job;
+  if (user && job) {
+    const titleAr = job.title_ar;
+    const titleEn = job.title_en;
+    after(() =>
+      notifyApplicationWithdrawn({
+        userId: user.id,
+        applicationId,
+        jobTitleAr: titleAr,
+        jobTitleEn: titleEn,
+      }),
+    );
+  }
+
   revalidatePath('/dashboard/applications');
   return { ok: true };
 }
+
+/** The embed above, which the generated types resolve as an array. */
+type WithdrawnJob = { id: string; job: { title_ar: string; title_en: string | null } | null };
 
 const statusSchema = z.object({
   applicationId: z.string().uuid(),

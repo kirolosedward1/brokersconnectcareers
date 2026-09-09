@@ -153,6 +153,7 @@ export default async function AppLayout({
         icon: 'users',
         badge: adminCounts?.accounts_pending,
       },
+      { href: '/admin/email', label: tAdmin('emailActivity'), icon: 'email' },
     ],
   };
 

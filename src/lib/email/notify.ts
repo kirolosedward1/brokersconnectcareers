@@ -1,85 +1,50 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { ApplicationStatus } from '@/lib/supabase/database.types';
+import type { AgentVisibility, ApplicationStatus } from '@/lib/supabase/database.types';
 import { env } from '@/lib/env';
 import { localized } from '@/i18n/routing';
 import { copyFor, localeOf } from './copy';
-import { renderEmail, renderText, type Button } from './layout';
-import { sendEmail, type SendOutcome } from './send';
+import { buildEnvelope, type Audience } from './envelope';
+import { deliver } from './service';
+import type { SendOutcome } from './send';
 
 /**
- * Notifications, all of them best-effort.
+ * One function per product event.
  *
- * Every function here is called for its side effect and returns rather than
- * throws. Email is never the point of the action that triggered it: an
- * application must be recorded whether or not the employer hears about it, and
- * none of this can work until SUPABASE_SERVICE_ROLE_KEY and RESEND_API_KEY are
- * set — which, today, they are not anywhere.
+ * Every one of them is called for its side effect, returns rather than throws,
+ * and is safe to call twice — the dedupe key decides whether a second call
+ * sends anything. Email is never the point of the action that triggered it: an
+ * application must be recorded whether or not the employer hears about it.
  *
  * These read across RLS boundaries on purpose. A candidate cannot see the
  * employer's email address and must not be able to; the service role does the
  * lookup, and the authorisation was already decided by the action that got
  * here.
+ *
+ * Nothing in this file writes HTML. It chooses blocks and hands over strings,
+ * so every job title and candidate name goes through the escaping in
+ * components.ts rather than through whichever template remembered.
  */
-
-type Prefs = 'notify_applications' | 'notify_status' | 'notify_digest';
 
 /**
- * Shapes for the embedded selects below.
+ * The three switches, plus the absence of one.
  *
- * The generated PostgREST types resolve a single embed but not a nested one,
- * so these are declared and cast, the same way every other two-level select in
- * this codebase is.
+ * `null` means transactional: a receipt, a security notice, the answer to a
+ * question somebody asked by signing up. Those carry no unsubscribe link and
+ * check no preference, because suppressing them would leave a person waiting
+ * forever on something that already happened. Everything else is a stream that
+ * keeps arriving, and turning a stream off is a reasonable thing to want.
  */
-type ApplicationForEmployer = {
-  id: string;
-  candidate_id: string;
-  job: {
-    id: string;
-    slug: string;
-    title_ar: string;
-    title_en: string | null;
-    company: { owner_id: string } | null;
-  } | null;
-};
-
-type ApplicationReceipt = {
-  id: string;
-  candidate_id: string;
-  job: {
-    id: string;
-    slug: string;
-    title_ar: string;
-    title_en: string | null;
-    company: { name_ar: string; name_en: string | null } | null;
-  } | null;
-};
-
-type ApplicationForCandidate = {
-  id: string;
-  status: ApplicationStatus;
-  decision_note: string | null;
-  candidate_id: string;
-  job: {
-    title_ar: string;
-    title_en: string | null;
-    company: { name_ar: string; name_en: string | null } | null;
-  } | null;
-};
-
-type JobForModeration = {
-  id: string;
-  slug: string;
-  title_ar: string;
-  title_en: string | null;
-  company: { owner_id: string } | null;
-};
+type Preference = 'notify_applications' | 'notify_status' | 'notify_digest' | null;
 
 type Recipient = {
+  userId: string;
   email: string;
   locale: 'ar' | 'en';
   unsubscribeToken: string;
 };
+
+const PREFERENCE_COLUMNS = 'notify_applications, notify_status, notify_digest';
 
 /**
  * The recipient's address and language, or null if they should not be written
@@ -88,64 +53,224 @@ type Recipient = {
 async function recipient(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
-  preference: Prefs,
+  preference: Preference,
 ): Promise<Recipient | null> {
   const { data: profile } = await admin
     .from('profiles')
-    .select(`locale, unsubscribe_token, ${preference}`)
+    .select(`locale, unsubscribe_token, ${PREFERENCE_COLUMNS}`)
     .eq('id', userId)
     .maybeSingle();
 
   if (!profile) return null;
-  if ((profile as Record<string, unknown>)[preference] === false) return null;
+  if (preference && (profile as Record<string, unknown>)[preference] === false) return null;
 
   // The address lives on auth.users, not profiles.
   const { data, error } = await admin.auth.admin.getUserById(userId);
   if (error || !data.user?.email) return null;
 
   return {
+    userId,
     email: data.user.email,
     locale: localeOf(profile.locale),
     unsubscribeToken: profile.unsubscribe_token,
   };
 }
 
-function compose(args: {
-  to: Recipient;
-  preference: Prefs;
-  subject: string;
-  preheader: string;
-  heading: string;
-  paragraphs: string[];
-  facts?: [string, string][];
-  button?: Button;
-}) {
-  const t = copyFor(args.to.locale);
-  const unsubscribeUrl = `${env.siteUrl}/unsubscribe?token=${args.to.unsubscribeToken}&kind=${args.preference}`;
-  const unsubscribe = { label: t.unsubscribe, href: unsubscribeUrl };
-
-  const shared = {
-    heading: args.heading,
-    paragraphs: args.paragraphs,
-    facts: args.facts,
-    button: args.button,
-    footerNote: t.footerNote,
-    unsubscribe,
-  };
-
-  return {
-    to: args.to.email,
-    subject: args.subject,
-    html: renderEmail({
-      locale: args.to.locale,
-      siteName: t.siteName,
-      preheader: args.preheader,
-      ...shared,
-    }),
-    text: renderText(shared),
-    unsubscribeUrl,
-  };
+function asMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
+
+/**
+ * Shapes for the embedded selects below.
+ *
+ * The generated PostgREST types resolve a single embed but not a nested one,
+ * so these are declared and cast, the same way every other two-level select in
+ * this codebase is.
+ */
+type JobBits = {
+  id: string;
+  slug: string;
+  title_ar: string;
+  title_en: string | null;
+  expires_at: string | null;
+  published_at: string | null;
+};
+
+type ApplicationForEmployer = {
+  id: string;
+  created_at: string;
+  experience_band: string | null;
+  candidate_id: string;
+  job: (JobBits & { company: { owner_id: string } | null }) | null;
+};
+
+type ApplicationForCandidate = {
+  id: string;
+  status: ApplicationStatus;
+  created_at: string;
+  decision_note: string | null;
+  candidate_id: string;
+  job:
+    | (JobBits & { company: { name_ar: string; name_en: string | null; slug: string } | null })
+    | null;
+};
+
+type JobForOwner = JobBits & { company: { owner_id: string; name_ar: string } | null };
+
+const JOB_FIELDS = 'id, slug, title_ar, title_en, expires_at, published_at';
+
+// ---------------------------------------------------------------------------
+// Account
+// ---------------------------------------------------------------------------
+
+/**
+ * Somebody finished onboarding.
+ *
+ * Deliberately split by role rather than sent as one neutral greeting: the
+ * next useful thing to do is completely different for the two audiences, and a
+ * welcome whose button goes to the wrong half of the product is worse than no
+ * welcome.
+ */
+export async function notifyWelcome(userId: string): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (!profile) return 'skipped';
+    if (profile.role === 'admin') return 'skipped';
+
+    const to = await recipient(admin, userId, null);
+    if (!to) return 'skipped';
+
+    const employer = profile.role === 'employer';
+    const c = copyFor(to.locale);
+    const t = employer ? c.welcomeEmployer : c.welcomeCandidate;
+
+    return deliver({
+      template: employer ? 'welcome_employer' : 'welcome_candidate',
+      to: to.email,
+      userId,
+      dedupeKey: `welcome:${userId}`,
+      entity: { type: 'profile', id: userId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, null),
+        subject: t.subject,
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body },
+          {
+            kind: 'button',
+            label: t.cta,
+            href: employer
+              ? `${env.siteUrl}/employer/company`
+              : `${env.siteUrl}/dashboard/profile`,
+          },
+          { kind: 'text', value: t.hint },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.warn('[email] welcome failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+/**
+ * A candidate's directory profile now exists.
+ *
+ * Distinct from the welcome, which arrives at onboarding when there is nothing
+ * to look at yet. This is the one that can say what the profile's visibility
+ * actually is, because by now they have chosen it.
+ */
+export async function notifyProfileReady(
+  userId: string,
+  slug: string,
+  visibility: AgentVisibility,
+): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const to = await recipient(admin, userId, null);
+    if (!to) return 'skipped';
+
+    const c = copyFor(to.locale);
+    const t = c.profileReady;
+
+    return deliver({
+      template: 'profile_ready',
+      to: to.email,
+      userId,
+      dedupeKey: `profile_ready:${userId}`,
+      entity: { type: 'profile', id: userId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, null),
+        subject: t.subject,
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body },
+          {
+            kind: 'facts',
+            rows: [[t.labelVisibility, c.visibilityChanged.visibility[visibility]]],
+          },
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/agents/${slug}` },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.warn('[email] profile ready notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+/** A candidate changed who can see them in the directory. */
+export async function notifyVisibilityChanged(
+  userId: string,
+  visibility: AgentVisibility,
+): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const to = await recipient(admin, userId, null);
+    if (!to) return 'skipped';
+
+    const c = copyFor(to.locale);
+    const t = c.visibilityChanged;
+
+    return deliver({
+      template: 'visibility_changed',
+      to: to.email,
+      userId,
+      // Keyed on the value, not the event: flipping to hidden and back should
+      // produce two messages, but saving the form twice on the same setting
+      // should not.
+      dedupeKey: `visibility:${userId}:${visibility}`,
+      entity: { type: 'profile', id: userId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, null),
+        subject: t.subject,
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body },
+          { kind: 'facts', rows: [[t.labelVisibility, t.visibility[visibility]]] },
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/dashboard/account` },
+          { kind: 'security', value: t.security },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.warn('[email] visibility notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Applications
+// ---------------------------------------------------------------------------
 
 /** Employer: somebody applied. */
 export async function notifyEmployerOfApplication(applicationId: string): Promise<SendOutcome> {
@@ -155,7 +280,7 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
     const { data } = await admin
       .from('applications')
       .select(
-        'id, candidate_id, job:jobs (id, slug, title_ar, title_en, company:companies (owner_id))',
+        `id, created_at, experience_band, candidate_id, job:jobs (${JOB_FIELDS}, company:companies (owner_id))`,
       )
       .eq('id', applicationId)
       .maybeSingle();
@@ -163,7 +288,7 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
     const application = data as unknown as ApplicationForEmployer | null;
     const job = application?.job;
     const ownerId = job?.company?.owner_id;
-    if (!job || !ownerId) return 'skipped';
+    if (!application || !job || !ownerId) return 'skipped';
 
     const to = await recipient(admin, ownerId, 'notify_applications');
     if (!to) return 'skipped';
@@ -174,28 +299,43 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
       .eq('id', application.candidate_id)
       .maybeSingle();
 
-    const t = copyFor(to.locale).newApplication;
+    const c = copyFor(to.locale);
+    const t = c.newApplication;
     const title = localized(to.locale, job.title_ar, job.title_en);
     const name = candidate?.full_name ?? '';
 
-    return sendEmail(
-      compose({
-        to,
-        preference: 'notify_applications',
+    // Name and role only. The CV, the phone number and the record sit behind
+    // the button, where the employer is authenticated — an email is forwarded,
+    // quoted and left in inboxes, and none of that is a place to put a
+    // candidate's contact details.
+    return deliver({
+      template: 'new_application',
+      to: to.email,
+      userId: ownerId,
+      dedupeKey: `new_application:${applicationId}`,
+      entity: { type: 'application', id: applicationId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, 'notify_applications'),
         subject: t.subject(title),
         preheader: t.preheader,
         heading: t.heading,
-        paragraphs: [t.body(name, title)],
-        facts: [
-          [t.labelJob, title],
-          [t.labelApplicant, name],
+        blocks: [
+          { kind: 'text', value: t.body(name, title) },
+          {
+            kind: 'facts',
+            rows: [
+              [t.labelJob, title],
+              [t.labelApplicant, name],
+            ],
+          },
+          {
+            kind: 'button',
+            label: t.cta,
+            href: `${env.siteUrl}/employer/jobs/${job.id}/applicants`,
+          },
         ],
-        button: {
-          label: t.cta,
-          href: `${env.siteUrl}/employer/jobs/${job.id}/applicants`,
-        },
       }),
-    );
+    });
   } catch (error) {
     console.warn('[email] employer application notice failed:', asMessage(error));
     return 'failed';
@@ -205,75 +345,77 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
 /**
  * Candidate: their application landed.
  *
- * The counterpart to notifyEmployerOfApplication, and it should always have
- * been written at the same time. Sent on notify_status rather than a
- * preference of its own — somebody who has turned off "tell me when my
- * application moves" has said what they want, and a receipt is the first
- * movement.
+ * Transactional, and the one message here that most obviously is: it is a
+ * receipt for something the person just did. It carries no unsubscribe and
+ * checks no preference for the same reason a shop receipt does not.
  */
 export async function notifyCandidateOfApplication(applicationId: string): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
-
-    const { data } = await admin
-      .from('applications')
-      .select(
-        'id, candidate_id, job:jobs (id, slug, title_ar, title_en, company:companies (name_ar, name_en))',
-      )
-      .eq('id', applicationId)
-      .maybeSingle();
-
-    const application = data as unknown as ApplicationReceipt | null;
+    const application = await candidateApplication(admin, applicationId);
     const job = application?.job;
     if (!application || !job) return 'skipped';
 
-    const to = await recipient(admin, application.candidate_id, 'notify_status');
+    const to = await recipient(admin, application.candidate_id, null);
     if (!to) return 'skipped';
 
-    const t = copyFor(to.locale).applicationReceived;
+    const c = copyFor(to.locale);
+    const t = c.applicationReceived;
     const title = localized(to.locale, job.title_ar, job.title_en);
     const company = job.company
       ? localized(to.locale, job.company.name_ar, job.company.name_en)
       : '';
 
-    return sendEmail(
-      compose({
-        to,
-        preference: 'notify_status',
+    return deliver({
+      template: 'application_receipt',
+      to: to.email,
+      userId: application.candidate_id,
+      dedupeKey: `application_receipt:${applicationId}`,
+      entity: { type: 'application', id: applicationId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, null),
         subject: t.subject(title),
         preheader: t.preheader,
         heading: t.heading,
-        paragraphs: [t.body(title, company)],
-        facts: [
-          [t.labelJob, title],
-          [t.labelCompany, company],
+        blocks: [
+          { kind: 'text', value: t.body(title, company) },
+          {
+            kind: 'job',
+            title,
+            company,
+            href: `${env.siteUrl}/jobs/${job.slug}`,
+          },
+          {
+            kind: 'facts',
+            rows: [
+              [t.labelDate, formatDay(application.created_at, to.locale)],
+              // The application's own id, which is what support will ask for.
+              [t.labelRef, applicationId.slice(0, 8)],
+            ],
+          },
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/dashboard/applications` },
+          { kind: 'text', value: t.note },
         ],
-        button: {
-          label: t.cta,
-          href: `${env.siteUrl}/dashboard/applications`,
-        },
       }),
-    );
+    });
   } catch (error) {
     console.warn('[email] application receipt failed:', asMessage(error));
     return 'failed';
   }
 }
 
-/** Candidate: the employer moved them along, or didn't. */
+/**
+ * Candidate: the employer moved them along, or didn't.
+ *
+ * `rejected` gets its own template rather than the generic status card. The
+ * generic one reads as an administrative update, which is the wrong register
+ * for the message somebody least wants to receive — and it has a different job
+ * to do, which is to point at the rest of the board.
+ */
 export async function notifyCandidateOfStatus(applicationId: string): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
-
-    const { data } = await admin
-      .from('applications')
-      .select(
-        'id, status, decision_note, candidate_id, job:jobs (title_ar, title_en, company:companies (name_ar, name_en))',
-      )
-      .eq('id', applicationId)
-      .maybeSingle();
-
-    const application = data as unknown as ApplicationForCandidate | null;
+    const application = await candidateApplication(admin, applicationId);
     const job = application?.job;
     if (!application || !job) return 'skipped';
 
@@ -285,31 +427,168 @@ export async function notifyCandidateOfStatus(applicationId: string): Promise<Se
     const to = await recipient(admin, application.candidate_id, 'notify_status');
     if (!to) return 'skipped';
 
-    const t = copyFor(to.locale).statusChanged;
-    const statusLabels = copyFor(to.locale).status;
+    const c = copyFor(to.locale);
     const title = localized(to.locale, job.title_ar, job.title_en);
-    const company = localized(to.locale, job.company?.name_ar, job.company?.name_en);
+    const company = job.company
+      ? localized(to.locale, job.company.name_ar, job.company.name_en)
+      : '';
+    const audience = audienceOf(to, 'notify_status');
 
-    return sendEmail(
-      compose({
-        to,
-        preference: 'notify_status',
+    // Keyed on the status as well as the application, so a pipeline that goes
+    // shortlisted → interview → hired sends three messages, and an employer
+    // saving the same stage twice sends one.
+    const dedupeKey = `status:${applicationId}:${application.status}`;
+    const entity = { type: 'application', id: applicationId } as const;
+
+    if (application.status === 'rejected') {
+      const t = c.applicationRejected;
+      return deliver({
+        template: 'application_rejected',
+        to: to.email,
+        userId: application.candidate_id,
+        dedupeKey,
+        entity,
+        envelope: buildEnvelope({
+          audience,
+          subject: t.subject(title),
+          preheader: t.preheader,
+          heading: t.heading,
+          blocks: [
+            { kind: 'text', value: t.body(title, company) },
+            ...(application.decision_note
+              ? [{ kind: 'text' as const, value: application.decision_note }]
+              : []),
+            { kind: 'divider' },
+            { kind: 'text', value: t.encouragement },
+            { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs` },
+          ],
+        }),
+      });
+    }
+
+    const t = c.statusChanged;
+    return deliver({
+      template: 'application_status',
+      to: to.email,
+      userId: application.candidate_id,
+      dedupeKey,
+      entity,
+      envelope: buildEnvelope({
+        audience,
         subject: t.subject(title),
         preheader: t.preheader,
         heading: t.heading,
-        paragraphs: application.decision_note
-          ? [t.body(title, company), application.decision_note]
-          : [t.body(title, company)],
-        facts: [
-          [t.labelJob, title],
-          [t.labelCompany, company],
-          [t.labelStatus, statusLabels[application.status]],
+        blocks: [
+          { kind: 'text', value: t.body(title, company) },
+          { kind: 'status', label: c.status[application.status], tone: toneFor(application.status) },
+          {
+            kind: 'facts',
+            rows: [
+              [t.labelJob, title],
+              [t.labelCompany, company],
+            ],
+          },
+          ...(application.decision_note
+            ? [{ kind: 'text' as const, value: application.decision_note }]
+            : []),
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/dashboard/applications` },
         ],
-        button: { label: t.cta, href: `${env.siteUrl}/dashboard/applications` },
       }),
-    );
+    });
   } catch (error) {
     console.warn('[email] candidate status notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+/**
+ * Candidate: they withdrew.
+ *
+ * Takes the details rather than the id, because withdrawing deletes the row —
+ * by the time this runs there is nothing left to read.
+ */
+export async function notifyApplicationWithdrawn(args: {
+  userId: string;
+  applicationId: string;
+  jobTitleAr: string;
+  jobTitleEn: string | null;
+}): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const to = await recipient(admin, args.userId, null);
+    if (!to) return 'skipped';
+
+    const t = copyFor(to.locale).applicationWithdrawn;
+    const title = localized(to.locale, args.jobTitleAr, args.jobTitleEn);
+
+    return deliver({
+      template: 'application_withdrawn',
+      to: to.email,
+      userId: args.userId,
+      dedupeKey: `withdrawn:${args.applicationId}`,
+      envelope: buildEnvelope({
+        audience: audienceOf(to, null),
+        subject: t.subject(title),
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body(title) },
+          { kind: 'facts', rows: [[t.labelJob, title]] },
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs` },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.warn('[email] withdrawal notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Listings
+// ---------------------------------------------------------------------------
+
+/** Employer: their listing entered the review queue. */
+export async function notifyJobSubmitted(jobId: string): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const job = await ownedJob(admin, jobId);
+    const ownerId = job?.company?.owner_id;
+    if (!job || !ownerId) return 'skipped';
+
+    const to = await recipient(admin, ownerId, null);
+    if (!to) return 'skipped';
+
+    const t = copyFor(to.locale).jobSubmitted;
+    const title = localized(to.locale, job.title_ar, job.title_en);
+
+    return deliver({
+      template: 'job_submitted',
+      to: to.email,
+      userId: ownerId,
+      dedupeKey: `job_submitted:${jobId}`,
+      entity: { type: 'job', id: jobId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, null),
+        subject: t.subject(title),
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body(title) },
+          {
+            kind: 'facts',
+            rows: [
+              [t.labelJob, title],
+              [t.labelDate, formatDay(new Date().toISOString(), to.locale)],
+              [t.labelStatus, t.statusPending],
+            ],
+          },
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs` },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.warn('[email] job submitted notice failed:', asMessage(error));
     return 'failed';
   }
 }
@@ -322,14 +601,7 @@ export async function notifyEmployerOfModeration(
 ): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
-
-    const { data } = await admin
-      .from('jobs')
-      .select('id, slug, title_ar, title_en, company:companies (owner_id)')
-      .eq('id', jobId)
-      .maybeSingle();
-
-    const job = data as unknown as JobForModeration | null;
+    const job = await ownedJob(admin, jobId);
     const ownerId = job?.company?.owner_id;
     if (!job || !ownerId) return 'skipped';
 
@@ -337,52 +609,172 @@ export async function notifyEmployerOfModeration(
     if (!to) return 'skipped';
 
     const c = copyFor(to.locale);
-    const t = approved ? c.jobApproved : c.jobRejected;
     const title = localized(to.locale, job.title_ar, job.title_en);
+    const audience = audienceOf(to, 'notify_status');
 
-    const paragraphs = [t.body(title)];
-    if (!approved && note) paragraphs.push(c.jobRejected.reason(note));
+    if (approved) {
+      const t = c.jobApproved;
+      return deliver({
+        template: 'job_approved',
+        to: to.email,
+        userId: ownerId,
+        dedupeKey: `job_approved:${jobId}`,
+        entity: { type: 'job', id: jobId },
+        envelope: buildEnvelope({
+          audience,
+          subject: t.subject(title),
+          preheader: t.preheader,
+          heading: t.heading,
+          blocks: [
+            { kind: 'text', value: t.body(title) },
+            {
+              kind: 'facts',
+              rows: [
+                [t.labelJob, title],
+                ...(job.published_at
+                  ? ([[t.labelPublished, formatDay(job.published_at, to.locale)]] as [
+                      string,
+                      string,
+                    ][])
+                  : []),
+                ...(job.expires_at
+                  ? ([[t.labelExpires, formatDay(job.expires_at, to.locale)]] as [string, string][])
+                  : []),
+              ],
+            },
+            { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs/${job.slug}` },
+          ],
+        }),
+      });
+    }
 
-    return sendEmail(
-      compose({
-        to,
-        preference: 'notify_status',
+    const t = c.jobRejected;
+    return deliver({
+      template: 'job_rejected',
+      to: to.email,
+      userId: ownerId,
+      dedupeKey: `job_rejected:${jobId}`,
+      entity: { type: 'job', id: jobId },
+      envelope: buildEnvelope({
+        audience,
         subject: t.subject(title),
         preheader: t.preheader,
         heading: t.heading,
-        paragraphs,
-        facts: [[t.labelJob, title]],
-        button: {
-          label: t.cta,
-          href: approved
-            ? `${env.siteUrl}/jobs/${job.slug}`
-            : `${env.siteUrl}/employer/jobs/${job.id}/edit`,
-        },
+        blocks: [
+          { kind: 'text', value: t.body(title) },
+          ...(note ? [{ kind: 'text' as const, value: t.reason(note) }] : []),
+          { kind: 'facts', rows: [[t.labelJob, title]] },
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs/${job.id}/edit` },
+        ],
       }),
-    );
+    });
   } catch (error) {
     console.warn('[email] moderation notice failed:', asMessage(error));
     return 'failed';
   }
 }
 
+/** Employer: a listing is near the end of its run, or past it. */
+export async function notifyJobExpiry(
+  jobId: string,
+  stage: 'expiring' | 'expired',
+  applicantCount: number,
+): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const job = await ownedJob(admin, jobId);
+    const ownerId = job?.company?.owner_id;
+    if (!job || !ownerId) return 'skipped';
+
+    const to = await recipient(admin, ownerId, 'notify_status');
+    if (!to) return 'skipped';
+
+    const c = copyFor(to.locale);
+    const title = localized(to.locale, job.title_ar, job.title_en);
+    const audience = audienceOf(to, 'notify_status');
+    const count = String(applicantCount);
+
+    if (stage === 'expiring') {
+      const t = c.jobExpiring;
+      const days = daysUntil(job.expires_at);
+      return deliver({
+        template: 'job_expiring',
+        to: to.email,
+        userId: ownerId,
+        // One warning per listing per run, ever. A listing that is renewed and
+        // expires again is a different expires_at and so a different key.
+        dedupeKey: `job_expiring:${jobId}:${job.expires_at ?? ''}`,
+        entity: { type: 'job', id: jobId },
+        envelope: buildEnvelope({
+          audience,
+          subject: t.subject(title),
+          preheader: t.preheader,
+          heading: t.heading,
+          blocks: [
+            { kind: 'text', value: t.body(title, days) },
+            {
+              kind: 'facts',
+              rows: [
+                [t.labelJob, title],
+                ...(job.expires_at
+                  ? ([[t.labelExpires, formatDay(job.expires_at, to.locale)]] as [string, string][])
+                  : []),
+                [t.labelApplicants, count],
+              ],
+            },
+            { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs` },
+          ],
+        }),
+      });
+    }
+
+    const t = c.jobExpired;
+    return deliver({
+      template: 'job_expired',
+      to: to.email,
+      userId: ownerId,
+      dedupeKey: `job_expired:${jobId}:${job.expires_at ?? ''}`,
+      entity: { type: 'job', id: jobId },
+      envelope: buildEnvelope({
+        audience,
+        subject: t.subject(title),
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body(title) },
+          {
+            kind: 'facts',
+            rows: [
+              [t.labelJob, title],
+              ...(job.expires_at
+                ? ([[t.labelExpired, formatDay(job.expires_at, to.locale)]] as [string, string][])
+                : []),
+              [t.labelApplicants, count],
+            ],
+          },
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs` },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.warn('[email] expiry notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Company
+// ---------------------------------------------------------------------------
+
 /**
- * An employer is told what the review decided.
+ * An employer is told what the account review decided.
  *
- * The one message here that ignores notification preferences, and the one that
- * carries no unsubscribe link.
- *
- * Those preferences cover a stream of things that keep happening — applicants,
- * status changes, a weekly digest — and turning them off is a reasonable thing
- * to want. This is not that. It is the answer to a question the person asked
- * by signing up, and it arrives once. Suppressing it would leave somebody
- * waiting forever on a decision that was already made, with an account that
- * looks broken and no way to find out why. Transactional mail is exempt for
- * exactly this reason, so the footer offers no unsubscribe rather than
- * offering one that would be ignored.
- *
- * It is also the only notice that reliably reaches them: an employer waiting
- * to be approved is, by definition, not sitting in the console watching a bell.
+ * Transactional, and one of the clearest cases: it is the answer to a question
+ * the person asked by signing up, and it arrives once. Suppressing it would
+ * leave somebody waiting forever on a decision that was already made, with an
+ * account that looks broken and no way to find out why. It is also the only
+ * notice that reliably reaches them — an employer waiting to be approved is,
+ * by definition, not sitting in the console watching a bell.
  */
 export async function notifyAccountDecision(
   userId: string,
@@ -391,48 +783,36 @@ export async function notifyAccountDecision(
 ): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
+    const to = await recipient(admin, userId, null);
+    if (!to) return 'skipped';
 
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('locale, role')
-      .eq('id', userId)
-      .maybeSingle();
-    if (!profile) return 'skipped';
-
-    const { data, error } = await admin.auth.admin.getUserById(userId);
-    if (error || !data.user?.email) return 'skipped';
-
-    const locale = localeOf(profile.locale);
-    const c = copyFor(locale);
+    const c = copyFor(to.locale);
     const t = approved ? c.accountApproved : c.accountRejected;
 
-    // Annotated, or the array narrows to the literal type of the first copy
-    // string and refuses the reason and contact lines pushed after it.
-    const paragraphs: string[] = [t.body];
-    if (!approved) {
-      if (note) paragraphs.push(c.accountRejected.reason(note));
-      paragraphs.push(c.accountRejected.contact);
-    }
-
-    const shared = {
-      heading: t.heading,
-      paragraphs,
-      button: approved
-        ? { label: c.accountApproved.cta, href: `${env.siteUrl}/employer/jobs/new` }
-        : undefined,
-      footerNote: c.footerNote,
-    };
-
-    return sendEmail({
-      to: data.user.email,
-      subject: t.subject,
-      html: renderEmail({
-        locale,
-        siteName: c.siteName,
+    return deliver({
+      template: approved ? 'account_approved' : 'account_rejected',
+      to: to.email,
+      userId,
+      // Not keyed on the decision alone: an account suspended, restored and
+      // suspended again must say so each time. The timestamp is the run.
+      dedupeKey: `account:${userId}:${approved}:${new Date().toISOString().slice(0, 13)}`,
+      entity: { type: 'profile', id: userId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, null),
+        subject: t.subject,
         preheader: t.preheader,
-        ...shared,
+        heading: t.heading,
+        blocks: approved
+          ? [
+              { kind: 'text', value: t.body },
+              { kind: 'button', label: c.accountApproved.cta, href: `${env.siteUrl}/employer/jobs/new` },
+            ]
+          : [
+              { kind: 'text', value: t.body },
+              ...(note ? [{ kind: 'text' as const, value: c.accountRejected.reason(note) }] : []),
+              { kind: 'security', value: c.accountRejected.contact },
+            ],
       }),
-      text: renderText(shared),
     });
   } catch (error) {
     console.warn('[email] account decision notice failed:', asMessage(error));
@@ -440,10 +820,70 @@ export async function notifyAccountDecision(
   }
 }
 
-function asMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+/** Employer: the document review finished, one way or the other. */
+export async function notifyCompanyVerification(
+  companyId: string,
+  verified: boolean,
+  note?: string | null,
+): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+
+    const { data: company } = await admin
+      .from('companies')
+      .select('id, slug, name_ar, name_en, owner_id, logo_url')
+      .eq('id', companyId)
+      .maybeSingle();
+    if (!company) return 'skipped';
+
+    const to = await recipient(admin, company.owner_id, null);
+    if (!to) return 'skipped';
+
+    const c = copyFor(to.locale);
+    const t = verified ? c.companyVerified : c.companyVerificationNeeded;
+    const name = localized(to.locale, company.name_ar, company.name_en);
+
+    return deliver({
+      template: verified ? 'company_verified' : 'company_verification_needed',
+      to: to.email,
+      userId: company.owner_id,
+      dedupeKey: `company_verification:${companyId}:${verified}`,
+      entity: { type: 'company', id: companyId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, null),
+        subject: t.subject,
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body(name) },
+          {
+            kind: 'company',
+            name,
+            logoUrl: company.logo_url,
+            href: `${env.siteUrl}/companies/${company.slug}`,
+          },
+          ...(!verified && note
+            ? [{ kind: 'text' as const, value: c.companyVerificationNeeded.reason(note) }]
+            : []),
+          {
+            kind: 'button',
+            label: t.cta,
+            href: verified
+              ? `${env.siteUrl}/companies/${company.slug}`
+              : `${env.siteUrl}/employer/company`,
+          },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.warn('[email] company verification notice failed:', asMessage(error));
+    return 'failed';
+  }
 }
 
+// ---------------------------------------------------------------------------
+// Optional
+// ---------------------------------------------------------------------------
 
 /**
  * The weekly roundup for one saved search.
@@ -451,13 +891,14 @@ function asMessage(error: unknown): string {
  * Takes the matching jobs rather than finding them, so the alert job owns the
  * "what is new since last time" question and this owns only the message. It
  * still checks the recipient's preference, because a digest is the one message
- * here that is closest to marketing and the least excusable to get wrong.
+ * here closest to marketing and the least excusable to get wrong.
  */
 export async function sendSavedSearchDigest(args: {
   userId: string;
+  searchId: string;
   label: string;
   query: string;
-  jobs: { title: string; company: string }[];
+  jobs: { title: string; company: string; slug: string; meta?: string[] }[];
 }): Promise<SendOutcome> {
   if (args.jobs.length === 0) return 'skipped';
 
@@ -468,24 +909,179 @@ export async function sendSavedSearchDigest(args: {
 
     const t = copyFor(to.locale).digest;
 
-    return sendEmail(
-      compose({
-        to,
-        preference: 'notify_digest',
+    return deliver({
+      template: 'saved_search_digest',
+      to: to.email,
+      userId: args.userId,
+      // One per search per week. The week number is the run, so a cron that
+      // fires twice on the same Monday sends one message.
+      dedupeKey: `digest:${args.searchId}:${isoWeek()}`,
+      entity: { type: 'saved_search', id: args.searchId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, 'notify_digest'),
         subject: t.subject(args.jobs.length, args.label),
         preheader: t.preheader,
         heading: t.heading,
-        paragraphs: [t.body(args.label)],
-        // One row per role: the title, and who is hiring for it.
-        facts: args.jobs.map((job) => [job.title, job.company] as [string, string]),
-        button: {
-          label: t.cta,
-          href: `${env.siteUrl}/jobs${args.query ? `?${args.query}` : ''}`,
-        },
+        blocks: [
+          { kind: 'text', value: t.body(args.label) },
+          ...args.jobs.slice(0, 6).map(
+            (job) =>
+              ({
+                kind: 'job',
+                title: job.title,
+                company: job.company,
+                meta: job.meta,
+                href: `${env.siteUrl}/jobs/${job.slug}`,
+              }) as const,
+          ),
+          {
+            kind: 'button',
+            label: t.cta,
+            href: `${env.siteUrl}/jobs${args.query ? `?${args.query}` : ''}`,
+          },
+        ],
       }),
-    );
+    });
   } catch (error) {
     console.warn('[email] saved-search digest failed:', asMessage(error));
     return 'failed';
   }
+}
+
+/**
+ * Employer: one message a day instead of one per applicant.
+ *
+ * The individual notice is the default because it is what a small company
+ * wants. This exists for the listing that gets twenty applications in an
+ * afternoon, where twenty emails is not twenty times as useful — it is one
+ * useful email and nineteen reasons to switch notifications off entirely.
+ */
+export async function sendApplicantDigest(args: {
+  userId: string;
+  count: number;
+  jobs: { title: string; company: string; slug: string; meta?: string[] }[];
+}): Promise<SendOutcome> {
+  if (args.count === 0) return 'skipped';
+
+  try {
+    const admin = createAdminClient();
+    const to = await recipient(admin, args.userId, 'notify_applications');
+    if (!to) return 'skipped';
+
+    const t = copyFor(to.locale).applicantDigest;
+
+    return deliver({
+      template: 'applicant_digest',
+      to: to.email,
+      userId: args.userId,
+      dedupeKey: `applicant_digest:${args.userId}:${new Date().toISOString().slice(0, 10)}`,
+      envelope: buildEnvelope({
+        audience: audienceOf(to, 'notify_applications'),
+        subject: t.subject(args.count),
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body(args.count) },
+          ...args.jobs.slice(0, 6).map(
+            (job) =>
+              ({
+                kind: 'job',
+                title: job.title,
+                company: job.company,
+                meta: job.meta,
+                href: `${env.siteUrl}/employer/jobs`,
+              }) as const,
+          ),
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/applicants` },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.warn('[email] applicant digest failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared
+// ---------------------------------------------------------------------------
+
+function audienceOf(to: Recipient, preference: Preference): Audience {
+  return {
+    locale: to.locale,
+    // Transactional mail carries no unsubscribe: there is nothing to
+    // unsubscribe from, and offering one that would be ignored is worse than
+    // offering none.
+    unsubscribe: preference
+      ? `${env.siteUrl}/unsubscribe?token=${to.unsubscribeToken}&kind=${preference}`
+      : undefined,
+  };
+}
+
+async function candidateApplication(
+  admin: ReturnType<typeof createAdminClient>,
+  applicationId: string,
+) {
+  const { data } = await admin
+    .from('applications')
+    .select(
+      `id, status, created_at, decision_note, candidate_id, job:jobs (${JOB_FIELDS}, company:companies (name_ar, name_en, slug))`,
+    )
+    .eq('id', applicationId)
+    .maybeSingle();
+  return data as unknown as ApplicationForCandidate | null;
+}
+
+async function ownedJob(admin: ReturnType<typeof createAdminClient>, jobId: string) {
+  const { data } = await admin
+    .from('jobs')
+    .select(`${JOB_FIELDS}, company:companies (owner_id, name_ar)`)
+    .eq('id', jobId)
+    .maybeSingle();
+  return data as unknown as JobForOwner | null;
+}
+
+function toneFor(status: ApplicationStatus) {
+  switch (status) {
+    case 'hired':
+      return 'positive' as const;
+    case 'rejected':
+      return 'closed' as const;
+    case 'interview':
+      return 'caution' as const;
+    case 'shortlisted':
+      return 'info' as const;
+    default:
+      return 'neutral' as const;
+  }
+}
+
+/**
+ * Western digits in both languages, matching the convention the interface
+ * already follows — and `en-GB` under the hood for Arabic, because
+ * `ar-EG` renders Arabic-Indic numerals.
+ */
+function formatDay(value: string, locale: 'ar' | 'en'): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Africa/Cairo',
+  }).format(date);
+}
+
+function daysUntil(value: string | null): number {
+  if (!value) return 0;
+  const diff = new Date(value).getTime() - Date.now();
+  return Math.max(1, Math.ceil(diff / 86_400_000));
+}
+
+/** Year and week, so a digest is keyed to the run rather than the day. */
+function isoWeek(): string {
+  const now = new Date();
+  const start = Date.UTC(now.getUTCFullYear(), 0, 1);
+  const week = Math.floor((now.getTime() - start) / (7 * 86_400_000));
+  return `${now.getUTCFullYear()}w${week}`;
 }

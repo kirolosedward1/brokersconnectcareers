@@ -38,6 +38,17 @@ export const env = {
   get cronSecret() {
     return process.env.CRON_SECRET ?? '';
   },
+  /**
+   * Where an email tells somebody to go when it did not answer their question.
+   *
+   * Optional, and unset by default, because this platform has no support page
+   * and no ticketing — inventing a /help link would put a 404 at the bottom of
+   * every message. Set it and every email grows a help line; leave it and none
+   * of them claims a support channel that does not exist.
+   */
+  get supportEmail() {
+    return process.env.SUPPORT_EMAIL ?? '';
+  },
 };
 
 /**

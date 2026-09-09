@@ -492,7 +492,18 @@
       "pending": "Under review",
       "rejected": "Suspended"
     },
-    "waiting": "{days, plural, =0 {today} one {waiting 1 day} other {waiting # days}}"
+    "waiting": "{days, plural, =0 {today} one {waiting 1 day} other {waiting # days}}",
+    "emailActivity": "Email activity",
+    "emailActivityLede": "Every message the platform sent, and what became of it.",
+    "emailAll": "All",
+    "emailEmpty": "No messages yet.",
+    "emailRecipient": "Recipient",
+    "emailTemplate": "Template",
+    "emailStatusColumn": "Status",
+    "emailSentAt": "Sent",
+    "emailDeliveredAt": "Delivered",
+    "emailError": "Reason",
+    "emailPreviewHint": "Every template can be previewed at"
   },
   "reportReason": {
     "fake_listing": "Fake listing",
@@ -829,5 +840,14 @@
     "company_verified": "{subject} is verified",
     "account_approved": "Your account is active",
     "account_rejected": "Your account is suspended"
+  },
+  "emailStatus": {
+    "queued": "Queued",
+    "sent": "Sent",
+    "delivered": "Delivered",
+    "bounced": "Bounced",
+    "complained": "Complaint",
+    "failed": "Failed",
+    "suppressed": "Suppressed"
   }
 }

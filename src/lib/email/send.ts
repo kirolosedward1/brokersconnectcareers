@@ -1,17 +1,20 @@
 import 'server-only';
 
 /**
- * Resend, over its REST API rather than its SDK.
+ * The provider transport. One POST, and nothing above this layer knows the
+ * provider's name.
  *
- * Sending an email is one POST with a JSON body. The SDK would add a
- * dependency, a bundle, and a release cadence to track, in exchange for
- * wrapping `fetch`.
+ * Resend over its REST API rather than its SDK: sending an email is one POST
+ * with a JSON body, and the SDK would add a dependency, a bundle and a release
+ * cadence to track in exchange for wrapping `fetch`.
  *
- * Nothing in here throws. Email is a side effect of an action, never the
- * point of it: a candidate's application must be recorded whether or not the
- * employer's notification goes out, and an unconfigured RESEND_API_KEY — which
- * is the state of every environment right now — must not turn applying to a
- * job into an error.
+ * Nothing here throws. Email is a side effect of an action, never the point of
+ * it — a candidate's application must be recorded whether or not the
+ * employer's notification goes out.
+ *
+ * This layer does not decide *whether* to send, does not deduplicate and does
+ * not log to the database. That is service.ts, which is the only thing that
+ * should call this.
  */
 
 const ENDPOINT = 'https://api.resend.com/emails';
@@ -25,19 +28,48 @@ export type EmailMessage = {
    * RFC 8058 one-click unsubscribe. Gmail and Outlook render their own
    * unsubscribe control from these headers, and bulk senders that omit them
    * get filtered harder. The URL must accept POST.
+   *
+   * Absent on transactional mail — a password reset carries no unsubscribe,
+   * because there is nothing to unsubscribe from.
    */
   unsubscribeUrl?: string;
 };
 
 export type SendOutcome = 'sent' | 'skipped' | 'failed';
 
-export async function sendEmail(message: EmailMessage): Promise<SendOutcome> {
+export type SendResult = {
+  outcome: SendOutcome;
+  /** Resend's id for the message. The webhook arrives knowing only this. */
+  providerId?: string;
+  error?: string;
+  /**
+   * Whether trying again could plausibly work. A 422 for a malformed address
+   * will fail identically forever; a 429 or a 502 will not.
+   */
+  retryable?: boolean;
+};
+
+/**
+ * The sender, from configuration.
+ *
+ * RESEND_FROM carries the whole `Name <address>` form so the display name is
+ * configurable too, rather than being spelled into a template somewhere.
+ */
+export function configuredSender(): string | null {
+  return process.env.RESEND_FROM || null;
+}
+
+export function emailConfigured(): boolean {
+  return Boolean(process.env.RESEND_API_KEY && configuredSender());
+}
+
+export async function sendEmail(message: EmailMessage): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM;
+  const from = configuredSender();
 
   if (!key || !from) {
     console.warn(`[email] not configured; skipped "${message.subject}"`);
-    return 'skipped';
+    return { outcome: 'skipped', error: 'not_configured' };
   }
 
   const headers: Record<string, string> = {};
@@ -66,20 +98,23 @@ export async function sendEmail(message: EmailMessage): Promise<SendOutcome> {
     if (!response.ok) {
       // Read the body: Resend puts the actual reason (unverified domain,
       // invalid recipient) in it, and the status alone is not diagnosable.
-      console.warn(
-        `[email] send failed (${response.status}) for "${message.subject}": ${await response
-          .text()
-          .catch(() => '<unreadable>')}`,
-      );
-      return 'failed';
+      const detail = await response.text().catch(() => '<unreadable>');
+      console.warn(`[email] send failed (${response.status}) for "${message.subject}": ${detail}`);
+      return {
+        outcome: 'failed',
+        error: `${response.status}: ${detail}`.slice(0, 500),
+        // 4xx is the request being wrong and will stay wrong — except 408 and
+        // 429, which are about timing. Everything else is worth another go.
+        retryable: response.status === 408 || response.status === 429 || response.status >= 500,
+      };
     }
 
-    return 'sent';
+    const body = (await response.json().catch(() => null)) as { id?: string } | null;
+    return { outcome: 'sent', providerId: body?.id };
   } catch (error) {
-    console.warn(
-      `[email] send threw for "${message.subject}":`,
-      error instanceof Error ? error.message : error,
-    );
-    return 'failed';
+    // A network failure, not a refusal.
+    const message_ = error instanceof Error ? error.message : String(error);
+    console.warn(`[email] send threw for "${message.subject}":`, message_);
+    return { outcome: 'failed', error: message_.slice(0, 500), retryable: true };
   }
 }
