@@ -57,6 +57,17 @@ export const emailCopy = {
       cta: 'ابدأ استخدام بروكرز كونكت',
     },
 
+    passwordChanged: {
+      subject: 'اتغيّرت كلمة المرور بتاعتك',
+      preheader: 'تأكيد أمني على حسابك.',
+      heading: 'كلمة المرور اتغيّرت',
+      body: 'كلمة المرور بتاعت حسابك في بروكرز كونكت اتغيّرت دلوقتي.',
+      security:
+        'لو مش إنت اللي غيّرتها، اعمل «نسيت كلمة المرور» فوراً عشان تسترجع الحساب.',
+      cta: 'إعدادات الحساب',
+      labelWhen: 'وقت التغيير',
+    },
+
     profileReady: {
       subject: 'ملفك المهني بقى جاهز',
       preheader: 'ملفك ظاهر للشركات دلوقتي.',
@@ -239,16 +250,6 @@ export const emailCopy = {
       contact: 'لو ده مش صح، ابعتلنا من صفحة المساعدة وهنراجعها.',
     },
 
-    companyCreated: {
-      subject: 'اتعمل حساب شركتك',
-      preheader: 'كمّل بيانات الشركة عشان تنشر.',
-      heading: 'حساب شركتك جاهز',
-      body: (company: string) =>
-        `سجّلنا «${company}». كمّل البيانات والمستندات عشان نوثّق الحساب — الشركات الموثّقة بيظهر عليها علامة توثيق وبتوصل لمستشارين أكتر.`,
-      cta: 'كمّل بيانات الشركة',
-      labelCompany: 'الشركة',
-    },
-
     companyVerified: {
       subject: 'تم توثيق شركتك',
       preheader: 'علامة التوثيق ظهرت على صفحتك.',
@@ -334,6 +335,17 @@ export const emailCopy = {
       body: 'Your company account is set up. Post roles, receive applicants in one place, and reach them on WhatsApp from inside the platform.',
       hint: 'Complete company details and verification bring more, and better, applicants.',
       cta: 'Get started',
+    },
+
+    passwordChanged: {
+      subject: 'Your password was changed',
+      preheader: 'A security confirmation for your account.',
+      heading: 'Your password was changed',
+      body: 'The password on your Brokers Connect account has just been changed.',
+      security:
+        'If this was not you, use "forgot password" straight away to take the account back.',
+      cta: 'Account settings',
+      labelWhen: 'Changed at',
     },
 
     profileReady: {
@@ -504,16 +516,6 @@ export const emailCopy = {
       body: 'We have paused the account until we can review the details again.',
       reason: (note: string) => `Reason: ${note}`,
       contact: 'If this is wrong, write to us from the help page and we will look again.',
-    },
-
-    companyCreated: {
-      subject: 'Your company account is set up',
-      preheader: 'Complete the details to publish.',
-      heading: 'Your company account is ready',
-      body: (company: string) =>
-        `"${company}" is registered. Complete the details and documents so we can verify the account — verified companies carry a badge and reach more consultants.`,
-      cta: 'Complete company details',
-      labelCompany: 'Company',
     },
 
     companyVerified: {

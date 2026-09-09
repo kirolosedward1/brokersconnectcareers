@@ -178,6 +178,12 @@ report.ok(sent.length >= 18, `notify.ts sends ${sent.length} distinct templates`
 const missing = [...new Set(sent)].filter((name) => !previewed.has(name));
 report.is(missing.join(', ') || 'none', 'none', 'no template can be sent without a preview');
 
+// And the other direction: a preview for something nothing sends is a template
+// that was dropped from the product and left in the gallery, where it reads as
+// a message users receive.
+const orphaned = [...previewed].filter((name) => !sent.includes(name));
+report.is(orphaned.join(', ') || 'none', 'none', 'no preview outlives the template it previews');
+
 // ---------------------------------------------------------------------------
 // Idempotency, against the real schema
 // ---------------------------------------------------------------------------

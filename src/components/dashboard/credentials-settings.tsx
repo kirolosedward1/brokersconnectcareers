@@ -6,6 +6,7 @@ import { Check, KeyRound, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
+import { announcePasswordChange } from '@/lib/actions/account';
 
 /**
  * Change your password, change your email.
@@ -70,6 +71,12 @@ export function CredentialsSettings({
       }
       form.reset();
       setPasswordDone(true);
+
+      // A security notice, sent after the change rather than instead of it:
+      // the password is already changed at this point, and a mail failure must
+      // not make a successful change look like a failed one. The action mails
+      // this session's own account and nothing else.
+      void announcePasswordChange();
     });
   }
 

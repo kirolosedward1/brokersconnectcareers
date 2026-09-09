@@ -53,6 +53,8 @@ export type ProfileRow = Timestamped & {
   notify_status: boolean;
   /** Candidate: the weekly roundup of matching roles. */
   notify_digest: boolean;
+  /** Employer: batch applicant notices into one daily email. Gated by notify_applications. */
+  notify_applicant_digest: boolean;
   /** Credential for the unsubscribe link, which has no session to rely on. */
   unsubscribe_token: string;
   /**
@@ -610,6 +612,14 @@ export type Database = {
         Returns: undefined;
       };
       release_email_claim: { Args: { p_id: string }; Returns: undefined };
+      pending_applicant_digests: {
+        Args: { p_since?: string };
+        Returns: { user_id: string; applicant_count: number; job_ids: string[] }[];
+      };
+      incomplete_candidate_profiles: {
+        Args: { p_limit?: number };
+        Returns: { user_id: string }[];
+      };
       pending_emails: {
         Args: { p_limit?: number };
         Returns: { id: string; template: string; entity_id: string | null; attempts: number }[];

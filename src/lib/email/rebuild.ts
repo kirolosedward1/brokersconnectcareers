@@ -7,6 +7,7 @@ import {
   notifyEmployerOfApplication,
   notifyEmployerOfModeration,
   notifyJobSubmitted,
+  notifyProfileIncomplete,
   notifyWelcome,
 } from './notify';
 import type { SendOutcome } from './send';
@@ -41,6 +42,7 @@ export const REBUILDERS: Record<string, Rebuild> = {
   company_verification_needed: (id) => notifyCompanyVerification(id, false),
   welcome_candidate: (id) => notifyWelcome(id),
   welcome_employer: (id) => notifyWelcome(id),
+  profile_incomplete: (id) => notifyProfileIncomplete(id),
 };
 
 /**
@@ -63,6 +65,9 @@ export const NOT_RETRYABLE = [
   'visibility_changed',
   'account_approved',
   'account_rejected',
+  // Evidence-gated on auth.users.updated_at having moved in the last few
+  // minutes, so a retry an hour later would correctly send nothing.
+  'password_changed',
 ] as const;
 
 /** Unused export kept honest: every template is either rebuilt or listed above. */

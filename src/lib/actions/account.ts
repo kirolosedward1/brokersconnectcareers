@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ActionResult } from '@/lib/actions/jobs';
+import { after } from 'next/server';
+import { notifyPasswordChanged } from '@/lib/email/notify';
 
 /**
  * Deleting your own account.
@@ -78,14 +80,40 @@ export async function deleteMyAccount(): Promise<ActionResult> {
 }
 
 
+/**
+ * Tell the account holder their password changed.
+ *
+ * Supabase's updateUser runs in the browser, so nothing on the server sees the
+ * change happen — this is how the server hears about it. That makes it the one
+ * email trigger reachable by a caller who is merely signed in, so it takes no
+ * arguments at all: there is no user id to pass, no address to specify, and
+ * nothing to point somewhere else. It mails the session's own account or it
+ * does nothing.
+ *
+ * The claim is checked rather than believed. notifyPasswordChanged requires
+ * auth.users.updated_at to have moved in the last few minutes, so calling this
+ * without changing anything sends nothing.
+ */
+export async function announcePasswordChange(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  after(() => notifyPasswordChanged(user.id));
+  return { ok: true };
+}
+
 const preferencesSchema = z.object({
   notify_applications: z.boolean(),
   notify_status: z.boolean(),
   notify_digest: z.boolean(),
+  notify_applicant_digest: z.boolean(),
 });
 
 /**
- * The three email switches.
+ * The email switches.
  *
  * Written through the caller's own session, so RLS decides which row this can
  * touch, and guard_profile_update rejects any attempt to smuggle a role change

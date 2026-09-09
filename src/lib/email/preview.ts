@@ -111,6 +111,21 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
+  password_changed: (f) => {
+    const t = copyFor(f.locale).passwordChanged;
+    return {
+      subject: t.subject,
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.body },
+        { kind: 'facts', rows: [[t.labelWhen, `${day(f)} — 14:32`]] },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/dashboard/account`, variant: 'secondary' },
+        { kind: 'security', value: t.security },
+      ],
+    };
+  },
+
   profile_ready: (f) => {
     const c = copyFor(f.locale);
     const t = c.profileReady;
@@ -388,21 +403,6 @@ const BUILDERS: Record<string, Builder> = {
         { kind: 'text', value: t.body },
         ...(note ? [{ kind: 'text' as const, value: t.reason(note) }] : []),
         { kind: 'security', value: t.contact },
-      ],
-    };
-  },
-
-  company_created: (f) => {
-    const w = words(f);
-    const t = copyFor(f.locale).companyCreated;
-    return {
-      subject: t.subject,
-      preheader: t.preheader,
-      heading: t.heading,
-      blocks: [
-        { kind: 'text', value: t.body(w.company) },
-        { kind: 'company', name: w.company, href: `${env.siteUrl}/companies/example` },
-        { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/company` },
       ],
     };
   },

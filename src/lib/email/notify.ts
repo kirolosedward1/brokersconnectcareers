@@ -181,6 +181,113 @@ export async function notifyWelcome(userId: string): Promise<SendOutcome> {
 }
 
 /**
+ * Somebody's password changed.
+ *
+ * The only message here triggered by the browser rather than by the server
+ * that performed the thing — Supabase's updateUser runs client-side, so no
+ * server action sees it happen. That makes it the one place an email could be
+ * asked for by a caller that is merely signed in, so the request is checked
+ * against evidence rather than taken on trust: auth.users.updated_at has to
+ * have moved within the last few minutes, which only a real credential change
+ * does.
+ *
+ * Transactional and unconditional. A security notice somebody has switched off
+ * is a security notice that does not exist, and the entire value of this one is
+ * telling a person about a change they did not make.
+ */
+export async function notifyPasswordChanged(userId: string): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+
+    const { data: account, error } = await admin.auth.admin.getUserById(userId);
+    if (error || !account.user?.email) return 'skipped';
+
+    // The evidence. Without it this is a button that mails anybody who is
+    // signed in, as often as they press it.
+    const changedAt = account.user.updated_at ? new Date(account.user.updated_at) : null;
+    if (!changedAt || Date.now() - changedAt.getTime() > 5 * 60_000) return 'skipped';
+
+    const to = await recipient(admin, userId, null);
+    if (!to) return 'skipped';
+
+    const t = copyFor(to.locale).passwordChanged;
+
+    return deliver({
+      template: 'password_changed',
+      to: to.email,
+      userId,
+      // Keyed to the change itself, so pressing save twice is one email and a
+      // genuine second change tomorrow is a second one.
+      dedupeKey: `password_changed:${userId}:${changedAt.toISOString()}`,
+      entity: { type: 'profile', id: userId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, null),
+        subject: t.subject,
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body },
+          { kind: 'facts', rows: [[t.labelWhen, formatMoment(changedAt, to.locale)]] },
+          {
+            kind: 'button',
+            label: t.cta,
+            href: `${env.siteUrl}/dashboard/account`,
+            variant: 'secondary',
+          },
+          { kind: 'security', value: t.security },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.warn('[email] password notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+/**
+ * A candidate signed up and never finished.
+ *
+ * Once ever, which the copy promises and the dedupe key is what actually
+ * guarantees — the cron's query will keep returning the same person every
+ * morning until they either finish or age out of its window, and nothing in
+ * that query knows whether they have already been told.
+ */
+export async function notifyProfileIncomplete(userId: string): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    // On notify_digest rather than transactional: this is a nudge, not an
+    // answer to anything the person asked for, and it is the closest thing
+    // here to marketing.
+    const to = await recipient(admin, userId, 'notify_digest');
+    if (!to) return 'skipped';
+
+    const t = copyFor(to.locale).profileIncomplete;
+
+    return deliver({
+      template: 'profile_incomplete',
+      to: to.email,
+      userId,
+      dedupeKey: `profile_incomplete:${userId}`,
+      entity: { type: 'profile', id: userId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, 'notify_digest'),
+        subject: t.subject,
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body },
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/dashboard/profile` },
+          { kind: 'text', value: t.hint },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.warn('[email] profile reminder failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+/**
  * A candidate's directory profile now exists.
  *
  * Distinct from the welcome, which arrives at onboarding when there is nothing
@@ -292,6 +399,17 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
 
     const to = await recipient(admin, ownerId, 'notify_applications');
     if (!to) return 'skipped';
+
+    // The digest is a delivery mode, not a second subscription: with it on,
+    // this notice stands down and the daily summary carries the same event.
+    // Checked here rather than at the cron, so there is one place that decides
+    // and no window in which both go out.
+    const { data: mode } = await admin
+      .from('profiles')
+      .select('notify_applicant_digest')
+      .eq('id', ownerId)
+      .maybeSingle();
+    if (mode?.notify_applicant_digest) return 'skipped';
 
     const { data: candidate } = await admin
       .from('profiles')
@@ -1068,6 +1186,18 @@ function formatDay(value: string, locale: 'ar' | 'en'): string {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+    timeZone: 'Africa/Cairo',
+  }).format(date);
+}
+
+/** Date and time, in Cairo — a security notice without a clock is unusable. */
+function formatMoment(date: Date, locale: 'ar' | 'en'): string {
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
     timeZone: 'Africa/Cairo',
   }).format(date);
 }

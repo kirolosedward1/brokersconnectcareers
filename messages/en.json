@@ -768,7 +768,9 @@
     "emailBody": "We send a confirmation to both the old and the new address. Nothing changes until you confirm.",
     "newEmail": "New email",
     "emailPending": "Confirmation sent. Open the new address and confirm from there.",
-    "oauthOnly": "This account signs in with Google, so there is no password to change."
+    "oauthOnly": "This account signs in with Google, so there is no password to change.",
+    "notifyApplicantDigest": "One email a day instead of one per applicant",
+    "notifyApplicantDigestHint": "For listings that attract a lot of people. The summary arrives in the morning and replaces the individual notice."
   },
   "savedSearch": {
     "cta": "Alert me",

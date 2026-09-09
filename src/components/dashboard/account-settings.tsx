@@ -9,7 +9,10 @@ import { Button } from '@/components/ui/button';
 import { deleteMyAccount, updateNotificationPreferences } from '@/lib/actions/account';
 import type { ProfileRow } from '@/lib/supabase/database.types';
 
-type Prefs = Pick<ProfileRow, 'notify_applications' | 'notify_status' | 'notify_digest'>;
+type Prefs = Pick<
+  ProfileRow,
+  'notify_applications' | 'notify_status' | 'notify_digest' | 'notify_applicant_digest'
+>;
 
 /**
  * Account settings: the three things the privacy policy promises can be done
@@ -79,6 +82,13 @@ export function AccountSettings({
             key: 'notify_applications' as const,
             label: t('notifyApplications'),
             hint: t('notifyApplicationsHint'),
+          },
+          // Deliberately below the switch it depends on: this is how often,
+          // not whether, and it does nothing with the one above turned off.
+          {
+            key: 'notify_applicant_digest' as const,
+            label: t('notifyApplicantDigest'),
+            hint: t('notifyApplicantDigestHint'),
           },
         ]
       : []),

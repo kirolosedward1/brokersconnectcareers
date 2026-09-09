@@ -52,6 +52,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
             notify_applications: viewer.profile.notify_applications,
             notify_status: viewer.profile.notify_status,
             notify_digest: viewer.profile.notify_digest,
+            notify_applicant_digest: viewer.profile.notify_applicant_digest,
           }}
         />
       </div>
