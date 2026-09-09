@@ -2,6 +2,7 @@ import createIntlMiddleware from 'next-intl/middleware';
 import { NextResponse, type NextRequest } from 'next/server';
 import { routing, locales, ENGLISH_ENABLED } from '@/i18n/routing';
 import { updateSession } from '@/lib/supabase/middleware';
+import { safeNext } from '@/lib/safe-next';
 
 const handleI18n = createIntlMiddleware(routing);
 
@@ -84,13 +85,26 @@ async function handle(request: NextRequest): Promise<NextResponse> {
 
   if (needsAuth && !user) {
     const signIn = new URL(localized(locale, '/sign-in'), request.url);
-    signIn.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search);
+    // The unprefixed path. next-intl's router adds the locale back on the way
+    // in, so storing `/en/dashboard` here returns somebody to
+    // `/en/en/dashboard` — latent while English is unpublished, and wrong the
+    // day it is turned on.
+    signIn.searchParams.set('next', path + request.nextUrl.search);
     return NextResponse.redirect(signIn);
   }
 
   // A signed-in user with nothing left to do on /sign-in should not sit there.
+  //
+  // Honouring `next` rather than always landing on the dashboard: somebody who
+  // followed "sign in to report this listing" from a job page, in a browser
+  // that already had a session, was told to sign in and then dropped on their
+  // dashboard with the listing forgotten. Validated, because it is a redirect
+  // target read from a query string.
   if (user && (path === '/sign-in' || path === '/sign-up')) {
-    return NextResponse.redirect(new URL(localized(locale, '/dashboard'), request.url));
+    const intended = safeNext(request.nextUrl.searchParams.get('next'));
+    return NextResponse.redirect(
+      new URL(localized(locale, intended ?? '/dashboard'), request.url),
+    );
   }
 
   return response;

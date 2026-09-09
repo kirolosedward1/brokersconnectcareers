@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { safeNext } from '@/lib/safe-next';
 
 /**
  * OAuth / magic-link landing point. Lives outside the locale segment because
@@ -41,7 +42,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Only ever redirect to a path on this origin — an open redirect here would
-  // hand an attacker a trusted-looking login link.
-  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/';
-  return NextResponse.redirect(`${origin}${safeNext}`);
+  // hand an attacker a trusted-looking login link. Shared with the middleware
+  // and the sign-in form so all three agree on what "internal" means; the rule
+  // written inline here missed backslashes and percent-encoded slashes.
+  return NextResponse.redirect(`${origin}${safeNext(next) ?? '/'}`);
 }

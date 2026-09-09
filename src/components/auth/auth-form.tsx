@@ -9,6 +9,7 @@ import type { Locale } from '@/i18n/routing';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/field';
+import { safeNext } from '@/lib/safe-next';
 
 /**
  * Google's mark, inline.
@@ -44,12 +45,38 @@ function GoogleMark() {
  * better served by "something went wrong" in their own language than by a
  * precise sentence in one they may not read.
  */
+type Mapped = { namespace: 'auth' | 'validation'; key: string };
+
+/**
+ * GoTrue's own error codes, which are stable across versions and do not change
+ * with the server's language. Matched first.
+ *
+ * The message regexes below were the only thing here, and they are English
+ * prose from another team's codebase — a rewording upstream silently turns a
+ * precise message into "something went wrong". Live testing found one already:
+ * a rejected domain answers `Email address "x@y" is invalid`, which matches
+ * neither /unable to validate email/ nor /invalid format/, so a mistyped
+ * address produced the generic error instead of "check your email address".
+ */
+const AUTH_ERROR_CODES: Record<string, Mapped> = {
+  invalid_credentials: { namespace: 'auth', key: 'errBadCredentials' },
+  user_already_exists: { namespace: 'auth', key: 'errEmailTaken' },
+  email_exists: { namespace: 'auth', key: 'errEmailTaken' },
+  email_not_confirmed: { namespace: 'auth', key: 'errEmailUnconfirmed' },
+  over_request_rate_limit: { namespace: 'auth', key: 'errTooMany' },
+  over_email_send_rate_limit: { namespace: 'auth', key: 'errTooMany' },
+  email_address_invalid: { namespace: 'validation', key: 'invalidEmail' },
+  validation_failed: { namespace: 'validation', key: 'invalidEmail' },
+  weak_password: { namespace: 'validation', key: 'passwordShort' },
+};
+
+/** Kept as the fallback, for older servers and errors that carry no code. */
 const AUTH_ERRORS: { match: RegExp; namespace: 'auth' | 'validation'; key: string }[] = [
   { match: /invalid login credentials/i, namespace: 'auth', key: 'errBadCredentials' },
   { match: /already registered|already been registered|user already exists/i, namespace: 'auth', key: 'errEmailTaken' },
   { match: /email not confirmed|confirm your email/i, namespace: 'auth', key: 'errEmailUnconfirmed' },
   { match: /for security purposes|rate limit|too many requests/i, namespace: 'auth', key: 'errTooMany' },
-  { match: /unable to validate email|invalid format/i, namespace: 'validation', key: 'invalidEmail' },
+  { match: /unable to validate email|invalid format|address .* is invalid/i, namespace: 'validation', key: 'invalidEmail' },
   { match: /password should be at least/i, namespace: 'validation', key: 'passwordShort' },
 ];
 
@@ -78,16 +105,35 @@ export function AuthForm({
   const tValidation = useTranslations('validation');
   const tCommon = useTranslations('common');
 
-  /** GoTrue's English, turned back into the language of the page. */
-  const readable = (message: string) => {
-    const known = AUTH_ERRORS.find((entry) => entry.match.test(message));
-    if (!known) return tCommon('errorBody');
+  /**
+   * GoTrue's English, turned back into the language of the page.
+   *
+   * Takes the whole error rather than its message, so the stable `code` can be
+   * read first and the prose only consulted when there is none.
+   */
+  const readable = (error: { message: string; code?: string } | string) => {
+    const message = typeof error === 'string' ? error : error.message;
+    const code = typeof error === 'string' ? undefined : error.code;
+
+    const known =
+      (code ? AUTH_ERROR_CODES[code] : undefined) ??
+      AUTH_ERRORS.find((entry) => entry.match.test(message));
+
+    if (!known) {
+      // Unmapped, so the user gets the generic line — but the detail stays in
+      // the console, because the alternative is an error nobody can diagnose.
+      console.warn('[auth] unmapped error', { code, message });
+      return tCommon('errorBody');
+    }
     return known.namespace === 'auth' ? t(known.key) : tValidation(known.key);
   };
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') ?? undefined;
+  // Validated, not taken on trust: this decides a navigation and arrives in a
+  // query string anybody can craft. An unusable value falls back to onboarding
+  // rather than being handed to the router to turn into a 404.
+  const next = safeNext(searchParams.get('next')) ?? undefined;
 
   // Onboarding is where a new account chooses its role; if the door already
   // implied one, hand it over. An existing account skips onboarding entirely,
@@ -142,7 +188,7 @@ export function AuthForm({
           options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
         });
         if (signUpError) {
-          setError(readable(signUpError.message));
+          setError(readable(signUpError));
           return;
         }
         // With email confirmation enabled there is no session yet.
@@ -154,7 +200,7 @@ export function AuthForm({
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) {
-          setError(readable(signInError.message));
+          setError(readable(signInError));
           return;
         }
       }
