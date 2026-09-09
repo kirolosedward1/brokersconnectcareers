@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { LogOut, Settings, User } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
@@ -21,6 +21,28 @@ export function UserMenu({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  /**
+   * Escape closes it, and focus goes back to the button that opened it.
+   *
+   * The bell and the phone menu both did this; this one did not, so a keyboard
+   * user could open the account menu and have no way to dismiss it without
+   * tabbing through every item in it. aria-haspopup promises a menu; a menu
+   * you cannot leave is not one.
+   */
+  useEffect(() => {
+    if (!open) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    }
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open]);
 
   function signOut() {
     startTransition(async () => {
@@ -33,6 +55,7 @@ export function UserMenu({
   return (
     <div className="relative">
       <Button
+        ref={triggerRef}
         variant="ghost"
         size="sm"
         className="h-11 min-w-11"
