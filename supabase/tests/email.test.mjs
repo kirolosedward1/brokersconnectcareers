@@ -192,7 +192,7 @@ report.section('idempotency');
 
 const db = await createTestDb();
 
-async function claim(key, template = 'application_receipt', to = 'a@example.test') {
+async function claim(key, template = 'application_receipt', to = 'someone@brokersconnect.net') {
   const { rows } = await db.query(
     'select public.claim_email($1, $2, $3, null, null, null) as id',
     [key, template, to],
@@ -225,10 +225,10 @@ report.ok(Boolean(nullA) && Boolean(nullB) && nullA !== nullB, 'two unkeyed mess
 report.section('suppression');
 
 await db.query(
-  `insert into email_suppressions (email, reason) values ('bounced@example.test', 'hard_bounce')`,
+  `insert into email_suppressions (email, reason) values ('bounced@brokersconnect.net', 'hard_bounce')`,
 );
 
-const suppressed = await claim('receipt:app-3', 'application_receipt', 'bounced@example.test');
+const suppressed = await claim('receipt:app-3', 'application_receipt', 'bounced@brokersconnect.net');
 report.is(suppressed, null, 'a hard-bounced address is never written to again');
 
 const { rows: sup } = await db.query(
@@ -237,8 +237,34 @@ const { rows: sup } = await db.query(
 report.is(sup[0]?.status, 'suppressed', 'and the refusal is recorded rather than silent');
 
 // Case is not a different mailbox for suppression purposes.
-const cased = await claim('receipt:app-4', 'application_receipt', 'Bounced@Example.test');
+const cased = await claim('receipt:app-4', 'application_receipt', 'Bounced@BrokersConnect.net');
 report.is(cased, null, 'suppression is case-insensitive on the address');
+
+report.section('addresses that could never work');
+
+// The seed's demo accounts live at demo.test, and .test is reserved by RFC
+// 2606 so that it can never resolve. Mailing them is guaranteed bounce, and
+// bounce rate is what every receiving provider scores a new sending domain on.
+for (const address of [
+  'candidate1@demo.test',
+  'someone@example.com',
+  'x@sub.invalid',
+  'y@localhost',
+]) {
+  const attempt = await claim(`reserved:${address}`, 'welcome_candidate', address);
+  report.is(attempt, null, `${address} is never attempted`);
+}
+
+const { rows: refused } = await db.query(
+  `select status, error from email_log where dedupe_key = 'reserved:candidate1@demo.test'`,
+);
+report.is(refused[0]?.status, 'suppressed', 'and the refusal is on the record, not silent');
+
+// Nothing legitimate may be caught by it.
+for (const address of ['ahmed@brokersconnect.net', 'a@gmail.com', 'b@testing.co.uk', 'c@example.co']) {
+  const attempt = await claim(`ok:${address}`, 'welcome_candidate', address);
+  report.ok(Boolean(attempt), `${address} still sends`);
+}
 
 report.section('retry budget');
 
