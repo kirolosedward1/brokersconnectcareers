@@ -47,7 +47,15 @@ export function JobStatusActions({
   if (status === 'active') {
     return (
       <>
-        <Button variant="ghost" disabled={pending} onClick={() => move('closed')}>
+        {/* Red, because this is the one that ends the listing. It sat in the
+            same grey as "edit", which made the irreversible action the least
+            conspicuous thing in the row. */}
+        <Button
+          variant="ghost"
+          className="text-destructive hover:bg-destructive-muted"
+          disabled={pending}
+          onClick={() => move('closed')}
+        >
           <Archive aria-hidden />
           {labels.close}
         </Button>
@@ -59,7 +67,14 @@ export function JobStatusActions({
   if (status === 'draft' || status === 'rejected') {
     return (
       <>
-        <Button variant="secondary" disabled={pending} onClick={() => move('pending_review')}>
+        {/* Forward and positive — the same blue as the applicants link, since
+            both are "go on then". */}
+        <Button
+          variant="secondary"
+          className="text-primary"
+          disabled={pending}
+          onClick={() => move('pending_review')}
+        >
           <SendHorizontal className="rtl-flip" aria-hidden />
           {labels.submit}
         </Button>
@@ -71,7 +86,13 @@ export function JobStatusActions({
   if (status === 'expired' || status === 'closed') {
     return (
       <>
-        <Button variant="secondary" disabled={pending} onClick={() => move('pending_review')}>
+        {/* Green: this one brings a dead listing back. */}
+        <Button
+          variant="secondary"
+          className="text-success"
+          disabled={pending}
+          onClick={() => move('pending_review')}
+        >
           <RotateCcw aria-hidden />
           {labels.reopen}
         </Button>

@@ -64,6 +64,7 @@ export function StatTile({
 }) {
   const t = TONES[tone];
   const Trend = delta?.direction === 'down' ? TrendingDown : TrendingUp;
+  const isFigure = /[0-9]/.test(value);
 
   return (
     <Link
@@ -73,15 +74,51 @@ export function StatTile({
         t.tile,
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <span aria-hidden className={cn('grid size-8 place-items-center rounded-lg', t.icon)}>
+      {/* Icon and figure on one line, label beneath.
+
+          Stacked, the icon sat on a row of its own and bought nothing — it is
+          a marker for the figure, and a marker a whole line away from the
+          thing it marks is decoration. Side by side the pair reads as one
+          object, and the tile loses a line of height on a screen that shows
+          nine of them. */}
+      <div className="flex items-center gap-2.5">
+        <span
+          aria-hidden
+          className={cn('grid size-8 shrink-0 place-items-center rounded-lg', t.icon)}
+        >
           <Icon className="size-4" />
         </span>
+
+        {/*
+          The isolation goes on the digits, not on the paragraph.
+          `.numeral` sets `direction: ltr`, and on a block that also flips where
+          `text-align: start` resolves to — so the figure sat against the left
+          edge of the tile while its label sat against the right, on every tile
+          of every dashboard. Inline, the paragraph keeps the document's
+          direction and only the digit run is isolated.
+
+          And only when there are digits to isolate. One tile's value is a word —
+          the verification status — and forcing an Arabic word left-to-right is
+          the bug this class exists to prevent, not an instance of it.
+
+          That word is also set smaller, because it is not a figure. At the
+          figure's size «مش موثّقة» is wider than the tile it sits in once the
+          icon is beside it, and a status is a label rather than a quantity.
+        */}
+        <p
+          className={cn(
+            'min-w-0 font-bold leading-none',
+            isFigure ? 'text-2xl' : 'text-base',
+            t.value,
+          )}
+        >
+          {isFigure ? <span className="numeral">{value}</span> : value}
+        </p>
 
         {delta && delta.direction !== 'flat' ? (
           <span
             className={cn(
-              'numeral inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium',
+              'numeral ms-auto inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium',
               delta.direction === 'up'
                 ? 'bg-success/12 text-success'
                 : 'bg-destructive/10 text-destructive',
@@ -93,22 +130,7 @@ export function StatTile({
         ) : null}
       </div>
 
-      {/*
-        The isolation goes on the digits, not on the paragraph.
-        `.numeral` sets `direction: ltr`, and on a block that also flips where
-        `text-align: start` resolves to — so the figure sat against the left
-        edge of the tile while its label sat against the right, on every tile
-        of every dashboard. Inline, the paragraph keeps the document's
-        direction and only the digit run is isolated.
-
-        And only when there are digits to isolate. One tile's value is a word —
-        the verification status — and forcing an Arabic word left-to-right is
-        the bug this class exists to prevent, not an instance of it.
-      */}
-      <p className={cn('mt-3 text-2xl font-bold leading-none', t.value)}>
-        {/[0-9]/.test(value) ? <span className="numeral">{value}</span> : value}
-      </p>
-      <p className="mt-1.5 text-[13px] font-medium leading-snug">{label}</p>
+      <p className="mt-2.5 text-[13px] font-medium leading-snug">{label}</p>
       {hint ? <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</p> : null}
 
       {/* The affordance without the height. This used to be a row of its own

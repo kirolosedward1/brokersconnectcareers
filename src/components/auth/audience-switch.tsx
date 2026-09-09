@@ -21,10 +21,23 @@ import type { Audience } from '@/app/[locale]/auth-shell';
  */
 export async function AudienceSwitch({
   mode,
-  active,
+  active = 'candidate',
 }: {
   mode: 'sign-in' | 'sign-up';
-  /** Absent on the neutral routes, where neither side is chosen yet. */
+  /**
+   * Defaults rather than going unset on /sign-in and /sign-up.
+   *
+   * A segmented control with nothing selected reads as a question you have not
+   * answered yet, and it was answered — those routes already render the
+   * consultant panel and the consultant heading, because AuthShell falls back
+   * to it when no audience is given. So the control was the only thing on the
+   * page claiming no choice had been made, and it was disagreeing with the
+   * page around it.
+   *
+   * Consultant is the right default rather than an arbitrary one: it is the
+   * larger side of a job board by a wide margin, and it is the side the panel
+   * copy was already showing.
+   */
   active?: Audience;
 }) {
   const t = await getTranslations('onboarding');

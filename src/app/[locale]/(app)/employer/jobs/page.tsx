@@ -159,8 +159,14 @@ export default async function EmployerJobsPage({
                   </div>
                 </div>
 
+                {/* A colour each, and each one means something rather than
+                    varying for variety: blue is where the new information is,
+                    teal changes the listing, red ends it. Three identical grey
+                    buttons made "close this advert" look exactly as ordinary
+                    as "edit" — which is the one place on this screen where
+                    they should not look alike. */}
                 <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Button asChild variant="outline">
+                  <Button asChild variant="outline" className="text-primary">
                     <Link href={`/employer/jobs/${job.id}/applicants`}>
                       <Users aria-hidden />
                       <span>
@@ -171,7 +177,7 @@ export default async function EmployerJobsPage({
                       </span>
                     </Link>
                   </Button>
-                  <Button asChild variant="ghost">
+                  <Button asChild variant="ghost" className="text-accent-foreground">
                     <Link href={`/employer/jobs/${job.id}/edit`}>
                       <Pencil aria-hidden />
                       {t('editJob')}
