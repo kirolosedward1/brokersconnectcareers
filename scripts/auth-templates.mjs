@@ -43,7 +43,7 @@ const OUT = join(ROOT, 'supabase/templates');
 
 // Read from the environment so a self-hosted or staging project generates its
 // own links, and never so a localhost URL can reach a production inbox.
-const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://careers2.brokersconnect.net').replace(/\/$/, '');
+const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.brokersconnect.net').replace(/\/$/, '');
 
 // These files get pasted into a production dashboard. A developer with a
 // localhost NEXT_PUBLIC_SITE_URL in their shell would otherwise generate a set

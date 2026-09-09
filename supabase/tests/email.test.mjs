@@ -69,7 +69,7 @@ report.is(escapeHtml('مستشار عقاري <أول>'),
 
 report.section('hrefs');
 
-report.is(safeHref('https://careers2.brokersconnect.net/jobs'), 'https://careers2.brokersconnect.net/jobs', 'https is allowed');
+report.is(safeHref('https://www.brokersconnect.net/jobs'), 'https://www.brokersconnect.net/jobs', 'https is allowed');
 report.is(safeHref('mailto:hello@brokersconnect.net'), 'mailto:hello@brokersconnect.net', 'mailto is allowed');
 report.is(safeHref('javascript:alert(1)'), '#', 'javascript: is refused');
 report.is(safeHref('  JavaScript:alert(1)'), '#', 'refused with whitespace and mixed case');

@@ -3,7 +3,7 @@
  * Smoke tests against a running server.
  *
  *   pnpm build && pnpm start &
- *   pnpm smoke                     # or: pnpm smoke https://careers2.brokersconnect.net
+ *   pnpm smoke                     # or: pnpm smoke https://www.brokersconnect.net
  *
  * These exist because of what has actually broken here, not because of what
  * might. Every assertion below corresponds to a regression this codebase has
