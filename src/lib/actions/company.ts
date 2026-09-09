@@ -229,11 +229,12 @@ export async function removeCompanyMember(userId: string): Promise<ActionResult>
   const { data: companyId } = await supabase.rpc('my_company_id');
   if (!companyId) return { ok: false, error: 'no_company' };
 
-  const { error } = await supabase
+  const { data: removed, error } = await supabase
     .from('company_members')
     .delete()
     .eq('company_id', companyId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .select('user_id');
 
   if (error) {
     // The trigger's refusal, which is the one an admin will actually meet.
@@ -242,6 +243,10 @@ export async function removeCompanyMember(userId: string): Promise<ActionResult>
     }
     return { ok: false, error: 'forbidden' };
   }
+
+  // A recruiter reaches zero rows rather than an error, and would otherwise be
+  // told the colleague was removed.
+  if (!removed?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/employer/company');
   return { ok: true };

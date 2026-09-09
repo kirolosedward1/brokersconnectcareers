@@ -42,14 +42,18 @@ export async function moderateJob(input: unknown): Promise<ActionResult> {
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
-  const { error } = await supabase
+  const { data: moderated, error } = await supabase
     .from('jobs')
     .update(
       parsed.data.approve
         ? { status: 'active', rejection_note: null }
         : { status: 'rejected', rejection_note: parsed.data.note || null },
     )
-    .eq('id', parsed.data.jobId);
+    .eq('id', parsed.data.jobId)
+    // An id that matches nothing is not a successful moderation. Without this
+    // the reviewer was told it worked and the employer was emailed about a
+    // decision on a listing that does not exist.
+    .select('id');
 
   if (error) {
     // The unverified-company post cap is enforced in the database, so approving
@@ -61,6 +65,8 @@ export async function moderateJob(input: unknown): Promise<ActionResult> {
     }
     return { ok: false, error: error.message };
   }
+
+  if (!moderated?.length) return { ok: false, error: 'not_found' };
 
   // The employer has been waiting on this decision; it is the one moderation
   // outcome they actually need pushed to them rather than discovered.

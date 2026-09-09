@@ -91,8 +91,17 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
 
 export async function withdrawApplication(applicationId: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.from('applications').delete().eq('id', applicationId);
+  // Same reason as the pipeline move: a delete RLS filters to zero rows is not
+  // an error, so "withdrawn" was reported for an application still sitting in
+  // an employer's inbox.
+  const { data: removed, error } = await supabase
+    .from('applications')
+    .delete()
+    .eq('id', applicationId)
+    .select('id');
+
   if (error) return { ok: false, error: error.message };
+  if (!removed?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/dashboard/applications');
   return { ok: true };
@@ -111,16 +120,23 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: moved, error } = await supabase
     .from('applications')
     .update({
       status: parsed.data.status as ApplicationStatus,
       employer_viewed_at: new Date().toISOString(),
       decision_note: parsed.data.decisionNote?.trim() || null,
     })
-    .eq('id', parsed.data.applicationId);
+    .eq('id', parsed.data.applicationId)
+    // Asked, not assumed. RLS scopes this to applications on the caller's own
+    // listings, and an update it filters to zero rows returns no error — so
+    // without this the function reported success for a move that never
+    // happened and then emailed the candidate to say their application had
+    // moved. A false notification is worse than a failed one.
+    .select('id');
 
   if (error) return { ok: false, error: error.message };
+  if (!moved?.length) return { ok: false, error: 'forbidden' };
 
   after(() => notifyCandidateOfStatus(parsed.data.applicationId));
 
