@@ -36,6 +36,8 @@ type DbRows = {
   companies: { slug: string; created_at: string }[];
   agents: { slug: string; created_at: string }[];
   districts: { slug: string }[];
+  /** `track:districtSlug` for every pair that actually has an open listing. */
+  liveLandings: Set<string>;
 };
 
 /**
@@ -52,17 +54,25 @@ type DbRows = {
  * is exactly what a fresh clone or a misconfigured deployment hits.
  */
 async function fromDatabase(): Promise<DbRows> {
-  const empty: DbRows = { jobs: [], companies: [], agents: [], districts: [] };
+  const empty: DbRows = {
+    jobs: [],
+    companies: [],
+    agents: [],
+    districts: [],
+    liveLandings: new Set(),
+  };
 
   try {
     const supabase = createPublicClient();
 
-    const [jobs, companies, agents, districts] = await Promise.all([
+    const [jobs, companies, agents, districts, landings] = await Promise.all([
       supabase
         .from('jobs')
         .select('slug, published_at')
         .eq('status', 'active')
-        .gt('expires_at', new Date().toISOString())
+        // `.gt()` alone drops rows where expires_at is null, because NULL > x
+        // is NULL in SQL — a listing with no expiry would never be advertised.
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order('published_at', { ascending: false })
         .limit(5000),
       supabase.from('companies').select('slug, created_at').limit(5000),
@@ -70,13 +80,37 @@ async function fromDatabase(): Promise<DbRows> {
       // profile must not be advertised to a crawler.
       supabase.from('agent_profiles').select('slug, created_at').eq('visibility', 'public').limit(5000),
       supabase.from('districts').select('slug'),
+      /**
+       * Which track x district pages have anything on them.
+       *
+       * The cross product is 126 pages and twelve of them had a job. The other
+       * 114 were being submitted to Google as a sitemap of empty result pages —
+       * the definition of thin content, and volunteered rather than crawled.
+       * Only the ones with a live listing go in now; the rest stay reachable
+       * and internally linked, they are simply not advertised.
+       */
+      supabase
+        .from('jobs')
+        .select('track, district:districts (slug)')
+        .eq('status', 'active')
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+        .limit(5000),
     ]);
+
+    const liveLandings = new Set<string>();
+    for (const row of (landings.data ?? []) as unknown as {
+      track: string;
+      district: { slug: string } | null;
+    }[]) {
+      if (row.district?.slug) liveLandings.add(`${row.track}:${row.district.slug}`);
+    }
 
     return {
       jobs: jobs.data ?? [],
       companies: companies.data ?? [],
       agents: agents.data ?? [],
       districts: districts.data ?? [],
+      liveLandings,
     };
   } catch (error) {
     unstable_rethrow(error);
@@ -90,7 +124,7 @@ async function fromDatabase(): Promise<DbRows> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const { jobs, companies, agents, districts } = await fromDatabase();
+  const { jobs, companies, agents, districts, liveLandings } = await fromDatabase();
 
   const staticPages: MetadataRoute.Sitemap = [
     entry('/', { changeFrequency: 'daily', priority: 1 }),
@@ -109,9 +143,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   );
 
-  // The track x district cross product — the organic traffic engine.
+  // The track x district pages that have something on them. See liveLandings.
   const landingPages: MetadataRoute.Sitemap = districts.flatMap((district) =>
-    JOB_TRACKS.map((track) =>
+    JOB_TRACKS.filter((track) => liveLandings.has(`${track}:${district.slug}`)).map((track) =>
       entry(`/jobs/${buildLandingSlug(track, district.slug)}`, {
         changeFrequency: 'daily',
         priority: 0.7,

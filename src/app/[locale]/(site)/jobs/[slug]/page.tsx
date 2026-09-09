@@ -6,7 +6,7 @@ import { JobDetailView } from '@/components/jobs/job-detail-view';
 import { TrackDistrictLanding } from '@/components/jobs/track-district-landing';
 import { JsonLd } from '@/components/json-ld';
 import { jobPostingJsonLd } from '@/lib/seo/job-posting';
-import { getJobBySlug } from '@/lib/queries/jobs';
+import { EMPTY_FILTERS, getJobBySlug, queryJobs } from '@/lib/queries/jobs';
 import { parseLandingSlug } from '@/lib/taxonomy';
 import { getDistrictBySlug, getGovernorates } from '@/lib/queries/taxonomy';
 import { recordJobView } from '@/lib/actions/jobs';
@@ -23,6 +23,18 @@ type Params = { locale: string; slug: string };
  * collide — the landing form is checked first because it is a pure string
  * match with no database round trip.
  */
+/**
+ * Open means open, not merely marked open.
+ *
+ * `status` is flipped to 'expired' by the nightly cron, so a listing whose
+ * expires_at passed an hour ago still says 'active'. Everything that decides
+ * whether this listing is live — the markup, the banner, the view counter, the
+ * robots directive — has to agree, and they did not.
+ */
+function isOpen(job: JobDetail): boolean {
+  return job.status === 'active' && (!job.expires_at || new Date(job.expires_at) > new Date());
+}
+
 type Resolved =
   | { kind: 'landing'; track: JobTrack; district: DistrictRow }
   | { kind: 'job'; job: JobDetail }
@@ -56,10 +68,28 @@ export async function generateMetadata({
     const track = tTrack(resolved.track);
     const district = localized(locale, resolved.district.name_ar, resolved.district.name_en);
 
+    /*
+      An empty cross-product page is thin content, and there are 126 of these
+      against twelve that have a listing. They stay reachable and internally
+      linked — a district with nothing today has something next week, and the
+      sibling links are what spread crawl budget — but a page showing no
+      results should not be inviting Google to index it. The sitemap makes the
+      same distinction.
+
+      queryJobs is request-cached, so this costs no extra round trip: the page
+      body runs the identical query a moment later and gets the same result.
+    */
+    const { total } = await queryJobs({
+      ...EMPTY_FILTERS,
+      tracks: [resolved.track],
+      districtSlugs: [resolved.district.slug],
+    });
+
     return {
       title: t('title', { track, district }),
       description: t('subtitle', { track, district }),
       alternates: alternatesFor(`/jobs/${slug}`, locale),
+      ...(total === 0 ? { robots: { index: false, follow: true } } : {}),
     };
   }
 
@@ -100,7 +130,14 @@ export async function generateMetadata({
       alternates: alternatesFor(`/jobs/${slug}`, locale),
       openGraph: { title: `${title} — ${company}`, description, type: 'article' },
       // An expired listing must not be indexed as if it were open.
-      robots: job.status === 'active' ? undefined : { index: false, follow: true },
+      //
+      // isOpen() rather than a status check on its own: the nightly cron is
+      // what flips 'active' to 'expired', so for up to a day after expires_at
+      // passes a listing still reads as active. The body already used the
+      // fuller test and dropped the JobPosting markup, while this one let the
+      // page stay indexable — so the window produced exactly the page Google
+      // penalises, an indexed listing whose own banner says it has closed.
+      robots: isOpen(job) ? undefined : { index: false, follow: true },
     };
   }
 
@@ -136,9 +173,9 @@ export default async function JobOrLandingPage({ params }: { params: Promise<Par
   if (resolved.kind === 'none') notFound();
 
   const job = resolved.job;
-  const isOpen = job.status === 'active' && (!job.expires_at || new Date(job.expires_at) > new Date());
+  const open = isOpen(job);
 
-  if (isOpen) {
+  if (open) {
     // Fire and forget — a failed counter increment must never break the page.
     void recordJobView(slug).catch(() => {});
   }
@@ -155,8 +192,8 @@ export default async function JobOrLandingPage({ params }: { params: Promise<Par
   return (
     <>
       {/* Structured data only for listings that are genuinely open. */}
-      {isOpen ? <JsonLd data={jobPostingJsonLd(job, locale, governorateName)} /> : null}
-      {isOpen ? null : <ClosedNotice />}
+      {open ? <JsonLd data={jobPostingJsonLd(job, locale, governorateName)} /> : null}
+      {open ? null : <ClosedNotice />}
       <JobDetailView job={job} locale={locale} />
     </>
   );

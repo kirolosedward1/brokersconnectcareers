@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from './error';
 import { getDistricts, getGovernorates } from './taxonomy';
@@ -135,7 +136,7 @@ const LIST_SELECT = `
  * client there is deliberate: an alert email must never contain a listing the
  * recipient could not see for themselves.
  */
-export async function queryJobs(
+export const queryJobs = cache(async function queryJobs(
   filters: JobFilters,
   client?: SupabaseLikeClient,
 ): Promise<{
@@ -217,7 +218,7 @@ export async function queryJobs(
     total,
     pageCount: Math.max(1, Math.ceil(total / JOBS_PER_PAGE)),
   };
-}
+});
 
 export type JobDetail = JobRow & {
   company: CompanyRow & { district: DistrictRow | null };
