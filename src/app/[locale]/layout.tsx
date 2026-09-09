@@ -5,7 +5,6 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { alternatesFor, activeLocales, dirOf, type Locale } from '@/i18n/routing';
 import { env } from '@/lib/env';
-import { SiteHeader } from '@/components/site-header';
 import '../globals.css';
 import { Analytics } from '@/components/analytics';
 
@@ -151,7 +150,6 @@ export default async function LocaleLayout({
             {t('skipToContent')}
           </a>
 
-          <SiteHeader locale={locale as Locale} />
           {children}
         </NextIntlClientProvider>
         <Analytics />

@@ -274,8 +274,12 @@ section('a locked-out user has a way back in');
   check('/sign-in/forgot -> 200', forgot.status === 200, `got ${forgot.status}`);
   check('and asks for an email', /name="email"/.test(forgot.body));
 
+  // Matched on the path, not on `href="…"`. These routes stream, so whether a
+  // link arrives as literal markup or inside an RSC payload depends on where
+  // the first flush lands — and that moved when the site header changed
+  // layouts. The path appears either way; the attribute does not.
   const signIn = await get('/sign-in');
-  check('sign-in links to it', signIn.body.includes('href="/sign-in/forgot"'));
+  check('sign-in links to it', signIn.body.includes('/sign-in/forgot'));
 
   // A static segment has to beat /sign-in/[audience], which would otherwise
   // treat "forgot" as an unknown audience and 404.
@@ -286,7 +290,7 @@ section('a locked-out user has a way back in');
   check('/sign-in/new-password -> 200', setter.status === 200, `got ${setter.status}`);
   check(
     'and offers no password field without a session',
-    !/type="password"/.test(setter.body) && setter.body.includes('href="/sign-in/forgot"'),
+    !/type="password"/.test(setter.body) && setter.body.includes('/sign-in/forgot'),
   );
 }
 
@@ -340,6 +344,28 @@ section('every page announces what it is');
     const ids = [...body.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
     const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
     check(`${path} has no duplicate ids`, dupes.length === 0, [...new Set(dupes)].join(', '));
+  }
+}
+
+// ---------------------------------------------------------------------------
+section('the marketing header appears once, and only where it belongs');
+{
+  // It used to live in the root layout and hide itself from the console with a
+  // hand-written list of path prefixes. The list drifted the moment
+  // /notifications joined the (app) group, and that page rendered the
+  // marketing header stacked on the console's own — two headers deep. The
+  // header now belongs to the (site) layout, so the console cannot inherit
+  // one; these assert the public and auth halves of that.
+  const headers = (body) => (body.match(/group\/header/g) ?? []).length;
+
+  for (const path of ['/', '/jobs', '/companies', '/agents', '/blog', '/employers']) {
+    const { body } = await get(path);
+    check(`${path} renders exactly one site header`, headers(body) === 1, `found ${headers(body)}`);
+  }
+
+  for (const path of ['/sign-in', '/sign-up', '/sign-in/candidate', '/sign-up/employer']) {
+    const { body } = await get(path);
+    check(`${path} renders none`, headers(body) === 0, `found ${headers(body)}`);
   }
 }
 

@@ -78,7 +78,9 @@ export async function EmployerLanding({
             [formatNumber(0, locale), t('employerHero.stat3')],
           ].map(([value, label]) => (
             <div key={label} className="rounded-xl border border-white/10 bg-white/5 px-3 py-4">
-              <dt className="numeral text-2xl font-bold text-white">{value}</dt>
+              <dt className="text-2xl font-bold text-white">
+                <span className="numeral">{value}</span>
+              </dt>
               <dd className="mt-1 text-xs leading-snug text-white/60">{label}</dd>
             </div>
           ))}
@@ -210,16 +212,20 @@ export async function EmployerLanding({
           {POST_PACKS.map((pack) => (
             <li key={pack.key} className="lift rounded-2xl border border-border bg-card p-5 shadow-sm">
               <p className="text-sm font-medium text-muted-foreground">{pack.key}</p>
-              <p className="numeral mt-2 text-2xl font-bold">
-                {BILLING_ENABLED ? formatEgp(pack.priceEgp, locale) : formatEgp(0, locale)}
+              <p className="mt-2 text-2xl font-bold">
+                <span className="numeral">
+                  {BILLING_ENABLED ? formatEgp(pack.priceEgp, locale) : formatEgp(0, locale)}
+                </span>
               </p>
               {BILLING_ENABLED ? null : (
                 <p className="numeral mt-1 text-xs text-muted-foreground line-through">
                   {formatEgp(pack.priceEgp, locale)}
                 </p>
               )}
-              <p className="numeral mt-3 text-sm text-muted-foreground">
-                {pack.seats ? formatNumber(pack.seats, locale) : '∞'} · {formatNumber(pack.days, locale)}
+              <p className="mt-3 text-sm text-muted-foreground">
+                <span className="numeral">
+                  {pack.seats ? formatNumber(pack.seats, locale) : '∞'} · {formatNumber(pack.days, locale)}
+                </span>
               </p>
             </li>
           ))}

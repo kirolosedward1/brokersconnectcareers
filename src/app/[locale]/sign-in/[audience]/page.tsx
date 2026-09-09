@@ -20,6 +20,23 @@ export function generateStaticParams() {
   return AUDIENCES.map((audience) => ({ audience }));
 }
 
+/**
+ * Rendered per request, not prerendered.
+ *
+ * AuthForm reads useSearchParams (for `next`), and under static generation that
+ * bails its Suspense boundary out to the client — so the page shipped a heading
+ * and an empty shell, and the form only appeared once ~200kB of JavaScript had
+ * loaded and hydrated. On the screen that decides whether somebody gets an
+ * account, on a Cairo mobile connection, that is the wrong trade.
+ *
+ * These pages were dynamic by accident until now: the site header sat in the
+ * root layout and read cookies, which opted every route into dynamic
+ * rendering. Moving the header into the (site) layout — so the console cannot
+ * inherit one — took that away and quietly turned the auth screens static.
+ * Saying it out loud is better than depending on a header three layouts up.
+ */
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({
   params,
 }: {

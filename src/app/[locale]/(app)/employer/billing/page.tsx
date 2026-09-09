@@ -75,8 +75,8 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
 
       <section className="rounded-xl border border-border bg-card p-5">
         <h2 className="text-sm font-medium text-muted-foreground">{t('credits')}</h2>
-        <p className="numeral mt-1 text-3xl font-bold text-primary">
-          {formatNumber(viewer.company?.post_credits ?? 0, locale)}
+        <p className="mt-1 text-3xl font-bold text-primary">
+          <span className="numeral">{formatNumber(viewer.company?.post_credits ?? 0, locale)}</span>
         </p>
 
         {viewer.company?.verification_status === 'verified' ? (
@@ -99,16 +99,18 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
             >
               <p className="font-semibold">{t(`packName.${pack.key}`)}</p>
 
-              <p className="numeral mt-2 text-2xl font-bold">
-                {BILLING_ENABLED ? formatEgp(pack.priceEgp, locale) : formatEgp(0, locale)}
+              <p className="mt-2 text-2xl font-bold">
+                <span className="numeral">
+                  {BILLING_ENABLED ? formatEgp(pack.priceEgp, locale) : formatEgp(0, locale)}
+                </span>
                 <span className="ms-1 text-sm font-normal text-muted-foreground">
                   {locale === 'ar' ? 'جنيه' : 'EGP'}
                 </span>
               </p>
 
               {BILLING_ENABLED ? null : (
-                <p className="numeral mt-1 text-xs text-muted-foreground line-through">
-                  {formatEgp(pack.priceEgp, locale)}
+                <p className="mt-1 text-xs text-muted-foreground line-through">
+                  <span className="numeral">{formatEgp(pack.priceEgp, locale)}</span>
                 </p>
               )}
 

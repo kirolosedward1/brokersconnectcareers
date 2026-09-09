@@ -83,7 +83,11 @@ function Row({
       <div className="min-w-0 flex-1">
         <p className="font-medium">{primary}</p>
         {secondary ? <p className="mt-0.5 text-sm text-muted-foreground">{secondary}</p> : null}
-        {meta ? <p className="numeral mt-1 text-xs text-muted-foreground">{meta}</p> : null}
+        {meta ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            <span className="numeral">{meta}</span>
+          </p>
+        ) : null}
       </div>
       <button
         type="button"

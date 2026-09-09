@@ -168,8 +168,8 @@ export default async function AdminUsersPage({
                       </Badge>
                     </p>
 
-                    <p className="numeral mt-1 text-sm text-muted-foreground" dir="ltr">
-                      {profile.whatsapp_phone}
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      <span className="numeral" dir="ltr">{profile.whatsapp_phone}</span>
                     </p>
 
                     <p className="mt-1 text-xs text-muted-foreground">

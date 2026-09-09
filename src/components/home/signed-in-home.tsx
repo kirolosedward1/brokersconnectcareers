@@ -165,16 +165,16 @@ export async function SignedInHome({
             <div className="inline-flex items-center gap-1.5">
               <Briefcase className="size-3.5" aria-hidden />
               <dt className="sr-only">{t("statJobs")}</dt>
-              <dd className="numeral font-semibold text-foreground">
-                {n(total)}
+              <dd className="font-semibold text-foreground">
+                <span className="numeral">{n(total)}</span>
               </dd>
               <span>{t("statJobs")}</span>
             </div>
             <div className="inline-flex items-center gap-1.5">
               <Users className="size-3.5" aria-hidden />
               <dt className="sr-only">{t("statSeats")}</dt>
-              <dd className="numeral font-semibold text-foreground">
-                {n(openSeats)}
+              <dd className="font-semibold text-foreground">
+                <span className="numeral">{n(openSeats)}</span>
               </dd>
               <span>{t("statSeats")}</span>
             </div>

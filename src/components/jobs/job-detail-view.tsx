@@ -115,8 +115,8 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
               </div>
 
               <div className="rounded-lg bg-primary/10 px-4 py-3 text-center">
-                <p className="numeral text-2xl font-bold leading-none text-primary">
-                  {formatNumber(job.seats, locale)}
+                <p className="text-2xl font-bold leading-none text-primary">
+                  <span className="numeral">{formatNumber(job.seats, locale)}</span>
                 </p>
                 <p className="mt-1 text-xs text-primary/80">
                   {t('seatsLabel', { count: job.seats })}

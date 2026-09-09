@@ -70,15 +70,17 @@ export async function AgentCv({
             {unitsClosed != null ? (
               <div className="rounded-xl border border-border bg-card p-4">
                 <dt className="text-xs text-muted-foreground">{t('unitsClosed')}</dt>
-                <dd className="numeral mt-1 text-2xl font-bold">
-                  {formatNumber(unitsClosed, locale)}
+                <dd className="mt-1 text-2xl font-bold">
+                  <span className="numeral">{formatNumber(unitsClosed, locale)}</span>
                 </dd>
               </div>
             ) : null}
             {volumeEgp != null ? (
               <div className="rounded-xl border border-border bg-card p-4">
                 <dt className="text-xs text-muted-foreground">{t('volumeEgp')}</dt>
-                <dd className="numeral mt-1 text-2xl font-bold">{formatEgp(volumeEgp, locale)}</dd>
+                <dd className="mt-1 text-2xl font-bold">
+                  <span className="numeral">{formatEgp(volumeEgp, locale)}</span>
+                </dd>
               </div>
             ) : null}
           </dl>

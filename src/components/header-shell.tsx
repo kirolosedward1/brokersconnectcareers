@@ -15,22 +15,6 @@ import { cn } from '@/lib/utils';
 const ALWAYS_OVER_HERO = ['/employers'];
 
 /**
- * The pages that render no site header at all.
- *
- * Two different reasons. On the auth screens a nav bar full of links is an
- * invitation to wander off mid-task, which is the last thing a half-finished
- * sign-up needs — and those screens draw their own logo, so a site header
- * above one is two logos on the same page. Everything under /dashboard,
- * /employer and /admin has its own chrome — a rail and a top bar — and
- * stacking the marketing header above that would give the console two headers.
- *
- * Matched by prefix, all of them. These were exact matches, which covered
- * /sign-up but not /sign-up/employer — so the split doors, added later, each
- * came with a header the plain ones did not have.
- */
-const NO_HEADER_PREFIXES = ['/sign-in', '/sign-up', '/dashboard', '/employer', '/admin'];
-
-/**
  * The header's chrome.
  *
  * On the two landing pages it lifts off the page and sits on the film: no
@@ -61,9 +45,6 @@ export function HeaderShell({
 }) {
   const pathname = usePathname();
   const overHero = ALWAYS_OVER_HERO.includes(pathname) || (pathname === '/' && hasHomeHero);
-  const hidden = NO_HEADER_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
 
   const [scrolled, setScrolled] = useState(false);
 
@@ -77,8 +58,6 @@ export function HeaderShell({
   }, [overHero]);
 
   const floating = overHero && !scrolled;
-
-  if (hidden) return null;
 
   return (
     <header

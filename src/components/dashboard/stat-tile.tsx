@@ -93,7 +93,21 @@ export function StatTile({
         ) : null}
       </div>
 
-      <p className={cn('numeral mt-3 text-2xl font-bold leading-none', t.value)}>{value}</p>
+      {/*
+        The isolation goes on the digits, not on the paragraph.
+        `.numeral` sets `direction: ltr`, and on a block that also flips where
+        `text-align: start` resolves to — so the figure sat against the left
+        edge of the tile while its label sat against the right, on every tile
+        of every dashboard. Inline, the paragraph keeps the document's
+        direction and only the digit run is isolated.
+
+        And only when there are digits to isolate. One tile's value is a word —
+        the verification status — and forcing an Arabic word left-to-right is
+        the bug this class exists to prevent, not an instance of it.
+      */}
+      <p className={cn('mt-3 text-2xl font-bold leading-none', t.value)}>
+        {/[0-9]/.test(value) ? <span className="numeral">{value}</span> : value}
+      </p>
       <p className="mt-1.5 text-[13px] font-medium leading-snug">{label}</p>
       {hint ? <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</p> : null}
 
