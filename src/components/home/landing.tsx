@@ -283,7 +283,7 @@ export async function Landing({
           </div>
 
           <div className="flex justify-center">
-            <VisibilityIllustration className="h-auto w-full max-w-md" />
+            <VisibilityIllustration className="h-auto w-full max-w-md" locale={locale} />
           </div>
         </div>
       </section>
