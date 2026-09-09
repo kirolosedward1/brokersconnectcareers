@@ -37,7 +37,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const admin = createAdminClient();
+  /*
+    Guarded, like the other three scheduled jobs.
+
+    createAdminClient() throws when SUPABASE_SERVICE_ROLE_KEY is missing, and
+    unguarded that surfaces as a 500 with a stack — the least diagnosable way
+    to learn that a variable is unset. This is the job that flips listings to
+    expired and tells their owners, so it failing silently at 1am is exactly
+    the failure nobody notices until an employer asks why their advert is
+    still up.
+  */
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    console.error('[cron] expire-jobs cannot run: SUPABASE_SERVICE_ROLE_KEY is not configured');
+    return NextResponse.json({ error: 'unavailable', reason: 'service_role_missing' }, { status: 503 });
+  }
 
   const { data, error } = await admin.rpc('expire_stale_jobs');
   if (error) {
