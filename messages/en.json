@@ -558,7 +558,8 @@
     "errorBody": "We could not complete that. Please try again.",
     "errorReference": "Error reference",
     "retry": "Try again",
-    "saveSuccess": "Saved"
+    "saveSuccess": "Saved",
+    "close": "Close"
   },
   "landing": {
     "title": "{track} jobs in {district}",

@@ -558,7 +558,8 @@
     "errorBody": "مقدرناش نكمّل العملية. جرّب تاني.",
     "errorReference": "كود العطل",
     "retry": "جرّب تاني",
-    "saveSuccess": "تم الحفظ"
+    "saveSuccess": "تم الحفظ",
+    "close": "إغلاق"
   },
   "landing": {
     "title": "وظائف {track} في {district}",

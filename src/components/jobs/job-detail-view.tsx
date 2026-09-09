@@ -11,6 +11,7 @@ import { CompensationCard, LeadsSourceBadge } from '@/components/jobs/compensati
 import { JobCard } from '@/components/jobs/job-card';
 import { SaveJobButton } from '@/components/jobs/save-job-button';
 import { ReportJobDialog } from '@/components/jobs/report-job-dialog';
+import { AppliedNotice } from '@/components/jobs/applied-notice';
 import { ShareJobButton } from '@/components/jobs/share-job-button';
 import { formatDate, formatNumber, isoDate } from '@/lib/utils';
 import { getSimilarJobs, type JobDetail } from '@/lib/queries/jobs';
@@ -147,9 +148,7 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
                 {tApply('employerCannotApply')}
               </p>
             ) : alreadyApplied ? (
-              <Button variant="secondary" size="lg" disabled>
-                {t('applied')}
-              </Button>
+              <AppliedNotice />
             ) : (
               <Button asChild size="lg">
                 <Link href={`/jobs/${job.slug}/apply`}>{t('apply')}</Link>
@@ -265,9 +264,7 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
             className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background p-3 lg:hidden"
           >
             {alreadyApplied ? (
-              <Button variant="secondary" className="w-full" disabled>
-                {t('applied')}
-              </Button>
+              <AppliedNotice full />
             ) : (
               <Button asChild className="w-full" size="lg">
                 <Link href={`/jobs/${job.slug}/apply`}>{tApply('submit')}</Link>
