@@ -6,8 +6,23 @@ import { safeNext } from '@/lib/safe-next';
 
 const handleI18n = createIntlMiddleware(routing);
 
-/** Everything under these prefixes requires a signed-in user. */
-const PROTECTED = ['/dashboard', '/employer', '/admin', '/onboarding'];
+/**
+ * Everything under these prefixes requires a signed-in user.
+ *
+ * Must cover every route group under app/[locale]/(app), plus /onboarding,
+ * which lives outside it. A route inside (app) that is missing here is not
+ * exposed — the (app) layout redirects an anonymous visitor too — but that
+ * redirect cannot carry `next`, so somebody following a link into it is signed
+ * in and then dropped on their dashboard instead of the page they asked for.
+ * /notifications was in exactly that state, which is how a notification link
+ * from an email lost its destination.
+ *
+ * The parity test in supabase/tests/auth.test.mjs reads the filesystem and
+ * fails if a new group is added without being listed here. This is the second
+ * time a hand-maintained list of (app) routes has drifted — the header
+ * suppression list did it first — so the list now has something checking it.
+ */
+const PROTECTED = ['/dashboard', '/employer', '/admin', '/notifications', '/onboarding'];
 
 /** Strips `/en` so route matching is written once, against the canonical path. */
 function stripLocale(pathname: string): { locale: string; path: string } {

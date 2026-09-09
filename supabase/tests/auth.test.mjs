@@ -24,6 +24,9 @@ const report = {
       `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
     );
   },
+  ok(condition, label) {
+    base.check(label, Boolean(condition));
+  },
 };
 
 report.section('a redirect target may only be a path on this site');
@@ -83,5 +86,37 @@ for (const value of CASES) {
   const expected = value === '/dashboard' ? '/dashboard' : null;
   report.is(viaHelper, expected, `one rule for ${JSON.stringify(value)}`);
 }
+
+
+report.section('every private route is actually listed as private');
+
+// Two hand-maintained lists of (app) routes have now drifted out of date, and
+// both times the symptom was subtle rather than a hole: a redirect that worked
+// but lost where the visitor was going. This reads the routes off disk so the
+// list cannot silently fall behind a third time.
+const { readdirSync, readFileSync: read } = await import('node:fs');
+const { join: j, dirname: dn } = await import('node:path');
+const { fileURLToPath: furl } = await import('node:url');
+
+const ROOT = j(dn(furl(import.meta.url)), '../..');
+const appGroups = readdirSync(j(ROOT, 'src/app/[locale]/(app)'), { withFileTypes: true })
+  .filter((e) => e.isDirectory())
+  .map((e) => `/${e.name}`);
+
+const middleware = read(j(ROOT, 'src/middleware.ts'), 'utf8');
+const listed = middleware.match(/const PROTECTED = \[([^\]]*)\]/)?.[1] ?? '';
+const protectedPrefixes = [...listed.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+
+report.ok(appGroups.length > 0, `found ${appGroups.length} route groups under (app)`);
+
+for (const group of appGroups) {
+  report.ok(
+    protectedPrefixes.includes(group),
+    `${group} is in the middleware's PROTECTED list`,
+  );
+}
+
+// /onboarding is outside (app) and still has to be there.
+report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected');
 
 process.exitCode = base.finish() ? 0 : 1;

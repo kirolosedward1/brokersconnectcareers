@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { CheckCircle2 } from 'lucide-react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect, Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
@@ -7,6 +8,7 @@ import { ApplyForm } from '@/components/jobs/apply-form';
 import { Button } from '@/components/ui/button';
 import { getJobBySlug } from '@/lib/queries/jobs';
 import { getViewer } from '@/lib/auth';
+import { formatDate } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
 
 type Params = { locale: string; slug: string };
@@ -23,8 +25,15 @@ export async function generateMetadata({
   return { title: t('submit'), robots: { index: false, follow: true } };
 }
 
-export default async function ApplyPage({ params }: { params: Promise<Params> }) {
+export default async function ApplyPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>;
+  searchParams: Promise<{ applied?: string }>;
+}) {
   const { locale: rawLocale, slug } = await params;
+  const justApplied = (await searchParams).applied === '1';
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
@@ -72,12 +81,70 @@ export default async function ApplyPage({ params }: { params: Promise<Params> })
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from('applications')
-    .select('id')
+    .select('id, created_at')
     .eq('job_id', job.id)
     .eq('candidate_id', viewer!.userId)
     .maybeSingle();
 
   if (existing) {
+    /*
+      Two different messages for the same database row, and the difference
+      matters more than it looks.
+
+      Applying used to end here, on "you already applied to this job before".
+      The form set a success flag and then the server action's revalidation
+      re-rendered this page, which found the row that had just been written and
+      replaced the whole component — success state and all — with a sentence
+      that reads as a refusal. The most important moment in the product told
+      everybody who completed it that they were too late.
+
+      So the confirmation lives here, on the server, keyed to ?applied=1. It
+      survives the revalidation that destroyed the old one, it survives a
+      refresh, and it can say what the client component never could: which
+      role, which company, what day, and what happens next.
+    */
+    if (justApplied) {
+      return (
+        <div className="mx-auto max-w-lg px-4 py-12">
+          <div className="rounded-2xl border border-success/30 bg-success-muted p-6 text-center">
+            <CheckCircle2 className="mx-auto size-9 text-success" aria-hidden />
+            <h1 className="mt-3 text-xl font-bold">{t('success')}</h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">{t('successBody')}</p>
+          </div>
+
+          <dl className="mt-6 divide-y divide-border rounded-xl border border-border">
+            <div className="flex items-start justify-between gap-4 p-4">
+              <dt className="text-sm text-muted-foreground">{t('labelJob')}</dt>
+              <dd className="text-end text-sm font-medium">{title}</dd>
+            </div>
+            <div className="flex items-start justify-between gap-4 p-4">
+              <dt className="text-sm text-muted-foreground">{t('labelCompany')}</dt>
+              <dd className="text-end text-sm font-medium">{company}</dd>
+            </div>
+            <div className="flex items-start justify-between gap-4 p-4">
+              <dt className="text-sm text-muted-foreground">{t('labelDate')}</dt>
+              {/* No .numeral here. formatDate returns "12 مارس 2026" — Arabic
+                  words next to digits — and forcing that run left-to-right is
+                  the bug the class exists to prevent, not a use of it. The
+                  bidi algorithm already reads it correctly. */}
+              <dd className="text-end text-sm font-medium">
+                {formatDate(existing.created_at, locale)}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Button asChild>
+              <Link href="/dashboard/applications">{t('viewApplications')}</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/jobs">{tJobs('title')}</Link>
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <h1 className="text-xl font-semibold">{t('alreadyApplied')}</h1>

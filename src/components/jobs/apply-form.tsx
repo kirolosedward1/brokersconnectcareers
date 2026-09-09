@@ -38,12 +38,12 @@ export function ApplyForm({
   const tValidation = useTranslations('validation');
   const tCommon = useTranslations('common');
 
-  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -121,8 +121,39 @@ export function ApplyForm({
       // question; the listing that produced it is a database query.
       track('apply_completed');
 
+      // Deliberately no router.refresh() here.
+      //
+      // Refreshing re-renders the server page, which now sees the application
+      // that was just created and returns its "you already applied" branch —
+      // replacing this component, `done` and all. The effect was that the most
+      // important moment in the product, the one with the green panel and the
+      // check and somewhere to go next, was destroyed by the line after the one
+      // that set it, and every applicant was told "you already applied to this
+      // job before" instead. It reads as a refusal, at the exact moment
+      // somebody has succeeded.
+      //
+      // Nothing on this page needs the refresh: the panel below links to
+      // /dashboard/applications, which fetches on its own, and the server
+      // reaches its already-applied branch correctly the next time anybody
+      // asks for this URL.
       setDone(true);
-      router.refresh();
+
+      /*
+        Then hand the confirmation to the server.
+
+        `done` is client state on a page that the action's own revalidatePath
+        re-renders, so on its own it lasts about a second: the server finds the
+        application that was just written, takes its "you already applied"
+        branch, and replaces this component mid-celebration. Every applicant
+        was told they were too late at the exact moment they succeeded.
+
+        replace() rather than history.replaceState: the URL alone changes
+        nothing, and what is needed is a re-render against ?applied=1 so the
+        server produces the confirmation — with the company and the date, which
+        this component does not have. It runs after the revalidation, so it
+        wins, and the state now survives a refresh because it is in the URL.
+      */
+      router.replace(`/jobs/${jobSlug}/apply?applied=1`);
     });
   }
 

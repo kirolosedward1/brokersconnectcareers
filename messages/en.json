@@ -359,7 +359,10 @@
     "alreadyApplied": "You have already applied to this job.",
     "viewApplications": "Track your applications",
     "employerCannotApply": "You're signed in as a company. Applying is for consultants only.",
-    "rateLimit": "You have applied to a lot of jobs today. Try again tomorrow."
+    "rateLimit": "You have applied to a lot of jobs today. Try again tomorrow.",
+    "labelJob": "Role",
+    "labelCompany": "Company",
+    "labelDate": "Applied on"
   },
   "employer": {
     "company": "Company profile",
