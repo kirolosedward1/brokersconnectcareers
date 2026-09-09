@@ -609,6 +609,17 @@ report.section('saved searches are private to their owner');
   const r5 = await as(candidate, `update saved_searches set alerts=false returning alerts`);
   report.check('but can turn its alerts off', r5.ok && r5.rows.length === 1, r5.error);
 
+  // The filters the board can actually produce have to fit in the column that
+  // stores them. 21 districts alone are 388 characters and every facet
+  // together is 677; the check used to stop at 500, so an ordinary "everything
+  // in Cairo" search was refused by the database after the form accepted it.
+  const wide = 'district=maadi&'.repeat(45).slice(0, 660);
+  const rWide = await as(candidate,
+    `insert into saved_searches (candidate_id, label, query)
+       values ('${candidate}', 'كل القاهرة', '${wide}') returning id`);
+  report.check(`a search holding every filter fits (${wide.length} chars)`,
+    rWide.ok && rWide.rows.length === 1, rWide.error);
+
   // Nine more takes the owner to the cap of ten; the eleventh must be refused.
   await db.exec(`insert into saved_searches (candidate_id, label, query)
                  select '${candidate}', 'بحث ' || g, 'q=' || g from generate_series(1, 9) g`);
