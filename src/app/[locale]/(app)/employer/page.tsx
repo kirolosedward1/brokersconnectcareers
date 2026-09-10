@@ -16,6 +16,7 @@ import { asLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { EmptyDashboard, StatTile } from '@/components/dashboard/stat-tile';
 import { SetupChecklist } from '@/components/employer/setup-checklist';
+import { NextAction } from '@/components/dashboard/next-action';
 import { TrendChart } from '@/components/dashboard/trend-chart';
 import { ConversionBars } from '@/components/dashboard/conversion-bars';
 import { requireEmployer } from '@/lib/auth';
@@ -104,6 +105,32 @@ export default async function EmployerOverviewPage({
         <h1 className="text-2xl font-bold">{t('overview')}</h1>
         <p className="mt-1 text-muted-foreground">{t('employerLede')}</p>
       </header>
+
+      {/*
+        One thing, chosen by an ordered list of conditions rather than by a
+        model — first true wins, ties impossible, same state always the same
+        card. Everything it reads was already fetched for the tiles below, so
+        this costs no extra query.
+
+        Order is by cost of ignoring it. Rejected paperwork blocks verification
+        entirely; applicants nobody has opened are people waiting on a reply;
+        an expiring listing disappears from search on a date; a draft is only
+        work not yet done.
+      */}
+      {(() => {
+        const action =
+          s.verification === 'rejected'
+            ? { kind: 'verification' as const, tone: 'urgent' as const, title: t('nextVerificationTitle'), body: t('nextVerificationBody'), cta: t('nextVerificationCta'), href: '/employer/company' }
+            : s.applicants_unseen > 0
+              ? { kind: 'applicants' as const, tone: 'good' as const, title: t('nextApplicantsTitle', { count: s.applicants_unseen }), body: t('nextApplicantsBody'), cta: t('nextApplicantsCta'), href: '/employer/applicants?stage=new' }
+              : s.expiring_soon > 0
+                ? { kind: 'expiring' as const, tone: 'attention' as const, title: t('nextExpiringTitle', { count: s.expiring_soon }), body: t('nextExpiringBody'), cta: t('nextExpiringCta'), href: '/employer/jobs' }
+                : s.draft_jobs > 0
+                  ? { kind: 'draft' as const, tone: 'attention' as const, title: t('nextDraftTitle'), body: t('nextDraftBody'), cta: t('nextDraftCta'), href: '/employer/jobs' }
+                  : null;
+
+        return action ? <NextAction {...action} /> : null;
+      })()}
 
       {/*
         Before there is a listing, a scoreboard of zeroes is analytics

@@ -196,6 +196,8 @@ export type EmployerSummary =
       seats_advertised: number;
       applicants_total: number;
       applicants_new: number;
+      /** Never opened by anybody at the company — the digest email's definition. */
+      applicants_unseen: number;
       applicants_7d: number;
       applicants_prev_7d: number;
       credits: number;

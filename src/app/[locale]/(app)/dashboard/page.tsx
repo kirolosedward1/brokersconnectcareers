@@ -6,6 +6,7 @@ import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyDashboard, StatTile } from '@/components/dashboard/stat-tile';
+import { NextAction } from '@/components/dashboard/next-action';
 import { JobCard } from '@/components/jobs/job-card';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -165,6 +166,25 @@ export default async function DashboardOverviewPage({
         </h1>
         <p className="mt-1 text-muted-foreground">{t('candidateLede')}</p>
       </header>
+
+      {/*
+        The candidate's one next action, same rule as the employer's: an
+        ordered list, first true wins. A reply is somebody else moving; an
+        incomplete profile is the thing that decides whether a verified company
+        can find them at all. Below 60% matches the threshold the completeness
+        tile already warns at, so the page does not disagree with itself.
+      */}
+      {(() => {
+        if (!s) return null;
+        const action =
+          s.replies > 0
+            ? { kind: 'replies' as const, tone: 'good' as const, title: t('nextRepliesTitle', { count: s.replies }), body: t('nextRepliesBody'), cta: t('nextRepliesCta'), href: '/dashboard/applications' }
+            : s.profile_completeness < 60
+              ? { kind: 'profile' as const, tone: 'attention' as const, title: t('nextProfileTitle'), body: t('nextProfileBody'), cta: t('nextProfileCta'), href: '/dashboard/profile' }
+              : null;
+
+        return action ? <NextAction {...action} /> : null;
+      })()}
 
       {!s || s.applications_total === 0 ? (
         <EmptyDashboard
