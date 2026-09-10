@@ -138,7 +138,7 @@ export function AgentProfileForm({
             type="tel"
             required
             dir="ltr"
-            className="numeral"
+            className="numeral-field"
             defaultValue={profile.whatsapp_phone}
           />
         </Field>
@@ -233,7 +233,7 @@ export function AgentProfileForm({
             type="number"
             min={0}
             max={60}
-            className="numeral w-28"
+            className="numeral-field w-28"
             defaultValue={agent?.years_experience ?? 0}
           />
         </Field>

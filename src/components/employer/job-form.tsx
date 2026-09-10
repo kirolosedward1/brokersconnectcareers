@@ -291,7 +291,7 @@ export function JobForm({
                 type="number"
                 min={1}
                 max={999}
-                className="numeral w-28"
+                className="numeral-field w-28"
                 value={values.seats}
                 onChange={set('seats')}
               />
@@ -350,7 +350,7 @@ export function JobForm({
                     step="0.01"
                     min={0}
                     max={100}
-                    className="numeral"
+                    className="numeral-field"
                     value={values.commissionValue}
                     onChange={set('commissionValue')}
                   />

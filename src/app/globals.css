@@ -203,6 +203,33 @@
     direction: ltr;
   }
 
+  /*
+    The same thing, for a form control rather than a run of text.
+
+    `.numeral` on an <input> orders the digits correctly and then strands them
+    against the wrong edge: `direction: ltr` makes `text-align: start` resolve
+    to the left, so in an Arabic form every number sat on the left while every
+    label and every other value sat on the right.
+
+    Dropping the override is not the fix. Digits alone survive it — bidi reads
+    "5,000,000" as one left-to-right run wherever it sits — but a phone number
+    does not: `+201112223344` comes back as `201112223344+`, with the plus
+    thrown to the far end. So the direction stays, and the alignment is stated
+    explicitly against the page's own direction instead of inherited from the
+    element's.
+  */
+  .numeral-field {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    unicode-bidi: isolate;
+    direction: ltr;
+    text-align: left;
+  }
+
+  [dir='rtl'] .numeral-field {
+    text-align: right;
+  }
+
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;

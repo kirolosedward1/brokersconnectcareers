@@ -321,7 +321,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
                 type="number"
                 min={1950}
                 max={2100}
-                className="numeral"
+                className="numeral-field"
               />
             </Field>
             <div className="sm:col-span-2">

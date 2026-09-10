@@ -150,9 +150,11 @@ export function NumberInput({
         type="text"
         inputMode="numeric"
         autoComplete="off"
-        // `numeral` isolates the digits left-to-right. Without it a grouped
-        // figure in an Arabic form is reordered around the commas.
-        className={['numeral', className].filter(Boolean).join(' ')}
+        // `numeral-field`, not `numeral`: both order the digits left-to-right,
+        // but `numeral` leaves `text-align: start` resolving against the
+        // element's own direction, which put every figure against the left
+        // edge of an otherwise right-aligned Arabic form.
+        className={['numeral-field', className].filter(Boolean).join(' ')}
         value={shown}
         onKeyDown={(event) => {
           lastKey.current = event.key;
