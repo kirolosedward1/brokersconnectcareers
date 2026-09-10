@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { AuthForm } from '@/components/auth/auth-form';
 import { AudienceSwitch } from '@/components/auth/audience-switch';
+import { safeNext } from '@/lib/safe-next';
 import { AuthShell, type Audience } from '../../auth-shell';
 import { enabledProviders } from '@/lib/auth-providers';
 
@@ -60,13 +61,19 @@ export async function generateMetadata({
  */
 export default async function AudienceSignInPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; audience: string }>;
+  searchParams: Promise<{ next?: string }>;
 }) {
   const { locale: rawLocale, audience: rawAudience } = await params;
   const locale = asLocale(rawLocale);
   const audience = parse(rawAudience);
   setRequestLocale(locale);
+
+  // Validated here as everywhere else: this ends up in an href, and the rule
+  // for what counts as internal lives in one place.
+  const next = safeNext((await searchParams).next) ?? undefined;
 
   const { google: googleEnabled } = await enabledProviders();
 
@@ -80,7 +87,13 @@ export default async function AudienceSignInPage({
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {t('noAccount')}{' '}
-          <Link href={`/sign-up/${audience}`} className="font-medium text-primary hover:underline">
+          {/* Carries `next` across. Somebody sent here by a "post a job" button
+              who has no account yet was losing the wizard they were aimed at
+              the moment they clicked through to sign up. */}
+          <Link
+            href={{ pathname: `/sign-up/${audience}`, query: next ? { next } : {} }}
+            className="font-medium text-primary hover:underline"
+          >
             {t('signUp')}
           </Link>
         </p>

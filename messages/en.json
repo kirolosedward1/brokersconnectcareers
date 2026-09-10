@@ -18,7 +18,10 @@
     "language": "العربية",
     "menu": "Menu",
     "blog": "Blog",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "collapseMenu": "Collapse the menu",
+    "expandMenu": "Expand the menu",
+    "browseJobs": "Browse jobs"
   },
   "home": {
     "searchPlaceholder": "Search a role, company or district",

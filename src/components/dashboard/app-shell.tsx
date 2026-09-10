@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   PanelLeftClose,
+  Search,
   Settings,
   ShieldCheck,
   UserCog,
@@ -24,7 +25,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
 import { Avatar } from '@/components/ui/avatar';
-import { localeHref, type Locale } from '@/i18n/routing';
+import { dirOf, localeHref, type Locale } from '@/i18n/routing';
 import { LogoMark } from '@/components/logo';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -41,6 +42,7 @@ const ICONS = {
   applications: Briefcase,
   applicants: Users,
   saved: Bookmark,
+  browse: Search,
   profile: UserRound,
   company: Building2,
   billing: CreditCard,
@@ -117,6 +119,47 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
+  /*
+    The label for a collapsed rail item, drawn beside it.
+
+    `title` was doing this, which is the browser's tooltip: about a second of
+    hover before it appears, nothing at all on keyboard focus, and no way to
+    style it — so on a rail of seven identical icons the only way to learn what
+    one does was to hover and wait, or click and find out.
+
+    Fixed rather than absolute, because the rail scrolls: `overflow-y-auto`
+    clips horizontally too — CSS resolves a `visible` cross-axis to `auto` — so
+    anything positioned beside an item from inside that container is cut off at
+    the rail's edge. Positioned from the item's own rect instead, and rendered
+    outside the sidebar entirely.
+  */
+  const [tip, setTip] = useState<{
+    label: string;
+    top: number;
+    left?: number;
+    right?: number;
+  } | null>(null);
+
+  function showTip(event: React.MouseEvent | React.FocusEvent, label: string) {
+    if (!collapsed) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const top = rect.top + rect.height / 2;
+    // The rail sits at the inline start, which is the right in Arabic, so the
+    // label goes to whichever side is away from it.
+    setTip(
+      dirOf(locale) === 'rtl'
+        ? { label, top, right: window.innerWidth - rect.left + 8 }
+        : { label, top, left: rect.right + 8 },
+    );
+  }
+
+  const hideTip = () => setTip(null);
+
+  // Nothing to point at once the labels are back on screen.
+  useEffect(() => {
+    if (!collapsed) setTip(null);
+  }, [collapsed]);
+
   // The overlay must not survive arriving somewhere: the App Router keeps this
   // layout mounted across a route change, so nothing closes it on its own.
   useEffect(() => setOpen(false), [pathname]);
@@ -167,7 +210,10 @@ export function AppShell({
                     <Link
                       href={href}
                       aria-current={active ? 'page' : undefined}
-                      title={collapsed ? label : undefined}
+                      onMouseEnter={(event) => showTip(event, label)}
+                      onFocus={(event) => showTip(event, label)}
+                      onMouseLeave={hideTip}
+                      onBlur={hideTip}
                       className={cn(
                         'relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors',
                         active
@@ -213,6 +259,10 @@ export function AppShell({
       <button
         type="button"
         onClick={signOut}
+        onMouseEnter={(event) => showTip(event, tNav('signOut'))}
+        onFocus={(event) => showTip(event, tNav('signOut'))}
+        onMouseLeave={hideTip}
+        onBlur={hideTip}
         className={cn(
           'flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-destructive',
           collapsed && 'justify-center px-2',
@@ -273,7 +323,7 @@ export function AppShell({
           <button
             type="button"
             onClick={() => setCollapsed((v) => !v)}
-            aria-label={t('overview')}
+            aria-label={collapsed ? tNav('expandMenu') : tNav('collapseMenu')}
             aria-pressed={collapsed}
             className="hidden size-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted lg:grid"
           >
@@ -293,6 +343,18 @@ export function AppShell({
 
         <main id="main" tabIndex={-1} className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
+
+      {/* aria-hidden: every rail item already carries its label in an sr-only
+          span, so announcing this too would read the name twice. */}
+      {collapsed && tip ? (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed z-50 hidden -translate-y-1/2 rounded-lg bg-foreground px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-background shadow-lg lg:block"
+          style={{ top: tip.top, left: tip.left, right: tip.right }}
+        >
+          {tip.label}
+        </div>
+      ) : null}
     </div>
   );
 }

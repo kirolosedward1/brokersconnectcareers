@@ -18,7 +18,10 @@
     "language": "English",
     "menu": "القائمة",
     "blog": "المدوّنة",
-    "skipToContent": "تخطَّ إلى المحتوى"
+    "skipToContent": "تخطَّ إلى المحتوى",
+    "collapseMenu": "اطوِ القائمة",
+    "expandMenu": "افرد القائمة",
+    "browseJobs": "دوّر على وظايف"
   },
   "home": {
     "searchPlaceholder": "دوّر على وظيفة، شركة، أو منطقة",

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
-import { cn } from '@/lib/utils';
+import { cn, formatEgp } from '@/lib/utils';
 import {
   BENEFITS,
   COMMISSION_TYPES,
@@ -187,6 +187,15 @@ export function JobForm({
   }
 
   const district = districts.find((d) => String(d.id) === values.districtId);
+
+  /*
+    The review step shows what will be published, so it formats the way the
+    published advert formats. Empty stays empty rather than becoming 0 — a
+    range with no floor is open-ended, not free.
+  */
+  const asAmount = (raw: string) => (raw.trim() === '' ? null : Number(raw));
+  const salaryMin = asAmount(values.basicSalaryMin);
+  const salaryMax = asAmount(values.basicSalaryMax);
 
   return (
     <div>
@@ -494,13 +503,39 @@ export function JobForm({
                 <div>
                   <dt className="text-xs text-muted-foreground">{tFilters('hasBasicSalary')}</dt>
                   <dd>
-                    {values.basicSalaryMin || values.basicSalaryMax ? (
-                      /* A bare range carries the isolation itself. On the whole
-                         <dd> it also caught the "no basic salary" phrase in the
-                         other branch, and read that backwards. */
-                      <span className="numeral">
-                        {`${values.basicSalaryMin || '—'} – ${values.basicSalaryMax || '—'}`}
-                      </span>
+                    {/*
+                      Formatted the way the published advert formats it.
+
+                      This printed the raw input — "6000 – 9000", no separator
+                      and no currency — on the one screen whose whole job is
+                      letting somebody check their work against what readers
+                      will see, which says "6,000 – 9,000 جنيه". And an
+                      open-ended range came out as "6000 – —", a dash standing
+                      in for a number the employer never entered rather than
+                      saying the range is open.
+
+                      Only the digits are isolated, never the phrase: the whole
+                      <dd> in `.numeral` also caught the "no basic salary"
+                      sentence in the other branch and read it backwards.
+                    */}
+                    {salaryMin != null && salaryMax != null ? (
+                      <>
+                        <span className="numeral">{formatEgp(salaryMin, locale)}</span>
+                        {' – '}
+                        <span className="numeral">{formatEgp(salaryMax, locale)}</span>{' '}
+                        {tCommon('egp')}
+                      </>
+                    ) : salaryMin != null ? (
+                      <>
+                        <span className="numeral">{formatEgp(salaryMin, locale)}+</span>{' '}
+                        {tCommon('egp')}
+                      </>
+                    ) : salaryMax != null ? (
+                      <>
+                        {'≤ '}
+                        <span className="numeral">{formatEgp(salaryMax, locale)}</span>{' '}
+                        {tCommon('egp')}
+                      </>
                     ) : (
                       tFilters('hasBasicSalaryNo')
                     )}

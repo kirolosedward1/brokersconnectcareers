@@ -363,8 +363,21 @@ export async function Landing({
             {t('employerBand.body')}
           </p>
           <div className="relative mt-8 flex flex-wrap justify-center gap-3">
+            {/*
+              The employer door, not the generic one.
+
+              This pointed straight at /employer/jobs/new, which is protected —
+              and nobody reading this page is signed in, because the signed-in
+              home is a different component entirely. So the middleware bounced
+              every click to the generic sign-in, which opens on the job-seeker
+              side: a company that came to post a job was asked to sign in as a
+              consultant. `next` carries them to the wizard once they are
+              through, so the click still ends where it was aimed.
+            */}
             <Button asChild size="lg" variant="secondary">
-              <Link href="/employer/jobs/new">{t('employerBand.cta')}</Link>
+              <Link href={{ pathname: '/sign-in/employer', query: { next: '/employer/jobs/new' } }}>
+                {t('employerBand.cta')}
+              </Link>
             </Button>
             <Button
               asChild
