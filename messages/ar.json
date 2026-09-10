@@ -522,7 +522,10 @@
     "emailSentAt": "اتبعتت",
     "emailDeliveredAt": "اتسلّمت",
     "emailError": "السبب",
-    "emailPreviewHint": "تقدر تشوف شكل كل القوالب من"
+    "emailPreviewHint": "تقدر تشوف شكل كل القوالب من",
+    "emailOffTitle": "إرسال الإيميل متوقف",
+    "emailOffOutbox": "مفيش رسايل بتتسجّل أصلاً — متغيّر الخدمة ناقص، فالرسالة بتفشل من غير ما تتكتب. ظبّط المتغيّرات دي في Vercel وأعد النشر.",
+    "emailOffSending": "الرسايل بتتسجّل بس مش بتتبعت — بيانات Resend ناقصة. ظبّط المتغيّرات دي في Vercel وأعد النشر."
   },
   "reportReason": {
     "fake_listing": "إعلان وهمي",

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Mail } from 'lucide-react';
+import { Mail, TriangleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
@@ -67,6 +67,19 @@ export default async function AdminEmailPage({
   const { status } = await searchParams;
   const active = FILTERS.includes(status as EmailStatus) ? (status as EmailStatus) : null;
 
+  /*
+    Read here rather than fetched from /api/health: this page already runs on
+    the server that holds the variables, and a page that depends on an HTTP
+    call to itself has one more way to be wrong than a page that just looks.
+  */
+  const missing = [
+    ['SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY],
+    ['RESEND_API_KEY', process.env.RESEND_API_KEY],
+    ['RESEND_FROM', process.env.RESEND_FROM],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name as string);
+
   const supabase = await createClient();
   const [{ data: rows }, { data: summary }] = await Promise.all([
     supabase.rpc('email_activity', { p_limit: 200, p_status: active }),
@@ -97,6 +110,47 @@ export default async function AdminEmailPage({
         <h1 className="text-2xl font-bold">{t('emailActivity')}</h1>
         <p className="mt-1 text-muted-foreground">{t('emailActivityLede')}</p>
       </header>
+
+      {/*
+        Why the list below is empty, said on the page rather than left to be
+        inferred from it.
+
+        Both of these fail silently and in different places. Without the
+        service role, createAdminClient() throws inside the after() that queues
+        the message, so nothing is ever written — the screen shows an empty
+        table that looks exactly like a quiet week. Without the Resend
+        variables, rows are written and then never sent.
+
+        This ran for weeks with neither set and the only way to find out was to
+        curl /api/health. An empty queue and a switched-off queue are different
+        facts and the difference belongs where somebody is already looking.
+      */}
+      {missing.length > 0 ? (
+        <div
+          role="status"
+          className="flex gap-3 rounded-xl border border-warning/40 bg-warning-muted p-4 text-sm"
+        >
+          <TriangleAlert className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden />
+          <div className="min-w-0">
+            <p className="font-semibold">{t('emailOffTitle')}</p>
+            <p className="mt-1 leading-relaxed text-muted-foreground">
+              {missing.includes('SUPABASE_SERVICE_ROLE_KEY')
+                ? t('emailOffOutbox')
+                : t('emailOffSending')}
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {missing.map((name) => (
+                <li
+                  key={name}
+                  className="rounded-md bg-card px-2 py-1 font-mono text-xs numeral"
+                >
+                  {name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : null}
 
       <nav
         aria-label={t('emailActivity')}

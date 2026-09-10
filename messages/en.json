@@ -522,7 +522,10 @@
     "emailSentAt": "Sent",
     "emailDeliveredAt": "Delivered",
     "emailError": "Reason",
-    "emailPreviewHint": "Every template can be previewed at"
+    "emailPreviewHint": "Every template can be previewed at",
+    "emailOffTitle": "Email sending is switched off",
+    "emailOffOutbox": "Nothing is being recorded at all — the service key is missing, so a message fails before it is ever written. Set these in Vercel and redeploy.",
+    "emailOffSending": "Messages are recorded but never sent — the Resend credentials are missing. Set these in Vercel and redeploy."
   },
   "reportReason": {
     "fake_listing": "Fake listing",
