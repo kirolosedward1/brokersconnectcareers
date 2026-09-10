@@ -448,7 +448,21 @@
     "searchApplicants": "دوّر بالاسم",
     "searchApplicantsPlaceholder": "اسم المتقدم",
     "searchClear": "امسح البحث",
-    "searchEmpty": "مفيش متقدمين بالاسم ده."
+    "searchEmpty": "مفيش متقدمين بالاسم ده.",
+    "setupTitle": "خطوات البداية",
+    "setupLede": "كمّل دول عشان تبدأ تستقبل متقدمين.",
+    "setupProgress": "{done} من {total}",
+    "setupGo": "كمّل",
+    "setupCompany": "بيانات الشركة",
+    "setupCompanyHint": "نبذة ولوجو — دي اللي الاستشاري بيشوفها جنب كل إعلان.",
+    "setupVerification": "توثيق الشركة",
+    "setupVerificationHint": "ارفع ورق الشركة. الموثّقين بيوصلوا لدليل الاستشاريين كمان.",
+    "setupVerificationRedo": "الورق محتاج مراجعة تانية — ارفعه من جديد.",
+    "setupFirstJob": "أول إعلان",
+    "setupFirstJobHint": "اكتب الوظيفة، وهتروح للمراجعة قبل ما تُنشر.",
+    "setupFirstJobPending": "إعلانك تحت المراجعة — هنبلّغك أول ما يتنشر.",
+    "setupFirstJobDraft": "عندك مسودة محفوظة — كمّلها وابعتها للمراجعة.",
+    "setupPostFirstJob": "انشر أول وظيفة"
   },
   "jobForm": {
     "basics": "الأساسيات",

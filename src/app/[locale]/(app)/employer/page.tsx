@@ -15,6 +15,7 @@ import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { EmptyDashboard, StatTile } from '@/components/dashboard/stat-tile';
+import { SetupChecklist } from '@/components/employer/setup-checklist';
 import { TrendChart } from '@/components/dashboard/trend-chart';
 import { ConversionBars } from '@/components/dashboard/conversion-bars';
 import { requireEmployer } from '@/lib/auth';
@@ -104,6 +105,22 @@ export default async function EmployerOverviewPage({
         <p className="mt-1 text-muted-foreground">{t('employerLede')}</p>
       </header>
 
+      {/*
+        Before there is a listing, a scoreboard of zeroes is analytics
+        pretending the product is in use. The checklist answers what an
+        employer actually has on their first morning — what is done, what is
+        left, what happens next — and the tiles below stand down until there is
+        something for them to count.
+      */}
+      {s.live_jobs + s.pending_jobs === 0 ? (
+        <SetupChecklist
+          company={viewer.company}
+          liveJobs={s.live_jobs}
+          pendingJobs={s.pending_jobs}
+          draftJobs={s.draft_jobs}
+        />
+      ) : null}
+
       {/* Said once, at the top, in the place the work is. A company whose
           account is still being reviewed will otherwise discover it by having
           the listing form refuse them, with no explanation of what to do about
@@ -121,6 +138,7 @@ export default async function EmployerOverviewPage({
         </div>
       ) : null}
 
+      {s.live_jobs + s.pending_jobs === 0 ? null : (
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <StatTile
           label={t('statApplicantsNew')}
@@ -185,10 +203,13 @@ export default async function EmployerOverviewPage({
           tone={s.verification === 'verified' ? 'good' : 'warn'}
         />
       </div>
+      )}
 
       {/* Below the tiles, not above them. The numbers are what needs acting on
-          today; the shape of the month is context for them. */}
-      {trend && trend.has_company ? (
+          today; the shape of the month is context for them — and context for
+          nothing is worse than nothing, so a company with no listing yet gets
+          the checklist instead of a month of flat zero. */}
+      {trend && trend.has_company && s.live_jobs + s.pending_jobs > 0 ? (
         <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
           <TrendChart
             id="employer-applications"

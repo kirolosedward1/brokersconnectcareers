@@ -448,7 +448,21 @@
     "searchApplicants": "Search by name",
     "searchApplicantsPlaceholder": "Applicant's name",
     "searchClear": "Clear the search",
-    "searchEmpty": "No applicants by that name."
+    "searchEmpty": "No applicants by that name.",
+    "setupTitle": "Getting started",
+    "setupLede": "Finish these to start receiving applicants.",
+    "setupProgress": "{done} of {total}",
+    "setupGo": "Finish",
+    "setupCompany": "Company details",
+    "setupCompanyHint": "A description and a logo — what a consultant sees beside every listing.",
+    "setupVerification": "Company verification",
+    "setupVerificationHint": "Upload your documents. Verified companies also reach the consultant directory.",
+    "setupVerificationRedo": "The documents need another look — upload them again.",
+    "setupFirstJob": "Your first listing",
+    "setupFirstJobHint": "Write the role; it goes for review before it is published.",
+    "setupFirstJobPending": "Your listing is in review — we will tell you the moment it is live.",
+    "setupFirstJobDraft": "You have a saved draft — finish it and send it for review.",
+    "setupPostFirstJob": "Post your first job"
   },
   "jobForm": {
     "basics": "Basics",
