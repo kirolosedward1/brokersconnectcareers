@@ -489,6 +489,7 @@
     "approveAccount": "Approve",
     "suspendAccount": "Suspend",
     "confirmReject": "Confirm suspension",
+    "suspendTakesListingsDown": "Suspending also takes down the company's live listings, unless an approved colleague remains.",
     "filterAll": "All",
     "filterPending": "Awaiting review",
     "filterRejected": "Suspended",

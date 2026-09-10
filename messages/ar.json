@@ -489,6 +489,7 @@
     "approveAccount": "فعّل الحساب",
     "suspendAccount": "أوقف الحساب",
     "confirmReject": "أكّد الإيقاف",
+    "suspendTakesListingsDown": "إيقاف الحساب بيقفل كمان كل إعلانات الشركة المنشورة، إلا لو فيه زميل تاني حسابه شغّال.",
     "filterAll": "الكل",
     "filterPending": "مستنية مراجعة",
     "filterRejected": "موقوفة",

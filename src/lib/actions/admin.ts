@@ -307,5 +307,12 @@ export async function setAccountApproval(input: unknown): Promise<ActionResult> 
 
   revalidatePath('/admin/users');
   revalidatePath('/admin');
+  // Suspension takes the account's live listings down with it when nobody
+  // approved is left on the company, so the board and the jobs queue have both
+  // changed by the time this returns.
+  if (parsed.data.status === 'rejected') {
+    revalidatePath('/jobs');
+    revalidatePath('/admin/jobs');
+  }
   return { ok: true };
 }

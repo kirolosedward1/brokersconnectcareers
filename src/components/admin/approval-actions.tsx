@@ -70,6 +70,11 @@ export function ApprovalActions({
           {tCommon('cancel')}
         </Button>
 
+        {/* Suspension now takes the company's live adverts down with it, and a
+            reviewer should know that before they press it rather than after an
+            employer asks where their listings went. */}
+        <p className="w-full text-xs text-muted-foreground">{t('suspendTakesListingsDown')}</p>
+
       {failed ? (
         <span role="alert" className="w-full text-sm text-destructive">
           {tCommon('errorBody')}

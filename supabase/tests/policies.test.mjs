@@ -770,7 +770,7 @@ report.section('dashboard trends are gap-free and scoped like the summaries');
 
 report.section('a company is a team, not a login');
 {
-  const COLLEAGUE = '66666666-6666-6666-6666-666666666666';
+  const COLLEAGUE = '7f7f7f7f-1111-4222-8333-999999999999';
   await db.exec(`
     insert into auth.users (id, email) values ('${COLLEAGUE}', 'colleague@demo.test');
     insert into profiles (id, role, full_name, whatsapp_phone)
@@ -1083,6 +1083,110 @@ report.section('the nightly expiry cron');
 
   const userCall = await as(candidate, 'select expire_stale_jobs()');
   report.check('nor can a signed-in user', !userCall.ok, 'call was allowed');
+}
+
+report.section('suspending an account takes its adverts down with it');
+{
+  const PEER = '7f7f7f7f-1111-4222-8333-999999999999';
+  const company = (
+    await db.query(
+      `select company_id from company_members where user_id = '${employerVerified}' limit 1`,
+    )
+  ).rows[0].company_id;
+
+  /*
+    Put this company back on the board first. Two sections above, the expiry
+    job ran and flipped every past-window listing to expired — correct there,
+    and it leaves nothing live for this section to take down.
+  */
+  await db.exec(`
+    update jobs
+       set status = 'active', expires_at = now() + interval '30 days'
+     where company_id = '${company}' and status in ('expired', 'active')`);
+
+  const liveBefore = (
+    await db.query(
+      `select count(*)::int as n from jobs where company_id = '${company}' and status = 'active'`,
+    )
+  ).rows[0].n;
+  report.check(`the company has ${liveBefore} live listing(s) to lose`, liveBefore > 0);
+
+  /*
+    `as()` reports whether a statement was permitted and rolls back, which is
+    the right shape for a policy question and the wrong one here: the point of
+    this change is what the call *does*. So the suspension and the count that
+    follows it share one transaction, and the rollback happens after both.
+
+    Reading the effect from a scalar subquery in the same statement does not
+    work — the planner is free to run that subplan before the CTE that calls
+    the function, and it does, which is a test that passes against a function
+    body that does nothing at all.
+  */
+  async function suspendThenCount(status) {
+    await db.exec('begin');
+    try {
+      await db.exec('set local role authenticated;');
+      await db.exec(`set local request.jwt.claim.sub = '${admin}';`);
+      await db.exec(`set local request.jwt.claims = '{"role":"authenticated","sub":"${admin}"}';`);
+      await db.query(
+        `select set_account_approval('${employerVerified}'::uuid, 'rejected'::approval_status, 'حساب موقوف')`,
+      );
+      const { rows } = await db.query(
+        `select count(*)::int as n from jobs
+          where company_id = '${company}' and status = '${status}'`,
+      );
+      return { ok: true, n: rows[0].n };
+    } catch (error) {
+      return { ok: false, error: error.message, n: -1 };
+    } finally {
+      await db.exec('rollback');
+    }
+  }
+
+  // A colleague in good standing is cover for the company: one bad recruiter
+  // is not the firm, so nothing should come down while somebody else is fine.
+  await db.exec(`
+    insert into auth.users (id, email)
+      values ('${PEER}', 'peer-suspension@demo.test') on conflict do nothing;
+    insert into profiles (id, role, full_name, whatsapp_phone, approval_status)
+      values ('${PEER}', 'employer', 'زميل', '+201666666666', 'approved') on conflict do nothing;
+    insert into company_members (company_id, user_id, role)
+      values ('${company}', '${PEER}', 'recruiter') on conflict do nothing;`);
+
+  /*
+    Stated after the insert, not in it. New employer accounts are forced to
+    'pending' by a before-insert trigger — which is the rule, and which meant
+    the first version of this test seeded a colleague who was not in good
+    standing and then proved the takedown fired, for the wrong reason.
+  */
+  await db.exec(`update profiles set approval_status = 'approved' where id = '${PEER}'`);
+
+  const covered = await suspendThenCount('active');
+  report.check(
+    'a colleague in good standing keeps the company trading',
+    covered.ok && covered.n === liveBefore,
+    covered.error ?? `${covered.n} of ${liveBefore} still live`,
+  );
+
+  // Now the colleague goes too, so the account is the last approved member.
+  await db.exec(`update profiles set approval_status = 'rejected' where id = '${PEER}'`);
+
+  const alone = await suspendThenCount('rejected');
+  report.check(
+    `the last approved member going down takes the listings with it (${alone.n} of ${liveBefore})`,
+    alone.ok && alone.n === liveBefore,
+    alone.error,
+  );
+
+  const byReader = await as(
+    candidate,
+    `select set_account_approval('${employerVerified}'::uuid, 'approved'::approval_status, null)`,
+  );
+  report.check(
+    'and a non-admin cannot call it at all',
+    !byReader.ok && /forbidden/.test(byReader.error ?? ''),
+    byReader.error,
+  );
 }
 
 process.exit(report.finish() ? 0 : 1);
