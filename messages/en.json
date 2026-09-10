@@ -160,7 +160,11 @@
       "51_200": "51–200",
       "201_500": "201–500",
       "500_plus": "500+"
-    }
+    },
+    "nameAr": "Company name (Arabic)",
+    "nameEn": "Company name (English)",
+    "aboutAr": "About the company (Arabic)",
+    "aboutEn": "About the company (English)"
   },
   "agents": {
     "title": "Real estate consultant directory",
@@ -180,7 +184,9 @@
     "empty": "No consultants match your search.",
     "whoSeesProfile": "Who can see your profile?",
     "viewProfile": "View full profile",
-    "unitsClosedShort": "{count} units closed"
+    "unitsClosedShort": "{count} units closed",
+    "headlineAr": "Professional headline (Arabic)",
+    "headlineEn": "Professional headline (English)"
   },
   "availability": {
     "open_to_offers": "Open to offers",
@@ -832,7 +838,8 @@
     "unitsClosed": "Units closed",
     "volumeEgp": "Total closed value (EGP)",
     "recordHint": "Self-reported. The platform does not verify these.",
-    "completeness": "Profile completeness"
+    "completeness": "Profile completeness",
+    "recordLede": "How many units you have closed, and for how much. Both show on your profile."
   },
   "notifications": {
     "title": "Notifications",
@@ -858,5 +865,10 @@
     "complained": "Complaint",
     "failed": "Failed",
     "suppressed": "Suppressed"
+  },
+  "language": {
+    "ar": "Arabic",
+    "en": "English",
+    "fr": "French"
   }
 }

@@ -29,6 +29,9 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
 
   const viewer = await requireEmployer(locale);
   const t = await getTranslations('billing');
+  // The same word every other price on the site takes from the catalogue;
+  // this one had its own inline ternary.
+  const tCommon = await getTranslations('common');
 
   let orders: OrderRow[] = [];
   let claimedThisMonth = false;
@@ -104,7 +107,7 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
                   {BILLING_ENABLED ? formatEgp(pack.priceEgp, locale) : formatEgp(0, locale)}
                 </span>
                 <span className="ms-1 text-sm font-normal text-muted-foreground">
-                  {locale === 'ar' ? 'جنيه' : 'EGP'}
+                  {tCommon('egp')}
                 </span>
               </p>
 

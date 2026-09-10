@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/field';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
-import { formatDate, formatEgp, formatNumber, isoDate, whatsappLink } from '@/lib/utils';
+import { formatDate, formatEgp, formatList, formatNumber, isoDate, whatsappLink } from '@/lib/utils';
 import { employerOpener } from '@/lib/whatsapp';
 import { setApplicationStatus } from '@/lib/actions/applications';
 import type { ApplicationStatus, ExperienceBand, JobTrack } from '@/lib/supabase/database.types';
@@ -180,14 +180,14 @@ export function ApplicantCard({
             {profile.tracks.length ? (
               <>
                 <span aria-hidden>·</span>
-                <span>{profile.tracks.map((track) => tTrack(track)).join('، ')}</span>
+                <span>{formatList(profile.tracks.map((track) => tTrack(track)), locale)}</span>
               </>
             ) : null}
 
             {districtNames.length ? (
               <>
                 <span aria-hidden>·</span>
-                <span>{districtNames.join('، ')}</span>
+                <span>{formatList(districtNames, locale)}</span>
               </>
             ) : null}
           </p>

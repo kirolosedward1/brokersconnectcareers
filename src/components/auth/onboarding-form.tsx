@@ -201,6 +201,14 @@ export function OnboardingForm({
       ) : null}
 
       <Field label={t('locale')} htmlFor="locale">
+        {/*
+          Each option in its own language, not translated. This picks the
+          language of the site, and somebody who cannot read the current one
+          has to be able to find their way out of it — which is why every
+          language switcher on the web works this way. The `language`
+          namespace is for naming a language *to* a reader, which is a
+          different job: it labels the languages a consultant speaks.
+        */}
         <Select id="locale" name="locale" defaultValue={locale}>
           <option value="ar">العربية</option>
           <option value="en">English</option>

@@ -47,6 +47,7 @@ export function AgentProfileForm({
   const tVisibility = useTranslations('visibility');
   const tAvailability = useTranslations('availability');
   const tTrack = useTranslations('track');
+  const tLanguage = useTranslations('language');
   const tFilters = useTranslations('filters');
   const tCommon = useTranslations('common');
   const tValidation = useTranslations('validation');
@@ -204,7 +205,7 @@ export function AgentProfileForm({
           </Select>
         </Field>
 
-        <Field label="العنوان المهني" htmlFor="headlineAr">
+        <Field label={tAgents('headlineAr')} htmlFor="headlineAr">
           <Textarea
             id="headlineAr"
             name="headlineAr"
@@ -214,7 +215,7 @@ export function AgentProfileForm({
           />
         </Field>
 
-        <Field label="Headline (English)" htmlFor="headlineEn">
+        <Field label={tAgents('headlineEn')} htmlFor="headlineEn">
           <Textarea
             id="headlineEn"
             name="headlineEn"
@@ -269,9 +270,11 @@ export function AgentProfileForm({
         <CheckboxGroup
           legend={tAgents('languages')}
           options={[
-            { value: 'ar', label: 'العربية' },
-            { value: 'en', label: 'English' },
-            { value: 'fr', label: 'Français' },
+            // Named from the same catalogue the public badge reads, so what
+            // somebody ticks here is the word a reader sees there.
+            { value: 'ar', label: tLanguage('ar') },
+            { value: 'en', label: tLanguage('en') },
+            { value: 'fr', label: tLanguage('fr') },
           ]}
           selected={languages}
           onToggle={(value) => toggle(languages, value, setLanguages)}

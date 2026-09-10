@@ -39,6 +39,22 @@ export function formatDayMonth(value: string | Date, locale: string): string {
 }
 
 /** ISO 8601 date, for schema.org and <time datetime>. */
+/**
+ * Join a list the way the reader's language joins lists.
+ *
+ * Three screens did this with `.join('، ')` — the Arabic comma, spelled into
+ * the component. Right in Arabic and wrong in English, where a consultant's
+ * districts would have read "Fifth Settlement، Nasr City": latent only while
+ * the English site is unpublished, and three copies of the same decision in
+ * the meantime.
+ *
+ * `type: 'unit'` gives the comma-separated form with no conjunction, which is
+ * what these are — a set of tags, not a sentence listing them.
+ */
+export function formatList(items: readonly string[], locale: string): string {
+  return new Intl.ListFormat(locale, { style: 'narrow', type: 'unit' }).format(items);
+}
+
 export function isoDate(value: string | Date | null | undefined): string | undefined {
   if (!value) return undefined;
   const date = typeof value === 'string' ? new Date(value) : value;

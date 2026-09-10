@@ -2,7 +2,7 @@ import { useTranslations } from 'next-intl';
 import { Briefcase, CircleDot, Lock, MapPin, UserRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
-import { formatNumber } from '@/lib/utils';
+import { formatList, formatNumber } from '@/lib/utils';
 import type { AgentCardRow, DistrictRow } from '@/lib/supabase/database.types';
 
 /**
@@ -95,7 +95,7 @@ export function AgentCard({
         {areas.length ? (
           <span className="inline-flex items-center gap-1.5">
             <MapPin className="size-4" aria-hidden />
-            {areas.map((d) => localized(locale, d.name_ar, d.name_en)).join('، ')}
+            {formatList(areas.map((d) => localized(locale, d.name_ar, d.name_en)), locale)}
             {moreAreas > 0 ? (
               <span className="numeral">+{formatNumber(moreAreas, locale)}</span>
             ) : null}

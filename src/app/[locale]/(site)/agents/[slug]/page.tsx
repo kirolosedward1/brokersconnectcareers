@@ -82,6 +82,9 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
   const t = await getTranslations('agents');
   const tTrack = await getTranslations('track');
   const tAvailability = await getTranslations('availability');
+  // Was a ternary over two of the three languages the product offers, so a
+  // consultant who ticked French had their badge render the string "fr".
+  const tLanguage = await getTranslations('language');
 
   const name = agent.is_unlocked && agent.full_name ? agent.full_name : t('anonymous');
   const headline = localized(locale, agent.headline_ar, agent.headline_en);
@@ -225,7 +228,7 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
             <dd className="mt-2 flex flex-wrap gap-1.5">
               {agent.languages.map((language) => (
                 <Badge key={language} variant="outline" size="lg">
-                  {language === 'ar' ? 'العربية' : language === 'en' ? 'English' : language}
+                  {tLanguage(language)}
                 </Badge>
               ))}
             </dd>

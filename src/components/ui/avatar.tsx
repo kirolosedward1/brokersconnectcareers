@@ -39,7 +39,10 @@ function hueFor(seed: string) {
  * a surrogate pair down the middle and renders half a character.
  */
 function initialOf(name: string) {
-  return Array.from(name.trim())[0] ?? '؟';
+  // A Latin '?' rather than '؟': this component has no locale, and the Arabic
+  // form would be the placeholder an English reader saw too. Bidi puts it on
+  // the right side of the circle either way.
+  return Array.from(name.trim())[0] ?? '?';
 }
 
 const SIZES = {

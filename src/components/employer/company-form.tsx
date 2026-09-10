@@ -59,11 +59,11 @@ export function CompanyForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
-      <Field label="اسم الشركة (عربي)" htmlFor="nameAr">
+      <Field label={tCompanies('nameAr')} htmlFor="nameAr">
         <Input id="nameAr" name="nameAr" required maxLength={160} defaultValue={company?.name_ar ?? ''} />
       </Field>
 
-      <Field label="Company name (English)" htmlFor="nameEn">
+      <Field label={tCompanies('nameEn')} htmlFor="nameEn">
         <Input
           id="nameEn"
           name="nameEn"
@@ -73,11 +73,11 @@ export function CompanyForm({
         />
       </Field>
 
-      <Field label="نبذة عن الشركة" htmlFor="aboutAr">
+      <Field label={tCompanies('aboutAr')} htmlFor="aboutAr">
         <Textarea id="aboutAr" name="aboutAr" rows={4} maxLength={2000} defaultValue={company?.about_ar ?? ''} />
       </Field>
 
-      <Field label="About (English)" htmlFor="aboutEn">
+      <Field label={tCompanies('aboutEn')} htmlFor="aboutEn">
         <Textarea
           id="aboutEn"
           name="aboutEn"

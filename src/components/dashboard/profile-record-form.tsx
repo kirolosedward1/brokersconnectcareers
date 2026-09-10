@@ -55,7 +55,11 @@ export function ProfileRecordForm({
           </span>
           <div>
             <h2 className="font-semibold">{t('record')}</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">{t('recordHint')}</p>
+            {/* Says what the section is. The caveat about the figures not
+                being verified belongs beside the figures, and used to be
+                printed here as well — the same sentence twice on one card,
+                500px apart. */}
+            <p className="mt-0.5 text-sm text-muted-foreground">{t('recordLede')}</p>
           </div>
         </div>
 

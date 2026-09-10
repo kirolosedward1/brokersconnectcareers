@@ -391,5 +391,100 @@ console.log('\n— no translated phrase is forced left-to-right');
     offenders.length === 0, offenders.join('; '));
 }
 
+console.log('\n— no Arabic is written into a component');
+
+/*
+  Six labels were spelled into two forms rather than translated — three in
+  Arabic, three in English. The English three sat on an Arabic-only screen, so
+  an employer filling in their company profile met "Company name (English)" and
+  "About (English)" among a dozen Arabic labels. Nothing caught it: the checks
+  above prove every key that is asked for exists and every key that exists is
+  asked for, and a string that never becomes a key is invisible to both.
+
+  Arabic in a comment is fine and there is a lot of it — the comments in this
+  codebase quote the copy they are about. So comments come out first, and what
+  is left is code.
+*/
+{
+  /*
+    src/app and src/components — where copy is rendered. Not src/lib, which
+    holds character data rather than words: the Arabic-to-Western numeral map,
+    the letter forms search normalises, the country's phone prefixes, and the
+    email copy module, which is out of the catalogue on purpose because
+    next-intl ships the whole bundle to the browser and twenty templates' worth
+    of strings only the mail server reads would go with it.
+
+    The gap that leaves is a helper in src/lib returning a rendered phrase.
+    Nothing does that today, and a rule with six exceptions stops being read.
+  */
+  const files = [];
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry)) files.push(full);
+    }
+  })(join(ROOT, 'src/app'));
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry)) files.push(full);
+    }
+  })(join(ROOT, 'src/components'));
+
+  /*
+    Three files may hold Arabic, each for a reason that is not "forgot to
+    translate it":
+
+    global-error.tsx replaces the document when the root layout itself has
+    failed, which is precisely when next-intl is not available to ask.
+
+    illustrations.tsx draws its own labels inside an SVG and switches them on a
+    locale prop — the words are artwork, positioned by hand against the shapes
+    around them.
+
+    onboarding-form.tsx names each language in its own language, because a
+    language switcher has to be readable by somebody who cannot read the
+    language currently selected.
+  */
+  const ALLOWED = new Set([
+    'src/app/global-error.tsx',
+    'src/components/home/illustrations.tsx',
+    'src/components/auth/onboarding-form.tsx',
+    // The web app manifest: static metadata a phone reads once when somebody
+    // adds the site to their home screen, in the one language it is served in.
+    'src/app/manifest.ts',
+  ]);
+
+  const ARABIC = /[\u0600-\u06ff]/;
+  const offenders = [];
+
+  for (const file of files) {
+    const relative = file.replace(ROOT + '/', '');
+    if (ALLOWED.has(relative)) continue;
+
+    /*
+      Blanked, not deleted. The first version of this removed comments
+      outright and then reported the line numbers of what was left, which no
+      longer matched the file — every offender it named was a comment several
+      lines further up, and the four it found were all phantoms.
+    */
+    const code = readFileSync(file, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ' '))
+      .replace(/^(\s*)\/\/.*$/gm, '$1');
+
+    code.split('\n').forEach((line, index) => {
+      if (ARABIC.test(line)) offenders.push(`${relative}:${index + 1}`);
+    });
+  }
+
+  check(
+    `no Arabic literal outside the catalogue (${files.length} files, ${ALLOWED.size} allowed)`,
+    offenders.length === 0,
+    offenders.slice(0, 8).join('; '),
+  );
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
