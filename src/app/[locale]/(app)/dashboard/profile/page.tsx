@@ -4,6 +4,7 @@ import { asLocale, type Locale } from '@/i18n/routing';
 import { AgentProfileForm } from '@/components/dashboard/agent-profile-form';
 import { CvEditor } from '@/components/dashboard/cv-editor';
 import { ProfileRecordForm } from '@/components/dashboard/profile-record-form';
+import { ProfileGaps } from '@/components/dashboard/profile-gaps';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getDistricts, getDevelopers } from '@/lib/queries/taxonomy';
@@ -64,6 +65,19 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
         <h1 className="text-2xl font-bold">{t('profile')}</h1>
         <p className="mt-1 text-muted-foreground">{t('profileLede')}</p>
       </header>
+
+      {/* Above the form, because it is the reason to scroll into it. Renders
+          nothing once the profile is complete. */}
+      {typedAgent ? (
+        <ProfileGaps
+          agent={typedAgent}
+          completeness={typeof completeness?.data === 'number' ? completeness.data : 0}
+          hasExperience={(experience?.data ?? []).length > 0}
+          hasEducation={(education?.data ?? []).length > 0}
+        />
+      ) : null}
+
+      <div id="profile-form" className="scroll-mt-20" />
 
       <AgentProfileForm
         locale={locale}
