@@ -116,9 +116,26 @@ export default async function ApplicantsPage({
       </header>
 
       {applications.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
-          {t('noApplicants')}
-        </p>
+        /*
+          Nobody has applied to this listing *yet*, which is a different thing
+          from nobody applying. The two useful moves are reading the advert the
+          way a consultant reads it, and checking whether other listings are
+          getting applicants — so both are offered rather than neither.
+        */
+        <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center">
+          <p className="font-medium">{t('noApplicants')}</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+            {t('noApplicantsHint')}
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Button asChild variant="outline">
+              <Link href={`/jobs/${job.slug}`}>{t('viewListing')}</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href="/employer/applicants">{t('allApplicants')}</Link>
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="space-y-8">
           {PIPELINE.map((stage) => {

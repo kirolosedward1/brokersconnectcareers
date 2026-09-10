@@ -3,6 +3,8 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale } from '@/i18n/routing';
 import { NotificationItem } from '@/components/notifications/notification-item';
 import { MarkAllReadButton } from '@/components/notifications/mark-all-read-button';
+import { Link } from '@/i18n/navigation';
+import { Button } from '@/components/ui/button';
 import { requireProfile } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import type { NotificationRow } from '@/lib/supabase/database.types';
@@ -33,7 +35,7 @@ export default async function NotificationsPage({
   const locale = asLocale((await params).locale);
   setRequestLocale(locale);
 
-  await requireProfile(locale);
+  const viewer = await requireProfile(locale);
   const supabase = await createClient();
 
   const { data } = await supabase
@@ -59,9 +61,25 @@ export default async function NotificationsPage({
       </header>
 
       {notifications.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
-          {t('empty')}
-        </p>
+        /*
+          A quiet inbox is the expected state most days, not a fault — so it
+          says so, and then points at the thing this person came to the
+          product to do. "Nothing here" with no way onward is a page that can
+          only be left with the back button.
+        */
+        <div className="rounded-2xl border border-dashed border-border px-6 py-16 text-center">
+          <p className="font-medium">{t('empty')}</p>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+            {t('emptyHint')}
+          </p>
+          <Button asChild variant="outline" className="mt-5">
+            {viewer.profile.role === 'employer' || viewer.profile.role === 'admin' ? (
+              <Link href="/employer/applicants">{t('emptyCtaEmployer')}</Link>
+            ) : (
+              <Link href="/jobs">{t('emptyCtaCandidate')}</Link>
+            )}
+          </Button>
+        </div>
       ) : (
         <ul className="divide-y divide-border rounded-2xl border border-border bg-card p-2">
           {notifications.map((notification) => (

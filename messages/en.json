@@ -482,7 +482,9 @@
     "setupFirstJobHint": "Write the role; it goes for review before it is published.",
     "setupFirstJobPending": "Your listing is in review — we will tell you the moment it is live.",
     "setupFirstJobDraft": "You have a saved draft — finish it and send it for review.",
-    "setupPostFirstJob": "Post your first job"
+    "setupPostFirstJob": "Post your first job",
+    "noApplicantsHint": "Nobody has applied to this listing yet. Read the advert the way a consultant reads it, or check your other listings.",
+    "viewListing": "Read the listing"
   },
   "jobForm": {
     "basics": "Basics",
@@ -930,7 +932,10 @@
     "job_rejected": "{subject} needs changes",
     "company_verified": "{subject} is verified",
     "account_approved": "Your account is active",
-    "account_rejected": "Your account is suspended"
+    "account_rejected": "Your account is suspended",
+    "emptyHint": "We will tell you here the moment something happens on your applications or listings.",
+    "emptyCtaCandidate": "Browse jobs",
+    "emptyCtaEmployer": "See applicants"
   },
   "emailStatus": {
     "queued": "Queued",

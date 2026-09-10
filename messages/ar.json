@@ -482,7 +482,9 @@
     "setupFirstJobHint": "اكتب الوظيفة، وهتروح للمراجعة قبل ما تُنشر.",
     "setupFirstJobPending": "إعلانك تحت المراجعة — هنبلّغك أول ما يتنشر.",
     "setupFirstJobDraft": "عندك مسودة محفوظة — كمّلها وابعتها للمراجعة.",
-    "setupPostFirstJob": "انشر أول وظيفة"
+    "setupPostFirstJob": "انشر أول وظيفة",
+    "noApplicantsHint": "لسه محدش قدّم على الإعلان ده. اقرا الإعلان زي ما الاستشاري بيقراه، أو شوف باقي إعلاناتك.",
+    "viewListing": "اقرا الإعلان"
   },
   "jobForm": {
     "basics": "الأساسيات",
@@ -930,7 +932,10 @@
     "job_rejected": "إعلان {subject} محتاج تعديل",
     "company_verified": "تم توثيق {subject}",
     "account_approved": "حسابك اتفعّل",
-    "account_rejected": "حسابك اتوقف مؤقتاً"
+    "account_rejected": "حسابك اتوقف مؤقتاً",
+    "emptyHint": "هنبلّغك هنا أول ما يحصل جديد على طلباتك أو إعلاناتك.",
+    "emptyCtaCandidate": "دوّر على وظايف",
+    "emptyCtaEmployer": "شوف المتقدمين"
   },
   "emailStatus": {
     "queued": "في الطابور",
