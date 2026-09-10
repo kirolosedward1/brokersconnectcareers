@@ -81,6 +81,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
           <ProfileRecordForm
             agent={typedAgent}
             completeness={typeof completeness?.data === 'number' ? completeness.data : 0}
+            locale={locale}
           />
           <CvEditor
             agentId={typedAgent.id}

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { cn, formatEgp } from '@/lib/utils';
+import { NumberInput } from '@/components/ui/number-input';
 import {
   BENEFITS,
   COMMISSION_TYPES,
@@ -302,13 +303,12 @@ export function JobForm({
           <div className="space-y-5">
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label={t('basicSalaryMin')} hint={t('salaryHint')} htmlFor="basicSalaryMin">
-                <Input
+                <NumberInput
                   id="basicSalaryMin"
-                  type="number"
                   min={0}
-                  className="numeral"
+                  locale={locale}
                   value={values.basicSalaryMin}
-                  onChange={set('basicSalaryMin')}
+                  onValueChange={(raw) => setValues((v) => ({ ...v, basicSalaryMin: raw }))}
                 />
               </Field>
 
@@ -317,13 +317,12 @@ export function JobForm({
                 htmlFor="basicSalaryMax"
                 error={errors.basicSalaryMax ? tValidation('salaryOrder') : undefined}
               >
-                <Input
+                <NumberInput
                   id="basicSalaryMax"
-                  type="number"
                   min={0}
-                  className="numeral"
+                  locale={locale}
                   value={values.basicSalaryMax}
-                  onChange={set('basicSalaryMax')}
+                  onValueChange={(raw) => setValues((v) => ({ ...v, basicSalaryMax: raw }))}
                 />
               </Field>
             </div>

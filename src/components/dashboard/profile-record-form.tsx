@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Building2, TrendingUp } from 'lucide-react';
 import { SubmitButton } from '@/components/ui/submit-button';
-import { Field, Input } from '@/components/ui/field';
+import { Field } from '@/components/ui/field';
+import { NumberInput } from '@/components/ui/number-input';
 import { saveProfileRecord } from '@/lib/actions/cv';
 import type { AgentProfileRow } from '@/lib/supabase/database.types';
 
@@ -19,9 +20,12 @@ import type { AgentProfileRow } from '@/lib/supabase/database.types';
 export function ProfileRecordForm({
   agent,
   completeness,
+  locale,
 }: {
   agent: AgentProfileRow;
   completeness: number;
+  /** Decides how the two figures are grouped. */
+  locale: string;
 }) {
   const t = useTranslations('cv');
   const tCommon = useTranslations('common');
@@ -97,25 +101,19 @@ export function ProfileRecordForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t('unitsClosed')} htmlFor="unitsClosed">
-            <Input
+            <NumberInput
               id="unitsClosed"
               name="unitsClosed"
-              type="number"
-              min={0}
-              max={100000}
-              defaultValue={agent.units_closed ?? ''}
-              className="numeral"
+              defaultValue={agent.units_closed}
+              locale={locale}
             />
           </Field>
           <Field label={t('volumeEgp')} htmlFor="volumeEgp">
-            <Input
+            <NumberInput
               id="volumeEgp"
               name="volumeEgp"
-              type="number"
-              min={0}
-              step={1000}
-              defaultValue={agent.volume_egp ?? ''}
-              className="numeral"
+              defaultValue={agent.volume_egp}
+              locale={locale}
             />
           </Field>
         </div>
