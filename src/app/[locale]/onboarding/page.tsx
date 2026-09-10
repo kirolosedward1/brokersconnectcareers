@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { getViewer } from '@/lib/auth';
+import { safeNext } from '@/lib/safe-next';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
 import { OnboardingForm } from '@/components/auth/onboarding-form';
@@ -65,7 +66,7 @@ export default async function OnboardingPage({
             defaultName={viewer!.suggestedName}
             defaultRole={defaultRole}
             districts={districts}
-            next={next && next.startsWith('/') ? next : undefined}
+            next={safeNext(next) ?? undefined}
           />
         </div>
       </div>

@@ -88,6 +88,68 @@ for (const value of CASES) {
 }
 
 
+report.section('nothing hands the browser a path it has not checked');
+
+/*
+  Landing after sign-in, sign-out, onboarding and account deletion are document
+  navigations now, because a client push raced the refresh beside it and left
+  people on a blank page. That trade moves a burden: next-intl's router treated
+  a hostile `next` as a pathname and neutralised it by accident, and
+  `window.location.assign` does not.
+
+  It was already wrong once. `/onboarding?next=//evil.example` was checked with
+  `startsWith('/')`, which a protocol-relative URL satisfies, and the day the
+  last hop became a real navigation that became an open redirect off the site.
+
+  So: two rules, read off the source rather than remembered. Every assign takes
+  either a literal path or a value from a file that validates, and there is
+  exactly one definition of what "internal" means.
+*/
+{
+  const { readdirSync: rd, readFileSync: rf } = await import('node:fs');
+  const { join: jn, dirname: dnm } = await import('node:path');
+  const { fileURLToPath: fu } = await import('node:url');
+
+  const SRC = jn(dnm(fu(import.meta.url)), '../../src');
+
+  const walk = (dir) =>
+    rd(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(jn(dir, e.name)) : /\.tsx?$/.test(e.name) ? [jn(dir, e.name)] : [],
+    );
+
+  /** Source with comments removed, so prose about a rule is not mistaken for it. */
+  const code = (text) =>
+    text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  const files = walk(SRC);
+  report.ok(files.length > 100, `read ${files.length} source files`);
+
+  let assigns = 0;
+  for (const file of files) {
+    const text = code(rf(file, 'utf8'));
+    for (const match of text.matchAll(/window\.location\.assign\(([^;]*?)\);/g)) {
+      assigns += 1;
+      const argument = match[1];
+      const literal = /localeHref\(\s*locale\s*,\s*'\/[^']*'\s*\)/.test(argument);
+      report.ok(
+        literal || text.includes('safeNext('),
+        `${file.slice(SRC.length + 1)} validates what it navigates to`,
+      );
+    }
+  }
+  report.ok(assigns >= 6, `found ${assigns} document navigations to check`);
+
+  const loose = files.filter(
+    (file) =>
+      !file.endsWith('safe-next.ts') && /startsWith\(['"]\//.test(code(rf(file, 'utf8'))),
+  );
+  report.is(
+    loose.map((f) => f.slice(SRC.length + 1)).join(', '),
+    '',
+    'only safe-next.ts decides what an internal path is',
+  );
+}
+
 report.section('every private route is actually listed as private');
 
 // Two hand-maintained lists of (app) routes have now drifted out of date, and

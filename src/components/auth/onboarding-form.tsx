@@ -8,6 +8,7 @@ import type { Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select } from '@/components/ui/field';
 import { localeHref, localized } from '@/i18n/routing';
+import { safeNext } from '@/lib/safe-next';
 import { cn } from '@/lib/utils';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { completeOnboarding } from '@/lib/actions/onboarding';
@@ -65,8 +66,18 @@ export function OnboardingForm({
       // The company now exists by the time we get here, so an employer lands
       // on their overview — where the "under review" banner is — rather than on
       // a company form asking again for what they just typed.
+      /*
+        Checked again here, where the navigation actually happens.
+
+        `next` arrives as a prop, and the page that passes it does validate —
+        but this line hands a string to the browser, and a component that does
+        that should not depend on somebody else having checked it first. The
+        earlier version of this guard was `startsWith('/')`, which lets
+        `//evil.example` through: a protocol-relative URL, and an open redirect
+        the moment the last hop stopped going through next-intl's router.
+      */
       const destination =
-        next ?? (result.data!.role === 'employer' ? '/employer' : '/dashboard/applications');
+        safeNext(next) ?? (result.data!.role === 'employer' ? '/employer' : '/dashboard/applications');
       /*
         The profile did not exist a moment ago and now does, which changes
         what every server component on the other side renders. Fetched
