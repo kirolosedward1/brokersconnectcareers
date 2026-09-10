@@ -41,6 +41,36 @@ export async function GET() {
     cron: set(process.env.CRON_SECRET),
   };
 
+  /*
+    Why a variable is not configured, per variable.
+
+    `configured` says something is wrong; it cannot say what to do about it,
+    and the two causes need opposite actions. "absent" means the variable never
+    reached this deployment — added to Preview instead of Production, or added
+    after the last build and not redeployed. "placeholder" means it is present
+    and still holds the REPLACE_ME value from .env.vercel.local, so the import
+    worked and the real key was never pasted in.
+
+    Chasing that distinction by guesswork cost a round of redeploys, so the
+    endpoint answers it. Names only — never a value, not even a masked one:
+    this route is public.
+  */
+  const attention: Record<string, 'absent' | 'placeholder'> = {};
+  for (const name of [
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_SITE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'RESEND_API_KEY',
+    'RESEND_FROM',
+    'RESEND_WEBHOOK_SECRET',
+    'CRON_SECRET',
+  ]) {
+    const value = process.env[name];
+    if (!value) attention[name] = 'absent';
+    else if (isPlaceholder(value)) attention[name] = 'placeholder';
+  }
+
   // One real round trip, against a table every page depends on, through the
   // anon key so it exercises the same path a visitor does — RLS included.
   let database = false;
@@ -63,6 +93,9 @@ export async function GET() {
       status: healthy ? 'ok' : 'degraded',
       database,
       configured,
+      // Omitted entirely when everything is in place, so a healthy response
+      // stays as short as it was.
+      ...(Object.keys(attention).length ? { attention } : {}),
       ms: Date.now() - started,
     },
     {
