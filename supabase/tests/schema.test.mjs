@@ -70,4 +70,36 @@ report.section('WhatsApp numbers are stored in E.164');
   report.check('a local-format number is rejected at the column', bad !== null, 'update succeeded');
 }
 
+report.section('a report is always about a listing');
+{
+  /*
+    The moderation queue groups open reports by job_id and offers one takedown
+    per group. A report with no listing attached would be a card with nothing
+    to act on and no way to leave the queue — so the column carries the rule
+    rather than the page carrying a fallback for a row that cannot exist.
+  */
+  const orphan = await db
+    .query(`insert into reports (job_id, reason) values (null, 'spam')`)
+    .then(() => null)
+    .catch((error) => error.message);
+  report.check('a report with no job is rejected at the column', orphan !== null, 'insert succeeded');
+
+  // And the pairing the grouped count depends on: one report per person per
+  // listing, so a group of five is five people rather than one loud one.
+  const job = (await db.query(`select id from jobs where status = 'active' limit 1`)).rows[0];
+  const reporter_ = (await db.query(`select id from profiles where role = 'candidate' limit 1`)).rows[0];
+  await db.query(`insert into reports (job_id, reporter_id, reason) values ($1, $2, 'spam')`, [
+    job.id,
+    reporter_.id,
+  ]);
+  const twice = await db
+    .query(`insert into reports (job_id, reporter_id, reason) values ($1, $2, 'duplicate')`, [
+      job.id,
+      reporter_.id,
+    ])
+    .then(() => null)
+    .catch((error) => error.message);
+  report.check('the same person cannot report the same listing twice', twice !== null, 'insert succeeded');
+}
+
 process.exit(report.finish() ? 0 : 1);

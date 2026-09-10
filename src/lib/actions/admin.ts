@@ -161,7 +161,36 @@ export async function verifyCompany(input: unknown): Promise<ActionResult> {
   return { ok: true };
 }
 
-export async function resolveReport(reportId: string): Promise<ActionResult> {
+const reportedJobSchema = z.object({
+  jobId: z.string().uuid(),
+  takeDown: z.boolean(),
+  note: z.string().trim().max(500).optional(),
+});
+
+/**
+ * Close out every open report on one listing, optionally taking it down.
+ *
+ * The queue used to resolve reports one at a time, and its only verb was
+ * "resolve" — which marks the complaint handled and leaves the listing exactly
+ * where it was. A reviewer reading "this advert is a fake" had nothing on that
+ * screen to act with: they had to remember the title, cross to the jobs queue,
+ * switch it to the active tab, and find it in an unpaginated list. The
+ * realistic outcome of that walk is that the report gets closed and the fake
+ * advert stays up.
+ *
+ * Reports are also one-per-person — there is a unique index on
+ * (job_id, reporter_id) — so five reports on a listing are five different
+ * people, which is the strongest signal the queue has. Handling them
+ * individually threw it away and made the reviewer close the same complaint
+ * five times.
+ *
+ * So the unit of work is the listing, not the row: both verbs act on every
+ * open report at once, and taking down means the listing actually comes down.
+ */
+export async function actOnReportedJob(input: unknown): Promise<ActionResult<{ tookDown: boolean }>> {
+  const parsed = reportedJobSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
@@ -169,21 +198,49 @@ export async function resolveReport(reportId: string): Promise<ActionResult> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: resolved, error } = await supabase
+  let tookDown = false;
+
+  if (parsed.data.takeDown) {
+    const { data: rejected, error } = await supabase
+      .from('jobs')
+      .update({ status: 'rejected', rejection_note: parsed.data.note || null })
+      .eq('id', parsed.data.jobId)
+      // Already rejected is not a second rejection. Without this the employer
+      // is emailed again every time a later report on a listing that is
+      // already down gets cleared.
+      .neq('status', 'rejected')
+      .select('id');
+
+    if (error) return { ok: false, error: error.message };
+    tookDown = Boolean(rejected?.length);
+
+    if (tookDown) {
+      after(() => notifyEmployerOfModeration(parsed.data.jobId, false, parsed.data.note));
+    }
+  }
+
+  const { data: resolved, error: resolveError } = await supabase
     .from('reports')
     .update({
       resolved: true,
       resolved_by: user?.id ?? null,
       resolved_at: new Date().toISOString(),
     })
-    .eq('id', reportId)
+    .eq('job_id', parsed.data.jobId)
+    .eq('resolved', false)
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
-  if (!resolved?.length) return { ok: false, error: 'not_found' };
+  if (resolveError) return { ok: false, error: resolveError.message };
+  // Nothing open and nothing taken down means the queue moved on without this
+  // reviewer — somebody else cleared it. Saying so beats a success message for
+  // work that did not happen.
+  if (!resolved?.length && !tookDown) return { ok: false, error: 'not_found' };
 
   revalidatePath('/admin/reports');
-  return { ok: true };
+  revalidatePath('/admin/jobs');
+  revalidatePath('/admin');
+  if (tookDown) revalidatePath('/jobs');
+  return { ok: true, data: { tookDown } };
 }
 
 /** Mints a short-lived signed URL for a verification document. */

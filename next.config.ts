@@ -74,10 +74,29 @@ const nextConfig: NextConfig = {
       }
     })();
 
+    /*
+      Development needs two things production must never be given.
+
+      Next's dev bundler compiles every module to an `eval()` so React Refresh
+      can swap it, and it opens a websocket back to the dev server to trigger
+      that. Under the production CSP the eval is refused — main-app.js throws
+      EvalError before a single client component hydrates, so every page
+      renders its server markup and then does nothing at all: forms do not
+      submit, dialogs do not open, buttons are decoration.
+
+      That is not a subtle failure, but it is a silent one. It cost most of a
+      sign-in debugging session before the console said why, and it would have
+      cost that again for anybody who cloned the repository.
+
+      Neither exemption exists in a production build, which has no eval and no
+      HMR socket, and NODE_ENV is set by the framework rather than by us.
+    */
+    const dev = process.env.NODE_ENV === 'development';
+
     const csp = [
       `default-src 'self'`,
       // Next inlines its bootstrap; see the note above about nonces.
-      `script-src 'self' 'unsafe-inline' ${analytics}`.trim(),
+      `script-src 'self' 'unsafe-inline' ${dev ? `'unsafe-eval'` : ''} ${analytics}`.replace(/\s+/g, ' ').trim(),
       // Tailwind ships as a stylesheet, but Next also inlines critical CSS.
       `style-src 'self' 'unsafe-inline'`,
       // Company logos come from Supabase storage; avatars come from whichever
@@ -89,7 +108,9 @@ const nextConfig: NextConfig = {
       // The websocket origin as well as the https one: supabase-js opens a
       // realtime socket even where the application does not subscribe to
       // anything, and a blocked socket is a console error on every page.
-      `connect-src 'self' ${supabase} ${supabase.replace(/^https:/, 'wss:')} ${analytics}`.trim(),
+      `connect-src 'self' ${supabase} ${supabase.replace(/^https:/, 'wss:')} ${analytics} ${dev ? 'ws://localhost:* http://localhost:*' : ''}`
+        .replace(/\s+/g, ' ')
+        .trim(),
       `object-src 'none'`,
       `base-uri 'self'`,
       `form-action 'self'`,
