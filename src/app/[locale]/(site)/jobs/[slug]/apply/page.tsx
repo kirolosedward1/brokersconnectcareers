@@ -8,6 +8,11 @@ import { ApplyForm } from '@/components/jobs/apply-form';
 import { Button } from '@/components/ui/button';
 import { getJobBySlug } from '@/lib/queries/jobs';
 import { getViewer } from '@/lib/auth';
+import { JobCard } from '@/components/jobs/job-card';
+import { EMPTY_FILTERS, queryJobs, type JobListItem } from '@/lib/queries/jobs';
+import { optional } from '@/lib/queries/error';
+import { rankJobs } from '@/lib/match';
+
 import { formatDate } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
 
@@ -86,6 +91,39 @@ export default async function ApplyPage({
     .eq('candidate_id', viewer!.userId)
     .maybeSingle();
 
+  /*
+    What to show after the confirmation, fetched only when there is going to be
+    a confirmation to show. Ranked against this consultant's own profile by the
+    same function the dashboard uses, with the listing they just applied to and
+    everything else they have applied to removed — suggesting a role somebody
+    has already applied for is not a suggestion.
+  */
+  let nextRoles: { job: JobListItem }[] = [];
+  let personalised = false;
+  if (existing && justApplied) {
+    const [openRoles, { data: agent }, { data: mine }] = await Promise.all([
+      optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0 }),
+      supabase
+        .from('agent_profiles')
+        .select('tracks, district_ids, years_experience')
+        .eq('user_id', viewer!.userId)
+        .maybeSingle(),
+      supabase.from('applications').select('job_id'),
+    ]);
+
+    const appliedTo = new Set((mine ?? []).map((row) => row.job_id));
+    const ranked = rankJobs(
+      openRoles.jobs.filter((role) => role.id !== job.id && !appliedTo.has(role.id)),
+      {
+        tracks: agent?.tracks ?? null,
+        districtIds: agent?.district_ids ?? null,
+        yearsExperience: agent?.years_experience ?? null,
+      },
+    );
+    personalised = ranked.personalised;
+    nextRoles = ranked.ranked.slice(0, 2);
+  }
+
   if (existing) {
     /*
       Two different messages for the same database row, and the difference
@@ -141,6 +179,34 @@ export default async function ApplyPage({
               <Link href="/jobs">{tJobs('title')}</Link>
             </Button>
           </div>
+
+          {/*
+            Where the session used to end.
+
+            The strongest moment to show somebody another role is the one just
+            after they applied for one: they are already in the mindset, their
+            details are already saved, and the next application costs them
+            almost nothing. Two buttons and a full stop threw that away.
+
+            Ranked against their own profile and labelled the same way the
+            dashboard labels it, so this is the product's one notion of
+            relevance rather than a second one invented here. Nothing renders
+            if there is nothing to show.
+          */}
+          {nextRoles.length ? (
+            <section className="mt-10" aria-labelledby="next-roles">
+              <h2 id="next-roles" className="text-lg font-semibold">
+                {personalised ? t('nextRolesMatched') : t('nextRoles')}
+              </h2>
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                {nextRoles.map(({ job: role }) => (
+                  <li key={role.id}>
+                    <JobCard job={role} locale={locale} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
         </div>
       );
     }

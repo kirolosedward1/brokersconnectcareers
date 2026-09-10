@@ -379,7 +379,9 @@
     "rateLimit": "You have applied to a lot of jobs today. Try again tomorrow.",
     "labelJob": "Role",
     "labelCompany": "Company",
-    "labelDate": "Applied on"
+    "labelDate": "Applied on",
+    "nextRoles": "Other open roles",
+    "nextRolesMatched": "Other roles that fit you"
   },
   "employer": {
     "company": "Company profile",

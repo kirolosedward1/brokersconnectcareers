@@ -379,7 +379,9 @@
     "rateLimit": "قدّمت على وظائف كتير النهاردة. جرّب تاني بكرة.",
     "labelJob": "الوظيفة",
     "labelCompany": "الشركة",
-    "labelDate": "تاريخ التقديم"
+    "labelDate": "تاريخ التقديم",
+    "nextRoles": "وظايف تانية مفتوحة",
+    "nextRolesMatched": "وظايف تانية على مقاسك"
   },
   "employer": {
     "company": "ملف الشركة",
