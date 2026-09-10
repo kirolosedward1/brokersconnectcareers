@@ -1,4 +1,4 @@
-import type { AbstractIntlMessages } from "next-intl";
+import type { AbstractIntlMessages } from 'next-intl';
 
 /**
  * Which messages reach the browser.
@@ -27,43 +27,43 @@ import type { AbstractIntlMessages } from "next-intl";
 
 /** Namespaces the public site's client components read. Dotted paths allowed. */
 export const PUBLIC_MESSAGES = [
-  "agents",
-  "apply",
-  "auth",
-  "availability",
-  "common",
-  "companies",
-  "employmentType",
-  "experienceBand",
-  "filters",
-  "jobs",
+  'agents',
+  'apply',
+  'auth',
+  'availability',
+  'common',
+  'companies',
+  'employmentType',
+  'experienceBand',
+  'filters',
+  'jobs',
   // Only the tab labels, not the 8 KB of landing-page prose around them —
   // that half is server-rendered.
-  "landingPage.tabs",
-  "leadsSource",
-  "onboarding",
-  "reportReason",
-  "savedSearch",
-  "theme",
-  "track",
-  "validation",
+  'landingPage.tabs',
+  'leadsSource',
+  'onboarding',
+  'reportReason',
+  'savedSearch',
+  'theme',
+  'track',
+  'validation',
 ] as const;
 
 /** What the console's client components need on top of the above. */
 export const CONSOLE_MESSAGES = [
-  "account",
-  "admin",
-  "applicationStatus",
-  "benefits",
-  "commissionType",
-  "compensation",
-  "cv",
-  "dashboard",
-  "employer",
-  "jobForm",
-  "language",
-  "nav",
-  "visibility",
+  'account',
+  'admin',
+  'applicationStatus',
+  'benefits',
+  'commissionType',
+  'compensation',
+  'cv',
+  'dashboard',
+  'employer',
+  'jobForm',
+  'language',
+  'nav',
+  'visibility',
 ] as const;
 
 /**

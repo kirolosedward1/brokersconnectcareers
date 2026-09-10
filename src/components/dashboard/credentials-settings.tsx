@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, KeyRound, Mail } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
 import { announcePasswordChange } from '@/lib/actions/account';
@@ -149,10 +149,10 @@ export function CredentialsSettings({
               </p>
             ) : null}
 
-            <Button type="submit" disabled={savingPassword}>
+            <SubmitButton disabled={savingPassword}>
               <KeyRound aria-hidden />
               {savingPassword ? tCommon('loading') : tCommon('save')}
-            </Button>
+            </SubmitButton>
           </form>
         ) : null}
       </section>
@@ -186,10 +186,10 @@ export function CredentialsSettings({
             </p>
           ) : null}
 
-          <Button type="submit" disabled={savingEmail}>
+          <SubmitButton disabled={savingEmail}>
             <Mail aria-hidden />
             {savingEmail ? tCommon('loading') : tCommon('save')}
-          </Button>
+          </SubmitButton>
         </form>
       </section>
     </>

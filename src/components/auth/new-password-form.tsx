@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
 import { localeHref, type Locale } from '@/i18n/routing';
@@ -106,9 +106,9 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
         </p>
       ) : null}
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <SubmitButton className="w-full" disabled={pending}>
         {pending ? tCommon('loading') : t('resetPassword')}
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

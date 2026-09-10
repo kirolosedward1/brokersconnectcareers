@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { CheckCircle2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { localized } from '@/i18n/routing';
-import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { saveCompany } from '@/lib/actions/company';
@@ -130,9 +130,9 @@ export function CompanyForm({
       ) : null}
 
       <div className="flex items-center gap-3">
-        <Button type="submit" size="lg" disabled={pending}>
+        <SubmitButton size="lg" disabled={pending}>
           {pending ? tCommon('loading') : company ? tCommon('save') : t('createCompanyFirst')}
-        </Button>
+        </SubmitButton>
         {saved ? (
           <span className="inline-flex items-center gap-1.5 text-sm text-success">
             <CheckCircle2 className="size-4" aria-hidden />

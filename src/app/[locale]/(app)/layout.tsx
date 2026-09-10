@@ -1,28 +1,28 @@
-import { NextIntlClientProvider } from "next-intl";
+import { NextIntlClientProvider } from 'next-intl';
 import {
   getMessages,
   getTranslations,
   setRequestLocale,
 } from "next-intl/server";
-import { redirect } from "@/i18n/navigation";
-import { asLocale } from "@/i18n/routing";
+import { redirect } from '@/i18n/navigation';
+import { asLocale } from '@/i18n/routing';
 import {
   CONSOLE_MESSAGES,
   PUBLIC_MESSAGES,
   pick,
 } from "@/i18n/client-messages";
-import { AppShell, type AppNavGroup } from "@/components/dashboard/app-shell";
-import { NotificationBell } from "@/components/notifications/notification-bell";
-import { NotificationItem } from "@/components/notifications/notification-item";
-import { Link } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { optional } from "@/lib/queries/error";
+import { AppShell, type AppNavGroup } from '@/components/dashboard/app-shell';
+import { NotificationBell } from '@/components/notifications/notification-bell';
+import { NotificationItem } from '@/components/notifications/notification-item';
+import { Link } from '@/i18n/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { optional } from '@/lib/queries/error';
 import type {
   AdminSummary,
   EmployerSummary,
   NotificationRow,
 } from "@/lib/supabase/database.types";
-import { getViewer } from "@/lib/auth";
+import { getViewer } from '@/lib/auth';
 
 /**
  * Everything behind a sign-in, under its own chrome.

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { BellPlus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { saveSearch } from '@/lib/actions/saved-searches';
 
 /**
@@ -92,9 +93,9 @@ export function SaveSearch({ signedIn, defaultLabel }: { signedIn: boolean; defa
         className="h-9 w-48 rounded-lg border border-input bg-card px-3 text-sm shadow-xs"
         autoFocus
       />
-      <Button type="submit" size="sm" disabled={pending || !label.trim()}>
+      <SubmitButton size="sm" disabled={pending || !label.trim()}>
         {pending ? tCommon('loading') : tCommon('save')}
-      </Button>
+      </SubmitButton>
       <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
         {tCommon('cancel')}
       </Button>

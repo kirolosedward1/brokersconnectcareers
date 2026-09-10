@@ -8,6 +8,7 @@ import { Link } from '@/i18n/navigation';
 import { localeHref, type Locale } from '@/i18n/routing';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
 import { safeNext } from '@/lib/safe-next';
 
@@ -420,9 +421,9 @@ export function AuthForm({
           </p>
         ) : null}
 
-        <Button type="submit" className="w-full" size="lg" disabled={pending}>
+        <SubmitButton className="w-full" size="lg" disabled={pending}>
           {pending ? tCommon('loading') : mode === 'sign-up' ? t('signUp') : t('signIn')}
-        </Button>
+        </SubmitButton>
       </form>
 
       {/* Sign-in only. Offering a demo account on the sign-up screen would be

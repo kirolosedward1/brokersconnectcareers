@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { GraduationCap, Award, Briefcase, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select } from '@/components/ui/field';
 import {
   deleteCvEntry,
@@ -273,9 +274,9 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
               </Field>
             </div>
             <div className="sm:col-span-2">
-              <Button type="submit" size="sm" disabled={pending}>
+              <SubmitButton size="sm" disabled={pending}>
                 {pending ? tCommon('loading') : tCommon('save')}
-              </Button>
+              </SubmitButton>
             </div>
           </form>
         ) : null}
@@ -324,9 +325,9 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
               />
             </Field>
             <div className="sm:col-span-2">
-              <Button type="submit" size="sm" disabled={pending}>
+              <SubmitButton size="sm" disabled={pending}>
                 {pending ? tCommon('loading') : tCommon('save')}
-              </Button>
+              </SubmitButton>
             </div>
           </form>
         ) : null}
@@ -368,9 +369,9 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
               <Input id="expires" name="expires" type="date" />
             </Field>
             <div className="sm:col-span-2">
-              <Button type="submit" size="sm" disabled={pending}>
+              <SubmitButton size="sm" disabled={pending}>
                 {pending ? tCommon('loading') : tCommon('save')}
-              </Button>
+              </SubmitButton>
             </div>
           </form>
         ) : null}

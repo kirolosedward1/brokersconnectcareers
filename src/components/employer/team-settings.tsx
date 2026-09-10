@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { ShieldCheck, UserPlus, UserRound, X } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Badge } from '@/components/ui/badge';
 import { Field, Input, Select } from '@/components/ui/field';
 import { addCompanyMember, removeCompanyMember } from '@/lib/actions/company';
@@ -173,10 +174,10 @@ export function TeamSettings({
           ) : null}
 
           <div className="sm:col-span-2">
-            <Button type="submit" disabled={pending}>
+            <SubmitButton disabled={pending}>
               <UserPlus aria-hidden />
               {pending ? tCommon('loading') : t('teamAdd')}
-            </Button>
+            </SubmitButton>
           </div>
         </form>
       ) : (

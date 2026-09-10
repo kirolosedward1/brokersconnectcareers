@@ -1,22 +1,22 @@
-import type { Metadata, Viewport } from "next";
-import { notFound } from "next/navigation";
-import { hasLocale, NextIntlClientProvider } from "next-intl";
+import type { Metadata, Viewport } from 'next';
+import { notFound } from 'next/navigation';
+import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import {
   getMessages,
   getTranslations,
   setRequestLocale,
 } from "next-intl/server";
-import { IBM_Plex_Sans_Arabic } from "next/font/google";
+import { IBM_Plex_Sans_Arabic } from 'next/font/google';
 import {
   alternatesFor,
   activeLocales,
   dirOf,
   type Locale,
 } from "@/i18n/routing";
-import { PUBLIC_MESSAGES, pick } from "@/i18n/client-messages";
-import { env } from "@/lib/env";
-import "../globals.css";
-import { Analytics } from "@/components/analytics";
+import { PUBLIC_MESSAGES, pick } from '@/i18n/client-messages';
+import { env } from '@/lib/env';
+import '../globals.css';
+import { Analytics } from '@/components/analytics';
 
 /**
  * One family, both scripts.

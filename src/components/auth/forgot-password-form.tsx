@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Mail } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
 
@@ -59,10 +60,10 @@ export function ForgotPasswordForm() {
         <Input id="email" name="email" type="email" required autoComplete="email" dir="ltr" />
       </Field>
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <SubmitButton className="w-full" disabled={pending}>
         <Mail aria-hidden />
         {t('sendResetLink')}
-      </Button>
+      </SubmitButton>
 
       <p className="text-center text-sm">
         <Link href="/sign-in" className="font-medium text-primary hover:underline">

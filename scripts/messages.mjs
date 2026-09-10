@@ -409,7 +409,7 @@ console.log('\n— the browser gets the messages it needs and no more');
   const listing = readFileSync(join(ROOT, 'src/i18n/client-messages.ts'), 'utf8');
   const listOf = (name) => {
     const body = listing.match(new RegExp(`export const ${name} = \\[([^\\]]*)\\]`))?.[1] ?? '';
-    return [...body.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    return [...body.matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]);
   };
   const publicPaths = listOf('PUBLIC_MESSAGES');
   const consolePaths = listOf('CONSOLE_MESSAGES');
@@ -439,7 +439,10 @@ console.log('\n— the browser gets the messages it needs and no more');
     const text = readFileSync(file, 'utf8');
     if (!/^['"]use client['"]/m.test(text)) continue;
     const relative = file.replace(ROOT + '/', '');
-    for (const match of text.matchAll(/useTranslations\(\s*'([^']+)'/g)) {
+    // Quote-agnostic, like the two scanners above it: a handful of files in
+    // this codebase are double-quoted, and a scanner that only sees single
+    // quotes reports their namespaces as unread and invites deleting them.
+    for (const match of text.matchAll(/useTranslations\(\s*['"`]([\w.]+)['"`]/g)) {
       usage.push({ relative, namespace: match[1] });
     }
   }

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Building2, TrendingUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
 import { saveProfileRecord } from '@/lib/actions/cv';
 import type { AgentProfileRow } from '@/lib/supabase/database.types';
@@ -121,9 +121,9 @@ export function ProfileRecordForm({
         </div>
 
         <div className="flex items-center gap-3">
-          <Button type="submit" size="sm" disabled={pending}>
+          <SubmitButton size="sm" disabled={pending}>
             {pending ? tCommon('loading') : tCommon('save')}
-          </Button>
+          </SubmitButton>
           {saved ? <span className="text-sm text-success">{tCommon('saveSuccess')}</span> : null}
         </div>
       </form>

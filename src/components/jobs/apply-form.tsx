@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { CheckCircle2, Paperclip } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
 import { CV_BUCKET } from '@/lib/buckets';
@@ -250,9 +251,9 @@ export function ApplyForm({
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+      <SubmitButton size="lg" className="w-full" disabled={pending}>
         {pending ? tCommon('loading') : t('submit')}
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

@@ -7,6 +7,7 @@ import { useRouter } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 import {
@@ -542,9 +543,9 @@ export function JobForm({
             ) : null}
 
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" size="lg" disabled={pending}>
+              <SubmitButton size="lg" disabled={pending}>
                 {tEmployer('submitForReview')}
-              </Button>
+              </SubmitButton>
               {/* formNoValidate: a draft is allowed to be incomplete. */}
               <Button
                 type="button"
@@ -571,10 +572,10 @@ export function JobForm({
           </Button>
 
           {step < STEPS.length - 1 ? (
-            <Button type="submit">
+            <SubmitButton>
               {t('next')}
               <ArrowRight className="rtl-flip" />
-            </Button>
+            </SubmitButton>
           ) : null}
         </div>
       </form>

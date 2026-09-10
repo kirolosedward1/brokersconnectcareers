@@ -1,13 +1,14 @@
-"use client";
+'use client';
 
-import { useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
-import { Flag } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Field, Select, Textarea } from "@/components/ui/field";
-import { Dialog } from "@/components/ui/dialog";
-import { REPORT_REASONS } from "@/lib/taxonomy";
-import { reportJob } from "@/lib/actions/jobs";
+import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
+import { Flag } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Field, Select, Textarea } from '@/components/ui/field';
+import { Dialog } from '@/components/ui/dialog';
+import { SubmitButton } from '@/components/ui/submit-button';
+import { REPORT_REASONS } from '@/lib/taxonomy';
+import { reportJob } from '@/lib/actions/jobs';
 
 /**
  * Reporting needs an account now, so this has a signed-out state: a link to
@@ -122,9 +123,9 @@ export function ReportJobDialog({
             >
               {tCommon("cancel")}
             </Button>
-            <Button type="submit" disabled={pending}>
+            <SubmitButton disabled={pending}>
               {tCommon("submit")}
-            </Button>
+            </SubmitButton>
           </div>
         </form>
       </Dialog>

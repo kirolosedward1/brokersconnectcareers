@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Briefcase, Search } from 'lucide-react';
 
 import type { Locale } from '@/i18n/routing';
-import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select } from '@/components/ui/field';
 import { localeHref, localized } from '@/i18n/routing';
 import { safeNext } from '@/lib/safe-next';
@@ -221,9 +221,9 @@ export function OnboardingForm({
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+      <SubmitButton size="lg" className="w-full" disabled={pending}>
         {pending ? tCommon('loading') : t('submit')}
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

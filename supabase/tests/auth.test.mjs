@@ -150,6 +150,87 @@ report.section('nothing hands the browser a path it has not checked');
   );
 }
 
+report.section('no form can submit itself before the page is ready');
+
+/*
+  A `<form onSubmit={...}>` with no `action` renders as `<form>` — no action,
+  no method — and a browser submitting that does a GET to the same URL with
+  every field in the query string. React's handler is what stops it, and
+  React's handler does not exist until the page hydrates.
+
+  On /sign-in that window put an email and a password into location.href, and
+  from there into browser history, into the Referer header of every same-origin
+  request that followed, and into the platform's access log — while the
+  sign-in itself silently did nothing. Read straight off the served HTML: the
+  form had no action, the submit button was enabled, and the password field was
+  right there beside it.
+
+  SubmitButton renders disabled until it has mounted, which also covers Enter
+  in a text field: the HTML spec skips implicit submission when a form's
+  default button is disabled. This asserts every such form uses it.
+*/
+{
+  const { readdirSync: rdir, readFileSync: rfile } = await import('node:fs');
+  const { join: pjoin, dirname: pdir } = await import('node:path');
+  const { fileURLToPath: furl2 } = await import('node:url');
+
+  const SRC = pjoin(pdir(furl2(import.meta.url)), '../../src');
+
+  const walk = (dir) =>
+    rdir(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(pjoin(dir, e.name)) : /\.tsx$/.test(e.name) ? [pjoin(dir, e.name)] : [],
+    );
+
+  /*
+    The keyword search is the exception, and a real one: its field is named `q`
+    and the page reads `q`, so the native GET this rule exists to prevent is
+    exactly the right fallback there. Disabling that button would remove a
+    search that works without JavaScript.
+  */
+  const PROGRESSIVE = new Set(['components/jobs/job-filters.tsx']);
+
+  const offenders = [];
+  let checked = 0;
+
+  /*
+    Comments blanked, not removed, so a docblock quoting the very pattern this
+    rule forbids is not read as an instance of it — which is what happened
+    first: the check flagged SubmitButton's own explanation of the bug.
+  */
+  const strip = (text) =>
+    text
+      .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ' '))
+      .replace(/^(\s*)\/\/.*$/gm, '$1');
+
+  for (const file of walk(SRC)) {
+    const source = rfile(file, 'utf8');
+    if (!/^['"]use client['"]/m.test(source)) continue;
+    // The component that implements the rule is the one place a plain
+    // submit-typed Button belongs.
+    if (file.endsWith('ui/submit-button.tsx')) continue;
+    const text = strip(source);
+
+    // Every <form …> tag in the file, with its attributes.
+    for (const tag of text.matchAll(/<form\b[^>]*>/g)) {
+      if (!/onSubmit=/.test(tag[0])) continue;
+      if (/\baction=/.test(tag[0])) continue; // has a real destination
+      checked += 1;
+
+      const relative = file.slice(SRC.length + 1);
+      if (PROGRESSIVE.has(relative)) continue;
+
+      if (/<Button\s+type="submit"/.test(text)) {
+        offenders.push(`${relative} still has a plain <Button type="submit">`);
+      } else if (!/<SubmitButton\b/.test(text)) {
+        offenders.push(`${relative} has no SubmitButton`);
+      }
+    }
+  }
+
+  report.ok(checked > 10, `found ${checked} client-only forms`);
+  report.is(offenders.join('; '), '', 'each one disables its submit until hydrated');
+}
+
 report.section('every private route is actually listed as private');
 
 // Two hand-maintained lists of (app) routes have now drifted out of date, and
