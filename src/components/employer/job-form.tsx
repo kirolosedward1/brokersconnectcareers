@@ -172,8 +172,16 @@ export function JobForm({
         return;
       }
 
+      /*
+        No refresh after the push. The server action already called
+        revalidatePath('/employer/jobs'), so the list this lands on is fetched
+        fresh either way — and a refresh fired at the same instant as a
+        navigation races it. When the refresh wins, the push is cancelled and
+        the employer is still looking at the wizard they just submitted, with
+        nothing to tell them it worked. The obvious thing to do then is submit
+        it again.
+      */
       router.push('/employer/jobs');
-      router.refresh();
     });
   }
 

@@ -3,11 +3,11 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check } from 'lucide-react';
-import { useRouter } from '@/i18n/navigation';
+
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
-import type { Locale } from '@/i18n/routing';
+import { localeHref, type Locale } from '@/i18n/routing';
 
 /**
  * Set the new password, on the session the recovery link just created.
@@ -25,8 +25,6 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
   const t = useTranslations('auth');
   const tValidation = useTranslations('validation');
   const tCommon = useTranslations('common');
-
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -57,8 +55,13 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
         return;
       }
       setDone(true);
-      router.replace('/dashboard', { locale });
-      router.refresh();
+      /*
+        Same as sign-in: the session has just changed, so the server has to
+        be asked again from scratch rather than through a router push racing
+        a refresh. /dashboard redirects by role, and a swallowed redirect
+        leaves a blank page.
+      */
+      window.location.assign(localeHref(locale, '/dashboard'));
     });
   }
 

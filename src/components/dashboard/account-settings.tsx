@@ -3,8 +3,8 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Download, Loader2, Trash2 } from 'lucide-react';
-import { useRouter } from '@/i18n/navigation';
-import type { Locale } from '@/i18n/routing';
+
+import { localeHref, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { deleteMyAccount, updateNotificationPreferences } from '@/lib/actions/account';
 import type { ProfileRow } from '@/lib/supabase/database.types';
@@ -34,7 +34,6 @@ export function AccountSettings({
 }) {
   const t = useTranslations('account');
   const tCommon = useTranslations('common');
-  const router = useRouter();
 
   const [prefs, setPrefs] = useState<Prefs>(initial);
   const [saved, setSaved] = useState(false);
@@ -61,8 +60,11 @@ export function AccountSettings({
     startDeleting(async () => {
       const result = await deleteMyAccount();
       if (result.ok) {
-        router.replace('/', { locale });
-        router.refresh();
+        /*
+          The account is gone. Nothing the client router is holding about
+          this person is true any more, so the browser starts again.
+        */
+        window.location.assign(localeHref(locale, '/'));
         return;
       }
       setError(

@@ -22,9 +22,9 @@ import {
   X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { Link, usePathname, useRouter } from '@/i18n/navigation';
+import { Link, usePathname } from '@/i18n/navigation';
 import { Avatar } from '@/components/ui/avatar';
-import type { Locale } from '@/i18n/routing';
+import { localeHref, type Locale } from '@/i18n/routing';
 import { LogoMark } from '@/components/logo';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -113,7 +113,6 @@ export function AppShell({
   const t = useTranslations('dashboard');
   const tNav = useTranslations('nav');
   const pathname = usePathname();
-  const router = useRouter();
 
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -133,8 +132,13 @@ export function AppShell({
 
   async function signOut() {
     await createClient().auth.signOut();
-    router.replace('/', { locale });
-    router.refresh();
+    /*
+      A document navigation, not a router push. Signing out changes who the
+      server thinks you are, and a client push races the refresh that was
+      there to tell it — the sign-in form landed on a blank page that way.
+      A full load costs one request and cannot get this wrong.
+    */
+    window.location.assign(localeHref(locale, '/'));
   }
 
   const rail = (

@@ -3,11 +3,11 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Briefcase, Search } from 'lucide-react';
-import { useRouter } from '@/i18n/navigation';
+
 import type { Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select } from '@/components/ui/field';
-import { localized } from '@/i18n/routing';
+import { localeHref, localized } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { completeOnboarding } from '@/lib/actions/onboarding';
@@ -32,8 +32,6 @@ export function OnboardingForm({
   const tValidation = useTranslations('validation');
   const tCommon = useTranslations('common');
   const tHeadcount = useTranslations('companies.headcountBand');
-
-  const router = useRouter();
   const [role, setRole] = useState<'candidate' | 'employer'>(defaultRole ?? 'candidate');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
@@ -69,8 +67,13 @@ export function OnboardingForm({
       // a company form asking again for what they just typed.
       const destination =
         next ?? (result.data!.role === 'employer' ? '/employer' : '/dashboard/applications');
-      router.replace(destination, { locale });
-      router.refresh();
+      /*
+        The profile did not exist a moment ago and now does, which changes
+        what every server component on the other side renders. Fetched
+        fresh rather than pushed through a client router that would have to
+        be told, separately, that everything it holds is stale.
+      */
+      window.location.assign(localeHref(locale, destination));
     });
   }
 

@@ -62,6 +62,19 @@ export function alternatesFor(path: string, locale: string) {
 }
 
 /**
+ * A path as a real URL, prefixed the way `localePrefix: 'as-needed'` prefixes.
+ *
+ * next-intl's router does this for every ordinary link, and it is the right
+ * tool for every ordinary link. This exists for the one navigation that must
+ * not go through the client router at all — landing somebody after sign-in,
+ * where the browser has to fetch the page fresh so the server sees the new
+ * session cookie.
+ */
+export function localeHref(locale: string, path: string): string {
+  return locale === defaultLocale ? path : `/${locale}${path}`;
+}
+
+/**
  * Arabic is required on every content table, English is optional. Fall back to
  * Arabic whenever the English column is null — never show an empty field.
  */

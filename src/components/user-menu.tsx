@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { LogOut, Settings, User } from 'lucide-react';
-import { Link, useRouter } from '@/i18n/navigation';
-import type { Locale } from '@/i18n/routing';
+import { Link } from '@/i18n/navigation';
+import { localeHref, type Locale } from '@/i18n/routing';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 
@@ -18,7 +18,6 @@ export function UserMenu({
   accountLabel: string;
   locale: Locale;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -47,8 +46,13 @@ export function UserMenu({
   function signOut() {
     startTransition(async () => {
       await createClient().auth.signOut();
-      router.replace('/', { locale });
-      router.refresh();
+      /*
+        A document navigation, not a router push. Signing out changes who the
+        server thinks you are, and a client push races the refresh that was
+        there to tell it — the sign-in form landed on a blank page that way.
+        A full load costs one request and cannot get this wrong.
+      */
+      window.location.assign(localeHref(locale, '/'));
     });
   }
 

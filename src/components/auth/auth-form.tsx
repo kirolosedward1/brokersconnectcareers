@@ -4,8 +4,8 @@ import { useState, useTransition } from 'react';
 import { Building2, MailCheck, RefreshCw, UserRound } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Link, useRouter } from '@/i18n/navigation';
-import type { Locale } from '@/i18n/routing';
+import { Link } from '@/i18n/navigation';
+import { localeHref, type Locale } from '@/i18n/routing';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/field';
@@ -128,7 +128,6 @@ export function AuthForm({
     return known.namespace === 'auth' ? t(known.key) : tValidation(known.key);
   };
 
-  const router = useRouter();
   const searchParams = useSearchParams();
   // Validated, not taken on trust: this decides a navigation and arrives in a
   // query string anybody can craft. An unusable value falls back to onboarding
@@ -139,17 +138,16 @@ export function AuthForm({
   // implied one, hand it over. An existing account skips onboarding entirely,
   // so this can never override a stored role.
   /**
-   * An object, not a string with a `?` in it.
+   * A plain href, because both users of it are real URLs now.
    *
-   * next-intl's router takes the string form as a whole pathname, so
-   * `/onboarding?role=employer` arrived as a path with no query and the role
-   * was silently dropped — every company that came through the employer door
-   * landed on onboarding with "consultant" pre-selected. The href for the
-   * OAuth callback still has to be a string, hence the two shapes.
+   * It used to exist in two shapes: an object for next-intl's router, which
+   * takes a string as a whole pathname and so silently dropped the query —
+   * every company that came through the employer door landed on onboarding
+   * with "consultant" pre-selected — and a string for the OAuth callback.
+   * Now that landing after sign-in is a document navigation rather than a
+   * router push, the string is the only shape needed and the trap is gone
+   * with it.
    */
-  const onboarding = audience
-    ? ({ pathname: '/onboarding', query: { role: audience } } as const)
-    : ({ pathname: '/onboarding' } as const);
   const onboardingHref = audience ? `/onboarding?role=${audience}` : '/onboarding';
 
   const [error, setError] = useState<string | null>(null);
@@ -205,10 +203,34 @@ export function AuthForm({
         }
       }
 
-      // Onboarding decides for itself whether there is anything left to ask.
-      router.replace(next ?? onboarding, { locale });
-      router.refresh();
+      landAfterSignIn();
     });
+  }
+
+  /**
+   * Where a successful sign-in goes, and why it is a document navigation.
+   *
+   * This was `router.replace(...)` followed immediately by `router.refresh()`,
+   * and the two raced. The replace goes to /onboarding, whose server component
+   * redirects an account that already has a profile — which is every sign-in,
+   * as opposed to every sign-up. When the refresh landed first it cancelled
+   * the follow-up to that redirect, and the browser sat on /onboarding with no
+   * <main> at all: a blank page, after the single most important action in the
+   * product, with no way forward but a manual reload. Intermittent, which is
+   * worse than always.
+   *
+   * The refresh was there to make the server see the new session cookie. A
+   * document navigation does that by construction, and there is no second
+   * navigation to race: the middleware runs, the app shell is built with the
+   * session, and nothing is served from a router cache populated while signed
+   * out. A full load is the honest cost of changing who you are.
+   *
+   * The same mistake was fixed in the apply form for the same reason.
+   */
+  function landAfterSignIn() {
+    // Onboarding decides for itself whether there is anything left to ask.
+    const path = next ?? onboardingHref;
+    window.location.assign(localeHref(locale, path));
   }
 
   /**
@@ -237,8 +259,7 @@ export function AuthForm({
         setError(demoError.message);
         return;
       }
-      router.replace(next ?? onboarding, { locale });
-      router.refresh();
+      landAfterSignIn();
     });
   }
 
