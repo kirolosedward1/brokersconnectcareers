@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale } from '@/i18n/routing';
 import { AccountSettings } from '@/components/dashboard/account-settings';
 import { CredentialsSettings } from '@/components/dashboard/credentials-settings';
+import { AvatarUpload } from '@/components/dashboard/avatar-upload';
 import { requireProfile } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
@@ -43,6 +44,14 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
       <p className="mt-2 text-muted-foreground">{t('subtitle')}</p>
 
       <div className="mt-8 space-y-8">
+        {/* First, because it is the one thing on this page that other people
+            see. Everything below it is private. */}
+        <AvatarUpload
+          userId={viewer.profile.id}
+          name={viewer.profile.full_name}
+          avatarUrl={viewer.profile.avatar_url}
+        />
+
         <CredentialsSettings email={viewer.email ?? ''} hasPassword={hasPassword} />
 
         <AccountSettings

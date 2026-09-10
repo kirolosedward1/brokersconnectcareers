@@ -786,7 +786,11 @@
     "emailPending": "Confirmation sent. Open the new address and confirm from there.",
     "oauthOnly": "This account signs in with Google, so there is no password to change.",
     "notifyApplicantDigest": "One email a day instead of one per applicant",
-    "notifyApplicantDigestHint": "For listings that attract a lot of people. The summary arrives in the morning and replaces the individual notice."
+    "notifyApplicantDigestHint": "For listings that attract a lot of people. The summary arrives in the morning and replaces the individual notice.",
+    "photo": "Your photo",
+    "photoHint": "Shown to employers with your application, and on your directory profile. PNG or JPG, up to 2 MB.",
+    "photoUpload": "Upload a photo",
+    "photoReplace": "Replace photo"
   },
   "savedSearch": {
     "cta": "Alert me",

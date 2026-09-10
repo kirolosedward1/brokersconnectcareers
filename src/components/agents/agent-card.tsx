@@ -2,6 +2,7 @@ import { useTranslations } from 'next-intl';
 import { Briefcase, CircleDot, Lock, MapPin, UserRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
+import { Avatar } from '@/components/ui/avatar';
 import { formatList, formatNumber } from '@/lib/utils';
 import type { AgentCardRow, DistrictRow } from '@/lib/supabase/database.types';
 
@@ -43,17 +44,37 @@ export function AgentCard({
   return (
     <article className="lift reveal relative rounded-2xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/30 sm:p-6">
       <div className="flex gap-4">
-        <span
-          aria-hidden
-          className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-muted ring-2 ring-primary/10"
-        >
-          {agent.is_unlocked && agent.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={agent.avatar_url} alt="" className="size-full object-cover" />
-          ) : (
+        {/*
+          The same avatar the rest of the product draws.
+
+          This was a raw <img> with a grey silhouette behind it, which meant
+          two things. A consultant with no photo — most of them — appeared as
+          the identical grey person icon as every other row, so a directory
+          page had nothing for the eye to catch; the company list solved that
+          with a tinted monogram long ago and this side never did. And a photo
+          that fails to load had no fallback at all: `avatar_url` is usually
+          Google's, which 403s from time to time, and the card was left with a
+          broken-image glyph in the circle.
+
+          Locked profiles keep the silhouette. A monogram is an initial, and an
+          initial is more than an anonymous card is allowed to say.
+        */}
+        {agent.is_unlocked ? (
+          <Avatar
+            name={agent.full_name ?? ''}
+            src={agent.avatar_url}
+            seed={agent.slug}
+            size="lg"
+            className="ring-2 ring-primary/10"
+          />
+        ) : (
+          <span
+            aria-hidden
+            className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-muted ring-2 ring-primary/10"
+          >
             <UserRound className="size-7 text-muted-foreground" />
-          )}
-        </span>
+          </span>
+        )}
 
         <div className="min-w-0 flex-1">
           <h3 className="flex items-center gap-1.5 text-lg font-semibold leading-tight">

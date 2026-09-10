@@ -5,6 +5,7 @@ import { Download, Lock, MapPin, UserRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
+import { Avatar } from '@/components/ui/avatar';
 import { AgentCv } from '@/components/agents/agent-cv';
 import { Button } from '@/components/ui/button';
 import { getAgentCard } from '@/lib/queries/agents';
@@ -114,17 +115,20 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <header className="flex flex-wrap items-start gap-4">
-        <span
-          aria-hidden
-          className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-muted"
-        >
-          {agent.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={agent.avatar_url} alt="" className="size-full object-cover" />
-          ) : (
+        {/* Same treatment as the directory card: a monogram rather than a
+            silhouette when there is no photo, and a fallback when the photo
+            fails to load. A locked profile keeps the silhouette — an initial
+            is more than an anonymous profile is allowed to say. */}
+        {agent.is_unlocked ? (
+          <Avatar name={agent.full_name ?? ''} src={agent.avatar_url} seed={agent.slug} size="lg" />
+        ) : (
+          <span
+            aria-hidden
+            className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-muted"
+          >
             <UserRound className="size-7 text-muted-foreground" />
-          )}
-        </span>
+          </span>
+        )}
 
         <div className="min-w-0 flex-1">
           <h1 className="flex items-center gap-2 text-2xl font-bold">

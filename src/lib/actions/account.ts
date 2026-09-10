@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { AVATAR_BUCKET } from '@/lib/buckets';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
 import { notifyPasswordChanged } from '@/lib/email/notify';
@@ -133,5 +134,58 @@ export async function updateNotificationPreferences(input: unknown): Promise<Act
   if (error) return { ok: false, error: error.message };
 
   revalidatePath('/dashboard/account');
+  return { ok: true };
+}
+
+const avatarSchema = z.object({
+  /** Null clears the photo and goes back to the monogram. */
+  storagePath: z.string().trim().max(300).nullable(),
+});
+
+/**
+ * Record a profile photo, or clear it.
+ *
+ * The file is already in the public `avatars` bucket by the time this runs —
+ * the browser puts it there, into a folder named for the account, where a
+ * storage policy checks that the folder is the uploader's own. This only turns
+ * the path into a URL and writes it down, and it writes it through the
+ * caller's own session so the row it updates is theirs by the same rule.
+ *
+ * `.select()` because an update that RLS filters to zero rows comes back with
+ * no error at all, and reporting success for a save that saved nothing is the
+ * failure this codebase keeps meeting.
+ */
+export async function saveAvatar(input: unknown): Promise<ActionResult> {
+  const parsed = avatarSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  // The path is not taken on trust: it must be inside this account's own
+  // folder, whatever the caller sent.
+  if (parsed.data.storagePath && !parsed.data.storagePath.startsWith(`${user.id}/`)) {
+    return { ok: false, error: 'forbidden' };
+  }
+
+  const url = parsed.data.storagePath
+    ? supabase.storage.from(AVATAR_BUCKET).getPublicUrl(parsed.data.storagePath).data.publicUrl
+    : null;
+
+  const { data: updated, error } = await supabase
+    .from('profiles')
+    .update({ avatar_url: url })
+    .eq('id', user.id)
+    .select('id');
+
+  if (error) return { ok: false, error: error.message };
+  if (!updated?.length) return { ok: false, error: 'not_found' };
+
+  revalidatePath('/dashboard/account');
+  revalidatePath('/dashboard/profile');
+  revalidatePath('/agents');
   return { ok: true };
 }
