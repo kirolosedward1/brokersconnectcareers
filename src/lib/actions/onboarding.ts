@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { normalisePhone } from '@/lib/phone';
-import { buildCompanySlug } from '@/lib/slug';
+import { buildAgentSlug, buildCompanySlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
@@ -74,6 +74,41 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
     // A duplicate key means onboarding already ran — treat it as success rather
     // than stranding the user on the form.
     if (error.code !== '23505') return { ok: false, error: error.message };
+  }
+
+  /*
+    A consultant's directory profile, created here for the same reason the
+    company below is.
+
+    The directory joins agent_profiles, so a candidate without a row is not
+    merely an empty profile — they are absent from /agents entirely, and stay
+    absent until they find the profile form and save it. Every consultant in
+    the seed had a row because the seed script wrote one; the first real signup
+    did not, and could not be found by any employer searching the directory.
+
+    Visibility is left at its column default, `verified_employers_only`. So
+    they appear immediately, as an anonymous card — track, districts, years,
+    no name and no number — which is exactly what the profile page promises
+    them, and they can widen or hide it whenever they like. Being listed is not
+    the same as being identified.
+
+    A failure here does not fail onboarding, for the same reason the company
+    block gives: the account works, and /dashboard/profile can still create it.
+  */
+  if (parsed.data.role === 'candidate') {
+    const { data: alreadyThere } = await supabase
+      .from('agent_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!alreadyThere) {
+      await withUniqueSlug<{ id: string }>(
+        () => buildAgentSlug(parsed.data.fullName),
+        (slug) =>
+          supabase.from('agent_profiles').insert({ user_id: user.id, slug }).select('id').single(),
+      );
+    }
   }
 
   /**
