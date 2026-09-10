@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Inbox } from 'lucide-react';
+import { Inbox, Search } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ApplicantCard, type ApplicantProfile } from '@/components/employer/applicant-card';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -60,13 +61,24 @@ export default async function AllApplicantsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ stage?: string; job?: string }>;
+  searchParams: Promise<{ stage?: string; job?: string; q?: string }>;
 }) {
   const locale = asLocale((await params).locale);
   setRequestLocale(locale);
 
   const viewer = await requireEmployer(locale);
-  const { stage, job: jobFilter } = await searchParams;
+  const { stage, job: jobFilter, q: rawQuery } = await searchParams;
+
+  /*
+    A name to look for.
+
+    Trimmed, capped, and with the two LIKE wildcards escaped — `%` and `_` are
+    operators in `ilike`, so a search for "50%" would otherwise match every
+    applicant on the platform rather than nobody, which is a confusing way to
+    find out you typed a wildcard.
+  */
+  const query_ = (rawQuery ?? '').trim().slice(0, 80);
+  const pattern = query_ ? `%${query_.replace(/[%_\\]/g, (c) => `\\${c}`)}%` : null;
   const supabase = await createClient();
 
   // No company filter here on purpose. Row-level security already limits
@@ -77,7 +89,7 @@ export default async function AllApplicantsPage({
     .select(
       `
       id, status, created_at, note, decision_note, cv_path, experience_band,
-      candidate:profiles (
+      candidate:profiles!inner (
         full_name,
         whatsapp_phone,
         avatar_url,
@@ -97,6 +109,10 @@ export default async function AllApplicantsPage({
   const activeStage = STAGES.find((value) => value === stage);
   if (activeStage) query = query.eq('status', activeStage);
   if (jobFilter) query = query.eq('job_id', jobFilter);
+  // On the joined profile, which is why that embed is `!inner`. Filtered in
+  // the database rather than over the 200 rows this page fetches — a search
+  // that quietly only looks at the most recent page is worse than none.
+  if (pattern) query = query.ilike('candidate.full_name', pattern);
 
   const { data } = await query;
   const rows = (data ?? []) as unknown as Row[];
@@ -106,8 +122,18 @@ export default async function AllApplicantsPage({
   // and "who applied" is a question about the whole pipeline, not the slice
   // currently on screen. RLS scopes it to this company's listings, same as the
   // list; the job filter is honoured so the counts match what a click gives.
-  let counter = supabase.from('applications').select('status').limit(2000);
+  // The profile is joined whether or not there is a search: a conditional
+  // select string defeats the typed query builder, and every application has a
+  // profile behind it — the column is `not null` — so the inner join changes
+  // no count.
+  let counter = supabase
+    .from('applications')
+    .select('status, candidate:profiles!inner (full_name)')
+    .limit(2000);
   if (jobFilter) counter = counter.eq('job_id', jobFilter);
+  // The counts are what each chip is worth *within the current search*. Left
+  // unfiltered they would promise applicants that clicking cannot produce.
+  if (pattern) counter = counter.ilike('candidate.full_name', pattern);
   const { data: statuses } = await counter;
 
   const stageCount = new Map<string, number>();
@@ -175,10 +201,13 @@ export default async function AllApplicantsPage({
     'shrink-0 rounded-full ps-3 pe-2.5 py-1.5 text-sm inline-flex items-center gap-2 transition-colors ' +
     (active ? 'font-medium text-white' : 'border border-border hover:bg-muted');
 
-  const href = (next: { stage?: string; job?: string }) => {
+  const href = (next: { stage?: string; job?: string; q?: string }) => {
     const search = new URLSearchParams();
     if (next.stage) search.set('stage', next.stage);
     if (next.job) search.set('job', next.job);
+    // Carried by every chip, so narrowing by stage does not silently throw the
+    // search away — and the form below carries the chips the same way.
+    if (next.q) search.set('q', next.q);
     const query = search.toString();
     return query ? `/employer/applicants?${query}` : '/employer/applicants';
   };
@@ -190,9 +219,50 @@ export default async function AllApplicantsPage({
         <p className="mt-1 text-muted-foreground">{t('allApplicantsLede')}</p>
       </header>
 
+      {/*
+        A plain GET form with no `action`, which submits to this same path and
+        replaces the query string — so it needs the active chips back as hidden
+        fields or searching would silently drop them. No JavaScript involved:
+        this is the one shape of form that works before the page hydrates, and
+        the field is named `q` because that is what the page reads.
+      */}
+      <form method="get" className="flex flex-wrap items-center gap-2">
+        {activeStage ? <input type="hidden" name="stage" value={activeStage} /> : null}
+        {jobFilter ? <input type="hidden" name="job" value={jobFilter} /> : null}
+
+        <div className="relative min-w-0 flex-1 sm:max-w-sm">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 start-3 my-auto size-4 text-muted-foreground"
+          />
+          <label htmlFor="applicant-search" className="sr-only">
+            {t('searchApplicants')}
+          </label>
+          <input
+            id="applicant-search"
+            name="q"
+            type="search"
+            defaultValue={query_}
+            maxLength={80}
+            placeholder={t('searchApplicantsPlaceholder')}
+            className="h-11 w-full rounded-xl border border-input bg-card ps-9 pe-3 text-sm shadow-xs transition-colors placeholder:text-muted-foreground hover:border-border focus-visible:border-ring focus-visible:outline-none"
+          />
+        </div>
+
+        <Button type="submit" variant="secondary">
+          {t('searchApplicants')}
+        </Button>
+
+        {query_ ? (
+          <Button asChild variant="ghost">
+            <Link href={href({ stage, job: jobFilter })}>{t('searchClear')}</Link>
+          </Button>
+        ) : null}
+      </form>
+
       <nav className={row} aria-label={t('stageFilter')}>
         <Link
-          href={href({ job: jobFilter })}
+          href={href({ job: jobFilter, q: query_ })}
           aria-current={!stage ? 'page' : undefined}
           className={stageChip(!stage) + (stage ? ' text-muted-foreground' : '')}
           style={!stage ? { backgroundColor: 'oklch(0.45 0.02 265)' } : undefined}
@@ -209,7 +279,7 @@ export default async function AllApplicantsPage({
           return (
             <Link
               key={value}
-              href={href({ stage: value, job: jobFilter })}
+              href={href({ stage: value, job: jobFilter, q: query_ })}
               aria-current={active ? 'page' : undefined}
               className={stageChip(active) + (active ? '' : ' text-muted-foreground')}
               style={active ? { backgroundColor: STAGE_COLOUR[value] } : undefined}
@@ -240,7 +310,7 @@ export default async function AllApplicantsPage({
       {jobs.length > 1 ? (
         <nav className={row} aria-label={t('jobs')}>
           <Link
-            href={href({ stage })}
+            href={href({ stage, q: query_ })}
             aria-current={!jobFilter ? 'page' : undefined}
             className={chip(!jobFilter)}
           >
@@ -249,7 +319,7 @@ export default async function AllApplicantsPage({
           {jobs.map((item) => (
             <Link
               key={item.id}
-              href={href({ stage, job: item.id })}
+              href={href({ stage, job: item.id, q: query_ })}
               aria-current={jobFilter === item.id ? 'page' : undefined}
               className={chip(jobFilter === item.id)}
             >
@@ -261,7 +331,10 @@ export default async function AllApplicantsPage({
 
       {rows.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
-          {t('noApplicants')}
+          {/* "Nobody has applied" and "nobody by that name" are different
+              facts, and an employer who reads the first when the second is
+              true concludes their listings are dead. */}
+          {query_ ? t('searchEmpty') : t('noApplicants')}
         </p>
       ) : (
         <ul className="space-y-3">

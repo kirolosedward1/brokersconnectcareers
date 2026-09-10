@@ -437,7 +437,11 @@
     "teamAlreadyMember": "They are already on the team.",
     "teamNotEmployer": "That email belongs to a consultant account, not a company one.",
     "teamCannotRemoveOwner": "The account owner cannot be removed from their own company.",
-    "stageFilter": "Filter by stage"
+    "stageFilter": "Filter by stage",
+    "searchApplicants": "Search by name",
+    "searchApplicantsPlaceholder": "Applicant's name",
+    "searchClear": "Clear the search",
+    "searchEmpty": "No applicants by that name."
   },
   "jobForm": {
     "basics": "Basics",

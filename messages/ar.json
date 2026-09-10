@@ -437,7 +437,11 @@
     "teamAlreadyMember": "الشخص ده في الفريق بالفعل.",
     "teamNotEmployer": "الإيميل ده لحساب استشاري، مش لحساب شركة.",
     "teamCannotRemoveOwner": "مينفعش تشيل صاحب الحساب من شركته.",
-    "stageFilter": "تصفية حسب المرحلة"
+    "stageFilter": "تصفية حسب المرحلة",
+    "searchApplicants": "دوّر بالاسم",
+    "searchApplicantsPlaceholder": "اسم المتقدم",
+    "searchClear": "امسح البحث",
+    "searchEmpty": "مفيش متقدمين بالاسم ده."
   },
   "jobForm": {
     "basics": "الأساسيات",
