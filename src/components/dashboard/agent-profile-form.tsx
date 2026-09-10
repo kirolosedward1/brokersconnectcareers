@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { localized } from '@/i18n/routing';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
-import { cn } from '@/lib/utils';
+import { cn, uuid } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { CV_BUCKET } from '@/lib/buckets';
 import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
@@ -81,7 +81,7 @@ export function AgentProfileForm({
 
       if (file) {
         const extension = file.name.split('.').pop()?.toLowerCase() ?? 'pdf';
-        const path = `${profile.id}/${crypto.randomUUID()}.${extension}`;
+        const path = `${profile.id}/${uuid()}.${extension}`;
         const { error } = await createClient()
           .storage.from(CV_BUCKET)
           .upload(path, file, { contentType: file.type });

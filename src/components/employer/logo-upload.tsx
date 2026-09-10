@@ -9,6 +9,7 @@ import { CompanyLogo } from '@/components/companies/company-logo';
 import { createClient } from '@/lib/supabase/client';
 import { COMPANY_LOGOS_BUCKET } from '@/lib/buckets';
 import { saveCompanyLogo } from '@/lib/actions/company';
+import { uuid } from '@/lib/utils';
 
 /**
  * The other half of a feature that shipped with only its rendering.
@@ -76,7 +77,7 @@ export function LogoUpload({
       const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png';
       // A fresh name every time rather than a fixed one: the URL is public and
       // cached, and overwriting in place would leave the old logo showing.
-      const path = `${companyId}/logo-${crypto.randomUUID()}.${extension}`;
+      const path = `${companyId}/logo-${uuid()}.${extension}`;
 
       const { error: uploadError } = await createClient()
         .storage.from(COMPANY_LOGOS_BUCKET)

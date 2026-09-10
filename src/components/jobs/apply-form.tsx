@@ -13,6 +13,7 @@ import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { applyToJob } from '@/lib/actions/applications';
 import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { track } from '@/lib/analytics';
+import { uuid } from '@/lib/utils';
 
 const MAX_CV_BYTES = 10 * 1024 * 1024;
 const CV_TYPES = [
@@ -81,7 +82,7 @@ export function ApplyForm({
         // The CV goes straight to the private bucket from the browser; storage
         // RLS confines every candidate to their own folder.
         const extension = file.name.split('.').pop()?.toLowerCase() ?? 'pdf';
-        const path = `${userId}/${crypto.randomUUID()}.${extension}`;
+        const path = `${userId}/${uuid()}.${extension}`;
 
         const { error: uploadError } = await createClient()
           .storage.from(CV_BUCKET)

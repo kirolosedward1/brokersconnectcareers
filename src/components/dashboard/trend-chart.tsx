@@ -243,7 +243,7 @@ export function TrendChart({
                   className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
                   style={{
                     left: "100%",
-                    top: `${y(s.values.at(-1) ?? 0)}%`,
+                    top: `${y(s.values[s.values.length - 1] ?? 0)}%`,
                     background: TONE[s.tone],
                   }}
                 />

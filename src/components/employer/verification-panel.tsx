@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { COMPANY_DOCS_BUCKET } from '@/lib/buckets';
 import { recordCompanyDocument } from '@/lib/actions/company';
 import type { CompanyDocumentRow, VerificationStatus } from '@/lib/supabase/database.types';
+import { uuid } from '@/lib/utils';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const TYPES = ['application/pdf', 'image/png', 'image/jpeg'];
@@ -52,7 +53,7 @@ export function VerificationPanel({
         const extension = file.name.split('.').pop()?.toLowerCase() ?? 'pdf';
         // Private bucket, keyed by company id. Nothing here is ever served
         // publicly — reviewers read it through a signed URL.
-        const path = `${companyId}/${docType}-${crypto.randomUUID()}.${extension}`;
+        const path = `${companyId}/${docType}-${uuid()}.${extension}`;
 
         const { error: uploadError } = await createClient()
           .storage.from(COMPANY_DOCS_BUCKET)

@@ -23,11 +23,12 @@
     "test:hmac": "node --experimental-strip-types supabase/tests/hmac.test.mjs",
     "smoke": "node scripts/smoke.mjs",
     "test:messages": "node scripts/messages.mjs",
-    "check": "pnpm typecheck && pnpm test:messages && pnpm test:db",
+    "check": "pnpm typecheck && pnpm test:messages && pnpm test:compat && pnpm test:db",
     "test:search": "node --experimental-strip-types supabase/tests/search.test.mjs",
     "test:email": "node --experimental-strip-types supabase/tests/email.test.mjs",
     "auth:templates": "node --experimental-strip-types scripts/auth-templates.mjs",
-    "test:auth": "node --experimental-strip-types supabase/tests/auth.test.mjs"
+    "test:auth": "node --experimental-strip-types supabase/tests/auth.test.mjs",
+    "test:compat": "node scripts/compat.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",
