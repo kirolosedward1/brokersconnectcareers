@@ -1,18 +1,28 @@
-import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { redirect } from '@/i18n/navigation';
-import { asLocale } from '@/i18n/routing';
-import { AppShell, type AppNavGroup } from '@/components/dashboard/app-shell';
-import { NotificationBell } from '@/components/notifications/notification-bell';
-import { NotificationItem } from '@/components/notifications/notification-item';
-import { Link } from '@/i18n/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { optional } from '@/lib/queries/error';
+import { NextIntlClientProvider } from "next-intl";
+import {
+  getMessages,
+  getTranslations,
+  setRequestLocale,
+} from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
+import { asLocale } from "@/i18n/routing";
+import {
+  CONSOLE_MESSAGES,
+  PUBLIC_MESSAGES,
+  pick,
+} from "@/i18n/client-messages";
+import { AppShell, type AppNavGroup } from "@/components/dashboard/app-shell";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { NotificationItem } from "@/components/notifications/notification-item";
+import { Link } from "@/i18n/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { optional } from "@/lib/queries/error";
 import type {
   AdminSummary,
   EmployerSummary,
   NotificationRow,
-} from '@/lib/supabase/database.types';
-import { getViewer } from '@/lib/auth';
+} from "@/lib/supabase/database.types";
+import { getViewer } from "@/lib/auth";
 
 /**
  * Everything behind a sign-in, under its own chrome.
@@ -38,8 +48,8 @@ export default async function AppLayout({
   setRequestLocale(locale);
 
   const viewer = await getViewer();
-  if (!viewer) redirect({ href: '/sign-in', locale });
-  if (!viewer!.profile) redirect({ href: '/onboarding', locale });
+  if (!viewer) redirect({ href: "/sign-in", locale });
+  if (!viewer!.profile) redirect({ href: "/onboarding", locale });
 
   // redirect() throws, but its return type does not narrow, so this is the
   // one place the assertion is made rather than repeated at every use.
@@ -52,14 +62,14 @@ export default async function AppLayout({
   const supabase = await createClient();
   const [{ data: recent }, { count: unread }] = await Promise.all([
     supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false })
+      .from("notifications")
+      .select("*")
+      .order("created_at", { ascending: false })
       .limit(6),
     supabase
-      .from('notifications')
-      .select('id', { count: 'exact', head: true })
-      .is('read_at', null),
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .is("read_at", null),
   ]);
   const notifications = (recent ?? []) as NotificationRow[];
 
@@ -75,15 +85,21 @@ export default async function AppLayout({
    * counts is a rail; a rail that throws is a locked-out user.
    */
   const [adminSummary, employerSummary] = await Promise.all([
-    role === 'admin'
-      ? optional(supabase.rpc('admin_summary').then((r) => r.data), null)
+    role === "admin"
+      ? optional(
+          supabase.rpc("admin_summary").then((r) => r.data),
+          null,
+        )
       : Promise.resolve(null),
     // Admins get this one too. The rail shows them both areas, so scoping the
     // applicant count to `role === 'employer'` would leave an admin who also
     // runs a company with a badge on the moderation queues and none on their
     // own applicants — a rule with a hole in it rather than a rule.
-    role === 'admin' || role === 'employer'
-      ? optional(supabase.rpc('employer_summary').then((r) => r.data), null)
+    role === "admin" || role === "employer"
+      ? optional(
+          supabase.rpc("employer_summary").then((r) => r.data),
+          null,
+        )
       : Promise.resolve(null),
   ]);
 
@@ -91,126 +107,178 @@ export default async function AppLayout({
   const employer = employerSummary as EmployerSummary | null;
   const employerCounts = employer && employer.has_company ? employer : null;
 
-  const t = await getTranslations('dashboard');
-  const tNotifications = await getTranslations('notifications');
-  const tEmployer = await getTranslations('employer');
-  const tAdmin = await getTranslations('admin');
-  const tAccount = await getTranslations('account');
-  const tNav = await getTranslations('nav');
-  const tOnboarding = await getTranslations('onboarding');
+  const t = await getTranslations("dashboard");
+  const tNotifications = await getTranslations("notifications");
+  const tEmployer = await getTranslations("employer");
+  const tAdmin = await getTranslations("admin");
+  const tAccount = await getTranslations("account");
+  const tNav = await getTranslations("nav");
+  const tOnboarding = await getTranslations("onboarding");
 
   const candidateGroup: AppNavGroup = {
-    label: t('title'),
+    label: t("title"),
     items: [
-      { href: '/dashboard', label: t('overview'), icon: 'overview' },
-      { href: '/dashboard/applications', label: t('applications'), icon: 'applications' },
-      { href: '/dashboard/saved', label: t('saved'), icon: 'saved' },
-      { href: '/dashboard/profile', label: t('profile'), icon: 'profile' },
+      { href: "/dashboard", label: t("overview"), icon: "overview" },
+      {
+        href: "/dashboard/applications",
+        label: t("applications"),
+        icon: "applications",
+      },
+      { href: "/dashboard/saved", label: t("saved"), icon: "saved" },
+      { href: "/dashboard/profile", label: t("profile"), icon: "profile" },
     ],
   };
 
   const employerGroup: AppNavGroup = {
-    label: tNav('employerArea'),
+    label: tNav("employerArea"),
     items: [
-      { href: '/employer', label: t('overview'), icon: 'overview' },
+      { href: "/employer", label: t("overview"), icon: "overview" },
       {
-        href: '/employer/applicants',
-        label: tEmployer('allApplicants'),
-        icon: 'applicants',
+        href: "/employer/applicants",
+        label: tEmployer("allApplicants"),
+        icon: "applicants",
         badge: employerCounts?.applicants_new,
       },
-      { href: '/employer/jobs', label: tEmployer('jobs'), icon: 'applications' },
-      { href: '/employer/company', label: tEmployer('company'), icon: 'company' },
-      { href: '/employer/billing', label: tEmployer('billing'), icon: 'billing' },
+      {
+        href: "/employer/jobs",
+        label: tEmployer("jobs"),
+        icon: "applications",
+      },
+      {
+        href: "/employer/company",
+        label: tEmployer("company"),
+        icon: "company",
+      },
+      {
+        href: "/employer/billing",
+        label: tEmployer("billing"),
+        icon: "billing",
+      },
     ],
   };
 
   const adminGroup: AppNavGroup = {
-    label: tAdmin('title'),
+    label: tAdmin("title"),
     items: [
-      { href: '/admin', label: t('overview'), icon: 'admin' },
+      { href: "/admin", label: t("overview"), icon: "admin" },
       {
-        href: '/admin/jobs',
-        label: tAdmin('jobsQueue'),
-        icon: 'queue',
+        href: "/admin/jobs",
+        label: tAdmin("jobsQueue"),
+        icon: "queue",
         badge: adminCounts?.queue_total,
       },
       {
-        href: '/admin/companies',
-        label: tAdmin('companiesQueue'),
-        icon: 'company',
+        href: "/admin/companies",
+        label: tAdmin("companiesQueue"),
+        icon: "company",
         badge: adminCounts?.companies_pending,
       },
       {
-        href: '/admin/reports',
-        label: tAdmin('reports'),
-        icon: 'reports',
+        href: "/admin/reports",
+        label: tAdmin("reports"),
+        icon: "reports",
         badge: adminCounts?.reports_open,
       },
       {
-        href: '/admin/users',
-        label: tAdmin('users'),
-        icon: 'users',
+        href: "/admin/users",
+        label: tAdmin("users"),
+        icon: "users",
         badge: adminCounts?.accounts_pending,
       },
-      { href: '/admin/email', label: tAdmin('emailActivity'), icon: 'email' },
+      { href: "/admin/email", label: tAdmin("emailActivity"), icon: "email" },
     ],
   };
 
   const accountGroup: AppNavGroup = {
-    label: tAccount('title'),
+    label: tAccount("title"),
     items: [
-      { href: '/notifications', label: tNotifications('title'), icon: 'notifications' },
-      { href: '/dashboard/account', label: tAccount('title'), icon: 'settings' },
+      {
+        href: "/notifications",
+        label: tNotifications("title"),
+        icon: "notifications",
+      },
+      {
+        href: "/dashboard/account",
+        label: tAccount("title"),
+        icon: "settings",
+      },
     ],
   };
 
   const groups =
-    role === 'admin'
+    role === "admin"
       ? [adminGroup, employerGroup, accountGroup]
-      : role === 'employer'
+      : role === "employer"
         ? [employerGroup, accountGroup]
         : [candidateGroup, accountGroup];
 
-  return (
-    <AppShell
-      groups={groups}
-      bell={
-        <NotificationBell label={tNotifications('title')} unread={unread ?? 0}>
-          <div className="flex items-center justify-between gap-2 border-b border-border ps-3 pe-1.5 py-1">
-            <p className="text-sm font-semibold">{tNotifications('title')}</p>
-            <Link
-              href="/notifications"
-              className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-xs font-medium text-primary hover:underline"
-            >
-              {tNotifications('seeAll')}
-            </Link>
-          </div>
+  /*
+    A second provider, nested inside the public one.
 
-          {/* The list caps at 24rem, or at whatever is left below the header —
+    The root layout ships only what the public site's client components read,
+    because a visitor to the job board has no use for the job wizard's copy or
+    the moderation queue's. Everything under here does, so this adds the other
+    half — inheriting locale, formats and the rest from the provider above.
+  */
+  return (
+    <NextIntlClientProvider
+      messages={pick(await getMessages(), [
+        ...PUBLIC_MESSAGES,
+        ...CONSOLE_MESSAGES,
+      ])}
+    >
+      <AppShell
+        groups={groups}
+        bell={
+          <NotificationBell
+            label={tNotifications("title")}
+            unread={unread ?? 0}
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-border ps-3 pe-1.5 py-1">
+              <p className="text-sm font-semibold">{tNotifications("title")}</p>
+              <Link
+                href="/notifications"
+                className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-xs font-medium text-primary hover:underline"
+              >
+                {tNotifications("seeAll")}
+              </Link>
+            </div>
+
+            {/* The list caps at 24rem, or at whatever is left below the header —
               the panel is pinned under a 64px bar on a phone, and a landscape
               screen is shorter than this list wants to be. */}
-          {notifications.length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-              {tNotifications('empty')}
-            </p>
-          ) : (
-            <ul className="max-h-[min(24rem,calc(100vh-9rem))] overflow-y-auto p-1">
-              {notifications.map((notification) => (
-                <li key={notification.id}>
-                  <NotificationItem notification={notification} locale={locale} compact />
-                </li>
-              ))}
-            </ul>
-          )}
-        </NotificationBell>
-      }
-      name={profile.full_name}
-      avatarUrl={profile.avatar_url}
-      roleLabel={role === 'employer' ? tOnboarding('roleEmployer') : role === 'admin' ? tAdmin('title') : tOnboarding('roleCandidate')}
-      locale={locale}
-    >
-      {children}
-    </AppShell>
+            {notifications.length === 0 ? (
+              <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+                {tNotifications("empty")}
+              </p>
+            ) : (
+              <ul className="max-h-[min(24rem,calc(100vh-9rem))] overflow-y-auto p-1">
+                {notifications.map((notification) => (
+                  <li key={notification.id}>
+                    <NotificationItem
+                      notification={notification}
+                      locale={locale}
+                      compact
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </NotificationBell>
+        }
+        name={profile.full_name}
+        avatarUrl={profile.avatar_url}
+        roleLabel={
+          role === "employer"
+            ? tOnboarding("roleEmployer")
+            : role === "admin"
+              ? tAdmin("title")
+              : tOnboarding("roleCandidate")
+        }
+        locale={locale}
+      >
+        {children}
+      </AppShell>
+    </NextIntlClientProvider>
   );
 }

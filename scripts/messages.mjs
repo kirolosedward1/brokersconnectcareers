@@ -391,6 +391,95 @@ console.log('\n— no translated phrase is forced left-to-right');
     offenders.length === 0, offenders.join('; '));
 }
 
+console.log('\n— the browser gets the messages it needs and no more');
+
+/*
+  next-intl serialises whatever the client provider is given into the HTML, and
+  given nothing it gives everything: a visitor to /jobs was downloading the
+  moderation queue's copy, the job wizard, the CV editor and the account
+  screen — 14 KB of the 67 KB that page weighs compressed, on a market that is
+  almost entirely mobile.
+
+  Two lists now decide what crosses over, and a stale list is a
+  MISSING_MESSAGE on whichever screen nobody opened before deploying. So the
+  lists are checked against what client components actually ask for, read off
+  the source rather than trusted.
+*/
+{
+  const listing = readFileSync(join(ROOT, 'src/i18n/client-messages.ts'), 'utf8');
+  const listOf = (name) => {
+    const body = listing.match(new RegExp(`export const ${name} = \\[([^\\]]*)\\]`))?.[1] ?? '';
+    return [...body.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  };
+  const publicPaths = listOf('PUBLIC_MESSAGES');
+  const consolePaths = listOf('CONSOLE_MESSAGES');
+
+  check('both lists were read', publicPaths.length > 0 && consolePaths.length > 0,
+    `${publicPaths.length} public, ${consolePaths.length} console`);
+
+  /* The console's own client components; everything else is the public site. */
+  const CONSOLE_DIRS = [
+    'src/components/admin/',
+    'src/components/employer/',
+    'src/components/dashboard/',
+    'src/app/[locale]/(app)/',
+  ];
+
+  const files = [];
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry)) files.push(full);
+    }
+  })(join(ROOT, 'src'));
+
+  const usage = [];
+  for (const file of files) {
+    const text = readFileSync(file, 'utf8');
+    if (!/^['"]use client['"]/m.test(text)) continue;
+    const relative = file.replace(ROOT + '/', '');
+    for (const match of text.matchAll(/useTranslations\(\s*'([^']+)'/g)) {
+      usage.push({ relative, namespace: match[1] });
+    }
+  }
+
+  check(`read ${usage.length} client-side namespace reads`, usage.length > 20);
+
+  // A read is covered by an exact path or by an ancestor of it.
+  const covers = (paths, namespace) =>
+    paths.some((path) => namespace === path || namespace.startsWith(`${path}.`));
+
+  const both = [...publicPaths, ...consolePaths];
+  const uncovered = usage.filter(({ relative, namespace }) => {
+    const isConsole = CONSOLE_DIRS.some((dir) => relative.startsWith(dir));
+    return !covers(isConsole ? both : publicPaths, namespace);
+  });
+
+  check('every client component can reach the namespace it reads',
+    uncovered.length === 0,
+    uncovered.slice(0, 6).map((u) => `${u.relative} needs ${u.namespace}`).join('; '));
+
+  // And nothing is shipped that nothing reads — a list nobody prunes grows
+  // back into the whole catalogue.
+  const unread = both.filter(
+    (path) => !usage.some(({ namespace }) => namespace === path || namespace.startsWith(`${path}.`)),
+  );
+  check('nothing is listed that no client component reads', unread.length === 0, unread.join(', '));
+
+  // Every path names something real.
+  const catalogue = load('ar');
+  const missing = both.filter((path) => {
+    let node = catalogue;
+    for (const segment of path.split('.')) {
+      if (node == null || typeof node !== 'object') return true;
+      node = node[segment];
+    }
+    return node === undefined;
+  });
+  check('every listed path exists in the catalogue', missing.length === 0, missing.join(', '));
+}
+
 console.log('\n— no Arabic is written into a component');
 
 /*

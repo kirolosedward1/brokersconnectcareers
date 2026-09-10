@@ -1,12 +1,22 @@
-import type { Metadata, Viewport } from 'next';
-import { notFound } from 'next/navigation';
-import { hasLocale, NextIntlClientProvider } from 'next-intl';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { IBM_Plex_Sans_Arabic } from 'next/font/google';
-import { alternatesFor, activeLocales, dirOf, type Locale } from '@/i18n/routing';
-import { env } from '@/lib/env';
-import '../globals.css';
-import { Analytics } from '@/components/analytics';
+import type { Metadata, Viewport } from "next";
+import { notFound } from "next/navigation";
+import { hasLocale, NextIntlClientProvider } from "next-intl";
+import {
+  getMessages,
+  getTranslations,
+  setRequestLocale,
+} from "next-intl/server";
+import { IBM_Plex_Sans_Arabic } from "next/font/google";
+import {
+  alternatesFor,
+  activeLocales,
+  dirOf,
+  type Locale,
+} from "@/i18n/routing";
+import { PUBLIC_MESSAGES, pick } from "@/i18n/client-messages";
+import { env } from "@/lib/env";
+import "../globals.css";
+import { Analytics } from "@/components/analytics";
 
 /**
  * One family, both scripts.
@@ -23,10 +33,10 @@ import { Analytics } from '@/components/analytics';
  * referenced it.
  */
 const plex = IBM_Plex_Sans_Arabic({
-  subsets: ['arabic', 'latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-plex',
-  display: 'swap',
+  subsets: ["arabic", "latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-plex",
+  display: "swap",
 });
 
 /**
@@ -39,8 +49,8 @@ const plex = IBM_Plex_Sans_Arabic({
  */
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#1a3fd4' },
-    { media: '(prefers-color-scheme: dark)', color: '#0d1117' },
+    { media: "(prefers-color-scheme: light)", color: "#1a3fd4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d1117" },
   ],
 };
 
@@ -54,18 +64,21 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'meta' });
+  const t = await getTranslations({ locale, namespace: "meta" });
 
   return {
     metadataBase: new URL(env.siteUrl),
-    title: { default: `${t('siteName')} — ${t('tagline')}`, template: `%s | ${t('siteName')}` },
-    description: t('defaultDescription'),
-    alternates: alternatesFor('/', locale),
+    title: {
+      default: `${t("siteName")} — ${t("tagline")}`,
+      template: `%s | ${t("siteName")}`,
+    },
+    description: t("defaultDescription"),
+    alternates: alternatesFor("/", locale),
     openGraph: {
-      type: 'website',
-      siteName: t('siteName'),
-      locale: locale === 'ar' ? 'ar_EG' : 'en_US',
-      alternateLocale: locale === 'ar' ? 'en_US' : 'ar_EG',
+      type: "website",
+      siteName: t("siteName"),
+      locale: locale === "ar" ? "ar_EG" : "en_US",
+      alternateLocale: locale === "ar" ? "en_US" : "ar_EG",
       /**
        * A static card, not a generated one.
        *
@@ -80,13 +93,15 @@ export async function generateMetadata({
        * rendered by scripts/og-card.swift through CoreText, which gets bidi
        * right, and committed.
        */
-      images: [{ url: '/brand/og.jpg', width: 1200, height: 630, alt: t('tagline') }],
+      images: [
+        { url: "/brand/og.jpg", width: 1200, height: 630, alt: t("tagline") },
+      ],
     },
     twitter: {
-      card: 'summary_large_image',
-      title: `${t('siteName')} — ${t('tagline')}`,
-      description: t('defaultDescription'),
-      images: ['/brand/og.jpg'],
+      card: "summary_large_image",
+      title: `${t("siteName")} — ${t("tagline")}`,
+      description: t("defaultDescription"),
+      images: ["/brand/og.jpg"],
     },
     robots: { index: true, follow: true },
   };
@@ -103,7 +118,7 @@ export default async function LocaleLayout({
   if (!hasLocale(activeLocales, locale)) notFound();
 
   setRequestLocale(locale);
-  const t = await getTranslations({ locale, namespace: 'nav' });
+  const t = await getTranslations({ locale, namespace: "nav" });
 
   return (
     <html
@@ -132,7 +147,11 @@ export default async function LocaleLayout({
         />
       </head>
       <body className="flex min-h-dvh flex-col">
-        <NextIntlClientProvider>
+        {/* Only what the public site's client components read. The console
+            nests its own provider and adds its half. See client-messages.ts. */}
+        <NextIntlClientProvider
+          messages={pick(await getMessages(), PUBLIC_MESSAGES)}
+        >
           {/*
             The first thing a keyboard reaches, and invisible until it does.
             Without it, getting to the content on any page means tabbing past
@@ -147,7 +166,7 @@ export default async function LocaleLayout({
             href="#main"
             className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
           >
-            {t('skipToContent')}
+            {t("skipToContent")}
           </a>
 
           {children}
