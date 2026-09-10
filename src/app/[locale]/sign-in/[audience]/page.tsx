@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { AuthForm } from '@/components/auth/auth-form';
 import { AudienceSwitch } from '@/components/auth/audience-switch';
+import { ReturnIntent } from '@/components/auth/return-intent';
 import { safeNext } from '@/lib/safe-next';
 import { AuthShell, type Audience } from '../../auth-shell';
 import { enabledProviders } from '@/lib/auth-providers';
@@ -97,6 +98,8 @@ export default async function AudienceSignInPage({
             {t('signUp')}
           </Link>
         </p>
+
+        <ReturnIntent next={next} locale={locale} />
 
         <div className="mt-8">
           <AudienceSwitch mode="sign-in" active={audience} />

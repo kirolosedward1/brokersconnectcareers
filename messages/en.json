@@ -257,7 +257,9 @@
     "checkEmailSpam": "If it has not arrived within a minute, check your spam folder.",
     "resendConfirmation": "Send it again",
     "resendSent": "Sent again. If it still has not arrived, try again shortly.",
-    "resendWait": "Wait a moment before asking for another."
+    "resendWait": "Wait a moment before asking for another.",
+    "applyingTo": "You are applying to \"{job}\"",
+    "applyingToCompany": "at {company} — sign in and finish; you will not start over."
   },
   "onboarding": {
     "title": "Finish your profile",

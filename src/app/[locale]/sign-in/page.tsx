@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { AuthForm } from '@/components/auth/auth-form';
 import { AudienceSwitch } from '@/components/auth/audience-switch';
+import { ReturnIntent } from '@/components/auth/return-intent';
 import { AuthShell } from '../auth-shell';
 import { enabledProviders } from '@/lib/auth-providers';
 
@@ -36,10 +37,17 @@ export async function generateMetadata({
   return { title: t('signIn'), robots: { index: false, follow: false } };
 }
 
-export default async function SignInPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function SignInPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ next?: string }>;
+}) {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
+  const { next } = await searchParams;
 
   const { google: googleEnabled } = await enabledProviders();
   const t = await getTranslations('auth');
@@ -54,6 +62,8 @@ export default async function SignInPage({ params }: { params: Promise<{ locale:
             {t('signUp')}
           </Link>
         </p>
+
+        <ReturnIntent next={next} locale={locale} />
 
         <div className="mt-8">
           <AudienceSwitch mode="sign-in" />
