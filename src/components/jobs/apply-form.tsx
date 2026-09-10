@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { CheckCircle2, Paperclip } from 'lucide-react';
+import { CheckCircle2, Paperclip, ShieldCheck } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -245,6 +245,27 @@ export function ApplyForm({
       <Field label={t('note')} hint={t('noteOptional')} htmlFor="note">
         <Textarea id="note" name="note" maxLength={500} rows={3} />
       </Field>
+
+      {/*
+        What pressing this button gives away, said before it is pressed.
+
+        The form asks for a phone number and a CV and then says "less than a
+        minute" — which answers how long it takes and not who ends up holding
+        it. Every line here is a fact about this system rather than a
+        reassurance: the row is readable by the company that owns the job and
+        by nobody else (applications_select_employer in migration 04), the
+        action writes the name and phone back to the profile, and the delete
+        policy is what makes withdrawing real.
+      */}
+      <div className="flex gap-3 rounded-xl border border-border bg-muted/40 p-4">
+        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
+        <div className="min-w-0 space-y-1">
+          <p className="text-sm font-semibold">{t('privacyTitle')}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">{t('privacyBody')}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">{t('privacyProfile')}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">{t('privacyNote')}</p>
+        </div>
+      </div>
 
       {errors.form ? (
         <p role="alert" className="text-sm text-destructive">

@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { Building2, CalendarClock, Eye, MapPin, Users } from 'lucide-react';
+import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +18,20 @@ import { getSimilarJobs, type JobDetail } from '@/lib/queries/jobs';
 import { getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
-export async function JobDetailView({ job, locale }: { job: JobDetail; locale: Locale }) {
+export async function JobDetailView({
+  job,
+  locale,
+  open = true,
+}: {
+  job: JobDetail;
+  locale: Locale;
+  /**
+   * Whether this listing is still taking applications. Decided by the page,
+   * which already has to agree with the robots directive and the structured
+   * data, so the same answer reaches all three.
+   */
+  open?: boolean;
+}) {
   const t = await getTranslations('jobs');
   const tTrack = await getTranslations('track');
   const tType = await getTranslations('employmentType');
@@ -143,7 +156,28 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            {!canApply ? (
+            {/*
+              A closed listing offered "Apply" like any other, and the apply
+              route then refused — a button whose only outcome is a page saying
+              no. The listing stays readable, and its next step becomes the one
+              that still exists.
+            */}
+            {!open ? (
+              <div className="w-full rounded-xl border border-border bg-muted/50 px-4 py-3">
+                {/* Not a second copy of the banner at the top of the page.
+                    That one says the listing is closed; this one is at the
+                    place where somebody reached for Apply, and the useful
+                    thing to add there is the date and the way onward. */}
+                <p className="text-sm text-muted-foreground">
+                  {job.expires_at
+                    ? t('closedOn', { date: formatDate(job.expires_at, locale) })
+                    : t('closedCtaBody')}
+                </p>
+                <Button asChild size="lg" className="mt-3">
+                  <Link href="/jobs">{t('browseOpen')}</Link>
+                </Button>
+              </div>
+            ) : !canApply ? (
               <p className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                 {tApply('employerCannotApply')}
               </p>
@@ -241,6 +275,17 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
                 />
                 <p className="min-w-0 font-medium">{companyName}</p>
               </div>
+              {/* Only for a company that holds the badge. There is no matching
+                  line for one that does not: 'unverified' covers a company
+                  that never submitted, one whose papers are with a reviewer
+                  and one that was turned down, and a single sentence would be
+                  false for two of the three. */}
+              {job.company.verification_status === 'verified' ? (
+                <p className="flex items-start gap-2 leading-relaxed text-muted-foreground">
+                  <BadgeCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+                  {t('verifiedMeaning')}
+                </p>
+              ) : null}
               {job.company.about_ar || job.company.about_en ? (
                 <p className="leading-relaxed text-muted-foreground">
                   {localized(locale, job.company.about_ar, job.company.about_en)}
@@ -259,7 +304,7 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
               the copyright line were unreachable on a phone — on every listing
               on the site. Padding anything inside <main> cannot fix that: the
               footer is still the last thing in the document. */}
-          {canApply ? (
+          {canApply && open ? (
           <div
             data-apply-bar
             className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background p-3 lg:hidden"

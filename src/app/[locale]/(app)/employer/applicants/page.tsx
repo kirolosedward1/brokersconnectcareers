@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Inbox, Search } from 'lucide-react';
+import { Inbox, Search, ShieldCheck } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -217,6 +217,16 @@ export default async function AllApplicantsPage({
       <header>
         <h1 className="text-2xl font-bold">{t('allApplicants')}</h1>
         <p className="mt-1 text-muted-foreground">{t('allApplicantsLede')}</p>
+        {/*
+          The other half of what the applicant was told before they pressed
+          send. They were promised this list is the only place their number
+          goes; saying so here is what makes that promise something an employer
+          has read too, rather than a claim made behind their back.
+        */}
+        <p className="mt-3 flex items-start gap-2 rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
+          {t('applicantsPrivacy')}
+        </p>
       </header>
 
       {/*

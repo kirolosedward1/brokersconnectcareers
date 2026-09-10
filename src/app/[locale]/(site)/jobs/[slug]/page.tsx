@@ -194,7 +194,7 @@ export default async function JobOrLandingPage({ params }: { params: Promise<Par
       {/* Structured data only for listings that are genuinely open. */}
       {open ? <JsonLd data={jobPostingJsonLd(job, locale, governorateName)} /> : null}
       {open ? null : <ClosedNotice />}
-      <JobDetailView job={job} locale={locale} />
+      <JobDetailView job={job} locale={locale} open={open} />
     </>
   );
 }
