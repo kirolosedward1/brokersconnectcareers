@@ -79,7 +79,27 @@ export function NotificationBell({
         </span>
       </summary>
 
-      <div className="absolute end-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-popover shadow-lg">
+      {/*
+        Hung from the bell on a wide screen, pinned to the viewport on a phone.
+
+        `end-0` aligns the panel's end edge with the trigger's, which is the
+        right behaviour when there is room beside it and the wrong one when
+        there is not: the bell sits in the middle of a 375px header, so a
+        352px panel anchored to it started 119px in and ran 87px off the far
+        edge. The width was already clamped — it was the position that was
+        not, and no width can fix an anchor that leaves too little room.
+
+        The header is `sticky top-0 h-16`, so `top-16` puts the panel directly
+        under it whatever the page has scrolled to, and `inset-x-4` gives it
+        the same gutter as everything else on the screen.
+      */}
+      <div
+        className={[
+          'z-50 overflow-hidden rounded-xl border border-border bg-popover shadow-lg',
+          'fixed inset-x-4 top-16',
+          'sm:absolute sm:inset-x-auto sm:end-0 sm:top-auto sm:mt-2 sm:w-[22rem]',
+        ].join(' ')}
+      >
         {children}
       </div>
     </details>

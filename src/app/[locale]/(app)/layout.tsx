@@ -187,12 +187,15 @@ export default async function AppLayout({
             </Link>
           </div>
 
+          {/* The list caps at 24rem, or at whatever is left below the header —
+              the panel is pinned under a 64px bar on a phone, and a landscape
+              screen is shorter than this list wants to be. */}
           {notifications.length === 0 ? (
             <p className="px-3 py-8 text-center text-sm text-muted-foreground">
               {tNotifications('empty')}
             </p>
           ) : (
-            <ul className="max-h-96 overflow-y-auto p-1">
+            <ul className="max-h-[min(24rem,calc(100vh-9rem))] overflow-y-auto p-1">
               {notifications.map((notification) => (
                 <li key={notification.id}>
                   <NotificationItem notification={notification} locale={locale} compact />
