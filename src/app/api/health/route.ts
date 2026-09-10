@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createPublicClient } from '@/lib/supabase/public';
 import { isPlaceholder } from '@/lib/env';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ export async function GET() {
     endpoint answers it. Names only — never a value, not even a masked one:
     this route is public.
   */
-  const attention: Record<string, 'absent' | 'placeholder'> = {};
+  const attention: Record<string, 'absent' | 'placeholder' | 'rejected' | 'unverified'> = {};
   for (const name of [
     'NEXT_PUBLIC_SUPABASE_URL',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
@@ -82,6 +83,47 @@ export async function GET() {
     database = !error;
   } catch {
     database = false;
+  }
+
+  /*
+    Does the service-role key actually work, or is it merely present?
+
+    Checking the string is non-empty answers a weaker question than this
+    endpoint claims to answer. A key that has been rotated is still a long
+    non-empty string, and every check here passed it while Supabase answered
+    401 to everything that used it — which is exactly the state this project
+    was in for an afternoon: local development reported serviceRole true while
+    no admin call worked at all.
+
+    listUsers rather than a table read, because a table read succeeds with any
+    valid key and would prove nothing about privilege. Nothing is done with the
+    result; only whether it was refused.
+  */
+  if (configured.serviceRole) {
+    /*
+      Bounded, because the failing path is the slow one. A rejected key takes
+      seconds to come back — measured at 3.5s against a rotated key, against
+      ~250ms for the whole endpoint before this check existed — and an uptime
+      monitor watching this URL should not be held open by it.
+
+      A timeout is reported as its own state rather than folded into either
+      answer. "We could not check" is not "the key is bad", and claiming
+      either would be inventing a result.
+    */
+    const verdict = await Promise.race([
+      createAdminClient()
+        .auth.admin.listUsers({ page: 1, perPage: 1 })
+        .then(({ error }) => (error ? 'rejected' : 'ok'))
+        .catch(() => 'rejected' as const),
+      new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 2500)),
+    ]);
+
+    if (verdict === 'rejected') {
+      configured.serviceRole = false;
+      attention.SUPABASE_SERVICE_ROLE_KEY = 'rejected';
+    } else if (verdict === 'timeout') {
+      attention.SUPABASE_SERVICE_ROLE_KEY = 'unverified';
+    }
   }
 
   // The site is servable without a mailer; it is not servable without a
