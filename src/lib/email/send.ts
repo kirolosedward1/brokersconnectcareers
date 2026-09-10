@@ -1,4 +1,5 @@
 import 'server-only';
+import { configuredValue } from '@/lib/env';
 
 /**
  * The provider transport. One POST, and nothing above this layer knows the
@@ -56,15 +57,18 @@ export type SendResult = {
  * configurable too, rather than being spelled into a template somewhere.
  */
 export function configuredSender(): string | null {
-  return process.env.RESEND_FROM || null;
+  return configuredValue(process.env.RESEND_FROM) ?? null;
 }
 
 export function emailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && configuredSender());
+  return Boolean(configuredValue(process.env.RESEND_API_KEY) && configuredSender());
 }
 
 export async function sendEmail(message: EmailMessage): Promise<SendResult> {
-  const key = process.env.RESEND_API_KEY;
+  // configuredValue, not the raw variable: an unedited REPLACE_ME from the
+  // import file would otherwise be sent to Resend as a bearer token and come
+  // back 401, logged as a send failure rather than as "not set up yet".
+  const key = configuredValue(process.env.RESEND_API_KEY);
   const from = configuredSender();
 
   if (!key || !from) {

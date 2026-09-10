@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createPublicClient } from '@/lib/supabase/public';
+import { isPlaceholder } from '@/lib/env';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,13 +27,18 @@ export async function GET() {
 
   // Configuration first: an unset variable is the failure that looks like a
   // database outage, and the two need telling apart at a glance.
+  // `set` rather than Boolean: a REPLACE_ME placeholder from the Vercel import
+  // file is present but useless, and reporting it as configured would hide the
+  // exact failure this endpoint exists to name.
+  const set = (value: string | undefined) => !isPlaceholder(value);
+
   const configured = {
-    supabase: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-    serviceRole: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    siteUrl: Boolean(process.env.NEXT_PUBLIC_SITE_URL),
-    email: Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM),
-    emailWebhook: Boolean(process.env.RESEND_WEBHOOK_SECRET),
-    cron: Boolean(process.env.CRON_SECRET),
+    supabase: set(process.env.NEXT_PUBLIC_SUPABASE_URL) && set(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    serviceRole: set(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    siteUrl: set(process.env.NEXT_PUBLIC_SITE_URL),
+    email: set(process.env.RESEND_API_KEY) && set(process.env.RESEND_FROM),
+    emailWebhook: set(process.env.RESEND_WEBHOOK_SECRET),
+    cron: set(process.env.CRON_SECRET),
   };
 
   // One real round trip, against a table every page depends on, through the

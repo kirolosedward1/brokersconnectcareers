@@ -3,13 +3,37 @@
  * point of use rather than as `undefined` three layers down.
  */
 
+/**
+ * A value that is present but has not been filled in yet.
+ *
+ * `.env.vercel.local` ships the secret variables as REPLACE_ME placeholders so
+ * the whole set imports in one go. Without this, importing that file unedited
+ * would be the worst of both states: every `Boolean(process.env.X)` check reads
+ * true, so /api/health and the banner on /admin/email both report configured —
+ * while Resend answers 401 and Supabase refuses the key. Silent, which is
+ * exactly the failure that let a production signup send no welcome email for
+ * weeks.
+ *
+ * Treated as absent instead, so an unedited import is indistinguishable from
+ * not having imported, and every check that already names the missing
+ * variables keeps naming them.
+ */
+export function isPlaceholder(value: string | undefined): boolean {
+  return !value || value.startsWith('REPLACE_ME');
+}
+
+/** The value, or undefined if it is missing or still a placeholder. */
+export function configuredValue(value: string | undefined): string | undefined {
+  return isPlaceholder(value) ? undefined : value;
+}
+
 function required(name: string, value: string | undefined): string {
-  if (!value) {
+  if (isPlaceholder(value)) {
     throw new Error(
       `Missing environment variable ${name}. Copy .env.example to .env.local and fill it in.`,
     );
   }
-  return value;
+  return value as string;
 }
 
 export const env = {

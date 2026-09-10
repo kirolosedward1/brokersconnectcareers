@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { requireAdmin } from '@/lib/auth';
+import { isPlaceholder } from '@/lib/env';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate, formatNumber } from '@/lib/utils';
 import type { EmailActivityRow, EmailStatus } from '@/lib/supabase/database.types';
@@ -77,7 +78,9 @@ export default async function AdminEmailPage({
     ['RESEND_API_KEY', process.env.RESEND_API_KEY],
     ['RESEND_FROM', process.env.RESEND_FROM],
   ]
-    .filter(([, value]) => !value)
+    // A REPLACE_ME placeholder from the Vercel import file counts as missing:
+    // it is present, so every Boolean check passes, and nothing sends.
+    .filter(([, value]) => isPlaceholder(value))
     .map(([name]) => name as string);
 
   const supabase = await createClient();
