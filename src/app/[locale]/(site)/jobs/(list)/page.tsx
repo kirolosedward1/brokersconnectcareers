@@ -185,6 +185,7 @@ export default async function JobsPage({
                       locale={locale}
                       applied={appliedIds.has(job.id)}
                       saved={savedIds.has(job.id)}
+                      savable={viewer?.profile?.role === 'candidate'}
                     />
                   </li>
                 ))}

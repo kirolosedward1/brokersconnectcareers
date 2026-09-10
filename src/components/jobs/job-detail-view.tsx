@@ -156,6 +156,7 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
             )}
             <SaveJobButton
               jobId={job.id}
+              jobSlug={job.slug}
               initialSaved={alreadySaved}
               canSave={Boolean(viewer?.profile)}
               labels={{ save: t('save'), saved: t('saved') }}

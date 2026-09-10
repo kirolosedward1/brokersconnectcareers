@@ -49,6 +49,26 @@ export default async function SavedJobsPage({
     .map((row) => row.job)
     .filter(Boolean);
 
+  /**
+   * A saved role that has ended is not the same object as one still hiring.
+   *
+   * The list was one stack in the order things were bookmarked, so a listing
+   * that expired three weeks ago sat above two that are open — and the only
+   * way to find that out was to open it. The card marks a closed role, but the
+   * order still put dead ones in the way of live ones.
+   *
+   * They are not deleted. A bookmark is the reader's own list, and a product
+   * that quietly removes rows from it teaches people that saving is
+   * unreliable; the closed ones move below a heading that says why, and the
+   * bookmark on each card is how they leave.
+   */
+  const now = Date.now();
+  const isClosed = (job: JobListItem) =>
+    job.status !== 'active' || (job.expires_at != null && new Date(job.expires_at).getTime() <= now);
+
+  const open = jobs.filter((job) => !isClosed(job));
+  const closed = jobs.filter(isClosed);
+
   const { data: searchRows } = await supabase
     .from('saved_searches')
     .select('*')
@@ -88,15 +108,56 @@ export default async function SavedJobsPage({
             </Button>
           </div>
         ) : (
-          <ul className="space-y-3">
-            {jobs.map((job) => (
-              <li key={job.id}>
-                {/* `saved` is not passed: every card here is saved, so the
-                    badge would be on all of them and mean nothing. */}
-                <JobCard job={job} locale={locale} applied={appliedTo.has(job.id)} />
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-8">
+            {open.length > 0 ? (
+              <div>
+                {/* The heading only earns its place once there is a second
+                    group to tell this one apart from. */}
+                {closed.length > 0 ? (
+                  <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+                    {t('savedOpenHeading')}
+                  </h3>
+                ) : null}
+                <ul className="space-y-3">
+                  {open.map((job) => (
+                    <li key={job.id}>
+                      <JobCard
+                        job={job}
+                        locale={locale}
+                        applied={appliedTo.has(job.id)}
+                        saved
+                        savable
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {closed.length > 0 ? (
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  {t('savedClosedHeading')}
+                </h3>
+                <p className="mb-3 mt-0.5 text-sm text-muted-foreground">
+                  {t('savedClosedLede')}
+                </p>
+                <ul className="space-y-3">
+                  {closed.map((job) => (
+                    <li key={job.id}>
+                      <JobCard
+                        job={job}
+                        locale={locale}
+                        applied={appliedTo.has(job.id)}
+                        saved
+                        savable
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
         )}
       </section>
 

@@ -74,7 +74,8 @@
     "featured": "إعلان مميّز",
     "closedShort": "اتقفل",
     "alreadyReported": "بلّغت عن الإعلان ده قبل كده.",
-    "reportRateLimit": "بلّغت عن إعلانات كتير النهاردة. جرّب تاني بكرة."
+    "reportRateLimit": "بلّغت عن إعلانات كتير النهاردة. جرّب تاني بكرة.",
+    "removeSaved": "شيلها من المحفوظة"
   },
   "compensation": {
     "title": "الراتب والعمولة",
@@ -369,7 +370,10 @@
     "nextRepliesCta": "شوف طلباتك",
     "nextProfileTitle": "ملفك لسه ناقص",
     "nextProfileBody": "الشركات الموثّقة بتدوّر في الدليل. ملف كامل بيخليك تظهر.",
-    "nextProfileCta": "كمّل ملفك"
+    "nextProfileCta": "كمّل ملفك",
+    "savedOpenHeading": "لسه شغّالة",
+    "savedClosedHeading": "اتقفلت",
+    "savedClosedLede": "الإعلانات دي خلص وقتها أو الشركة قفلتها. سايبينها هنا لحد ما تشيلها بنفسك."
   },
   "applicationStatus": {
     "new": "جديد",
