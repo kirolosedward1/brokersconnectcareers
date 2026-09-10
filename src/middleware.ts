@@ -66,6 +66,30 @@ function withoutMiddleware(request: NextRequest): NextResponse {
 }
 
 async function handle(request: NextRequest): Promise<NextResponse> {
+  // A stray OAuth code, rescued.
+  //
+  // The provider returns the user to Supabase, which returns them to the
+  // `redirect_to` the app asked for — /auth/callback. But when that URL is not
+  // in Supabase's allow-list, Supabase silently falls back to the project's
+  // Site URL, which is the site root, and the code arrives on a page that has
+  // no idea what to do with it: `/?code=…`, rendered as an error.
+  //
+  // That is a dashboard misconfiguration and the real fix is to allow-list the
+  // callback. But the symptom is a dead-end on the single most important
+  // action in the product, so the code is forwarded to the route that can spend
+  // it rather than wasted. Only from the site root, and only a real auth code —
+  // deeper pages are left alone, and the callback itself is outside this
+  // middleware's matcher, so this cannot loop.
+  {
+    const { path } = stripLocale(request.nextUrl.pathname);
+    const params = request.nextUrl.searchParams;
+    if (path === '/' && (params.has('code') || params.has('error'))) {
+      return NextResponse.redirect(
+        new URL(`/auth/callback${request.nextUrl.search}`, request.url),
+      );
+    }
+  }
+
   // English is translated but unpublished. Send /en/* to the Arabic equivalent
   // rather than 404-ing it, and do it temporarily (307) so the URLs are not
   // written off by search engines while the language is merely paused.
