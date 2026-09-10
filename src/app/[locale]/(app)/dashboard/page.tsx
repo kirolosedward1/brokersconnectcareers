@@ -11,6 +11,8 @@ import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
 import { optional } from '@/lib/queries/error';
+import { getDistricts } from '@/lib/queries/taxonomy';
+import { rankJobs } from '@/lib/match';
 import { formatDate, formatNumber } from '@/lib/utils';
 import type { ApplicationStatus, CandidateSummary } from '@/lib/supabase/database.types';
 
@@ -73,7 +75,8 @@ export default async function DashboardOverviewPage({
    * every figure was a link to somewhere else, which is a page that exists to
    * be left.
    */
-  const [{ data }, { data: recent }, { data: mine }, openRoles] = await Promise.all([
+  const [{ data }, { data: recent }, { data: mine }, openRoles, { data: agent }, districts] =
+    await Promise.all([
     supabase.rpc('candidate_summary'),
     supabase
       .from('applications')
@@ -89,10 +92,33 @@ export default async function DashboardOverviewPage({
     // the suggestions below. Scoped by row-level security, so no candidate_id
     // filter is written here.
     supabase.from('applications').select('job_id'),
-    // Newest live roles, sliced below. Not filtered to this candidate's own
-    // tracks: on a board this size a filter mostly produces an empty block,
-    // and "nothing for you" is a worse answer than "here is what is open".
+    /*
+      Every live role, ordered below rather than filtered here.
+
+      Filtering to this candidate's own tracks mostly produces an empty block on
+      a board this size, and "nothing for you" is a worse answer than "here is
+      what is open". Ranking has neither problem: the same listings appear, best
+      fit first, so the objection to filtering does not apply to ordering.
+    */
     optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0 }),
+    /*
+      What the ranking is against — the consultant's own stated track,
+      districts and years. Nothing inferred.
+
+      Filtered by user_id explicitly, unlike the applications read above, which
+      genuinely can lean on row-level security. This table has four read
+      policies and one of them is `visibility = 'public'`, so a signed-in
+      consultant sees their own row *and* every public profile in the
+      directory. Left to RLS, maybeSingle() matched many rows, errored, and
+      handed back null — which silently produced the unpersonalised ordering
+      for somebody whose profile was complete.
+    */
+    supabase
+      .from('agent_profiles')
+      .select('tracks, district_ids, years_experience')
+      .eq('user_id', viewer.profile.id)
+      .maybeSingle(),
+    optional(getDistricts(), []),
   ]);
 
   const s = (data ?? null) as CandidateSummary | null;
@@ -105,11 +131,30 @@ export default async function DashboardOverviewPage({
    * has to reason about.
    */
   const appliedTo = new Set((mine ?? []).map((row) => row.job_id));
-  const suggestions = openRoles.jobs.filter((job) => !appliedTo.has(job.id)).slice(0, 3);
+  const unapplied = openRoles.jobs.filter((job) => !appliedTo.has(job.id));
+
+  /*
+    Their own board first, and only where that means something.
+
+    `personalised` is false when the profile names no track and no district, in
+    which case every score is zero and the newest-first order is untouched —
+    the same list this page showed before. Saying so, and offering the fix, is
+    better than reordering nothing and calling it a recommendation.
+  */
+  const { ranked, personalised } = rankJobs(unapplied, {
+    tracks: agent?.tracks ?? null,
+    districtIds: agent?.district_ids ?? null,
+    yearsExperience: agent?.years_experience ?? null,
+  });
+  const suggestions = ranked.slice(0, 3);
+  const districtName = new Map(
+    districts.map((d) => [d.id, localized(locale, d.name_ar, d.name_en)]),
+  );
 
   const t = await getTranslations('dashboard');
   const tJobs = await getTranslations('jobs');
   const tStatus = await getTranslations('applicationStatus');
+  const tTrack = await getTranslations('track');
   const n = (value: number) => formatNumber(value, locale);
 
   return (
@@ -231,17 +276,44 @@ export default async function DashboardOverviewPage({
         <section className="space-y-3" aria-labelledby="open-roles">
           <div className="flex items-baseline justify-between gap-3">
             <h2 id="open-roles" className="text-lg font-semibold">
-              {t('openRoles')}
+              {personalised ? t('matchedRoles') : t('openRoles')}
             </h2>
             <Link href="/jobs" className="text-sm font-medium text-primary hover:underline">
               {t('seeAll')}
             </Link>
           </div>
 
+          {/* The order means nothing without a profile behind it, so rather
+              than dress up newest-first as a recommendation, say what is
+              missing and link to the one screen that fixes it. */}
+          {personalised ? null : (
+            <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+              {t('matchNudge')}{' '}
+              <Link href="/dashboard/profile" className="font-medium text-primary hover:underline">
+                {t('matchNudgeCta')}
+              </Link>
+            </p>
+          )}
+
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {suggestions.map((job) => (
-              <li key={job.id}>
+            {suggestions.map(({ job, score, reasons }) => (
+              <li key={job.id} className="flex flex-col gap-1.5">
                 <JobCard job={job} locale={locale} />
+
+                {/* Why this one, in the consultant's own words — the track and
+                    district they typed into their profile, not a score. A
+                    reader who cannot check a recommendation is entitled to
+                    distrust it. */}
+                {score > 0 ? (
+                  <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-1 text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{t('matchWhy')}</span>
+                    {reasons.track ? <span>{tTrack(reasons.track)}</span> : null}
+                    {reasons.districtId ? (
+                      <span>{districtName.get(reasons.districtId)}</span>
+                    ) : null}
+                    {reasons.experience ? <span>{t('matchExperience')}</span> : null}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

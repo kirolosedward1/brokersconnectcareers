@@ -346,7 +346,12 @@
     "openRoles": "Open roles",
     "applicationsLede": "Every job you have applied to, and where it stands.",
     "savedLede": "The listings you saved and the alerts you asked for.",
-    "profileLede": "The profile companies see when you apply."
+    "profileLede": "The profile companies see when you apply.",
+    "matchedRoles": "Roles that fit you",
+    "matchWhy": "Matches your:",
+    "matchExperience": "years of experience",
+    "matchNudge": "This is ordered by newest only.",
+    "matchNudgeCta": "Add your track and districts and we will order them to fit you"
   },
   "applicationStatus": {
     "new": "New",
