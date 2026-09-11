@@ -60,6 +60,9 @@ async function isAdmin(): Promise<boolean> {
     } = await supabase.auth.getUser();
     if (!user) return false;
 
+    // Allowed to fail quietly, and deliberately fails closed: this is the
+    // gate on a route that renders every template in the product. Unknown is
+    // treated as "not an admin", which is the answer that costs nothing.
     const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
     return data?.role === 'admin';
   } catch {

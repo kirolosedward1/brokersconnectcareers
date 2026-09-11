@@ -23,12 +23,15 @@
  * raise — a chip list, an "applied" badge, a note's author name are all worth
  * less than the page they sit on. What is not allowed is silence by omission.
  *
- * Scoped to `page.tsx` and `layout.tsx`, because the failure this is about is
- * an *empty state* — a screen that answers the reader's question wrongly. An
- * API route has no empty state: it returns a status, and a cron that reads
- * nothing does nothing, which is a different problem with different right
- * answers. Those are worth a sweep of their own and would only be diluted by
- * being counted here.
+ * Routes are in scope too, since the sweep reached them. They have no empty
+ * state, but they have the same silence in a different costume: the sign-in
+ * callback read a profile and treated a failure as "has not onboarded",
+ * sending established accounts through the sign-up form — the exact confusion
+ * `getViewer.profileUnreadable` exists to prevent, on the one path every
+ * Google sign-in takes. The CV route answered a failed read with 404, which
+ * tells an employer no CV was attached. And the delivery webhook assigned
+ * `matched = data ?? 0` and returned 200, so a status that was never recorded
+ * looked like one that was, and the provider stopped retrying.
  */
 import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -53,7 +56,7 @@ function walk(dir) {
   return readdirSync(dir).flatMap((entry) => {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) return walk(full);
-    return /\/(page|layout)\.tsx$/.test(full) ? [full] : [];
+    return /\/(page|layout)\.tsx$|\/route\.ts$/.test(full) ? [full] : [];
   });
 }
 
@@ -74,7 +77,7 @@ const ALLOWED = /allowed to fail quietly/i;
 /** How far above the destructure the marker may sit. */
 const LOOKBACK = 4;
 
-console.log('\n— no page read fails as an empty state');
+console.log('\n— no read in src/app drops its error');
 {
   const offenders = [];
 
@@ -97,7 +100,7 @@ console.log('\n— no page read fails as an empty state');
   }
 
   check(
-    'every `{ data }` in src/app reads its error or says why not',
+    'every `{ data }` in a page or route reads its error, or says why not',
     offenders.length === 0,
     offenders.slice(0, 10).join('; '),
   );
@@ -105,11 +108,13 @@ console.log('\n— no page read fails as an empty state');
 
 /*
   And the other direction, so the marker cannot become a habit: it has to be
-  rare. Seven today, all genuinely cosmetic: two developer chip lists, two
-  "applied" badges, two note-author lookups and one follow state. Ten leaves
-  room for the next honest one and still notices a habit forming — at which
-  point the question is not "raise or not" but why so many pages have
-  decorative reads in them.
+  rare. Twelve today: seven in pages, all cosmetic — two developer chip lists,
+  two "applied" badges, two note-author lookups, one follow state — and five in
+  routes, where the fallbacks are a digest in Arabic rather than English, an
+  email that names no listings, and an admin check that fails closed. Fifteen
+  leaves room for the next honest one and still notices a habit forming, at
+  which point the question is not "raise or not" but why so many of these
+  reads exist at all.
 */
 console.log('\n— and the exemption stays rare');
 {
@@ -121,8 +126,8 @@ console.log('\n— and the exemption stays rare');
   );
 
   check(
-    `"allowed to fail quietly" appears ${markers.length} times, and ten is where it stops being a decision`,
-    markers.length <= 10,
+    `"allowed to fail quietly" appears ${markers.length} times, and fifteen is where it stops being a decision`,
+    markers.length <= 15,
     markers.join('; '),
   );
 }

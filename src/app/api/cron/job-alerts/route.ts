@@ -81,6 +81,7 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
+      // Allowed to fail quietly: falls back to Arabic, this market's default.
       const { data: profile } = await admin
         .from('profiles')
         .select('locale')

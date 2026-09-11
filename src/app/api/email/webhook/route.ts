@@ -77,10 +77,19 @@ export async function POST(request: NextRequest) {
   let matched = 0;
   try {
     const admin = createAdminClient();
-    const { data } = await admin.rpc('mark_email_delivered', {
+    /*
+      Read, because `matched = data ?? 0` turned a failed write into a
+      successful webhook: the provider gets a 200, stops retrying, and the
+      delivery status is never recorded. The catch below already knows a 500
+      is the right answer when the failure is ours — it just never saw this
+      one, because the RPC returns its error rather than throwing it.
+    */
+    const { data, error } = await admin.rpc('mark_email_delivered', {
       p_provider_id: providerId,
       p_status: status,
     });
+    if (error) throw new Error(`mark_email_delivered: ${error.message}`, { cause: error });
+
     matched = data ?? 0;
   } catch (error) {
     // Ours, not theirs — worth a 500 so the provider retries.

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { env } from '@/lib/env';
 import { localized } from '@/i18n/routing';
 import { notifyProfileIncomplete, sendApplicantDigest } from '@/lib/email/notify';
+import { logFailure } from '@/lib/observe';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -46,6 +47,9 @@ export async function GET(request: NextRequest) {
 
   let digests = 0;
   for (const row of owed ?? []) {
+    // Allowed to fail quietly: the fallback below is Arabic, which is this
+    // market's default and what most of these accounts read anyway. A digest
+    // in the wrong language beats no digest.
     const { data: profile } = await admin
       .from('profiles')
       .select('locale')
@@ -55,6 +59,9 @@ export async function GET(request: NextRequest) {
 
     // The listings the applicants came to, so the email says which roles are
     // moving rather than only how many people applied.
+    // Allowed to fail quietly: these are the listing names inside the email.
+    // Losing them sends "7 new applicants" without naming the roles, which is
+    // still true and still gets somebody to the inbox.
     const { data: jobs } = await admin
       .from('jobs')
       .select('slug, title_ar, title_en, company:companies (name_ar, name_en)')
@@ -80,7 +87,20 @@ export async function GET(request: NextRequest) {
   }
 
   // --- candidates who signed up and stopped --------------------------------
-  const { data: unfinished } = await admin.rpc('incomplete_candidate_profiles', { p_limit: 50 });
+  /*
+    Allowed to fail quietly — but not silently, because this one is the whole
+    second half of the job. A failure means nobody is reminded and the route
+    still answers `{ reminders: 0 }`, which looks exactly like a day when
+    nobody needed reminding. The digests above have already been sent, so
+    failing the request now would make a retry send them twice.
+  */
+  const { data: unfinished, error: unfinishedError } = await admin.rpc(
+    'incomplete_candidate_profiles',
+    { p_limit: 50 },
+  );
+  if (unfinishedError) {
+    logFailure('cron', 'could not list incomplete profiles', { code: unfinishedError.code });
+  }
 
   let reminders = 0;
   for (const row of unfinished ?? []) {
