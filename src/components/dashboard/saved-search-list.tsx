@@ -7,6 +7,8 @@ import { Link } from '@/i18n/navigation';
 import { deleteSavedSearch, setSearchAlerts } from '@/lib/actions/saved-searches';
 import { followedCompany } from '@/lib/saved-search';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
+import { ICON_HIT_AREA } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 /**
  * The saved searches, with their alert switch.
@@ -103,7 +105,10 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
               onClick={() => remove(row.id)}
               disabled={pending}
               aria-label={company ? t('unfollow') : t('remove')}
-              className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+              className={cn(
+                ICON_HIT_AREA,
+                'shrink-0 rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-destructive',
+              )}
             >
               <Trash2 className="size-4" aria-hidden />
             </button>

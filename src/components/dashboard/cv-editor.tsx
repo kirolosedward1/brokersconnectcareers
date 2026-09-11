@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { GraduationCap, Award, Briefcase, Plus, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, ICON_HIT_AREA } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select } from '@/components/ui/field';
 import {
@@ -98,7 +99,10 @@ function Row({
         onClick={onDelete}
         disabled={pending}
         aria-label={deleteLabel}
-        className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+        className={cn(
+          ICON_HIT_AREA,
+          'shrink-0 rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-destructive',
+        )}
       >
         <Trash2 className="size-4" aria-hidden />
       </button>
