@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { CompensationCard, LeadsSourceBadge } from '@/components/jobs/compensation';
+import { CommissionPicture } from '@/components/jobs/commission-picture';
+import { commissionPicture, type CommissionPicture as CommissionPictureData } from '@/lib/earnings';
 import { JobCard } from '@/components/jobs/job-card';
 import { SaveJobButton } from '@/components/jobs/save-job-button';
 import { ReportJobDialog } from '@/components/jobs/report-job-dialog';
@@ -61,9 +63,15 @@ export async function JobDetailView({
   // Has this candidate already applied? Cheap, and it changes the primary CTA.
   let alreadyApplied = false;
   let alreadySaved = false;
+  /**
+   * What this listing's commission is worth against their own record. Null
+   * for everyone else: an employer reading their own advert has no record to
+   * price it with, and a signed-out visitor has not told us anything.
+   */
+  let picture: CommissionPictureData | null = null;
   if (viewer?.profile?.role === 'candidate') {
     const supabase = await createClient();
-    const [{ data: application }, { data: saved }] = await Promise.all([
+    const [{ data: application }, { data: saved }, { data: record }] = await Promise.all([
       supabase
         .from('applications')
         .select('id')
@@ -76,9 +84,25 @@ export async function JobDetailView({
         .eq('job_id', job.id)
         .eq('candidate_id', viewer.userId)
         .maybeSingle(),
+      /*
+        Filtered by user_id explicitly. This table has four read policies and
+        one of them is `visibility = 'public'`, so a signed-in consultant sees
+        their own row *and* every public profile in the directory — left to
+        RLS, maybeSingle() matches many rows, errors, and hands back null.
+        The dashboard learned this the hard way.
+      */
+      supabase
+        .from('agent_profiles')
+        .select('units_closed, volume_egp')
+        .eq('user_id', viewer.profile.id)
+        .maybeSingle(),
     ]);
     alreadyApplied = Boolean(application);
     alreadySaved = Boolean(saved);
+    picture = commissionPicture(job, {
+      unitsClosed: record?.units_closed ?? null,
+      volumeEgp: record?.volume_egp ?? null,
+    });
   }
 
   return (
@@ -153,6 +177,8 @@ export async function JobDetailView({
               structured form, before any prose. */}
           <div className="mt-6">
             <CompensationCard job={job} locale={locale} />
+
+            {picture ? <CommissionPicture picture={picture} locale={locale} /> : null}
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-2">

@@ -406,16 +406,27 @@ console.log('\n— no translated phrase is forced left-to-right');
         problem.
       */
       let openEnd = index;
-      while (
-        openEnd < lines.length &&
-        openEnd < index + 12 &&
-        !/>\s*$/.test(lines[openEnd])
-      ) {
-        openEnd += 1;
+      /*
+        Only when the element is still open. An element that opens and closes
+        on its own line — `const v = (chunks) => <span className="numeral">
+        {chunks}</span>;`, or a figure inside a paragraph — has no body
+        underneath it, and scanning forward for the next line ending in `>`
+        found some later element and read *its* children instead. That is how
+        the rich-tag helper every compensation component defines got reported
+        as wrapping a translated string.
+      */
+      if (closes === -1) {
+        while (
+          openEnd < lines.length &&
+          openEnd < index + 12 &&
+          !/>\s*$/.test(lines[openEnd])
+        ) {
+          openEnd += 1;
+        }
       }
 
       const opener = lines[openEnd] ?? '';
-      if (/>\s*$/.test(opener) && !/\/>\s*$/.test(opener)) {
+      if (closes === -1 && /}?>\s*$/.test(opener) && !/\/>\s*$/.test(opener)) {
         for (let i = openEnd + 1; i < lines.length && i < openEnd + 12; i += 1) {
           const next = lines[i];
           if (next.trim() && next.search(/\S/) <= indent) break;

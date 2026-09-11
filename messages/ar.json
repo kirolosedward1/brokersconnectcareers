@@ -94,7 +94,15 @@
     "salaryRange": "<v>{min}</v> – <v>{max}</v> جنيه",
     "salaryFrom": "من <v>{min}</v> جنيه",
     "salaryUpTo": "حتى <v>{max}</v> جنيه",
-    "commissionPercent": "نسبة <v>{value}</v>٪"
+    "commissionPercent": "نسبة <v>{value}</v>٪",
+    "earningsTitle": "العمولة دي على أرقامك انت",
+    "earningsPerUnitSuffix": "على الوحدة",
+    "earningsPerUnit": "متوسط الوحدة اللي بتبيعها <v>{average}</v> جنيه، والنسبة هنا <v>{percent}</v>٪.",
+    "earningsPerUnitBasis": "محسوبة من <v>{units}</v> وحدة بإجمالي <v>{volume}</v> جنيه — الأرقام اللي كتبتها في ملفك.",
+    "earningsOnTotal": "على إجمالي اللي بعته (<v>{volume}</v> جنيه)، نسبة <v>{percent}</v>٪ كانت تساوي <v>{total}</v> جنيه عمولة.",
+    "earningsNote": "حساب على الأرقام اللي انت كتبتها، مش وعد من الشركة. العمولة الفعلية بتتحدد بالاتفاق ومصدر العملاء.",
+    "earningsNoRecord": "اكتب كام وحدة بعت وبكام في ملفك، وهنحسبلك النسبة دي على متوسط الوحدة اللي بتبيعها.",
+    "earningsNoRecordCta": "كمّل سجلك"
   },
   "filters": {
     "search": "بحث بالكلمات",

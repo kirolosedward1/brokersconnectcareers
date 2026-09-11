@@ -94,7 +94,15 @@
     "salaryRange": "EGP <v>{min}</v> – <v>{max}</v>",
     "salaryFrom": "From EGP <v>{min}</v>",
     "salaryUpTo": "Up to EGP <v>{max}</v>",
-    "commissionPercent": "<v>{value}</v>% commission"
+    "commissionPercent": "<v>{value}</v>% commission",
+    "earningsTitle": "This commission, in your own numbers",
+    "earningsPerUnitSuffix": "per deal",
+    "earningsPerUnit": "Your average unit is <v>{average}</v> EGP, and the rate here is <v>{percent}</v>%.",
+    "earningsPerUnitBasis": "From <v>{units}</v> units totalling <v>{volume}</v> EGP — the figures on your profile.",
+    "earningsOnTotal": "On the <v>{volume}</v> EGP you have closed, <v>{percent}</v>% would have paid <v>{total}</v> EGP in commission.",
+    "earningsNote": "Calculated from the figures you entered, not a promise from the company. Actual commission depends on the agreement and where the leads come from.",
+    "earningsNoRecord": "Add how many units you have closed and for how much, and we will price this rate against your average deal.",
+    "earningsNoRecordCta": "Complete your record"
   },
   "filters": {
     "search": "Keyword",
