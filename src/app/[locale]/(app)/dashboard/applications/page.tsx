@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Building2, MapPin } from 'lucide-react';
+import { Building2, Eye, MapPin } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -55,7 +55,7 @@ export default async function ApplicationsPage({
     .from('applications')
     .select(
       `
-      id, status, created_at, decision_note,
+      id, status, created_at, decision_note, employer_viewed_at,
       job:jobs (
         slug, status, title_ar, title_en,
         company:companies (name_ar, name_en, slug),
@@ -70,6 +70,7 @@ export default async function ApplicationsPage({
     id: string;
     status: ApplicationStatus;
     decision_note: string | null;
+    employer_viewed_at: string | null;
     created_at: string;
     job: {
       slug: string;
@@ -132,6 +133,26 @@ export default async function ApplicationsPage({
                 {tStatus(application.status)}
               </Badge>
             </div>
+
+            {/*
+              The one thing somebody wants to know after applying.
+
+              Not a status — the status is still `new`, and saying anything
+              else would be inventing progress. Just that a person at the
+              company has had the application on their screen, which is what
+              employer_viewed_at now records and, until the inbox started
+              writing it, could not honestly have been shown at all.
+
+              Only while the outcome is open. Once the status moves, the status
+              is the news and this becomes a smaller, older fact competing with
+              it.
+            */}
+            {application.status === 'new' && application.employer_viewed_at ? (
+              <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-success-muted px-3 py-1 text-xs font-medium text-success">
+                <Eye className="size-3.5" aria-hidden />
+                {t('applicationOpened')}
+              </p>
+            ) : null}
 
             {/*
               What happened to the listing, when something did.

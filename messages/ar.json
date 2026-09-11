@@ -317,6 +317,7 @@
     "agentProfile": "ملفك في دليل الاستشاريين",
     "agentProfileHint": "أصحاب العمل الموثّقين بيدوّروا في الدليل ده. وانت اللي بتتحكم في مين يشوف ملفك.",
     "decisionFromCompany": "رسالة من الشركة",
+    "applicationOpened": "الشركة فتحت طلبك",
     "applicationListingClosed": "الإعلان ده اتقفل. طلبك لسه عند الشركة زي ما هو.",
     "applicationListingOffBoard": "الإعلان ده مش منشور دلوقتي — الشركة بتعدّل فيه أو بيتراجع. طلبك لسه عندها.",
     "overview": "نظرة عامة",

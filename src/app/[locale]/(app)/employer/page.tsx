@@ -121,8 +121,18 @@ export default async function EmployerOverviewPage({
         const action =
           s.verification === 'rejected'
             ? { kind: 'verification' as const, tone: 'urgent' as const, title: t('nextVerificationTitle'), body: t('nextVerificationBody'), cta: t('nextVerificationCta'), href: '/employer/company' }
-            : s.applicants_unseen > 0
-              ? { kind: 'applicants' as const, tone: 'good' as const, title: t('nextApplicantsTitle', { count: s.applicants_unseen }), body: t('nextApplicantsBody'), cta: t('nextApplicantsCta'), href: '/employer/applicants?stage=new' }
+            /*
+              `applicants_new`, not `applicants_unseen`, and the card's own
+              words are why: it says "لسه ما اتحرّكتش حالتهم" — their status
+              has not moved — which is `status = 'new'` exactly. It used to
+              count `employer_viewed_at is null`, which meant the same thing
+              only because a pipeline move was the one thing that wrote that
+              column. The inbox writes it now, so the two have come apart: one
+              is "you have not looked", the other is "you have not decided",
+              and this card has always been about the second.
+            */
+            : s.applicants_new > 0
+              ? { kind: 'applicants' as const, tone: 'good' as const, title: t('nextApplicantsTitle', { count: s.applicants_new }), body: t('nextApplicantsBody'), cta: t('nextApplicantsCta'), href: '/employer/applicants?stage=new' }
               : s.expiring_soon > 0
                 ? { kind: 'expiring' as const, tone: 'attention' as const, title: t('nextExpiringTitle', { count: s.expiring_soon }), body: t('nextExpiringBody'), cta: t('nextExpiringCta'), href: '/employer/jobs' }
                 : s.draft_jobs > 0

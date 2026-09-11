@@ -1974,6 +1974,58 @@ report.section('the same request twice converges on one answer');
   await db.exec(`delete from jobs where slug in ('idem-first', 'idem-elsewhere')`);
 }
 
+report.section('"somebody opened it" is a thing the column can now say');
+{
+  /*
+    employer_viewed_at was only ever written by a pipeline move, so it did not
+    mean what its name says — it meant "somebody changed this application's
+    status". That made it useless for the one question a candidate has after
+    applying, and showing it as "they opened your application" would have been
+    a sentence the data could not support. The inbox writes it now, which is
+    the moment it describes.
+
+    Two meanings that used to be one: `employer_viewed_at is null` is "you have
+    not looked", `status = 'new'` is "you have not decided". The employer's
+    next-action card wants the second and used to count the first.
+  */
+  const app = (
+    await db.query(`
+      select a.id from applications a
+        join jobs j on j.id = a.job_id
+        join company_members m on m.company_id = j.company_id
+       where m.user_id = '${employerVerified}' limit 1`)
+  ).rows[0];
+  report.check('found an applicant on their own listing', Boolean(app));
+
+  await db.exec(`update applications set employer_viewed_at = null where id = '${app.id}'`);
+
+  const stamped = await as(employerVerified,
+    `update applications set employer_viewed_at = now() where id = '${app.id}' returning id`);
+  report.check('the company that received it may record having seen it',
+    stamped.ok && stamped.rows.length === 1, stamped.error);
+
+  const otherCompany = await as(employerUnverified,
+    `update applications set employer_viewed_at = now() where id = '${app.id}' returning id`);
+  report.check('another company cannot',
+    otherCompany.ok && otherCompany.rows.length === 0, JSON.stringify(otherCompany.rows));
+
+  /*
+    Nor the candidate, which matters more than it looks: the stamp is what
+    their own dashboard reads to say somebody opened the application, so an
+    applicant able to write it could tell themselves good news.
+  */
+  const candidateId = (
+    await db.query(`select candidate_id from applications where id = '${app.id}'`)
+  ).rows[0].candidate_id;
+
+  const bySelf = await as(candidateId,
+    `update applications set employer_viewed_at = now() where id = '${app.id}' returning id`);
+  report.check('and the applicant cannot mark themselves as seen',
+    bySelf.ok && bySelf.rows.length === 0, JSON.stringify(bySelf.rows));
+
+  await db.exec(`update applications set employer_viewed_at = null where id = '${app.id}'`);
+}
+
 report.section('a note the candidate never reads');
 {
   /*

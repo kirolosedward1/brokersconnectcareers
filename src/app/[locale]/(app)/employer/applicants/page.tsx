@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApplicantCard, type ApplicantProfile } from '@/components/employer/applicant-card';
 import { requireEmployer } from '@/lib/auth';
+import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
 import { getDistricts } from '@/lib/queries/taxonomy';
@@ -36,6 +37,8 @@ type Row = {
   note: string | null;
   decision_note: string | null;
   cv_path: string | null;
+  /** Null until the inbox has had this card on screen. */
+  employer_viewed_at: string | null;
   experience_band: ExperienceBand | null;
   candidate: {
     full_name: string;
@@ -151,7 +154,7 @@ export default async function AllApplicantsPage({
     .from('applications')
     .select(
       `
-      id, status, created_at, note, decision_note, cv_path, experience_band,
+      id, status, created_at, note, decision_note, cv_path, experience_band, employer_viewed_at,
       candidate:profiles!inner (
         full_name,
         whatsapp_phone,
@@ -184,6 +187,9 @@ export default async function AllApplicantsPage({
 
   const { data } = await query;
   const rows = (data ?? []) as unknown as Row[];
+
+  // Seen, because they are on the screen — see the note in applicants-seen.ts.
+  await markApplicantsSeen(rows.filter((row) => !row.employer_viewed_at).map((row) => row.id));
 
   /*
     The company's own notes, fetched once for the whole page.

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApplicantCard, type ApplicantProfile } from '@/components/employer/applicant-card';
 import { getDistricts } from '@/lib/queries/taxonomy';
+import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { optional } from '@/lib/queries/error';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -23,6 +24,8 @@ type ApplicantRow = {
   note: string | null;
   decision_note: string | null;
   cv_path: string | null;
+  /** Null until the inbox has had this card on screen. */
+  employer_viewed_at: string | null;
   experience_band: ExperienceBand | null;
   candidate: {
     full_name: string;
@@ -70,7 +73,7 @@ export default async function ApplicantsPage({
     .from('applications')
     .select(
       `
-      id, status, created_at, note, decision_note, cv_path, experience_band,
+      id, status, created_at, note, decision_note, cv_path, experience_band, employer_viewed_at,
       candidate:profiles (
         full_name,
         whatsapp_phone,
@@ -86,6 +89,19 @@ export default async function ApplicantsPage({
     .order('created_at', { ascending: false });
 
   const applications = (data ?? []) as unknown as ApplicantRow[];
+
+  /*
+    Seen, because they are on the screen.
+
+    The card below carries the name, the experience band, the note and the link
+    to the CV. If it has rendered, the application has been opened — which is
+    the one thing a candidate wants to know after applying, and which
+    employer_viewed_at could not honestly say while only a pipeline move wrote
+    it.
+  */
+  await markApplicantsSeen(
+    applications.filter((row) => !row.employer_viewed_at).map((row) => row.id),
+  );
 
   /*
     The company's own notes, fetched once for the page rather than per card.
