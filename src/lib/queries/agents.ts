@@ -144,14 +144,28 @@ export async function querySavedAgents(page = 1): Promise<{
  * the directory query — /agents is public and the same result set is shown to
  * everyone, and making it per-reader would give that up for a bookmark.
  *
- * Row-level security scopes this to the caller's own company, so no company_id
- * is written here; a viewer with no company simply reads nothing.
+ * Scoped to `my_company_id()` explicitly, with row-level security still behind
+ * it. Not a second copy of the policy: the policy answers "may this person see
+ * this row", which for somebody who belongs to two companies is yes to both —
+ * while the write and the shortlist page both act on exactly one company, the
+ * one `my_company_id()` picks. Left to the policy alone, a colleague in two
+ * brokerages would see a consultant marked as kept because the *other*
+ * brokerage kept them, and the shortlist they were looking at would not list
+ * them. Rare, and silently wrong, which is the combination worth one filter.
  */
 export async function shortlistedAgentIds(ids: string[]): Promise<Set<string>> {
   if (!ids.length) return new Set();
 
   const supabase = await createClient();
-  const { data } = await supabase.from('saved_agents').select('agent_id').in('agent_id', ids);
+
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return new Set();
+
+  const { data } = await supabase
+    .from('saved_agents')
+    .select('agent_id')
+    .eq('company_id', companyId)
+    .in('agent_id', ids);
 
   return new Set((data ?? []).map((row) => row.agent_id));
 }

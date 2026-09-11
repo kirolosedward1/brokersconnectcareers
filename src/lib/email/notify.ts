@@ -4,6 +4,7 @@ import type { AgentVisibility, ApplicationStatus } from '@/lib/supabase/database
 import { env } from '@/lib/env';
 import { localized } from '@/i18n/routing';
 import { copyFor, localeOf } from './copy';
+import { followedCompany } from '@/lib/saved-search';
 import { buildEnvelope, type Audience } from './envelope';
 import { deliver } from './service';
 import type { SendOutcome } from './send';
@@ -1101,7 +1102,18 @@ export async function sendSavedSearchDigest(args: {
     const to = await recipient(admin, args.userId, 'notify_digest');
     if (!to) return 'skipped';
 
-    const t = copyFor(to.locale).digest;
+    /*
+      A follow and a saved search are one row and one weekly job — that is the
+      point of building a follow that way — but they cannot share the words.
+      Somebody who pressed Follow on a company and is then told "there is
+      something new in your search" goes looking for a saved search they never
+      made, and the next thing they do is try to turn it off.
+
+      Decided from the stored query rather than from an argument, so the caller
+      cannot pass the wrong one and the cron needs no new knowledge.
+    */
+    const copy = copyFor(to.locale);
+    const t = followedCompany(args.query) ? copy.follow : copy.digest;
 
     return deliver({
       template: 'saved_search_digest',

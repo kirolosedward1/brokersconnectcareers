@@ -282,7 +282,26 @@ export const emailCopy = {
       heading: 'في جديد في بحثك',
       body: (label: string) => `دي الوظايف اللي نزلت الأسبوع ده وبتطابق «${label}».`,
       cta: 'شوفهم كلهم',
-      labelSearch: 'البحث',
+    },
+
+    /*
+      The same email, for somebody who followed a company rather than saved a
+      search.
+
+      Underneath they are one row and one weekly job, which is the whole point
+      of building a follow that way — but the words above cannot be shared. A
+      follower who reads "في جديد في بحثك" is being told about a saved search
+      they do not remember making, and the next thing they do is look for it to
+      turn it off. The subject line happens to work for both, so only the three
+      strings that name the mechanism change.
+    */
+    follow: {
+      subject: (count: number, label: string) =>
+        count === 1 ? `وظيفة جديدة في «${label}»` : `${count} وظايف جديدة في «${label}»`,
+      preheader: 'وظايف جديدة من شركة بتتابعها.',
+      heading: 'جديد من شركة بتتابعها',
+      body: (label: string) => `«${label}» نزّلت الوظايف دي الأسبوع ده.`,
+      cta: 'شوفهم كلهم',
     },
 
     applicantDigest: {
@@ -546,7 +565,15 @@ export const emailCopy = {
       heading: 'New in your search',
       body: (label: string) => `These went up this week and match "${label}".`,
       cta: 'See them all',
-      labelSearch: 'Search',
+    },
+
+    follow: {
+      subject: (count: number, label: string) =>
+        count === 1 ? `A new role at "${label}"` : `${count} new roles at "${label}"`,
+      preheader: 'New roles from a company you follow.',
+      heading: 'New from a company you follow',
+      body: (label: string) => `"${label}" posted these this week.`,
+      cta: 'See them all',
     },
 
     applicantDigest: {

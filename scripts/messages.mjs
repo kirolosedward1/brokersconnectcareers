@@ -631,5 +631,55 @@ console.log('\n— no Arabic is written into a component');
   );
 }
 
+console.log('\n— the email copy has two halves too');
+{
+  /*
+    Nothing was scanning this.
+
+    Email copy is deliberately not in messages/*.json — next-intl ships the
+    bundle to every browser, and twenty templates of strings only the mail
+    server reads would be paid for by every visitor. The cost of keeping it
+    out is that all four checks above stop at the door: `emailCopy` is a plain
+    object, ar and en are written by hand side by side, and a key added to one
+    and not the other is a template that renders `undefined` as its heading
+    for exactly the locale nobody tested in.
+
+    Found the concrete version of this while giving followed companies their
+    own digest wording, alongside a `labelSearch` that had been in both
+    locales and read by nothing since the digest was written.
+
+    Shape as well as keys: a string where the other locale has a function is
+    the same bug arriving as `t.subject is not a function`.
+  */
+  const { emailCopy } = await import('../src/lib/email/copy.ts');
+
+  const shape = (value, prefix = '') => {
+    if (typeof value === 'function') return [[prefix, `fn/${value.length}`]];
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return Object.entries(value).flatMap(([key, inner]) =>
+        shape(inner, prefix ? `${prefix}.${key}` : key),
+      );
+    }
+    return [[prefix, typeof value]];
+  };
+
+  const ar = new Map(shape(emailCopy.ar));
+  const en = new Map(shape(emailCopy.en));
+
+  const missingEn = [...ar.keys()].filter((key) => !en.has(key));
+  const missingAr = [...en.keys()].filter((key) => !ar.has(key));
+  const mismatched = [...ar.entries()]
+    .filter(([key, kind]) => en.has(key) && en.get(key) !== kind)
+    .map(([key, kind]) => `${key} (ar ${kind}, en ${en.get(key)})`);
+
+  check(`ar and en hold the same email keys (${ar.size})`,
+    missingEn.length === 0 && missingAr.length === 0,
+    [...missingEn.map((k) => `en missing ${k}`), ...missingAr.map((k) => `ar missing ${k}`)]
+      .slice(0, 8)
+      .join('; '));
+
+  check('and the same shape at every key', mismatched.length === 0, mismatched.slice(0, 8).join('; '));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

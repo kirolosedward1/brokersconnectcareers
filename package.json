@@ -22,7 +22,7 @@
     "test:db": "node supabase/tests/schema.test.mjs && node supabase/tests/policies.test.mjs && node --experimental-strip-types supabase/tests/hmac.test.mjs && pnpm test:search && pnpm test:email && pnpm test:auth",
     "test:hmac": "node --experimental-strip-types supabase/tests/hmac.test.mjs",
     "smoke": "node --env-file-if-exists=.env.local scripts/smoke.mjs",
-    "test:messages": "node scripts/messages.mjs",
+    "test:messages": "node --experimental-strip-types scripts/messages.mjs",
     "check": "pnpm typecheck && pnpm test:messages && pnpm test:compat && pnpm test:match && pnpm test:earnings && pnpm test:share && pnpm test:saved && pnpm test:nextaction && pnpm test:db",
     "test:search": "node --experimental-strip-types supabase/tests/search.test.mjs",
     "test:email": "node --experimental-strip-types supabase/tests/email.test.mjs",

@@ -1,16 +1,15 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Briefcase, CircleDot, Lock, MapPin, UserRound, UsersRound } from 'lucide-react';
+import { UsersRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
-import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/pagination';
-import { ShortlistToggle } from '@/components/agents/shortlist-toggle';
+import { ShortlistList, type ShortlistRow } from '@/components/employer/shortlist-list';
 import { requireEmployer } from '@/lib/auth';
 import { querySavedAgents } from '@/lib/queries/agents';
 import { getDistrictMap } from '@/lib/queries/taxonomy';
-import { formatDate, formatList, formatNumber, isoDate } from '@/lib/utils';
+import { formatDate, formatList, formatNumber } from '@/lib/utils';
 
 export async function generateMetadata({
   params,
@@ -36,6 +35,11 @@ export async function generateMetadata({
  * is a real state rather than an error: the consultant has left the directory,
  * and the only thing this page may still say about them is that the company
  * once kept them. It says exactly that, and offers the way to let go.
+ *
+ * This side resolves everything locale-dependent — names, areas, dates, the
+ * availability label — and hands the list over as strings. The rendering lives
+ * in a client component because removing somebody has to remove their row, and
+ * only the browser can do that to a list it is looking at.
  */
 export default async function TalentPoolPage({
   params,
@@ -61,7 +65,41 @@ export default async function TalentPoolPage({
   const tAgents = await getTranslations('agents');
   const tTrack = await getTranslations('track');
   const tAvailability = await getTranslations('availability');
-  const tJobs = await getTranslations('jobs');
+
+  const rows: ShortlistRow[] = agents.map((agent) => {
+    const areas = (agent.district_ids ?? [])
+      .map((id) => districts.get(id))
+      .filter((d): d is NonNullable<typeof d> => Boolean(d))
+      .slice(0, 2);
+    const moreAreas = (agent.district_ids?.length ?? 0) - areas.length;
+
+    return {
+      id: agent.id,
+      slug: agent.slug,
+      isListed: agent.is_listed,
+      isUnlocked: agent.is_unlocked,
+      name: agent.full_name,
+      avatarUrl: agent.avatar_url,
+      headline: localized(locale, agent.headline_ar, agent.headline_en),
+      tracks: (agent.tracks ?? []).slice(0, 3).map((track) => tTrack(track)),
+      years:
+        agent.years_experience != null
+          ? tAgents('yearsExperience', { count: agent.years_experience })
+          : null,
+      areas: areas.length
+        ? formatList(areas.map((d) => localized(locale, d.name_ar, d.name_en)), locale)
+        : null,
+      moreAreas: moreAreas > 0 ? `+${formatNumber(moreAreas, locale)}` : null,
+      availability: agent.availability ? tAvailability(agent.availability) : null,
+      looking: agent.availability === 'actively_searching',
+      savedNote: agent.saved_by_name
+        ? t('shortlistSavedBy', {
+            name: agent.saved_by_name,
+            date: formatDate(agent.saved_at, locale),
+          })
+        : t('shortlistSavedOn', { date: formatDate(agent.saved_at, locale) }),
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -70,7 +108,7 @@ export default async function TalentPoolPage({
         <p className="mt-1 text-muted-foreground">{t('shortlistLede')}</p>
       </header>
 
-      {agents.length === 0 ? (
+      {total === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
           <UsersRound className="mx-auto size-8 text-muted-foreground" aria-hidden />
           <p className="mt-4 font-medium">{t('shortlistEmpty')}</p>
@@ -81,148 +119,7 @@ export default async function TalentPoolPage({
         </div>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">{tJobs('resultsCount', { count: total })}</p>
-
-          <ul className="space-y-3">
-            {agents.map((agent) => {
-              const headline = localized(locale, agent.headline_ar, agent.headline_en);
-              const areas = (agent.district_ids ?? [])
-                .map((id) => districts.get(id))
-                .filter((d): d is NonNullable<typeof d> => Boolean(d))
-                .slice(0, 2);
-              const moreAreas = (agent.district_ids?.length ?? 0) - areas.length;
-              const looking = agent.availability === 'actively_searching';
-
-              return (
-                <li
-                  key={agent.id}
-                  className="relative rounded-2xl border border-border bg-card p-5 shadow-sm"
-                >
-                  <div className="flex gap-4">
-                    {agent.is_unlocked && agent.full_name ? (
-                      <Avatar
-                        name={agent.full_name}
-                        src={agent.avatar_url}
-                        seed={agent.slug ?? agent.id}
-                        size="lg"
-                      />
-                    ) : (
-                      <span
-                        aria-hidden
-                        className="grid size-16 shrink-0 place-items-center rounded-full bg-muted"
-                      >
-                        <UserRound className="size-7 text-muted-foreground" />
-                      </span>
-                    )}
-
-                    <div className="min-w-0 flex-1">
-                      <h2 className="flex items-center gap-1.5 text-lg font-semibold leading-tight">
-                        {/* A consultant who has left the directory has no page
-                            to link to, and their slug is their name
-                            transliterated — so there is no link and no name,
-                            only the fact that this row is here. */}
-                        {agent.is_listed && agent.slug ? (
-                          <Link
-                            href={`/agents/${agent.slug}`}
-                            className="after:absolute after:inset-0 hover:text-primary"
-                          >
-                            {agent.is_unlocked && agent.full_name
-                              ? agent.full_name
-                              : tAgents('anonymous')}
-                          </Link>
-                        ) : (
-                          <span className="text-muted-foreground">{t('shortlistGone')}</span>
-                        )}
-
-                        {agent.is_listed && !agent.is_unlocked ? (
-                          <Lock
-                            className="size-3.5 shrink-0 text-muted-foreground"
-                            aria-label={tAgents('locked')}
-                          />
-                        ) : null}
-                      </h2>
-
-                      {agent.is_listed ? (
-                        headline ? (
-                          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-                            {headline}
-                          </p>
-                        ) : null
-                      ) : (
-                        <p className="mt-1 text-sm text-muted-foreground">{t('shortlistGoneHint')}</p>
-                      )}
-
-                      {agent.tracks?.length ? (
-                        <ul className="mt-3 flex flex-wrap gap-1.5">
-                          {agent.tracks.slice(0, 3).map((track) => (
-                            <li
-                              key={track}
-                              className="rounded-full bg-primary/8 px-2.5 py-1 text-xs font-medium text-primary"
-                            >
-                              {tTrack(track)}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
-
-                    <ShortlistToggle
-                      agentId={agent.id}
-                      initialSaved
-                      labels={{ add: tAgents('shortlistAdd'), remove: tAgents('shortlistRemove') }}
-                      className="-mt-1 -me-1"
-                    />
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-4 text-sm text-muted-foreground">
-                    {agent.years_experience != null ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Briefcase className="size-4" aria-hidden />
-                        {tAgents('yearsExperience', { count: agent.years_experience })}
-                      </span>
-                    ) : null}
-
-                    {areas.length ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <MapPin className="size-4" aria-hidden />
-                        {formatList(
-                          areas.map((d) => localized(locale, d.name_ar, d.name_en)),
-                          locale,
-                        )}
-                        {moreAreas > 0 ? (
-                          <span className="numeral">+{formatNumber(moreAreas, locale)}</span>
-                        ) : null}
-                      </span>
-                    ) : null}
-
-                    {agent.availability ? (
-                      <span
-                        className={`inline-flex items-center gap-1.5 ${
-                          looking ? 'font-medium text-success' : ''
-                        }`}
-                      >
-                        <CircleDot className="size-4" aria-hidden />
-                        {tAvailability(agent.availability)}
-                      </span>
-                    ) : null}
-
-                    {/* Who kept them, and when. A company is a team, so the
-                        colleague who has been meaning to call this person is
-                        a fact the rest of the team needs. */}
-                    <span className="ms-auto">
-                      {agent.saved_by_name
-                        ? t('shortlistSavedBy', {
-                            name: agent.saved_by_name,
-                            date: formatDate(agent.saved_at, locale),
-                          })
-                        : t('shortlistSavedOn', { date: formatDate(agent.saved_at, locale) })}
-                      <time className="sr-only" dateTime={isoDate(agent.saved_at)} />
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <ShortlistList rows={rows} />
 
           <Pagination
             page={page}

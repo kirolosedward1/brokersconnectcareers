@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
  * company — and the second is a fact about the consultant's own privacy
  * settings, which an employer is not owed an explanation of.
  */
-function useShortlist(agentId: string, initialSaved: boolean) {
+function useShortlist(agentId: string, initialSaved: boolean, onRemoved?: () => void) {
   const [saved, setSaved] = useState(initialSaved);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
@@ -40,8 +40,14 @@ function useShortlist(agentId: string, initialSaved: boolean) {
     startTransition(async () => {
       const result = await toggleSavedAgent(agentId);
       if (recoverSession(result)) return;
-      if (!result.ok) setSaved(!next);
-      else setSaved(result.data!.saved);
+      if (!result.ok) {
+        setSaved(!next);
+        return;
+      }
+      setSaved(result.data!.saved);
+      // A list that holds this row needs telling, because the row cannot
+      // remove itself and a server re-render does not arrive in time to.
+      if (!result.data!.saved) onRemoved?.();
     });
   }
 
@@ -60,13 +66,16 @@ export function ShortlistToggle({
   initialSaved,
   labels,
   className,
+  onRemoved,
 }: {
   agentId: string;
   initialSaved: boolean;
   labels: { add: string; remove: string };
   className?: string;
+  /** For a list that has to drop the row — see ShortlistList. */
+  onRemoved?: () => void;
 }) {
-  const { saved, pending, toggle } = useShortlist(agentId, initialSaved);
+  const { saved, pending, toggle } = useShortlist(agentId, initialSaved, onRemoved);
 
   return (
     <button
