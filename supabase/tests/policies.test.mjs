@@ -119,7 +119,7 @@ report.section('reposting puts the listing back on the board');
     The listing is put back the way it was found at the end.
   */
   await db.exec(`
-    update jobs set expires_at = now() - interval '2 days' where id = '${liveJob}';
+    update jobs set published_at = now() - interval '32 days', expires_at = now() - interval '2 days' where id = '${liveJob}';
     update jobs set status = 'closed'         where id = '${liveJob}';
     update jobs set status = 'pending_review' where id = '${liveJob}';
     update jobs set status = 'active'         where id = '${liveJob}';
@@ -153,7 +153,7 @@ report.section('reposting puts the listing back on the board');
     role key, which is exactly why the date has to be the thing that decides.
   */
   await db.exec(`
-    update jobs set expires_at = now() - interval '10 days'
+    update jobs set published_at = now() - interval '40 days', expires_at = now() - interval '10 days'
      where company_id = '${unverifiedCo}' and status = 'active';
   `);
 
@@ -168,7 +168,7 @@ report.section('reposting puts the listing back on the board');
     transition table used to permit pending_review only from the label the cron
     writes — so the button would have been refused by the database.
   */
-  await db.exec(`update jobs set expires_at = now() - interval '1 day' where id = '${liveJob}'`);
+  await db.exec(`update jobs set published_at = now() - interval '31 days', expires_at = now() - interval '1 day' where id = '${liveJob}'`);
 
   const repostStale = await as(employerVerified,
     `update jobs set status = 'pending_review' where id = '${liveJob}' returning status`);
@@ -813,6 +813,59 @@ report.section('an employed agent can hide from their own employer');
   report.check('the owner still sees their own profile', owner.rows.length === 1);
 }
 
+report.section('the row itself refuses shapes no form would send');
+{
+  /*
+    The forms cap what they accept and the table did not, so anything not
+    coming through a form — which is every request, as far as the database is
+    concerned — could write an eight megabyte description. And two of these are
+    not about size at all: a CV path is a file, and a file belongs to the
+    account whose folder it sits in.
+  */
+  const foreignCv = await as(candidate, `
+    insert into applications (job_id, candidate_id, cv_path, experience_band)
+    values ('${liveJob}', '${candidate}', '${publicAgent}/stolen.pdf', 'mid_3_5')`);
+  report.check('an application cannot carry somebody else\'s CV',
+    !foreignCv.ok && /applications_cv_is_the_applicants/.test(foreignCv.error ?? ''),
+    foreignCv.ok ? 'insert was allowed' : foreignCv.error);
+
+  const ownCv = await as(candidate, `
+    insert into applications (job_id, candidate_id, cv_path, experience_band)
+    values ('${liveJob}', '${candidate}', '${candidate}/mine.pdf', 'mid_3_5')
+    on conflict (job_id, candidate_id) do nothing`);
+  report.check('and its own is fine', ownCv.ok, ownCv.error);
+
+  const foreignAgentCv = await as(publicAgent,
+    `update agent_profiles set cv_path = '${candidate}/stolen.pdf' where user_id = '${publicAgent}'`);
+  report.check('nor can a directory profile',
+    !foreignAgentCv.ok && /agent_profiles_cv_is_the_owners/.test(foreignAgentCv.error ?? ''),
+    foreignAgentCv.ok ? 'update was allowed' : foreignAgentCv.error);
+
+  const huge = await as(employerVerified,
+    `update jobs set description_ar = repeat('ا', 9000) where id = '${liveJob}'`);
+  report.check('a listing cannot carry an unbounded description',
+    !huge.ok && /jobs_description_ar_length/.test(huge.error ?? ''),
+    huge.ok ? 'update was allowed' : huge.error);
+
+  const backwards = await as(null,
+    `update jobs set expires_at = published_at - interval '1 day' where id = '${liveJob}'`,
+    'service_role');
+  report.check('nor a window that runs backwards',
+    !backwards.ok && /jobs_publication_window/.test(backwards.error ?? ''),
+    backwards.ok ? 'update was allowed' : backwards.error);
+
+  /*
+    And the directory stays a directory of consultants even for the service
+    role, which bypasses RLS entirely and is what the seed and the crons use.
+  */
+  const employerListing = await as(null,
+    `insert into agent_profiles (user_id, slug) values ('${employerVerified}', 'employer-in-the-directory')`,
+    'service_role');
+  report.check('an employer cannot be listed as a consultant',
+    !employerListing.ok && /agent_profile_role/.test(employerListing.error ?? ''),
+    employerListing.ok ? 'insert was allowed' : employerListing.error);
+}
+
 report.section('verification documents never leak');
 {
   await db.exec(`insert into company_documents (company_id, doc_type, storage_path)
@@ -1437,7 +1490,7 @@ report.section('applications are capped per day too');
 
 report.section('the nightly expiry cron');
 {
-  await db.exec("update jobs set expires_at = now() - interval '1 day' where status='active'");
+  await db.exec("update jobs set published_at = now() - interval '31 days', expires_at = now() - interval '1 day' where status='active'");
   const before = (await db.query("select count(*)::int as n from jobs where status='active'")).rows[0].n;
   const expired = (await db.query('select expire_stale_jobs() as n')).rows[0].n;
   const after = (await db.query("select count(*)::int as n from jobs where status='active'")).rows[0].n;

@@ -80,7 +80,8 @@ export function VerifyCompanyActions({
             value={note}
             onChange={(event) => setNote(event.target.value)}
             placeholder={t('rejectReason')}
-            className="h-8 w-56"
+            size="sm"
+            className="w-56"
             maxLength={500}
           />
           <Button

@@ -295,7 +295,13 @@ export function ApplicantCard({
 
         <label className="ms-auto flex items-center gap-2 text-xs text-muted-foreground">
           {t('moveTo')}
-          <Select value={status} onChange={onStatusChange} disabled={pending} className="h-8 w-auto">
+          <Select
+            size="sm"
+            value={status}
+            onChange={onStatusChange}
+            disabled={pending}
+            className="w-auto"
+          >
             {STATUSES.map((value) => (
               <option key={value} value={value}>
                 {tStatus(value)}
