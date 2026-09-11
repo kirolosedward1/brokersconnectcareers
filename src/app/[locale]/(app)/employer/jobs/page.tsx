@@ -214,6 +214,7 @@ export default async function EmployerJobsPage({
                     labels={{
                       close: t('closeJob'),
                       reopen: t('reopenJob'),
+                      reopenHint: t('reopenHint'),
                       submit: t('submitForReview'),
                     }}
                   />

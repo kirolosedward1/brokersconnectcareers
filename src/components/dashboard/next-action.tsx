@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, Clock, FileText, Inbox, UserRound } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Clock, FileText, Inbox, RotateCcw, UserRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 
 /**
@@ -31,6 +31,9 @@ const TONES = {
 const ICONS = {
   applicants: Inbox,
   expiring: Clock,
+  // The same mark the reopen button on the listing row carries, so the card
+  // and the button somebody lands on are visibly the same action.
+  ended: RotateCcw,
   draft: FileText,
   verification: AlertTriangle,
   profile: UserRound,

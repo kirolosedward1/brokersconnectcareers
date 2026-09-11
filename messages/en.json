@@ -393,6 +393,9 @@
     "nextExpiringTitle": "{count, plural, one {# listing ends this week} other {# listings end this week}}",
     "nextExpiringBody": "Once it ends it stops appearing in search. You can renew it before it closes.",
     "nextExpiringCta": "See your listings",
+    "nextEndedTitle": "{count, plural, one {# listing has ended} other {# listings have ended}}",
+    "nextEndedBody": "It is out of search and nobody can apply. Reopening it sends it back for review and starts a fresh 30 days from the day it goes live.",
+    "nextEndedCta": "Put it back up",
     "nextDraftTitle": "You have an unsent draft",
     "nextDraftBody": "Finish it and send it for review so it can start receiving applicants.",
     "nextDraftCta": "Finish the draft",
@@ -557,7 +560,8 @@
     "shortlistGone": "No longer in the directory",
     "shortlistGoneHint": "They chose to hide their profile, so we cannot show their details. You can remove them from the list.",
     "shortlistSavedBy": "Added by {name} on {date}",
-    "shortlistSavedOn": "Added on {date}"
+    "shortlistSavedOn": "Added on {date}",
+    "reopenHint": "It goes back for review first; the 30 days start again once it is published."
   },
   "jobForm": {
     "basics": "Basics",

@@ -19,7 +19,7 @@ export function JobStatusActions({
 }: {
   jobId: string;
   status: JobStatus;
-  labels: { close: string; reopen: string; submit: string };
+  labels: { close: string; reopen: string; reopenHint: string; submit: string };
 }) {
   const t = useTranslations('employer');
   const tCommon = useTranslations('common');
@@ -108,6 +108,18 @@ export function JobStatusActions({
           <RotateCcw aria-hidden />
           {labels.reopen}
         </Button>
+        {/*
+          What the button does, beside the button.
+
+          Two things happen that nobody would guess from the word "reopen": it
+          goes back through moderation, and the thirty-day window starts again
+          rather than resuming whatever was left. The second is migration 46's
+          rule and it is in the employer's favour — but an employer who thinks
+          they are getting four days back and gets thirty has been surprised,
+          and an employer who thinks it returns instantly and waits for a
+          moderator has been let down. Cheaper to say than to explain later.
+        */}
+        <p className="w-full text-xs text-muted-foreground">{labels.reopenHint}</p>
         {errorNote}
       </>
     );

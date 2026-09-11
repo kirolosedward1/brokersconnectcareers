@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyDashboard, StatTile } from '@/components/dashboard/stat-tile';
 import { SetupChecklist } from '@/components/employer/setup-checklist';
 import { NextAction } from '@/components/dashboard/next-action';
+import { employerNextAction } from '@/lib/employer-next-action';
 import { TrendChart } from '@/components/dashboard/trend-chart';
 import { ConversionBars } from '@/components/dashboard/conversion-bars';
 import { requireEmployer } from '@/lib/auth';
@@ -118,28 +119,23 @@ export default async function EmployerOverviewPage({
         work not yet done.
       */}
       {(() => {
-        const action =
-          s.verification === 'rejected'
-            ? { kind: 'verification' as const, tone: 'urgent' as const, title: t('nextVerificationTitle'), body: t('nextVerificationBody'), cta: t('nextVerificationCta'), href: '/employer/company' }
-            /*
-              `applicants_new`, not `applicants_unseen`, and the card's own
-              words are why: it says "لسه ما اتحرّكتش حالتهم" — their status
-              has not moved — which is `status = 'new'` exactly. It used to
-              count `employer_viewed_at is null`, which meant the same thing
-              only because a pipeline move was the one thing that wrote that
-              column. The inbox writes it now, so the two have come apart: one
-              is "you have not looked", the other is "you have not decided",
-              and this card has always been about the second.
-            */
-            : s.applicants_new > 0
-              ? { kind: 'applicants' as const, tone: 'good' as const, title: t('nextApplicantsTitle', { count: s.applicants_new }), body: t('nextApplicantsBody'), cta: t('nextApplicantsCta'), href: '/employer/applicants?stage=new' }
-              : s.expiring_soon > 0
-                ? { kind: 'expiring' as const, tone: 'attention' as const, title: t('nextExpiringTitle', { count: s.expiring_soon }), body: t('nextExpiringBody'), cta: t('nextExpiringCta'), href: '/employer/jobs' }
-                : s.draft_jobs > 0
-                  ? { kind: 'draft' as const, tone: 'attention' as const, title: t('nextDraftTitle'), body: t('nextDraftBody'), cta: t('nextDraftCta'), href: '/employer/jobs' }
-                  : null;
+        const action = employerNextAction(s);
+        if (!action) return null;
 
-        return action ? <NextAction {...action} /> : null;
+        // The decision is in employerNextAction; the words are here, because
+        // this is the side with the translator. `key` names the trio of
+        // messages, so a new branch cannot be added without copy to go with it
+        // — pnpm test:messages scans both directions.
+        return (
+          <NextAction
+            kind={action.kind}
+            tone={action.tone}
+            title={t(`next${action.key}Title`, { count: action.count })}
+            body={t(`next${action.key}Body`)}
+            cta={t(`next${action.key}Cta`)}
+            href={action.href}
+          />
+        );
       })()}
 
       {/*

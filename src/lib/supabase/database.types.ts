@@ -202,6 +202,12 @@ export type EmployerSummary =
       pending_jobs: number;
       draft_jobs: number;
       expiring_soon: number;
+      /**
+       * Ended and repostable — expired, closed, or still labelled active with a
+       * window that has already closed, because the cron that relabels needs a
+       * key production does not have.
+       */
+      ended_jobs: number;
       total_views: number;
       seats_advertised: number;
       applicants_total: number;

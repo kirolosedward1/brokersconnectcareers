@@ -23,7 +23,7 @@
     "test:hmac": "node --experimental-strip-types supabase/tests/hmac.test.mjs",
     "smoke": "node --env-file-if-exists=.env.local scripts/smoke.mjs",
     "test:messages": "node scripts/messages.mjs",
-    "check": "pnpm typecheck && pnpm test:messages && pnpm test:compat && pnpm test:match && pnpm test:earnings && pnpm test:share && pnpm test:saved && pnpm test:db",
+    "check": "pnpm typecheck && pnpm test:messages && pnpm test:compat && pnpm test:match && pnpm test:earnings && pnpm test:share && pnpm test:saved && pnpm test:nextaction && pnpm test:db",
     "test:search": "node --experimental-strip-types supabase/tests/search.test.mjs",
     "test:email": "node --experimental-strip-types supabase/tests/email.test.mjs",
     "auth:templates": "node --experimental-strip-types scripts/auth-templates.mjs",
@@ -32,7 +32,8 @@
     "test:match": "node --experimental-strip-types scripts/match.test.mjs",
     "test:earnings": "node --experimental-strip-types scripts/earnings.test.mjs",
     "test:share": "node --experimental-strip-types scripts/share-source.test.mjs",
-    "test:saved": "node --experimental-strip-types scripts/saved-search.test.mjs"
+    "test:saved": "node --experimental-strip-types scripts/saved-search.test.mjs",
+    "test:nextaction": "node --experimental-strip-types scripts/next-action.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",

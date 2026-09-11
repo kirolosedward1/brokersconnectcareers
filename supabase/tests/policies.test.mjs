@@ -1228,6 +1228,52 @@ report.section('dashboard summaries answer for the caller, and only the caller')
     JSON.stringify(emp),
   );
 
+  /*
+    `ended_jobs` counts by the date, not only the label.
+
+    The cron that relabels an expired listing needs a service-role key
+    production does not have, so listings sit at `active` with a window that
+    closed days ago — and the console renders by the date for exactly that
+    reason. A summary that trusted the label would put a number on the
+    next-action card that the page behind it contradicts, which is the failure
+    this whole round has been about.
+  */
+  {
+    const company = (
+      await db.query("select id from companies where slug='al-rowad-real-estate-309047'")
+    ).rows[0].id;
+
+    const before = (await as(employerVerified, `select public.employer_summary() as s`)).rows[0].s;
+
+    const stillLabelledActive = (
+      await db.query(`
+        select id from jobs
+         where company_id = '${company}' and status = 'active'
+           and expires_at > now() order by id limit 1`)
+    ).rows[0].id;
+
+    await db.exec(`
+      update jobs set published_at = now() - interval '60 days',
+                      expires_at   = now() - interval '1 day'
+       where id = '${stillLabelledActive}'`);
+
+    const after = (await as(employerVerified, `select public.employer_summary() as s`)).rows[0].s;
+
+    report.check('a listing whose window has closed counts as ended',
+      after.ended_jobs === before.ended_jobs + 1,
+      `${before.ended_jobs} -> ${after.ended_jobs}`);
+    report.check('and stops counting as live in the same breath',
+      after.live_jobs === before.live_jobs - 1,
+      `${before.live_jobs} -> ${after.live_jobs}`);
+    report.check('while expiring_soon, which is about the future, ignores it',
+      after.expiring_soon === before.expiring_soon,
+      `${before.expiring_soon} -> ${after.expiring_soon}`);
+
+    await db.exec(`
+      update jobs set published_at = now(), expires_at = now() + interval '30 days'
+       where id = '${stillLabelledActive}'`);
+  }
+
   // A candidate has no company; that is a real state, not an error.
   const r3 = await as(candidate, `select public.employer_summary() as s`);
   report.check(
