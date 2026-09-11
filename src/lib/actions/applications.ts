@@ -13,7 +13,11 @@ import {
   notifyCandidateOfStatus,
   notifyEmployerOfApplication,
 } from '@/lib/email/notify';
-import type { ApplicationStatus, ExperienceBand } from '@/lib/supabase/database.types';
+import type {
+  ApplicationNoteRow,
+  ApplicationStatus,
+  ExperienceBand,
+} from '@/lib/supabase/database.types';
 import { logFailure } from '@/lib/observe';
 
 const applySchema = z.object({
@@ -264,5 +268,98 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
 
   revalidatePath('/employer/jobs');
   revalidatePath('/dashboard/applications');
+  return { ok: true };
+}
+
+
+const noteSchema = z.object({
+  applicationId: z.string().uuid(),
+  body: z.string().trim().min(1).max(2000),
+});
+
+/**
+ * A note about an applicant that the applicant never sees.
+ *
+ * The one note field that existed, `decision_note`, is read by the candidate —
+ * it is how a rejection says why, which is the point of the board. This is the
+ * other kind: "called, no answer, try Thursday", the thing that makes comparing
+ * twelve applicants possible and that must not be sent to any of them.
+ *
+ * Nothing here checks whether the caller may write it. application_notes_write
+ * requires the row's author to be the caller and the application to be on one
+ * of their company's listings, so a forged applicationId is refused by the
+ * database rather than by a check this function remembered to make.
+ */
+export async function addApplicationNote(
+  input: unknown,
+): Promise<ActionResult<{ note: ApplicationNoteRow }>> {
+  const parsed = noteSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  /*
+    The whole row back, not just its id.
+
+    The card renders the note the moment this returns, and rendering it needs a
+    timestamp and an author. Inventing either in the browser would put a time
+    on screen that is not the time in the database — close enough to look right
+    and wrong under any comparison. So the row it wrote is the row it answers
+    with, and nothing is fabricated.
+  */
+  const { data, error } = await supabase
+    .from('application_notes')
+    .insert({
+      application_id: parsed.data.applicationId,
+      author_id: user.id,
+      body: parsed.data.body,
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    logFailure('pipeline', 'note refused', {
+      application: parsed.data.applicationId,
+      by: user.id,
+      code: error.code,
+    });
+    return { ok: false, error: 'forbidden' };
+  }
+
+  revalidatePath('/employer/applicants');
+  revalidatePath('/employer/jobs');
+  return { ok: true, data: { note: data as ApplicationNoteRow } };
+}
+
+/**
+ * Removing one, which only its author may do.
+ *
+ * A note is somebody's observation; a colleague deleting it is a different act
+ * from tidying up your own, and the policy says so. `.select()` because a
+ * delete RLS filters to nothing carries no error — the mistake this codebase
+ * keeps meeting.
+ */
+export async function deleteApplicationNote(id: number): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const { data: removed, error } = await supabase
+    .from('application_notes')
+    .delete()
+    .eq('id', id)
+    .select('id');
+
+  if (error) return { ok: false, error: error.message };
+  if (!removed?.length) return { ok: false, error: 'forbidden' };
+
+  revalidatePath('/employer/applicants');
+  revalidatePath('/employer/jobs');
   return { ok: true };
 }

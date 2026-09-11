@@ -12,7 +12,12 @@ import { formatNumber } from '@/lib/utils';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
-import type { ApplicationStatus, ExperienceBand, JobTrack } from '@/lib/supabase/database.types';
+import type {
+  ApplicationNoteRow,
+  ApplicationStatus,
+  ExperienceBand,
+  JobTrack,
+} from '@/lib/supabase/database.types';
 
 export async function generateMetadata({
   params,
@@ -179,6 +184,57 @@ export default async function AllApplicantsPage({
 
   const { data } = await query;
   const rows = (data ?? []) as unknown as Row[];
+
+  /*
+    The company's own notes, fetched once for the whole page.
+
+    A query per card would be a round trip per applicant; row-level security
+    already scopes application_notes to this company's listings, and the
+    explicit `in` is the index hint — the same argument as the scope on the
+    list above.
+  */
+  const noteRows = rows.length
+    ? ((
+        await supabase
+          .from('application_notes')
+          .select('*')
+          .in('application_id', rows.map((row) => row.id))
+          .order('created_at', { ascending: true })
+      ).data ?? [])
+    : [];
+
+  const notesByApplication = new Map<string, ApplicationNoteRow[]>();
+  for (const note of noteRows as ApplicationNoteRow[]) {
+    const list = notesByApplication.get(note.application_id) ?? [];
+    list.push(note);
+    notesByApplication.set(note.application_id, list);
+  }
+
+  /*
+    And the colleagues who wrote them, by name.
+
+    profiles_select_self only returns the reader's own row, so a member cannot
+    read a colleague's name through it — company_members is the relationship
+    that makes them visible to each other, and this resolves the ids the notes
+    carry into something a person recognises. An author whose account has gone
+    resolves to nothing and the card says "a former colleague".
+  */
+  const authorIds = [...new Set(noteRows.map((note) => note.author_id).filter(Boolean))] as string[];
+  const noteAuthors: Record<string, string> = {};
+  if (authorIds.length) {
+    const { data: members } = await supabase
+      .from('company_members')
+      .select('user_id, profile:profiles (full_name)')
+      .in('user_id', authorIds);
+
+    for (const member of (members ?? []) as unknown as {
+      user_id: string;
+      profile: { full_name: string } | null;
+    }[]) {
+      if (member.profile?.full_name) noteAuthors[member.user_id] = member.profile.full_name;
+    }
+  }
+
 
   // One column, no stage filter: what each chip is worth before it is clicked.
   // The list above is already narrowed by ?stage=, so it cannot answer this —
@@ -474,7 +530,10 @@ export default async function AllApplicantsPage({
               <ApplicantCard
                 application={row}
                 jobTitle={row.job ? localized(locale, row.job.title_ar, row.job.title_en) : ''}
-                companyName={companyName}
+                notes={notesByApplication.get(row.id) ?? []}
+              noteAuthors={noteAuthors}
+              viewerId={viewer.userId}
+              companyName={companyName}
                 locale={locale}
                 headingLevel={2}
                 districtNames={namesFor(row.candidate?.agent_profiles?.district_ids)}

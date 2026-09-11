@@ -12,9 +12,15 @@ import { localized } from '@/i18n/routing';
 import { formatDate, formatEgp, formatList, formatNumber, isoDate, whatsappLink } from '@/lib/utils';
 import { employerOpener } from '@/lib/whatsapp';
 import { setApplicationStatus } from '@/lib/actions/applications';
-import type { ApplicationStatus, ExperienceBand, JobTrack } from '@/lib/supabase/database.types';
+import type {
+  ApplicationNoteRow,
+  ApplicationStatus,
+  ExperienceBand,
+  JobTrack,
+} from '@/lib/supabase/database.types';
 import type { Locale } from '@/i18n/routing';
 import { WhatsAppMark } from '@/components/brand-marks';
+import { ApplicantNotes } from '@/components/employer/applicant-notes';
 import { Avatar } from '@/components/ui/avatar';
 
 export type ApplicantProfile = {
@@ -40,6 +46,9 @@ const STATUS_VARIANT: Record<ApplicationStatus, 'default' | 'primary' | 'success
 
 export function ApplicantCard({
   application,
+  notes,
+  noteAuthors,
+  viewerId,
   jobTitle,
   companyName,
   locale,
@@ -71,6 +80,12 @@ export function ApplicantCard({
       agent_profiles: ApplicantProfile | null;
     } | null;
   };
+  /** This application's own notes, oldest first. Never sent to the candidate. */
+  notes: ApplicationNoteRow[];
+  /** Author id → display name, resolved once by the page rather than per card. */
+  noteAuthors: Record<string, string>;
+  /** Whose delete link shows on which note. */
+  viewerId: string;
   jobTitle: string;
   companyName: string;
   locale: Locale;
@@ -363,6 +378,16 @@ export function ApplicantCard({
           </div>
         </div>
       ) : null}
+
+      {/* Below the decision note deliberately, and separated from it. The one
+          above is written to the candidate; this one they cannot read. */}
+      <ApplicantNotes
+        applicationId={application.id}
+        notes={notes}
+        authors={noteAuthors}
+        locale={locale}
+        viewerId={viewerId}
+      />
     </article>
   );
 }

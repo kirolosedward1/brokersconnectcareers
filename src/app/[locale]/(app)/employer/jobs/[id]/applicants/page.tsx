@@ -10,7 +10,11 @@ import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import type { ApplicationStatus, ExperienceBand } from '@/lib/supabase/database.types';
+import type {
+  ApplicationNoteRow,
+  ApplicationStatus,
+  ExperienceBand,
+} from '@/lib/supabase/database.types';
 
 type ApplicantRow = {
   id: string;
@@ -82,6 +86,48 @@ export default async function ApplicantsPage({
     .order('created_at', { ascending: false });
 
   const applications = (data ?? []) as unknown as ApplicantRow[];
+
+  /*
+    The company's own notes, fetched once for the page rather than per card.
+
+    application_notes has no policy for the candidate at all, so nothing here
+    needs to be careful about what it selects — the rule is the database's. The
+    explicit `in` is an index hint, not the authorisation.
+  */
+  const noteRows = applications.length
+    ? (((
+        await supabase
+          .from('application_notes')
+          .select('*')
+          .in('application_id', applications.map((row) => row.id))
+          .order('created_at', { ascending: true })
+      ).data ?? []) as ApplicationNoteRow[])
+    : [];
+
+  const notesByApplication = new Map<string, ApplicationNoteRow[]>();
+  for (const note of noteRows) {
+    const list = notesByApplication.get(note.application_id) ?? [];
+    list.push(note);
+    notesByApplication.set(note.application_id, list);
+  }
+
+  // The colleagues who wrote them, by name. An author whose account has closed
+  // resolves to nothing and the card says so.
+  const authorIds = [...new Set(noteRows.map((note) => note.author_id).filter(Boolean))] as string[];
+  const noteAuthors: Record<string, string> = {};
+  if (authorIds.length) {
+    const { data: members } = await supabase
+      .from('company_members')
+      .select('user_id, profile:profiles (full_name)')
+      .in('user_id', authorIds);
+
+    for (const member of (members ?? []) as unknown as {
+      user_id: string;
+      profile: { full_name: string } | null;
+    }[]) {
+      if (member.profile?.full_name) noteAuthors[member.user_id] = member.profile.full_name;
+    }
+  }
 
   // Resolved once and passed down. Each profile carries district ids; turning
   // them into names is a lookup every card would otherwise repeat.
@@ -156,6 +202,9 @@ export default async function ApplicantsPage({
                         jobTitle={jobTitle}
                         companyName={companyName}
                         locale={locale}
+                        notes={notesByApplication.get(application.id) ?? []}
+                        noteAuthors={noteAuthors}
+                        viewerId={viewer.userId}
                         districtNames={namesFor(application.candidate?.agent_profiles?.district_ids)}
                       />
                     </li>

@@ -1974,6 +1974,82 @@ report.section('the same request twice converges on one answer');
   await db.exec(`delete from jobs where slug in ('idem-first', 'idem-elsewhere')`);
 }
 
+report.section('a note the candidate never reads');
+{
+  /*
+    There is one note field on an application and the candidate reads it —
+    `decision_note` exists so a rejection can say why. An HR manager comparing
+    twelve applicants has nowhere to write "called, callback Thursday", and the
+    obvious workaround sends it to the person it is about.
+
+    A table rather than a column, because row-level security is row-level: the
+    candidate's own select policy returns their whole application row, so a
+    column on `applications` would reach them whatever the query selected.
+  */
+  const app = (
+    await db.query(`
+      select a.id, a.candidate_id from applications a
+        join jobs j on j.id = a.job_id
+        join company_members m on m.company_id = j.company_id
+       where m.user_id = '${employerVerified}' limit 1`)
+  ).rows[0];
+  report.check('found an applicant to write about', Boolean(app));
+
+  const written = await as(employerVerified, `
+    insert into application_notes (application_id, author_id, body)
+    values ('${app.id}', '${employerVerified}', 'كلّمته، هيرد يوم الخميس') returning id`);
+  report.check('a member of the company can write one', written.ok && written.rows.length === 1,
+    written.error);
+
+  await db.exec(`
+    insert into application_notes (application_id, author_id, body)
+    values ('${app.id}', '${employerVerified}', 'كلّمته، هيرد يوم الخميس');
+  `);
+
+  const theirs = await as(employerVerified, `select body from application_notes where application_id = '${app.id}'`);
+  report.check('and read it back', theirs.ok && theirs.rows.length === 1, JSON.stringify(theirs.rows));
+
+  // The whole point.
+  const candidate_ = await as(app.candidate_id, `select body from application_notes where application_id = '${app.id}'`);
+  report.check('the candidate it is about reads nothing',
+    candidate_.ok && candidate_.rows.length === 0, JSON.stringify(candidate_.rows));
+
+  // Nor can they write one that looks like the company's.
+  const forged = await as(app.candidate_id, `
+    insert into application_notes (application_id, author_id, body)
+    values ('${app.id}', '${app.candidate_id}', 'مزوّر')`);
+  report.check('nor writes one', !forged.ok, forged.ok ? 'insert was allowed' : forged.error);
+
+  const otherCompany = await as(employerUnverified, `select body from application_notes where application_id = '${app.id}'`);
+  report.check('and another company reads nothing either',
+    otherCompany.ok && otherCompany.rows.length === 0, JSON.stringify(otherCompany.rows));
+
+  // Signed as its author, so it cannot be written in somebody else's name.
+  const impersonated = await as(employerVerified, `
+    insert into application_notes (application_id, author_id, body)
+    values ('${app.id}', '${employerUnverified}', 'مش أنا')`);
+  report.check('a note cannot be signed with a colleague\'s name',
+    !impersonated.ok, impersonated.ok ? 'insert was allowed' : impersonated.error);
+
+  /*
+    Deleted by whoever wrote it and nobody else. A note is somebody's
+    observation; a colleague removing it is a different act from tidying up
+    your own. There is no update policy at all, for the reason the event log
+    has none — a record that can be rewritten afterwards is worth less than one
+    that cannot.
+  */
+  const byOther = await as(employerUnverified, `delete from application_notes where application_id = '${app.id}' returning id`);
+  report.check('somebody else cannot delete it', byOther.ok && byOther.rows.length === 0, JSON.stringify(byOther.rows));
+
+  const edit = await as(employerVerified, `update application_notes set body = 'اتغيّر' where application_id = '${app.id}' returning id`);
+  report.check('and nobody can edit it', edit.ok && edit.rows.length === 0, JSON.stringify(edit.rows));
+
+  const byAuthor = await as(employerVerified, `delete from application_notes where application_id = '${app.id}' returning id`);
+  report.check('its author can', byAuthor.ok && byAuthor.rows.length === 1, byAuthor.error);
+
+  await db.exec(`delete from application_notes where application_id = '${app.id}'`);
+}
+
 report.section('an application remembers how it moved');
 {
   const jobForHistory = (await db.query(`

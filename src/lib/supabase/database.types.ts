@@ -323,6 +323,21 @@ export type AgentCertificationRow = Timestamped & {
   sort_order: number;
 };
 
+/**
+ * The company's own note on an applicant.
+ *
+ * Not a column on `applications`: row-level security is row-level, so a column
+ * would reach the candidate through their own select policy whatever the query
+ * asked for. See migration 58.
+ */
+export type ApplicationNoteRow = {
+  id: number;
+  application_id: string;
+  author_id: string | null;
+  body: string;
+  created_at: string;
+};
+
 export type AgentProfileRow = Timestamped & {
   id: string;
   user_id: string;
@@ -517,6 +532,10 @@ export type Database = {
       >;
       job_developers: Table<{ job_id: string; developer_id: number }, { job_id: string; developer_id: number }>;
       applications: Table<ApplicationRow, Insertable<ApplicationRow, 'job_id' | 'candidate_id'>>;
+      application_notes: Table<
+        ApplicationNoteRow,
+        Insertable<ApplicationNoteRow, 'application_id' | 'body'>
+      >;
       /**
        * No Insertable worth naming: nothing in the app writes one. Every row
        * comes from a trigger, and the table has no insert policy on purpose —
