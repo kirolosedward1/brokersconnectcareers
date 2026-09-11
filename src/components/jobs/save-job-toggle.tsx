@@ -5,6 +5,7 @@ import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { toggleSavedJob } from '@/lib/actions/jobs';
 import { cn } from '@/lib/utils';
 import { useSessionRecovery } from '@/lib/session-expired';
+import { ICON_HIT_AREA } from '@/components/ui/button';
 
 /**
  * Saving a listing from the card, without opening it.
@@ -62,7 +63,10 @@ export function SaveJobToggle({
       aria-label={saved ? labels.remove : labels.save}
       title={saved ? labels.remove : labels.save}
       className={cn(
-        'relative z-10 -mt-1 -me-1 grid size-9 shrink-0 place-items-center rounded-lg',
+        // 44, not 36 — the house standard, and this sits on a card people
+        // tap with a thumb while scrolling.
+        ICON_HIT_AREA,
+        'relative z-10 -mt-1.5 -me-1.5 shrink-0 rounded-lg',
         'text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         'disabled:opacity-50',

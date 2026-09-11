@@ -3,6 +3,22 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
+/**
+ * The hit area for an icon-only control that cannot be a `<Button>`.
+ *
+ * `size` below settles this for buttons: 44px, because that is the touch
+ * target this market's overwhelmingly mobile traffic needs. Several controls
+ * cannot use it — a bookmark toggle that has to sit above a card's stretched
+ * link, a pagination arrow that is a `<Link>`, the magnifier on an applicant
+ * card — and every one of them had been written as `size-9`, which is 36px, on
+ * the surfaces a thumb aims at most.
+ *
+ * A string rather than a number, so the rule travels with the class list
+ * instead of being remembered. Tailwind scans this file like any other, so the
+ * classes are generated.
+ */
+export const ICON_HIT_AREA = 'grid size-11 place-items-center';
+
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ' +
     'transition-[background-color,box-shadow,transform,border-color] duration-150 ' +

@@ -5,11 +5,11 @@ import { useTranslations } from 'next-intl';
 import { Download, FileX2, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, ICON_HIT_AREA } from '@/components/ui/button';
 import { Select } from '@/components/ui/field';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
-import { formatDate, formatEgp, formatList, formatNumber, isoDate, whatsappLink } from '@/lib/utils';
+import { formatDate, formatEgp, formatList, formatNumber, isoDate, whatsappLink, cn } from '@/lib/utils';
 import { employerOpener } from '@/lib/whatsapp';
 import { setApplicationStatus } from '@/lib/actions/applications';
 import type {
@@ -258,7 +258,11 @@ export function ApplicantCard({
 
           <span
             aria-hidden
-            className="grid size-8 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors group-hover/profile:border-primary/40 group-hover/profile:bg-primary/5 group-hover/profile:text-primary"
+            className={cn(
+              ICON_HIT_AREA,
+              'shrink-0 rounded-lg border border-border text-muted-foreground transition-colors',
+              'group-hover/profile:border-primary/40 group-hover/profile:bg-primary/5 group-hover/profile:text-primary',
+            )}
           >
             <Search className="size-4" />
           </span>

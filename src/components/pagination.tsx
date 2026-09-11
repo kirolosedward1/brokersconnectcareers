@@ -2,6 +2,7 @@ import { useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
+import { ICON_HIT_AREA } from '@/components/ui/button';
 
 /**
  * Real <a> links, so pagination works without JavaScript and each page is
@@ -41,7 +42,10 @@ export function Pagination({
             href={buildHref(entry)}
             aria-current={entry === page ? 'page' : undefined}
             className={cn(
-              'numeral grid h-9 min-w-9 place-items-center rounded-md px-2 text-sm',
+              // 44 tall and at least 44 wide, like the arrows either side of
+              // it: a row of 36px page numbers is the hardest thing on a board
+              // to hit, and it is the control somebody presses repeatedly.
+              'numeral grid h-11 min-w-11 place-items-center rounded-md px-2 text-sm',
               entry === page
                 ? 'bg-primary text-primary-foreground'
                 : 'hover:bg-muted',
@@ -77,7 +81,7 @@ function PageLink({
     return (
       <span
         aria-disabled
-        className="grid size-9 place-items-center rounded-md text-muted-foreground opacity-40"
+        className={cn(ICON_HIT_AREA, 'rounded-md text-muted-foreground opacity-40')}
       >
         {icon}
       </span>
@@ -88,7 +92,7 @@ function PageLink({
     <Link
       href={href}
       aria-label={label}
-      className="grid size-9 place-items-center rounded-md hover:bg-muted"
+      className={cn(ICON_HIT_AREA, 'rounded-md hover:bg-muted')}
     >
       {icon}
     </Link>

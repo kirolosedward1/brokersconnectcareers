@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { UserRoundPlus, UserRoundCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, ICON_HIT_AREA } from '@/components/ui/button';
 import { toggleSavedAgent } from '@/lib/actions/talent-pool';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { cn } from '@/lib/utils';
@@ -86,7 +86,8 @@ export function ShortlistToggle({
       aria-label={saved ? labels.remove : labels.add}
       title={saved ? labels.remove : labels.add}
       className={cn(
-        'relative z-10 grid size-9 shrink-0 place-items-center rounded-lg',
+        ICON_HIT_AREA,
+        'relative z-10 shrink-0 rounded-lg',
         'text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         'disabled:opacity-50',
