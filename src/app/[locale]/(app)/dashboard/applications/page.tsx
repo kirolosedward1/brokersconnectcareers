@@ -132,9 +132,13 @@ export default async function ApplicationsPage({
             ) : null}
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              {/* Not `.numeral`: "قدّمت يوم 10 سبتمبر" is a sentence with a
+                  date in it, and forcing it left-to-right put the date before
+                  the words. Bidi lays out digits inside Arabic text correctly
+                  on its own. */}
               <time
                 dateTime={isoDate(application.created_at)}
-                className="numeral text-xs text-muted-foreground"
+                className="text-xs text-muted-foreground"
               >
                 {t('appliedOn', { date: formatDate(application.created_at, locale) })}
               </time>
