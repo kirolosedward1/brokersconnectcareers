@@ -250,6 +250,7 @@ export type ApprovalStatus = 'approved' | 'pending' | 'rejected';
 export type NotificationKind =
   | 'application_submitted'
   | 'application_received'
+  | 'application_withdrawn'
   | 'application_moved'
   | 'job_published'
   | 'job_rejected'

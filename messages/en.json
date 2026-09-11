@@ -983,6 +983,7 @@
     "markAllRead": "Mark all read",
     "application_submitted": "Your application to “{subject}” was received",
     "application_received": "New applicant for {subject}",
+    "application_withdrawn": "A shortlisted applicant withdrew from {subject}",
     "applicationMoved": "Your application for {title} is now: {status}",
     "application_moved": "Your application moved",
     "job_published": "{subject} is live",

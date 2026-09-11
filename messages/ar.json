@@ -983,6 +983,7 @@
     "markAllRead": "علّم الكل كمقروء",
     "application_submitted": "وصل طلبك على «{subject}»",
     "application_received": "متقدم جديد على {subject}",
+    "application_withdrawn": "متقدم كنت مرشّحه سحب طلبه من {subject}",
     "applicationMoved": "طلبك في {title} بقى: {status}",
     "application_moved": "طلبك اتحرّك",
     "job_published": "إعلان {subject} اتنشر",

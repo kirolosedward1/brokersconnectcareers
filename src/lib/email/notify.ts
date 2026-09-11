@@ -94,6 +94,7 @@ type JobBits = {
   title_en: string | null;
   expires_at: string | null;
   published_at: string | null;
+  version: number;
 };
 
 type ApplicationForEmployer = {
@@ -101,7 +102,7 @@ type ApplicationForEmployer = {
   created_at: string;
   experience_band: string | null;
   candidate_id: string;
-  job: (JobBits & { company: { owner_id: string } | null }) | null;
+  job: (JobBits & { company: { id: string } | null }) | null;
 };
 
 type ApplicationForCandidate = {
@@ -117,7 +118,10 @@ type ApplicationForCandidate = {
 
 type JobForOwner = JobBits & { company: { owner_id: string; name_ar: string } | null };
 
-const JOB_FIELDS = 'id, slug, title_ar, title_en, expires_at, published_at';
+// `version` is here for the dedupe keys below: it moves on every update, so a
+// listing that enters the moderation queue a second time is a second event
+// rather than a key that has already been claimed.
+const JOB_FIELDS = 'id, slug, title_ar, title_en, expires_at, published_at, version';
 
 // ---------------------------------------------------------------------------
 // Account
@@ -379,7 +383,16 @@ export async function notifyVisibilityChanged(
 // Applications
 // ---------------------------------------------------------------------------
 
-/** Employer: somebody applied. */
+/**
+ * Employer: somebody applied.
+ *
+ * Everyone at the company, not whoever signed up. Migration 51 moved the
+ * in-app bell onto membership for the same reason: the recruiter whose listing
+ * it is, and who will actually answer the applicant, was the one person not
+ * being told. Each member decides for themselves — `notify_applications` and
+ * the digest switch are per-account and read per member, so widening the
+ * recipients widens nothing anybody has turned off.
+ */
 export async function notifyEmployerOfApplication(applicationId: string): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
@@ -387,29 +400,23 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
     const { data } = await admin
       .from('applications')
       .select(
-        `id, created_at, experience_band, candidate_id, job:jobs (${JOB_FIELDS}, company:companies (owner_id))`,
+        `id, created_at, experience_band, candidate_id, job:jobs (${JOB_FIELDS}, company:companies (id))`,
       )
       .eq('id', applicationId)
       .maybeSingle();
 
     const application = data as unknown as ApplicationForEmployer | null;
     const job = application?.job;
-    const ownerId = job?.company?.owner_id;
-    if (!application || !job || !ownerId) return 'skipped';
+    const companyId = job?.company?.id;
+    if (!application || !job || !companyId) return 'skipped';
 
-    const to = await recipient(admin, ownerId, 'notify_applications');
-    if (!to) return 'skipped';
+    const { data: members } = await admin
+      .from('company_members')
+      .select('user_id')
+      .eq('company_id', companyId);
 
-    // The digest is a delivery mode, not a second subscription: with it on,
-    // this notice stands down and the daily summary carries the same event.
-    // Checked here rather than at the cron, so there is one place that decides
-    // and no window in which both go out.
-    const { data: mode } = await admin
-      .from('profiles')
-      .select('notify_applicant_digest')
-      .eq('id', ownerId)
-      .maybeSingle();
-    if (mode?.notify_applicant_digest) return 'skipped';
+    const audience = (members ?? []).map((row) => row.user_id);
+    if (!audience.length) return 'skipped';
 
     const { data: candidate } = await admin
       .from('profiles')
@@ -417,59 +424,106 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
       .eq('id', application.candidate_id)
       .maybeSingle();
 
-    const c = copyFor(to.locale);
-    const t = c.newApplication;
-    const title = localized(to.locale, job.title_ar, job.title_en);
     const name = candidate?.full_name ?? '';
+    let outcome: SendOutcome = 'skipped';
 
-    // Name and role only. The CV, the phone number and the record sit behind
-    // the button, where the employer is authenticated — an email is forwarded,
-    // quoted and left in inboxes, and none of that is a place to put a
-    // candidate's contact details.
-    return deliver({
-      template: 'new_application',
-      to: to.email,
-      userId: ownerId,
-      /*
-        The listing and the person, not the row.
+    for (const memberId of audience) {
+      // One person's preferences are not the company's: a member who has
+      // turned this off is skipped, and the next member's copy is unaffected.
+      const sent = await oneApplicationNotice({
+        admin,
+        memberId,
+        job,
+        applicationId,
+        candidateId: application.candidate_id,
+        name,
+      });
+      if (sent === 'sent') outcome = 'sent';
+      else if (sent === 'failed' && outcome !== 'sent') outcome = 'failed';
+    }
 
-        Withdrawing deletes the application, and reapplying makes a new one
-        with a new id — so a key on the id let one candidate mail an employer
-        about the same listing as many times as they cared to apply and
-        withdraw, each cycle a fresh key and a fresh send. The employer's
-        interest is "this person applied to this listing", which happens once
-        however many rows carry it. The cost is a genuine second application
-        weeks later arriving without an email; it is still in the inbox, and
-        that is the smaller wrong.
-      */
-      dedupeKey: `new_application:${job.id}:${application.candidate_id}`,
-      entity: { type: 'application', id: applicationId },
-      envelope: buildEnvelope({
-        audience: audienceOf(to, 'notify_applications'),
-        subject: t.subject(title),
-        preheader: t.preheader,
-        heading: t.heading,
-        blocks: [
-          { kind: 'text', value: t.body(name, title) },
-          {
-            kind: 'facts',
-            rows: [
-              [t.labelJob, title],
-              [t.labelApplicant, name],
-            ],
-          },
-          {
-            kind: 'button',
-            label: t.cta,
-            href: `${env.siteUrl}/employer/jobs/${job.id}/applicants`,
-          },
-        ],
-      }),
-    });
+    return outcome;
   } catch (error) {
     console.warn('[email] employer application notice failed:', asMessage(error));
     return 'failed';
   }
+}
+
+/** One member's copy of it. */
+async function oneApplicationNotice({
+  admin,
+  memberId,
+  job,
+  applicationId,
+  candidateId,
+  name,
+}: {
+  admin: ReturnType<typeof createAdminClient>;
+  memberId: string;
+  job: JobBits;
+  applicationId: string;
+  candidateId: string;
+  name: string;
+}): Promise<SendOutcome> {
+  const to = await recipient(admin, memberId, 'notify_applications');
+  if (!to) return 'skipped';
+
+  // The digest is a delivery mode, not a second subscription: with it on, this
+  // notice stands down and the daily summary carries the same event. Checked
+  // here rather than at the cron, so there is one place that decides and no
+  // window in which both go out.
+  const { data: mode } = await admin
+    .from('profiles')
+    .select('notify_applicant_digest')
+    .eq('id', memberId)
+    .maybeSingle();
+  if (mode?.notify_applicant_digest) return 'skipped';
+
+  const t = copyFor(to.locale).newApplication;
+  const title = localized(to.locale, job.title_ar, job.title_en);
+
+  // Name and role only. The CV, the phone number and the record sit behind the
+  // button, where the employer is authenticated — an email is forwarded,
+  // quoted and left in inboxes, and none of that is a place to put a
+  // candidate's contact details.
+  return deliver({
+    template: 'new_application',
+    to: to.email,
+    userId: memberId,
+    /*
+      The listing, the person, and the recipient.
+
+      Withdrawing deletes the application and reapplying makes a new one with a
+      new id, so a key on the id let one candidate mail an employer about the
+      same listing as many times as they cared to apply and withdraw. The
+      employer's interest is "this person applied to this listing", which
+      happens once however many rows carry it — and once per member, since each
+      of them is a separate message to a separate inbox.
+    */
+    dedupeKey: `new_application:${job.id}:${candidateId}:${memberId}`,
+    entity: { type: 'application', id: applicationId },
+    envelope: buildEnvelope({
+      audience: audienceOf(to, 'notify_applications'),
+      subject: t.subject(title),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.body(name, title) },
+        {
+          kind: 'facts',
+          rows: [
+            [t.labelJob, title],
+            [t.labelApplicant, name],
+          ],
+        },
+        {
+          kind: 'button',
+          label: t.cta,
+          href: `${env.siteUrl}/employer/jobs/${job.id}/applicants`,
+        },
+      ],
+    }),
+  });
 }
 
 /**
@@ -696,7 +750,17 @@ export async function notifyJobSubmitted(jobId: string): Promise<SendOutcome> {
       template: 'job_submitted',
       to: to.email,
       userId: ownerId,
-      dedupeKey: `job_submitted:${jobId}`,
+      /*
+        Keyed on the version, not the listing.
+
+        `job_submitted:${jobId}` meant a listing announced itself to the
+        moderation queue exactly once, ever. A rejected listing resubmitted
+        after being fixed is a second, genuine queue entry — and since a
+        material edit to a live listing now sends it back for review too, so is
+        every one of those. Both were silently deduplicated against the first
+        submission, which could be weeks old.
+      */
+      dedupeKey: `job_submitted:${jobId}:${job.version}`,
       entity: { type: 'job', id: jobId },
       envelope: buildEnvelope({
         audience: audienceOf(to, null),
@@ -748,7 +812,7 @@ export async function notifyEmployerOfModeration(
         template: 'job_approved',
         to: to.email,
         userId: ownerId,
-        dedupeKey: `job_approved:${jobId}`,
+        dedupeKey: `job_approved:${jobId}:${job.version}`,
         entity: { type: 'job', id: jobId },
         envelope: buildEnvelope({
           audience,
@@ -783,7 +847,7 @@ export async function notifyEmployerOfModeration(
       template: 'job_rejected',
       to: to.email,
       userId: ownerId,
-      dedupeKey: `job_rejected:${jobId}`,
+      dedupeKey: `job_rejected:${jobId}:${job.version}`,
       entity: { type: 'job', id: jobId },
       envelope: buildEnvelope({
         audience,

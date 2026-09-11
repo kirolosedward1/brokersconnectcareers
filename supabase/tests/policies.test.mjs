@@ -1426,6 +1426,69 @@ report.section('applying tells both sides, not just the employer');
   report.check('and nobody else can read it', leaked.ok && leaked.rows[0].n === 0, leaked.error);
 }
 
+report.section('the bell rings for everyone who does the work');
+{
+  /*
+    Three triggers addressed companies.owner_id, so the recruiter whose
+    listing it is — the person who will actually answer the applicant — heard
+    nothing, and a company whose owner stops logging in hears nothing at all.
+    Membership is what decides every other company-scoped question since
+    migration 22; it decides this one now too.
+  */
+  const MATE = '77777777-7777-4777-8777-777777777777';
+  const company = (
+    await db.query(`select company_id from company_members where user_id = '${employerVerified}' and role = 'admin' limit 1`)
+  ).rows[0].company_id;
+  const job = (
+    await db.query(`select id from jobs where company_id = '${company}' and status = 'active' limit 1`)
+  ).rows[0].id;
+
+  await db.exec(`
+    insert into auth.users (id, email) values ('${MATE}', 'mate@demo.test');
+    insert into profiles (id, role, full_name, whatsapp_phone)
+      values ('${MATE}', 'employer', 'زميل', '+201777777777');
+    insert into company_members (company_id, user_id, role) values ('${company}', '${MATE}', 'recruiter');
+  `);
+
+  const count = async (user, kind) =>
+    (await db.query(`select count(*)::int as n from notifications where user_id = '${user}' and kind = '${kind}'`)).rows[0].n;
+
+  const mateBefore = await count(MATE, 'application_received');
+  const ownerBefore = await count(employerVerified, 'application_received');
+
+  await db.exec(`
+    insert into applications (job_id, candidate_id, status)
+      values ('${job}', '${OUTSIDER}', 'new')
+      on conflict (job_id, candidate_id) do nothing;
+  `);
+
+  report.check('the recruiter hears about the applicant too',
+    (await count(MATE, 'application_received')) === mateBefore + 1);
+  report.check('and the owner still does',
+    (await count(employerVerified, 'application_received')) === ownerBefore + 1);
+
+  // Shortlisted, then withdrawn: the one event the company was never told
+  // about, because the row simply stopped existing.
+  const withdrawnBefore = await count(MATE, 'application_withdrawn');
+
+  await db.exec(`update applications set status = 'shortlisted' where job_id = '${job}' and candidate_id = '${OUTSIDER}'`);
+  await db.exec(`delete from applications where job_id = '${job}' and candidate_id = '${OUTSIDER}'`);
+
+  report.check('and hears when a shortlisted one withdraws',
+    (await count(MATE, 'application_withdrawn')) === withdrawnBefore + 1);
+
+  // A withdrawal from `new` is somebody changing their mind before anybody
+  // looked at them, which is not an event worth a notification.
+  await db.exec(`
+    insert into applications (job_id, candidate_id, status) values ('${job}', '${OUTSIDER}', 'new');
+    delete from applications where job_id = '${job}' and candidate_id = '${OUTSIDER}';
+  `);
+  report.check('but not when an untouched one does',
+    (await count(MATE, 'application_withdrawn')) === withdrawnBefore + 1);
+
+  await db.exec(`delete from auth.users where id = '${MATE}'`);
+}
+
 report.section('reports need an account, and an account has limits');
 {
   const anon = await as(null, `insert into reports (job_id, reason) values ('${liveJob}','spam')`, 'anon');

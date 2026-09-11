@@ -6,6 +6,7 @@ import {
   FileX2,
   Send,
   UserCheck,
+  UserMinus,
   UserRound,
 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
@@ -25,6 +26,7 @@ import type { NotificationKind, NotificationRow } from '@/lib/supabase/database.
 const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }>> = {
   application_submitted: Send,
   application_received: UserRound,
+  application_withdrawn: UserMinus,
   application_moved: Send,
   job_published: FileCheck2,
   job_rejected: FileX2,
@@ -36,6 +38,7 @@ const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }
 const TONES: Record<NotificationKind, string> = {
   application_submitted: 'bg-success-muted text-success',
   application_received: 'bg-primary/10 text-primary',
+  application_withdrawn: 'bg-muted text-muted-foreground',
   application_moved: 'bg-primary/10 text-primary',
   job_published: 'bg-success-muted text-success',
   job_rejected: 'bg-destructive-muted text-destructive',
