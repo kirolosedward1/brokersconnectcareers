@@ -430,7 +430,19 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
       template: 'new_application',
       to: to.email,
       userId: ownerId,
-      dedupeKey: `new_application:${applicationId}`,
+      /*
+        The listing and the person, not the row.
+
+        Withdrawing deletes the application, and reapplying makes a new one
+        with a new id — so a key on the id let one candidate mail an employer
+        about the same listing as many times as they cared to apply and
+        withdraw, each cycle a fresh key and a fresh send. The employer's
+        interest is "this person applied to this listing", which happens once
+        however many rows carry it. The cost is a genuine second application
+        weeks later arriving without an email; it is still in the inbox, and
+        that is the smaller wrong.
+      */
+      dedupeKey: `new_application:${job.id}:${application.candidate_id}`,
       entity: { type: 'application', id: applicationId },
       envelope: buildEnvelope({
         audience: audienceOf(to, 'notify_applications'),

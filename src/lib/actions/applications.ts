@@ -157,7 +157,12 @@ export async function withdrawApplication(applicationId: string): Promise<Action
     );
   }
 
+  // Both sides. The employer's inbox and the pipeline counts on their console
+  // are one applicant lighter than they were a moment ago, and until this was
+  // here they stayed that way until something else happened to refetch them.
   revalidatePath('/dashboard/applications');
+  revalidatePath('/employer/jobs');
+  revalidatePath('/employer/applicants');
   return { ok: true };
 }
 

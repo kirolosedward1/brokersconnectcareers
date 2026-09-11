@@ -784,6 +784,35 @@ report.section('the public board shows live listings only');
     (await as(employerUnverified, "select id from jobs where status='pending_review'")).rows.length >= 1);
 }
 
+report.section('an applicant keeps the listing they applied to');
+{
+  /*
+    An employer editing a live listing materially sends it back to
+    pending_review, which jobs_select_active does not cover — so every
+    application on it used to fall out of the applicant's own dashboard, which
+    drops a row whose job embed comes back null. Not "taken down": gone.
+  */
+  const applicant = (
+    await db.query(`select candidate_id from applications where job_id = '${liveJob}' limit 1`)
+  ).rows[0]?.candidate_id;
+  report.check('found an applicant on the live listing', Boolean(applicant));
+
+  await db.exec(`update jobs set status = 'pending_review' where id = '${liveJob}'`);
+
+  const theirs = await as(applicant, `select id, status from jobs where id = '${liveJob}'`);
+  report.check('they still see it while it is back in review',
+    theirs.ok && theirs.rows.length === 1, JSON.stringify(theirs.rows));
+
+  const stranger = await as(OUTSIDER, `select id from jobs where id = '${liveJob}'`);
+  report.check('and somebody who did not apply does not',
+    stranger.ok && stranger.rows.length === 0, JSON.stringify(stranger.rows));
+
+  const anon = await as(null, `select id from jobs where id = '${liveJob}'`, 'anon');
+  report.check('nor does the public board', anon.ok && anon.rows.length === 0, anon.error);
+
+  await db.exec(`update jobs set status = 'active' where id = '${liveJob}'`);
+}
+
 report.section('unauthenticated writes do not crash the guards');
 {
   // PostgREST sets request.jwt.claims to '' when no JWT is present, and

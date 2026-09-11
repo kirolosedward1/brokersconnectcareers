@@ -317,6 +317,8 @@
     "agentProfile": "Your consultant directory profile",
     "agentProfileHint": "Verified employers search this directory. You control who sees your profile.",
     "decisionFromCompany": "Message from the company",
+    "applicationListingClosed": "This listing has closed. Your application is still with the company.",
+    "applicationListingOffBoard": "This listing is off the board right now — the company is editing it, or it is under review. Your application is still with them.",
     "overview": "Overview",
     "candidateGreeting": "Hello {name}",
     "candidateLede": "Your applications and profile at a glance.",

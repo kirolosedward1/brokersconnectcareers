@@ -9,7 +9,7 @@ import { WithdrawButton } from '@/components/dashboard/withdraw-button';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate, isoDate } from '@/lib/utils';
-import type { ApplicationStatus } from '@/lib/supabase/database.types';
+import type { ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
 
 const STATUS_VARIANT: Record<ApplicationStatus, 'default' | 'primary' | 'success' | 'destructive'> = {
   new: 'default',
@@ -46,7 +46,7 @@ export default async function ApplicationsPage({
       `
       id, status, created_at, decision_note,
       job:jobs (
-        slug, title_ar, title_en,
+        slug, status, title_ar, title_en,
         company:companies (name_ar, name_en, slug),
         district:districts (name_ar, name_en)
       )
@@ -61,6 +61,7 @@ export default async function ApplicationsPage({
     created_at: string;
     job: {
       slug: string;
+      status: JobStatus;
       title_ar: string;
       title_en: string | null;
       company: { name_ar: string; name_en: string | null; slug: string };
@@ -119,6 +120,24 @@ export default async function ApplicationsPage({
                 {tStatus(application.status)}
               </Badge>
             </div>
+
+            {/*
+              What happened to the listing, when something did.
+
+              An application whose listing is no longer active used to read
+              exactly like one whose listing was still up — and, before
+              migration 45, an application to a listing that had gone back for
+              review disappeared from this page altogether. Neither is a state
+              to leave somebody guessing at: the question a candidate has here
+              is whether anybody is still reading.
+            */}
+            {job.status !== 'active' ? (
+              <p className="mt-3 rounded-lg border border-dashed border-border p-3 text-xs leading-relaxed text-muted-foreground">
+                {job.status === 'closed' || job.status === 'expired'
+                  ? t('applicationListingClosed')
+                  : t('applicationListingOffBoard')}
+              </p>
+            ) : null}
 
             {/* The reason, when the company gave one. This is the whole point
                 of the board: a decision you can act on rather than guess at. */}
