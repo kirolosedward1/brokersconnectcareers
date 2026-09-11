@@ -62,8 +62,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
 
   const t = await getTranslations('dashboard');
 
+  /*
+    Narrower than the shell allows. Every block on this page is a form or a
+    list of sentences, and neither is readable at the width a grid of stat
+    tiles needs — which is what the console shell is sized for.
+  */
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{t('profile')}</h1>
