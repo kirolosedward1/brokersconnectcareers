@@ -42,12 +42,23 @@ export default async function SignInPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }) {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
-  const { next } = await searchParams;
+  const { next, error } = await searchParams;
+
+  /*
+    Three things send somebody back here with a reason: a fragment session
+    that would not store, a code the callback could not exchange, and a
+    callback hit with no code at all. Until now the page read none of them,
+    so a link that had expired or been used twice produced the same screen
+    as typing the URL — with no indication that anything had gone wrong.
+    One sentence, the one the catalogue already has, for all three.
+  */
+  const LINK_ERRORS = new Set(['link_expired', 'missing_code', 'exchange_failed']);
+  const linkFailed = error ? LINK_ERRORS.has(error) : false;
 
   const { google: googleEnabled } = await enabledProviders();
   const t = await getTranslations('auth');
@@ -62,6 +73,12 @@ export default async function SignInPage({
             {t('signUp')}
           </Link>
         </p>
+
+        {linkFailed ? (
+          <p role="alert" className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+            {t('linkExpired')}
+          </p>
+        ) : null}
 
         <ReturnIntent next={next} locale={locale} />
 

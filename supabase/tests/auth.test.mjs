@@ -293,4 +293,26 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
   );
 }
 
+/*
+  A session in the URL fragment is spent, not ignored.
+
+  Supabase's implicit-flow links — dashboard "send recovery", "send magic
+  link", or any recover call without a code challenge — land on the Site URL
+  with the session in the fragment, which no server code can see. A confirmed
+  sign-up sat on the home page, signed out, with its tokens in the address bar.
+  The rescue must be mounted on every page, must strip the fragment before
+  anything else, and must only ever navigate to fixed paths.
+*/
+{
+  const layout = read(j(ROOT, 'src/app/[locale]/layout.tsx'), 'utf8');
+  report.ok(/<FragmentSession \/>/.test(layout), 'the root layout mounts FragmentSession');
+  const rescue = read(j(ROOT, 'src/components/auth/fragment-session.tsx'), 'utf8');
+  const strip = rescue.indexOf('history.replaceState');
+  const store = rescue.indexOf('setSession(');
+  report.ok(strip !== -1 && store !== -1 && strip < store, 'the fragment is wiped before the session is stored');
+  report.ok(!/window\.location\.(assign|href\s*=)/.test(rescue), 'the rescue navigates through the router, to literal paths only');
+  const signIn = read(j(ROOT, 'src/app/[locale]/sign-in/page.tsx'), 'utf8');
+  report.ok(/link_expired/.test(signIn) && /missing_code/.test(signIn) && /exchange_failed/.test(signIn), 'the sign-in page explains all three link failures');
+}
+
 process.exitCode = base.finish() ? 0 : 1;
