@@ -262,4 +262,35 @@ for (const group of appGroups) {
 // /onboarding is outside (app) and still has to be there.
 report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected');
 
+/*
+  The demo accounts are not offered to the public.
+
+  Their password is in the client bundle by design — a button that signs
+  anyone in has published it. What must not happen is that button reaching a
+  deployment with live listings: it was on production, offering the inbox of
+  a verified company, applicants' phone numbers and CVs included, to anyone
+  who tapped it. The gate is a build-time flag; this checks the gate is on the
+  button, that the flag is documented, and that it is not set for Vercel.
+*/
+{
+  const { existsSync } = await import('node:fs');
+  const form = read(j(ROOT, 'src/components/auth/auth-form.tsx'), 'utf8');
+  report.ok(
+    /process\.env\.NEXT_PUBLIC_DEMO_LOGIN === 'true'/.test(form),
+    'the demo sign-in reads NEXT_PUBLIC_DEMO_LOGIN',
+  );
+  report.ok(
+    /mode === 'sign-in' && DEMO_LOGIN \?/.test(form),
+    'the demo buttons render only behind that flag',
+  );
+  const example = read(j(ROOT, '.env.example'), 'utf8');
+  report.ok(/^# NEXT_PUBLIC_DEMO_LOGIN=true/m.test(example), '.env.example documents the flag');
+  const vercelEnv = j(ROOT, '.env.vercel.local');
+  const vercel = existsSync(vercelEnv) ? read(vercelEnv, 'utf8') : '';
+  report.ok(
+    !/^\s*NEXT_PUBLIC_DEMO_LOGIN\s*=\s*true/m.test(vercel),
+    'the Vercel env file does not enable it',
+  );
+}
+
 process.exitCode = base.finish() ? 0 : 1;

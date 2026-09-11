@@ -243,6 +243,17 @@ export function AuthForm({
    * reach — RLS confines them to their own rows, and a job they post lands in
    * pending_review like anyone else's rather than going live.
    */
+  /*
+    Off unless a build says otherwise. NEXT_PUBLIC_DEMO_LOGIN is inlined at
+    compile time, so a production build without it carries no button — and no
+    reachable call to signInAsDemo. The buttons had been rendering on
+    www.brokersconnect.net, where employer1's listings are live on the public
+    board: anyone could sign in as that company and read the name, WhatsApp
+    number and CV of everyone who applied, including any real person who did.
+    RLS confining an account to its own rows is no protection when the rows
+    are other people's applications.
+  */
+  const DEMO_LOGIN = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true';
   const DEMO_PASSWORD = 'password123';
   const DEMO_EMAILS = {
     candidate: 'candidate1@demo.test',
@@ -428,7 +439,7 @@ export function AuthForm({
 
       {/* Sign-in only. Offering a demo account on the sign-up screen would be
           arguing against the thing that screen exists to do. */}
-      {mode === 'sign-in' ? (
+      {mode === 'sign-in' && DEMO_LOGIN ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/40 p-4">
           <p className="text-center text-xs font-medium text-muted-foreground">{t('demoTitle')}</p>
 
