@@ -124,6 +124,23 @@ export default async function AllApplicantsPage({
     They are not two copies of one rule. RLS decides what may be seen; this
     decides what to look at. And the drift only runs one way: a wrong filter
     shows fewer rows, never more, because the policy is still what decides.
+
+    What is left, measured rather than guessed, so the next person to wonder
+    does not have to: with 7,010 applications on this one company the query is
+    310 ms, and the cost is `owns_job()` being called once per row by the
+    applications select policy. Two things were tried and neither is here.
+
+    An index on (job_id, created_at desc) takes it to 231 ms without changing
+    the plan's shape — the nested loop still materialises every row before the
+    sort picks fifty. Twenty-five per cent of a cost that does not exist yet,
+    for an index overlapping the (job_id, status) one already present, which is
+    the index bloat migration 30 argues against.
+
+    Rewriting the policy so the planner can hoist the predicate would be the
+    real fix and is not worth it now: it is a change to the authorization model
+    this round spent eighteen prompts making trustworthy, bought against a
+    number that only appears at two hundred times today's data. Revisit it with
+    traffic, not with instinct.
   */
   let query = supabase
     .from('applications')
