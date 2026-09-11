@@ -185,12 +185,22 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
             </dl>
           </div>
 
+          {/*
+            Its own row on a phone.
+
+            The header wraps, but the name column is `flex-1` — so on a 375px
+            screen it shrank instead of the button wrapping, and "نايل بروكرز"
+            broke across two lines to make room for a control beside it.
+            `basis-full` makes the button claim a line of its own at that width
+            and sit back beside the name from `sm` up.
+          */}
           {ownHouse ? null : (
             <FollowCompanyButton
               slug={company.slug}
               label={name}
               initialFollowing={following}
               signedIn={Boolean(viewer)}
+              className="basis-full sm:basis-auto"
             />
           )}
         </header>

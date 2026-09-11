@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { BellPlus, BellRing } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { followCompany, unfollowCompany } from '@/lib/actions/saved-searches';
 import { useSessionRecovery } from '@/lib/session-expired';
 
@@ -26,12 +27,14 @@ export function FollowCompanyButton({
   label,
   initialFollowing,
   signedIn,
+  className,
 }: {
   slug: string;
   /** The company's name in the reader's language — the digest's subject line. */
   label: string;
   initialFollowing: boolean;
   signedIn: boolean;
+  className?: string;
 }) {
   const t = useTranslations('companies');
   const tCommon = useTranslations('common');
@@ -70,7 +73,7 @@ export function FollowCompanyButton({
   }
 
   return (
-    <div className="flex flex-col items-start gap-1">
+    <div className={cn('flex flex-col items-start gap-1', className)}>
       <Button
         variant={following ? 'secondary' : 'outline'}
         onClick={onClick}
@@ -81,12 +84,15 @@ export function FollowCompanyButton({
         {following ? t('following') : t('follow')}
       </Button>
 
-      <p className="max-w-56 text-xs text-muted-foreground">
+      {/* Bounded on a wide screen, where it sits beside the company name and
+          a long line would drag the header taller; unbounded on a phone, where
+          it has the row to itself. */}
+      <p className="text-xs text-muted-foreground sm:max-w-56">
         {following ? t('followingHint') : t('followHint')}
       </p>
 
       {error ? (
-        <p role="alert" className="max-w-56 text-xs text-destructive">
+        <p role="alert" className="text-xs text-destructive sm:max-w-56">
           {error}
         </p>
       ) : null}

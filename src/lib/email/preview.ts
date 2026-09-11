@@ -466,6 +466,38 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
+  /*
+    The same template, sent with different words.
+
+    A follow and a saved search are one row, one weekly job and one outbox
+    template — so `deliver()` still stamps this `saved_search_digest`, which is
+    what the dedupe key and the outbox entity are built on. But it is a
+    distinct rendering, chosen from the stored query, and a preview that showed
+    only one of the two wordings would leave half of what this template can
+    send unlooked-at. Which is the whole point of this file.
+  */
+  company_follow_digest: (f) => {
+    const w = words(f);
+    const t = copyFor(f.locale).follow;
+    const label = f.locale === 'ar' ? 'نايل بروكرز' : 'Nile Brokers';
+    const meta = optional(f, [
+      f.locale === 'ar' ? 'المعادي' : 'Maadi',
+      f.locale === 'ar' ? 'دوام كامل' : 'Full time',
+      f.locale === 'ar' ? '8,000 – 11,000 ج.م' : 'EGP 8,000 – 11,000',
+    ]);
+    return {
+      subject: t.subject(2, label),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.body(label) },
+        { kind: 'job', title: w.job, company: label, meta, href: `${env.siteUrl}/jobs/a` },
+        { kind: 'job', title: SHORT[f.locale].job, company: label, meta, href: `${env.siteUrl}/jobs/b` },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs?company=nile-brokers-410256` },
+      ],
+    };
+  },
+
   applicant_digest: (f) => {
     const w = words(f);
     const t = copyFor(f.locale).applicantDigest;
@@ -498,6 +530,7 @@ const OPTIONAL_TEMPLATES = new Set([
   'job_expiring',
   'job_expired',
   'saved_search_digest',
+  'company_follow_digest',
   'applicant_digest',
   'profile_incomplete',
 ]);

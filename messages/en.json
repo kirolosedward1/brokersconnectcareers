@@ -903,7 +903,7 @@
     "notifyStatus": "Application and listing updates",
     "notifyStatusHint": "When a company moves your application, or your listing is reviewed.",
     "notifyDigest": "Weekly job roundup",
-    "notifyDigestHint": "New roles matching your track and district, once a week.",
+    "notifyDigestHint": "What's new from your saved searches and the companies you follow, once a week.",
     "exportTitle": "A copy of your data",
     "exportBody": "A file with your account, applications and profile, in a format any tool can read.",
     "exportCta": "Download my data",

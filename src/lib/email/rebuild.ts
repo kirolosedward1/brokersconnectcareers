@@ -48,8 +48,8 @@ export const REBUILDERS: Record<string, Rebuild> = {
 /**
  * Not retryable, and each for a reason rather than by omission:
  *
- *   saved_search_digest / applicant_digest — a point-in-time list. Stale is
- *     worse than absent.
+ *   saved_search_digest / company_follow_digest / applicant_digest — a
+ *     point-in-time list. Stale is worse than absent.
  *   application_withdrawn — the application row is gone; there is nothing left
  *     to rebuild from.
  *   profile_ready / visibility_changed / account_approved / account_rejected —
@@ -59,6 +59,7 @@ export const REBUILDERS: Record<string, Rebuild> = {
  */
 export const NOT_RETRYABLE = [
   'saved_search_digest',
+  'company_follow_digest',
   'applicant_digest',
   'application_withdrawn',
   'profile_ready',

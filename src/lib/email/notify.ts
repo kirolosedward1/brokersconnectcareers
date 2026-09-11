@@ -1113,10 +1113,18 @@ export async function sendSavedSearchDigest(args: {
       cannot pass the wrong one and the cron needs no new knowledge.
     */
     const copy = copyFor(to.locale);
-    const t = followedCompany(args.query) ? copy.follow : copy.digest;
+    const isFollow = followedCompany(args.query) !== null;
+    const t = isFollow ? copy.follow : copy.digest;
 
     return deliver({
-      template: 'saved_search_digest',
+      /*
+        Two names for one job, because the outbox is a delivery log and a row
+        reading `saved_search_digest` for a message headed "new from a company
+        you follow" is the same small lie the heading used to tell. The dedupe
+        key is built on the search id and the week, not on this, so nothing
+        about once-a-week changes.
+      */
+      template: isFollow ? 'company_follow_digest' : 'saved_search_digest',
       to: to.email,
       userId: args.userId,
       // One per search per week. The week number is the run, so a cron that
