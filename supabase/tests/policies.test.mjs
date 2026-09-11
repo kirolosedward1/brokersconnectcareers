@@ -1241,4 +1241,78 @@ report.section('one source of truth for the company a member acts for');
   );
 }
 
+report.section('withdrawing has a precondition the database keeps');
+{
+  /*
+    The dashboard offers withdrawal only while an application is new or
+    shortlisted. Until now the policy permitted a delete at any status, so a
+    hired candidate could remove the employer's only record of the hire with a
+    request the interface never makes.
+
+    Setup runs through db.exec — no JWT, so acting_as_admin() is true and the
+    column guard stands aside. Only the delete itself goes through as(), which
+    is the statement under test, and as() rolls back so the row survives into
+    the next case.
+  */
+  const mine = (await db.query(
+    `select id from applications where candidate_id = '${candidate}' limit 1`,
+  )).rows[0].id;
+
+  await db.exec(`update applications set status = 'new' where id = '${mine}'`);
+  const open = await as(candidate, `delete from applications where id = '${mine}' returning id`);
+  report.check('a candidate may withdraw while the outcome is open',
+    open.ok && open.rows.length === 1, open.error);
+
+  for (const status of ['interview', 'hired', 'rejected']) {
+    await db.exec(`update applications set status = '${status}' where id = '${mine}'`);
+    const shut = await as(candidate, `delete from applications where id = '${mine}' returning id`);
+    report.check(`and cannot once it is ${status}`,
+      shut.ok && shut.rows.length === 0, shut.error ?? `deleted ${shut.rows.length} row(s)`);
+  }
+
+  await db.exec(`update applications set status = 'new' where id = '${mine}'`);
+}
+
+report.section('an application remembers how it moved');
+{
+  const jobForHistory = (await db.query(`
+    select j.id from jobs j
+    where j.status = 'active' and j.expires_at > now()
+      and not exists (select 1 from applications a where a.job_id = j.id and a.candidate_id = '${OUTSIDER}')
+    limit 1
+  `)).rows[0].id;
+
+  await db.exec(
+    `insert into applications (job_id, candidate_id) values ('${jobForHistory}', '${OUTSIDER}')`,
+  );
+  const appId = (await db.query(
+    `select id from applications where job_id = '${jobForHistory}' and candidate_id = '${OUTSIDER}'`,
+  )).rows[0].id;
+
+  const created = await as(OUTSIDER,
+    `select from_status, to_status from application_events where application_id = '${appId}'`);
+  report.check('applying writes the opening event',
+    created.ok && created.rows.length === 1 && created.rows[0].to_status === 'new' && created.rows[0].from_status === null,
+    created.error ?? JSON.stringify(created.rows));
+
+  // A note is not a move, and the view stamp is not a move.
+  await db.exec(`update applications set decision_note = 'note only' where id = '${appId}'`);
+  await db.exec(`update applications set employer_viewed_at = now() where id = '${appId}'`);
+  await db.exec(`update applications set status = 'shortlisted' where id = '${appId}'`);
+
+  const moved = await as(employerVerified,
+    `select from_status, to_status from application_events where application_id = '${appId}' order by id`);
+  report.check('a move is recorded and a note or a view stamp is not',
+    moved.ok && moved.rows.length === 2 &&
+      moved.rows[1].from_status === 'new' && moved.rows[1].to_status === 'shortlisted',
+    moved.error ?? JSON.stringify(moved.rows));
+
+  const nosy = await as(OUTSIDER, `
+    select count(*)::int as n from application_events
+     where application_id in (select id from applications where candidate_id = '${candidate}')
+  `);
+  report.check('and nobody reads a history that is not theirs',
+    nosy.ok && nosy.rows[0].n === 0, nosy.error ?? `saw ${nosy.rows?.[0]?.n}`);
+}
+
 process.exit(report.finish() ? 0 : 1);
