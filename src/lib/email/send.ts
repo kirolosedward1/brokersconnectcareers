@@ -1,4 +1,5 @@
 import 'server-only';
+import { withoutAddresses } from '@/lib/observe';
 import { configuredValue } from '@/lib/env';
 
 /**
@@ -103,7 +104,18 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
       // Read the body: Resend puts the actual reason (unverified domain,
       // invalid recipient) in it, and the status alone is not diagnosable.
       const detail = await response.text().catch(() => '<unreadable>');
-      console.warn(`[email] send failed (${response.status}) for "${message.subject}": ${detail}`);
+      /*
+        The reason, without the recipient.
+
+        Resend puts the actual cause in the body — an unverified domain, a
+        rejected address — and sometimes the address itself in the same
+        sentence. The cause is what makes this diagnosable; the address is
+        contact data, and the email_log row this belongs to is a better handle
+        for finding the person anyway.
+      */
+      console.warn(
+        `[email] send failed (${response.status}) for "${message.subject}": ${withoutAddresses(detail)}`,
+      );
       return {
         outcome: 'failed',
         error: `${response.status}: ${detail}`.slice(0, 500),

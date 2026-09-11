@@ -478,4 +478,61 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
   );
 }
 
+/*
+  Nothing a user typed reaches the platform log.
+
+  Logs are read by whoever is on call, pasted into support threads and shipped
+  to whatever aggregates them — so a WhatsApp number or a CV path in one is a
+  copy of the thing this product spends its policies protecting, in a place
+  none of those policies reach. Identifiers are what a failure needs to be
+  findable, and identifiers are all that should be there.
+
+  Scanned rather than remembered: the next `console.warn` somebody adds under
+  pressure is exactly the one that will interpolate a name.
+*/
+{
+  const { readdirSync, statSync } = await import('node:fs');
+
+  const files = [];
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = j(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry)) files.push(full);
+    }
+  })(j(ROOT, 'src'));
+
+  report.ok(files.length > 100, `read ${files.length} source files`);
+
+  // Fields that are somebody's, as opposed to something's.
+  const PERSONAL = /\b(whatsapp_phone|whatsapp|cv_path|cvPath|full_name|fullName|\bemail\b|password|unsubscribe_token|decision_note|decisionNote|summary_ar|note)\b/;
+
+  const offenders = [];
+  for (const file of files) {
+    const text = read(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    for (const match of text.matchAll(/console\.(warn|error|log|info)\(([^;]*?)\);/g)) {
+      const argument = match[2];
+      // The interpolations only — a literal mentioning a column name is prose.
+      const interpolated = [...argument.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1]).join(' ');
+      const bare = argument.replace(/`[^`]*`|'[^']*'|"[^"]*"/g, ' ');
+      if (PERSONAL.test(interpolated) || PERSONAL.test(bare)) {
+        offenders.push(`${file.replace(ROOT + '/', '')}: ${argument.trim().slice(0, 70)}`);
+      }
+    }
+  }
+
+  report.ok(
+    offenders.length === 0,
+    `no log line carries personal data (${offenders.join(' | ') || 'none'})`,
+  );
+
+  // And the one place a third party's text reaches a log, which is the place
+  // an address can arrive without anybody choosing to put one there.
+  const send = read(j(ROOT, 'src/lib/email/send.ts'), 'utf8');
+  report.ok(
+    /withoutAddresses\(detail\)/.test(send),
+    "the provider's own error text has addresses stripped before it is logged",
+  );
+}
+
 process.exitCode = base.finish() ? 0 : 1;

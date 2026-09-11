@@ -18,6 +18,7 @@ import {
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
 import { notifyJobSubmitted } from '@/lib/email/notify';
+import { logFailure } from '@/lib/observe';
 
 const jobSchema = z
   .object({
@@ -175,8 +176,19 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
       value.version ? query.eq('version', value.version) : query
     ).select('id');
 
-    if (error) return { ok: false, error: mapJobError(error.message) };
-    if (!saved?.length) return { ok: false, error: current ? 'stale' : 'forbidden' };
+    if (error) {
+      logFailure('listing', 'save refused', { job: jobId, company: company.id, code: error.code });
+      return { ok: false, error: mapJobError(error.message) };
+    }
+
+    if (!saved?.length) {
+      logFailure('listing', current ? 'save lost the race' : 'save refused', {
+        job: jobId,
+        company: company.id,
+        version: value.version,
+      });
+      return { ok: false, error: current ? 'stale' : 'forbidden' };
+    }
   } else {
     const districts = await getDistricts();
     const district = districts.find((d) => d.id === value.districtId);
@@ -308,9 +320,23 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
     .eq('id', parsed.data.jobId)
     .select('id');
 
-  if (error) return { ok: false, error: mapJobError(error.message) };
+  if (error) {
+    logFailure('listing', 'transition refused', {
+      job: parsed.data.jobId,
+      to: parsed.data.status,
+      code: error.code,
+    });
+    return { ok: false, error: mapJobError(error.message) };
+  }
+
   // Closing a listing that is not yours reported success and closed nothing.
-  if (!moved?.length) return { ok: false, error: 'forbidden' };
+  if (!moved?.length) {
+    logFailure('listing', 'transition changed nothing', {
+      job: parsed.data.jobId,
+      to: parsed.data.status,
+    });
+    return { ok: false, error: 'forbidden' };
+  }
 
   revalidatePath('/employer/jobs');
   return { ok: true };

@@ -14,6 +14,7 @@ import {
   notifyEmployerOfApplication,
 } from '@/lib/email/notify';
 import type { ApplicationStatus, ExperienceBand } from '@/lib/supabase/database.types';
+import { logFailure } from '@/lib/observe';
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -82,6 +83,22 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
     if (error.message.includes('application_rate_limit')) {
       return { ok: false, error: 'rate_limit' };
     }
+
+    /*
+      The one mutation this product exists for, and until now it failed in
+      silence: the applicant saw "something went wrong" and the server kept no
+      record of what. A refusal that is neither a duplicate nor a rate limit is
+      almost always a policy the request did not satisfy — an expired listing,
+      a suspended account — and none of that is diagnosable from the outside.
+
+      Ids and codes. The listing and the applicant are how somebody finds the
+      row; nothing they typed goes anywhere near this line.
+    */
+    logFailure('apply', 'application refused', {
+      job: parsed.data.jobId,
+      candidate: user.id,
+      code: error.code,
+    });
     return { ok: false, error: error.message };
   }
 
@@ -141,7 +158,14 @@ export async function withdrawApplication(applicationId: string): Promise<Action
     .select('id');
 
   if (error) return { ok: false, error: error.message };
-  if (!removed?.length) return { ok: false, error: 'forbidden' };
+
+  if (!removed?.length) {
+    // Refused by the withdrawal precondition migration 42 added, or by
+    // somebody reaching for an application that is not theirs. Both are worth
+    // seeing; neither is worth a name in the log.
+    logFailure('apply', 'withdrawal refused', { application: applicationId, by: user?.id });
+    return { ok: false, error: 'forbidden' };
+  }
 
   const job = (before as unknown as WithdrawnJob | null)?.job;
   if (user && job) {
@@ -225,6 +249,13 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
       .select('status')
       .eq('id', parsed.data.applicationId)
       .maybeSingle();
+
+    logFailure('pipeline', current ? 'move lost the race' : 'move refused', {
+      application: parsed.data.applicationId,
+      from: parsed.data.from,
+      to: parsed.data.status,
+      now: current?.status,
+    });
 
     return { ok: false, error: current ? 'moved_already' : 'forbidden' };
   }
