@@ -443,6 +443,8 @@
     "verification": "Company verification",
     "verificationBody": "Upload your commercial register and tax card. Verification lifts your posting cap, unlocks the consultant directory, and gives you one free post every month.",
     "uploadDoc": "Upload a document",
+    "docUnderReview": "Under review",
+    "docRejected": "Needs a new copy",
     "commercialRegister": "Commercial register",
     "taxCard": "Tax card",
     "unverifiedCap": "Unverified companies may keep only one active job post.",
@@ -452,6 +454,8 @@
     "moveTo": "Move to",
     "submitForReview": "Submit for review",
     "saveDraft": "Save as draft",
+    "saveChanges": "Save changes",
+    "listingMoved": "This listing changed somewhere else while you were editing. Reload the page and try again.",
     "closeJob": "Close listing",
     "reopenJob": "Reopen listing",
     "editJob": "Edit",
@@ -556,7 +560,8 @@
     "developersHint": "Which developers this hire will be selling.",
     "next": "Next",
     "back": "Back",
-    "reviewNote": "We review listings before they go live — usually within one working day."
+    "reviewNote": "We review listings before they go live — usually within one working day.",
+    "liveEditNote": "This listing is live. Changing the title, description, salary, commission, seats or leads sends it back for review before it shows again. Anything else saves straight away."
   },
   "admin": {
     "title": "Admin",

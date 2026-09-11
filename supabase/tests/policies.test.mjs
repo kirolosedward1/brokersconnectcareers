@@ -70,6 +70,41 @@ report.section('publishing is a moderation action');
     !r5.ok && /view_count/.test(r5.error ?? ''), r5.ok ? 'update was allowed' : r5.error);
 }
 
+report.section('editing a live listing is possible, and says so');
+{
+  /*
+    saveJob wrote a status on every save, including a save of a listing already
+    on the board — and the transition table permits neither `draft` nor
+    `pending_review` from `active`, so the edit button on the listings page
+    opened a form that could not be saved at all. The action now sends no
+    status when the listing is live and leaves the decision to the guard, which
+    is the rule that was already written.
+  */
+  const withStatus = await as(employerVerified,
+    `update jobs set title_ar = title_ar || ' ', status = 'pending_review' where id = '${liveJob}'`);
+  report.check('sending a status with the edit is still refused',
+    !withStatus.ok && /cannot go from active to pending_review/.test(withStatus.error ?? ''),
+    withStatus.error);
+
+  const material = await as(employerVerified,
+    `update jobs set seats = seats + 1 where id = '${liveJob}' returning status`);
+  report.check('a material edit goes back to the queue by itself',
+    material.ok && material.rows[0]?.status === 'pending_review',
+    JSON.stringify(material.rows[0] ?? material.error));
+
+  const cosmetic = await as(employerVerified,
+    `update jobs set requirements_ar = 'رخصة قيادة' where id = '${liveJob}' returning status`);
+  report.check('and a cosmetic one stays on the board',
+    cosmetic.ok && cosmetic.rows[0]?.status === 'active',
+    JSON.stringify(cosmetic.rows[0] ?? cosmetic.error));
+
+  // Still somebody else's listing, whatever the status.
+  const stranger = await as(employerUnverified,
+    `update jobs set requirements_ar = 'مزوّر' where id = '${liveJob}' returning id`);
+  report.check('another company still changes nothing',
+    stranger.ok && stranger.rows.length === 0, JSON.stringify(stranger.rows));
+}
+
 report.section('verification and credits are granted, never claimed');
 {
   const r = await as(employerUnverified, `update companies set verification_status='verified' where id='${unverifiedCo}'`);
@@ -673,6 +708,70 @@ report.section('verification documents never leak');
     (await as(null, 'select id from company_documents', 'anon')).rows.length === 0);
   report.check('an admin sees it',
     (await as(admin, 'select id from company_documents')).rows.length === 1);
+}
+
+report.section('submitting papers joins the queue, and nothing else does');
+{
+  /*
+    `pending` was a value the enum offered and nothing ever wrote. The review
+    queue is built from documents, so it worked; the admin overview's count and
+    the employer's own setup checklist both read the company's status, so both
+    said nothing was happening while something was.
+
+    The document inserted by the section above is still there, so the company
+    should already have moved.
+  */
+  const afterUpload = (
+    await db.query(`select verification_status from companies where id = '${unverifiedCo}'`)
+  ).rows[0].verification_status;
+  report.check('a submitted document puts the company in the queue',
+    afterUpload === 'pending', afterUpload);
+
+  // And the thing the marker must not become a way to do.
+  const selfVerify = await as(employerUnverified,
+    `update companies set verification_status = 'verified' where id = '${unverifiedCo}'`);
+  report.check('the owner still cannot verify themselves',
+    !selfVerify.ok && /set by review/.test(selfVerify.error ?? ''), selfVerify.error);
+
+  const selfStamp = await as(employerUnverified,
+    `update companies set verified_at = now() where id = '${unverifiedCo}'`);
+  report.check('nor stamp the date', !selfStamp.ok, selfStamp.error);
+
+  // A reviewer's decision is not undone by the trigger that watches documents.
+  await db.exec(`
+    update companies set verification_status = 'verified', verified_at = now() where id = '${unverifiedCo}';
+    update company_documents set status = 'verified' where company_id = '${unverifiedCo}';
+  `);
+  const reviewed = (
+    await db.query(`select verification_status from companies where id = '${unverifiedCo}'`)
+  ).rows[0].verification_status;
+  report.check('a review is not recomputed away', reviewed === 'verified', reviewed);
+
+  // Withdrawn before anybody looked: back out of the queue rather than sitting
+  // in a count the queue itself no longer shows.
+  await db.exec(`
+    update companies set verification_status = 'unverified', verified_at = null where id = '${unverifiedCo}';
+    update company_documents set status = 'pending' where company_id = '${unverifiedCo}';
+    insert into company_documents (company_id, doc_type, storage_path)
+      values ('${unverifiedCo}', 'tax_card', '${unverifiedCo}/tax.pdf');
+  `);
+  const bothPending = (
+    await db.query(`select verification_status from companies where id = '${unverifiedCo}'`)
+  ).rows[0].verification_status;
+  report.check('two documents still means one queue entry', bothPending === 'pending', bothPending);
+
+  await db.exec(`delete from company_documents where company_id = '${unverifiedCo}' and doc_type = 'tax_card'`);
+  const stillPending = (
+    await db.query(`select verification_status from companies where id = '${unverifiedCo}'`)
+  ).rows[0].verification_status;
+  report.check('withdrawing one of two leaves it in the queue', stillPending === 'pending', stillPending);
+
+  await db.exec(`delete from company_documents where company_id = '${unverifiedCo}'`);
+  const withdrawn = (
+    await db.query(`select verification_status from companies where id = '${unverifiedCo}'`)
+  ).rows[0].verification_status;
+  report.check('withdrawing the last one takes it back out',
+    withdrawn === 'unverified', withdrawn);
 }
 
 report.section('the public board shows live listings only');

@@ -90,6 +90,29 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
   if (!company) return { ok: false, error: 'no_company' };
 
   const value = parsed.data;
+
+  /*
+    What editing a live listing does to its status, which is: nothing here.
+
+    This wrote `pending_review` or `draft` on every save, including a save of a
+    listing already on the board — and guard_job_update permits neither from
+    `active`, so every edit of a live advert failed outright. The button was on
+    the screen, the form loaded with the listing in it, and the save came back
+    "something went wrong". Proven against production: the update raises "job
+    status cannot go from active to pending_review".
+
+    The database already has the rule this wanted. When a live listing's pay,
+    title, description, seats, leads or commission change, guard_job_update
+    moves it back to pending_review itself; when nothing material changed it
+    stays up. So an edit of an active listing sends no status at all and lets
+    the guard decide, which is also the only way a typo fix can avoid costing
+    the employer a day off the board.
+  */
+  const { data: current } = value.id
+    ? await supabase.from('jobs').select('status').eq('id', value.id).maybeSingle()
+    : { data: null };
+
+  const live = current?.status === 'active';
   const status = value.submit ? 'pending_review' : 'draft';
 
   const payload = {
@@ -112,7 +135,6 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     description_ar: value.descriptionAr,
     description_en: value.descriptionEn || null,
     requirements_ar: value.requirementsAr || null,
-    status,
   } as const;
 
   let jobId = value.id;
@@ -123,7 +145,7 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     // rows produces no error.
     const { data: saved, error } = await supabase
       .from('jobs')
-      .update(payload)
+      .update(live ? payload : { ...payload, status })
       .eq('id', jobId)
       .select('id');
     if (error) return { ok: false, error: mapJobError(error.message) };
@@ -135,24 +157,70 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     const { data, error } = await withUniqueSlug<{ id: string }>(
       () => buildJobSlug(value.titleEn || value.titleAr, district?.slug ?? 'egypt'),
       (slug) =>
-        supabase.from('jobs').insert({ company_id: company.id, slug, ...payload }).select('id').single(),
+        supabase
+          .from('jobs')
+          .insert({ company_id: company.id, slug, status, ...payload })
+          .select('id')
+          .single(),
     );
 
     if (error || !data) return { ok: false, error: mapJobError(error?.message ?? 'insert_failed') };
     jobId = data.id;
   }
 
-  await supabase.from('job_developers').delete().eq('job_id', jobId);
-  if (value.developerIds.length) {
-    await supabase
+  /*
+    The developer tags, changed by difference rather than replaced.
+
+    This deleted every row and inserted the new set, with neither result
+    checked. PostgREST has no transaction spanning two calls, so a failed
+    insert left the listing with no developers at all and the screen saying it
+    had saved — on a listing that may already be in front of a moderator.
+    Deleting only what was removed and inserting only what was added means a
+    failure changes nothing it was not asked to change.
+  */
+  const { data: taggedRows } = await supabase
+    .from('job_developers')
+    .select('developer_id')
+    .eq('job_id', jobId!);
+
+  const tagged = new Set((taggedRows ?? []).map((row) => row.developer_id));
+  const wanted = new Set(value.developerIds);
+  const dropped = [...tagged].filter((id) => !wanted.has(id));
+  const added = [...wanted].filter((id) => !tagged.has(id));
+
+  if (dropped.length) {
+    const { error } = await supabase
       .from('job_developers')
-      .insert(value.developerIds.map((developerId) => ({ job_id: jobId!, developer_id: developerId })));
+      .delete()
+      .eq('job_id', jobId!)
+      .in('developer_id', dropped);
+    if (error) return { ok: false, error: error.message };
   }
 
-  // Only when it actually entered the queue. Saving a draft is not an event
-  // anybody needs an email about, and re-saving a listing already in review
-  // is deduplicated on the job id rather than sending a second receipt.
-  if (status === 'pending_review') {
+  if (added.length) {
+    const { error } = await supabase
+      .from('job_developers')
+      .insert(added.map((developerId) => ({ job_id: jobId!, developer_id: developerId })));
+    if (error) return { ok: false, error: error.message };
+  }
+
+  /*
+    Only when it actually entered the queue. Saving a draft is not an event
+    anybody needs an email about, and re-saving a listing already in review is
+    deduplicated on the job id rather than sending a second receipt.
+
+    Read back rather than assumed, because a live listing's status is now the
+    guard's decision and not this function's: a material edit puts it in the
+    queue and a cosmetic one leaves it on the board, and only the row knows
+    which happened.
+  */
+  const { data: settled } = await supabase
+    .from('jobs')
+    .select('status')
+    .eq('id', jobId!)
+    .maybeSingle();
+
+  if (settled?.status === 'pending_review' && current?.status !== 'pending_review') {
     const submitted = jobId!;
     after(() => notifyJobSubmitted(submitted));
   }

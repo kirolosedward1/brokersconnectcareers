@@ -568,6 +568,12 @@ export type Database = {
       claim_monthly_free_post: { Args: Empty; Returns: boolean };
       /** The company the caller belongs to, resolved through membership. */
       my_company_id: { Args: Empty; Returns: string | null };
+      /**
+       * Service-role only, and called with the admin client: the answer is
+       * whether an address has an account, which is not for every signed-in
+       * user to ask. Used to find the colleague an employer is inviting.
+       */
+      user_id_by_email: { Args: { p_email: string }; Returns: string | null };
       expire_stale_jobs: { Args: Empty; Returns: number };
       profile_completeness: { Args: { p_agent_id: string }; Returns: number };
 

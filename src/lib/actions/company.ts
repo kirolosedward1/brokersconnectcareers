@@ -212,17 +212,28 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
   const { data: companyId } = await supabase.rpc('my_company_id');
   if (!companyId) return { ok: false, error: 'no_company' };
 
+  /*
+    Asked of the database rather than scanned for in a page of accounts.
+
+    This listed the first 200 users on the platform and searched them in
+    JavaScript, which is right until account 201 and then quietly wrong:
+    inviting a colleague who does have an account starts answering "no account
+    with that email", confidently, with nothing for either person to go on.
+
+    user_id_by_email is granted to service_role alone — the answer is whether
+    an address has an account, which is not for every signed-in user to ask —
+    and authorisation is unchanged: the membership row below still goes in
+    through the caller's own session, so company_members_manage decides.
+  */
   const admin = createAdminClient();
-  const { data: found } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-  const match = found?.users.find(
-    (candidate) => candidate.email?.toLowerCase() === parsed.data.email.toLowerCase(),
-  );
-  if (!match) return { ok: false, error: 'no_account' };
-  if (match.id === user.id) return { ok: false, error: 'already_member' };
+  const { data: invitee } = await admin.rpc('user_id_by_email', { p_email: parsed.data.email });
+
+  if (!invitee) return { ok: false, error: 'no_account' };
+  if (invitee === user.id) return { ok: false, error: 'already_member' };
 
   const { error } = await supabase
     .from('company_members')
-    .insert({ company_id: companyId, user_id: match.id, role: parsed.data.role });
+    .insert({ company_id: companyId, user_id: invitee, role: parsed.data.role });
 
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_member' };
