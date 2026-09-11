@@ -44,7 +44,7 @@ export default async function AgentsPage({
   setRequestLocale(locale);
 
   const filters = parseAgentFilters(await searchParams);
-  const [{ agents, total, pageCount }, districts, districtMap, viewer] = await Promise.all([
+  const [{ agents, total, pageCount, page }, districts, districtMap, viewer] = await Promise.all([
     queryAgents(filters),
     getDistricts(),
     getDistrictMap(),
@@ -146,8 +146,11 @@ export default async function AgentsPage({
             </>
           )}
 
+          {/* `page`, not `filters.page`: a request past the end is answered
+              with the last page, and the footer has to say which page that is
+              rather than the one nobody got. */}
           <Pagination
-            page={filters.page}
+            page={page}
             pageCount={pageCount}
             buildHref={(next) => {
               const query = serializeAgentFilters({ ...filters, page: next }).toString();

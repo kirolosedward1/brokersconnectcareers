@@ -53,11 +53,11 @@ export default async function TalentPoolPage({
   setRequestLocale(locale);
   await requireEmployer(locale);
 
-  const requested = Number.parseInt((await searchParams).page ?? '1', 10);
-  const page = Number.isFinite(requested) && requested > 0 ? Math.min(requested, 50) : 1;
+  const asked = Number.parseInt((await searchParams).page ?? '1', 10);
+  const requested = Number.isFinite(asked) && asked > 0 ? Math.min(asked, 50) : 1;
 
-  const [{ agents, total, pageCount }, districts] = await Promise.all([
-    querySavedAgents(page),
+  const [{ agents, total, pageCount, page }, districts] = await Promise.all([
+    querySavedAgents(requested),
     getDistrictMap(),
   ]);
 

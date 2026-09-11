@@ -73,6 +73,8 @@ export async function queryAgents(filters: AgentFilters): Promise<{
   agents: AgentCardRow[];
   total: number;
   pageCount: number;
+  /** The page actually returned, which is not always the one asked for. */
+  page: number;
 }> {
   const supabase = await createClient();
   const districts = await getDistricts();
@@ -81,21 +83,58 @@ export async function queryAgents(filters: AgentFilters): Promise<{
     ? districts.filter((d) => filters.districtSlugs.includes(d.slug)).map((d) => d.id)
     : null;
 
-  const { data, error } = await supabase.rpc('search_agents', {
-    p_tracks: filters.tracks.length ? filters.tracks : null,
-    p_district_ids: districtIds,
-    p_availability: filters.availability,
-    p_min_years: filters.minYears,
-    p_limit: AGENTS_PER_PAGE,
-    p_offset: (filters.page - 1) * AGENTS_PER_PAGE,
-  });
+  const pageOf = (page: number) =>
+    supabase.rpc('search_agents', {
+      p_tracks: filters.tracks.length ? filters.tracks : null,
+      p_district_ids: districtIds,
+      p_availability: filters.availability,
+      p_min_years: filters.minYears,
+      p_limit: AGENTS_PER_PAGE,
+      p_offset: (page - 1) * AGENTS_PER_PAGE,
+    });
 
+  const { data, error } = await pageOf(filters.page);
   if (error) raise(error, 'searching the agent directory');
 
   const agents = (data ?? []) as AgentCardRow[];
+
+  /*
+    A page past the end is answered with the end, not with "nobody matches".
+
+    The total rides along on each row (`count(*) over ()`), so a page with no
+    rows carries no total either — which made `?page=99` report zero
+    consultants and render the empty panel: "مفيش استشاريين مطابقين لبحثك", on
+    an unfiltered directory of seven people. The board had the same bug and
+    round 3 fixed it there; this side was never revisited, and the shortlist
+    page inherited the shape from here.
+
+    Page one always exists, so ask it how many there are and go to the last
+    page from the answer.
+  */
+  if (filters.page > 1 && agents.length === 0) {
+    const { data: first, error: firstError } = await pageOf(1);
+    if (firstError) raise(firstError, 'searching the agent directory');
+
+    const rows = (first ?? []) as AgentCardRow[];
+    const total = rows[0]?.total_count ? Number(rows[0].total_count) : 0;
+    const pageCount = Math.max(1, Math.ceil(total / AGENTS_PER_PAGE));
+
+    if (pageCount <= 1) return { agents: rows, total, pageCount, page: 1 };
+
+    const { data: last, error: lastError } = await pageOf(pageCount);
+    if (lastError) raise(lastError, 'searching the agent directory');
+
+    return { agents: (last ?? []) as AgentCardRow[], total, pageCount, page: pageCount };
+  }
+
   const total = agents[0]?.total_count ? Number(agents[0].total_count) : 0;
 
-  return { agents, total, pageCount: Math.max(1, Math.ceil(total / AGENTS_PER_PAGE)) };
+  return {
+    agents,
+    total,
+    pageCount: Math.max(1, Math.ceil(total / AGENTS_PER_PAGE)),
+    page: filters.page,
+  };
 }
 
 export async function getAgentCard(slug: string): Promise<AgentCardDetail | null> {
@@ -117,24 +156,53 @@ export const SAVED_AGENTS_PER_PAGE = 24;
  * the directory taken before they went. The function re-derives it, so this
  * only has to render what it is handed.
  */
-export async function querySavedAgents(page = 1): Promise<{
+export async function querySavedAgents(requested = 1): Promise<{
   agents: SavedAgentCardRow[];
   total: number;
   pageCount: number;
+  /** The page actually returned, which is not always the one asked for. */
+  page: number;
 }> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase.rpc('saved_agent_cards', {
-    p_limit: SAVED_AGENTS_PER_PAGE,
-    p_offset: (page - 1) * SAVED_AGENTS_PER_PAGE,
-  });
+  const pageOf = (page: number) =>
+    supabase.rpc('saved_agent_cards', {
+      p_limit: SAVED_AGENTS_PER_PAGE,
+      p_offset: (page - 1) * SAVED_AGENTS_PER_PAGE,
+    });
 
+  const { data, error } = await pageOf(requested);
   if (error) raise(error, 'loading the shortlist');
 
   const agents = (data ?? []) as SavedAgentCardRow[];
+
+  // Same recovery as the directory above, for the same reason: an empty page
+  // carries no total, so `?page=9` would have told a company with two hundred
+  // shortlisted consultants that its shortlist was empty.
+  if (requested > 1 && agents.length === 0) {
+    const { data: first, error: firstError } = await pageOf(1);
+    if (firstError) raise(firstError, 'loading the shortlist');
+
+    const rows = (first ?? []) as SavedAgentCardRow[];
+    const total = rows[0]?.total_count ? Number(rows[0].total_count) : 0;
+    const pageCount = Math.max(1, Math.ceil(total / SAVED_AGENTS_PER_PAGE));
+
+    if (pageCount <= 1) return { agents: rows, total, pageCount, page: 1 };
+
+    const { data: last, error: lastError } = await pageOf(pageCount);
+    if (lastError) raise(lastError, 'loading the shortlist');
+
+    return { agents: (last ?? []) as SavedAgentCardRow[], total, pageCount, page: pageCount };
+  }
+
   const total = agents[0]?.total_count ? Number(agents[0].total_count) : 0;
 
-  return { agents, total, pageCount: Math.max(1, Math.ceil(total / SAVED_AGENTS_PER_PAGE)) };
+  return {
+    agents,
+    total,
+    pageCount: Math.max(1, Math.ceil(total / SAVED_AGENTS_PER_PAGE)),
+    page: requested,
+  };
 }
 
 /**

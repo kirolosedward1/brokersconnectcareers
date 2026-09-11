@@ -438,6 +438,25 @@ section('the board holds its shape under a hostile query string');
     cards(past.body) > 0 && cards(past.body) === cards(first.body),
   );
 
+  /*
+    The directory had the same bug and was never revisited.
+
+    Its total rides along on each row as `count(*) over ()`, so a page with no
+    rows carried no total — and `?page=99` reported zero consultants and
+    rendered "مفيش استشاريين مطابقين لبحثك" on an unfiltered directory of
+    seven people. Not a 500 like the board's, which is why nobody noticed: a
+    confident empty state is quieter than an error and says something false.
+  */
+  const agentsFirst = await get('/agents?page=1');
+  const agentsPast = await get('/agents?page=99');
+  const agentCards = (body) => new Set(body.match(/\/agents\/[a-z0-9-]+-\d{6}/g) ?? []).size;
+
+  check('a directory page past the end is still a page', agentsPast.status === 200, `got ${agentsPast.status}`);
+  check(
+    `and it shows consultants rather than "nobody matches" (${agentCards(agentsPast.body)} of ${agentCards(agentsFirst.body)})`,
+    agentCards(agentsPast.body) > 0 && agentCards(agentsPast.body) === agentCards(agentsFirst.body),
+  );
+
   for (const [term, label] of [
     ['"unbalanced', 'an unbalanced quote'],
     ['a | b', 'a tsquery operator'],

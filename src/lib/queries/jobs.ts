@@ -367,6 +367,21 @@ export async function getSimilarJobs(job: JobRow, limit = 4): Promise<JobListIte
  *
  * Cached per request, because both the compensation card and anything else on
  * a listing page that wants the comparison ask the same question.
+ *
+ * Measured, because this runs on every listing page and usually answers
+ * nothing — so the cost is paid whether or not there is anything to show. On a
+ * board grown to 20,000 live listings (a thousand times today's) it is 2.7ms,
+ * against 0.16ms for the board query beside it. The plan uses
+ * `jobs_facets_idx` for the track and then rechecks 718 heap blocks for
+ * status, expiry and the not-null salary.
+ *
+ * A partial covering index on (track, district_id, expires_at, basic_salary_min,
+ * basic_salary_max) where status = 'active' and basic_salary_min is not null
+ * would make it an index-only scan and take most of that away. Not added: 2.7ms
+ * at a thousand times the data is not the 80ms the board index was worth, and
+ * an index exists to be maintained on every write to `jobs`. Recorded so the
+ * next person does not have to measure it again — and so that if this page ever
+ * does get slow, the first thing to try is written down.
  */
 export const salaryReference = cache(async function salaryReference(
   track: JobTrack,
