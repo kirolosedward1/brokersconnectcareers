@@ -160,6 +160,110 @@ report.section('every trigger function is hardened the same way');
   );
 }
 
+report.section('a policy asks who you are once, not once per row');
+{
+  /*
+    Postgres treats a bare `auth.uid()` in a policy as a correlated expression
+    and re-evaluates it for every row it tests; `(select auth.uid())` becomes
+    an InitPlan computed once. The semantics are identical — the function is
+    stable and takes no arguments — so this is free, and twenty-one policies
+    were written before the convention arrived.
+
+    Worth a guard rather than a one-off migration, because the next policy
+    somebody writes will be written the natural way.
+  */
+  /*
+    Matched in JavaScript rather than with a SQL regex, and that is the second
+    attempt. Postgres prints the hoisted form as `( SELECT auth.uid() AS uid)`,
+    so a pattern looking for "auth.uid() not preceded by an open bracket"
+    matches the space in front of it and flags every policy including the ones
+    already converted. Strip the hoisted form first; anything left is bare.
+  */
+  const { rows } = await db.query(`
+    select c.relname as tbl, p.polname,
+           coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
+           coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '') as expr
+      from pg_policy p
+      join pg_class c on c.oid = p.polrelid
+      join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public'
+     order by 1, 2
+  `);
+
+  const bare = rows.filter((row) =>
+    /auth\.uid\(\)/.test(row.expr.replace(/\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)/gi, '')),
+  );
+
+  report.check(
+    'no policy re-evaluates auth.uid() per row',
+    bare.length === 0,
+    bare.map((row) => `${row.tbl}.${row.polname}`).join(', ') || 'none',
+  );
+}
+
+report.section('who may call a definer function, on purpose');
+{
+  /*
+    Supabase's linter reports every SECURITY DEFINER function reachable over
+    the API, and this schema has thirty-eight of them. Left as a wall of
+    warnings the list means nothing; pinned, it means somebody decided.
+
+    Two reasons a function is anon-callable here and no third:
+
+      the public API   search_agents, get_agent_card and increment_job_view
+                       are what the directory, the card and the view counter
+                       are made of, and none of them needs a session.
+
+      RLS calls it     Postgres evaluates a policy as the *calling* role, so a
+                       policy invoking a function anon cannot execute does not
+                       fall through to the next policy — it errors, and the
+                       page stops loading. Migration 43 learned that by
+                       breaking /agents for signed-out visitors. Every one of
+                       these answers about the caller and returns false or
+                       null to a stranger.
+
+    A new name in this list is a decision, so it should cost a line in this
+    file rather than arriving with a migration nobody re-read.
+  */
+  const EXPECTED = new Set([
+    // Public API.
+    'search_agents',
+    'get_agent_card',
+    'increment_job_view',
+    // Predicates that row-level security itself calls.
+    'applied_to_job',
+    'applied_to_my_job',
+    'current_role_of_user',
+    'is_admin',
+    'is_approved_employer',
+    'is_candidate',
+    'is_company_admin',
+    'my_company_id',
+    'owns_company',
+    'owns_job',
+    'viewer_has_verified_company',
+  ]);
+
+  const { rows } = await db.query(`
+    select p.proname
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.prosecdef
+       and has_function_privilege('anon', p.oid, 'EXECUTE')
+     group by p.proname
+  `);
+
+  const actual = new Set(rows.map((row) => row.proname));
+  const added = [...actual].filter((name) => !EXPECTED.has(name));
+  const gone = [...EXPECTED].filter((name) => !actual.has(name));
+
+  report.check('no definer function became anon-callable unnoticed',
+    added.length === 0, added.join(', ') || 'none');
+  report.check('and none of the ones that need to be stopped being',
+    gone.length === 0, gone.join(', ') || 'none');
+}
+
 report.section('the percentage and the list of gaps agree');
 {
   /*
@@ -187,6 +291,16 @@ report.section('the percentage and the list of gaps agree');
 
   await db.exec(`delete from agent_experience where agent_id = '${agent.id}';
                  delete from agent_education  where agent_id = '${agent.id}';`);
+
+  /*
+    Asked as the consultant whose profile it is.
+
+    Migration 56 gates profile_completeness() to the owner and admins — it used
+    to answer for any id from any signed-in account, including one set to
+    `hidden`. Session-level rather than transaction-local: db.query runs each
+    statement on its own, so a `true` here would be gone by the next line.
+  */
+  await db.exec(`select set_config('request.jwt.claim.sub', '${agent.user_id}', false)`);
 
   for (const [index, state] of states.entries()) {
     await db.query(
@@ -227,6 +341,17 @@ report.section('the percentage and the list of gaps agree');
   const expected = completenessOf({ ...states[3], hasExperience: true, hasEducation: true });
   report.check(`experience and education counted the same both sides (${withBoth} = ${expected})`,
     withBoth === expected);
+
+  // And the gate itself: somebody else's score is not this function's business.
+  await db.exec(
+    `select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000000', false)`,
+  );
+  const stranger = (
+    await db.query(`select public.profile_completeness('${agent.id}') as n`)
+  ).rows[0].n;
+  report.check('a stranger gets no score at all', stranger === null, String(stranger));
+
+  await db.exec(`select set_config('request.jwt.claim.sub', '', false)`);
 }
 
 process.exit(report.finish() ? 0 : 1);

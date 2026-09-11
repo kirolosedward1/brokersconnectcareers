@@ -41,6 +41,9 @@ export default async function NotificationsPage({
   const { data } = await supabase
     .from('notifications')
     .select('*')
+    // Scoped explicitly so the (user_id, created_at) index serves this;
+    // notifications_select_own is still the thing that decides.
+    .eq('user_id', viewer.userId)
     .order('created_at', { ascending: false })
     .limit(100);
 

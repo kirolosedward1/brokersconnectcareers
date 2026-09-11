@@ -41,6 +41,16 @@ type Row = {
   job: { id: string; title_ar: string; title_en: string | null; track: JobTrack } | null;
 };
 
+/**
+ * The id an employer with no company is scoped to.
+ *
+ * `requireEmployer` admits somebody whose company row does not exist yet, and
+ * an undefined filter is not a narrow query — it is no query at all. A uuid
+ * nothing carries asks for nothing, which is the right answer for an account
+ * that has no listings to have applicants on.
+ */
+const NO_COMPANY = '00000000-0000-0000-0000-000000000000';
+
 const STAGES = ['new', 'shortlisted', 'interview', 'hired', 'rejected'] as const;
 
 /**
@@ -99,9 +109,22 @@ export default async function AllApplicantsPage({
   const pattern = query_ ? `%${query_.replace(/[%_\\]/g, (c) => `\\${c}`)}%` : null;
   const supabase = await createClient();
 
-  // No company filter here on purpose. Row-level security already limits
-  // applications to listings this employer owns, so a filter written here
-  // would be a second copy of that rule, drifting from the first.
+  /*
+    Scoped to this company, with row-level security still behind it.
+
+    This deliberately carried no company filter, on the grounds that RLS
+    already limits applications to listings this employer owns and a second
+    filter would be a second copy of the rule. The reasoning is sound and the
+    cost is not: without a filter the planner has nothing to index on, so it
+    scans every application on the platform and evaluates `owns_job()` — a
+    SECURITY DEFINER function — on each one. Measured on production against
+    22,432 applications, the same shape of query took two seconds; with the
+    scope it takes two and a half milliseconds.
+
+    They are not two copies of one rule. RLS decides what may be seen; this
+    decides what to look at. And the drift only runs one way: a wrong filter
+    shows fewer rows, never more, because the policy is still what decides.
+  */
   let query = supabase
     .from('applications')
     .select(
@@ -119,6 +142,7 @@ export default async function AllApplicantsPage({
       job:jobs!inner (id, title_ar, title_en, track)
     `,
     )
+    .eq('job.company_id', viewer.company?.id ?? NO_COMPANY)
     .order('created_at', { ascending: false })
     .limit(200);
 
@@ -142,8 +166,9 @@ export default async function AllApplicantsPage({
   // One column, no stage filter: what each chip is worth before it is clicked.
   // The list above is already narrowed by ?stage=, so it cannot answer this —
   // and "who applied" is a question about the whole pipeline, not the slice
-  // currently on screen. RLS scopes it to this company's listings, same as the
-  // list; the job filter is honoured so the counts match what a click gives.
+  // currently on screen. Scoped to this company the same way the list above
+  // is, with RLS behind it; the job filter is honoured so the counts match
+  // what a click gives.
   // The profile is joined whether or not there is a search: a conditional
   // select string defeats the typed query builder, and every application has a
   // profile behind it — the column is `not null` — so the inner join changes
@@ -152,6 +177,7 @@ export default async function AllApplicantsPage({
     .from('applications')
     .select('status, candidate:profiles!inner (full_name), job:jobs!inner (track)')
     .limit(2000);
+  counter = counter.eq('job.company_id', viewer.company?.id ?? NO_COMPANY);
   if (jobFilter) counter = counter.eq('job_id', jobFilter);
   if (band) counter = counter.eq('experience_band', band);
   if (track) counter = counter.eq('job.track', track);

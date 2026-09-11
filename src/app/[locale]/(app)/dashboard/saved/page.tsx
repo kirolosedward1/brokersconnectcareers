@@ -28,7 +28,7 @@ export default async function SavedJobsPage({
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
-  await requireCandidate(locale);
+  const viewer = await requireCandidate(locale);
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -43,6 +43,15 @@ export default async function SavedJobsPage({
       )
     `,
     )
+    /*
+      Scoped explicitly, with row-level security still behind it.
+
+      Not a second copy of the policy: RLS decides what may be seen, this
+      decides what to look at — which is the difference between an index scan
+      and a sequential one whose filter runs a function per row. A wrong filter
+      here can only show fewer rows, never more.
+    */
+    .eq('candidate_id', viewer.userId)
     .order('created_at', { ascending: false });
 
   const jobs = ((data ?? []) as unknown as { job: JobListItem }[])
@@ -72,12 +81,16 @@ export default async function SavedJobsPage({
   const { data: searchRows } = await supabase
     .from('saved_searches')
     .select('*')
+    .eq('candidate_id', viewer.userId)
     .order('created_at', { ascending: false });
 
   // Which of these were applied to. This is a list somebody curated by hand,
   // so "did I already apply to that one" is the question they arrive with —
   // and it was answerable only by opening each listing.
-  const { data: mine } = await supabase.from('applications').select('job_id');
+  const { data: mine } = await supabase
+    .from('applications')
+    .select('job_id')
+    .eq('candidate_id', viewer.userId);
   const appliedTo = new Set((mine ?? []).map((row) => row.job_id));
 
   const t = await getTranslations('dashboard');
