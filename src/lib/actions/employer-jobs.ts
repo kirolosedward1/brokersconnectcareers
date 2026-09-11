@@ -15,7 +15,9 @@ import {
   JOB_TRACKS,
   LEADS_SOURCES,
 } from '@/lib/taxonomy';
+import { salaryReference } from '@/lib/queries/jobs';
 import type { ActionResult } from '@/lib/actions/jobs';
+import type { SalaryReferenceRow } from '@/lib/supabase/database.types';
 import { after } from 'next/server';
 import { notifyJobSubmitted } from '@/lib/email/notify';
 import { logFailure } from '@/lib/observe';
@@ -409,5 +411,42 @@ export async function findSimilarListing(
   return {
     ok: true,
     data: { match: match ? { id: match.id, title: match.title_ar, seats: match.seats } : null },
+  };
+}
+
+const referenceSchema = z.object({
+  track: z.enum(JOB_TRACKS),
+  districtId: z.coerce.number().int().positive(),
+});
+
+/**
+ * What listings like this one are paying, for the employer writing one.
+ *
+ * The wizard asks on leaving the first step and renders on the second, exactly
+ * as the duplicate-listing warning does — so the round trip happens while
+ * somebody is reading the compensation fields rather than waiting to reach
+ * them. And like that warning it is never enforced: an employer is free to pay
+ * whatever they pay, and the number is here so the decision is informed rather
+ * than blind.
+ *
+ * A null answer is the common one and needs no explanation in the interface.
+ * The database refuses to summarise fewer than five live listings, so there is
+ * nothing to hedge — either the board knows, or the step looks exactly as it
+ * did before this existed.
+ */
+export async function salaryReferenceFor(
+  input: unknown,
+): Promise<ActionResult<{ reference: SalaryReferenceRow | null }>> {
+  const none = { ok: true as const, data: { reference: null } };
+  const parsed = referenceSchema.safeParse(input);
+  if (!parsed.success) return none;
+
+  const districts = await getDistricts();
+  const district = districts.find((row) => row.id === parsed.data.districtId);
+  if (!district) return none;
+
+  return {
+    ok: true,
+    data: { reference: await salaryReference(parsed.data.track, district.governorate_id) },
   };
 }

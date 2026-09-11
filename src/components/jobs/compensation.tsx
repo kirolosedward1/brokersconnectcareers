@@ -1,8 +1,8 @@
 import { useTranslations } from 'next-intl';
-import { Banknote, HandCoins, Sparkles, Target } from 'lucide-react';
+import { Banknote, HandCoins, Scale, Sparkles, Target } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatEgp } from '@/lib/utils';
-import type { JobRow } from '@/lib/supabase/database.types';
+import type { JobRow, SalaryReferenceRow } from '@/lib/supabase/database.types';
 
 type Comp = Pick<
   JobRow,
@@ -50,6 +50,46 @@ export function SalaryLine({ job, locale }: { job: Comp; locale: string }) {
       <span className="font-semibold">{value}</span>{' '}
       <span className="text-muted-foreground">{t('perMonth')}</span>
     </span>
+  );
+}
+
+/**
+ * What listings like this one pay, beside the one this listing pays.
+ *
+ * Both sides of this market price blind, and this is the strongest thing a job
+ * board knows that a WhatsApp group does not. It is also the easiest number to
+ * fabricate, so the threshold lives in the database rather than here: below
+ * five live listings in the same track and governorate, `salary_reference()`
+ * returns no row and there is nothing to render. A caller with `null` shows
+ * nothing — not a wider range, not a caveat, not "not enough data yet", which
+ * is itself a fact about how thin the board is offered to every visitor.
+ *
+ * The sample size is printed every time. Five is a small number and the reader
+ * is entitled to know it is five, because a range they can check is worth more
+ * than a range they have to trust.
+ */
+export function SalaryReferenceLine({
+  reference,
+  locale,
+}: {
+  reference: SalaryReferenceRow | null;
+  locale: string;
+}) {
+  const t = useTranslations('compensation');
+  if (!reference) return null;
+
+  return (
+    <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+      <Scale className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+      <span>
+        {t.rich('reference', {
+          low: formatEgp(reference.low, locale),
+          high: formatEgp(reference.high, locale),
+          count: reference.sample,
+          v: (chunks) => <span className="numeral">{chunks}</span>,
+        })}
+      </span>
+    </p>
   );
 }
 
@@ -101,7 +141,16 @@ export function LeadsSourceBadge({ job }: { job: Pick<JobRow, 'leads_source'> })
  * The compensation block, above the fold on the job page, as a structured card
  * rather than a sentence buried in the description.
  */
-export function CompensationCard({ job, locale }: { job: Comp; locale: string }) {
+export function CompensationCard({
+  job,
+  locale,
+  reference = null,
+}: {
+  job: Comp;
+  locale: string;
+  /** The board's own comparison, when it has enough listings to make one. */
+  reference?: SalaryReferenceRow | null;
+}) {
   const t = useTranslations('compensation');
   const tBenefit = useTranslations('benefits');
   const tLeads = useTranslations('leadsSource');
@@ -126,6 +175,9 @@ export function CompensationCard({ job, locale }: { job: Comp; locale: string })
           </dt>
           <dd className="mt-1.5 text-base">
             <SalaryLine job={job} locale={locale} />
+            {/* Directly under the figure it is about. Anywhere else and the
+                reader has to hold two numbers in their head to compare them. */}
+            <SalaryReferenceLine reference={reference} locale={locale} />
           </dd>
         </div>
 

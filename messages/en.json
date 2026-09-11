@@ -105,7 +105,8 @@
     "earningsOnTotal": "On the <v>{volume}</v> EGP you have closed, <v>{percent}</v>% would have paid <v>{total}</v> EGP in commission.",
     "earningsNote": "Calculated from the figures you entered, not a promise from the company. Actual commission depends on the agreement and where the leads come from.",
     "earningsNoRecord": "Add how many units you have closed and for how much, and we will price this rate against your average deal.",
-    "earningsNoRecordCta": "Complete your record"
+    "earningsNoRecordCta": "Complete your record",
+    "reference": "Similar listings pay a basic of <v>{low}</v>–<v>{high}</v> — from {count, plural, one {# live listing} other {# live listings}} in the same track and governorate."
   },
   "filters": {
     "search": "Keyword",

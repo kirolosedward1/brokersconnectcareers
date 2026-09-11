@@ -17,7 +17,7 @@ import { AppliedNotice } from '@/components/jobs/applied-notice';
 import { ShareJobButton } from '@/components/jobs/share-job-button';
 import { ShareArrival } from '@/components/jobs/share-arrival';
 import { formatDate, formatNumber, isoDate } from '@/lib/utils';
-import { getSimilarJobs, type JobDetail } from '@/lib/queries/jobs';
+import { getSimilarJobs, salaryReference, type JobDetail } from '@/lib/queries/jobs';
 import { getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
@@ -42,7 +42,19 @@ export async function JobDetailView({
   const tCompanies = await getTranslations('companies');
   const tApply = await getTranslations('apply');
 
-  const [similar, viewer] = await Promise.all([getSimilarJobs(job), getViewer()]);
+  const [similar, viewer, reference] = await Promise.all([
+    getSimilarJobs(job),
+    getViewer(),
+    /*
+      The board's own answer to "is this a normal number".
+
+      Batched with the rest, because it is worth nothing on its own and must
+      not add a round trip to the page it sits on. It usually comes back null:
+      the database refuses to summarise fewer than five live listings in the
+      bucket, which is most buckets at this size.
+    */
+    salaryReference(job.track, job.district.governorate_id),
+  ]);
 
   const title = localized(locale, job.title_ar, job.title_en);
   const description = localized(locale, job.description_ar, job.description_en);
@@ -177,7 +189,7 @@ export async function JobDetailView({
           {/* Compensation is the differentiator, so it sits above the fold, in
               structured form, before any prose. */}
           <div className="mt-6">
-            <CompensationCard job={job} locale={locale} />
+            <CompensationCard job={job} locale={locale} reference={reference} />
 
             {picture ? <CommissionPicture picture={picture} locale={locale} /> : null}
           </div>

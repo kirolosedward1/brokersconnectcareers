@@ -2315,4 +2315,105 @@ report.section('a shortlist is not a copy of the directory');
     direct.ok && direct.rows[0].n === 0, direct.error ?? JSON.stringify(direct.rows));
 }
 
+report.section('a salary reference that stays quiet until it has earned the right');
+{
+  const cairo = (await db.query("select id from governorates where slug = 'cairo'")).rows[0].id;
+  const district = (
+    await db.query(`select id from districts where governorate_id = ${cairo} limit 1`)
+  ).rows[0].id;
+  const company = (
+    await db.query("select id from companies where slug='al-rowad-real-estate-309047'")
+  ).rows[0].id;
+
+  // A track the seed does not use, so the bucket starts empty and every row in
+  // it is one this test put there.
+  const ask = async () =>
+    (await db.query(`select * from salary_reference('property_management', ${cairo})`)).rows;
+
+  report.check('an empty bucket says nothing', (await ask()).length === 0);
+
+  const post = async (n, lo, hi) =>
+    db.exec(`
+      insert into jobs (company_id, district_id, track, title_ar, description_ar, slug,
+                        status, published_at, expires_at, basic_salary_min, basic_salary_max,
+                        commission_type, leads_source, employment_type, experience_band)
+      values ('${company}', ${district}, 'property_management', 'اختبار ${n}', 'وصف وصف وصف وصف',
+              'salary-ref-test-${n}', 'active', now(), now() + interval '30 days',
+              ${lo}, ${hi}, 'none', 'company_provided', 'full_time', 'mid_3_5')`);
+
+  // Four is not five, and four is exactly the number that tempts somebody to
+  // relax the rule "just for this page".
+  for (const [n, lo, hi] of [[1, 6000, 9000], [2, 7000, 11000], [3, 8000, 12000], [4, 9000, 14000]]) {
+    await post(n, lo, hi);
+  }
+  report.check('four listings still say nothing', (await ask()).length === 0);
+
+  await post(5, 10000, 15000);
+  const five = await ask();
+  report.check('the fifth opens it',
+    five.length === 1 && five[0].sample === 5,
+    JSON.stringify(five));
+  report.check('and the numbers are the medians of the floors and the ceilings',
+    five[0].low === 8000 && five[0].high === 12000,
+    JSON.stringify(five[0]));
+
+  /*
+    Commission-only is excluded, not counted as zero.
+
+    A zero basic folded into the median would drag the floor down to describe
+    something that is not a salary — and it would inflate the sample size, so
+    the printed "based on N listings" would stop being the number of listings
+    the range was made of.
+  */
+  await db.exec(`
+    insert into jobs (company_id, district_id, track, title_ar, description_ar, slug,
+                      status, published_at, expires_at, commission_type, commission_value,
+                      leads_source, employment_type, experience_band)
+    values ('${company}', ${district}, 'property_management', 'عمولة بس', 'وصف وصف وصف وصف',
+            'salary-ref-commission-only', 'active', now(), now() + interval '30 days',
+            'percentage', 2.5, 'self_generated', 'full_time', 'mid_3_5')`);
+
+  const withCommissionOnly = await ask();
+  report.check('a commission-only listing joins neither the sample nor the median',
+    withCommissionOnly[0].sample === 5 && withCommissionOnly[0].low === 8000,
+    JSON.stringify(withCommissionOnly[0]));
+
+  // An expired listing is not a live one. The reference describes what is on
+  // the board now, so it has to shrink back below the threshold on its own.
+  // published_at moves with it: jobs_publication_window insists a listing
+  // cannot expire before it was published, which is why an expired listing in
+  // this schema is an old one rather than one with a date edited underneath it.
+  await db.exec(`
+    update jobs set published_at = now() - interval '60 days',
+                    expires_at   = now() - interval '1 day'
+     where slug = 'salary-ref-test-5'`);
+  report.check('and when one expires it closes again', (await ask()).length === 0);
+
+  /*
+    The bucket is (track, governorate) and nothing wider.
+
+    Five listings spread across five governorates is not a Cairo salary, and
+    the failure mode of getting this wrong is quiet: the number is plausible,
+    just about somewhere else.
+  */
+  await db.exec(`
+    update jobs set published_at = now(), expires_at = now() + interval '30 days'
+     where slug = 'salary-ref-test-5'`);
+  const giza = (await db.query("select id from governorates where slug = 'giza'")).rows[0].id;
+  const elsewhere = (
+    await db.query(`select * from salary_reference('property_management', ${giza})`)
+  ).rows;
+  report.check('the next governorate along says nothing', elsewhere.length === 0);
+
+  const otherTrack = (
+    await db.query(`select * from salary_reference('back_office', ${cairo})`)
+  ).rows;
+  report.check('and so does the next track', otherTrack.length === 0);
+
+  // Left as the tests found it: the seed's own buckets are asserted on
+  // elsewhere, and five listings of "اختبار" would be a strange thing for the
+  // next test in this file to meet.
+  await db.exec(`delete from jobs where slug like 'salary-ref-%'`);
+}
+
 process.exit(report.finish() ? 0 : 1);

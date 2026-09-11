@@ -484,6 +484,20 @@ export type AgentCardRow = {
 };
 
 /**
+ * Row shape returned by the salary_reference() RPC — at most one row, and
+ * none at all below the sample-size threshold, which is how "we do not know
+ * yet" is expressed without a number attached to it.
+ */
+export type SalaryReferenceRow = {
+  /** Live listings the range is made of. Always shown beside it. */
+  sample: number;
+  /** Median of the advertised floors. */
+  low: number;
+  /** Median of the advertised ceilings. */
+  high: number;
+};
+
+/**
  * The company's shortlist. Nothing here is a copy of the directory: the row
  * is an id and a timestamp, and `saved_agent_cards()` decides on every read
  * what of the consultant may still be shown.
@@ -642,6 +656,17 @@ export type Database = {
         Returns: AgentCardRow[];
       };
       get_agent_card: { Args: { p_slug: string }; Returns: AgentCardDetail[] };
+      /**
+       * What a role like this pays on the board right now, or nothing.
+       *
+       * The only SECURITY INVOKER function in this list, because it needs to
+       * be: it reads active listings, which is what row-level security shows
+       * everyone anyway.
+       */
+      salary_reference: {
+        Args: { p_track: JobTrack; p_governorate_id: number };
+        Returns: SalaryReferenceRow[];
+      };
       /**
        * The caller's company shortlist. No argument saying whose — it resolves
        * `my_company_id()` itself, so there is nothing to forge, and it

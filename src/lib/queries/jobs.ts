@@ -16,9 +16,11 @@ import type {
   JobRow,
   JobTrack,
   LeadsSource,
+  SalaryReferenceRow,
 } from '@/lib/supabase/database.types';
 import { searchText } from '@/lib/search/arabic';
 import { companySlugOrNull } from '@/lib/search/company-slug';
+import { logFailure } from '@/lib/observe';
 
 export const JOBS_PER_PAGE = 20;
 
@@ -354,3 +356,46 @@ export async function getSimilarJobs(job: JobRow, limit = 4): Promise<JobListIte
   if (error) raise(error, 'loading similar jobs');
   return (data ?? []) as unknown as JobListItem[];
 }
+
+/**
+ * What a role like this pays, if the board has enough listings to say.
+ *
+ * Returns null far more often than not, and that is the feature rather than a
+ * shortcoming: the database refuses to answer below five live listings in the
+ * bucket, so there is no partial number for this to soften into a hedge. A
+ * caller that gets null renders nothing.
+ *
+ * Cached per request, because both the compensation card and anything else on
+ * a listing page that wants the comparison ask the same question.
+ */
+export const salaryReference = cache(async function salaryReference(
+  track: JobTrack,
+  governorateId: number,
+  client?: SupabaseLikeClient,
+): Promise<SalaryReferenceRow | null> {
+  const supabase = client ?? (await createClient());
+
+  const { data, error } = await supabase.rpc('salary_reference', {
+    p_track: track,
+    p_governorate_id: governorateId,
+  });
+
+  /*
+    Swallowed rather than raised.
+
+    Every other query in this file is something the page is about; this one is
+    a nice-to-have beside the number the employer actually typed. A listing
+    that fails to render because the market comparison could not be computed
+    would be a worse page than one without the comparison.
+  */
+  if (error) {
+    logFailure('jobs', 'could not read the salary reference', {
+      track,
+      governorate: governorateId,
+      code: error.code,
+    });
+    return null;
+  }
+
+  return (data as SalaryReferenceRow[])?.[0] ?? null;
+});

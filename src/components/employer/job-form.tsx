@@ -19,13 +19,15 @@ import {
   JOB_TRACKS,
   LEADS_SOURCES,
 } from '@/lib/taxonomy';
-import { findSimilarListing, saveJob } from '@/lib/actions/employer-jobs';
+import { findSimilarListing, salaryReferenceFor, saveJob } from '@/lib/actions/employer-jobs';
+import { SalaryReferenceLine } from '@/components/jobs/compensation';
 import type {
   Benefit,
   CommissionType,
   DeveloperRow,
   DistrictRow,
   JobRow,
+  SalaryReferenceRow,
 } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 
@@ -158,6 +160,14 @@ export function JobForm({
     round trip to move forward. Dismissed with a tap; never enforced.
   */
   const [similar, setSimilar] = useState<{ id: string; title: string; seats: number } | null>(null);
+  /*
+    And what listings like this one pay, asked on the same trip for the same
+    reason: the answer belongs on the compensation step, and nobody should wait
+    on a round trip to reach it. Null far more often than not — the database
+    refuses to summarise fewer than five live listings in the bucket — and then
+    the step looks exactly as it did before this existed.
+  */
+  const [reference, setReference] = useState<SalaryReferenceRow | null>(null);
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -168,6 +178,11 @@ export function JobForm({
           districtId: values.districtId,
           excludeId: job?.id,
         }).then((result) => setSimilar(result.ok ? result.data?.match ?? null : null));
+
+        void salaryReferenceFor({
+          track: values.track,
+          districtId: values.districtId,
+        }).then((result) => setReference(result.ok ? result.data?.reference ?? null : null));
       }
       setStep((current) => current + 1);
       return;
@@ -402,6 +417,8 @@ export function JobForm({
                 />
               </Field>
             </div>
+
+            <SalaryReferenceLine reference={reference} locale={locale} />
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label={t('commissionType')} htmlFor="commissionType">
