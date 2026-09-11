@@ -79,7 +79,10 @@
     "closedCtaBody": "It is no longer accepting applications.",
     "verifiedMeaning": "This company uploaded its commercial register and tax card, and our team reviewed them.",
     "closedOn": "This listing closed on {date}.",
-    "browseOpen": "Browse open roles"
+    "browseOpen": "Browse open roles",
+    "atCompany": "Roles at {company}",
+    "companyPage": "Company page",
+    "allCompanies": "All companies"
   },
   "compensation": {
     "title": "Pay and commission",
@@ -181,7 +184,12 @@
     "nameAr": "Company name (Arabic)",
     "nameEn": "Company name (English)",
     "aboutAr": "About the company (Arabic)",
-    "aboutEn": "About the company (English)"
+    "aboutEn": "About the company (English)",
+    "follow": "Follow",
+    "following": "Following",
+    "followHint": "We'll tell you when they post a new role.",
+    "followingHint": "Their new roles arrive in your weekly email.",
+    "followCap": "That's the limit — 10 follows and saved searches between them. Remove one from Saved."
   },
   "agents": {
     "title": "Real estate consultant directory",
@@ -911,14 +919,15 @@
     "labelField": "Search name",
     "saved": "Saved",
     "alreadySaved": "You have already saved this search.",
-    "cap": "You have reached the limit of 10 saved searches. Delete one to save another.",
+    "cap": "That's the limit — 10 saved searches and follows between them. Remove one to save another.",
     "noFilters": "Pick some filters first.",
-    "title": "Saved searches",
-    "empty": "No saved searches yet. Filter the jobs, then press “Alert me”.",
+    "title": "Saved searches and companies you follow",
+    "empty": "Nothing here yet. Filter the jobs and press “Alert me”, or follow a company from its page.",
     "alertsOn": "Alerts on",
     "alertsOff": "Alerts off",
     "remove": "Delete",
-    "weekly": "A weekly email with new roles matching this search."
+    "weekly": "A weekly email with what is new from each search and company here.",
+    "unfollow": "Unfollow"
   },
   "theme": {
     "label": "Appearance",

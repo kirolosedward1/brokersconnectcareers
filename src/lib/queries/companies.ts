@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from './error';
 import { likeNeedle } from '@/lib/search/needle';
@@ -85,7 +86,14 @@ export async function queryCompanies({
 
 export type CompanyProfile = CompanyRow & { district: DistrictRow | null };
 
-export async function getCompanyBySlug(slug: string): Promise<CompanyProfile | null> {
+/**
+ * Cached per request: `generateMetadata`, the page body, and the banner the
+ * job board shows when it is pinned to one company all ask for the same row,
+ * and without this each of them paid for it.
+ */
+export const getCompanyBySlug = cache(async function getCompanyBySlug(
+  slug: string,
+): Promise<CompanyProfile | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('companies')
@@ -95,7 +103,7 @@ export async function getCompanyBySlug(slug: string): Promise<CompanyProfile | n
 
   if (error) raise(error, 'loading a company');
   return (data as unknown as CompanyProfile) ?? null;
-}
+});
 
 export function isVerified(status: VerificationStatus): boolean {
   return status === 'verified';

@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Bell, BellOff, Search, Trash2 } from 'lucide-react';
+import { Bell, BellOff, Building2, Search, Trash2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { deleteSavedSearch, setSearchAlerts } from '@/lib/actions/saved-searches';
+import { followedCompany } from '@/lib/saved-search';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
 
 /**
@@ -13,6 +14,12 @@ import type { SavedSearchRow } from '@/lib/supabase/database.types';
  * Deleting removes the row from the list optimistically. A saved search is
  * cheap to recreate — it is one click on the jobs page — so the cost of being
  * wrong here is far lower than the cost of a list that feels unresponsive.
+ *
+ * Followed companies live in this list too, because underneath they are the
+ * same row: a saved search with one filter. They are drawn as what the reader
+ * did rather than as what the schema stored — a company mark, and a link to
+ * the company rather than to a filtered board — so "stop following" is found
+ * where following was, and the bell means the same thing on both.
  */
 export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
   const t = useTranslations('savedSearch');
@@ -49,50 +56,60 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
 
   return (
     <ul className="space-y-2">
-      {rows.map((row) => (
-        <li
-          key={row.id}
-          className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm"
-        >
-          <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      {rows.map((row) => {
+        // A saved search with one company filter is a follow. Same row, and
+        // the same bell — only drawn as the thing the reader actually did.
+        const company = followedCompany(row.query);
 
-          <Link
-            href={`/jobs?${row.query}`}
-            className="min-w-0 flex-1 truncate font-medium transition-colors hover:text-primary"
+        return (
+          <li
+            key={row.id}
+            className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm"
           >
-            {row.label}
-          </Link>
-
-          <button
-            type="button"
-            onClick={() => toggle(row)}
-            disabled={pending}
-            aria-pressed={row.alerts}
-            className={
-              row.alerts
-                ? 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors'
-                : 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors'
-            }
-          >
-            {row.alerts ? (
-              <Bell className="size-3.5" aria-hidden />
+            {company ? (
+              <Building2 className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             ) : (
-              <BellOff className="size-3.5" aria-hidden />
+              <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             )}
-            {row.alerts ? t('alertsOn') : t('alertsOff')}
-          </button>
 
-          <button
-            type="button"
-            onClick={() => remove(row.id)}
-            disabled={pending}
-            aria-label={t('remove')}
-            className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </button>
-        </li>
-      ))}
+            <Link
+              href={company ? `/companies/${company}` : `/jobs?${row.query}`}
+              className="min-w-0 flex-1 truncate font-medium transition-colors hover:text-primary"
+            >
+              {row.label}
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => toggle(row)}
+              disabled={pending}
+              aria-pressed={row.alerts}
+              className={
+                row.alerts
+                  ? 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors'
+                  : 'inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors'
+              }
+            >
+              {row.alerts ? (
+                <Bell className="size-3.5" aria-hidden />
+              ) : (
+                <BellOff className="size-3.5" aria-hidden />
+              )}
+              {row.alerts ? t('alertsOn') : t('alertsOff')}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => remove(row.id)}
+              disabled={pending}
+              aria-label={company ? t('unfollow') : t('remove')}
+              className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }

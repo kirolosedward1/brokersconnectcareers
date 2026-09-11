@@ -4,6 +4,7 @@ import { SearchX } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, localized, type Locale } from '@/i18n/routing';
 import { JobCard } from '@/components/jobs/job-card';
+import { CompanyLogo } from '@/components/companies/company-logo';
 import { JobFilters } from '@/components/jobs/job-filters';
 import { MobileFilters } from '@/components/mobile-filters';
 import { SaveSearch } from '@/components/jobs/save-search';
@@ -13,6 +14,7 @@ import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import { SortSelect } from '@/components/jobs/sort-select';
 import { getDistricts, getGovernorates } from '@/lib/queries/taxonomy';
+import { getCompanyBySlug } from '@/lib/queries/companies';
 import {
   countActiveFilters,
   parseJobFilters,
@@ -86,12 +88,25 @@ export default async function JobsPage({
     savedIds = new Set((saved ?? []).map((row) => row.job_id));
   }
 
+  /*
+    The company the board is pinned to, if any.
+
+    Serial rather than folded into the batch above, because it only happens on
+    the one path that asks for it — a follow's link, or the company page's own
+    "see all roles". The row is cached per request, so the banner and anything
+    else that wants the name share a single read.
+  */
+  const pinnedCompany = filters.companySlug ? await getCompanyBySlug(filters.companySlug) : null;
+
   const t = await getTranslations('jobs');
   const tTrack = await getTranslations('track');
 
   // A name the reader would recognise in a list a month from now. Their own
   // search words if they typed any, otherwise the filters that narrowed it.
   const defaultSearchLabel = (() => {
+    // A board pinned to one brokerage is a follow; name it after the brokerage
+    // so the saved row and the weekly mail both say what it is.
+    if (pinnedCompany) return localized(locale, pinnedCompany.name_ar, pinnedCompany.name_en);
     if (filters.q) return filters.q;
     const parts: string[] = [];
     if (filters.tracks[0]) parts.push(tTrack(filters.tracks[0]));
@@ -100,8 +115,8 @@ export default async function JobsPage({
     return parts.join(' · ') || t('title');
   })();
 
-  const buildHref = (page: number) => {
-    const search = serializeJobFilters({ ...filters, page });
+  const buildHref = (page: number, overrides: Partial<typeof filters> = {}) => {
+    const search = serializeJobFilters({ ...filters, ...overrides, page });
     const query = search.toString();
     return query ? `/jobs?${query}` : '/jobs';
   };
@@ -131,6 +146,36 @@ export default async function JobsPage({
           <SaveSearch signedIn={Boolean(viewer)} defaultLabel={defaultSearchLabel} />
         ) : null}
       </header>
+
+      {pinnedCompany ? (
+        <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+          <CompanyLogo
+            name={localized(locale, pinnedCompany.name_ar, pinnedCompany.name_en)}
+            logoUrl={pinnedCompany.logo_url}
+            seed={pinnedCompany.slug}
+          />
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium">
+              {t('atCompany', {
+                company: localized(locale, pinnedCompany.name_ar, pinnedCompany.name_en),
+              })}
+            </p>
+            <Link
+              href={`/companies/${pinnedCompany.slug}`}
+              className="text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+            >
+              {t('companyPage')}
+            </Link>
+          </div>
+
+          {/* Page reset with it: leaving the company behind on page 3 of its
+              listings lands on page 3 of the whole board. */}
+          <Button asChild variant="ghost" size="sm">
+            <Link href={buildHref(1, { companySlug: null })}>{t('allCompanies')}</Link>
+          </Button>
+        </div>
+      ) : null}
 
       <div className="mb-4 lg:hidden">
         <MobileFilters count={activeCount}>{filterPanel}</MobileFilters>

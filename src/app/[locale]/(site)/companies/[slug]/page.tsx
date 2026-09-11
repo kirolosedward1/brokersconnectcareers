@@ -5,10 +5,13 @@ import { Globe, MapPin, Users } from 'lucide-react';
 import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
+import { FollowCompanyButton } from '@/components/companies/follow-company-button';
 import { JobCard } from '@/components/jobs/job-card';
 import { JsonLd } from '@/components/json-ld';
 import { getCompanyBySlug } from '@/lib/queries/companies';
 import { createClient } from '@/lib/supabase/server';
+import { getViewer } from '@/lib/auth';
+import { followQuery } from '@/lib/saved-search';
 import { env } from '@/lib/env';
 import { truncate, toPlainText } from '@/lib/utils';
 import type { JobListItem } from '@/lib/queries/jobs';
@@ -73,6 +76,30 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
     .order('published_at', { ascending: false });
 
   const jobs = (data ?? []) as unknown as JobListItem[];
+
+  /*
+    Whether this reader already follows the company.
+
+    One row lookup, and only for somebody signed in — there is no answer to
+    give a visitor, and the page is otherwise public and cacheable. Row-level
+    security scopes saved_searches to its owner, so no candidate_id is written
+    here, for the same reason it is not written on the inbox.
+
+    Hidden from the company's own people: being told weekly about listings you
+    posted yourself is not a feature.
+  */
+  const viewer = await getViewer();
+  const ownHouse = viewer?.company?.id === company.id;
+  let following = false;
+
+  if (viewer && !ownHouse) {
+    const { data: follow } = await supabase
+      .from('saved_searches')
+      .select('id')
+      .eq('query', followQuery(company.slug))
+      .maybeSingle();
+    following = Boolean(follow);
+  }
 
   const t = await getTranslations('companies');
   const tJobs = await getTranslations('jobs');
@@ -157,6 +184,15 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
               ) : null}
             </dl>
           </div>
+
+          {ownHouse ? null : (
+            <FollowCompanyButton
+              slug={company.slug}
+              label={name}
+              initialFollowing={following}
+              signedIn={Boolean(viewer)}
+            />
+          )}
         </header>
 
         {about ? (

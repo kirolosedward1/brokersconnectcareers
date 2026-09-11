@@ -270,6 +270,30 @@ report.section('verification and credits are granted, never claimed');
   report.check('nobody self-assigns the admin role', !r5.ok, r5.ok ? 'update was allowed' : r5.error);
 }
 
+report.section('a company slug is permanent');
+{
+  /*
+    Three things point at this string and only one of them complains when it
+    moves. /companies/<slug> 404s, which gets reported. A follow — a saved
+    search whose query is exactly `company=<slug>` — keeps matching nothing:
+    the weekly digest finds no new roles forever, with no error anywhere and
+    nothing on the candidate's screen to explain it.
+  */
+  const r = await as(employerUnverified,
+    `update companies set slug='renamed-123456' where id='${unverifiedCo}'`);
+  report.check('an owner cannot change their own slug', !r.ok, r.ok ? 'update was allowed' : r.error);
+
+  const r2 = await as(employerUnverified,
+    `update companies set name_en='Renamed Properties' where id='${unverifiedCo}' returning name_en`);
+  report.check('but renaming the company is untouched', r2.ok && r2.rows.length === 1, r2.error);
+
+  // The escape hatch, and the reason this is a guard rather than a revoked
+  // column privilege: a slug that is genuinely wrong has to be fixable.
+  const r3 = await as(admin,
+    `update companies set slug='renamed-123456' where id='${unverifiedCo}' returning slug`);
+  report.check('an admin can still fix one', r3.ok && r3.rows.length === 1, r3.error);
+}
+
 report.section('unsubscribe tokens are not user-writable');
 {
   const r = await as(OUTSIDER, `update profiles set unsubscribe_token=gen_random_uuid() where id='${OUTSIDER}'`);

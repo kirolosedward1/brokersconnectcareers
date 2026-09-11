@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { parseJobFilters } from '@/lib/queries/jobs';
-import { toCanonicalQuery } from '@/lib/saved-search';
+import { followQuery, toCanonicalQuery } from '@/lib/saved-search';
 import type { ActionResult } from '@/lib/actions/jobs';
 
 const saveSchema = z.object({
@@ -84,6 +84,97 @@ export async function setSearchAlerts(input: unknown): Promise<ActionResult> {
 
   if (error) return { ok: false, error: error.message };
   if (!changed?.length) return { ok: false, error: 'forbidden' };
+
+  revalidatePath('/dashboard/saved');
+  return { ok: true };
+}
+
+
+/* ---------------------------------------------------------------------------
+   Following a company.
+
+   A consultant who wants to work for one specific developer's brokerage had no
+   way to hear when they post — they had to remember to come back and look.
+
+   Deliberately not a table. A follow is a saved search whose only filter is
+   the company, which means the weekly alert job already delivers it, the
+   unsubscribe link already covers it, the ten-row cap already bounds it, and
+   there is no second notion of "what this person wants to hear about" to keep
+   in step with the first. The one cost is that follows and searches share that
+   cap, which the copy on both surfaces says out loud rather than leaving to be
+   discovered at the moment of failure.
+   --------------------------------------------------------------------------- */
+
+const followSchema = z.object({
+  slug: z.string().trim().toLowerCase().regex(/^[a-z0-9-]{1,80}$/),
+  /** The company's name in the reader's language — what the digest will call it. */
+  label: z.string().trim().min(1).max(80),
+});
+
+export async function followCompany(input: unknown): Promise<ActionResult<{ id: string }>> {
+  const parsed = followSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const query = followQuery(parsed.data.slug);
+
+  const { data, error } = await supabase
+    .from('saved_searches')
+    .insert({ candidate_id: user.id, label: parsed.data.label, query, alerts: true })
+    .select('id')
+    .single();
+
+  if (error) {
+    /*
+      Already following is not a failure.
+
+      The button is a toggle, and a toggle that reports an error when the world
+      already matches what it was asked for is a toggle that will get pressed
+      twice. The row is the follow; finding one is the outcome. Its alerts flag
+      is left exactly as the owner set it — re-pressing Follow must not quietly
+      switch weekly mail back on for somebody who turned it off.
+    */
+    if (error.code === '23505') {
+      const { data: existing } = await supabase
+        .from('saved_searches')
+        .select('id')
+        .eq('query', query)
+        .maybeSingle();
+      if (existing) return { ok: true, data: { id: existing.id } };
+    }
+    if (error.message.includes('saved_search_cap')) return { ok: false, error: 'cap' };
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath('/dashboard/saved');
+  return { ok: true, data: { id: data.id } };
+}
+
+export async function unfollowCompany(slug: unknown): Promise<ActionResult> {
+  const parsed = z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9-]{1,80}$/)
+    .safeParse(slug);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  // RLS scopes the delete to the caller's own rows. Removing nothing is
+  // reported as success here, unlike deleteSavedSearch by id: the id form can
+  // only be aimed at somebody else's row, while this one names a company, and
+  // "stop following" has got what it asked for either way.
+  const { error } = await supabase
+    .from('saved_searches')
+    .delete()
+    .eq('query', followQuery(parsed.data));
+
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath('/dashboard/saved');
   return { ok: true };

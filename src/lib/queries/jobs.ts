@@ -18,6 +18,7 @@ import type {
   LeadsSource,
 } from '@/lib/supabase/database.types';
 import { searchText } from '@/lib/search/arabic';
+import { companySlugOrNull } from '@/lib/search/company-slug';
 
 export const JOBS_PER_PAGE = 20;
 
@@ -35,6 +36,16 @@ export type JobFilters = {
   districtSlugs: string[];
   governorateSlug: string | null;
   hasBasicSalary: boolean | null;
+  /**
+   * One company's listings, by slug.
+   *
+   * Here rather than in a table of its own because "follow this brokerage" is
+   * the same question as "show me this brokerage's roles", asked weekly. A
+   * follow is a saved search carrying this filter with alerts on, so the
+   * digest that already exists delivers it — no second table, no second mail,
+   * and no second copy of the filter model to drift out of step.
+   */
+  companySlug: string | null;
   sort: JobSort;
   page: number;
 };
@@ -48,6 +59,7 @@ export const EMPTY_FILTERS: JobFilters = {
   districtSlugs: [],
   governorateSlug: null,
   hasBasicSalary: null,
+  companySlug: null,
   sort: 'newest',
   page: 1,
 };
@@ -81,6 +93,7 @@ export function parseJobFilters(searchParams: SearchParams): JobFilters {
     districtSlugs: many(searchParams.district).slice(0, 12),
     governorateSlug: typeof searchParams.gov === 'string' ? searchParams.gov : null,
     hasBasicSalary: salary === 'yes' ? true : salary === 'no' ? false : null,
+    companySlug: companySlugOrNull(searchParams.company),
     sort: sort === 'salary' || sort === 'seats' ? sort : 'newest',
     page: Number.isFinite(page) && page > 0 ? Math.min(page, 500) : 1,
   };
@@ -98,6 +111,7 @@ export function serializeJobFilters(filters: JobFilters): URLSearchParams {
   if (filters.governorateSlug) params.set('gov', filters.governorateSlug);
   if (filters.hasBasicSalary === true) params.set('salary', 'yes');
   if (filters.hasBasicSalary === false) params.set('salary', 'no');
+  if (filters.companySlug) params.set('company', filters.companySlug);
   if (filters.sort !== 'newest') params.set('sort', filters.sort);
   if (filters.page > 1) params.set('page', String(filters.page));
   return params;
@@ -112,7 +126,8 @@ export function countActiveFilters(filters: JobFilters): number {
     filters.employmentTypes.length +
     filters.districtSlugs.length +
     (filters.governorateSlug ? 1 : 0) +
-    (filters.hasBasicSalary === null ? 0 : 1)
+    (filters.hasBasicSalary === null ? 0 : 1) +
+    (filters.companySlug ? 1 : 0)
   );
 }
 
@@ -209,6 +224,17 @@ export const queryJobs = cache(async function queryJobs(
 
   if (filters.hasBasicSalary === true) query = query.not('basic_salary_min', 'is', null);
   if (filters.hasBasicSalary === false) query = query.is('basic_salary_min', null);
+
+  /*
+    Through the embedded company rather than a resolved id.
+
+    `companies!inner` is already in the select, so this narrows the top-level
+    rows and the exact count along with them — one round trip instead of a slug
+    lookup followed by the real query. The value is slug-shaped by the parser
+    above, and `.eq` encodes its operand rather than splicing it into a filter
+    expression, so neither half of this is trusting the URL.
+  */
+  if (filters.companySlug) query = query.eq('company.slug', filters.companySlug);
 
   // Featured listings pin to the top of every sort; the paid placement is
   // worthless if a sort change buries it.
