@@ -358,7 +358,7 @@
     "matchNudge": "This is ordered by newest only.",
     "matchNudgeCta": "Add your track and districts and we will order them to fit you",
     "nextApplicantsTitle": "{count, plural, one {# applicant is waiting on you} other {# applicants are waiting on you}}",
-    "nextApplicantsBody": "Nobody has opened them yet. Open them and move their status so they know they were seen.",
+    "nextApplicantsBody": "Their status has not moved yet. Move it so they know where they stand.",
     "nextApplicantsCta": "See the applicants",
     "nextExpiringTitle": "{count, plural, one {# listing ends this week} other {# listings end this week}}",
     "nextExpiringBody": "Once it ends it stops appearing in search. You can renew it before it closes.",
