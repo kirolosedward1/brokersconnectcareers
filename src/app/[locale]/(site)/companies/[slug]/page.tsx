@@ -10,6 +10,7 @@ import { JobCard } from '@/components/jobs/job-card';
 import { JsonLd } from '@/components/json-ld';
 import { getCompanyBySlug } from '@/lib/queries/companies';
 import { createClient } from '@/lib/supabase/server';
+import { raise } from '@/lib/queries/error';
 import { getViewer } from '@/lib/auth';
 import { followQuery } from '@/lib/saved-search';
 import { env } from '@/lib/env';
@@ -61,7 +62,16 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
   if (!company) notFound();
 
   const supabase = await createClient();
-  const { data } = await supabase
+  /*
+    The error is read, not dropped.
+
+    "لا توجد وظائف مفتوحة" on a brokerage with three live adverts is a claim
+    about a company, shown to the public, on the page that company will send
+    people to. The (site) group has its own error boundary, so raising here
+    costs a page that says something went wrong rather than a page that says
+    something false.
+  */
+  const { data, error } = await supabase
     .from('jobs')
     .select(
       `
@@ -74,6 +84,8 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
     .eq('status', 'active')
     .gt('expires_at', new Date().toISOString())
     .order('published_at', { ascending: false });
+
+  if (error) raise(error, "loading a company's open roles");
 
   const jobs = (data ?? []) as unknown as JobListItem[];
 
@@ -93,6 +105,9 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
   let following = false;
 
   if (viewer && !ownHouse) {
+    // Allowed to fail quietly: the button falls back to "follow", and
+    // pressing it lands on the unique constraint and reports success, because
+    // already following is the outcome it was asked for.
     const { data: follow } = await supabase
       .from('saved_searches')
       .select('id')

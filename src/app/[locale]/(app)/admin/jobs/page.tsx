@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ModerateJobActions } from '@/components/admin/moderate-job-actions';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { raise } from '@/lib/queries/error';
 import { formatDate, formatEgp } from '@/lib/utils';
 import type { JobRow } from '@/lib/supabase/database.types';
 
@@ -41,7 +42,16 @@ export default async function AdminJobsPage({
   const filter = status === 'active' ? 'active' : 'pending_review';
 
   const supabase = await createClient();
-  const { data } = await supabase
+  /*
+    The error is read, not dropped.
+
+    A moderation queue that renders empty when the read failed is the worst
+    place in the product for this: the answer "nothing is waiting" is exactly
+    what a reviewer acts on, and acting on it means going away. There is no
+    honest partial version of a queue, so this raises to the console's error
+    boundary, which offers Retry.
+  */
+  const { data, error } = await supabase
     .from('jobs')
     .select(
       `
@@ -52,6 +62,8 @@ export default async function AdminJobsPage({
     )
     .eq('status', filter)
     .order('created_at', { ascending: true });
+
+  if (error) raise(error, 'loading the listing queue');
 
   const jobs = (data ?? []) as unknown as QueueRow[];
 

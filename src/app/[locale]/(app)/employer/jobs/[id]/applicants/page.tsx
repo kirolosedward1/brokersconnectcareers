@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ApplicantCard, type ApplicantProfile } from '@/components/employer/applicant-card';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { markApplicantsSeen } from '@/lib/applicants-seen';
-import { optional } from '@/lib/queries/error';
+import { optional, raise } from '@/lib/queries/error';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import type {
@@ -61,15 +61,24 @@ export default async function ApplicantsPage({
   const viewer = await requireEmployer(locale);
   const supabase = await createClient();
 
-  const { data: job } = await supabase
+  /*
+    Unreadable is not the same as absent.
+
+    Both used to arrive as `job: null` and both became a 404 — so a database
+    blip told an employer their own listing did not exist. `maybeSingle()`
+    returns no error for no row, so an error here is a real failure and
+    belongs in the error boundary, where Retry means something.
+  */
+  const { data: job, error: jobError } = await supabase
     .from('jobs')
     .select('id, slug, title_ar, title_en, status')
     .eq('id', id)
     .maybeSingle();
 
+  if (jobError) raise(jobError, 'loading the listing');
   if (!job) notFound();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('applications')
     .select(
       `
@@ -87,6 +96,10 @@ export default async function ApplicantsPage({
     )
     .eq('job_id', id)
     .order('created_at', { ascending: false });
+
+  // And the pipeline itself: "nobody has applied" is the wrong thing to tell
+  // an employer whose listing has five applicants and a badge counting them.
+  if (error) raise(error, 'loading this listing\'s applicants');
 
   const applications = (data ?? []) as unknown as ApplicantRow[];
 
@@ -132,6 +145,8 @@ export default async function ApplicantsPage({
   const authorIds = [...new Set(noteRows.map((note) => note.author_id).filter(Boolean))] as string[];
   const noteAuthors: Record<string, string> = {};
   if (authorIds.length) {
+    // Allowed to fail quietly: the notes fall back to "a former colleague",
+    // which is the same thing they show when an author's account is gone.
     const { data: members } = await supabase
       .from('company_members')
       .select('user_id, profile:profiles (full_name)')

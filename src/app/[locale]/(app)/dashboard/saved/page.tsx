@@ -7,6 +7,7 @@ import { JobCard } from '@/components/jobs/job-card';
 import { SavedSearchList } from '@/components/dashboard/saved-search-list';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { raise } from '@/lib/queries/error';
 import type { JobListItem } from '@/lib/queries/jobs';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
 
@@ -31,7 +32,12 @@ export default async function SavedJobsPage({
   const viewer = await requireCandidate(locale);
 
   const supabase = await createClient();
-  const { data } = await supabase
+  /*
+    The error is read, not dropped. A bookmark list that renders empty on a
+    failed read teaches somebody that saving is unreliable, which is the one
+    thing a bookmark cannot afford to be.
+  */
+  const { data, error } = await supabase
     .from('saved_jobs')
     .select(
       `
@@ -53,6 +59,8 @@ export default async function SavedJobsPage({
     */
     .eq('candidate_id', viewer.userId)
     .order('created_at', { ascending: false });
+
+  if (error) raise(error, 'loading your saved jobs');
 
   const jobs = ((data ?? []) as unknown as { job: JobListItem }[])
     .map((row) => row.job)
@@ -78,15 +86,22 @@ export default async function SavedJobsPage({
   const open = jobs.filter((job) => !isClosed(job));
   const closed = jobs.filter(isClosed);
 
-  const { data: searchRows } = await supabase
+  const { data: searchRows, error: searchError } = await supabase
     .from('saved_searches')
     .select('*')
     .eq('candidate_id', viewer.userId)
     .order('created_at', { ascending: false });
 
+  // Same reason: an empty list here reads as "you follow nobody and saved
+  // nothing", and the weekly mail would keep arriving to contradict it.
+  if (searchError) raise(searchError, 'loading your saved searches and follows');
+
   // Which of these were applied to. This is a list somebody curated by hand,
   // so "did I already apply to that one" is the question they arrive with —
   // and it was answerable only by opening each listing.
+  // Allowed to fail quietly: this only decides whether a card carries an
+  // "applied" badge. Losing it understates, and the listing itself says so
+  // when they open it.
   const { data: mine } = await supabase
     .from('applications')
     .select('job_id')

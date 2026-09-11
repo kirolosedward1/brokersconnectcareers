@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { requireProfile } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { raise } from '@/lib/queries/error';
 import type { NotificationRow } from '@/lib/supabase/database.types';
 
 export async function generateMetadata({
@@ -38,7 +39,12 @@ export default async function NotificationsPage({
   const viewer = await requireProfile(locale);
   const supabase = await createClient();
 
-  const { data } = await supabase
+  /*
+    The error is read, not dropped. The bell in the rail carries a count from
+    another call, so a failure here produced a page saying "no notifications"
+    under a badge saying four.
+  */
+  const { data, error } = await supabase
     .from('notifications')
     .select('*')
     // Scoped explicitly so the (user_id, created_at) index serves this;
@@ -46,6 +52,8 @@ export default async function NotificationsPage({
     .eq('user_id', viewer.userId)
     .order('created_at', { ascending: false })
     .limit(100);
+
+  if (error) raise(error, 'loading your notifications');
 
   const notifications = (data ?? []) as NotificationRow[];
   const unread = notifications.filter((row) => !row.read_at).length;

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ApprovalActions } from '@/components/admin/approval-actions';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { raise } from '@/lib/queries/error';
 import { formatDate, formatNumber } from '@/lib/utils';
 import type { ApprovalStatus, ProfileRow, UserRole } from '@/lib/supabase/database.types';
 
@@ -73,7 +74,18 @@ export default async function AdminUsersPage({
     query = query.eq('approval_status', status);
   }
 
-  const { data } = await query;
+  /*
+    The error is read, not dropped.
+
+    A moderation queue that renders empty when the read failed is the worst
+    place in the product for this: the answer "nothing is waiting" is exactly
+    what a reviewer acts on, and acting on it means going away. There is no
+    honest partial version of a queue, so this raises to the console's error
+    boundary, which offers Retry.
+  */
+  const { data, error } = await query;
+  if (error) raise(error, 'loading the accounts list');
+
   const profiles = (data ?? []) as ProfileRow[];
 
   // Pending first, whatever the sort. The database can order by a CASE, but the

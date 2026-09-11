@@ -9,6 +9,7 @@ import { JobStatusActions } from '@/components/employer/job-status-actions';
 import { requireEmployer } from '@/lib/auth';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { createClient } from '@/lib/supabase/server';
+import { raise } from '@/lib/queries/error';
 import { formatDate, formatNumber, isoDate } from '@/lib/utils';
 import type { JobRow, JobStatus } from '@/lib/supabase/database.types';
 
@@ -58,7 +59,15 @@ export default async function EmployerJobsPage({
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
+  /*
+    The error is read, not dropped.
+
+    An empty listings page offers "post your first listing", which is a strange
+    thing to show a brokerage with four live adverts — and the console's own
+    tiles, which come from a different call, would be counting them at the same
+    time.
+  */
+  const { data, error } = await supabase
     .from('jobs')
     .select(
       `
@@ -69,6 +78,8 @@ export default async function EmployerJobsPage({
     )
     .eq('company_id', viewer.company.id)
     .order('created_at', { ascending: false });
+
+  if (error) raise(error, 'loading your listings');
 
   const jobs = (data ?? []) as unknown as (JobRow & {
     district: { name_ar: string; name_en: string } | null;

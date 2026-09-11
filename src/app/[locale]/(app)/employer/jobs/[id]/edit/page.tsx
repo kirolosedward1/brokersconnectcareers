@@ -5,6 +5,7 @@ import { asLocale, type Locale } from '@/i18n/routing';
 import { JobForm } from '@/components/employer/job-form';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { raise } from '@/lib/queries/error';
 import { getDistricts, getDevelopers } from '@/lib/queries/taxonomy';
 import type { JobRow } from '@/lib/supabase/database.types';
 
@@ -32,9 +33,20 @@ export default async function EditJobPage({
 
   // RLS scopes this to jobs the caller's company owns, so a wrong id is simply
   // not found rather than forbidden.
-  const { data: job } = await supabase.from('jobs').select('*').eq('id', id).maybeSingle();
+  // Unreadable is not absent: both arrived as null and both became a 404, so
+  // a blip told an employer their own listing was gone rather than that
+  // something had failed. The same distinction the applicants page now makes.
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (jobError) raise(jobError, 'loading the listing to edit');
   if (!job) notFound();
 
+  // Allowed to fail quietly, for the same reason the profile's developer
+  // chips are: an unticked box in one field, which the next save corrects.
   const { data: jobDevelopers } = await supabase
     .from('job_developers')
     .select('developer_id')

@@ -11,7 +11,7 @@ import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
 import { getDistricts } from '@/lib/queries/taxonomy';
-import { optional } from '@/lib/queries/error';
+import { optional, raise } from '@/lib/queries/error';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
 import type {
   ApplicationNoteRow,
@@ -69,6 +69,9 @@ const STAGES = ['new', 'shortlisted', 'interview', 'hired', 'rejected'] as const
  * two disagree is the day the warning is wrong in a way nobody can see.
  */
 const APPLICANTS_SHOWN = 200;
+
+/** What a `?job=` has to look like before it reaches a uuid column. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Every applicant across every listing, newest first.
@@ -184,7 +187,16 @@ export default async function AllApplicantsPage({
   // ignored instead of reaching the query as an invalid enum value.
   const activeStage = STAGES.find((value) => value === stage);
   if (activeStage) query = query.eq('status', activeStage);
-  if (jobFilter) query = query.eq('job_id', jobFilter);
+  /*
+    The same rule the stage gets, which this filter was left out of.
+
+    `?job=` is compared against a uuid column, so anything that is not one is
+    not a filter that matches nothing — it is a cast error on the way to the
+    database. Row-level security would have refused another company's id
+    anyway; this is about the shape, and about the page below rendering "no
+    applicants yet" for a URL that was simply malformed.
+  */
+  if (jobFilter && UUID.test(jobFilter)) query = query.eq('job_id', jobFilter);
   if (band) query = query.eq('experience_band', band);
   // On the joined listing — `jobs!inner` above is what makes this a filter
   // rather than a null-out of the embed.
@@ -194,7 +206,23 @@ export default async function AllApplicantsPage({
   // that quietly only looks at the most recent page is worse than none.
   if (pattern) query = query.ilike('candidate.full_name', pattern);
 
-  const { data } = await query;
+  /*
+    The error is read, not dropped.
+
+    This was `const { data } = await query`, so any failure — a malformed
+    filter, a connection blip, a policy change — arrived as `data: null` and
+    the page rendered its empty state: "لسه مفيش متقدمين", to a company with
+    ten applications waiting. Round 3 spent a prompt on mutations that fail in
+    silence; this is the same failure on the read that the whole screen is
+    about, and the empty state is exactly the wrong lie to tell an employer.
+
+    Raised rather than softened, because there is no honest partial version of
+    this page. The console has an error boundary with a Retry, which is a
+    truthful answer where "nobody applied" is not.
+  */
+  const { data, error } = await query;
+  if (error) raise(error, 'loading the applicant inbox');
+
   const rows = (data ?? []) as unknown as Row[];
 
   // Seen, because they are on the screen — see the note in applicants-seen.ts.
@@ -237,6 +265,8 @@ export default async function AllApplicantsPage({
   const authorIds = [...new Set(noteRows.map((note) => note.author_id).filter(Boolean))] as string[];
   const noteAuthors: Record<string, string> = {};
   if (authorIds.length) {
+    // Allowed to fail quietly: the notes fall back to "a former colleague",
+    // which is the same thing they show when an author's account is gone.
     const { data: members } = await supabase
       .from('company_members')
       .select('user_id, profile:profiles (full_name)')
@@ -266,13 +296,21 @@ export default async function AllApplicantsPage({
     .select('status, candidate:profiles!inner (full_name), job:jobs!inner (track)')
     .limit(2000);
   counter = counter.eq('job.company_id', viewer.company?.id ?? NO_COMPANY);
-  if (jobFilter) counter = counter.eq('job_id', jobFilter);
+  if (jobFilter && UUID.test(jobFilter)) counter = counter.eq('job_id', jobFilter);
   if (band) counter = counter.eq('experience_band', band);
   if (track) counter = counter.eq('job.track', track);
   // The counts are what each chip is worth *within the current search*. Left
   // unfiltered they would promise applicants that clicking cannot produce.
   if (pattern) counter = counter.ilike('candidate.full_name', pattern);
-  const { data: statuses } = await counter;
+  /*
+    The chips are numbers, and a wrong number shown confidently is the failure
+    this project keeps returning to. A dropped error here left every chip at
+    zero above a list of two hundred rows — visibly inconsistent, which is
+    better than invisible, but still a screen full of figures that are not
+    true.
+  */
+  const { data: statuses, error: countError } = await counter;
+  if (countError) raise(countError, 'counting the applicant stages');
 
   const stageCount = new Map<string, number>();
   for (const item of (statuses ?? []) as { status: string }[]) {

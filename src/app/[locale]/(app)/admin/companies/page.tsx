@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { VerifyCompanyActions } from '@/components/admin/verify-company-actions';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { raise } from '@/lib/queries/error';
 import { formatDate } from '@/lib/utils';
 import type { CompanyRow, CompanyDocumentRow } from '@/lib/supabase/database.types';
 
@@ -32,12 +33,23 @@ export default async function AdminCompaniesPage({
   const supabase = await createClient();
 
   // The queue is companies that have submitted at least one pending document.
-  const { data } = await supabase
+  /*
+    The error is read, not dropped.
+
+    A moderation queue that renders empty when the read failed is the worst
+    place in the product for this: the answer "nothing is waiting" is exactly
+    what a reviewer acts on, and acting on it means going away. There is no
+    honest partial version of a queue, so this raises to the console's error
+    boundary, which offers Retry.
+  */
+  const { data, error } = await supabase
     .from('companies')
     .select('*, company_documents!inner (*)')
     .eq('company_documents.status', 'pending')
     .neq('verification_status', 'verified')
     .order('created_at', { ascending: true });
+
+  if (error) raise(error, 'loading the company verification queue');
 
   const companies = (data ?? []) as unknown as (CompanyRow & {
     company_documents: CompanyDocumentRow[];

@@ -156,6 +156,9 @@ export default async function DashboardOverviewPage({
     about the whole board to fill in three cards.
   */
   const suggestionIds = suggestions.map(({ job }) => job.id);
+  // Allowed to fail quietly: this only decides whether three bookmark icons
+  // start filled. Losing it draws them empty, and the toggle corrects itself
+  // on the first press.
   const { data: savedRows } = suggestionIds.length
     ? await supabase.from('saved_jobs').select('job_id').in('job_id', suggestionIds)
     : { data: [] };

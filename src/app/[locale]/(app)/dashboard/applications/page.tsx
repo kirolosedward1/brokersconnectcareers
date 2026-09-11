@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { WithdrawButton } from '@/components/dashboard/withdraw-button';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { raise } from '@/lib/queries/error';
 import { formatDate, isoDate } from '@/lib/utils';
 import type { ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
 
@@ -51,7 +52,14 @@ export default async function ApplicationsPage({
     goes one way — a wrong filter shows fewer rows, never more, because the
     policy is still the thing deciding.
   */
-  const { data } = await supabase
+  /*
+    The error is read, not dropped.
+
+    "لسه ما قدّمتش على أي وظيفة" is the one sentence this page must not say to
+    somebody who has applied to six. A failed read used to produce exactly
+    that, because the error went nowhere and `data` came back null.
+  */
+  const { data, error } = await supabase
     .from('applications')
     .select(
       `
@@ -65,6 +73,8 @@ export default async function ApplicationsPage({
     )
     .eq('candidate_id', viewer.userId)
     .order('created_at', { ascending: false });
+
+  if (error) raise(error, 'loading your applications');
 
   const applications = (data ?? []) as unknown as {
     id: string;

@@ -11,7 +11,7 @@ import { jobIsLive } from '@/lib/job-state';
 import { getViewer } from '@/lib/auth';
 import { JobCard } from '@/components/jobs/job-card';
 import { EMPTY_FILTERS, queryJobs, type JobListItem } from '@/lib/queries/jobs';
-import { optional } from '@/lib/queries/error';
+import { optional, raise } from '@/lib/queries/error';
 import { rankJobs } from '@/lib/match';
 
 import { formatDate } from '@/lib/utils';
@@ -84,12 +84,22 @@ export default async function ApplyPage({
   }
 
   const supabase = await createClient();
-  const { data: existing } = await supabase
+  /*
+    Read, because this decides which of two pages somebody gets.
+
+    A failure used to mean "you have not applied", so the form appeared for a
+    second time and the insert met the unique index — an error after writing a
+    covering note, rather than the receipt the reader had already earned. The
+    unique index still saves them; this makes the page stop guessing.
+  */
+  const { data: existing, error: existingError } = await supabase
     .from('applications')
     .select('id, created_at')
     .eq('job_id', job.id)
     .eq('candidate_id', viewer!.userId)
     .maybeSingle();
+
+  if (existingError) raise(existingError, 'checking whether you have already applied');
 
   /*
     What to show after the confirmation, fetched only when there is going to be

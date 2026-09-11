@@ -10,6 +10,7 @@ import { ProfileRecordForm } from '@/components/dashboard/profile-record-form';
 import { ProfileGaps } from '@/components/dashboard/profile-gaps';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { raise } from '@/lib/queries/error';
 import { getDistricts, getDevelopers } from '@/lib/queries/taxonomy';
 import type {
   AgentCertificationRow,
@@ -37,17 +38,33 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
   const viewer = await requireCandidate(locale);
   const supabase = await createClient();
 
-  const { data: agent } = await supabase
+  /*
+    Unreadable is not the same as "has not made one yet".
+
+    The absence of this row is how the page knows to show an empty form, so a
+    failed read used to present a consultant who has filled everything in with
+    a blank profile to fill in again — and `getViewer` carries a whole
+    `profileUnreadable` flag because the identical confusion once sent
+    established accounts back through onboarding. `maybeSingle()` reports no
+    error for no row, so an error here is a real failure.
+  */
+  const { data: agent, error: agentError } = await supabase
     .from('agent_profiles')
     .select('*')
     .eq('user_id', viewer.userId)
     .maybeSingle();
 
+  // Allowed to fail quietly, unlike the profile row above: these are the
+  // ticked boxes in one field of a form. Losing them renders the field
+  // unticked, which the next save would correct — and taking the whole page
+  // down for a chip list would be the wrong trade.
   const { data: agentDevelopers } = agent
     ? await supabase.from('agent_developers').select('developer_id').eq('agent_id', agent.id)
     : { data: [] as { developer_id: number }[] };
 
   const [districts, developers] = await Promise.all([getDistricts(), getDevelopers()]);
+
+  if (agentError) raise(agentError, 'loading your directory profile');
 
   const typedAgent = (agent as AgentProfileRow | null) ?? null;
 

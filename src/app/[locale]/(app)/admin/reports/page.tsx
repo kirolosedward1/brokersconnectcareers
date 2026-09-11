@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ReportActions } from '@/components/admin/report-actions';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { raise } from '@/lib/queries/error';
 import { formatDate } from '@/lib/utils';
 import type { JobStatus, ReportReason } from '@/lib/supabase/database.types';
 
@@ -54,13 +55,24 @@ export default async function AdminReportsPage({
   await requireAdmin(locale);
 
   const supabase = await createClient();
-  const { data } = await supabase
+  /*
+    The error is read, not dropped.
+
+    A moderation queue that renders empty when the read failed is the worst
+    place in the product for this: the answer "nothing is waiting" is exactly
+    what a reviewer acts on, and acting on it means going away. There is no
+    honest partial version of a queue, so this raises to the console's error
+    boundary, which offers Retry.
+  */
+  const { data, error } = await supabase
     .from('reports')
     .select(
       'id, reason, detail, created_at, job_id, job:jobs (slug, title_ar, title_en, status, company:companies (name_ar, name_en))',
     )
     .eq('resolved', false)
     .order('created_at', { ascending: true });
+
+  if (error) raise(error, 'loading the reports queue');
 
   const rows = (data ?? []) as unknown as ReportRowWithJob[];
 
