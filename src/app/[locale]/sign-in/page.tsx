@@ -42,12 +42,33 @@ export default async function SignInPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }) {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
-  const { next } = await searchParams;
+  const { next, error } = await searchParams;
+
+  /*
+    Three things send somebody back here with a reason: a fragment session
+    that would not store, a code the callback could not exchange, and a
+    callback hit with no code at all. Until now the page read none of them,
+    so a link that had expired or been used twice produced the same screen
+    as typing the URL — with no indication that anything had gone wrong.
+    One sentence, the one the catalogue already has, for all three.
+  */
+  const LINK_ERRORS = new Set(['link_expired', 'missing_code', 'exchange_failed']);
+  const linkFailed = error ? LINK_ERRORS.has(error) : false;
+
+  /*
+    And a fourth, which is not a link at all: a session that ended under
+    somebody who was already signed in and working. Every server action
+    answers `unauthenticated` when that happens, and recoverExpiredSession
+    sends them here with the page they were on in `next`. It gets its own
+    sentence because the honest thing to say is different — nothing expired
+    that they clicked, and they are two fields away from carrying on.
+  */
+  const sessionExpired = error === 'session_expired';
 
   const { google: googleEnabled } = await enabledProviders();
   const t = await getTranslations('auth');
@@ -62,6 +83,12 @@ export default async function SignInPage({
             {t('signUp')}
           </Link>
         </p>
+
+        {linkFailed || sessionExpired ? (
+          <p role="alert" className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+            {sessionExpired ? t('sessionExpired') : t('linkExpired')}
+          </p>
+        ) : null}
 
         <ReturnIntent next={next} locale={locale} />
 

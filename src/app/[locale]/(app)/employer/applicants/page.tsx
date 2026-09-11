@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Inbox, Search } from 'lucide-react';
+import { Inbox, Search, ShieldCheck } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,8 @@ import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
-import type { ApplicationStatus, ExperienceBand } from '@/lib/supabase/database.types';
+import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
+import type { ApplicationStatus, ExperienceBand, JobTrack } from '@/lib/supabase/database.types';
 
 export async function generateMetadata({
   params,
@@ -37,8 +38,18 @@ type Row = {
     avatar_url: string | null;
     agent_profiles: ApplicantProfile | null;
   } | null;
-  job: { id: string; title_ar: string; title_en: string | null } | null;
+  job: { id: string; title_ar: string; title_en: string | null; track: JobTrack } | null;
 };
+
+/**
+ * The id an employer with no company is scoped to.
+ *
+ * `requireEmployer` admits somebody whose company row does not exist yet, and
+ * an undefined filter is not a narrow query — it is no query at all. A uuid
+ * nothing carries asks for nothing, which is the right answer for an account
+ * that has no listings to have applicants on.
+ */
+const NO_COMPANY = '00000000-0000-0000-0000-000000000000';
 
 const STAGES = ['new', 'shortlisted', 'interview', 'hired', 'rejected'] as const;
 
@@ -61,13 +72,30 @@ export default async function AllApplicantsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ stage?: string; job?: string; q?: string }>;
+  searchParams: Promise<{ stage?: string; job?: string; q?: string; band?: string; track?: string }>;
 }) {
   const locale = asLocale((await params).locale);
   setRequestLocale(locale);
 
   const viewer = await requireEmployer(locale);
-  const { stage, job: jobFilter, q: rawQuery } = await searchParams;
+  const { stage, job: jobFilter, q: rawQuery, band: rawBand, track: rawTrack } = await searchParams;
+
+  /*
+    Two more ways to narrow, both real columns rather than derived guesses.
+
+    The experience band is the applicant's own answer at apply time, on the
+    application row itself. The specialisation is the listing's track — the
+    thing a brokerage hiring for three primary-sales roles and one rentals
+    role wants to slice by, and which the per-listing chips only offer one
+    listing at a time. The applicant's *own* tracks live on their profile and
+    are shown on the card; filtering by those would need an inner join that
+    drops applicants without a profile, which is the wrong trade.
+
+    Narrowed against the enums like ?stage= is, so an unknown value is ignored
+    rather than sent to the database.
+  */
+  const band = EXPERIENCE_BANDS.find((value) => value === rawBand);
+  const track = JOB_TRACKS.find((value) => value === rawTrack);
 
   /*
     A name to look for.
@@ -81,9 +109,39 @@ export default async function AllApplicantsPage({
   const pattern = query_ ? `%${query_.replace(/[%_\\]/g, (c) => `\\${c}`)}%` : null;
   const supabase = await createClient();
 
-  // No company filter here on purpose. Row-level security already limits
-  // applications to listings this employer owns, so a filter written here
-  // would be a second copy of that rule, drifting from the first.
+  /*
+    Scoped to this company, with row-level security still behind it.
+
+    This deliberately carried no company filter, on the grounds that RLS
+    already limits applications to listings this employer owns and a second
+    filter would be a second copy of the rule. The reasoning is sound and the
+    cost is not: without a filter the planner has nothing to index on, so it
+    scans every application on the platform and evaluates `owns_job()` — a
+    SECURITY DEFINER function — on each one. Measured on production against
+    22,432 applications, the same shape of query took two seconds; with the
+    scope it takes two and a half milliseconds.
+
+    They are not two copies of one rule. RLS decides what may be seen; this
+    decides what to look at. And the drift only runs one way: a wrong filter
+    shows fewer rows, never more, because the policy is still what decides.
+
+    What is left, measured rather than guessed, so the next person to wonder
+    does not have to: with 7,010 applications on this one company the query is
+    310 ms, and the cost is `owns_job()` being called once per row by the
+    applications select policy. Two things were tried and neither is here.
+
+    An index on (job_id, created_at desc) takes it to 231 ms without changing
+    the plan's shape — the nested loop still materialises every row before the
+    sort picks fifty. Twenty-five per cent of a cost that does not exist yet,
+    for an index overlapping the (job_id, status) one already present, which is
+    the index bloat migration 30 argues against.
+
+    Rewriting the policy so the planner can hoist the predicate would be the
+    real fix and is not worth it now: it is a change to the authorization model
+    this round spent eighteen prompts making trustworthy, bought against a
+    number that only appears at two hundred times today's data. Revisit it with
+    traffic, not with instinct.
+  */
   let query = supabase
     .from('applications')
     .select(
@@ -98,9 +156,10 @@ export default async function AllApplicantsPage({
           tracks, district_ids, units_closed, volume_egp
         )
       ),
-      job:jobs!inner (id, title_ar, title_en)
+      job:jobs!inner (id, title_ar, title_en, track)
     `,
     )
+    .eq('job.company_id', viewer.company?.id ?? NO_COMPANY)
     .order('created_at', { ascending: false })
     .limit(200);
 
@@ -109,6 +168,10 @@ export default async function AllApplicantsPage({
   const activeStage = STAGES.find((value) => value === stage);
   if (activeStage) query = query.eq('status', activeStage);
   if (jobFilter) query = query.eq('job_id', jobFilter);
+  if (band) query = query.eq('experience_band', band);
+  // On the joined listing — `jobs!inner` above is what makes this a filter
+  // rather than a null-out of the embed.
+  if (track) query = query.eq('job.track', track);
   // On the joined profile, which is why that embed is `!inner`. Filtered in
   // the database rather than over the 200 rows this page fetches — a search
   // that quietly only looks at the most recent page is worse than none.
@@ -120,17 +183,21 @@ export default async function AllApplicantsPage({
   // One column, no stage filter: what each chip is worth before it is clicked.
   // The list above is already narrowed by ?stage=, so it cannot answer this —
   // and "who applied" is a question about the whole pipeline, not the slice
-  // currently on screen. RLS scopes it to this company's listings, same as the
-  // list; the job filter is honoured so the counts match what a click gives.
+  // currently on screen. Scoped to this company the same way the list above
+  // is, with RLS behind it; the job filter is honoured so the counts match
+  // what a click gives.
   // The profile is joined whether or not there is a search: a conditional
   // select string defeats the typed query builder, and every application has a
   // profile behind it — the column is `not null` — so the inner join changes
   // no count.
   let counter = supabase
     .from('applications')
-    .select('status, candidate:profiles!inner (full_name)')
+    .select('status, candidate:profiles!inner (full_name), job:jobs!inner (track)')
     .limit(2000);
+  counter = counter.eq('job.company_id', viewer.company?.id ?? NO_COMPANY);
   if (jobFilter) counter = counter.eq('job_id', jobFilter);
+  if (band) counter = counter.eq('experience_band', band);
+  if (track) counter = counter.eq('job.track', track);
   // The counts are what each chip is worth *within the current search*. Left
   // unfiltered they would promise applicants that clicking cannot produce.
   if (pattern) counter = counter.ilike('candidate.full_name', pattern);
@@ -158,6 +225,8 @@ export default async function AllApplicantsPage({
   const t = await getTranslations('employer');
   const tStatus = await getTranslations('applicationStatus');
   const tFilters = await getTranslations('filters');
+  const tExp = await getTranslations('experienceBand');
+  const tTrack = await getTranslations('track');
 
   const companyName = viewer.company
     ? localized(locale, viewer.company.name_ar, viewer.company.name_en)
@@ -201,13 +270,15 @@ export default async function AllApplicantsPage({
     'shrink-0 rounded-full ps-3 pe-2.5 py-1.5 text-sm inline-flex items-center gap-2 transition-colors ' +
     (active ? 'font-medium text-white' : 'border border-border hover:bg-muted');
 
-  const href = (next: { stage?: string; job?: string; q?: string }) => {
+  const href = (next: { stage?: string; job?: string; q?: string; band?: string; track?: string }) => {
     const search = new URLSearchParams();
     if (next.stage) search.set('stage', next.stage);
     if (next.job) search.set('job', next.job);
     // Carried by every chip, so narrowing by stage does not silently throw the
     // search away — and the form below carries the chips the same way.
     if (next.q) search.set('q', next.q);
+    if (next.band) search.set('band', next.band);
+    if (next.track) search.set('track', next.track);
     const query = search.toString();
     return query ? `/employer/applicants?${query}` : '/employer/applicants';
   };
@@ -217,6 +288,16 @@ export default async function AllApplicantsPage({
       <header>
         <h1 className="text-2xl font-bold">{t('allApplicants')}</h1>
         <p className="mt-1 text-muted-foreground">{t('allApplicantsLede')}</p>
+        {/*
+          The other half of what the applicant was told before they pressed
+          send. They were promised this list is the only place their number
+          goes; saying so here is what makes that promise something an employer
+          has read too, rather than a claim made behind their back.
+        */}
+        <p className="mt-3 flex items-start gap-2 rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
+          {t('applicantsPrivacy')}
+        </p>
       </header>
 
       {/*
@@ -249,20 +330,58 @@ export default async function AllApplicantsPage({
           />
         </div>
 
+        {/* Native selects, submitted with the same button as the search. No
+            JavaScript, same as the search field: this form has to work before
+            the page hydrates, and a select that only applies on submit is
+            honest about that. */}
+        <label className="sr-only" htmlFor="applicant-band">
+          {t('filterExperience')}
+        </label>
+        <select
+          id="applicant-band"
+          name="band"
+          defaultValue={band ?? ''}
+          className="h-11 rounded-xl border border-input bg-card px-3 text-sm shadow-xs"
+        >
+          <option value="">{t('filterExperience')}: {tFilters('any')}</option>
+          {EXPERIENCE_BANDS.map((value) => (
+            <option key={value} value={value}>
+              {tExp(value)}
+            </option>
+          ))}
+        </select>
+
+        <label className="sr-only" htmlFor="applicant-track">
+          {t('filterTrack')}
+        </label>
+        <select
+          id="applicant-track"
+          name="track"
+          defaultValue={track ?? ''}
+          className="h-11 rounded-xl border border-input bg-card px-3 text-sm shadow-xs"
+        >
+          <option value="">{t('filterTrack')}: {tFilters('any')}</option>
+          {JOB_TRACKS.map((value) => (
+            <option key={value} value={value}>
+              {tTrack(value)}
+            </option>
+          ))}
+        </select>
+
         <Button type="submit" variant="secondary">
-          {t('searchApplicants')}
+          {t('filterApply')}
         </Button>
 
-        {query_ ? (
+        {query_ || band || track ? (
           <Button asChild variant="ghost">
-            <Link href={href({ stage, job: jobFilter })}>{t('searchClear')}</Link>
+            <Link href={href({ stage, job: jobFilter })}>{t('filterClear')}</Link>
           </Button>
         ) : null}
       </form>
 
       <nav className={row} aria-label={t('stageFilter')}>
         <Link
-          href={href({ job: jobFilter, q: query_ })}
+          href={href({ job: jobFilter, q: query_, band, track })}
           aria-current={!stage ? 'page' : undefined}
           className={stageChip(!stage) + (stage ? ' text-muted-foreground' : '')}
           style={!stage ? { backgroundColor: 'oklch(0.45 0.02 265)' } : undefined}
@@ -279,7 +398,7 @@ export default async function AllApplicantsPage({
           return (
             <Link
               key={value}
-              href={href({ stage: value, job: jobFilter, q: query_ })}
+              href={href({ stage: value, job: jobFilter, q: query_, band, track })}
               aria-current={active ? 'page' : undefined}
               className={stageChip(active) + (active ? '' : ' text-muted-foreground')}
               style={active ? { backgroundColor: STAGE_COLOUR[value] } : undefined}
@@ -310,7 +429,7 @@ export default async function AllApplicantsPage({
       {jobs.length > 1 ? (
         <nav className={row} aria-label={t('jobs')}>
           <Link
-            href={href({ stage, q: query_ })}
+            href={href({ stage, q: query_, band, track })}
             aria-current={!jobFilter ? 'page' : undefined}
             className={chip(!jobFilter)}
           >
@@ -319,7 +438,7 @@ export default async function AllApplicantsPage({
           {jobs.map((item) => (
             <Link
               key={item.id}
-              href={href({ stage, job: item.id, q: query_ })}
+              href={href({ stage, job: item.id, q: query_, band, track })}
               aria-current={jobFilter === item.id ? 'page' : undefined}
               className={chip(jobFilter === item.id)}
             >
@@ -334,7 +453,7 @@ export default async function AllApplicantsPage({
           {/* "Nobody has applied" and "nobody by that name" are different
               facts, and an employer who reads the first when the second is
               true concludes their listings are dead. */}
-          {query_ ? t('searchEmpty') : t('noApplicants')}
+          {query_ ? t('searchEmpty') : band || track ? t('filterEmpty') : t('noApplicants')}
         </p>
       ) : (
         <ul className="space-y-3">

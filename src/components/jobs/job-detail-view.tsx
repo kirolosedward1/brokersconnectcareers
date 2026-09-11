@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { Building2, CalendarClock, Eye, MapPin, Users } from 'lucide-react';
+import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { CompensationCard, LeadsSourceBadge } from '@/components/jobs/compensation';
+import { CommissionPicture } from '@/components/jobs/commission-picture';
+import { commissionPicture, type CommissionPicture as CommissionPictureData } from '@/lib/earnings';
 import { JobCard } from '@/components/jobs/job-card';
 import { SaveJobButton } from '@/components/jobs/save-job-button';
 import { ReportJobDialog } from '@/components/jobs/report-job-dialog';
@@ -18,7 +20,20 @@ import { getSimilarJobs, type JobDetail } from '@/lib/queries/jobs';
 import { getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
-export async function JobDetailView({ job, locale }: { job: JobDetail; locale: Locale }) {
+export async function JobDetailView({
+  job,
+  locale,
+  open = true,
+}: {
+  job: JobDetail;
+  locale: Locale;
+  /**
+   * Whether this listing is still taking applications. Decided by the page,
+   * which already has to agree with the robots directive and the structured
+   * data, so the same answer reaches all three.
+   */
+  open?: boolean;
+}) {
   const t = await getTranslations('jobs');
   const tTrack = await getTranslations('track');
   const tType = await getTranslations('employmentType');
@@ -48,9 +63,15 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
   // Has this candidate already applied? Cheap, and it changes the primary CTA.
   let alreadyApplied = false;
   let alreadySaved = false;
+  /**
+   * What this listing's commission is worth against their own record. Null
+   * for everyone else: an employer reading their own advert has no record to
+   * price it with, and a signed-out visitor has not told us anything.
+   */
+  let picture: CommissionPictureData | null = null;
   if (viewer?.profile?.role === 'candidate') {
     const supabase = await createClient();
-    const [{ data: application }, { data: saved }] = await Promise.all([
+    const [{ data: application }, { data: saved }, { data: record }] = await Promise.all([
       supabase
         .from('applications')
         .select('id')
@@ -63,9 +84,25 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
         .eq('job_id', job.id)
         .eq('candidate_id', viewer.userId)
         .maybeSingle(),
+      /*
+        Filtered by user_id explicitly. This table has four read policies and
+        one of them is `visibility = 'public'`, so a signed-in consultant sees
+        their own row *and* every public profile in the directory — left to
+        RLS, maybeSingle() matches many rows, errors, and hands back null.
+        The dashboard learned this the hard way.
+      */
+      supabase
+        .from('agent_profiles')
+        .select('units_closed, volume_egp')
+        .eq('user_id', viewer.profile.id)
+        .maybeSingle(),
     ]);
     alreadyApplied = Boolean(application);
     alreadySaved = Boolean(saved);
+    picture = commissionPicture(job, {
+      unitsClosed: record?.units_closed ?? null,
+      volumeEgp: record?.volume_egp ?? null,
+    });
   }
 
   return (
@@ -140,10 +177,33 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
               structured form, before any prose. */}
           <div className="mt-6">
             <CompensationCard job={job} locale={locale} />
+
+            {picture ? <CommissionPicture picture={picture} locale={locale} /> : null}
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            {!canApply ? (
+            {/*
+              A closed listing offered "Apply" like any other, and the apply
+              route then refused — a button whose only outcome is a page saying
+              no. The listing stays readable, and its next step becomes the one
+              that still exists.
+            */}
+            {!open ? (
+              <div className="w-full rounded-xl border border-border bg-muted/50 px-4 py-3">
+                {/* Not a second copy of the banner at the top of the page.
+                    That one says the listing is closed; this one is at the
+                    place where somebody reached for Apply, and the useful
+                    thing to add there is the date and the way onward. */}
+                <p className="text-sm text-muted-foreground">
+                  {job.expires_at
+                    ? t('closedOn', { date: formatDate(job.expires_at, locale) })
+                    : t('closedCtaBody')}
+                </p>
+                <Button asChild size="lg" className="mt-3">
+                  <Link href="/jobs">{t('browseOpen')}</Link>
+                </Button>
+              </div>
+            ) : !canApply ? (
               <p className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                 {tApply('employerCannotApply')}
               </p>
@@ -156,6 +216,7 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
             )}
             <SaveJobButton
               jobId={job.id}
+              jobSlug={job.slug}
               initialSaved={alreadySaved}
               canSave={Boolean(viewer?.profile)}
               labels={{ save: t('save'), saved: t('saved') }}
@@ -240,6 +301,17 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
                 />
                 <p className="min-w-0 font-medium">{companyName}</p>
               </div>
+              {/* Only for a company that holds the badge. There is no matching
+                  line for one that does not: 'unverified' covers a company
+                  that never submitted, one whose papers are with a reviewer
+                  and one that was turned down, and a single sentence would be
+                  false for two of the three. */}
+              {job.company.verification_status === 'verified' ? (
+                <p className="flex items-start gap-2 leading-relaxed text-muted-foreground">
+                  <BadgeCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+                  {t('verifiedMeaning')}
+                </p>
+              ) : null}
               {job.company.about_ar || job.company.about_en ? (
                 <p className="leading-relaxed text-muted-foreground">
                   {localized(locale, job.company.about_ar, job.company.about_en)}
@@ -258,7 +330,7 @@ export async function JobDetailView({ job, locale }: { job: JobDetail; locale: L
               the copyright line were unreachable on a phone — on every listing
               on the site. Padding anything inside <main> cannot fix that: the
               footer is still the last thing in the document. */}
-          {canApply ? (
+          {canApply && open ? (
           <div
             data-apply-bar
             className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background p-3 lg:hidden"

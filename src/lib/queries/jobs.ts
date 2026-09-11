@@ -143,6 +143,8 @@ export const queryJobs = cache(async function queryJobs(
   jobs: JobListItem[];
   total: number;
   pageCount: number;
+  /** The page actually returned, which is not always the one asked for. */
+  page: number;
 }> {
   const supabase = client ?? (await createClient());
   const districts = await getDistricts();
@@ -170,9 +172,20 @@ export const queryJobs = cache(async function queryJobs(
 
   // An empty id set after intersection means nothing can match.
   if (districtIds && districtIds.length === 0) {
-    return { jobs: [], total: 0, pageCount: 0 };
+    return { jobs: [], total: 0, pageCount: 0, page: 1 };
   }
 
+  /*
+    Built fresh each time rather than held in one variable.
+
+    PostgREST refuses an offset past the end of the result set outright —
+    PGRST103, "Requested range not satisfiable" — so `?page=400` on a board of
+    fifteen listings did not return an empty page, it threw, and the board
+    answered with a 500 carrying the database's own message. The recovery below
+    has to issue a second query with a different range, and a builder that has
+    already been awaited is not something to lean on for that.
+  */
+  const build = () => {
   let query = supabase
     .from('jobs')
     .select(LIST_SELECT, { count: 'exact' })
@@ -207,9 +220,60 @@ export const queryJobs = cache(async function queryJobs(
     query = query.order('seats', { ascending: false });
   }
   query = query.order('published_at', { ascending: false });
+  /*
+    The last key, so the order is total.
 
-  const from = (filters.page - 1) * JOBS_PER_PAGE;
-  const { data, error, count } = await query.range(from, from + JOBS_PER_PAGE - 1);
+    Every key above it can tie — `seats` on almost every listing, salary
+    wherever two companies pay the same, and `published_at` the moment a
+    moderator approves two in the same second. An order with ties is not an
+    order: Postgres is free to return the tied rows differently between the
+    query for page one and the query for page two, which shows one listing
+    twice and hides another entirely. It costs nothing and it cannot tie.
+  */
+  query = query.order('id', { ascending: false });
+
+  return query;
+  };
+
+  const pageOf = (page: number) => {
+    const from = (page - 1) * JOBS_PER_PAGE;
+    return build().range(from, from + JOBS_PER_PAGE - 1);
+  };
+
+  const { data, error, count } = await pageOf(filters.page);
+
+  /*
+    A page past the end is answered with the end, not with a 500 and not with
+    "no listings match".
+
+    Two different failures used to live here. A page just past the last one
+    came back empty and the board rendered its no-results panel — "nothing
+    matches your filters", offered on a search that matches fifteen — under a
+    footer reading "page 99 of 1". And a page far enough past it did not come
+    back at all: PostgREST answers an unsatisfiable range with PGRST103, which
+    `raise` turned into a 500 carrying the database's own message about offsets
+    and row counts.
+
+    Both are the same question — how many pages are there — which is only
+    answerable after a query. So: ask for the first page, which always exists,
+    and go to the last one from there.
+  */
+  if (error?.code === 'PGRST103' || (!error && count != null && filters.page > 1 && !data?.length)) {
+    const { count: total, error: countError } = await pageOf(1);
+    if (countError) raise(countError, 'searching jobs');
+
+    const pageCount = Math.max(1, Math.ceil((total ?? 0) / JOBS_PER_PAGE));
+    const { data: lastPage, error: lastError } = await pageOf(pageCount);
+    if (lastError) raise(lastError, 'searching jobs');
+
+    return {
+      jobs: (lastPage ?? []) as unknown as JobListItem[],
+      total: total ?? 0,
+      pageCount,
+      page: pageCount,
+    };
+  }
+
   if (error) raise(error, 'searching jobs');
 
   const total = count ?? 0;
@@ -217,6 +281,7 @@ export const queryJobs = cache(async function queryJobs(
     jobs: (data ?? []) as unknown as JobListItem[],
     total,
     pageCount: Math.max(1, Math.ceil(total / JOBS_PER_PAGE)),
+    page: filters.page,
   };
 });
 

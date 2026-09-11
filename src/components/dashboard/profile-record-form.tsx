@@ -8,6 +8,7 @@ import { Field } from '@/components/ui/field';
 import { NumberInput } from '@/components/ui/number-input';
 import { saveProfileRecord } from '@/lib/actions/cv';
 import type { AgentProfileRow } from '@/lib/supabase/database.types';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
  * The objective and the sales record — the two things at the top of a real
@@ -31,11 +32,14 @@ export function ProfileRecordForm({
   const tCommon = useTranslations('common');
 
   const [saved, setSaved] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaved(false);
+    setFailed(false);
     const form = new FormData(event.currentTarget);
     const units = String(form.get('unitsClosed') ?? '');
     const volume = String(form.get('volumeEgp') ?? '');
@@ -46,7 +50,12 @@ export function ProfileRecordForm({
         unitsClosed: units ? Number(units) : null,
         volumeEgp: volume ? Number(volume) : null,
       });
+      if (recoverSession(result)) return;
+      // A failure used to do nothing at all — no message, no change to the
+      // button, nothing. The record simply did not save and the page said the
+      // same as if it had.
       if (result.ok) setSaved(true);
+      else setFailed(true);
     });
   }
 
@@ -123,6 +132,11 @@ export function ProfileRecordForm({
             {pending ? tCommon('loading') : tCommon('save')}
           </SubmitButton>
           {saved ? <span className="text-sm text-success">{tCommon('saveSuccess')}</span> : null}
+          {failed ? (
+            <span role="alert" className="text-sm text-destructive">
+              {tCommon('errorBody')}
+            </span>
+          ) : null}
         </div>
       </form>
 

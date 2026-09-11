@@ -130,9 +130,22 @@ export async function GET() {
   // database, and an unconfigured Supabase is the same outage by another name.
   const healthy = database && configured.supabase;
 
+  /*
+    Servable is not the same as whole.
+
+    This endpoint said "ok" for days while every email the application tried
+    to send was dropped before it was queued — the service role, the sender
+    and the webhook secret were all absent, and nothing anywhere said so
+    except a console warning nobody reads. A status a monitor can watch has
+    to name that state. So: "ok" only when the platform can also send, record
+    and hear back about mail; "degraded" with a 200 when it merely cannot,
+    because the pages still serve and a 503 would be a lie of the other kind.
+  */
+  const whole = healthy && configured.serviceRole && configured.email && configured.emailWebhook;
+
   return NextResponse.json(
     {
-      status: healthy ? 'ok' : 'degraded',
+      status: whole ? 'ok' : 'degraded',
       database,
       configured,
       // Omitted entirely when everything is in place, so a healthy response

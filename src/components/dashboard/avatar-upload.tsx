@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { AVATAR_BUCKET } from '@/lib/buckets';
 import { saveAvatar } from '@/lib/actions/account';
 import { uuid } from '@/lib/utils';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
  * The other half of a feature that shipped with only its rendering — the same
@@ -49,6 +50,7 @@ export function AvatarUpload({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function onPick(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -81,6 +83,7 @@ export function AvatarUpload({
       }
 
       const result = await saveAvatar({ storagePath: path });
+      if (recoverSession(result)) return;
       if (!result.ok) {
         setError(tCommon('errorBody'));
         return;
@@ -98,6 +101,7 @@ export function AvatarUpload({
       // break any page still holding the old URL, and a 2 MB image is not
       // worth that.
       const result = await saveAvatar({ storagePath: null });
+      if (recoverSession(result)) return;
       if (!result.ok) setError(tCommon('errorBody'));
       else {
         setError(null);

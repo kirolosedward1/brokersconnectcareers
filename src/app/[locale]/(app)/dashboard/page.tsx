@@ -101,7 +101,7 @@ export default async function DashboardOverviewPage({
       what is open". Ranking has neither problem: the same listings appear, best
       fit first, so the objection to filtering does not apply to ordering.
     */
-    optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0 }),
+    optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0, page: 1 }),
     /*
       What the ranking is against — the consultant's own stated track,
       districts and years. Nothing inferred.
@@ -148,6 +148,19 @@ export default async function DashboardOverviewPage({
     yearsExperience: agent?.years_experience ?? null,
   });
   const suggestions = ranked.slice(0, 3);
+
+  /*
+    Which of the three are already bookmarked, so the card's own bookmark
+    starts in the right state rather than reading "not saved" for something
+    that is. Asked after the slice: three ids, one read, instead of a question
+    about the whole board to fill in three cards.
+  */
+  const suggestionIds = suggestions.map(({ job }) => job.id);
+  const { data: savedRows } = suggestionIds.length
+    ? await supabase.from('saved_jobs').select('job_id').in('job_id', suggestionIds)
+    : { data: [] };
+  const savedIds = new Set((savedRows ?? []).map((row) => row.job_id));
+
   const districtName = new Map(
     districts.map((d) => [d.id, localized(locale, d.name_ar, d.name_en)]),
   );
@@ -318,7 +331,7 @@ export default async function DashboardOverviewPage({
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {suggestions.map(({ job, score, reasons }) => (
               <li key={job.id} className="flex flex-col gap-1.5">
-                <JobCard job={job} locale={locale} />
+                <JobCard job={job} locale={locale} saved={savedIds.has(job.id)} savable />
 
                 {/* Why this one, in the consultant's own words — the track and
                     district they typed into their profile, not a score. A

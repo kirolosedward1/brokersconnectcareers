@@ -341,7 +341,21 @@ export function AppShell({
           </div>
         </header>
 
-        <main id="main" tabIndex={-1} className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        {/*
+          Centred, with a ceiling.
+
+          The console had no maximum width, so on a 27-inch monitor a profile
+          form ran the full 1600px: a single column of Arabic pinned to the
+          right edge with half a metre of empty page beside it. The rail is
+          already fixed-width, so everything past about 1280px was being spent
+          on nothing. 7xl rather than the marketing pages' 6xl because this
+          side is denser — the candidate dashboard lays out six stat tiles in
+          a row, and squeezing those to fit a reading measure would trade one
+          bad layout for another.
+        */}
+        <main id="main" tabIndex={-1} className="flex-1 p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-7xl">{children}</div>
+        </main>
       </div>
 
       {/* aria-hidden: every rail item already carries its label in an sr-only

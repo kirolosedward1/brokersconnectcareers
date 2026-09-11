@@ -5,14 +5,23 @@ import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { toggleSavedJob } from '@/lib/actions/jobs';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 export function SaveJobButton({
   jobId,
+  jobSlug,
   initialSaved,
   canSave,
   labels,
 }: {
   jobId: string;
+  /**
+   * Where to come back to. A visitor who presses Save is sent to sign in, and
+   * used to be dropped on the dashboard afterwards — the listing they were
+   * reading, and the thing they were trying to do with it, both gone. The
+   * slug turns that into a round trip.
+   */
+  jobSlug: string;
   initialSaved: boolean;
   canSave: boolean;
   labels: { save: string; saved: string };
@@ -20,10 +29,11 @@ export function SaveJobButton({
   const router = useRouter();
   const [saved, setSaved] = useState(initialSaved);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function onClick() {
     if (!canSave) {
-      router.push('/sign-in');
+      router.push(`/sign-in?next=${encodeURIComponent(`/jobs/${jobSlug}`)}`);
       return;
     }
 
@@ -34,6 +44,7 @@ export function SaveJobButton({
 
     startTransition(async () => {
       const result = await toggleSavedJob(jobId);
+      if (recoverSession(result)) return;
       if (!result.ok) setSaved(!next);
       else setSaved(result.data!.saved);
     });

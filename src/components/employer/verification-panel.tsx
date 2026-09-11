@@ -66,6 +66,10 @@ export function VerificationPanel({
 
         const result = await recordCompanyDocument({ companyId, docType, storagePath: path });
         if (!result.ok) {
+          // The file is already in the private bucket and nothing will ever
+          // point at it now — and a tax card is not a thing to leave lying
+          // around unreferenced.
+          await createClient().storage.from(COMPANY_DOCS_BUCKET).remove([path]);
           setError(tCommon('errorBody'));
           return;
         }
@@ -106,8 +110,13 @@ export function VerificationPanel({
                   {uploaded.map((doc) => (
                     <li key={doc.id} className="flex items-center gap-2 text-xs">
                       <FileCheck2 className="size-3.5 text-muted-foreground" aria-hidden />
+                      {/* Said in words about this document, not borrowed from
+                          the generic pair. An uploaded commercial register was
+                          labelled "ثانية واحدة…" — the spinner's copy —
+                          which reads as a page still loading rather than a
+                          paper waiting on a reviewer. */}
                       <Badge variant={doc.status === 'rejected' ? 'destructive' : 'warning'}>
-                        {doc.status === 'rejected' ? tCommon('error') : tCommon('loading')}
+                        {doc.status === 'rejected' ? t('docRejected') : t('docUnderReview')}
                       </Badge>
                       {doc.review_note ? (
                         <span className="text-muted-foreground">{doc.review_note}</span>

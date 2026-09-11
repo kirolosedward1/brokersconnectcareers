@@ -35,8 +35,12 @@ export async function deleteMyAccount(): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // Read through the caller's own session: RLS confirms this really is their
-  // company rather than trusting an id passed in from anywhere.
+  /*
+    owner_id, deliberately, and not membership like everywhere else: the
+    question here is "does deleting this account orphan a company", which only
+    the owner can. A colleague leaving is just a membership row cascading away,
+    and they may close their account freely.
+  */
   const { data: company } = await supabase
     .from('companies')
     .select('id')
@@ -130,8 +134,15 @@ export async function updateNotificationPreferences(input: unknown): Promise<Act
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  const { error } = await supabase.from('profiles').update(parsed.data).eq('id', user.id);
+  const { data: saved, error } = await supabase
+    .from('profiles')
+    .update(parsed.data)
+    .eq('id', user.id)
+    .select('id');
   if (error) return { ok: false, error: error.message };
+  // The switch flips optimistically and puts itself back when this says no, so
+  // a write RLS filtered to nothing has to say no rather than nothing at all.
+  if (!saved?.length) return { ok: false, error: 'not_found' };
 
   revalidatePath('/dashboard/account');
   return { ok: true };

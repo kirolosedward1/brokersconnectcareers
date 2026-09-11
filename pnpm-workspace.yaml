@@ -16,3 +16,18 @@ onlyBuiltDependencies:
   - '@parcel/watcher'
   - '@swc/core'
   - sharp
+
+# Lift postcss off the version Next pins.
+#
+# `pnpm audit --prod` reports four advisories, all postcss and all reached
+# through next, which depends on an exact 8.4.31: two path traversals in
+# source-map auto-loading, an arbitrary file read, and an XSS in stringify
+# output. They are build-time rather than runtime — every stylesheet this app
+# processes comes from its own repository — so the exposure is narrow, and the
+# fix is a version number.
+#
+# 8.5.x is a minor bump within the same major and postcss holds semver
+# strictly. Proven by the only thing that can prove it: a full production
+# build, which compiles every route's CSS through exactly this dependency.
+overrides:
+  postcss: '^8.5.23'

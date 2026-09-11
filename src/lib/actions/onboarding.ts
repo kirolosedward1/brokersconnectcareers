@@ -61,19 +61,52 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
 
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  const { error } = await supabase.from('profiles').insert({
-    id: user.id,
-    role: parsed.data.role,
-    full_name: parsed.data.fullName,
-    whatsapp_phone: phone,
-    locale: parsed.data.locale,
-    avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
-  });
+  const { data: inserted, error } = await supabase
+    .from('profiles')
+    .insert({
+      id: user.id,
+      role: parsed.data.role,
+      full_name: parsed.data.fullName,
+      whatsapp_phone: phone,
+      locale: parsed.data.locale,
+      avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+    })
+    .select('role')
+    .maybeSingle();
+
+  /*
+    The account type is whatever the database ended up holding, not whatever
+    the form asked for.
+
+    A duplicate key means onboarding already ran, and treating that as success
+    is right — the person is onboarded, and sending them back to the form would
+    be a lie in the other direction. But the row that already exists carries
+    its own role, and it is not necessarily the one in this request: a tab left
+    open on /onboarding?role=employer, submitted after the same account
+    finished onboarding as a candidate somewhere else, used to be answered
+    `ok` with `role: 'employer'` and sent to the employer console, which is not
+    theirs. `guard_profile_update` refuses role changes, so the answer was
+    wrong the moment it was given.
+
+    Reading it back also decides the two branches below. Keyed on the request
+    they would have tried to create a company for an account the database
+    holds as a candidate — refused by `companies_insert_own`, silently, since
+    nothing checks that result.
+  */
+  let role = parsed.data.role;
 
   if (error) {
-    // A duplicate key means onboarding already ran — treat it as success rather
-    // than stranding the user on the form.
     if (error.code !== '23505') return { ok: false, error: error.message };
+
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    role = asPublicRole(existing?.role) ?? role;
+  } else {
+    role = asPublicRole(inserted?.role) ?? role;
   }
 
   /*
@@ -95,7 +128,7 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
     A failure here does not fail onboarding, for the same reason the company
     block gives: the account works, and /dashboard/profile can still create it.
   */
-  if (parsed.data.role === 'candidate') {
+  if (role === 'candidate') {
     const { data: alreadyThere } = await supabase
       .from('agent_profiles')
       .select('id')
@@ -124,14 +157,16 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
    * is not reported as an error that would send them back to a form they have
    * already completed.
    */
-  if (parsed.data.role === 'employer' && parsed.data.company) {
+  if (role === 'employer' && parsed.data.company) {
     const company = parsed.data.company;
 
-    const { data: existing } = await supabase
-      .from('companies')
-      .select('id')
-      .eq('owner_id', user.id)
-      .maybeSingle();
+    /*
+      Membership, for the reason saveCompany documents: keyed on owner_id an
+      invited colleague who then completes onboarding falls through to the
+      create branch and makes a second, empty company beside the one they
+      already belong to.
+    */
+    const { data: existing } = await supabase.rpc('my_company_id');
 
     if (!existing) {
       await withUniqueSlug<{ id: string }>(
@@ -157,7 +192,18 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
   // response is on its way, and notifyWelcome swallows its own failures.
   after(() => notifyWelcome(user.id));
 
-  return { ok: true, data: { role: parsed.data.role } };
+  return { ok: true, data: { role } };
+}
+
+/**
+ * The two roles this form can produce, narrowed from the column's own union.
+ *
+ * `profiles.role` includes `admin`, which cannot arrive here —
+ * `profiles_insert_self` refuses it — but the type says otherwise, and an
+ * admin who somehow answered this form is not a case to invent a redirect for.
+ */
+function asPublicRole(value: string | null | undefined): 'candidate' | 'employer' | null {
+  return value === 'candidate' || value === 'employer' ? value : null;
 }
 
 function flatten(error: z.ZodError): Record<string, string> {

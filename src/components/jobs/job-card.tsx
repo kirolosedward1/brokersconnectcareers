@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { LeadsSourceBadge, SalaryLine } from '@/components/jobs/compensation';
+import { SaveJobToggle } from '@/components/jobs/save-job-toggle';
 import { cn, formatNumber } from '@/lib/utils';
 import type { JobListItem } from '@/lib/queries/jobs';
 
@@ -14,6 +15,7 @@ export function JobCard({
   locale,
   applied = false,
   saved = false,
+  savable = false,
 }: {
   job: JobListItem;
   locale: string;
@@ -26,6 +28,13 @@ export function JobCard({
    */
   applied?: boolean;
   saved?: boolean;
+  /**
+   * Whether this reader can save. Only a signed-in consultant can — an
+   * employer has no saved list, and a visitor has nowhere to put it — so the
+   * bookmark appears where it would work and is absent where pressing it
+   * would only produce a sign-in wall.
+   */
+  savable?: boolean;
 }) {
   const t = useTranslations('jobs');
   const tCompanies = useTranslations('companies');
@@ -102,7 +111,10 @@ export function JobCard({
                 <CheckCheck aria-hidden />
                 {t('applied')}
               </Badge>
-            ) : saved ? (
+            ) : saved && !savable ? (
+              /* Only where there is no toggle. When the bookmark is on the
+                 card, it already shows the state, and a badge saying the same
+                 word beside it is the card repeating itself. */
               <Badge variant="outline">
                 <BookmarkCheck aria-hidden />
                 {t('saved')}
@@ -124,6 +136,13 @@ export function JobCard({
           </p>
         </div>
 
+        {savable ? (
+          <SaveJobToggle
+            jobId={job.id}
+            initialSaved={saved}
+            labels={{ save: t('save'), remove: t('removeSaved') }}
+          />
+        ) : null}
       </div>
 
       {/* The pay and how many of them, on one line.

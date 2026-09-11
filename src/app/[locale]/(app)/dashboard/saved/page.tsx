@@ -28,7 +28,7 @@ export default async function SavedJobsPage({
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
-  await requireCandidate(locale);
+  const viewer = await requireCandidate(locale);
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -43,21 +43,54 @@ export default async function SavedJobsPage({
       )
     `,
     )
+    /*
+      Scoped explicitly, with row-level security still behind it.
+
+      Not a second copy of the policy: RLS decides what may be seen, this
+      decides what to look at — which is the difference between an index scan
+      and a sequential one whose filter runs a function per row. A wrong filter
+      here can only show fewer rows, never more.
+    */
+    .eq('candidate_id', viewer.userId)
     .order('created_at', { ascending: false });
 
   const jobs = ((data ?? []) as unknown as { job: JobListItem }[])
     .map((row) => row.job)
     .filter(Boolean);
 
+  /**
+   * A saved role that has ended is not the same object as one still hiring.
+   *
+   * The list was one stack in the order things were bookmarked, so a listing
+   * that expired three weeks ago sat above two that are open — and the only
+   * way to find that out was to open it. The card marks a closed role, but the
+   * order still put dead ones in the way of live ones.
+   *
+   * They are not deleted. A bookmark is the reader's own list, and a product
+   * that quietly removes rows from it teaches people that saving is
+   * unreliable; the closed ones move below a heading that says why, and the
+   * bookmark on each card is how they leave.
+   */
+  const now = Date.now();
+  const isClosed = (job: JobListItem) =>
+    job.status !== 'active' || (job.expires_at != null && new Date(job.expires_at).getTime() <= now);
+
+  const open = jobs.filter((job) => !isClosed(job));
+  const closed = jobs.filter(isClosed);
+
   const { data: searchRows } = await supabase
     .from('saved_searches')
     .select('*')
+    .eq('candidate_id', viewer.userId)
     .order('created_at', { ascending: false });
 
   // Which of these were applied to. This is a list somebody curated by hand,
   // so "did I already apply to that one" is the question they arrive with —
   // and it was answerable only by opening each listing.
-  const { data: mine } = await supabase.from('applications').select('job_id');
+  const { data: mine } = await supabase
+    .from('applications')
+    .select('job_id')
+    .eq('candidate_id', viewer.userId);
   const appliedTo = new Set((mine ?? []).map((row) => row.job_id));
 
   const t = await getTranslations('dashboard');
@@ -88,15 +121,56 @@ export default async function SavedJobsPage({
             </Button>
           </div>
         ) : (
-          <ul className="space-y-3">
-            {jobs.map((job) => (
-              <li key={job.id}>
-                {/* `saved` is not passed: every card here is saved, so the
-                    badge would be on all of them and mean nothing. */}
-                <JobCard job={job} locale={locale} applied={appliedTo.has(job.id)} />
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-8">
+            {open.length > 0 ? (
+              <div>
+                {/* The heading only earns its place once there is a second
+                    group to tell this one apart from. */}
+                {closed.length > 0 ? (
+                  <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
+                    {t('savedOpenHeading')}
+                  </h3>
+                ) : null}
+                <ul className="space-y-3">
+                  {open.map((job) => (
+                    <li key={job.id}>
+                      <JobCard
+                        job={job}
+                        locale={locale}
+                        applied={appliedTo.has(job.id)}
+                        saved
+                        savable
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {closed.length > 0 ? (
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  {t('savedClosedHeading')}
+                </h3>
+                <p className="mb-3 mt-0.5 text-sm text-muted-foreground">
+                  {t('savedClosedLede')}
+                </p>
+                <ul className="space-y-3">
+                  {closed.map((job) => (
+                    <li key={job.id}>
+                      <JobCard
+                        job={job}
+                        locale={locale}
+                        applied={appliedTo.has(job.id)}
+                        saved
+                        savable
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
         )}
       </section>
 

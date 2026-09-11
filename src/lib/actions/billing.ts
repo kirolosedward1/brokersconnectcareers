@@ -39,12 +39,13 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // Through the caller's own session, so RLS confirms the company is theirs.
-  const { data: company } = await supabase
-    .from('companies')
-    .select('id, name_ar')
-    .eq('owner_id', user.id)
-    .maybeSingle();
+  // Through the caller's own session, so RLS confirms the company is theirs —
+  // and through membership, so a colleague buying credits for the company they
+  // work at is not told they have no company.
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  const { data: company } = companyId
+    ? await supabase.from('companies').select('id, name_ar').eq('id', companyId).maybeSingle()
+    : { data: null };
   if (!company) return { ok: false, error: 'no_company' };
 
   const { data: profile } = await supabase

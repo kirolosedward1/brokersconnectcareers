@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, Download, FileX2 } from 'lucide-react';
+import { Download, FileX2, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -97,6 +97,7 @@ export function ApplicantCard({
   const [status, setStatus] = useState(application.status);
   const [reason, setReason] = useState(application.decision_note ?? '');
   const [savedReason, setSavedReason] = useState(application.decision_note ?? '');
+  const [conflict, setConflict] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const candidate = application.candidate;
@@ -108,17 +109,30 @@ export function ApplicantCard({
     const previousReason = savedReason;
     setStatus(next);
     setSavedReason(decisionNote);
+    setConflict(false);
 
     startTransition(async () => {
       const result = await setApplicationStatus({
         applicationId: application.id,
         status: next,
         decisionNote,
+        // What this card was showing. A colleague who moved the same applicant
+        // in the meantime wins, and this one is told rather than overwriting
+        // them — a company is a team, and two people in the same inbox is an
+        // ordinary Tuesday.
+        from: previousStatus,
       });
+
       if (!result.ok) {
         setStatus(previousStatus);
         setSavedReason(previousReason);
         setReason(previousReason);
+        if (result.error === 'moved_already') {
+          setConflict(true);
+          // Their move is the one that stands, and it is already on the
+          // server — so re-read rather than describe it from here.
+          router.refresh();
+        }
         return;
       }
       router.refresh();
@@ -168,52 +182,88 @@ export function ApplicantCard({
       {profile ? (
         <Link
           href={`/agents/${profile.slug}`}
-          className="group/profile mt-3 block rounded-xl border border-border p-3 transition-colors hover:border-primary/40 hover:bg-muted/60"
+          title={tAgents('viewProfile')}
+          aria-label={tAgents('viewProfile')}
+          className="group/profile mt-3 flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:border-primary/40 hover:bg-muted/60"
         >
-          {headline ? (
-            <p className="text-sm font-medium group-hover/profile:text-primary">{headline}</p>
-          ) : null}
+          {/*
+            The arrow carries what a line of text used to.
 
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <span>{tAgents('yearsExperience', { count: profile.years_experience })}</span>
+            "شوف الملف الكامل" sat under every applicant panel saying what the
+            panel already looks like — a card you can open — and repeated it
+            once per applicant down a list of them. The whole panel is the
+            link, so the affordance was never the sentence; it is one mark at
+            the end of the row, named for a screen reader and on hover.
 
-            {profile.tracks.length ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{formatList(profile.tracks.map((track) => tTrack(track)), locale)}</span>
-              </>
+            A magnifier rather than an arrow: an arrow says "onward", which is
+            true of every link on the page, and what this one actually offers
+            is a closer look at the person whose name is beside it. No
+            rtl-flip — a magnifier has a handed shape of its own and mirroring
+            it produces a glyph nobody draws.
+          */}
+          <div className="min-w-0 flex-1">
+            {headline ? (
+              <p className="text-sm font-medium group-hover/profile:text-primary">{headline}</p>
             ) : null}
 
-            {districtNames.length ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{formatList(districtNames, locale)}</span>
-              </>
-            ) : null}
-          </p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <span>{tAgents('yearsExperience', { count: profile.years_experience })}</span>
 
-          {/* Self-reported, and the directory says so on the profile itself. */}
-          {profile.units_closed != null || profile.volume_egp != null ? (
-            <p className="mt-1.5 flex flex-wrap gap-x-3 text-xs font-medium">
-              {profile.units_closed != null ? (
-                <span>
-                  {tAgents('unitsClosedShort', {
-                    count: formatNumber(profile.units_closed, locale),
-                  })}
-                </span>
+              {profile.tracks.length ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{formatList(profile.tracks.map((track) => tTrack(track)), locale)}</span>
+                </>
               ) : null}
-              {profile.volume_egp != null ? (
-                <span>{formatEgp(profile.volume_egp, locale)} {tCommon('egp')}</span>
+
+              {districtNames.length ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{formatList(districtNames, locale)}</span>
+                </>
               ) : null}
             </p>
-          ) : null}
 
-          <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
-            {tAgents('viewProfile')}
-            <ArrowLeft className="rtl-flip size-3" aria-hidden />
+            {/* Self-reported, and the directory says so on the profile itself. */}
+            {profile.units_closed != null || profile.volume_egp != null ? (
+              <p className="mt-1.5 flex flex-wrap gap-x-3 text-xs font-medium">
+                {profile.units_closed != null ? (
+                  <span>
+                    {tAgents('unitsClosedShort', {
+                      count: formatNumber(profile.units_closed, locale),
+                    })}
+                  </span>
+                ) : null}
+                {profile.volume_egp != null ? (
+                  <span>{formatEgp(profile.volume_egp, locale)} {tCommon('egp')}</span>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+
+          <span
+            aria-hidden
+            className="grid size-8 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors group-hover/profile:border-primary/40 group-hover/profile:bg-primary/5 group-hover/profile:text-primary"
+          >
+            <Search className="size-4" />
           </span>
         </Link>
-      ) : null}
+      ) : (
+        /*
+          Said, rather than left out.
+
+          A consultant on `hidden` is invisible to the directory and stays
+          invisible here — that setting exists so somebody can look without
+          their current employer finding out, and the company they work for is
+          usually one they applied to. But an absent panel reads as an
+          applicant who never filled anything in, which is a different and
+          unfair impression. The line says which it is, and points back at what
+          they did send.
+        */
+        <p className="mt-3 rounded-xl border border-dashed border-border p-3 text-xs leading-relaxed text-muted-foreground">
+          {t('applicantProfilePrivate')}
+        </p>
+      )}
 
       {application.note ? (
         <p className="mt-3 rounded-lg bg-muted p-3 text-sm leading-relaxed">{application.note}</p>
@@ -257,9 +307,21 @@ export function ApplicantCard({
           </span>
         )}
 
+        {conflict ? (
+          <p role="alert" className="w-full text-xs text-destructive">
+            {t('applicantMovedAlready')}
+          </p>
+        ) : null}
+
         <label className="ms-auto flex items-center gap-2 text-xs text-muted-foreground">
           {t('moveTo')}
-          <Select value={status} onChange={onStatusChange} disabled={pending} className="h-8 w-auto">
+          <Select
+            size="sm"
+            value={status}
+            onChange={onStatusChange}
+            disabled={pending}
+            className="w-auto"
+          >
             {STATUSES.map((value) => (
               <option key={value} value={value}>
                 {tStatus(value)}

@@ -47,7 +47,9 @@ export function NumberInput({
   className?: string;
 } & Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
-  'value' | 'defaultValue' | 'onChange' | 'type' | 'name'
+  // `size` goes with them: Input takes a height variant under that name, not
+  // the HTML attribute, and a numeric one arriving from here would not type.
+  'value' | 'defaultValue' | 'onChange' | 'type' | 'name' | 'size'
 >) {
   const controlled = value !== undefined;
   const [own, setOwn] = useState(() =>

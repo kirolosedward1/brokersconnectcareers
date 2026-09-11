@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import type { AgentProfileRow } from '@/lib/supabase/database.types';
+import { profileGaps } from '@/lib/profile-completeness';
 
 /**
  * What is missing from this profile, and why each one matters.
@@ -34,18 +35,20 @@ export async function ProfileGaps({
 }) {
   const t = await getTranslations('cv');
 
-  // Same tests and same weights as profile_completeness(), so the list and the
-  // percentage can never disagree about what is done.
-  const gaps = [
-    { key: 'summary', points: 20, missing: !agent.summary_ar?.trim() },
-    { key: 'headline', points: 15, missing: !agent.headline_ar?.trim() },
-    { key: 'experience', points: 15, missing: !hasExperience },
-    { key: 'tracks', points: 10, missing: !agent.tracks?.length },
-    { key: 'districts', points: 10, missing: !agent.district_ids?.length },
-    { key: 'years', points: 10, missing: !(agent.years_experience > 0) },
-    { key: 'record', points: 10, missing: agent.units_closed == null && agent.volume_egp == null },
-    { key: 'education', points: 10, missing: !hasEducation },
-  ]
+  // Same tests and same weights as profile_completeness(), from one table the
+  // schema suite checks against the SQL — so the list and the percentage can
+  // never disagree about what is done.
+  const gaps = profileGaps({
+    summary_ar: agent.summary_ar,
+    headline_ar: agent.headline_ar,
+    tracks: agent.tracks,
+    district_ids: agent.district_ids,
+    years_experience: agent.years_experience,
+    units_closed: agent.units_closed,
+    volume_egp: agent.volume_egp,
+    hasExperience,
+    hasEducation,
+  })
     .filter((gap) => gap.missing)
     // Biggest gain first: if somebody only does one thing today, it should be
     // the one that moves the most.

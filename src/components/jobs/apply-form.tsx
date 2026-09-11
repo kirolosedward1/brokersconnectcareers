@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { CheckCircle2, Paperclip } from 'lucide-react';
+import { CheckCircle2, Paperclip, ShieldCheck } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -14,6 +14,7 @@ import { applyToJob } from '@/lib/actions/applications';
 import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { track } from '@/lib/analytics';
 import { uuid } from '@/lib/utils';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 const MAX_CV_BYTES = 10 * 1024 * 1024;
 const CV_TYPES = [
@@ -45,7 +46,23 @@ export function ApplyForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
   const router = useRouter();
+
+  /*
+    On a phone the submit button is a full screen below the phone field, so a
+    message under the field is invisible from where the thumb is. Bring the
+    first invalid field into view and focus it, which also makes a screen
+    reader announce the label and its error together.
+  */
+  useEffect(() => {
+    const first = ['fullName', 'whatsapp', 'experienceBand', 'cv', 'note'].find((key) => errors[key]);
+    if (!first) return;
+    const element = document.getElementById(first);
+    if (!element) return;
+    element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    element.focus({ preventScroll: true });
+  }, [errors]);
 
   function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -104,7 +121,30 @@ export function ApplyForm({
         note: String(form.get('note') ?? ''),
       });
 
+      if (recoverSession(result)) {
+        // The file goes with it: nothing will ever point at it now.
+        if (cvPath) await createClient().storage.from(CV_BUCKET).remove([cvPath]);
+        return;
+      }
+
       if (!result.ok) {
+        /*
+          Take the file back out.
+
+          The CV is uploaded before the application is written, because the
+          action wants a path rather than bytes — so every refusal after this
+          point (applied already, rate limited, the listing expired while the
+          form was open) left a file in the private bucket with nothing
+          pointing at it, and each retry left another. Storage RLS confines
+          this account to its own folder, which is the same rule that allowed
+          the upload, so removing it needs no privilege the browser did not
+          already have. A failure here is not worth reporting: the person is
+          already being told the application did not go through.
+        */
+        if (cvPath) {
+          await createClient().storage.from(CV_BUCKET).remove([cvPath]);
+        }
+
         if (result.error === 'already_applied') {
           setErrors({ form: t('alreadyApplied') });
           return;
@@ -208,7 +248,7 @@ export function ApplyForm({
           inputMode="tel"
           autoComplete="tel"
           defaultValue={defaultPhone}
-          className="numeral"
+          className="numeral-field"
         />
       </Field>
 
@@ -245,6 +285,27 @@ export function ApplyForm({
       <Field label={t('note')} hint={t('noteOptional')} htmlFor="note">
         <Textarea id="note" name="note" maxLength={500} rows={3} />
       </Field>
+
+      {/*
+        What pressing this button gives away, said before it is pressed.
+
+        The form asks for a phone number and a CV and then says "less than a
+        minute" — which answers how long it takes and not who ends up holding
+        it. Every line here is a fact about this system rather than a
+        reassurance: the row is readable by the company that owns the job and
+        by nobody else (applications_select_employer in migration 04), the
+        action writes the name and phone back to the profile, and the delete
+        policy is what makes withdrawing real.
+      */}
+      <div className="flex gap-3 rounded-xl border border-border bg-muted/40 p-4">
+        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
+        <div className="min-w-0 space-y-1">
+          <p className="text-sm font-semibold">{t('privacyTitle')}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">{t('privacyBody')}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">{t('privacyProfile')}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">{t('privacyNote')}</p>
+        </div>
+      </div>
 
       {errors.form ? (
         <p role="alert" className="text-sm text-destructive">

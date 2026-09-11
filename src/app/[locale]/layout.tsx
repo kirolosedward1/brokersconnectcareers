@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { notFound } from 'next/navigation';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
+import { FragmentSession } from '@/components/auth/fragment-session';
 import {
   getMessages,
   getTranslations,
@@ -170,6 +171,9 @@ export default async function LocaleLayout({
           </a>
 
           {children}
+          {/* Spends a session that Supabase handed over in the URL fragment —
+              see the component. Renders nothing. */}
+          <FragmentSession />
         </NextIntlClientProvider>
         <Analytics />
       </body>

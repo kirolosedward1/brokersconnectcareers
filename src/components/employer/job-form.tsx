@@ -3,13 +3,13 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
-import { useRouter } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
-import { cn, formatEgp } from '@/lib/utils';
+import { cn, formatEgp, uuid } from '@/lib/utils';
 import { NumberInput } from '@/components/ui/number-input';
 import {
   BENEFITS,
@@ -19,7 +19,7 @@ import {
   JOB_TRACKS,
   LEADS_SOURCES,
 } from '@/lib/taxonomy';
-import { saveJob } from '@/lib/actions/employer-jobs';
+import { findSimilarListing, saveJob } from '@/lib/actions/employer-jobs';
 import type {
   Benefit,
   CommissionType,
@@ -27,6 +27,7 @@ import type {
   DistrictRow,
   JobRow,
 } from '@/lib/supabase/database.types';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 type Values = {
   titleAr: string;
@@ -81,6 +82,32 @@ export function JobForm({
   const [developerIds, setDeveloperIds] = useState<number[]>(selectedDeveloperIds);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
+
+  /*
+    A listing already on the board is edited, not submitted.
+
+    "Send for review" and "save as draft" are both transitions guard_job_update
+    refuses from `active`, and saveJob used to send one of them on every save —
+    so the edit button on the listings page opened a form that could not be
+    saved. The action now leaves a live listing's status to the database, which
+    returns it to review only when something material changed, and this is the
+    half of that the employer can see.
+  */
+  const live = job?.status === 'active';
+
+  /*
+    One key for as long as this form is on screen.
+
+    The button disables while a request is in flight, which answers a double
+    click and nothing else — not the case where the client gives up after the
+    server has already committed. The employer sees a failure, presses again,
+    and without this the second request is indistinguishable from a deliberate
+    second advert: two listings, two credits, and the applicants split between
+    them. Made once with useState's initialiser so a re-render does not make
+    a new one.
+  */
+  const [idempotencyKey] = useState(() => uuid());
 
   const [values, setValues] = useState<Values>({
     titleAr: job?.title_ar ?? '',
@@ -125,9 +152,23 @@ export function JobForm({
    * it through validation would refuse to save the half-finished listing that
    * is the entire reason the draft button exists.
    */
+  /*
+    A listing this company already has that reads like this one. Asked once,
+    on leaving the first step, and answered on the second so nobody waits on a
+    round trip to move forward. Dismissed with a tap; never enforced.
+  */
+  const [similar, setSimilar] = useState<{ id: string; title: string; seats: number } | null>(null);
+
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (step < STEPS.length - 1) {
+      if (step === 0) {
+        void findSimilarListing({
+          titleAr: values.titleAr,
+          districtId: values.districtId,
+          excludeId: job?.id,
+        }).then((result) => setSimilar(result.ok ? result.data?.match ?? null : null));
+      }
       setStep((current) => current + 1);
       return;
     }
@@ -138,6 +179,10 @@ export function JobForm({
     startTransition(async () => {
       const result = await saveJob({
         id: job?.id,
+        // What this form was built from. The action matches on it, so a
+        // colleague's save in between is refused rather than overwritten.
+        version: job?.version,
+        idempotencyKey,
         titleAr: values.titleAr,
         titleEn: values.titleEn,
         track: values.track,
@@ -159,7 +204,22 @@ export function JobForm({
         submit: publish,
       });
 
+      if (recoverSession(result)) return;
       if (!result.ok) {
+        if (result.error === 'stale') {
+          // Somebody else saved this listing while this form was open. Their
+          // work is on the server and this form's is on the screen; reloading
+          // is the only answer that does not silently discard one of them.
+          setErrors({ form: tEmployer('listingMoved') });
+          return;
+        }
+        if (result.error === 'invalid_transition') {
+          // The listing moved under this form — closed in another tab,
+          // approved by a moderator — and the save it was built for no longer
+          // makes sense. Reloading is the honest answer, not a retry.
+          setErrors({ form: tEmployer('listingMoved') });
+          return;
+        }
         if (result.error === 'post_cap') {
           setErrors({ form: tEmployer('postCapBlocked') });
           setStep(3);
@@ -201,6 +261,22 @@ export function JobForm({
   return (
     <div>
       <form onSubmit={onSubmit}>
+      {similar && step > 0 ? (
+        <div className="rounded-xl border border-warning/40 bg-warning-muted p-4 text-sm" role="status">
+          <p className="font-semibold">{tEmployer('duplicateTitle')}</p>
+          <p className="mt-1 leading-relaxed text-muted-foreground">
+            {tEmployer('duplicateBody', { title: similar.title, seats: similar.seats })}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/employer/jobs/${similar.id}/edit`}>{tEmployer('duplicateEdit')}</Link>
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setSimilar(null)}>
+              {tEmployer('duplicateDismiss')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
         <ol className="mb-8 flex flex-wrap gap-2">
           {STEPS.map((name, index) => (
             <li key={name}>
@@ -568,7 +644,9 @@ export function JobForm({
               </p>
             </div>
 
-            <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">{t('reviewNote')}</p>
+            <p className="rounded-lg bg-muted p-4 text-sm leading-relaxed text-muted-foreground">
+              {live ? t('liveEditNote') : t('reviewNote')}
+            </p>
 
             {errors.form ? (
               <p role="alert" className="text-sm text-destructive">
@@ -578,18 +656,23 @@ export function JobForm({
 
             <div className="flex flex-wrap gap-2">
               <SubmitButton size="lg" disabled={pending}>
-                {tEmployer('submitForReview')}
+                {live ? tEmployer('saveChanges') : tEmployer('submitForReview')}
               </SubmitButton>
-              {/* formNoValidate: a draft is allowed to be incomplete. */}
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                disabled={pending}
-                onClick={() => submit(false)}
-              >
-                {tEmployer('saveDraft')}
-              </Button>
+              {/* formNoValidate: a draft is allowed to be incomplete. Not
+                  offered on a live listing — it has been published, and
+                  "save as draft" describes a transition the database refuses
+                  and the employer would not want. */}
+              {live ? null : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  disabled={pending}
+                  onClick={() => submit(false)}
+                >
+                  {tEmployer('saveDraft')}
+                </Button>
+              )}
             </div>
           </div>
         ) : null}

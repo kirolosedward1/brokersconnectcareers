@@ -74,7 +74,12 @@
     "featured": "Featured",
     "closedShort": "Closed",
     "alreadyReported": "You have already reported this listing.",
-    "reportRateLimit": "You have reported a lot of listings today. Try again tomorrow."
+    "reportRateLimit": "You have reported a lot of listings today. Try again tomorrow.",
+    "removeSaved": "Remove from saved",
+    "closedCtaBody": "It is no longer accepting applications.",
+    "verifiedMeaning": "This company uploaded its commercial register and tax card, and our team reviewed them.",
+    "closedOn": "This listing closed on {date}.",
+    "browseOpen": "Browse open roles"
   },
   "compensation": {
     "title": "Pay and commission",
@@ -89,7 +94,15 @@
     "salaryRange": "EGP <v>{min}</v> – <v>{max}</v>",
     "salaryFrom": "From EGP <v>{min}</v>",
     "salaryUpTo": "Up to EGP <v>{max}</v>",
-    "commissionPercent": "<v>{value}</v>% commission"
+    "commissionPercent": "<v>{value}</v>% commission",
+    "earningsTitle": "This commission, in your own numbers",
+    "earningsPerUnitSuffix": "per deal",
+    "earningsPerUnit": "Your average unit is <v>{average}</v> EGP, and the rate here is <v>{percent}</v>%.",
+    "earningsPerUnitBasis": "From <v>{units}</v> units totalling <v>{volume}</v> EGP — the figures on your profile.",
+    "earningsOnTotal": "On the <v>{volume}</v> EGP you have closed, <v>{percent}</v>% would have paid <v>{total}</v> EGP in commission.",
+    "earningsNote": "Calculated from the figures you entered, not a promise from the company. Actual commission depends on the agreement and where the leads come from.",
+    "earningsNoRecord": "Add how many units you have closed and for how much, and we will price this rate against your average deal.",
+    "earningsNoRecordCta": "Complete your record"
   },
   "filters": {
     "search": "Keyword",
@@ -190,7 +203,12 @@
     "viewProfile": "View full profile",
     "unitsClosedShort": "{count} units closed",
     "headlineAr": "Professional headline (Arabic)",
-    "headlineEn": "Professional headline (English)"
+    "headlineEn": "Professional headline (English)",
+    "ownerBanner": "This is your profile. You see everything because it is yours — visitors and companies see it according to your visibility setting.",
+    "ownerPublic": "Your visibility is “public”: any visitor sees your name, photo and number exactly as you see them now.",
+    "ownerVerified": "Your visibility is “verified employers only”: visitors see the card without a name or number; only verified companies see it in full.",
+    "ownerHidden": "Your visibility is “hidden”: nobody but you can open this page. Companies you applied to still see your application.",
+    "ownerEdit": "Edit your profile"
   },
   "availability": {
     "open_to_offers": "Open to offers",
@@ -253,6 +271,7 @@
     "passwordUpdated": "Your password has been changed.",
     "backToSignIn": "Back to sign in",
     "linkExpired": "That link has expired or has already been used. Ask for a new one.",
+    "sessionExpired": "Your session ended. Sign in again and we will take you back to the same page.",
     "checkEmailTitle": "We sent you a confirmation email",
     "checkEmailSpam": "If it has not arrived within a minute, check your spam folder.",
     "resendConfirmation": "Send it again",
@@ -271,7 +290,6 @@
     "roleEmployerHint": "Post jobs, manage applicants, and search the consultant directory.",
     "fullName": "Full name",
     "whatsapp": "WhatsApp number",
-    "whatsappHint": "This market runs on WhatsApp. Your number is shown only to an employer you apply to.",
     "whatsappPlaceholder": "+201001234567",
     "locale": "Interface language",
     "submit": "Get started",
@@ -281,7 +299,10 @@
     "companyWebsite": "Website",
     "companyDistrict": "Area",
     "companyHeadcount": "Company size",
-    "companyReviewNote": "We review every company before its first listing. It does not take long, and you will be notified when it is done."
+    "companyReviewNote": "We review every company before its first listing. It does not take long, and you will be notified when it is done.",
+    "confirmedBanner": "Your email is confirmed — one step and your account is ready.",
+    "roleKnownCandidate": "You are registered as a consultant.",
+    "roleKnownEmployer": "You are registered as a company."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -296,6 +317,8 @@
     "agentProfile": "Your consultant directory profile",
     "agentProfileHint": "Verified employers search this directory. You control who sees your profile.",
     "decisionFromCompany": "Message from the company",
+    "applicationListingClosed": "This listing has closed. Your application is still with the company.",
+    "applicationListingOffBoard": "This listing is off the board right now — the company is editing it, or it is under review. Your application is still with them.",
     "overview": "Overview",
     "candidateGreeting": "Hello {name}",
     "candidateLede": "Your applications and profile at a glance.",
@@ -353,7 +376,7 @@
     "matchNudge": "This is ordered by newest only.",
     "matchNudgeCta": "Add your track and districts and we will order them to fit you",
     "nextApplicantsTitle": "{count, plural, one {# applicant is waiting on you} other {# applicants are waiting on you}}",
-    "nextApplicantsBody": "Nobody has opened them yet. Open them and move their status so they know they were seen.",
+    "nextApplicantsBody": "Their status has not moved yet. Move it so they know where they stand.",
     "nextApplicantsCta": "See the applicants",
     "nextExpiringTitle": "{count, plural, one {# listing ends this week} other {# listings end this week}}",
     "nextExpiringBody": "Once it ends it stops appearing in search. You can renew it before it closes.",
@@ -369,7 +392,11 @@
     "nextRepliesCta": "See your applications",
     "nextProfileTitle": "Your profile is incomplete",
     "nextProfileBody": "Verified companies search the directory. A complete profile is what puts you in it.",
-    "nextProfileCta": "Complete your profile"
+    "nextProfileCta": "Complete your profile",
+    "savedOpenHeading": "Still open",
+    "savedClosedHeading": "No longer open",
+    "savedClosedLede": "These listings have expired or been closed by the company. They stay here until you remove them.",
+    "profilePreview": "See your profile as companies see it"
   },
   "applicationStatus": {
     "new": "New",
@@ -399,7 +426,11 @@
     "labelCompany": "Company",
     "labelDate": "Applied on",
     "nextRoles": "Other open roles",
-    "nextRolesMatched": "Other roles that fit you"
+    "nextRolesMatched": "Other roles that fit you",
+    "privacyTitle": "Who sees your details",
+    "privacyBody": "Only the company that posted this role sees your name, WhatsApp number, years of experience, and your CV and note if you attach them. Other companies and site visitors see none of it.",
+    "privacyProfile": "The name and number you enter here also update your account.",
+    "privacyNote": "This is separate from your directory visibility, and you can withdraw the application at any time from “My applications”."
   },
   "employer": {
     "company": "Company profile",
@@ -414,6 +445,8 @@
     "verification": "Company verification",
     "verificationBody": "Upload your commercial register and tax card. Verification lifts your posting cap, unlocks the consultant directory, and gives you one free post every month.",
     "uploadDoc": "Upload a document",
+    "docUnderReview": "Under review",
+    "docRejected": "Needs a new copy",
     "commercialRegister": "Commercial register",
     "taxCard": "Tax card",
     "unverifiedCap": "Unverified companies may keep only one active job post.",
@@ -423,12 +456,16 @@
     "moveTo": "Move to",
     "submitForReview": "Submit for review",
     "saveDraft": "Save as draft",
+    "saveChanges": "Save changes",
+    "listingMoved": "This listing changed somewhere else while you were editing. Reload the page and try again.",
+    "companyMoved": "Someone else at the company saved this profile while you had it open. Reload to see their version before saving.",
     "closeJob": "Close listing",
     "reopenJob": "Reopen listing",
     "editJob": "Edit",
     "pipelineCount": "<v>{count}</v> applicants",
     "freePostClaim": "Claim this month's free post",
     "freePostClaimed": "This month's free post has been claimed.",
+    "freePostRefused": "We could not grant the free post. Verification has to be complete, and it is once a calendar month.",
     "postCapBlocked": "You already have an active listing. Unverified companies may keep only one.",
     "decisionNote": "Reason (optional)",
     "decisionNoteHint": "The applicant sees this. One clear line beats silence.",
@@ -467,7 +504,6 @@
     "stageFilter": "Filter by stage",
     "searchApplicants": "Search by name",
     "searchApplicantsPlaceholder": "Applicant's name",
-    "searchClear": "Clear the search",
     "searchEmpty": "No applicants by that name.",
     "setupTitle": "Getting started",
     "setupLede": "Finish these to start receiving applicants.",
@@ -484,7 +520,19 @@
     "setupFirstJobDraft": "You have a saved draft — finish it and send it for review.",
     "setupPostFirstJob": "Post your first job",
     "noApplicantsHint": "Nobody has applied to this listing yet. Read the advert the way a consultant reads it, or check your other listings.",
-    "viewListing": "Read the listing"
+    "viewListing": "Read the listing",
+    "applicantsPrivacy": "These numbers and CVs reached you because their owners applied to your listings. Use them for this role only, and do not share them outside your company.",
+    "applicantProfilePrivate": "This consultant keeps their directory profile private. What they sent you above — name, number and CV — is everything they agreed to show.",
+    "applicantMovedAlready": "Someone else at the company moved this applicant first. We have refreshed to their latest status.",
+    "filterExperience": "Experience",
+    "filterTrack": "Listing specialisation",
+    "filterApply": "Apply",
+    "filterEmpty": "No applicants match these filters.",
+    "filterClear": "Clear filters",
+    "duplicateTitle": "You already have a listing with this title in this area",
+    "duplicateBody": "“{title}” has {seats, plural, one {# open seat} other {# open seats}}. If this is the same role, add seats to it instead of posting again — a duplicate costs a credit and splits your applicants.",
+    "duplicateEdit": "Edit the existing listing",
+    "duplicateDismiss": "Continue with the new one"
   },
   "jobForm": {
     "basics": "Basics",
@@ -517,7 +565,8 @@
     "developersHint": "Which developers this hire will be selling.",
     "next": "Next",
     "back": "Back",
-    "reviewNote": "We review listings before they go live — usually within one working day."
+    "reviewNote": "We review listings before they go live — usually within one working day.",
+    "liveEditNote": "This listing is live. Changing the title, description, salary, commission, seats or leads sends it back for review before it shows again. Anything else saves straight away."
   },
   "admin": {
     "title": "Admin",
@@ -568,7 +617,9 @@
     "emailPreviewHint": "Every template can be previewed at",
     "emailOffTitle": "Email sending is switched off",
     "emailOffOutbox": "Nothing is being recorded at all — the service key is missing, so a message fails before it is ever written. Set these in Vercel and redeploy.",
-    "emailOffSending": "Messages are recorded but never sent — the Resend credentials are missing. Set these in Vercel and redeploy."
+    "emailOffSending": "Messages are recorded but never sent — the Resend credentials are missing. Set these in Vercel and redeploy.",
+    "mailOffTitle": "The platform cannot send email",
+    "mailOffBody": "Every email — application receipts, new applicants, digests — is being dropped silently. These variables are missing in Vercel:"
   },
   "reportReason": {
     "fake_listing": "Fake listing",
@@ -630,12 +681,19 @@
     "otherTracks": "Other tracks in {district}"
   },
   "footer": {
-    "product": "Product",
-    "forCandidates": "For consultants",
+    "product": "Platform",
     "about": "About",
     "privacy": "Privacy",
     "terms": "Terms",
-    "rights": "All rights reserved."
+    "rights": "All rights reserved.",
+    "doorCandidateTitle": "Looking for a job",
+    "doorCandidateBody": "Every listing states the basic salary, the commission and who supplies the leads — before you ask.",
+    "doorCandidateCta": "Browse jobs",
+    "doorEmployerTitle": "Hiring",
+    "doorEmployerBody": "Your listing is reviewed and published, and every application reaches you with the applicant’s name and WhatsApp number.",
+    "byTrack": "By specialisation",
+    "byArea": "By area",
+    "contact": "Contact us"
   },
   "validation": {
     "required": "This field is required",
@@ -926,6 +984,7 @@
     "markAllRead": "Mark all read",
     "application_submitted": "Your application to “{subject}” was received",
     "application_received": "New applicant for {subject}",
+    "application_withdrawn": "A shortlisted applicant withdrew from {subject}",
     "applicationMoved": "Your application for {title} is now: {status}",
     "application_moved": "Your application moved",
     "job_published": "{subject} is live",

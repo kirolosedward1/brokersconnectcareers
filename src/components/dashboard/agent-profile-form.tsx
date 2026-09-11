@@ -19,6 +19,7 @@ import type {
   DistrictRow,
   ProfileRow,
 } from '@/lib/supabase/database.types';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 const VISIBILITY_ICON: Record<AgentVisibility, React.ReactNode> = {
   public: <Eye className="size-4" aria-hidden />,
@@ -65,6 +66,7 @@ export function AgentProfileForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function toggle<T>(list: T[], value: T, setter: (next: T[]) => void) {
     setter(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
@@ -109,6 +111,17 @@ export function AgentProfileForm({
       });
 
       if (!result.ok) {
+        /*
+          Take the file back out.
+
+          The CV is uploaded before the profile is saved, because the action
+          wants a path rather than bytes — so every refusal after this point
+          left a file in the private bucket with nothing pointing at it, and
+          each retry left another. Storage RLS confines this account to its own
+          folder, which is the same rule that allowed the upload.
+        */
+        if (cvPath) await createClient().storage.from(CV_BUCKET).remove([cvPath]);
+        if (recoverSession(result)) return;
         setErrors(result.fieldErrors ?? { form: tCommon('errorBody') });
         return;
       }
@@ -128,7 +141,6 @@ export function AgentProfileForm({
 
         <Field
           label={tOnboarding('whatsapp')}
-          hint={tOnboarding('whatsappHint')}
           htmlFor="whatsapp"
           error={errors.whatsapp ? tValidation('invalidPhone') : undefined}
         >

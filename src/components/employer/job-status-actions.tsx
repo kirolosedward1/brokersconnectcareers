@@ -22,6 +22,7 @@ export function JobStatusActions({
   labels: { close: string; reopen: string; submit: string };
 }) {
   const t = useTranslations('employer');
+  const tCommon = useTranslations('common');
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -30,7 +31,18 @@ export function JobStatusActions({
     startTransition(async () => {
       const result = await transitionJob({ jobId, status: next });
       if (!result.ok) {
-        setError(result.error === 'post_cap' ? t('postCapBlocked') : result.error);
+        /*
+          Named, not echoed. `result.error` is a code on the way to a message
+          and anything unmapped was printed to the employer as it stood —
+          "invalid_transition" under a button they had just pressed.
+        */
+        setError(
+          result.error === 'post_cap'
+            ? t('postCapBlocked')
+            : result.error === 'invalid_transition'
+              ? t('listingMoved')
+              : tCommon('errorBody'),
+        );
         return;
       }
       setError(null);

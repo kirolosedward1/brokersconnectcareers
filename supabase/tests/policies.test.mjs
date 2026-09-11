@@ -70,6 +70,188 @@ report.section('publishing is a moderation action');
     !r5.ok && /view_count/.test(r5.error ?? ''), r5.ok ? 'update was allowed' : r5.error);
 }
 
+report.section('editing a live listing is possible, and says so');
+{
+  /*
+    saveJob wrote a status on every save, including a save of a listing already
+    on the board — and the transition table permits neither `draft` nor
+    `pending_review` from `active`, so the edit button on the listings page
+    opened a form that could not be saved at all. The action now sends no
+    status when the listing is live and leaves the decision to the guard, which
+    is the rule that was already written.
+  */
+  const withStatus = await as(employerVerified,
+    `update jobs set title_ar = title_ar || ' ', status = 'pending_review' where id = '${liveJob}'`);
+  report.check('sending a status with the edit is still refused',
+    !withStatus.ok && /cannot go from active to pending_review/.test(withStatus.error ?? ''),
+    withStatus.error);
+
+  const material = await as(employerVerified,
+    `update jobs set seats = seats + 1 where id = '${liveJob}' returning status`);
+  report.check('a material edit goes back to the queue by itself',
+    material.ok && material.rows[0]?.status === 'pending_review',
+    JSON.stringify(material.rows[0] ?? material.error));
+
+  const cosmetic = await as(employerVerified,
+    `update jobs set requirements_ar = 'رخصة قيادة' where id = '${liveJob}' returning status`);
+  report.check('and a cosmetic one stays on the board',
+    cosmetic.ok && cosmetic.rows[0]?.status === 'active',
+    JSON.stringify(cosmetic.rows[0] ?? cosmetic.error));
+
+  // Still somebody else's listing, whatever the status.
+  const stranger = await as(employerUnverified,
+    `update jobs set requirements_ar = 'مزوّر' where id = '${liveJob}' returning id`);
+  report.check('another company still changes nothing',
+    stranger.ok && stranger.rows.length === 0, JSON.stringify(stranger.rows));
+}
+
+report.section('reposting puts the listing back on the board');
+{
+  /*
+    closed -> pending_review -> active is the only path an employer has back
+    onto the board, and stamp_job_publication used to carry the original
+    expires_at across it. A listing whose window had run out came back active
+    and already expired: invisible to the board, which filters on the date, and
+    flipped straight back by the next nightly run.
+
+    Written with db.exec rather than as(): the runner rolls every call back, so
+    it answers "was this permitted" and nothing about what the trigger wrote.
+    The listing is put back the way it was found at the end.
+  */
+  await db.exec(`
+    update jobs set published_at = now() - interval '32 days', expires_at = now() - interval '2 days' where id = '${liveJob}';
+    update jobs set status = 'closed'         where id = '${liveJob}';
+    update jobs set status = 'pending_review' where id = '${liveJob}';
+    update jobs set status = 'active'         where id = '${liveJob}';
+  `);
+
+  const back = (
+    await db.query(`select status, expires_at > now() as on_the_board from jobs where id = '${liveJob}'`)
+  ).rows[0];
+  report.check('a listing whose window ran out comes back with a new one',
+    back.status === 'active' && back.on_the_board === true, JSON.stringify(back));
+
+  /*
+    And the other half: closing for a day is not a way to buy another month. A
+    window still running is carried across untouched.
+  */
+  await db.exec(`
+    update jobs set expires_at = now() + interval '10 days' where id = '${liveJob}';
+    update jobs set status = 'closed'         where id = '${liveJob}';
+    update jobs set status = 'pending_review' where id = '${liveJob}';
+  `);
+  const before = (await db.query(`select expires_at from jobs where id = '${liveJob}'`)).rows[0].expires_at;
+  await db.exec(`update jobs set status = 'active' where id = '${liveJob}'`);
+  const after = (await db.query(`select expires_at from jobs where id = '${liveJob}'`)).rows[0].expires_at;
+  report.check('a window still running is not extended by a round trip',
+    String(before) === String(after), `${before} -> ${after}`);
+
+  /*
+    The post cap counted listings whose window had run out, so an unverified
+    company could not replace an advert that had quietly ended. The cron that
+    would have relabelled it returns 503 on production for want of a service
+    role key, which is exactly why the date has to be the thing that decides.
+  */
+  await db.exec(`
+    update jobs set published_at = now() - interval '40 days', expires_at = now() - interval '10 days'
+     where company_id = '${unverifiedCo}' and status = 'active';
+  `);
+
+  const replacement = await as(null,
+    `update jobs set status = 'active' where id = '${draftJob}' returning id`, 'service_role');
+  report.check('an expired advert does not fill the one slot an unverified company has',
+    replacement.ok && replacement.rows.length === 1, replacement.error);
+
+  /*
+    And the repost button the console now offers on a listing whose label has
+    not caught up. It is shown as expired because the date says so, and the
+    transition table used to permit pending_review only from the label the cron
+    writes — so the button would have been refused by the database.
+  */
+  await db.exec(`update jobs set published_at = now() - interval '31 days', expires_at = now() - interval '1 day' where id = '${liveJob}'`);
+
+  const repostStale = await as(employerVerified,
+    `update jobs set status = 'pending_review' where id = '${liveJob}' returning status`);
+  report.check('a listing past its window can be reposted whatever its label says',
+    repostStale.ok && repostStale.rows.length === 1, repostStale.error);
+
+  // And a listing still inside its window cannot take itself off the board
+  // that way — closing is the only route.
+  await db.exec(`update jobs set expires_at = now() + interval '10 days' where id = '${liveJob}'`);
+  const stillLive = await as(employerVerified,
+    `update jobs set status = 'pending_review' where id = '${liveJob}'`);
+  report.check('a live one still cannot',
+    !stillLive.ok && /cannot go from active to pending_review/.test(stillLive.error ?? ''),
+    stillLive.error);
+
+  // Back the way it was found, for every section after this one.
+  await db.exec(`
+    update jobs set expires_at = now() + interval '30 days'
+     where id = '${liveJob}' or (company_id = '${unverifiedCo}' and status = 'active');
+  `);
+}
+
+report.section('two people editing one listing, and one of them losing');
+{
+  /*
+    A company is a team: every admin member may edit every listing on it, so
+    two people on the same advert is what inviting a colleague produces. The
+    second save used to win and the first simply ceased to exist — and on a
+    live listing it is the second saver's copy that goes back to the moderation
+    queue, so what returns to the board is what nobody meant to send.
+  */
+  const before = (
+    await db.query(`select version from jobs where id = '${liveJob}'`)
+  ).rows[0].version;
+
+  const first = await as(employerVerified,
+    `update jobs set requirements_ar = 'النسخة الأولى'
+      where id = '${liveJob}' and version = ${before} returning version`);
+  report.check('a save carrying the version it loaded goes through',
+    first.ok && first.rows.length === 1, first.error);
+  report.check('and the version moves', first.rows[0]?.version === before + 1,
+    JSON.stringify(first.rows[0]));
+
+  /*
+    The runner rolls each call back, so the row is at `before` again — which
+    is the wrong shape for this assertion. Committed deliberately, then put
+    back at the end.
+  */
+  await db.exec(`update jobs set requirements_ar = 'النسخة الأولى' where id = '${liveJob}'`);
+  const moved = (await db.query(`select version from jobs where id = '${liveJob}'`)).rows[0].version;
+  report.check('a committed save really did move it', moved === before + 1, `${before} -> ${moved}`);
+
+  const second = await as(employerVerified,
+    `update jobs set requirements_ar = 'النسخة التانية'
+      where id = '${liveJob}' and version = ${before} returning id`);
+  report.check('a save carrying a version that has moved changes nothing',
+    second.ok && second.rows.length === 0, JSON.stringify(second.rows));
+
+  const still = (
+    await db.query(`select requirements_ar from jobs where id = '${liveJob}'`)
+  ).rows[0].requirements_ar;
+  report.check('and the first save is still there',
+    still === 'النسخة الأولى', String(still));
+
+  // Companies too, for the same reason: a company can have several admins.
+  const company = (
+    await db.query(`select company_id from company_members where user_id = '${employerVerified}' limit 1`)
+  ).rows[0].company_id;
+  const companyBefore = (
+    await db.query(`select version from companies where id = '${company}'`)
+  ).rows[0].version;
+
+  await db.exec(`update companies set about_ar = 'نسخة زميل' where id = '${company}'`);
+
+  const late = await as(employerVerified,
+    `update companies set about_ar = 'نسخة متأخرة'
+      where id = '${company}' and version = ${companyBefore} returning id`);
+  report.check('a company profile saved from a stale form changes nothing',
+    late.ok && late.rows.length === 0, JSON.stringify(late.rows));
+
+  await db.exec(`update jobs set requirements_ar = null where id = '${liveJob}'`);
+}
+
 report.section('verification and credits are granted, never claimed');
 {
   const r = await as(employerUnverified, `update companies set verification_status='verified' where id='${unverifiedCo}'`);
@@ -284,6 +466,38 @@ report.section('a company waits for a person; a consultant does not');
     !selfAdmin.ok && /own approval/.test(selfAdmin.error ?? ''),
     selfAdmin.ok ? 'call was allowed' : selfAdmin.error);
 
+  /*
+    Nor by going round the function.
+
+    set_account_approval() has refused this since migration 16 and was the only
+    thing refusing it: guard_profile_update returned early for an admin before
+    reaching any check, and profiles_admin_all permitted the write, so a direct
+    PostgREST update did what the function would not. Not an escalation — an
+    admin can approve anybody — but a rule the product states in an error
+    message and the database did not keep.
+  */
+  const direct = await as(admin,
+    `update profiles set approval_status = 'approved', approved_at = now() where id = '${admin}'`);
+  report.check('nor by updating the row directly',
+    !direct.ok && /own approval/.test(direct.error ?? ''),
+    direct.ok ? 'update was allowed' : direct.error);
+
+  const selfRole = await as(admin, `update profiles set role = 'candidate' where id = '${admin}'`);
+  report.check('nor demote themselves by hand',
+    !selfRole.ok && /own approval/.test(selfRole.error ?? ''),
+    selfRole.ok ? 'update was allowed' : selfRole.error);
+
+  // And everything else about their own row is still theirs.
+  const ordinary = await as(admin,
+    `update profiles set full_name = 'المشرف' where id = '${admin}' returning id`);
+  report.check('an admin still edits their own name',
+    ordinary.ok && ordinary.rows.length === 1, ordinary.error);
+
+  const other = await as(admin,
+    `update profiles set approval_status = 'approved' where id = '${candidate}' returning id`);
+  report.check('and still approves somebody else',
+    other.ok && other.rows.length === 1, other.error);
+
   await db.exec(`update profiles set approval_status='approved' where id='${PENDING}'`);
   const post2 = await as(PENDING, draft('pending-job-2'));
   report.check('once approved, the same company can', post2.ok, post2.error);
@@ -372,12 +586,32 @@ report.section('an employer reaches their applicant, and only their applicant');
   report.check('an unrelated employer does not', hidden.rows.length === 0);
 }
 
-report.section('the applicant inbox shows a profile only if the reader may see it');
+report.section('applying is consent, and the applicant inbox may read it');
 {
-  // The employer's applicant list embeds each candidate's directory profile so
-  // a reviewer can judge somebody without opening a filename. Applying must
-  // not become a way around the visibility a consultant chose: a hidden
-  // profile has to stay hidden from the very employer it applied to.
+  /*
+    The employer's applicant list embeds each candidate's directory profile so
+    a reviewer can judge somebody without opening a filename.
+
+    This section used to assert the opposite of what it asserts now: that a
+    hidden profile stayed hidden from the very employer it had applied to. The
+    reasoning was that applying must not become a way around the visibility a
+    consultant chose, and the worry behind it is real — an employer must not be
+    able to browse to a profile its owner withheld.
+
+    But the rule it produced protected nothing. The application already carries
+    the candidate's name, their WhatsApp number and usually their CV file, and
+    `profiles_select_applicants` has handed the employer all three since
+    migration 04. Withholding the headline and the years of experience beside
+    them did not keep a secret; it made the reviewer open a PDF to learn what
+    the card could have said, and on production it left four applications
+    showing a name, a phone number and an empty panel.
+
+    Visibility is a directory setting. `hidden` means do not list me. An
+    application is not a listing — it is a message the candidate chose to send
+    to one company, and only the candidate can create it. So the gate is not
+    "an employer", it is "the employer this person applied to", which is what
+    the negative assertion at the end of this block pins down.
+  */
   const live = (
     await db.query(`
       select j.id from jobs j
@@ -396,11 +630,11 @@ report.section('the applicant inbox shows a profile only if the reader may see i
   report.check('the fixtures include a hidden and a public consultant',
     Boolean(hiddenOwner) && Boolean(publicOwner));
 
-  // Both apply to the same listing, so the only difference between them is
-  // the visibility each one chose.
+  // The public consultant applies, unchanged from when this block asserted the
+  // opposite: a public profile was always readable, so this is the control.
   await db.exec(`
     insert into applications (job_id, candidate_id, experience_band)
-      values ('${live}', '${hiddenOwner}', 'mid_3_5'), ('${live}', '${publicOwner}', 'mid_3_5')
+      values ('${live}', '${publicOwner}', 'mid_3_5')
       on conflict (job_id, candidate_id) do nothing;
   `);
 
@@ -415,14 +649,115 @@ report.section('the applicant inbox shows a profile only if the reader may see i
   report.check('a public applicant brings their profile with them',
     seesPublic.ok && seesPublic.rows[0]?.slug != null, JSON.stringify(seesPublic.rows[0]));
 
-  const seesHidden = await as(employerVerified, embed(hiddenOwner));
-  report.check('a hidden applicant does not, even to the employer they applied to',
-    seesHidden.ok && seesHidden.rows.length === 1 && seesHidden.rows[0].slug === null,
-    JSON.stringify(seesHidden.rows[0]));
+  /*
+    The gated half is built here rather than borrowed from the seed.
 
-  // And the application itself is still there — the gate hides the profile,
-  // not the person, or the employer would lose an applicant entirely.
-  report.check('the application is still visible', seesHidden.rows.length === 1);
+    The reader has to be an employer whose company is *not* verified — that is
+    the whole case — and the consultant has to have applied to exactly one
+    company, or the negative assertion below tests whichever relationship the
+    seed happened to generate. Both are easier to state than to find. This
+    consultant exists for eight assertions and is deleted after them.
+  */
+  const SHY = '66666666-6666-4666-8666-666666666666';
+  const unverifiedJob = (
+    await db.query(`select id from jobs where company_id = '${unverifiedCo}' limit 1`)
+  ).rows[0].id;
+
+  await db.exec(`
+    insert into auth.users (id, email) values ('${SHY}', 'shy@demo.test');
+    insert into profiles (id, role, full_name, whatsapp_phone)
+      values ('${SHY}', 'candidate', 'خجول', '+201666666666');
+    insert into agent_profiles (user_id, slug, visibility, years_experience)
+      values ('${SHY}', 'shy-consultant-000001', 'verified_employers_only', 7);
+    insert into agent_experience (agent_id, company_name, title, started)
+      values ((select id from agent_profiles where user_id = '${SHY}'), 'شركة سرية', 'استشاري', '2021-01-01');
+  `);
+
+  const beforeApplying = await as(employerUnverified, `select slug from agent_profiles where user_id = '${SHY}'`);
+  report.check('an unverified employer cannot read a gated profile',
+    beforeApplying.ok && beforeApplying.rows.length === 0, JSON.stringify(beforeApplying.rows));
+
+  /*
+    Written with the service role, so the listing's status is beside the point:
+    applied_to_my_job asks who owns the listing, not whether it is live. An
+    unverified company can hold applications on a listing that has since
+    closed, and the inbox still has to render them.
+  */
+  await db.exec(`
+    insert into applications (job_id, candidate_id, experience_band)
+      values ('${unverifiedJob}', '${SHY}', 'mid_3_5');
+  `);
+
+  const afterApplying = await as(employerUnverified, embed(SHY).replace(`'${live}'`, `'${unverifiedJob}'`));
+  report.check('and reads it once that consultant has applied to them',
+    afterApplying.ok && afterApplying.rows.length === 1 && afterApplying.rows[0].slug !== null,
+    JSON.stringify(afterApplying.rows[0]));
+
+  // The card the applicant list links to opens too, or the panel would fill in
+  // beside a link to an anonymous page.
+  const card = await as(employerUnverified, `select is_unlocked, whatsapp_phone from get_agent_card('shy-consultant-000001')`);
+  report.check('the card behind the link opens',
+    card.rows[0]?.is_unlocked === true, JSON.stringify(card.rows[0] ?? card.error));
+
+  // Work history follows the profile it hangs on, which is what a reviewer is
+  // actually reading when they open an applicant.
+  const history = await as(employerUnverified, `select company_name from agent_experience where company_name = 'شركة سرية'`);
+  report.check('and the work history with it', history.ok && history.rows.length === 1, JSON.stringify(history.rows));
+
+  /*
+    The scope, stated as a test. Computed rather than pinned to a named
+    account, for the reason the section above gives: the seed decides which
+    company has which applications.
+  */
+  const unrelatedEmployer = (
+    await db.query(`
+      select c.owner_id from companies c
+      where c.verification_status <> 'verified'
+        and not exists (
+          select 1 from applications a
+            join jobs j on j.id = a.job_id
+           where j.company_id = c.id and a.candidate_id = '${SHY}'
+        )
+      limit 1`)
+  ).rows[0]?.owner_id;
+
+  // Unverified too, or the assertion proves nothing: a verified employer reads
+  // this profile through the ordinary directory gate and always could.
+  report.check('found an unverified employer with no claim on this consultant', Boolean(unrelatedEmployer));
+
+  const stranger = await as(unrelatedEmployer, `select slug from agent_profiles where user_id = '${SHY}'`);
+  report.check('an employer they did not apply to still sees nothing',
+    stranger.ok && stranger.rows.length === 0, JSON.stringify(stranger.rows));
+
+  /*
+    And the line this stops at.
+
+    `hidden` is not a stronger setting of the same preference — it is a
+    different statement. It exists so a consultant can stay invisible to the
+    company they currently work for, and they were most likely hired through an
+    application to that company. Opening on an application would defeat the
+    feature for the one person it was built for, so it does not.
+  */
+  await db.exec(`update agent_profiles set visibility = 'hidden' where user_id = '${SHY}';`);
+
+  const stillHidden = await as(employerUnverified, `select slug from agent_profiles where user_id = '${SHY}'`);
+  report.check('but hidden stays hidden, application or not',
+    stillHidden.ok && stillHidden.rows.length === 0, JSON.stringify(stillHidden.rows));
+
+  const hiddenCard = await as(employerUnverified, `select slug from get_agent_card('shy-consultant-000001')`);
+  report.check('and its card does not open by slug either',
+    hiddenCard.ok && hiddenCard.rows.length === 0, JSON.stringify(hiddenCard.rows));
+
+  // Consent is the application, so it lasts exactly as long as one does.
+  await db.exec(`
+    update agent_profiles set visibility = 'verified_employers_only' where user_id = '${SHY}';
+    delete from applications where candidate_id = '${SHY}';
+  `);
+  const afterWithdrawal = await as(employerUnverified, `select slug from agent_profiles where user_id = '${SHY}'`);
+  report.check('and withdrawing closes it again',
+    afterWithdrawal.ok && afterWithdrawal.rows.length === 0, JSON.stringify(afterWithdrawal.rows));
+
+  await db.exec(`delete from auth.users where id = '${SHY}';`);
 }
 
 report.section('the agent directory gate');
@@ -460,6 +795,42 @@ report.section('the agent directory gate');
 
   const rawPublic = await as(null, `select id from agent_profiles where slug = '${PUBLIC}'`, 'anon');
   report.check('while a public row is readable directly', rawPublic.rows.length === 1);
+}
+
+report.section('the directory pages in a total order');
+{
+  /*
+    An order with ties is not an order: Postgres may return tied rows in a
+    different sequence for the query that builds page one and the query that
+    builds page two, which shows one consultant twice and another not at all.
+    Every key search_agents used could tie — years by design, since it is a
+    small integer most people share, and created_at the moment two people
+    finish onboarding in the same instant.
+
+    Asserted on the ORDER BY rather than by walking the pages, and that is
+    deliberate. I wrote the walking version first: it forced every row to the
+    same years and the same created_at, paged through in threes, and passed
+    with the tiebreaker removed — eight rows come back from a sequential scan
+    in heap order every time, so the test demonstrated the planner's habits
+    rather than the function's correctness. A test that passes for the wrong
+    reason is worse than none.
+
+    What can be established here is the property that makes the order total:
+    the last key is a column with a unique constraint on it.
+  */
+  const body = (
+    await db.query(
+      `select prosrc from pg_proc where proname = 'search_agents' and pronamespace = 'public'::regnamespace`,
+    )
+  ).rows[0]?.prosrc;
+
+  report.check('found search_agents', Boolean(body));
+
+  const order = /order\s+by([^\n]*)/i.exec(body ?? '')?.[1] ?? '';
+  const lastKey = order.split(',').pop()?.trim() ?? '';
+
+  report.check('the directory order ends on the primary key',
+    /^m\.id\b/.test(lastKey), `order by${order}`);
 }
 
 report.section('a CV section never outlives the gate on its profile');
@@ -539,6 +910,59 @@ report.section('an employed agent can hide from their own employer');
   report.check('the owner still sees their own profile', owner.rows.length === 1);
 }
 
+report.section('the row itself refuses shapes no form would send');
+{
+  /*
+    The forms cap what they accept and the table did not, so anything not
+    coming through a form — which is every request, as far as the database is
+    concerned — could write an eight megabyte description. And two of these are
+    not about size at all: a CV path is a file, and a file belongs to the
+    account whose folder it sits in.
+  */
+  const foreignCv = await as(candidate, `
+    insert into applications (job_id, candidate_id, cv_path, experience_band)
+    values ('${liveJob}', '${candidate}', '${publicAgent}/stolen.pdf', 'mid_3_5')`);
+  report.check('an application cannot carry somebody else\'s CV',
+    !foreignCv.ok && /applications_cv_is_the_applicants/.test(foreignCv.error ?? ''),
+    foreignCv.ok ? 'insert was allowed' : foreignCv.error);
+
+  const ownCv = await as(candidate, `
+    insert into applications (job_id, candidate_id, cv_path, experience_band)
+    values ('${liveJob}', '${candidate}', '${candidate}/mine.pdf', 'mid_3_5')
+    on conflict (job_id, candidate_id) do nothing`);
+  report.check('and its own is fine', ownCv.ok, ownCv.error);
+
+  const foreignAgentCv = await as(publicAgent,
+    `update agent_profiles set cv_path = '${candidate}/stolen.pdf' where user_id = '${publicAgent}'`);
+  report.check('nor can a directory profile',
+    !foreignAgentCv.ok && /agent_profiles_cv_is_the_owners/.test(foreignAgentCv.error ?? ''),
+    foreignAgentCv.ok ? 'update was allowed' : foreignAgentCv.error);
+
+  const huge = await as(employerVerified,
+    `update jobs set description_ar = repeat('ا', 9000) where id = '${liveJob}'`);
+  report.check('a listing cannot carry an unbounded description',
+    !huge.ok && /jobs_description_ar_length/.test(huge.error ?? ''),
+    huge.ok ? 'update was allowed' : huge.error);
+
+  const backwards = await as(null,
+    `update jobs set expires_at = published_at - interval '1 day' where id = '${liveJob}'`,
+    'service_role');
+  report.check('nor a window that runs backwards',
+    !backwards.ok && /jobs_publication_window/.test(backwards.error ?? ''),
+    backwards.ok ? 'update was allowed' : backwards.error);
+
+  /*
+    And the directory stays a directory of consultants even for the service
+    role, which bypasses RLS entirely and is what the seed and the crons use.
+  */
+  const employerListing = await as(null,
+    `insert into agent_profiles (user_id, slug) values ('${employerVerified}', 'employer-in-the-directory')`,
+    'service_role');
+  report.check('an employer cannot be listed as a consultant',
+    !employerListing.ok && /agent_profile_role/.test(employerListing.error ?? ''),
+    employerListing.ok ? 'insert was allowed' : employerListing.error);
+}
+
 report.section('verification documents never leak');
 {
   await db.exec(`insert into company_documents (company_id, doc_type, storage_path)
@@ -554,6 +978,70 @@ report.section('verification documents never leak');
     (await as(admin, 'select id from company_documents')).rows.length === 1);
 }
 
+report.section('submitting papers joins the queue, and nothing else does');
+{
+  /*
+    `pending` was a value the enum offered and nothing ever wrote. The review
+    queue is built from documents, so it worked; the admin overview's count and
+    the employer's own setup checklist both read the company's status, so both
+    said nothing was happening while something was.
+
+    The document inserted by the section above is still there, so the company
+    should already have moved.
+  */
+  const afterUpload = (
+    await db.query(`select verification_status from companies where id = '${unverifiedCo}'`)
+  ).rows[0].verification_status;
+  report.check('a submitted document puts the company in the queue',
+    afterUpload === 'pending', afterUpload);
+
+  // And the thing the marker must not become a way to do.
+  const selfVerify = await as(employerUnverified,
+    `update companies set verification_status = 'verified' where id = '${unverifiedCo}'`);
+  report.check('the owner still cannot verify themselves',
+    !selfVerify.ok && /set by review/.test(selfVerify.error ?? ''), selfVerify.error);
+
+  const selfStamp = await as(employerUnverified,
+    `update companies set verified_at = now() where id = '${unverifiedCo}'`);
+  report.check('nor stamp the date', !selfStamp.ok, selfStamp.error);
+
+  // A reviewer's decision is not undone by the trigger that watches documents.
+  await db.exec(`
+    update companies set verification_status = 'verified', verified_at = now() where id = '${unverifiedCo}';
+    update company_documents set status = 'verified' where company_id = '${unverifiedCo}';
+  `);
+  const reviewed = (
+    await db.query(`select verification_status from companies where id = '${unverifiedCo}'`)
+  ).rows[0].verification_status;
+  report.check('a review is not recomputed away', reviewed === 'verified', reviewed);
+
+  // Withdrawn before anybody looked: back out of the queue rather than sitting
+  // in a count the queue itself no longer shows.
+  await db.exec(`
+    update companies set verification_status = 'unverified', verified_at = null where id = '${unverifiedCo}';
+    update company_documents set status = 'pending' where company_id = '${unverifiedCo}';
+    insert into company_documents (company_id, doc_type, storage_path)
+      values ('${unverifiedCo}', 'tax_card', '${unverifiedCo}/tax.pdf');
+  `);
+  const bothPending = (
+    await db.query(`select verification_status from companies where id = '${unverifiedCo}'`)
+  ).rows[0].verification_status;
+  report.check('two documents still means one queue entry', bothPending === 'pending', bothPending);
+
+  await db.exec(`delete from company_documents where company_id = '${unverifiedCo}' and doc_type = 'tax_card'`);
+  const stillPending = (
+    await db.query(`select verification_status from companies where id = '${unverifiedCo}'`)
+  ).rows[0].verification_status;
+  report.check('withdrawing one of two leaves it in the queue', stillPending === 'pending', stillPending);
+
+  await db.exec(`delete from company_documents where company_id = '${unverifiedCo}'`);
+  const withdrawn = (
+    await db.query(`select verification_status from companies where id = '${unverifiedCo}'`)
+  ).rows[0].verification_status;
+  report.check('withdrawing the last one takes it back out',
+    withdrawn === 'unverified', withdrawn);
+}
+
 report.section('the public board shows live listings only');
 {
   report.check('drafts are invisible to the public',
@@ -562,6 +1050,35 @@ report.section('the public board shows live listings only');
     (await as(null, "select id from jobs where status='pending_review'", 'anon')).rows.length === 0);
   report.check('but the owner sees their own pending listing',
     (await as(employerUnverified, "select id from jobs where status='pending_review'")).rows.length >= 1);
+}
+
+report.section('an applicant keeps the listing they applied to');
+{
+  /*
+    An employer editing a live listing materially sends it back to
+    pending_review, which jobs_select_active does not cover — so every
+    application on it used to fall out of the applicant's own dashboard, which
+    drops a row whose job embed comes back null. Not "taken down": gone.
+  */
+  const applicant = (
+    await db.query(`select candidate_id from applications where job_id = '${liveJob}' limit 1`)
+  ).rows[0]?.candidate_id;
+  report.check('found an applicant on the live listing', Boolean(applicant));
+
+  await db.exec(`update jobs set status = 'pending_review' where id = '${liveJob}'`);
+
+  const theirs = await as(applicant, `select id, status from jobs where id = '${liveJob}'`);
+  report.check('they still see it while it is back in review',
+    theirs.ok && theirs.rows.length === 1, JSON.stringify(theirs.rows));
+
+  const stranger = await as(OUTSIDER, `select id from jobs where id = '${liveJob}'`);
+  report.check('and somebody who did not apply does not',
+    stranger.ok && stranger.rows.length === 0, JSON.stringify(stranger.rows));
+
+  const anon = await as(null, `select id from jobs where id = '${liveJob}'`, 'anon');
+  report.check('nor does the public board', anon.ok && anon.rows.length === 0, anon.error);
+
+  await db.exec(`update jobs set status = 'active' where id = '${liveJob}'`);
 }
 
 report.section('unauthenticated writes do not crash the guards');
@@ -777,9 +1294,21 @@ report.section('a company is a team, not a login');
       values ('${COLLEAGUE}', 'employer', 'زميلة', '+201666666666');
   `);
 
+  /*
+    The company this fixture is an admin of, asked for by membership.
+
+    It used to look up a slug the seed no longer generates and fall back to
+    `select id from companies limit 1` — an arbitrary row, which happened to be
+    the right one only because nothing had rewritten the heap. The first
+    committed UPDATE anywhere earlier in the suite reordered it and every
+    assertion below started failing for a reason that had nothing to do with
+    what they test.
+  */
   const alRowad = (
-    await db.query("select id from companies where slug = 'al-rowad-real-estate-455213'")
-  ).rows[0]?.id ?? (await db.query('select id from companies limit 1')).rows[0].id;
+    await db.query(
+      `select company_id from company_members where user_id = '${employerVerified}' and role = 'admin' limit 1`,
+    )
+  ).rows[0].company_id;
 
   const before = await as(COLLEAGUE,
     `select count(*)::int as n from applications a join jobs j on j.id = a.job_id
@@ -933,6 +1462,69 @@ report.section('applying tells both sides, not just the employer');
   report.check('and nobody else can read it', leaked.ok && leaked.rows[0].n === 0, leaked.error);
 }
 
+report.section('the bell rings for everyone who does the work');
+{
+  /*
+    Three triggers addressed companies.owner_id, so the recruiter whose
+    listing it is — the person who will actually answer the applicant — heard
+    nothing, and a company whose owner stops logging in hears nothing at all.
+    Membership is what decides every other company-scoped question since
+    migration 22; it decides this one now too.
+  */
+  const MATE = '77777777-7777-4777-8777-777777777777';
+  const company = (
+    await db.query(`select company_id from company_members where user_id = '${employerVerified}' and role = 'admin' limit 1`)
+  ).rows[0].company_id;
+  const job = (
+    await db.query(`select id from jobs where company_id = '${company}' and status = 'active' limit 1`)
+  ).rows[0].id;
+
+  await db.exec(`
+    insert into auth.users (id, email) values ('${MATE}', 'mate@demo.test');
+    insert into profiles (id, role, full_name, whatsapp_phone)
+      values ('${MATE}', 'employer', 'زميل', '+201777777777');
+    insert into company_members (company_id, user_id, role) values ('${company}', '${MATE}', 'recruiter');
+  `);
+
+  const count = async (user, kind) =>
+    (await db.query(`select count(*)::int as n from notifications where user_id = '${user}' and kind = '${kind}'`)).rows[0].n;
+
+  const mateBefore = await count(MATE, 'application_received');
+  const ownerBefore = await count(employerVerified, 'application_received');
+
+  await db.exec(`
+    insert into applications (job_id, candidate_id, status)
+      values ('${job}', '${OUTSIDER}', 'new')
+      on conflict (job_id, candidate_id) do nothing;
+  `);
+
+  report.check('the recruiter hears about the applicant too',
+    (await count(MATE, 'application_received')) === mateBefore + 1);
+  report.check('and the owner still does',
+    (await count(employerVerified, 'application_received')) === ownerBefore + 1);
+
+  // Shortlisted, then withdrawn: the one event the company was never told
+  // about, because the row simply stopped existing.
+  const withdrawnBefore = await count(MATE, 'application_withdrawn');
+
+  await db.exec(`update applications set status = 'shortlisted' where job_id = '${job}' and candidate_id = '${OUTSIDER}'`);
+  await db.exec(`delete from applications where job_id = '${job}' and candidate_id = '${OUTSIDER}'`);
+
+  report.check('and hears when a shortlisted one withdraws',
+    (await count(MATE, 'application_withdrawn')) === withdrawnBefore + 1);
+
+  // A withdrawal from `new` is somebody changing their mind before anybody
+  // looked at them, which is not an event worth a notification.
+  await db.exec(`
+    insert into applications (job_id, candidate_id, status) values ('${job}', '${OUTSIDER}', 'new');
+    delete from applications where job_id = '${job}' and candidate_id = '${OUTSIDER}';
+  `);
+  report.check('but not when an untouched one does',
+    (await count(MATE, 'application_withdrawn')) === withdrawnBefore + 1);
+
+  await db.exec(`delete from auth.users where id = '${MATE}'`);
+}
+
 report.section('reports need an account, and an account has limits');
 {
   const anon = await as(null, `insert into reports (job_id, reason) values ('${liveJob}','spam')`, 'anon');
@@ -1070,7 +1662,7 @@ report.section('applications are capped per day too');
 
 report.section('the nightly expiry cron');
 {
-  await db.exec("update jobs set expires_at = now() - interval '1 day' where status='active'");
+  await db.exec("update jobs set published_at = now() - interval '31 days', expires_at = now() - interval '1 day' where status='active'");
   const before = (await db.query("select count(*)::int as n from jobs where status='active'")).rows[0].n;
   const expired = (await db.query('select expire_stale_jobs() as n')).rows[0].n;
   const after = (await db.query("select count(*)::int as n from jobs where status='active'")).rows[0].n;
@@ -1187,6 +1779,241 @@ report.section('suspending an account takes its adverts down with it');
     !byReader.ok && /forbidden/.test(byReader.error ?? ''),
     byReader.error,
   );
+}
+
+report.section('one source of truth for the company a member acts for');
+{
+  /*
+    A company is a team. owns_company(), owns_job() and is_company_admin() all
+    read company_members, so any member may post a job and read the applicants
+    while only an admin member may edit the company. Three functions were left
+    resolving the company by companies.owner_id, which told an invited
+    recruiter they had no company at all while the database happily let them
+    work — and claim_monthly_free_post() could not find a company to grant to.
+
+    Asserted against the live definitions rather than the migration files,
+    because the files are append-only history and still contain the superseded
+    versions.
+  */
+  const offenders = await db.query(`
+    select p.proname
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.prokind = 'f'
+      and p.prosrc ~ 'owner_id\\s*=\\s*auth\\.uid\\(\\)'
+    order by p.proname
+  `);
+  report.check(
+    'no function resolves a company by ownership',
+    offenders.rows.length === 0,
+    offenders.rows.map((r) => r.proname).join(', '),
+  );
+
+  // The free post: proven to grant, and proven not to have opened a hole.
+  const owner = (await db.query(
+    "select owner_id from companies where verification_status = 'verified' limit 1",
+  )).rows[0].owner_id;
+
+  const granted = await as(owner, "select public.claim_monthly_free_post() as ok");
+  report.check(
+    'a verified company can claim its monthly free post',
+    granted.rows?.[0]?.ok === true,
+    granted.error ?? JSON.stringify(granted.rows?.[0] ?? null),
+  );
+
+  const direct = await as(owner, `
+    update companies set post_credits = post_credits + 99
+    where id = public.my_company_id()
+  `);
+  report.check(
+    'and the owner still cannot write credits directly',
+    Boolean(direct.error),
+    direct.error ? '' : 'the update was allowed',
+  );
+}
+
+report.section('withdrawing has a precondition the database keeps');
+{
+  /*
+    The dashboard offers withdrawal only while an application is new or
+    shortlisted. Until now the policy permitted a delete at any status, so a
+    hired candidate could remove the employer's only record of the hire with a
+    request the interface never makes.
+
+    Setup runs through db.exec — no JWT, so acting_as_admin() is true and the
+    column guard stands aside. Only the delete itself goes through as(), which
+    is the statement under test, and as() rolls back so the row survives into
+    the next case.
+  */
+  const mine = (await db.query(
+    `select id from applications where candidate_id = '${candidate}' limit 1`,
+  )).rows[0].id;
+
+  await db.exec(`update applications set status = 'new' where id = '${mine}'`);
+  const open = await as(candidate, `delete from applications where id = '${mine}' returning id`);
+  report.check('a candidate may withdraw while the outcome is open',
+    open.ok && open.rows.length === 1, open.error);
+
+  for (const status of ['interview', 'hired', 'rejected']) {
+    await db.exec(`update applications set status = '${status}' where id = '${mine}'`);
+    const shut = await as(candidate, `delete from applications where id = '${mine}' returning id`);
+    report.check(`and cannot once it is ${status}`,
+      shut.ok && shut.rows.length === 0, shut.error ?? `deleted ${shut.rows.length} row(s)`);
+  }
+
+  await db.exec(`update applications set status = 'new' where id = '${mine}'`);
+}
+
+report.section('two people moving one applicant');
+{
+  /*
+    A company is a team and any member may work the inbox, so two recruiters on
+    the same applicant is an ordinary Tuesday rather than a contrived race. The
+    pipeline move used to be unconditional: the second one silently replaced the
+    first, each person kept their own optimistic value until they happened to
+    refresh, and the candidate was emailed twice about two different outcomes.
+
+    The card sends the status it was showing; matching on it makes the second
+    move a refusal rather than an overwrite, in one statement with no window
+    between checking and writing.
+  */
+  const app = (
+    await db.query(`
+      select a.id, a.status from applications a
+        join jobs j on j.id = a.job_id
+        join company_members m on m.company_id = j.company_id
+       where m.user_id = '${employerVerified}' limit 1`)
+  ).rows[0];
+
+  report.check('found an applicant on their own listing', Boolean(app));
+
+  await db.exec(`update applications set status = 'new' where id = '${app.id}'`);
+
+  const first = await as(employerVerified,
+    `update applications set status = 'shortlisted' where id = '${app.id}' and status = 'new' returning id`);
+  report.check('a move from the status the card showed goes through',
+    first.ok && first.rows.length === 1, first.error);
+
+  // Committed, so the colleague's form is genuinely stale.
+  await db.exec(`update applications set status = 'shortlisted' where id = '${app.id}'`);
+
+  const late = await as(employerVerified,
+    `update applications set status = 'rejected' where id = '${app.id}' and status = 'new' returning id`);
+  report.check('a move from a status somebody else has already changed does not',
+    late.ok && late.rows.length === 0, JSON.stringify(late.rows));
+
+  const still = (await db.query(`select status from applications where id = '${app.id}'`)).rows[0].status;
+  report.check('and the first move is the one that stands', still === 'shortlisted', still);
+
+  await db.exec(`update applications set status = 'new' where id = '${app.id}'`);
+}
+
+report.section('the same request twice converges on one answer');
+{
+  /*
+    Every other create in this product converges when repeated — applications
+    on (job, candidate), saved jobs and memberships on composite keys, saved
+    searches on (candidate, query), a consultant profile on user_id, a company
+    on owner. Posting a listing did not, and the case is not a double click,
+    which the disabled button answers: it is a client that gives up after the
+    server has already committed, and an employer who presses the button again.
+  */
+  const company = (
+    await db.query(`select company_id from company_members where user_id = '${employerVerified}' and role = 'admin' limit 1`)
+  ).rows[0].company_id;
+  const KEY = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+
+  const post = (slug) => as(employerVerified, `
+    insert into jobs (company_id, slug, title_ar, track, employment_type, experience_band,
+                      seats, district_id, commission_type, commission_value, leads_source,
+                      description_ar, status, idempotency_key)
+    values ('${company}', '${slug}', 'استشاري مبيعات', 'primary', 'full_time', 'junior_1_3',
+            1, (select id from districts limit 1), 'percentage', 2.5, 'company_provided',
+            'وصف الإعلان', 'draft', '${KEY}')
+    returning id`);
+
+  const first = await post('idem-first');
+  report.check('the first post goes through', first.ok && first.rows.length === 1, first.error);
+
+  // Committed, because the runner rolls each call back and a retry has to meet
+  // a row that is really there.
+  await db.exec(`
+    insert into jobs (company_id, slug, title_ar, track, employment_type, experience_band,
+                      seats, district_id, commission_type, commission_value, leads_source,
+                      description_ar, status, idempotency_key)
+    values ('${company}', 'idem-first', 'استشاري مبيعات', 'primary', 'full_time', 'junior_1_3',
+            1, (select id from districts limit 1), 'percentage', 2.5, 'company_provided',
+            'وصف الإعلان', 'draft', '${KEY}');
+  `);
+
+  const retry = await post('idem-second');
+  report.check('the retry is refused rather than posting a second advert',
+    !retry.ok && /jobs_idempotency_key_idx/.test(retry.error ?? ''),
+    retry.ok ? 'insert was allowed' : retry.error);
+
+  // And the key is per company: two brokerages are not each other's retries.
+  const otherCompany = (
+    await db.query(`select id from companies where id <> '${company}' limit 1`)
+  ).rows[0].id;
+  const elsewhere = await as(null, `
+    insert into jobs (company_id, slug, title_ar, track, employment_type, experience_band,
+                      seats, district_id, commission_type, commission_value, leads_source,
+                      description_ar, status, idempotency_key)
+    values ('${otherCompany}', 'idem-elsewhere', 'استشاري', 'primary', 'full_time', 'junior_1_3',
+            1, (select id from districts limit 1), 'percentage', 2.5, 'company_provided',
+            'وصف', 'draft', '${KEY}') returning id`, 'service_role');
+  report.check('another company may use the same key', elsewhere.ok && elsewhere.rows.length === 1,
+    elsewhere.error);
+
+  // And listings written before this have no key, so they cannot collide.
+  const noKey = await as(null, `
+    select count(*) filter (where idempotency_key is null)::int as n from jobs`, 'service_role');
+  report.check('older listings carry no key at all', (noKey.rows[0]?.n ?? 0) > 1, JSON.stringify(noKey.rows[0]));
+
+  await db.exec(`delete from jobs where slug in ('idem-first', 'idem-elsewhere')`);
+}
+
+report.section('an application remembers how it moved');
+{
+  const jobForHistory = (await db.query(`
+    select j.id from jobs j
+    where j.status = 'active' and j.expires_at > now()
+      and not exists (select 1 from applications a where a.job_id = j.id and a.candidate_id = '${OUTSIDER}')
+    limit 1
+  `)).rows[0].id;
+
+  await db.exec(
+    `insert into applications (job_id, candidate_id) values ('${jobForHistory}', '${OUTSIDER}')`,
+  );
+  const appId = (await db.query(
+    `select id from applications where job_id = '${jobForHistory}' and candidate_id = '${OUTSIDER}'`,
+  )).rows[0].id;
+
+  const created = await as(OUTSIDER,
+    `select from_status, to_status from application_events where application_id = '${appId}'`);
+  report.check('applying writes the opening event',
+    created.ok && created.rows.length === 1 && created.rows[0].to_status === 'new' && created.rows[0].from_status === null,
+    created.error ?? JSON.stringify(created.rows));
+
+  // A note is not a move, and the view stamp is not a move.
+  await db.exec(`update applications set decision_note = 'note only' where id = '${appId}'`);
+  await db.exec(`update applications set employer_viewed_at = now() where id = '${appId}'`);
+  await db.exec(`update applications set status = 'shortlisted' where id = '${appId}'`);
+
+  const moved = await as(employerVerified,
+    `select from_status, to_status from application_events where application_id = '${appId}' order by id`);
+  report.check('a move is recorded and a note or a view stamp is not',
+    moved.ok && moved.rows.length === 2 &&
+      moved.rows[1].from_status === 'new' && moved.rows[1].to_status === 'shortlisted',
+    moved.error ?? JSON.stringify(moved.rows));
+
+  const nosy = await as(OUTSIDER, `
+    select count(*)::int as n from application_events
+     where application_id in (select id from applications where candidate_id = '${candidate}')
+  `);
+  report.check('and nobody reads a history that is not theirs',
+    nosy.ok && nosy.rows[0].n === 0, nosy.error ?? `saw ${nosy.rows?.[0]?.n}`);
 }
 
 process.exit(report.finish() ? 0 : 1);

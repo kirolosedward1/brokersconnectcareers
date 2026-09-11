@@ -58,6 +58,11 @@ create or replace function storage.foldername(name text) returns text[]
 
 const GRANTS = `
 grant usage on schema public to anon, authenticated, service_role;
+-- Supabase grants this; without it a trigger function that is not SECURITY
+-- DEFINER cannot call auth.uid(), and the harness refuses a statement
+-- production accepts. Cost one wrong "permission denied for schema auth" on a
+-- guard that works.
+grant usage on schema auth to anon, authenticated, service_role;
 grant select on all tables in schema public to anon;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant all on all tables in schema public to service_role;

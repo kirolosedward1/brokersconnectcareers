@@ -102,4 +102,256 @@ report.section('a report is always about a listing');
   report.check('the same person cannot report the same listing twice', twice !== null, 'insert succeeded');
 }
 
+report.section('every trigger function is hardened the same way');
+{
+  /*
+    Migration 07 set a fixed search_path on the trigger functions and revoked
+    EXECUTE from public, anon and authenticated, and every migration since has
+    been expected to do the same for anything it adds. Two slipped: migration
+    42 added record_application_event without the revoke, and migration 46
+    restated stamp_job_publication without repeating its SET clause — which
+    CREATE OR REPLACE treats as "remove it".
+
+    Asked of the catalogue rather than of the migration files, because the
+    catalogue is what is actually running.
+  */
+  const loose = await db.query(`
+    select p.proname,
+           (p.proconfig is null or not (array_to_string(p.proconfig, ',') like '%search_path%')) as no_search_path,
+           (p.proacl is null or array_to_string(p.proacl::text[], ' ') like '=X/%')              as public_execute
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and pg_get_function_result(p.oid) = 'trigger'
+  `);
+
+  report.check('found the trigger functions', loose.rows.length > 15, String(loose.rows.length));
+
+  const mutable = loose.rows.filter((row) => row.no_search_path).map((row) => row.proname);
+  report.check(
+    'each one pins its search_path',
+    mutable.length === 0,
+    mutable.join(', ') || 'none',
+  );
+
+  const callable = loose.rows.filter((row) => row.public_execute).map((row) => row.proname);
+  report.check(
+    'and none is executable by public',
+    callable.length === 0,
+    callable.join(', ') || 'none',
+  );
+
+  /*
+    The same for the definer functions the API can call: a SECURITY DEFINER
+    function without a pinned search_path runs whatever the caller's path
+    resolves, which is the one shape of this mistake that is genuinely
+    exploitable.
+  */
+  const definers = await db.query(`
+    select p.proname from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.prosecdef
+       and (p.proconfig is null or not (array_to_string(p.proconfig, ',') like '%search_path%'))
+  `);
+  report.check(
+    'no security definer function has a mutable search_path',
+    definers.rows.length === 0,
+    definers.rows.map((row) => row.proname).join(', ') || 'none',
+  );
+}
+
+report.section('a policy asks who you are once, not once per row');
+{
+  /*
+    Postgres treats a bare `auth.uid()` in a policy as a correlated expression
+    and re-evaluates it for every row it tests; `(select auth.uid())` becomes
+    an InitPlan computed once. The semantics are identical — the function is
+    stable and takes no arguments — so this is free, and twenty-one policies
+    were written before the convention arrived.
+
+    Worth a guard rather than a one-off migration, because the next policy
+    somebody writes will be written the natural way.
+  */
+  /*
+    Matched in JavaScript rather than with a SQL regex, and that is the second
+    attempt. Postgres prints the hoisted form as `( SELECT auth.uid() AS uid)`,
+    so a pattern looking for "auth.uid() not preceded by an open bracket"
+    matches the space in front of it and flags every policy including the ones
+    already converted. Strip the hoisted form first; anything left is bare.
+  */
+  const { rows } = await db.query(`
+    select c.relname as tbl, p.polname,
+           coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' ' ||
+           coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '') as expr
+      from pg_policy p
+      join pg_class c on c.oid = p.polrelid
+      join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public'
+     order by 1, 2
+  `);
+
+  const bare = rows.filter((row) =>
+    /auth\.uid\(\)/.test(row.expr.replace(/\(\s*SELECT\s+auth\.uid\(\)\s+AS\s+uid\s*\)/gi, '')),
+  );
+
+  report.check(
+    'no policy re-evaluates auth.uid() per row',
+    bare.length === 0,
+    bare.map((row) => `${row.tbl}.${row.polname}`).join(', ') || 'none',
+  );
+}
+
+report.section('who may call a definer function, on purpose');
+{
+  /*
+    Supabase's linter reports every SECURITY DEFINER function reachable over
+    the API, and this schema has thirty-eight of them. Left as a wall of
+    warnings the list means nothing; pinned, it means somebody decided.
+
+    Two reasons a function is anon-callable here and no third:
+
+      the public API   search_agents, get_agent_card and increment_job_view
+                       are what the directory, the card and the view counter
+                       are made of, and none of them needs a session.
+
+      RLS calls it     Postgres evaluates a policy as the *calling* role, so a
+                       policy invoking a function anon cannot execute does not
+                       fall through to the next policy — it errors, and the
+                       page stops loading. Migration 43 learned that by
+                       breaking /agents for signed-out visitors. Every one of
+                       these answers about the caller and returns false or
+                       null to a stranger.
+
+    A new name in this list is a decision, so it should cost a line in this
+    file rather than arriving with a migration nobody re-read.
+  */
+  const EXPECTED = new Set([
+    // Public API.
+    'search_agents',
+    'get_agent_card',
+    'increment_job_view',
+    // Predicates that row-level security itself calls.
+    'applied_to_job',
+    'applied_to_my_job',
+    'current_role_of_user',
+    'is_admin',
+    'is_approved_employer',
+    'is_candidate',
+    'is_company_admin',
+    'my_company_id',
+    'owns_company',
+    'owns_job',
+    'viewer_has_verified_company',
+  ]);
+
+  const { rows } = await db.query(`
+    select p.proname
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.prosecdef
+       and has_function_privilege('anon', p.oid, 'EXECUTE')
+     group by p.proname
+  `);
+
+  const actual = new Set(rows.map((row) => row.proname));
+  const added = [...actual].filter((name) => !EXPECTED.has(name));
+  const gone = [...EXPECTED].filter((name) => !actual.has(name));
+
+  report.check('no definer function became anon-callable unnoticed',
+    added.length === 0, added.join(', ') || 'none');
+  report.check('and none of the ones that need to be stopped being',
+    gone.length === 0, gone.join(', ') || 'none');
+}
+
+report.section('the percentage and the list of gaps agree');
+{
+  /*
+    profile_completeness() lives in SQL so the dashboard can ask for a number
+    in one round trip; the list of what is missing is built in the browser from
+    a row it already has. Neither can call the other, so the only thing keeping
+    them honest is this — several profile states through both, asserted equal.
+    The same arrangement the Arabic normalisers have, for the same reason.
+  */
+  const { completenessOf } = await import('../../src/lib/profile-completeness.ts');
+
+  const agent = (
+    await db.query(
+      `select id, user_id from agent_profiles where visibility = 'public' limit 1`,
+    )
+  ).rows[0];
+  report.check('found a consultant to score', Boolean(agent));
+
+  const states = [
+    { summary_ar: null, headline_ar: null, tracks: [], district_ids: [], years_experience: 0, units_closed: null, volume_egp: null },
+    { summary_ar: 'نبذة', headline_ar: null, tracks: [], district_ids: [], years_experience: 0, units_closed: null, volume_egp: null },
+    { summary_ar: 'نبذة', headline_ar: 'عنوان', tracks: ['primary'], district_ids: [1], years_experience: 4, units_closed: 3, volume_egp: null },
+    { summary_ar: '   ', headline_ar: '', tracks: ['primary'], district_ids: [], years_experience: 0, units_closed: null, volume_egp: 100 },
+  ];
+
+  await db.exec(`delete from agent_experience where agent_id = '${agent.id}';
+                 delete from agent_education  where agent_id = '${agent.id}';`);
+
+  /*
+    Asked as the consultant whose profile it is.
+
+    Migration 56 gates profile_completeness() to the owner and admins — it used
+    to answer for any id from any signed-in account, including one set to
+    `hidden`. Session-level rather than transaction-local: db.query runs each
+    statement on its own, so a `true` here would be gone by the next line.
+  */
+  await db.exec(`select set_config('request.jwt.claim.sub', '${agent.user_id}', false)`);
+
+  for (const [index, state] of states.entries()) {
+    await db.query(
+      `update agent_profiles
+          set summary_ar = $1, headline_ar = $2, tracks = $3::job_track[],
+              district_ids = $4::int[], years_experience = $5,
+              units_closed = $6, volume_egp = $7
+        where id = $8`,
+      [
+        state.summary_ar,
+        state.headline_ar,
+        `{${state.tracks.join(',')}}`,
+        `{${state.district_ids.join(',')}}`,
+        state.years_experience,
+        state.units_closed,
+        state.volume_egp,
+        agent.id,
+      ],
+    );
+
+    const sql = (
+      await db.query(`select public.profile_completeness('${agent.id}') as n`)
+    ).rows[0].n;
+    const ts = completenessOf({ ...state, hasExperience: false, hasEducation: false });
+
+    report.check(`state ${index + 1}: SQL ${sql} matches the gap list's ${ts}`, sql === ts);
+  }
+
+  // And with the two that live in other tables, which is where a copy would
+  // most easily drift.
+  await db.exec(`
+    insert into agent_experience (agent_id, company_name, title, started)
+      values ('${agent.id}', 'شركة', 'استشاري', '2022-01-01');
+    insert into agent_education (agent_id, institution) values ('${agent.id}', 'جامعة');
+  `);
+
+  const withBoth = (await db.query(`select public.profile_completeness('${agent.id}') as n`)).rows[0].n;
+  const expected = completenessOf({ ...states[3], hasExperience: true, hasEducation: true });
+  report.check(`experience and education counted the same both sides (${withBoth} = ${expected})`,
+    withBoth === expected);
+
+  // And the gate itself: somebody else's score is not this function's business.
+  await db.exec(
+    `select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000000', false)`,
+  );
+  const stranger = (
+    await db.query(`select public.profile_completeness('${agent.id}') as n`)
+  ).rows[0].n;
+  report.check('a stranger gets no score at all', stranger === null, String(stranger));
+
+  await db.exec(`select set_config('request.jwt.claim.sub', '', false)`);
+}
+
 process.exit(report.finish() ? 0 : 1);

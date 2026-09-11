@@ -150,12 +150,30 @@ export function AuthForm({
    * with it.
    */
   const onboardingHref = audience ? `/onboarding?role=${audience}` : '/onboarding';
+  /*
+    Where a confirmation link lands: onboarding, carrying the door's role so
+    the question is not asked twice, and the flag that earns the "your email
+    is confirmed" line. The role also goes into user metadata, because a link
+    Supabase mints on its own (dashboard "send magic link") comes back through
+    the fragment rescue with no query string to carry it.
+  */
+  const confirmedHref = `${onboardingHref}${audience ? '&' : '?'}confirmed=1`;
+  const confirmationRedirect = () =>
+    `${window.location.origin}/auth/callback?next=${encodeURIComponent(confirmedHref)}`;
 
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
   /** Kept so the confirmation can be sent again without retyping it. */
   const [pendingEmail, setPendingEmail] = useState('');
   const [resent, setResent] = useState<'sent' | 'wait' | null>(null);
+  /**
+   * Sign-in refused because the address was never confirmed. The message
+   * alone told somebody to "check your inbox" for a mail that may have gone
+   * to spam, expired, or never arrived — and the only way to get another was
+   * to find the sign-up page and start over. The button that fixes that
+   * already exists on the sign-up screen; this shows it here too.
+   */
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -184,7 +202,10 @@ export function AuthForm({
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+          options: {
+            emailRedirectTo: confirmationRedirect(),
+            ...(audience ? { data: { role: audience } } : {}),
+          },
         });
         if (signUpError) {
           setError(readable(signUpError));
@@ -200,6 +221,8 @@ export function AuthForm({
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) {
           setError(readable(signInError));
+          setUnconfirmed(signInError.code === 'email_not_confirmed' || /email not confirmed/i.test(signInError.message));
+          setPendingEmail(email);
           return;
         }
       }
@@ -243,6 +266,17 @@ export function AuthForm({
    * reach — RLS confines them to their own rows, and a job they post lands in
    * pending_review like anyone else's rather than going live.
    */
+  /*
+    Off unless a build says otherwise. NEXT_PUBLIC_DEMO_LOGIN is inlined at
+    compile time, so a production build without it carries no button — and no
+    reachable call to signInAsDemo. The buttons had been rendering on
+    www.brokersconnect.net, where employer1's listings are live on the public
+    board: anyone could sign in as that company and read the name, WhatsApp
+    number and CV of everyone who applied, including any real person who did.
+    RLS confining an account to its own rows is no protection when the rows
+    are other people's applications.
+  */
+  const DEMO_LOGIN = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true';
   const DEMO_PASSWORD = 'password123';
   const DEMO_EMAILS = {
     candidate: 'candidate1@demo.test',
@@ -320,7 +354,7 @@ export function AuthForm({
               const { error: resendError } = await createClient().auth.resend({
                 type: 'signup',
                 email: pendingEmail,
-                options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+                options: { emailRedirectTo: confirmationRedirect() },
               });
               setResent(resendError ? 'wait' : 'sent');
             });
@@ -421,6 +455,36 @@ export function AuthForm({
           </p>
         ) : null}
 
+        {error && unconfirmed && mode === 'sign-in' ? (
+          <div className="space-y-2">
+            {resent === 'sent' ? (
+              <p className="text-sm font-medium text-success">{t('resendSent')}</p>
+            ) : resent === 'wait' ? (
+              <p className="text-sm text-destructive">{t('resendWait')}</p>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={pending || !pendingEmail}
+              onClick={() => {
+                setResent(null);
+                startTransition(async () => {
+                  const { error: resendError } = await createClient().auth.resend({
+                    type: 'signup',
+                    email: pendingEmail,
+                    options: { emailRedirectTo: confirmationRedirect() },
+                  });
+                  setResent(resendError ? 'wait' : 'sent');
+                });
+              }}
+            >
+              <RefreshCw aria-hidden />
+              {pending ? tCommon('loading') : t('resendConfirmation')}
+            </Button>
+          </div>
+        ) : null}
+
         <SubmitButton className="w-full" size="lg" disabled={pending}>
           {pending ? tCommon('loading') : mode === 'sign-up' ? t('signUp') : t('signIn')}
         </SubmitButton>
@@ -428,7 +492,7 @@ export function AuthForm({
 
       {/* Sign-in only. Offering a demo account on the sign-up screen would be
           arguing against the thing that screen exists to do. */}
-      {mode === 'sign-in' ? (
+      {mode === 'sign-in' && DEMO_LOGIN ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/40 p-4">
           <p className="text-center text-xs font-medium text-muted-foreground">{t('demoTitle')}</p>
 

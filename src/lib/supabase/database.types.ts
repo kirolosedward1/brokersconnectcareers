@@ -105,6 +105,8 @@ export type CompanyRow = Timestamped & {
   verification_status: VerificationStatus;
   verified_at: string | null;
   post_credits: number;
+  /** Bumped on every update; the edit form sends back the one it loaded. */
+  version: number;
 };
 
 export type CompanyDocumentRow = Timestamped & {
@@ -154,6 +156,14 @@ export type JobRow = Timestamped & {
   expires_at: string | null;
   view_count: number;
   rejection_note: string | null;
+  /** Bumped on every update; the edit form sends back the one it loaded. */
+  version: number;
+  /**
+   * Made once by the posting wizard and repeated on every retry, so a request
+   * that timed out after the server committed converges on the listing it
+   * already made. Null on everything written before migration 55.
+   */
+  idempotency_key: string | null;
 };
 
 export type ApplicationRow = Timestamped & {
@@ -246,6 +256,7 @@ export type ApprovalStatus = 'approved' | 'pending' | 'rejected';
 export type NotificationKind =
   | 'application_submitted'
   | 'application_received'
+  | 'application_withdrawn'
   | 'application_moved'
   | 'job_published'
   | 'job_rejected'
@@ -568,6 +579,12 @@ export type Database = {
       claim_monthly_free_post: { Args: Empty; Returns: boolean };
       /** The company the caller belongs to, resolved through membership. */
       my_company_id: { Args: Empty; Returns: string | null };
+      /**
+       * Service-role only, and called with the admin client: the answer is
+       * whether an address has an account, which is not for every signed-in
+       * user to ask. Used to find the colleague an employer is inviting.
+       */
+      user_id_by_email: { Args: { p_email: string }; Returns: string | null };
       expire_stale_jobs: { Args: Empty; Returns: number };
       profile_completeness: { Args: { p_agent_id: string }; Returns: number };
 

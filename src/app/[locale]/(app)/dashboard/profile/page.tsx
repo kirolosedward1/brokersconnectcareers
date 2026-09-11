@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { Eye } from 'lucide-react';
+import { Link } from '@/i18n/navigation';
+import { Button } from '@/components/ui/button';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { AgentProfileForm } from '@/components/dashboard/agent-profile-form';
 import { CvEditor } from '@/components/dashboard/cv-editor';
@@ -59,11 +62,30 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
 
   const t = await getTranslations('dashboard');
 
+  /*
+    Narrower than the shell allows. Every block on this page is a form or a
+    list of sentences, and neither is readable at the width a grid of stat
+    tiles needs — which is what the console shell is sized for.
+  */
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="text-2xl font-bold">{t('profile')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('profileLede')}</p>
+    <div className="mx-auto max-w-4xl space-y-8">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">{t('profile')}</h1>
+          <p className="mt-1 text-muted-foreground">{t('profileLede')}</p>
+        </div>
+        {/* The result of everything below, one tap away. The gaps list says
+            what to fill in; this is why. get_agent_card() lets an owner open
+            their own page whatever the visibility setting (migration 40), and
+            the page itself says which audience sees what. */}
+        {typedAgent ? (
+          <Button asChild variant="outline">
+            <Link href={`/agents/${typedAgent.slug}`}>
+              <Eye aria-hidden />
+              {t('profilePreview')}
+            </Link>
+          </Button>
+        ) : null}
       </header>
 
       {/* Above the form, because it is the reason to scroll into it. Renders

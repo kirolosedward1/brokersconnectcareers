@@ -371,10 +371,63 @@ console.log('\n— no translated phrase is forced left-to-right');
        * first child then missed the real one, where an icon comes first and
        * the translated string second.
        */
-      const indent = line.search(/\S/);
+      /*
+        Indentation is measured from the line that opens the tag, which is not
+        always the line the class is on. In the multi-line shape below the
+        className attribute sits two spaces deeper than `<time`, level with
+        the children — measured from there, the first child line looked like
+        the end of the element and the scan stopped before reading it.
+      */
+      let openStart = index;
+      while (openStart > 0 && !/^\s*<[^/]/.test(lines[openStart])) openStart -= 1;
+      const indent = lines[openStart].search(/\S/);
       const body = [rest];
-      if (/>\s*$/.test(line) && !/\/>\s*$/.test(line)) {
-        for (let i = index + 1; i < lines.length && i < index + 12; i += 1) {
+
+      /*
+        The opening tag does not always end on the line the class is written
+        on. A tag broken over several lines puts className in the middle of
+        its own attributes:
+
+          <time
+            dateTime={...}
+            className="numeral text-xs"
+          >
+            {t('appliedOn', { date: formatDate(...) })}
+          </time>
+
+        The first version tested the className line for a trailing `>`, found
+        none, and concluded the element had no body — so it read the class,
+        skipped the children, and passed. That is exactly the shape the check
+        exists for, and it sat in the candidate's applications list reading
+        the date before the words for as long as the check has existed.
+
+        Attribute lines are stepped over rather than scanned: a translated
+        title or aria-label is not laid out, so its direction is nobody's
+        problem.
+      */
+      let openEnd = index;
+      /*
+        Only when the element is still open. An element that opens and closes
+        on its own line — `const v = (chunks) => <span className="numeral">
+        {chunks}</span>;`, or a figure inside a paragraph — has no body
+        underneath it, and scanning forward for the next line ending in `>`
+        found some later element and read *its* children instead. That is how
+        the rich-tag helper every compensation component defines got reported
+        as wrapping a translated string.
+      */
+      if (closes === -1) {
+        while (
+          openEnd < lines.length &&
+          openEnd < index + 12 &&
+          !/>\s*$/.test(lines[openEnd])
+        ) {
+          openEnd += 1;
+        }
+      }
+
+      const opener = lines[openEnd] ?? '';
+      if (closes === -1 && /}?>\s*$/.test(opener) && !/\/>\s*$/.test(opener)) {
+        for (let i = openEnd + 1; i < lines.length && i < openEnd + 12; i += 1) {
           const next = lines[i];
           if (next.trim() && next.search(/\S/) <= indent) break;
           body.push(next);

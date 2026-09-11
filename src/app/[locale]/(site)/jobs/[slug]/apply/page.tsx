@@ -7,6 +7,7 @@ import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { ApplyForm } from '@/components/jobs/apply-form';
 import { Button } from '@/components/ui/button';
 import { getJobBySlug } from '@/lib/queries/jobs';
+import { jobIsLive } from '@/lib/job-state';
 import { getViewer } from '@/lib/auth';
 import { JobCard } from '@/components/jobs/job-card';
 import { EMPTY_FILTERS, queryJobs, type JobListItem } from '@/lib/queries/jobs';
@@ -51,8 +52,7 @@ export default async function ApplyPage({
   const title = localized(locale, job.title_ar, job.title_en);
   const company = localized(locale, job.company.name_ar, job.company.name_en);
 
-  const isOpen =
-    job.status === 'active' && (!job.expires_at || new Date(job.expires_at) > new Date());
+  const isOpen = jobIsLive(job);
 
   if (!isOpen) {
     return (
@@ -102,7 +102,7 @@ export default async function ApplyPage({
   let personalised = false;
   if (existing && justApplied) {
     const [openRoles, { data: agent }, { data: mine }] = await Promise.all([
-      optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0 }),
+      optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0, page: 1 }),
       supabase
         .from('agent_profiles')
         .select('tracks, district_ids, years_experience')

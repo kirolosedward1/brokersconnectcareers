@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { completeOnboarding } from '@/lib/actions/onboarding';
 import type { DistrictRow } from '@/lib/supabase/database.types';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 export function OnboardingForm({
   locale,
@@ -34,8 +35,16 @@ export function OnboardingForm({
   const tCommon = useTranslations('common');
   const tHeadcount = useTranslations('companies.headcountBand');
   const [role, setRole] = useState<'candidate' | 'employer'>(defaultRole ?? 'candidate');
+  /*
+    Somebody who came through the "شركة عقارات" door has answered this
+    already; asking again reads as the site not having listened. So when a
+    role arrived, the two cards give way to one line saying which. No control
+    to change it: the door is the decision, and the line is a receipt.
+  */
+  const roleSettled = Boolean(defaultRole);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,6 +67,7 @@ export function OnboardingForm({
             : undefined,
       });
 
+      if (recoverSession(result)) return;
       if (!result.ok) {
         setErrors(result.fieldErrors ?? { form: result.error });
         return;
@@ -90,6 +100,18 @@ export function OnboardingForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {roleSettled ? (
+        <div className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm">
+          <span className="inline-flex items-center gap-2 font-medium">
+            {role === 'employer' ? (
+              <Briefcase className="size-4 text-primary" aria-hidden />
+            ) : (
+              <Search className="size-4 text-primary" aria-hidden />
+            )}
+            {role === 'employer' ? t('roleKnownEmployer') : t('roleKnownCandidate')}
+          </span>
+        </div>
+      ) : (
       <fieldset>
         <legend className="mb-3 text-sm font-medium">{t('roleQuestion')}</legend>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -110,6 +132,7 @@ export function OnboardingForm({
         </div>
         <p className="mt-2 text-xs text-muted-foreground">{t('roleLocked')}</p>
       </fieldset>
+      )}
 
       <Field
         label={t('fullName')}
@@ -128,7 +151,6 @@ export function OnboardingForm({
 
       <Field
         label={t('whatsapp')}
-        hint={t('whatsappHint')}
         htmlFor="whatsapp"
         error={errors.whatsapp ? tValidation('invalidPhone') : undefined}
       >
@@ -141,7 +163,7 @@ export function OnboardingForm({
           inputMode="tel"
           autoComplete="tel"
           placeholder={t('whatsappPlaceholder')}
-          className="numeral"
+          className="numeral-field"
         />
       </Field>
 

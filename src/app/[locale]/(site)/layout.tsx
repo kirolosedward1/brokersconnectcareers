@@ -31,7 +31,7 @@ export default async function SiteLayout({
       <main id="main" tabIndex={-1} className="flex-1">
         {children}
       </main>
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </>
   );
 }

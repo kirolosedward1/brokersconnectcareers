@@ -74,7 +74,14 @@ function Row({
 }: {
   primary: string;
   secondary?: string | null;
-  meta?: string | null;
+  /**
+   * Dates, already isolated. A range of two dates needs each one to run
+   * left-to-right and the pair to follow the page — "from" on the right in
+   * Arabic. A single `.numeral` around the whole string got the second half
+   * right and the first wrong: with "لسه" as the end, it read as
+   * "2020-03 — لسه" laid out backwards for an Arabic reader.
+   */
+  meta?: React.ReactNode;
   onDelete: () => void;
   pending: boolean;
   deleteLabel: string;
@@ -84,11 +91,7 @@ function Row({
       <div className="min-w-0 flex-1">
         <p className="font-medium">{primary}</p>
         {secondary ? <p className="mt-0.5 text-sm text-muted-foreground">{secondary}</p> : null}
-        {meta ? (
-          <p className="mt-1 text-xs text-muted-foreground">
-            <span className="numeral">{meta}</span>
-          </p>
-        ) : null}
+        {meta ? <p className="mt-1 text-xs text-muted-foreground">{meta}</p> : null}
       </div>
       <button
         type="button"
@@ -223,7 +226,17 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
                 key={job.id}
                 primary={`${job.title} · ${job.company_name}`}
                 secondary={job.track ? tTrack(job.track) : null}
-                meta={`${job.started.slice(0, 7)} — ${job.ended ? job.ended.slice(0, 7) : t('present')}`}
+                meta={
+                  <>
+                    <span className="numeral">{job.started.slice(0, 7)}</span>
+                    {' — '}
+                    {job.ended ? (
+                      <span className="numeral">{job.ended.slice(0, 7)}</span>
+                    ) : (
+                      t('present')
+                    )}
+                  </>
+                }
                 onDelete={() => remove('experience', job.id)}
                 pending={pending}
                 deleteLabel={tCommon('delete')}
@@ -290,7 +303,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
                 key={row.id}
                 primary={row.institution}
                 secondary={[row.degree, row.field].filter(Boolean).join(' · ') || null}
-                meta={row.graduated ? String(row.graduated) : null}
+                meta={row.graduated ? <span className="numeral">{row.graduated}</span> : null}
                 onDelete={() => remove('education', row.id)}
                 pending={pending}
                 deleteLabel={tCommon('delete')}
@@ -341,7 +354,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
                 key={row.id}
                 primary={row.name}
                 secondary={row.issuer}
-                meta={row.issued ? row.issued.slice(0, 7) : null}
+                meta={row.issued ? <span className="numeral">{row.issued.slice(0, 7)}</span> : null}
                 onDelete={() => remove('certification', row.id)}
                 pending={pending}
                 deleteLabel={tCommon('delete')}

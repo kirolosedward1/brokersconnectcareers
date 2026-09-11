@@ -6,11 +6,17 @@ const control =
   'transition-colors placeholder:text-muted-foreground hover:border-border ' +
   'focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-60';
 
-export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, ...props }, ref) => (
-    <input ref={ref} className={cn(control, 'h-11', className)} {...props} />
-  ),
-);
+/** `size` is the height, not the HTML attribute — see Select below for why. */
+export const Input = React.forwardRef<
+  HTMLInputElement,
+  Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> & { size?: 'sm' | 'md' }
+>(({ className, size = 'md', ...props }, ref) => (
+  <input
+    ref={ref}
+    className={cn(control, size === 'sm' ? 'h-8 py-0 text-xs' : 'h-11', className)}
+    {...props}
+  />
+));
 Input.displayName = 'Input';
 
 export const Textarea = React.forwardRef<
@@ -21,11 +27,38 @@ export const Textarea = React.forwardRef<
 ));
 Textarea.displayName = 'Textarea';
 
+/**
+ * A select, in one of two heights.
+ *
+ * `sm` exists because shrinking one by hand does not work: the shared control
+ * padding is `py-2`, so `h-8` leaves sixteen pixels of content box for a
+ * twenty-pixel line, and the browser answers by squeezing the option text into
+ * an unreadable sliver at the edge of an otherwise empty pill — which is
+ * exactly what the applicant card's "move to" control had been showing.
+ *
+ * The inline-end padding is the other half. A native select draws its own
+ * chevron at the inline end — the left, in Arabic — and the shared `px-3.5` is
+ * not enough room for it, so the text runs underneath.
+ *
+ * `size` shadows the HTML attribute of the same name, which is why it is
+ * omitted from the inherited props. Nothing here wants the attribute: it sets
+ * how many options a listbox shows at once, and every select in this app is a
+ * dropdown.
+ */
 export const Select = React.forwardRef<
   HTMLSelectElement,
-  React.SelectHTMLAttributes<HTMLSelectElement>
->(({ className, children, ...props }, ref) => (
-  <select ref={ref} className={cn(control, 'h-11 cursor-pointer', className)} {...props}>
+  Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'size'> & { size?: 'sm' | 'md' }
+>(({ className, children, size = 'md', ...props }, ref) => (
+  <select
+    ref={ref}
+    className={cn(
+      control,
+      'cursor-pointer pe-9',
+      size === 'sm' ? 'h-8 py-0 text-xs' : 'h-11',
+      className,
+    )}
+    {...props}
+  >
     {children}
   </select>
 ));

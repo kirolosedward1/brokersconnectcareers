@@ -10,8 +10,26 @@ export type Viewer = {
   email: string | null;
   /** Name the identity provider gave us, used to pre-fill onboarding. */
   suggestedName: string;
+  /**
+   * The account type chosen on the sign-up door, kept in user metadata so it
+   * survives a confirmation link that carries no query string. A suggestion
+   * for onboarding only — the profile row is the decision, and this is never
+   * read once one exists.
+   */
+  suggestedRole?: 'candidate' | 'employer';
   profile: ProfileRow | null;
   company: CompanyRow | null;
+  /**
+   * The profile row could not be read — as distinct from not existing.
+   *
+   * The absence of a profile is how this app knows onboarding has not run, so
+   * a failed read looked exactly like a new account: a database blip sent an
+   * established user back through the sign-up form. Recorded rather than
+   * flattened, so the protected pages can say "something went wrong" while the
+   * public header carries on treating an unreachable database as "nobody is
+   * signed in", which is all it needs to know.
+   */
+  profileUnreadable: boolean;
 };
 
 /**
@@ -51,7 +69,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 
   if (!user) return null;
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
@@ -59,12 +77,25 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 
   let company: CompanyRow | null = null;
   if (profile?.role === 'employer') {
-    const { data } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('owner_id', user.id)
-      .maybeSingle();
-    company = data ?? null;
+    /*
+      Through membership, not ownership.
+
+      A company is a team: row-level security lets any member read its jobs
+      and applicants and post on its behalf, and only an admin member edit
+      the company itself. Keyed on owner_id this returned null for every
+      colleague who was invited rather than signing up — so a recruiter with
+      full database access saw a console with no company in it, and the
+      contact button on the consultant directory, which gates on
+      viewer.company, never appeared for them.
+
+      my_company_id() is the single answer to "which company am I acting
+      for", and it breaks ties deterministically: admin first, then oldest.
+    */
+    const { data: companyId } = await supabase.rpc('my_company_id');
+    if (companyId) {
+      const { data } = await supabase.from('companies').select('*').eq('id', companyId).maybeSingle();
+      company = data ?? null;
+    }
   }
 
   const metadata = user.user_metadata ?? {};
@@ -73,12 +104,17 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     (typeof metadata.name === 'string' && metadata.name) ||
     (user.email ? user.email.split('@')[0] : '');
 
+  const suggestedRole =
+    metadata.role === 'candidate' || metadata.role === 'employer' ? metadata.role : undefined;
+
   return {
     userId: user.id,
     email: user.email ?? null,
     suggestedName,
+    suggestedRole,
     profile: profile ?? null,
     company,
+    profileUnreadable: Boolean(profileError),
   };
 });
 
@@ -86,6 +122,21 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 export async function requireProfile(locale: Locale): Promise<Viewer & { profile: ProfileRow }> {
   const viewer = await getViewer();
   if (!viewer) redirect({ href: '/sign-in', locale });
+
+  /*
+    A read that failed is not an account that has not onboarded.
+
+    Both arrive here as `profile: null`, and treating them alike sent somebody
+    with a perfectly good account back to /onboarding the moment the database
+    hiccupped — where the form would have been filled in again, met the
+    duplicate key, and bounced them onward. Thrown instead, so the console's
+    error boundary says what actually happened and offers Retry, with the
+    shell still around it.
+  */
+  if (viewer!.profileUnreadable) {
+    throw new Error('the profile row could not be read');
+  }
+
   if (!viewer!.profile) redirect({ href: '/onboarding', locale });
   return viewer as Viewer & { profile: ProfileRow };
 }

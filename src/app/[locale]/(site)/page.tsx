@@ -52,6 +52,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     jobs: [],
     total: 0,
     pageCount: 0,
+    page: 1,
   });
 
   return (

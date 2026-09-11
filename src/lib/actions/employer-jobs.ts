@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { getViewer } from '@/lib/auth';
 import { buildJobSlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { getDistricts } from '@/lib/queries/taxonomy';
@@ -17,6 +18,7 @@ import {
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
 import { notifyJobSubmitted } from '@/lib/email/notify';
+import { logFailure } from '@/lib/observe';
 
 const jobSchema = z
   .object({
@@ -39,6 +41,14 @@ const jobSchema = z
     descriptionEn: z.string().trim().max(8000).optional().nullable(),
     requirementsAr: z.string().trim().max(4000).optional().nullable(),
     developerIds: z.array(z.coerce.number().int().positive()).max(30),
+    /** The version the form was built from; absent when creating. */
+    version: z.coerce.number().int().positive().optional(),
+    /**
+     * Made once by the wizard and repeated on every retry, so a request that
+     * timed out after the server committed converges on the listing it already
+     * made rather than posting a second one.
+     */
+    idempotencyKey: z.string().uuid().optional(),
     submit: z.boolean(),
   })
   .refine(
@@ -75,15 +85,43 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  const { data: company } = await supabase
-    .from('companies')
-    .select('id, name_ar, name_en')
-    .eq('owner_id', user.id)
-    .maybeSingle();
+  /*
+    Membership. jobs_insert_owner checks owns_company(), which reads
+    company_members — so the database was happy to let a recruiter post and
+    this lookup was the only thing refusing them, with 'no_company' on a
+    screen that had just shown them the company's other listings.
+  */
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  const { data: company } = companyId
+    ? await supabase.from('companies').select('id, name_ar, name_en').eq('id', companyId).maybeSingle()
+    : { data: null };
 
   if (!company) return { ok: false, error: 'no_company' };
 
   const value = parsed.data;
+
+  /*
+    What editing a live listing does to its status, which is: nothing here.
+
+    This wrote `pending_review` or `draft` on every save, including a save of a
+    listing already on the board — and guard_job_update permits neither from
+    `active`, so every edit of a live advert failed outright. The button was on
+    the screen, the form loaded with the listing in it, and the save came back
+    "something went wrong". Proven against production: the update raises "job
+    status cannot go from active to pending_review".
+
+    The database already has the rule this wanted. When a live listing's pay,
+    title, description, seats, leads or commission change, guard_job_update
+    moves it back to pending_review itself; when nothing material changed it
+    stays up. So an edit of an active listing sends no status at all and lets
+    the guard decide, which is also the only way a typo fix can avoid costing
+    the employer a day off the board.
+  */
+  const { data: current } = value.id
+    ? await supabase.from('jobs').select('status, version').eq('id', value.id).maybeSingle()
+    : { data: null };
+
+  const live = current?.status === 'active';
   const status = value.submit ? 'pending_review' : 'draft';
 
   const payload = {
@@ -106,7 +144,6 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     description_ar: value.descriptionAr,
     description_en: value.descriptionEn || null,
     requirements_ar: value.requirementsAr || null,
-    status,
   } as const;
 
   let jobId = value.id;
@@ -115,13 +152,43 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     // .select() so a listing the caller does not belong to is a refusal rather
     // than a save that quietly changed nothing. RLS filtering an update to zero
     // rows produces no error.
-    const { data: saved, error } = await supabase
+    /*
+      Compare and swap, not last-write-wins.
+
+      A company is a team, and every admin may edit every listing on it — so
+      two people on the same advert is what inviting a colleague produces, not
+      a contrived case. The second save used to win silently and the first
+      simply ceased to exist; on a live listing it is the second saver's copy
+      that then goes back to the moderation queue, so what returns to the board
+      is what nobody meant to send.
+
+      Matching on the version the form was built from makes the update itself
+      the check — one statement, no window between reading and writing. Zero
+      rows then means one of two things, and `current` says which: the listing
+      moved under them, or it was never theirs to edit.
+    */
+    const query = supabase
       .from('jobs')
-      .update(payload)
-      .eq('id', jobId)
-      .select('id');
-    if (error) return { ok: false, error: mapJobError(error.message) };
-    if (!saved?.length) return { ok: false, error: 'forbidden' };
+      .update(live ? payload : { ...payload, status })
+      .eq('id', jobId);
+
+    const { data: saved, error } = await (
+      value.version ? query.eq('version', value.version) : query
+    ).select('id');
+
+    if (error) {
+      logFailure('listing', 'save refused', { job: jobId, company: company.id, code: error.code });
+      return { ok: false, error: mapJobError(error.message) };
+    }
+
+    if (!saved?.length) {
+      logFailure('listing', current ? 'save lost the race' : 'save refused', {
+        job: jobId,
+        company: company.id,
+        version: value.version,
+      });
+      return { ok: false, error: current ? 'stale' : 'forbidden' };
+    }
   } else {
     const districts = await getDistricts();
     const district = districts.find((d) => d.id === value.districtId);
@@ -129,24 +196,102 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     const { data, error } = await withUniqueSlug<{ id: string }>(
       () => buildJobSlug(value.titleEn || value.titleAr, district?.slug ?? 'egypt'),
       (slug) =>
-        supabase.from('jobs').insert({ company_id: company.id, slug, ...payload }).select('id').single(),
+        supabase
+          .from('jobs')
+          .insert({
+            company_id: company.id,
+            slug,
+            status,
+            idempotency_key: value.idempotencyKey ?? null,
+            ...payload,
+          })
+          .select('id')
+          .single(),
     );
 
-    if (error || !data) return { ok: false, error: mapJobError(error?.message ?? 'insert_failed') };
+    if (error || !data) {
+      /*
+        The same request, arriving twice.
+
+        A client that times out after the server committed sends the form
+        again, and without the key the second request is indistinguishable from
+        a deliberate second advert: same company, same title, two listings, two
+        credits, and the applicants split between them. With it, the second
+        insert collides on jobs_idempotency_key_idx and the listing the first
+        one made is the answer — which is what the employer meant both times.
+      */
+      const collided = error?.code === '23505' && value.idempotencyKey;
+
+      if (collided) {
+        const { data: already } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('company_id', company.id)
+          .eq('idempotency_key', value.idempotencyKey!)
+          .maybeSingle();
+
+        if (already) return { ok: true, data: { id: already.id } };
+      }
+
+      return { ok: false, error: mapJobError(error?.message ?? 'insert_failed') };
+    }
+
     jobId = data.id;
   }
 
-  await supabase.from('job_developers').delete().eq('job_id', jobId);
-  if (value.developerIds.length) {
-    await supabase
+  /*
+    The developer tags, changed by difference rather than replaced.
+
+    This deleted every row and inserted the new set, with neither result
+    checked. PostgREST has no transaction spanning two calls, so a failed
+    insert left the listing with no developers at all and the screen saying it
+    had saved — on a listing that may already be in front of a moderator.
+    Deleting only what was removed and inserting only what was added means a
+    failure changes nothing it was not asked to change.
+  */
+  const { data: taggedRows } = await supabase
+    .from('job_developers')
+    .select('developer_id')
+    .eq('job_id', jobId!);
+
+  const tagged = new Set((taggedRows ?? []).map((row) => row.developer_id));
+  const wanted = new Set(value.developerIds);
+  const dropped = [...tagged].filter((id) => !wanted.has(id));
+  const added = [...wanted].filter((id) => !tagged.has(id));
+
+  if (dropped.length) {
+    const { error } = await supabase
       .from('job_developers')
-      .insert(value.developerIds.map((developerId) => ({ job_id: jobId!, developer_id: developerId })));
+      .delete()
+      .eq('job_id', jobId!)
+      .in('developer_id', dropped);
+    if (error) return { ok: false, error: error.message };
   }
 
-  // Only when it actually entered the queue. Saving a draft is not an event
-  // anybody needs an email about, and re-saving a listing already in review
-  // is deduplicated on the job id rather than sending a second receipt.
-  if (status === 'pending_review') {
+  if (added.length) {
+    const { error } = await supabase
+      .from('job_developers')
+      .insert(added.map((developerId) => ({ job_id: jobId!, developer_id: developerId })));
+    if (error) return { ok: false, error: error.message };
+  }
+
+  /*
+    Only when it actually entered the queue. Saving a draft is not an event
+    anybody needs an email about, and re-saving a listing already in review is
+    deduplicated on the job id rather than sending a second receipt.
+
+    Read back rather than assumed, because a live listing's status is now the
+    guard's decision and not this function's: a material edit puts it in the
+    queue and a cosmetic one leaves it on the board, and only the row knows
+    which happened.
+  */
+  const { data: settled } = await supabase
+    .from('jobs')
+    .select('status')
+    .eq('id', jobId!)
+    .maybeSingle();
+
+  if (settled?.status === 'pending_review' && current?.status !== 'pending_review') {
     const submitted = jobId!;
     after(() => notifyJobSubmitted(submitted));
   }
@@ -175,9 +320,23 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
     .eq('id', parsed.data.jobId)
     .select('id');
 
-  if (error) return { ok: false, error: mapJobError(error.message) };
+  if (error) {
+    logFailure('listing', 'transition refused', {
+      job: parsed.data.jobId,
+      to: parsed.data.status,
+      code: error.code,
+    });
+    return { ok: false, error: mapJobError(error.message) };
+  }
+
   // Closing a listing that is not yours reported success and closed nothing.
-  if (!moved?.length) return { ok: false, error: 'forbidden' };
+  if (!moved?.length) {
+    logFailure('listing', 'transition changed nothing', {
+      job: parsed.data.jobId,
+      to: parsed.data.status,
+    });
+    return { ok: false, error: 'forbidden' };
+  }
 
   revalidatePath('/employer/jobs');
   return { ok: true };
@@ -188,4 +347,67 @@ function mapJobError(message: string): string {
   if (message.includes('unverified_company_post_cap')) return 'post_cap';
   if (message.includes('job status cannot go from')) return 'invalid_transition';
   return message;
+}
+
+
+/**
+ * Whether this company already has a listing that is, to a reader, this one.
+ *
+ * Nothing stopped a brokerage posting "Property Consultant – New Cairo" three
+ * times to fill three seats, which the seats field already models. Each copy
+ * costs a credit and splits the applicants three ways. This is a warning at
+ * the wizard's first step, never a block: legitimate near-duplicates exist,
+ * and the employer, not the form, knows which this is.
+ *
+ * Scoped to the caller's own company explicitly. RLS lets everyone read
+ * active listings, so without the company filter this would match a
+ * competitor's advert and tell an employer they had posted something they had
+ * not. Titles compare after the same normalisation a reader's eye performs —
+ * diacritics, tatweel, alef and ya variants, spacing — so "استشاري" and
+ * "إستشاري" are one title.
+ */
+const similarSchema = z.object({
+  titleAr: z.string().trim().min(1).max(160),
+  districtId: z.coerce.number().int().positive(),
+  excludeId: z.string().uuid().optional().nullable(),
+});
+
+function normaliseTitle(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+export async function findSimilarListing(
+  input: unknown,
+): Promise<ActionResult<{ match: { id: string; title: string; seats: number } | null }>> {
+  const none = { ok: true as const, data: { match: null } };
+  const parsed = similarSchema.safeParse(input);
+  if (!parsed.success) return none;
+
+  const viewer = await getViewer();
+  if (!viewer?.company) return none;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('jobs')
+    .select('id, title_ar, seats')
+    .eq('company_id', viewer.company.id)
+    .eq('district_id', parsed.data.districtId)
+    .in('status', ['active', 'pending_review', 'draft']);
+
+  const wanted = normaliseTitle(parsed.data.titleAr);
+  const match = (data ?? []).find(
+    (row) => row.id !== parsed.data.excludeId && normaliseTitle(row.title_ar) === wanted,
+  );
+
+  return {
+    ok: true,
+    data: { match: match ? { id: match.id, title: match.title_ar, seats: match.seats } : null },
+  };
 }

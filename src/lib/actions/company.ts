@@ -18,6 +18,8 @@ const schema = z.object({
   website: z.string().trim().url().max(200).optional().nullable().or(z.literal('')),
   headcountBand: z.enum(HEADCOUNT_BANDS).optional().nullable(),
   districtId: z.coerce.number().int().positive().optional().nullable(),
+  /** The version the form was built from; absent when creating. */
+  version: z.coerce.number().int().positive().optional(),
 });
 
 export async function saveCompany(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -48,18 +50,36 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
   const { data: existing } = await supabase.rpc('my_company_id');
 
   if (existing) {
-    // The slug is deliberately not regenerated on rename — it is a public URL
-    // that other sites may already link to.
-    const { data: saved, error } = await supabase
-      .from('companies')
-      .update(payload)
-      .eq('id', existing)
-      .select('id');
+    /*
+      The slug is deliberately not regenerated on rename — it is a public URL
+      that other sites may already link to.
+
+      Matched on the version the form loaded, so a second admin saving the
+      company profile between this form opening and submitting is refused
+      rather than overwritten. One statement, so there is no window between
+      checking and writing.
+    */
+    const query = supabase.from('companies').update(payload).eq('id', existing);
+
+    const { data: saved, error } = await (
+      parsed.data.version ? query.eq('version', parsed.data.version) : query
+    ).select('id');
 
     if (error) return { ok: false, error: error.message };
+
     // companies_update_own is admin-only, so a recruiter reaches zero rows
-    // rather than an error, and was previously told it saved.
-    if (!saved?.length) return { ok: false, error: 'forbidden' };
+    // rather than an error, and was previously told it saved. A version that
+    // has moved reaches zero rows too, and means something different — asked,
+    // rather than reported as the same refusal.
+    if (!saved?.length) {
+      const { data: now } = await supabase
+        .from('companies')
+        .select('version')
+        .eq('id', existing)
+        .maybeSingle();
+      const moved = parsed.data.version != null && now != null && now.version !== parsed.data.version;
+      return { ok: false, error: moved ? 'stale' : 'forbidden' };
+    }
 
     revalidatePath('/employer/company');
     return { ok: true, data: { id: existing } };
@@ -166,6 +186,16 @@ export async function recordCompanyDocument(input: unknown): Promise<ActionResul
 /** Verified companies get one free single post per calendar month. */
 export async function claimMonthlyFreePost(): Promise<ActionResult<{ claimed: boolean }>> {
   const supabase = await createClient();
+
+  // Answered here rather than left to the RPC's own error, so an expired
+  // session reaches the caller as `unauthenticated` — the one error every form
+  // in this app knows how to recover from — instead of a Postgres message
+  // about a policy.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
   const { data, error } = await supabase.rpc('claim_monthly_free_post');
   if (error) return { ok: false, error: error.message };
 
@@ -212,17 +242,28 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
   const { data: companyId } = await supabase.rpc('my_company_id');
   if (!companyId) return { ok: false, error: 'no_company' };
 
+  /*
+    Asked of the database rather than scanned for in a page of accounts.
+
+    This listed the first 200 users on the platform and searched them in
+    JavaScript, which is right until account 201 and then quietly wrong:
+    inviting a colleague who does have an account starts answering "no account
+    with that email", confidently, with nothing for either person to go on.
+
+    user_id_by_email is granted to service_role alone — the answer is whether
+    an address has an account, which is not for every signed-in user to ask —
+    and authorisation is unchanged: the membership row below still goes in
+    through the caller's own session, so company_members_manage decides.
+  */
   const admin = createAdminClient();
-  const { data: found } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-  const match = found?.users.find(
-    (candidate) => candidate.email?.toLowerCase() === parsed.data.email.toLowerCase(),
-  );
-  if (!match) return { ok: false, error: 'no_account' };
-  if (match.id === user.id) return { ok: false, error: 'already_member' };
+  const { data: invitee } = await admin.rpc('user_id_by_email', { p_email: parsed.data.email });
+
+  if (!invitee) return { ok: false, error: 'no_account' };
+  if (invitee === user.id) return { ok: false, error: 'already_member' };
 
   const { error } = await supabase
     .from('company_members')
-    .insert({ company_id: companyId, user_id: match.id, role: parsed.data.role });
+    .insert({ company_id: companyId, user_id: invitee, role: parsed.data.role });
 
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_member' };

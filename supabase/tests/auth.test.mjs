@@ -262,4 +262,277 @@ for (const group of appGroups) {
 // /onboarding is outside (app) and still has to be there.
 report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected');
 
+/*
+  The demo accounts are not offered to the public.
+
+  Their password is in the client bundle by design — a button that signs
+  anyone in has published it. What must not happen is that button reaching a
+  deployment with live listings: it was on production, offering the inbox of
+  a verified company, applicants' phone numbers and CVs included, to anyone
+  who tapped it. The gate is a build-time flag; this checks the gate is on the
+  button, that the flag is documented, and that it is not set for Vercel.
+*/
+{
+  const { existsSync } = await import('node:fs');
+  const form = read(j(ROOT, 'src/components/auth/auth-form.tsx'), 'utf8');
+  report.ok(
+    /process\.env\.NEXT_PUBLIC_DEMO_LOGIN === 'true'/.test(form),
+    'the demo sign-in reads NEXT_PUBLIC_DEMO_LOGIN',
+  );
+  report.ok(
+    /mode === 'sign-in' && DEMO_LOGIN \?/.test(form),
+    'the demo buttons render only behind that flag',
+  );
+  const example = read(j(ROOT, '.env.example'), 'utf8');
+  report.ok(/^# NEXT_PUBLIC_DEMO_LOGIN=true/m.test(example), '.env.example documents the flag');
+  const vercelEnv = j(ROOT, '.env.vercel.local');
+  const vercel = existsSync(vercelEnv) ? read(vercelEnv, 'utf8') : '';
+  report.ok(
+    !/^\s*NEXT_PUBLIC_DEMO_LOGIN\s*=\s*true/m.test(vercel),
+    'the Vercel env file does not enable it',
+  );
+}
+
+/*
+  A session in the URL fragment is spent, not ignored.
+
+  Supabase's implicit-flow links — dashboard "send recovery", "send magic
+  link", or any recover call without a code challenge — land on the Site URL
+  with the session in the fragment, which no server code can see. A confirmed
+  sign-up sat on the home page, signed out, with its tokens in the address bar.
+  The rescue must be mounted on every page, must strip the fragment before
+  anything else, and must only ever navigate to fixed paths.
+*/
+{
+  const layout = read(j(ROOT, 'src/app/[locale]/layout.tsx'), 'utf8');
+  report.ok(/<FragmentSession \/>/.test(layout), 'the root layout mounts FragmentSession');
+  const rescue = read(j(ROOT, 'src/components/auth/fragment-session.tsx'), 'utf8');
+  const strip = rescue.indexOf('history.replaceState');
+  const store = rescue.indexOf('setSession(');
+  report.ok(strip !== -1 && store !== -1 && strip < store, 'the fragment is wiped before the session is stored');
+  report.ok(!/window\.location\.(assign|href\s*=)/.test(rescue), 'the rescue navigates through the router, to literal paths only');
+  const signIn = read(j(ROOT, 'src/app/[locale]/sign-in/page.tsx'), 'utf8');
+  report.ok(/link_expired/.test(signIn) && /missing_code/.test(signIn) && /exchange_failed/.test(signIn), 'the sign-in page explains all three link failures');
+}
+
+/*
+  An unconfirmed sign-in offers the mail again, and a confirmation is
+  acknowledged where it lands. Both are one-line facts about the source that a
+  refactor could quietly lose.
+*/
+{
+  const form = read(j(ROOT, 'src/components/auth/auth-form.tsx'), 'utf8');
+  report.ok(/setUnconfirmed\(signInError\.code === 'email_not_confirmed'/.test(form), 'sign-in detects the unconfirmed-email refusal');
+  report.ok(/error && unconfirmed && mode === 'sign-in'/.test(form), 'and offers the confirmation mail again right there');
+  report.ok(/confirmed=1/.test(form) && (form.match(/confirmationRedirect\(\)/g) || []).length >= 3, 'every confirmation link the app requests lands with the confirmed flag');
+  const rescue = read(j(ROOT, 'src/components/auth/fragment-session.tsx'), 'utf8');
+  report.ok(/confirmed: '1'/.test(rescue), 'the fragment rescue carries the flag for a sign-up too');
+  const onboarding = read(j(ROOT, 'src/app/[locale]/onboarding/page.tsx'), 'utf8');
+  report.ok(/confirmed === '1'/.test(onboarding), 'onboarding shows the acknowledgement');
+}
+
+/*
+  The sign-up door's answer is not asked again.
+
+  The role chosen at /sign-up/employer travels in the confirmation link and in
+  user metadata, and onboarding shows one line with a "change" control instead
+  of the two cards whenever it knows the answer.
+*/
+{
+  const form = read(j(ROOT, 'src/components/auth/auth-form.tsx'), 'utf8');
+  report.ok(/data: \{ role: audience \}/.test(form), 'sign-up stores the door\'s role in user metadata');
+  report.ok((form.match(/emailRedirectTo: confirmationRedirect\(\)/g) || []).length === 3, 'sign-up and both resends use the same confirmation landing, role included');
+  const viewer = read(j(ROOT, 'src/lib/auth.ts'), 'utf8');
+  report.ok(/suggestedRole/.test(viewer), 'getViewer exposes the stored role as a suggestion');
+  const onboarding = read(j(ROOT, 'src/components/auth/onboarding-form.tsx'), 'utf8');
+  report.ok(/roleSettled \? \(/.test(onboarding) && !/roleChange/.test(onboarding), 'onboarding skips the role question when it is known, and does not ask again');
+}
+
+/*
+  "Which company am I acting for" is answered by membership, everywhere.
+
+  Two places legitimately ask about ownership instead, and both are about the
+  owner specifically rather than about acting for a company: closing an account
+  that would orphan a company, and a personal data export that should not carry
+  a company somebody else owns. Every other ownership lookup was a recruiter
+  being told they had no company while the database let them work.
+*/
+{
+  const { readdirSync, statSync } = await import('node:fs');
+  const OWNERSHIP_IS_THE_SUBJECT = new Set([
+    'src/lib/actions/account.ts',
+    'src/app/api/account/export/route.ts',
+  ]);
+  const files = [];
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = j(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry)) files.push(full);
+    }
+  })(j(ROOT, 'src'));
+
+  const offenders = files.filter((file) => {
+    const relative = file.replace(ROOT + '/', '');
+    if (OWNERSHIP_IS_THE_SUBJECT.has(relative)) return false;
+    return /\.eq\(\s*['"]owner_id['"]/.test(read(file, 'utf8'));
+  });
+  report.ok(
+    offenders.length === 0,
+    `no page or action resolves its company by owner_id (found: ${offenders.map((f) => f.replace(ROOT + '/', '')).join(', ') || 'none'})`,
+  );
+}
+
+/*
+  A session that ends is answered, not shrugged at.
+
+  Sixteen server actions begin by asking Supabase who the caller is and answer
+  `unauthenticated` when the session has gone. Until recoverExpiredSession
+  existed, not one caller told them apart from a database error, so every one
+  rendered "something went wrong, try again" — advice that cannot work, because
+  the next attempt fails identically and so does the one after it. The person
+  is left pressing a button that will never do anything again.
+
+  Scanned rather than remembered: the next form somebody writes will call one
+  of these actions, and this is the only thing that will notice it forgot.
+*/
+{
+  const { readdirSync, statSync } = await import('node:fs');
+
+  const actionsDir = j(ROOT, 'src/lib/actions');
+  const guarded = new Set();
+  for (const entry of readdirSync(actionsDir)) {
+    if (!/\.ts$/.test(entry)) continue;
+    const text = read(j(actionsDir, entry), 'utf8');
+    let current = null;
+    for (const line of text.split('\n')) {
+      const declared = line.match(/^export async function (\w+)/);
+      if (declared) current = declared[1];
+      if (current && line.includes("'unauthenticated'")) {
+        guarded.add(current);
+        current = null;
+      }
+    }
+  }
+
+  report.ok(guarded.size >= 15, `found ${guarded.size} actions that can answer unauthenticated`);
+
+  const components = [];
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = j(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx$/.test(entry)) components.push(full);
+    }
+  })(j(ROOT, 'src/components'));
+
+  const deaf = components.filter((file) => {
+    const text = read(file, 'utf8');
+    if (!/^'use client';/m.test(text)) return false;
+    const calls = [...guarded].some((name) => new RegExp(`\\bawait ${name}\\(`).test(text));
+    return calls && !text.includes('recoverSession(');
+  });
+
+  report.ok(
+    deaf.length === 0,
+    `every form that can be told "unauthenticated" acts on it (missing: ${deaf.map((f) => f.replace(ROOT + '/', '')).join(', ') || 'none'})`,
+  );
+}
+
+/*
+  A failing console page does not take the console with it.
+
+  Next resolves an error boundary at the nearest segment above the failure, and
+  the console had none of its own — so anything under (app) was caught at
+  [locale], one level above the layout that draws the sidebar and the account
+  menu. ErrorState is deliberately a panel over the thing you were doing rather
+  than a page you have arrived at, and with the shell unmounted behind it that
+  reading was simply false.
+
+  And the redirect it exists to replace: a profile row that cannot be read
+  arrives as `profile: null`, which is how this app spells "has not onboarded"
+  — so a database hiccup sent an established account back to the sign-up form.
+*/
+{
+  const { existsSync } = await import('node:fs');
+
+  report.ok(
+    existsSync(j(ROOT, 'src/app/[locale]/(app)/error.tsx')),
+    'the signed-in console has an error boundary of its own',
+  );
+
+  const auth = read(j(ROOT, 'src/lib/auth.ts'), 'utf8');
+  report.ok(
+    /profileUnreadable/.test(auth),
+    'getViewer distinguishes a profile it could not read from one that is not there',
+  );
+  report.ok(
+    /profileUnreadable[\s\S]{0,400}throw new Error/.test(auth),
+    'and requireProfile raises rather than sending them to onboarding',
+  );
+
+  const onboarding = read(j(ROOT, 'src/app/[locale]/onboarding/page.tsx'), 'utf8');
+  report.ok(
+    /profileUnreadable/.test(onboarding),
+    'onboarding will not ask an established account to sign up again',
+  );
+}
+
+/*
+  Nothing a user typed reaches the platform log.
+
+  Logs are read by whoever is on call, pasted into support threads and shipped
+  to whatever aggregates them — so a WhatsApp number or a CV path in one is a
+  copy of the thing this product spends its policies protecting, in a place
+  none of those policies reach. Identifiers are what a failure needs to be
+  findable, and identifiers are all that should be there.
+
+  Scanned rather than remembered: the next `console.warn` somebody adds under
+  pressure is exactly the one that will interpolate a name.
+*/
+{
+  const { readdirSync, statSync } = await import('node:fs');
+
+  const files = [];
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = j(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry)) files.push(full);
+    }
+  })(j(ROOT, 'src'));
+
+  report.ok(files.length > 100, `read ${files.length} source files`);
+
+  // Fields that are somebody's, as opposed to something's.
+  const PERSONAL = /\b(whatsapp_phone|whatsapp|cv_path|cvPath|full_name|fullName|\bemail\b|password|unsubscribe_token|decision_note|decisionNote|summary_ar|note)\b/;
+
+  const offenders = [];
+  for (const file of files) {
+    const text = read(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    for (const match of text.matchAll(/console\.(warn|error|log|info)\(([^;]*?)\);/g)) {
+      const argument = match[2];
+      // The interpolations only — a literal mentioning a column name is prose.
+      const interpolated = [...argument.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1]).join(' ');
+      const bare = argument.replace(/`[^`]*`|'[^']*'|"[^"]*"/g, ' ');
+      if (PERSONAL.test(interpolated) || PERSONAL.test(bare)) {
+        offenders.push(`${file.replace(ROOT + '/', '')}: ${argument.trim().slice(0, 70)}`);
+      }
+    }
+  }
+
+  report.ok(
+    offenders.length === 0,
+    `no log line carries personal data (${offenders.join(' | ') || 'none'})`,
+  );
+
+  // And the one place a third party's text reaches a log, which is the place
+  // an address can arrive without anybody choosing to put one there.
+  const send = read(j(ROOT, 'src/lib/email/send.ts'), 'utf8');
+  report.ok(
+    /withoutAddresses\(detail\)/.test(send),
+    "the provider's own error text has addresses stripped before it is logged",
+  );
+}
+
 process.exitCode = base.finish() ? 0 : 1;
