@@ -562,7 +562,8 @@
     "shortlistGoneHint": "They chose to hide their profile, so we cannot show their details. You can remove them from the list.",
     "shortlistSavedBy": "Added by {name} on {date}",
     "shortlistSavedOn": "Added on {date}",
-    "reopenHint": "It goes back for review first; the 30 days start again once it is published."
+    "reopenHint": "It goes back for review first; the 30 days start again once it is published.",
+    "applicantsCapped": "Showing the newest <v>{count}</v> applicants only. Narrow with the filters or the search to reach the rest."
   },
   "jobForm": {
     "basics": "Basics",
@@ -649,7 +650,8 @@
     "emailOffOutbox": "Nothing is being recorded at all — the service key is missing, so a message fails before it is ever written. Set these in Vercel and redeploy.",
     "emailOffSending": "Messages are recorded but never sent — the Resend credentials are missing. Set these in Vercel and redeploy.",
     "mailOffTitle": "The platform cannot send email",
-    "mailOffBody": "Every email — application receipts, new applicants, digests — is being dropped silently. These variables are missing in Vercel:"
+    "mailOffBody": "Every email — application receipts, new applicants, digests — is being dropped silently. These variables are missing in Vercel:",
+    "usersCapped": "Showing the newest <v>{count}</v> accounts only. Filter by role or status to reach the rest."
   },
   "reportReason": {
     "fake_listing": "Fake listing",

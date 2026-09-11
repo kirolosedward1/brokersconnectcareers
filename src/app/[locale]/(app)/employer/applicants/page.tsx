@@ -62,6 +62,15 @@ const NO_COMPANY = '00000000-0000-0000-0000-000000000000';
 const STAGES = ['new', 'shortlisted', 'interview', 'hired', 'rejected'] as const;
 
 /**
+ * How many applicant cards this page draws.
+ *
+ * Named rather than written twice, because the number has to appear in the
+ * query and in the sentence that admits the list was cut — and the day those
+ * two disagree is the day the warning is wrong in a way nobody can see.
+ */
+const APPLICANTS_SHOWN = 200;
+
+/**
  * Every applicant across every listing, newest first.
  *
  * The per-listing view answers "who applied to this role". This answers the
@@ -169,7 +178,7 @@ export default async function AllApplicantsPage({
     )
     .eq('job.company_id', viewer.company?.id ?? NO_COMPANY)
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(APPLICANTS_SHOWN);
 
   // Narrowed rather than asserted, so an unknown ?stage= in the URL is simply
   // ignored instead of reaching the query as an invalid enum value.
@@ -552,6 +561,24 @@ export default async function AllApplicantsPage({
       {rows.length > 0 ? (
         <p className="numeral text-center text-sm text-muted-foreground">
           <Badge>{rows.length}</Badge>
+        </p>
+      ) : null}
+
+      {/*
+        The list stops at 200 and used to stop silently.
+
+        The chips above are counted over two thousand rows, so a company past
+        the cap could read "250 new" on a chip and see two hundred rows with a
+        badge saying 200 — and conclude an applicant had gone missing. Nothing
+        on production is near this yet; it costs one line to not be a mystery
+        when something is.
+      */}
+      {rows.length >= APPLICANTS_SHOWN ? (
+        <p className="text-center text-sm text-warning">
+          {t.rich('applicantsCapped', {
+            count: formatNumber(APPLICANTS_SHOWN, locale),
+            v: (chunks) => <span className="numeral">{chunks}</span>,
+          })}
         </p>
       ) : null}
     </div>

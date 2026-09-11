@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ApprovalActions } from '@/components/admin/approval-actions';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatNumber } from '@/lib/utils';
 import type { ApprovalStatus, ProfileRow, UserRole } from '@/lib/supabase/database.types';
 
 export async function generateMetadata({
@@ -19,6 +19,12 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: 'admin' });
   return { title: t('users'), robots: { index: false, follow: false } };
 }
+
+/**
+ * How many accounts this page draws — named because the number has to appear
+ * both in the query and in the sentence that admits the list was cut.
+ */
+const ACCOUNTS_SHOWN = 200;
 
 const ROLE_ICON: Record<UserRole, React.ComponentType<{ className?: string }>> = {
   candidate: UserRound,
@@ -60,7 +66,7 @@ export default async function AdminUsersPage({
     .from('profiles')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(ACCOUNTS_SHOWN);
 
   if (role === 'candidate' || role === 'employer' || role === 'admin') query = query.eq('role', role);
   if (status === 'approved' || status === 'pending' || status === 'rejected') {
@@ -197,6 +203,18 @@ export default async function AdminUsersPage({
           })}
         </ul>
       )}
+
+      {/* The list stops at 200. Fifteen accounts today, so this is a sentence
+          for later — but a moderation queue that quietly omits accounts is the
+          wrong place to find out by counting. */}
+      {sorted.length >= ACCOUNTS_SHOWN ? (
+        <p className="text-center text-sm text-warning">
+          {t.rich('usersCapped', {
+            count: formatNumber(ACCOUNTS_SHOWN, locale),
+            v: (chunks) => <span className="numeral">{chunks}</span>,
+          })}
+        </p>
+      ) : null}
     </div>
   );
 }
