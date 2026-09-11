@@ -30,7 +30,23 @@ const applySchema = z.object({
  */
 export async function applyToJob(input: unknown): Promise<ActionResult> {
   const parsed = applySchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'invalid' };
+  if (!parsed.success) {
+    /*
+      Name the field. A phone of "123" fails the schema's min(6) before the
+      phone validator below ever runs, and this branch used to return no
+      fieldErrors — so the form fell back to "we couldn't complete that, try
+      again" at the bottom of the page, with the offending field a screen
+      above it and nothing pointing there. The keys are the form's own field
+      names and the values are the validation messages it already renders.
+    */
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const field = String(issue.path[0] ?? '');
+      if (!field || fieldErrors[field]) continue;
+      fieldErrors[field] = field === 'whatsapp' ? 'invalidPhone' : 'required';
+    }
+    return { ok: false, error: 'invalid', fieldErrors };
+  }
 
   const phone = normalisePhone(parsed.data.whatsapp);
   if (!isValidPhone(phone)) {

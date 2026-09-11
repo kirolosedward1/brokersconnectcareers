@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { CheckCircle2, Paperclip, ShieldCheck } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
@@ -46,6 +46,21 @@ export function ApplyForm({
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+
+  /*
+    On a phone the submit button is a full screen below the phone field, so a
+    message under the field is invisible from where the thumb is. Bring the
+    first invalid field into view and focus it, which also makes a screen
+    reader announce the label and its error together.
+  */
+  useEffect(() => {
+    const first = ['fullName', 'whatsapp', 'experienceBand', 'cv', 'note'].find((key) => errors[key]);
+    if (!first) return;
+    const element = document.getElementById(first);
+    if (!element) return;
+    element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    element.focus({ preventScroll: true });
+  }, [errors]);
 
   function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
