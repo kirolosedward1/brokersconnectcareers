@@ -1189,4 +1189,56 @@ report.section('suspending an account takes its adverts down with it');
   );
 }
 
+report.section('one source of truth for the company a member acts for');
+{
+  /*
+    A company is a team. owns_company(), owns_job() and is_company_admin() all
+    read company_members, so any member may post a job and read the applicants
+    while only an admin member may edit the company. Three functions were left
+    resolving the company by companies.owner_id, which told an invited
+    recruiter they had no company at all while the database happily let them
+    work — and claim_monthly_free_post() could not find a company to grant to.
+
+    Asserted against the live definitions rather than the migration files,
+    because the files are append-only history and still contain the superseded
+    versions.
+  */
+  const offenders = await db.query(`
+    select p.proname
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.prokind = 'f'
+      and p.prosrc ~ 'owner_id\\s*=\\s*auth\\.uid\\(\\)'
+    order by p.proname
+  `);
+  report.check(
+    'no function resolves a company by ownership',
+    offenders.rows.length === 0,
+    offenders.rows.map((r) => r.proname).join(', '),
+  );
+
+  // The free post: proven to grant, and proven not to have opened a hole.
+  const owner = (await db.query(
+    "select owner_id from companies where verification_status = 'verified' limit 1",
+  )).rows[0].owner_id;
+
+  const granted = await as(owner, "select public.claim_monthly_free_post() as ok");
+  report.check(
+    'a verified company can claim its monthly free post',
+    granted.rows?.[0]?.ok === true,
+    granted.error ?? JSON.stringify(granted.rows?.[0] ?? null),
+  );
+
+  const direct = await as(owner, `
+    update companies set post_credits = post_credits + 99
+    where id = public.my_company_id()
+  `);
+  report.check(
+    'and the owner still cannot write credits directly',
+    Boolean(direct.error),
+    direct.error ? '' : 'the update was allowed',
+  );
+}
+
 process.exit(report.finish() ? 0 : 1);

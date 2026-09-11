@@ -127,11 +127,13 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
   if (parsed.data.role === 'employer' && parsed.data.company) {
     const company = parsed.data.company;
 
-    const { data: existing } = await supabase
-      .from('companies')
-      .select('id')
-      .eq('owner_id', user.id)
-      .maybeSingle();
+    /*
+      Membership, for the reason saveCompany documents: keyed on owner_id an
+      invited colleague who then completes onboarding falls through to the
+      create branch and makes a second, empty company beside the one they
+      already belong to.
+    */
+    const { data: existing } = await supabase.rpc('my_company_id');
 
     if (!existing) {
       await withUniqueSlug<{ id: string }>(

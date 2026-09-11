@@ -76,11 +76,16 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  const { data: company } = await supabase
-    .from('companies')
-    .select('id, name_ar, name_en')
-    .eq('owner_id', user.id)
-    .maybeSingle();
+  /*
+    Membership. jobs_insert_owner checks owns_company(), which reads
+    company_members — so the database was happy to let a recruiter post and
+    this lookup was the only thing refusing them, with 'no_company' on a
+    screen that had just shown them the company's other listings.
+  */
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  const { data: company } = companyId
+    ? await supabase.from('companies').select('id, name_ar, name_en').eq('id', companyId).maybeSingle()
+    : { data: null };
 
   if (!company) return { ok: false, error: 'no_company' };
 

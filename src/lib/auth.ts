@@ -66,12 +66,25 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 
   let company: CompanyRow | null = null;
   if (profile?.role === 'employer') {
-    const { data } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('owner_id', user.id)
-      .maybeSingle();
-    company = data ?? null;
+    /*
+      Through membership, not ownership.
+
+      A company is a team: row-level security lets any member read its jobs
+      and applicants and post on its behalf, and only an admin member edit
+      the company itself. Keyed on owner_id this returned null for every
+      colleague who was invited rather than signing up — so a recruiter with
+      full database access saw a console with no company in it, and the
+      contact button on the consultant directory, which gates on
+      viewer.company, never appeared for them.
+
+      my_company_id() is the single answer to "which company am I acting
+      for", and it breaks ties deterministically: admin first, then oldest.
+    */
+    const { data: companyId } = await supabase.rpc('my_company_id');
+    if (companyId) {
+      const { data } = await supabase.from('companies').select('*').eq('id', companyId).maybeSingle();
+      company = data ?? null;
+    }
   }
 
   const metadata = user.user_metadata ?? {};

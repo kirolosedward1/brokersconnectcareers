@@ -348,4 +348,39 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
   report.ok(/roleSettled \? \(/.test(onboarding) && !/roleChange/.test(onboarding), 'onboarding skips the role question when it is known, and does not ask again');
 }
 
+/*
+  "Which company am I acting for" is answered by membership, everywhere.
+
+  Two places legitimately ask about ownership instead, and both are about the
+  owner specifically rather than about acting for a company: closing an account
+  that would orphan a company, and a personal data export that should not carry
+  a company somebody else owns. Every other ownership lookup was a recruiter
+  being told they had no company while the database let them work.
+*/
+{
+  const { readdirSync, statSync } = await import('node:fs');
+  const OWNERSHIP_IS_THE_SUBJECT = new Set([
+    'src/lib/actions/account.ts',
+    'src/app/api/account/export/route.ts',
+  ]);
+  const files = [];
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = j(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry)) files.push(full);
+    }
+  })(j(ROOT, 'src'));
+
+  const offenders = files.filter((file) => {
+    const relative = file.replace(ROOT + '/', '');
+    if (OWNERSHIP_IS_THE_SUBJECT.has(relative)) return false;
+    return /\.eq\(\s*['"]owner_id['"]/.test(read(file, 'utf8'));
+  });
+  report.ok(
+    offenders.length === 0,
+    `no page or action resolves its company by owner_id (found: ${offenders.map((f) => f.replace(ROOT + '/', '')).join(', ') || 'none'})`,
+  );
+}
+
 process.exitCode = base.finish() ? 0 : 1;
