@@ -158,6 +158,12 @@ export type JobRow = Timestamped & {
   rejection_note: string | null;
   /** Bumped on every update; the edit form sends back the one it loaded. */
   version: number;
+  /**
+   * Made once by the posting wizard and repeated on every retry, so a request
+   * that timed out after the server committed converges on the listing it
+   * already made. Null on everything written before migration 55.
+   */
+  idempotency_key: string | null;
 };
 
 export type ApplicationRow = Timestamped & {

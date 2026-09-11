@@ -1865,6 +1865,115 @@ report.section('withdrawing has a precondition the database keeps');
   await db.exec(`update applications set status = 'new' where id = '${mine}'`);
 }
 
+report.section('two people moving one applicant');
+{
+  /*
+    A company is a team and any member may work the inbox, so two recruiters on
+    the same applicant is an ordinary Tuesday rather than a contrived race. The
+    pipeline move used to be unconditional: the second one silently replaced the
+    first, each person kept their own optimistic value until they happened to
+    refresh, and the candidate was emailed twice about two different outcomes.
+
+    The card sends the status it was showing; matching on it makes the second
+    move a refusal rather than an overwrite, in one statement with no window
+    between checking and writing.
+  */
+  const app = (
+    await db.query(`
+      select a.id, a.status from applications a
+        join jobs j on j.id = a.job_id
+        join company_members m on m.company_id = j.company_id
+       where m.user_id = '${employerVerified}' limit 1`)
+  ).rows[0];
+
+  report.check('found an applicant on their own listing', Boolean(app));
+
+  await db.exec(`update applications set status = 'new' where id = '${app.id}'`);
+
+  const first = await as(employerVerified,
+    `update applications set status = 'shortlisted' where id = '${app.id}' and status = 'new' returning id`);
+  report.check('a move from the status the card showed goes through',
+    first.ok && first.rows.length === 1, first.error);
+
+  // Committed, so the colleague's form is genuinely stale.
+  await db.exec(`update applications set status = 'shortlisted' where id = '${app.id}'`);
+
+  const late = await as(employerVerified,
+    `update applications set status = 'rejected' where id = '${app.id}' and status = 'new' returning id`);
+  report.check('a move from a status somebody else has already changed does not',
+    late.ok && late.rows.length === 0, JSON.stringify(late.rows));
+
+  const still = (await db.query(`select status from applications where id = '${app.id}'`)).rows[0].status;
+  report.check('and the first move is the one that stands', still === 'shortlisted', still);
+
+  await db.exec(`update applications set status = 'new' where id = '${app.id}'`);
+}
+
+report.section('the same request twice converges on one answer');
+{
+  /*
+    Every other create in this product converges when repeated — applications
+    on (job, candidate), saved jobs and memberships on composite keys, saved
+    searches on (candidate, query), a consultant profile on user_id, a company
+    on owner. Posting a listing did not, and the case is not a double click,
+    which the disabled button answers: it is a client that gives up after the
+    server has already committed, and an employer who presses the button again.
+  */
+  const company = (
+    await db.query(`select company_id from company_members where user_id = '${employerVerified}' and role = 'admin' limit 1`)
+  ).rows[0].company_id;
+  const KEY = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+
+  const post = (slug) => as(employerVerified, `
+    insert into jobs (company_id, slug, title_ar, track, employment_type, experience_band,
+                      seats, district_id, commission_type, commission_value, leads_source,
+                      description_ar, status, idempotency_key)
+    values ('${company}', '${slug}', 'استشاري مبيعات', 'primary', 'full_time', 'junior_1_3',
+            1, (select id from districts limit 1), 'percentage', 2.5, 'company_provided',
+            'وصف الإعلان', 'draft', '${KEY}')
+    returning id`);
+
+  const first = await post('idem-first');
+  report.check('the first post goes through', first.ok && first.rows.length === 1, first.error);
+
+  // Committed, because the runner rolls each call back and a retry has to meet
+  // a row that is really there.
+  await db.exec(`
+    insert into jobs (company_id, slug, title_ar, track, employment_type, experience_band,
+                      seats, district_id, commission_type, commission_value, leads_source,
+                      description_ar, status, idempotency_key)
+    values ('${company}', 'idem-first', 'استشاري مبيعات', 'primary', 'full_time', 'junior_1_3',
+            1, (select id from districts limit 1), 'percentage', 2.5, 'company_provided',
+            'وصف الإعلان', 'draft', '${KEY}');
+  `);
+
+  const retry = await post('idem-second');
+  report.check('the retry is refused rather than posting a second advert',
+    !retry.ok && /jobs_idempotency_key_idx/.test(retry.error ?? ''),
+    retry.ok ? 'insert was allowed' : retry.error);
+
+  // And the key is per company: two brokerages are not each other's retries.
+  const otherCompany = (
+    await db.query(`select id from companies where id <> '${company}' limit 1`)
+  ).rows[0].id;
+  const elsewhere = await as(null, `
+    insert into jobs (company_id, slug, title_ar, track, employment_type, experience_band,
+                      seats, district_id, commission_type, commission_value, leads_source,
+                      description_ar, status, idempotency_key)
+    values ('${otherCompany}', 'idem-elsewhere', 'استشاري', 'primary', 'full_time', 'junior_1_3',
+            1, (select id from districts limit 1), 'percentage', 2.5, 'company_provided',
+            'وصف', 'draft', '${KEY}') returning id`, 'service_role');
+  report.check('another company may use the same key', elsewhere.ok && elsewhere.rows.length === 1,
+    elsewhere.error);
+
+  // And listings written before this have no key, so they cannot collide.
+  const noKey = await as(null, `
+    select count(*) filter (where idempotency_key is null)::int as n from jobs`, 'service_role');
+  report.check('older listings carry no key at all', (noKey.rows[0]?.n ?? 0) > 1, JSON.stringify(noKey.rows[0]));
+
+  await db.exec(`delete from jobs where slug in ('idem-first', 'idem-elsewhere')`);
+}
+
 report.section('an application remembers how it moved');
 {
   const jobForHistory = (await db.query(`

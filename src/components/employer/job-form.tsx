@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
-import { cn, formatEgp } from '@/lib/utils';
+import { cn, formatEgp, uuid } from '@/lib/utils';
 import { NumberInput } from '@/components/ui/number-input';
 import {
   BENEFITS,
@@ -96,6 +96,19 @@ export function JobForm({
   */
   const live = job?.status === 'active';
 
+  /*
+    One key for as long as this form is on screen.
+
+    The button disables while a request is in flight, which answers a double
+    click and nothing else — not the case where the client gives up after the
+    server has already committed. The employer sees a failure, presses again,
+    and without this the second request is indistinguishable from a deliberate
+    second advert: two listings, two credits, and the applicants split between
+    them. Made once with useState's initialiser so a re-render does not make
+    a new one.
+  */
+  const [idempotencyKey] = useState(() => uuid());
+
   const [values, setValues] = useState<Values>({
     titleAr: job?.title_ar ?? '',
     titleEn: job?.title_en ?? '',
@@ -169,6 +182,7 @@ export function JobForm({
         // What this form was built from. The action matches on it, so a
         // colleague's save in between is refused rather than overwritten.
         version: job?.version,
+        idempotencyKey,
         titleAr: values.titleAr,
         titleEn: values.titleEn,
         track: values.track,

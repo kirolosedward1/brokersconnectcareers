@@ -42,6 +42,12 @@ const jobSchema = z
     developerIds: z.array(z.coerce.number().int().positive()).max(30),
     /** The version the form was built from; absent when creating. */
     version: z.coerce.number().int().positive().optional(),
+    /**
+     * Made once by the wizard and repeated on every retry, so a request that
+     * timed out after the server committed converges on the listing it already
+     * made rather than posting a second one.
+     */
+    idempotencyKey: z.string().uuid().optional(),
     submit: z.boolean(),
   })
   .refine(
@@ -180,12 +186,44 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
       (slug) =>
         supabase
           .from('jobs')
-          .insert({ company_id: company.id, slug, status, ...payload })
+          .insert({
+            company_id: company.id,
+            slug,
+            status,
+            idempotency_key: value.idempotencyKey ?? null,
+            ...payload,
+          })
           .select('id')
           .single(),
     );
 
-    if (error || !data) return { ok: false, error: mapJobError(error?.message ?? 'insert_failed') };
+    if (error || !data) {
+      /*
+        The same request, arriving twice.
+
+        A client that times out after the server committed sends the form
+        again, and without the key the second request is indistinguishable from
+        a deliberate second advert: same company, same title, two listings, two
+        credits, and the applicants split between them. With it, the second
+        insert collides on jobs_idempotency_key_idx and the listing the first
+        one made is the answer — which is what the employer meant both times.
+      */
+      const collided = error?.code === '23505' && value.idempotencyKey;
+
+      if (collided) {
+        const { data: already } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('company_id', company.id)
+          .eq('idempotency_key', value.idempotencyKey!)
+          .maybeSingle();
+
+        if (already) return { ok: true, data: { id: already.id } };
+      }
+
+      return { ok: false, error: mapJobError(error?.message ?? 'insert_failed') };
+    }
+
     jobId = data.id;
   }
 

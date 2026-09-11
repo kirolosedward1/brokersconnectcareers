@@ -174,6 +174,16 @@ const statusSchema = z.object({
   status: z.enum(['new', 'shortlisted', 'interview', 'hired', 'rejected']),
   /** Optional, and deliberately so — a required field becomes "not a fit" forever. */
   decisionNote: z.string().trim().max(500).optional().nullable(),
+  /**
+   * The status the card was showing when somebody chose the new one.
+   *
+   * A company is a team and any member may work the inbox, so two recruiters
+   * on the same applicant is an ordinary Tuesday rather than a contrived race.
+   * Without this the second move silently replaced the first, each person kept
+   * their own optimistic value until they happened to refresh, and the
+   * candidate was emailed twice about two different outcomes.
+   */
+  from: z.enum(['new', 'shortlisted', 'interview', 'hired', 'rejected']).optional(),
 });
 
 /** Employer pipeline move. RLS restricts this to jobs the caller owns. */
@@ -182,14 +192,22 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
-  const { data: moved, error } = await supabase
+
+  // Compare and swap, in one statement: matching the status the card rendered
+  // makes "somebody moved this first" a refusal rather than an overwrite, and
+  // leaves no window between checking and writing.
+  const query = supabase
     .from('applications')
     .update({
       status: parsed.data.status as ApplicationStatus,
       employer_viewed_at: new Date().toISOString(),
       decision_note: parsed.data.decisionNote?.trim() || null,
     })
-    .eq('id', parsed.data.applicationId)
+    .eq('id', parsed.data.applicationId);
+
+  const { data: moved, error } = await (
+    parsed.data.from ? query.eq('status', parsed.data.from) : query
+  )
     // Asked, not assumed. RLS scopes this to applications on the caller's own
     // listings, and an update it filters to zero rows returns no error — so
     // without this the function reported success for a move that never
@@ -198,7 +216,18 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     .select('id');
 
   if (error) return { ok: false, error: error.message };
-  if (!moved?.length) return { ok: false, error: 'forbidden' };
+
+  if (!moved?.length) {
+    // Zero rows means one of two things and the reader deserves to know which:
+    // somebody else moved it, or it was never theirs to move.
+    const { data: current } = await supabase
+      .from('applications')
+      .select('status')
+      .eq('id', parsed.data.applicationId)
+      .maybeSingle();
+
+    return { ok: false, error: current ? 'moved_already' : 'forbidden' };
+  }
 
   after(() => notifyCandidateOfStatus(parsed.data.applicationId));
 

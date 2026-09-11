@@ -97,6 +97,7 @@ export function ApplicantCard({
   const [status, setStatus] = useState(application.status);
   const [reason, setReason] = useState(application.decision_note ?? '');
   const [savedReason, setSavedReason] = useState(application.decision_note ?? '');
+  const [conflict, setConflict] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const candidate = application.candidate;
@@ -108,17 +109,30 @@ export function ApplicantCard({
     const previousReason = savedReason;
     setStatus(next);
     setSavedReason(decisionNote);
+    setConflict(false);
 
     startTransition(async () => {
       const result = await setApplicationStatus({
         applicationId: application.id,
         status: next,
         decisionNote,
+        // What this card was showing. A colleague who moved the same applicant
+        // in the meantime wins, and this one is told rather than overwriting
+        // them — a company is a team, and two people in the same inbox is an
+        // ordinary Tuesday.
+        from: previousStatus,
       });
+
       if (!result.ok) {
         setStatus(previousStatus);
         setSavedReason(previousReason);
         setReason(previousReason);
+        if (result.error === 'moved_already') {
+          setConflict(true);
+          // Their move is the one that stands, and it is already on the
+          // server — so re-read rather than describe it from here.
+          router.refresh();
+        }
         return;
       }
       router.refresh();
@@ -292,6 +306,12 @@ export function ApplicantCard({
             {t('noCv')}
           </span>
         )}
+
+        {conflict ? (
+          <p role="alert" className="w-full text-xs text-destructive">
+            {t('applicantMovedAlready')}
+          </p>
+        ) : null}
 
         <label className="ms-auto flex items-center gap-2 text-xs text-muted-foreground">
           {t('moveTo')}
