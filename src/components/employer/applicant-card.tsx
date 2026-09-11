@@ -213,7 +213,22 @@ export function ApplicantCard({
             <ArrowLeft className="rtl-flip size-3" aria-hidden />
           </span>
         </Link>
-      ) : null}
+      ) : (
+        /*
+          Said, rather than left out.
+
+          A consultant on `hidden` is invisible to the directory and stays
+          invisible here — that setting exists so somebody can look without
+          their current employer finding out, and the company they work for is
+          usually one they applied to. But an absent panel reads as an
+          applicant who never filled anything in, which is a different and
+          unfair impression. The line says which it is, and points back at what
+          they did send.
+        */
+        <p className="mt-3 rounded-xl border border-dashed border-border p-3 text-xs leading-relaxed text-muted-foreground">
+          {t('applicantProfilePrivate')}
+        </p>
+      )}
 
       {application.note ? (
         <p className="mt-3 rounded-lg bg-muted p-3 text-sm leading-relaxed">{application.note}</p>

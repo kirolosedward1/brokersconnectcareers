@@ -14,6 +14,7 @@ import { applyToJob } from '@/lib/actions/applications';
 import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { track } from '@/lib/analytics';
 import { uuid } from '@/lib/utils';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 const MAX_CV_BYTES = 10 * 1024 * 1024;
 const CV_TYPES = [
@@ -45,6 +46,7 @@ export function ApplyForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
   const router = useRouter();
 
   /*
@@ -119,7 +121,30 @@ export function ApplyForm({
         note: String(form.get('note') ?? ''),
       });
 
+      if (recoverSession(result)) {
+        // The file goes with it: nothing will ever point at it now.
+        if (cvPath) await createClient().storage.from(CV_BUCKET).remove([cvPath]);
+        return;
+      }
+
       if (!result.ok) {
+        /*
+          Take the file back out.
+
+          The CV is uploaded before the application is written, because the
+          action wants a path rather than bytes — so every refusal after this
+          point (applied already, rate limited, the listing expired while the
+          form was open) left a file in the private bucket with nothing
+          pointing at it, and each retry left another. Storage RLS confines
+          this account to its own folder, which is the same rule that allowed
+          the upload, so removing it needs no privilege the browser did not
+          already have. A failure here is not worth reporting: the person is
+          already being told the application did not go through.
+        */
+        if (cvPath) {
+          await createClient().storage.from(CV_BUCKET).remove([cvPath]);
+        }
+
         if (result.error === 'already_applied') {
           setErrors({ form: t('alreadyApplied') });
           return;

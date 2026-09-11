@@ -27,6 +27,7 @@ import type {
   DistrictRow,
   JobRow,
 } from '@/lib/supabase/database.types';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 type Values = {
   titleAr: string;
@@ -81,6 +82,7 @@ export function JobForm({
   const [developerIds, setDeveloperIds] = useState<number[]>(selectedDeveloperIds);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   const [values, setValues] = useState<Values>({
     titleAr: job?.title_ar ?? '',
@@ -173,6 +175,7 @@ export function JobForm({
         submit: publish,
       });
 
+      if (recoverSession(result)) return;
       if (!result.ok) {
         if (result.error === 'post_cap') {
           setErrors({ form: tEmployer('postCapBlocked') });

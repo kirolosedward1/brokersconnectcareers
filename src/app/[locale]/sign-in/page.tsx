@@ -60,6 +60,16 @@ export default async function SignInPage({
   const LINK_ERRORS = new Set(['link_expired', 'missing_code', 'exchange_failed']);
   const linkFailed = error ? LINK_ERRORS.has(error) : false;
 
+  /*
+    And a fourth, which is not a link at all: a session that ended under
+    somebody who was already signed in and working. Every server action
+    answers `unauthenticated` when that happens, and recoverExpiredSession
+    sends them here with the page they were on in `next`. It gets its own
+    sentence because the honest thing to say is different — nothing expired
+    that they clicked, and they are two fields away from carrying on.
+  */
+  const sessionExpired = error === 'session_expired';
+
   const { google: googleEnabled } = await enabledProviders();
   const t = await getTranslations('auth');
 
@@ -74,9 +84,9 @@ export default async function SignInPage({
           </Link>
         </p>
 
-        {linkFailed ? (
+        {linkFailed || sessionExpired ? (
           <p role="alert" className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
-            {t('linkExpired')}
+            {sessionExpired ? t('sessionExpired') : t('linkExpired')}
           </p>
         ) : null}
 

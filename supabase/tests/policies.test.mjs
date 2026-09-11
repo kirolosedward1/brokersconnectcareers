@@ -372,12 +372,32 @@ report.section('an employer reaches their applicant, and only their applicant');
   report.check('an unrelated employer does not', hidden.rows.length === 0);
 }
 
-report.section('the applicant inbox shows a profile only if the reader may see it');
+report.section('applying is consent, and the applicant inbox may read it');
 {
-  // The employer's applicant list embeds each candidate's directory profile so
-  // a reviewer can judge somebody without opening a filename. Applying must
-  // not become a way around the visibility a consultant chose: a hidden
-  // profile has to stay hidden from the very employer it applied to.
+  /*
+    The employer's applicant list embeds each candidate's directory profile so
+    a reviewer can judge somebody without opening a filename.
+
+    This section used to assert the opposite of what it asserts now: that a
+    hidden profile stayed hidden from the very employer it had applied to. The
+    reasoning was that applying must not become a way around the visibility a
+    consultant chose, and the worry behind it is real — an employer must not be
+    able to browse to a profile its owner withheld.
+
+    But the rule it produced protected nothing. The application already carries
+    the candidate's name, their WhatsApp number and usually their CV file, and
+    `profiles_select_applicants` has handed the employer all three since
+    migration 04. Withholding the headline and the years of experience beside
+    them did not keep a secret; it made the reviewer open a PDF to learn what
+    the card could have said, and on production it left four applications
+    showing a name, a phone number and an empty panel.
+
+    Visibility is a directory setting. `hidden` means do not list me. An
+    application is not a listing — it is a message the candidate chose to send
+    to one company, and only the candidate can create it. So the gate is not
+    "an employer", it is "the employer this person applied to", which is what
+    the negative assertion at the end of this block pins down.
+  */
   const live = (
     await db.query(`
       select j.id from jobs j
@@ -396,11 +416,11 @@ report.section('the applicant inbox shows a profile only if the reader may see i
   report.check('the fixtures include a hidden and a public consultant',
     Boolean(hiddenOwner) && Boolean(publicOwner));
 
-  // Both apply to the same listing, so the only difference between them is
-  // the visibility each one chose.
+  // The public consultant applies, unchanged from when this block asserted the
+  // opposite: a public profile was always readable, so this is the control.
   await db.exec(`
     insert into applications (job_id, candidate_id, experience_band)
-      values ('${live}', '${hiddenOwner}', 'mid_3_5'), ('${live}', '${publicOwner}', 'mid_3_5')
+      values ('${live}', '${publicOwner}', 'mid_3_5')
       on conflict (job_id, candidate_id) do nothing;
   `);
 
@@ -415,14 +435,115 @@ report.section('the applicant inbox shows a profile only if the reader may see i
   report.check('a public applicant brings their profile with them',
     seesPublic.ok && seesPublic.rows[0]?.slug != null, JSON.stringify(seesPublic.rows[0]));
 
-  const seesHidden = await as(employerVerified, embed(hiddenOwner));
-  report.check('a hidden applicant does not, even to the employer they applied to',
-    seesHidden.ok && seesHidden.rows.length === 1 && seesHidden.rows[0].slug === null,
-    JSON.stringify(seesHidden.rows[0]));
+  /*
+    The gated half is built here rather than borrowed from the seed.
 
-  // And the application itself is still there — the gate hides the profile,
-  // not the person, or the employer would lose an applicant entirely.
-  report.check('the application is still visible', seesHidden.rows.length === 1);
+    The reader has to be an employer whose company is *not* verified — that is
+    the whole case — and the consultant has to have applied to exactly one
+    company, or the negative assertion below tests whichever relationship the
+    seed happened to generate. Both are easier to state than to find. This
+    consultant exists for eight assertions and is deleted after them.
+  */
+  const SHY = '66666666-6666-4666-8666-666666666666';
+  const unverifiedJob = (
+    await db.query(`select id from jobs where company_id = '${unverifiedCo}' limit 1`)
+  ).rows[0].id;
+
+  await db.exec(`
+    insert into auth.users (id, email) values ('${SHY}', 'shy@demo.test');
+    insert into profiles (id, role, full_name, whatsapp_phone)
+      values ('${SHY}', 'candidate', 'خجول', '+201666666666');
+    insert into agent_profiles (user_id, slug, visibility, years_experience)
+      values ('${SHY}', 'shy-consultant-000001', 'verified_employers_only', 7);
+    insert into agent_experience (agent_id, company_name, title, started)
+      values ((select id from agent_profiles where user_id = '${SHY}'), 'شركة سرية', 'استشاري', '2021-01-01');
+  `);
+
+  const beforeApplying = await as(employerUnverified, `select slug from agent_profiles where user_id = '${SHY}'`);
+  report.check('an unverified employer cannot read a gated profile',
+    beforeApplying.ok && beforeApplying.rows.length === 0, JSON.stringify(beforeApplying.rows));
+
+  /*
+    Written with the service role, so the listing's status is beside the point:
+    applied_to_my_job asks who owns the listing, not whether it is live. An
+    unverified company can hold applications on a listing that has since
+    closed, and the inbox still has to render them.
+  */
+  await db.exec(`
+    insert into applications (job_id, candidate_id, experience_band)
+      values ('${unverifiedJob}', '${SHY}', 'mid_3_5');
+  `);
+
+  const afterApplying = await as(employerUnverified, embed(SHY).replace(`'${live}'`, `'${unverifiedJob}'`));
+  report.check('and reads it once that consultant has applied to them',
+    afterApplying.ok && afterApplying.rows.length === 1 && afterApplying.rows[0].slug !== null,
+    JSON.stringify(afterApplying.rows[0]));
+
+  // The card the applicant list links to opens too, or the panel would fill in
+  // beside a link to an anonymous page.
+  const card = await as(employerUnverified, `select is_unlocked, whatsapp_phone from get_agent_card('shy-consultant-000001')`);
+  report.check('the card behind the link opens',
+    card.rows[0]?.is_unlocked === true, JSON.stringify(card.rows[0] ?? card.error));
+
+  // Work history follows the profile it hangs on, which is what a reviewer is
+  // actually reading when they open an applicant.
+  const history = await as(employerUnverified, `select company_name from agent_experience where company_name = 'شركة سرية'`);
+  report.check('and the work history with it', history.ok && history.rows.length === 1, JSON.stringify(history.rows));
+
+  /*
+    The scope, stated as a test. Computed rather than pinned to a named
+    account, for the reason the section above gives: the seed decides which
+    company has which applications.
+  */
+  const unrelatedEmployer = (
+    await db.query(`
+      select c.owner_id from companies c
+      where c.verification_status <> 'verified'
+        and not exists (
+          select 1 from applications a
+            join jobs j on j.id = a.job_id
+           where j.company_id = c.id and a.candidate_id = '${SHY}'
+        )
+      limit 1`)
+  ).rows[0]?.owner_id;
+
+  // Unverified too, or the assertion proves nothing: a verified employer reads
+  // this profile through the ordinary directory gate and always could.
+  report.check('found an unverified employer with no claim on this consultant', Boolean(unrelatedEmployer));
+
+  const stranger = await as(unrelatedEmployer, `select slug from agent_profiles where user_id = '${SHY}'`);
+  report.check('an employer they did not apply to still sees nothing',
+    stranger.ok && stranger.rows.length === 0, JSON.stringify(stranger.rows));
+
+  /*
+    And the line this stops at.
+
+    `hidden` is not a stronger setting of the same preference — it is a
+    different statement. It exists so a consultant can stay invisible to the
+    company they currently work for, and they were most likely hired through an
+    application to that company. Opening on an application would defeat the
+    feature for the one person it was built for, so it does not.
+  */
+  await db.exec(`update agent_profiles set visibility = 'hidden' where user_id = '${SHY}';`);
+
+  const stillHidden = await as(employerUnverified, `select slug from agent_profiles where user_id = '${SHY}'`);
+  report.check('but hidden stays hidden, application or not',
+    stillHidden.ok && stillHidden.rows.length === 0, JSON.stringify(stillHidden.rows));
+
+  const hiddenCard = await as(employerUnverified, `select slug from get_agent_card('shy-consultant-000001')`);
+  report.check('and its card does not open by slug either',
+    hiddenCard.ok && hiddenCard.rows.length === 0, JSON.stringify(hiddenCard.rows));
+
+  // Consent is the application, so it lasts exactly as long as one does.
+  await db.exec(`
+    update agent_profiles set visibility = 'verified_employers_only' where user_id = '${SHY}';
+    delete from applications where candidate_id = '${SHY}';
+  `);
+  const afterWithdrawal = await as(employerUnverified, `select slug from agent_profiles where user_id = '${SHY}'`);
+  report.check('and withdrawing closes it again',
+    afterWithdrawal.ok && afterWithdrawal.rows.length === 0, JSON.stringify(afterWithdrawal.rows));
+
+  await db.exec(`delete from auth.users where id = '${SHY}';`);
 }
 
 report.section('the agent directory gate');

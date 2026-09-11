@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { completeOnboarding } from '@/lib/actions/onboarding';
 import type { DistrictRow } from '@/lib/supabase/database.types';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 export function OnboardingForm({
   locale,
@@ -43,6 +44,7 @@ export function OnboardingForm({
   const roleSettled = Boolean(defaultRole);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -65,6 +67,7 @@ export function OnboardingForm({
             : undefined,
       });
 
+      if (recoverSession(result)) return;
       if (!result.ok) {
         setErrors(result.fieldErrors ?? { form: result.error });
         return;

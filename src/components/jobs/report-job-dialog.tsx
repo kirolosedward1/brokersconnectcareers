@@ -9,6 +9,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { REPORT_REASONS } from '@/lib/taxonomy';
 import { reportJob } from '@/lib/actions/jobs';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
  * Reporting needs an account now, so this has a signed-out state: a link to
@@ -37,6 +38,7 @@ export function ReportJobDialog({
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,6 +50,7 @@ export function ReportJobDialog({
         reason: form.get("reason"),
         detail: String(form.get("detail") ?? ""),
       });
+      if (recoverSession(result)) return;
       if (result.ok) {
         setSent(true);
         setError(null);

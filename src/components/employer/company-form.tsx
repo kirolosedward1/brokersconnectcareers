@@ -10,6 +10,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { saveCompany } from '@/lib/actions/company';
 import type { CompanyRow, DistrictRow } from '@/lib/supabase/database.types';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 export function CompanyForm({
   locale,
@@ -29,6 +30,7 @@ export function CompanyForm({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,6 +48,7 @@ export function CompanyForm({
         districtId: String(form.get('districtId') ?? '') || null,
       });
 
+      if (recoverSession(result)) return;
       if (!result.ok) {
         setError(tCommon('errorBody'));
         return;

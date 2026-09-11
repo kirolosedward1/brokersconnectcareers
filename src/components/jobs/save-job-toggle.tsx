@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { toggleSavedJob } from '@/lib/actions/jobs';
 import { cn } from '@/lib/utils';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
  * Saving a listing from the card, without opening it.
@@ -36,6 +37,7 @@ export function SaveJobToggle({
 }) {
   const [saved, setSaved] = useState(initialSaved);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function onClick() {
     // Optimistic, like the detail-page button: a bookmark that waits on a round
@@ -45,6 +47,7 @@ export function SaveJobToggle({
 
     startTransition(async () => {
       const result = await toggleSavedJob(jobId);
+      if (recoverSession(result)) return;
       if (!result.ok) setSaved(!next);
       else setSaved(result.data!.saved);
     });

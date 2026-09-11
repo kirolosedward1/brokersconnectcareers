@@ -383,4 +383,60 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
   );
 }
 
+/*
+  A session that ends is answered, not shrugged at.
+
+  Sixteen server actions begin by asking Supabase who the caller is and answer
+  `unauthenticated` when the session has gone. Until recoverExpiredSession
+  existed, not one caller told them apart from a database error, so every one
+  rendered "something went wrong, try again" — advice that cannot work, because
+  the next attempt fails identically and so does the one after it. The person
+  is left pressing a button that will never do anything again.
+
+  Scanned rather than remembered: the next form somebody writes will call one
+  of these actions, and this is the only thing that will notice it forgot.
+*/
+{
+  const { readdirSync, statSync } = await import('node:fs');
+
+  const actionsDir = j(ROOT, 'src/lib/actions');
+  const guarded = new Set();
+  for (const entry of readdirSync(actionsDir)) {
+    if (!/\.ts$/.test(entry)) continue;
+    const text = read(j(actionsDir, entry), 'utf8');
+    let current = null;
+    for (const line of text.split('\n')) {
+      const declared = line.match(/^export async function (\w+)/);
+      if (declared) current = declared[1];
+      if (current && line.includes("'unauthenticated'")) {
+        guarded.add(current);
+        current = null;
+      }
+    }
+  }
+
+  report.ok(guarded.size >= 15, `found ${guarded.size} actions that can answer unauthenticated`);
+
+  const components = [];
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = j(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx$/.test(entry)) components.push(full);
+    }
+  })(j(ROOT, 'src/components'));
+
+  const deaf = components.filter((file) => {
+    const text = read(file, 'utf8');
+    if (!/^'use client';/m.test(text)) return false;
+    const calls = [...guarded].some((name) => new RegExp(`\\bawait ${name}\\(`).test(text));
+    return calls && !text.includes('recoverSession(');
+  });
+
+  report.ok(
+    deaf.length === 0,
+    `every form that can be told "unauthenticated" acts on it (missing: ${deaf.map((f) => f.replace(ROOT + '/', '')).join(', ') || 'none'})`,
+  );
+}
+
 process.exitCode = base.finish() ? 0 : 1;

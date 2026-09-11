@@ -8,6 +8,7 @@ import { localeHref, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { deleteMyAccount, updateNotificationPreferences } from '@/lib/actions/account';
 import type { ProfileRow } from '@/lib/supabase/database.types';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 type Prefs = Pick<
   ProfileRow,
@@ -40,6 +41,7 @@ export function AccountSettings({
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
   const [deleting, startDeleting] = useTransition();
 
   const CONFIRM_WORD = t('deleteConfirmWord');
@@ -50,6 +52,7 @@ export function AccountSettings({
     setSaved(false);
     startTransition(async () => {
       const result = await updateNotificationPreferences(next);
+      if (recoverSession(result)) return;
       if (result.ok) setSaved(true);
       else setPrefs(prefs); // put the switch back rather than lie about it
     });
@@ -59,6 +62,7 @@ export function AccountSettings({
     setError(null);
     startDeleting(async () => {
       const result = await deleteMyAccount();
+      if (recoverSession(result)) return;
       if (result.ok) {
         /*
           The account is gone. Nothing the client router is holding about

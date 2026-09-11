@@ -52,11 +52,13 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
     return { ok: false, error: 'invalid_cv_path' };
   }
 
-  const { error: profileError } = await supabase
+  const { data: profileSaved, error: profileError } = await supabase
     .from('profiles')
     .update({ full_name: parsed.data.fullName, whatsapp_phone: phone })
-    .eq('id', user.id);
+    .eq('id', user.id)
+    .select('id');
   if (profileError) return { ok: false, error: profileError.message };
+  if (!profileSaved?.length) return { ok: false, error: 'not_found' };
 
   const { data: existing } = await supabase
     .from('agent_profiles')
@@ -81,8 +83,16 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
   let createdSlug: string | null = null;
 
   if (existing) {
-    const { error } = await supabase.from('agent_profiles').update(payload).eq('id', existing.id);
+    const { data: updated, error } = await supabase
+      .from('agent_profiles')
+      .update(payload)
+      .eq('id', existing.id)
+      .select('id');
     if (error) return { ok: false, error: error.message };
+    // An update RLS filters to zero rows carries no error, and this form is
+    // the one place a consultant sets their own visibility — reporting a save
+    // that did not happen would leave them believing they are hidden.
+    if (!updated?.length) return { ok: false, error: 'not_found' };
   } else {
     const { data, error } = await withUniqueSlug<{ id: string }>(
       () => buildAgentSlug(parsed.data.fullName),
@@ -99,15 +109,45 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
     createdSlug = created?.slug ?? null;
   }
 
+  /*
+    The developer tags, changed by difference rather than replaced.
+
+    This used to delete every row and insert the new set, with neither result
+    checked. PostgREST has no transaction spanning two calls, so a failed
+    insert — a developer id that no longer exists, a connection dropped between
+    the two — left the consultant with no developers at all and a screen saying
+    the profile had been saved. Deleting only what was removed and inserting
+    only what was added means a failure changes nothing it was not asked to
+    change, and the errors are now reported rather than dropped.
+  */
   if (agentId) {
-    await supabase.from('agent_developers').delete().eq('agent_id', agentId);
-    if (parsed.data.developerIds.length) {
-      await supabase.from('agent_developers').insert(
-        parsed.data.developerIds.map((developerId) => ({
+    const { data: currentRows } = await supabase
+      .from('agent_developers')
+      .select('developer_id')
+      .eq('agent_id', agentId);
+
+    const current = new Set((currentRows ?? []).map((row) => row.developer_id));
+    const wanted = new Set(parsed.data.developerIds);
+    const removed = [...current].filter((id) => !wanted.has(id));
+    const added = [...wanted].filter((id) => !current.has(id));
+
+    if (removed.length) {
+      const { error } = await supabase
+        .from('agent_developers')
+        .delete()
+        .eq('agent_id', agentId)
+        .in('developer_id', removed);
+      if (error) return { ok: false, error: error.message };
+    }
+
+    if (added.length) {
+      const { error } = await supabase.from('agent_developers').insert(
+        added.map((developerId) => ({
           agent_id: agentId!,
           developer_id: developerId,
         })),
       );
+      if (error) return { ok: false, error: error.message };
     }
   }
 

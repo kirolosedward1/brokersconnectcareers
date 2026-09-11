@@ -65,12 +65,6 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
     return { ok: false, error: 'invalid_cv_path' };
   }
 
-  // Applying is also the moment people correct a stale phone number.
-  await supabase
-    .from('profiles')
-    .update({ full_name: parsed.data.fullName, whatsapp_phone: phone })
-    .eq('id', user.id);
-
   const { data: created, error } = await supabase
     .from('applications')
     .insert({
@@ -90,6 +84,21 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
     }
     return { ok: false, error: error.message };
   }
+
+  /*
+    Applying is also the moment people correct a stale phone number — and it
+    happens here, after the application exists, rather than before it.
+
+    Written first, this rewrote the profile of anyone whose application was
+    then refused: a second application to the same listing, a rate limit, a
+    listing that expired while the form was open. The name and number on the
+    account changed on the strength of a form that did not go through, and
+    every employer holding an earlier application from them saw the new one.
+  */
+  await supabase
+    .from('profiles')
+    .update({ full_name: parsed.data.fullName, whatsapp_phone: phone })
+    .eq('id', user.id);
 
   // after() runs once the response is on its way, so the applicant is not kept
   // waiting on an SMTP round trip — and a mail failure cannot turn a recorded

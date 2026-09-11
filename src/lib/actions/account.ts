@@ -134,8 +134,15 @@ export async function updateNotificationPreferences(input: unknown): Promise<Act
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  const { error } = await supabase.from('profiles').update(parsed.data).eq('id', user.id);
+  const { data: saved, error } = await supabase
+    .from('profiles')
+    .update(parsed.data)
+    .eq('id', user.id)
+    .select('id');
   if (error) return { ok: false, error: error.message };
+  // The switch flips optimistically and puts itself back when this says no, so
+  // a write RLS filtered to nothing has to say no rather than nothing at all.
+  if (!saved?.length) return { ok: false, error: 'not_found' };
 
   revalidatePath('/dashboard/account');
   return { ok: true };

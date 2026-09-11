@@ -158,8 +158,21 @@ export async function deleteCvEntry(
   if (!(section in SECTIONS)) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
-  const { error } = await supabase.from(SECTIONS[section]).delete().eq('id', id);
+  /*
+    Asked, not assumed. A delete that RLS filters to zero rows comes back with
+    no error at all, so an entry on somebody else's profile — or one already
+    gone — was answered "removed", the editor dropped it from the list, and
+    the next render put it back. The same `.select()` the pipeline move and the
+    avatar save already carry, for the same reason.
+  */
+  const { data: removed, error } = await supabase
+    .from(SECTIONS[section])
+    .delete()
+    .eq('id', id)
+    .select('id');
+
   if (error) return { ok: false, error: error.message };
+  if (!removed?.length) return { ok: false, error: 'not_found' };
 
   revalidatePath('/dashboard/profile');
   return { ok: true };
@@ -182,16 +195,22 @@ export async function saveProfileRecord(input: unknown): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  const { error } = await supabase
+  const { data: saved, error } = await supabase
     .from('agent_profiles')
     .update({
       summary_ar: parsed.data.summaryAr?.trim() || null,
       units_closed: parsed.data.unitsClosed ?? null,
       volume_egp: parsed.data.volumeEgp ?? null,
     })
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .select('user_id');
 
   if (error) return { ok: false, error: error.message };
+  // No directory profile to hang the record on — which happens when the row
+  // onboarding creates failed to be created. Saying so sends them to the form
+  // above that makes one, instead of reporting a saved sales record that was
+  // written nowhere.
+  if (!saved?.length) return { ok: false, error: 'no_profile' };
 
   revalidatePath('/dashboard/profile');
   return { ok: true };

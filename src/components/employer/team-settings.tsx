@@ -11,6 +11,7 @@ import { Field, Input, Select } from '@/components/ui/field';
 import { addCompanyMember, removeCompanyMember } from '@/lib/actions/company';
 import type { CompanyMemberRole } from '@/lib/supabase/database.types';
 import { Avatar } from '@/components/ui/avatar';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 export type TeamMember = {
   userId: string;
@@ -51,6 +52,7 @@ export function TeamSettings({
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState<CompanyMemberRole>('recruiter');
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function onAdd(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,6 +66,7 @@ export function TeamSettings({
         role,
       });
 
+      if (recoverSession(result)) return;
       if (!result.ok) {
         setError(
           result.error === 'no_account'
@@ -87,6 +90,7 @@ export function TeamSettings({
     setError(null);
     startTransition(async () => {
       const result = await removeCompanyMember(userId);
+      if (recoverSession(result)) return;
       if (!result.ok) {
         setError(result.error === 'owner' ? t('teamCannotRemoveOwner') : tCommon('errorBody'));
         return;

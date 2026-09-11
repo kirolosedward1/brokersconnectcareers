@@ -5,6 +5,7 @@ import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { toggleSavedJob } from '@/lib/actions/jobs';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 export function SaveJobButton({
   jobId,
@@ -28,6 +29,7 @@ export function SaveJobButton({
   const router = useRouter();
   const [saved, setSaved] = useState(initialSaved);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function onClick() {
     if (!canSave) {
@@ -42,6 +44,7 @@ export function SaveJobButton({
 
     startTransition(async () => {
       const result = await toggleSavedJob(jobId);
+      if (recoverSession(result)) return;
       if (!result.ok) setSaved(!next);
       else setSaved(result.data!.saved);
     });
