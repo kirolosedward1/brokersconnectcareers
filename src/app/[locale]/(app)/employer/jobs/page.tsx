@@ -147,7 +147,19 @@ export default async function EmployerJobsPage({
                         <span className="numeral">{formatNumber(job.seats, locale)}</span>
                         {tJobs('seatsLabel', { count: job.seats })}
                       </span>
-                      {live ? (
+                      {/*
+                        Shown on anything that was ever published, not only on
+                        what is live.
+
+                        The console's "views" tile sums view_count across every
+                        listing the company has, and this line is where that
+                        number is supposed to come apart into its pieces — but
+                        it appeared only on live listings, so a company with a
+                        closed advert could not reconcile the total with
+                        anything on the page. The views a finished listing
+                        earned are a fact worth keeping.
+                      */}
+                      {job.published_at ? (
                         <span className="numeral inline-flex items-center gap-1">
                           <Eye className="size-3.5" aria-hidden />
                           {formatNumber(job.view_count, locale)}

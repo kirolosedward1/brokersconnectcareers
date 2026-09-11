@@ -160,4 +160,73 @@ report.section('every trigger function is hardened the same way');
   );
 }
 
+report.section('the percentage and the list of gaps agree');
+{
+  /*
+    profile_completeness() lives in SQL so the dashboard can ask for a number
+    in one round trip; the list of what is missing is built in the browser from
+    a row it already has. Neither can call the other, so the only thing keeping
+    them honest is this — several profile states through both, asserted equal.
+    The same arrangement the Arabic normalisers have, for the same reason.
+  */
+  const { completenessOf } = await import('../../src/lib/profile-completeness.ts');
+
+  const agent = (
+    await db.query(
+      `select id, user_id from agent_profiles where visibility = 'public' limit 1`,
+    )
+  ).rows[0];
+  report.check('found a consultant to score', Boolean(agent));
+
+  const states = [
+    { summary_ar: null, headline_ar: null, tracks: [], district_ids: [], years_experience: 0, units_closed: null, volume_egp: null },
+    { summary_ar: 'نبذة', headline_ar: null, tracks: [], district_ids: [], years_experience: 0, units_closed: null, volume_egp: null },
+    { summary_ar: 'نبذة', headline_ar: 'عنوان', tracks: ['primary'], district_ids: [1], years_experience: 4, units_closed: 3, volume_egp: null },
+    { summary_ar: '   ', headline_ar: '', tracks: ['primary'], district_ids: [], years_experience: 0, units_closed: null, volume_egp: 100 },
+  ];
+
+  await db.exec(`delete from agent_experience where agent_id = '${agent.id}';
+                 delete from agent_education  where agent_id = '${agent.id}';`);
+
+  for (const [index, state] of states.entries()) {
+    await db.query(
+      `update agent_profiles
+          set summary_ar = $1, headline_ar = $2, tracks = $3::job_track[],
+              district_ids = $4::int[], years_experience = $5,
+              units_closed = $6, volume_egp = $7
+        where id = $8`,
+      [
+        state.summary_ar,
+        state.headline_ar,
+        `{${state.tracks.join(',')}}`,
+        `{${state.district_ids.join(',')}}`,
+        state.years_experience,
+        state.units_closed,
+        state.volume_egp,
+        agent.id,
+      ],
+    );
+
+    const sql = (
+      await db.query(`select public.profile_completeness('${agent.id}') as n`)
+    ).rows[0].n;
+    const ts = completenessOf({ ...state, hasExperience: false, hasEducation: false });
+
+    report.check(`state ${index + 1}: SQL ${sql} matches the gap list's ${ts}`, sql === ts);
+  }
+
+  // And with the two that live in other tables, which is where a copy would
+  // most easily drift.
+  await db.exec(`
+    insert into agent_experience (agent_id, company_name, title, started)
+      values ('${agent.id}', 'شركة', 'استشاري', '2022-01-01');
+    insert into agent_education (agent_id, institution) values ('${agent.id}', 'جامعة');
+  `);
+
+  const withBoth = (await db.query(`select public.profile_completeness('${agent.id}') as n`)).rows[0].n;
+  const expected = completenessOf({ ...states[3], hasExperience: true, hasEducation: true });
+  report.check(`experience and education counted the same both sides (${withBoth} = ${expected})`,
+    withBoth === expected);
+}
+
 process.exit(report.finish() ? 0 : 1);
