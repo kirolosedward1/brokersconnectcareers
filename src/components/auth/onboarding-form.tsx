@@ -34,6 +34,15 @@ export function OnboardingForm({
   const tCommon = useTranslations('common');
   const tHeadcount = useTranslations('companies.headcountBand');
   const [role, setRole] = useState<'candidate' | 'employer'>(defaultRole ?? 'candidate');
+  /*
+    Somebody who came through the "شركة عقارات" door has answered this
+    already; asking again reads as the site not having listened. So when a
+    role arrived, the two cards give way to one line saying which, with a way
+    to change it — kept, because the type cannot be changed after this step
+    and a wrong door is cheaper to fix here than never.
+  */
+  const [changingRole, setChangingRole] = useState(false);
+  const roleSettled = Boolean(defaultRole) && !changingRole;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
 
@@ -90,6 +99,25 @@ export function OnboardingForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {roleSettled ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm">
+          <span className="inline-flex items-center gap-2 font-medium">
+            {role === 'employer' ? (
+              <Briefcase className="size-4 text-primary" aria-hidden />
+            ) : (
+              <Search className="size-4 text-primary" aria-hidden />
+            )}
+            {role === 'employer' ? t('roleKnownEmployer') : t('roleKnownCandidate')}
+          </span>
+          <button
+            type="button"
+            onClick={() => setChangingRole(true)}
+            className="font-medium text-primary hover:underline"
+          >
+            {t('roleChange')}
+          </button>
+        </div>
+      ) : (
       <fieldset>
         <legend className="mb-3 text-sm font-medium">{t('roleQuestion')}</legend>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -110,6 +138,7 @@ export function OnboardingForm({
         </div>
         <p className="mt-2 text-xs text-muted-foreground">{t('roleLocked')}</p>
       </fieldset>
+      )}
 
       <Field
         label={t('fullName')}

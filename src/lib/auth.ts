@@ -10,6 +10,13 @@ export type Viewer = {
   email: string | null;
   /** Name the identity provider gave us, used to pre-fill onboarding. */
   suggestedName: string;
+  /**
+   * The account type chosen on the sign-up door, kept in user metadata so it
+   * survives a confirmation link that carries no query string. A suggestion
+   * for onboarding only — the profile row is the decision, and this is never
+   * read once one exists.
+   */
+  suggestedRole?: 'candidate' | 'employer';
   profile: ProfileRow | null;
   company: CompanyRow | null;
 };
@@ -73,10 +80,14 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     (typeof metadata.name === 'string' && metadata.name) ||
     (user.email ? user.email.split('@')[0] : '');
 
+  const suggestedRole =
+    metadata.role === 'candidate' || metadata.role === 'employer' ? metadata.role : undefined;
+
   return {
     userId: user.id,
     email: user.email ?? null,
     suggestedName,
+    suggestedRole,
     profile: profile ?? null,
     company,
   };

@@ -292,7 +292,10 @@
     "companyDistrict": "Area",
     "companyHeadcount": "Company size",
     "companyReviewNote": "We review every company before its first listing. It does not take long, and you will be notified when it is done.",
-    "confirmedBanner": "Your email is confirmed — one step and your account is ready."
+    "confirmedBanner": "Your email is confirmed — one step and your account is ready.",
+    "roleKnownCandidate": "You are registered as a consultant.",
+    "roleKnownEmployer": "You are registered as a company.",
+    "roleChange": "Not right? Change"
   },
   "dashboard": {
     "title": "Dashboard",

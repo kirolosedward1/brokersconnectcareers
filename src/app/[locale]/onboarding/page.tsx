@@ -49,7 +49,8 @@ export default async function OnboardingPage({
   // profile exists, and a permanent choice should not be made by a URL the
   // person may never have read — so the question still appears, already
   // answered, and they can change it.
-  const defaultRole = role === 'employer' || role === 'candidate' ? role : undefined;
+  const defaultRole =
+    role === 'employer' || role === 'candidate' ? role : viewer!.suggestedRole;
   const t = await getTranslations('onboarding');
 
   // Needed only for the company block, but fetched unconditionally: the role

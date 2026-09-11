@@ -150,6 +150,16 @@ export function AuthForm({
    * with it.
    */
   const onboardingHref = audience ? `/onboarding?role=${audience}` : '/onboarding';
+  /*
+    Where a confirmation link lands: onboarding, carrying the door's role so
+    the question is not asked twice, and the flag that earns the "your email
+    is confirmed" line. The role also goes into user metadata, because a link
+    Supabase mints on its own (dashboard "send magic link") comes back through
+    the fragment rescue with no query string to carry it.
+  */
+  const confirmedHref = `${onboardingHref}${audience ? '&' : '?'}confirmed=1`;
+  const confirmationRedirect = () =>
+    `${window.location.origin}/auth/callback?next=${encodeURIComponent(confirmedHref)}`;
 
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
@@ -192,7 +202,10 @@ export function AuthForm({
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/onboarding?confirmed=1')}` },
+          options: {
+            emailRedirectTo: confirmationRedirect(),
+            ...(audience ? { data: { role: audience } } : {}),
+          },
         });
         if (signUpError) {
           setError(readable(signUpError));
@@ -341,7 +354,7 @@ export function AuthForm({
               const { error: resendError } = await createClient().auth.resend({
                 type: 'signup',
                 email: pendingEmail,
-                options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/onboarding?confirmed=1')}` },
+                options: { emailRedirectTo: confirmationRedirect() },
               });
               setResent(resendError ? 'wait' : 'sent');
             });
@@ -460,7 +473,7 @@ export function AuthForm({
                   const { error: resendError } = await createClient().auth.resend({
                     type: 'signup',
                     email: pendingEmail,
-                    options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/onboarding?confirmed=1')}` },
+                    options: { emailRedirectTo: confirmationRedirect() },
                   });
                   setResent(resendError ? 'wait' : 'sent');
                 });

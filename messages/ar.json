@@ -292,7 +292,10 @@
     "companyDistrict": "المنطقة",
     "companyHeadcount": "حجم الشركة",
     "companyReviewNote": "بنراجع بيانات كل شركة قبل أول إعلان. ده بياخد وقت قصير، وهيوصلك تنبيه أول ما يخلص.",
-    "confirmedBanner": "بريدك اتأكد — خطوة واحدة وحسابك جاهز."
+    "confirmedBanner": "بريدك اتأكد — خطوة واحدة وحسابك جاهز.",
+    "roleKnownCandidate": "انت مسجّل كاستشاري عقارات.",
+    "roleKnownEmployer": "انت مسجّل كشركة عقارات.",
+    "roleChange": "مش صح؟ غيّر"
   },
   "dashboard": {
     "title": "لوحة التحكم",
