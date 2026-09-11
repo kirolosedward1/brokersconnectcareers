@@ -643,12 +643,19 @@
     "otherTracks": "Other tracks in {district}"
   },
   "footer": {
-    "product": "Product",
-    "forCandidates": "For consultants",
+    "product": "Platform",
     "about": "About",
     "privacy": "Privacy",
     "terms": "Terms",
-    "rights": "All rights reserved."
+    "rights": "All rights reserved.",
+    "doorCandidateTitle": "Looking for a job",
+    "doorCandidateBody": "Every listing states the basic salary, the commission and who supplies the leads — before you ask.",
+    "doorCandidateCta": "Browse jobs",
+    "doorEmployerTitle": "Hiring",
+    "doorEmployerBody": "Your listing is reviewed and published, and every application reaches you with the applicant’s name and WhatsApp number.",
+    "byTrack": "By specialisation",
+    "byArea": "By area",
+    "contact": "Contact us"
   },
   "validation": {
     "required": "This field is required",

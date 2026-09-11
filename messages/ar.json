@@ -643,12 +643,19 @@
     "otherTracks": "تخصصات أخرى في {district}"
   },
   "footer": {
-    "product": "بروكرز كونكت",
-    "forCandidates": "لاستشاريي العقارات",
+    "product": "المنصة",
     "about": "عن بروكرز كونكت",
     "privacy": "سياسة الخصوصية",
     "terms": "شروط الاستخدام",
-    "rights": "جميع الحقوق محفوظة."
+    "rights": "جميع الحقوق محفوظة.",
+    "doorCandidateTitle": "بدوّر على شغل",
+    "doorCandidateBody": "كل إعلان بيوضّح الراتب الأساسي والعمولة ومين اللي بيوفّر العملاء — من غير ما تسأل.",
+    "doorCandidateCta": "تصفّح الوظائف",
+    "doorEmployerTitle": "محتاج موظفين",
+    "doorEmployerBody": "إعلانك بيتراجع وبيتنشر، وكل طلب تقديم بيوصلك باسم المتقدم ورقم واتسابه.",
+    "byTrack": "حسب التخصص",
+    "byArea": "حسب المنطقة",
+    "contact": "تواصل معنا"
   },
   "validation": {
     "required": "الحقل ده مطلوب",
