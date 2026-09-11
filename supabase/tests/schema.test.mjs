@@ -102,4 +102,62 @@ report.section('a report is always about a listing');
   report.check('the same person cannot report the same listing twice', twice !== null, 'insert succeeded');
 }
 
+report.section('every trigger function is hardened the same way');
+{
+  /*
+    Migration 07 set a fixed search_path on the trigger functions and revoked
+    EXECUTE from public, anon and authenticated, and every migration since has
+    been expected to do the same for anything it adds. Two slipped: migration
+    42 added record_application_event without the revoke, and migration 46
+    restated stamp_job_publication without repeating its SET clause — which
+    CREATE OR REPLACE treats as "remove it".
+
+    Asked of the catalogue rather than of the migration files, because the
+    catalogue is what is actually running.
+  */
+  const loose = await db.query(`
+    select p.proname,
+           (p.proconfig is null or not (array_to_string(p.proconfig, ',') like '%search_path%')) as no_search_path,
+           (p.proacl is null or array_to_string(p.proacl::text[], ' ') like '=X/%')              as public_execute
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and pg_get_function_result(p.oid) = 'trigger'
+  `);
+
+  report.check('found the trigger functions', loose.rows.length > 15, String(loose.rows.length));
+
+  const mutable = loose.rows.filter((row) => row.no_search_path).map((row) => row.proname);
+  report.check(
+    'each one pins its search_path',
+    mutable.length === 0,
+    mutable.join(', ') || 'none',
+  );
+
+  const callable = loose.rows.filter((row) => row.public_execute).map((row) => row.proname);
+  report.check(
+    'and none is executable by public',
+    callable.length === 0,
+    callable.join(', ') || 'none',
+  );
+
+  /*
+    The same for the definer functions the API can call: a SECURITY DEFINER
+    function without a pinned search_path runs whatever the caller's path
+    resolves, which is the one shape of this mistake that is genuinely
+    exploitable.
+  */
+  const definers = await db.query(`
+    select p.proname from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.prosecdef
+       and (p.proconfig is null or not (array_to_string(p.proconfig, ',') like '%search_path%'))
+  `);
+  report.check(
+    'no security definer function has a mutable search_path',
+    definers.rows.length === 0,
+    definers.rows.map((row) => row.proname).join(', ') || 'none',
+  );
+}
+
 process.exit(report.finish() ? 0 : 1);
