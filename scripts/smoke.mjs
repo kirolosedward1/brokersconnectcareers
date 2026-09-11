@@ -20,6 +20,8 @@
  * failures at the HTTP boundary, which is where this checks.
  */
 
+import { readFileSync as read } from 'node:fs';
+
 const BASE = (process.argv[2] ?? process.env.SMOKE_URL ?? 'http://localhost:3000').replace(
   /\/$/,
   '',
@@ -252,9 +254,23 @@ section('the sign-in screen offers only what works');
 
     const googleEnabled = settings?.external?.google === true;
 
+    /*
+      Read from the catalogue rather than spelled out here.
+
+      This looked for "المتابعة بجوجل" and the button says "المتابعة باستخدام
+      Google", so the check could never have passed — and nobody noticed,
+      because the whole section skips itself when the Supabase credentials are
+      absent from the environment, which they were every time it ran. A test
+      that only runs where it cannot fail is not a test. `pnpm smoke` loads
+      .env.local now, and the label comes from the same file the page renders.
+    */
+    const { continueWithGoogle } = JSON.parse(
+      read(new URL('../messages/ar.json', import.meta.url), 'utf8'),
+    ).auth;
+
     for (const path of ['/sign-in', '/sign-up', '/sign-in/candidate', '/sign-up/employer']) {
       const { body } = await get(path);
-      const offered = /Continue with Google|المتابعة بجوجل/.test(body);
+      const offered = body.includes(continueWithGoogle);
       check(
         `${path} offers Google only when it is enabled`,
         offered === googleEnabled,
@@ -394,6 +410,158 @@ section('the closed English side stays closed');
 {
   const en = await get('/en/jobs');
   check('/en/* redirects', en.status === 307, `got ${en.status}`);
+}
+
+// ---------------------------------------------------------------------------
+section('the board holds its shape under a hostile query string');
+{
+  /*
+    Round 3's search and pagination work, kept honest at the HTTP boundary
+    where it actually broke. `?page=400` did not render an empty board — it
+    returned a 500 carrying PostgREST's own sentence about offsets, because a
+    range past the end of a result set is refused outright rather than
+    answered with nothing.
+  */
+  const first = await get('/jobs?page=1');
+  const past = await get('/jobs?page=99999');
+
+  check('a page past the end is still a page', past.status === 200, `got ${past.status}`);
+  check(
+    'and it is the last one, not an error',
+    !/PGRST|Requested range|searching jobs/.test(past.body),
+    'the response carried a database error',
+  );
+
+  const cards = (body) => (body.match(/\/jobs\/[a-z0-9-]+-\d{6}/g) ?? []).length;
+  check(
+    `it renders listings rather than "nothing matches" (${cards(past.body)} of ${cards(first.body)})`,
+    cards(past.body) > 0 && cards(past.body) === cards(first.body),
+  );
+
+  for (const [term, label] of [
+    ['"unbalanced', 'an unbalanced quote'],
+    ['a | b', 'a tsquery operator'],
+    ['<script>alert(1)</script>', 'a script tag'],
+    ['%', 'a wildcard'],
+    ['ا'.repeat(400), 'a four-hundred-character word'],
+  ]) {
+    const { status, body } = await get(`/jobs?q=${encodeURIComponent(term)}`);
+    check(`${label} in the search renders a board`, status === 200 && !/PGRST|syntax error/.test(body));
+    if (term.includes('<script>')) {
+      check('and is not reflected as markup', !body.includes('<script>alert(1)</script>'));
+    }
+  }
+
+  const negative = await get('/jobs?page=-5');
+  const alpha = await get('/jobs?page=abc');
+  check('a negative page is page one', negative.status === 200 && cards(negative.body) === cards(first.body));
+  check('so is a page that is not a number', alpha.status === 200 && cards(alpha.body) === cards(first.body));
+}
+
+// ---------------------------------------------------------------------------
+section('the public API refuses what the pages refuse');
+{
+  /*
+    The anon key is public by design — it ships in the browser bundle — so
+    every row-level rule this product has is reachable directly, without the
+    application in front of it. These are the same probes prompt 7 ran as SQL,
+    at the boundary a stranger would actually use.
+  */
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    check('skipped: no Supabase URL or anon key in the environment', true);
+  } else {
+    const rest = async (path, method = 'GET') => {
+      const response = await fetch(`${url}${path}`, {
+        method,
+        headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: method === 'GET' || method === 'DELETE' ? undefined : '{}',
+      });
+      const text = await response.text().catch(() => '');
+      return { status: response.status, rows: text.startsWith('[') ? JSON.parse(text).length : null };
+    };
+
+    for (const [table, what] of [
+      ['applications', 'applications'],
+      ['profiles?select=whatsapp_phone', 'phone numbers'],
+      ['company_documents', 'verification documents'],
+      ['orders', 'the order history'],
+      ['email_log', 'the email log'],
+      ['notifications', 'notifications'],
+      ['application_events', 'application history'],
+      ['jobs?status=eq.draft', 'draft listings'],
+    ]) {
+      const { status, rows } = await rest(`/rest/v1/${table}${table.includes('?') ? '&' : '?'}select=*`);
+      check(`a stranger reads no ${what}`, status === 200 && rows === 0, `status ${status}, ${rows} rows`);
+    }
+
+    const apply = await rest('/rest/v1/applications', 'POST');
+    check('and cannot apply', apply.status >= 400, `status ${apply.status}`);
+
+    const post = await rest('/rest/v1/jobs', 'POST');
+    check('nor post a listing', post.status >= 400, `status ${post.status}`);
+
+    /*
+      A PATCH that changes nothing answers 204 with no body, which is the
+      correct shape for "row-level security filtered this to zero rows" — so
+      the assertion that matters is not the status, it is that the board is
+      exactly as long afterwards.
+    */
+    const liveBefore = await rest('/rest/v1/jobs?select=id&status=eq.active');
+    await rest('/rest/v1/jobs?status=eq.active', 'PATCH');
+    const liveAfter = await rest('/rest/v1/jobs?select=id&status=eq.active');
+    check('nor close every listing on the board',
+      liveBefore.rows != null && liveBefore.rows === liveAfter.rows,
+      `${liveBefore.rows} listings before, ${liveAfter.rows} after`);
+
+    // The one thing they may read: a consultant who chose to be public.
+    const directory = await rest('/rest/v1/agent_profiles?select=slug&visibility=eq.public');
+    check('a public consultant is public', directory.status === 200 && (directory.rows ?? 0) > 0);
+
+    const gated = await rest('/rest/v1/agent_profiles?select=slug&visibility=neq.public');
+    check('and everyone else is not', gated.status === 200 && gated.rows === 0, `${gated.rows} rows`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+section('the directory names nobody it should not');
+{
+  const list = await get('/agents');
+  check('the consultant directory renders', list.status === 200);
+
+  /*
+    An anonymous visitor sees gated cards without a name — search_agents()
+    returns null for full_name unless the viewer is a verified employer. The
+    page says so in words, which is what this looks for: if the gate ever
+    stopped applying, the anonymous label would stop appearing while the cards
+    stayed.
+  */
+  /*
+    The six-digit suffix is the slug builder's, and it is what separates a real
+    consultant from `/agents/agent-card` — a chunk filename that appears in the
+    RSC payload and matched a looser pattern, quietly turning four of these
+    assertions into checks that the not-found page renders.
+  */
+  const slugs = [
+    ...new Set([...list.body.matchAll(/\/agents\/([a-z0-9-]+-\d{6})\b/g)].map((m) => m[1])),
+  ];
+  check(`found consultants to open (${slugs.length})`, slugs.length > 0);
+
+  for (const slug of slugs.slice(0, 6)) {
+    const { status, body } = await get(`/agents/${slug}`);
+    check(`/agents/${slug} renders`, status === 200, `got ${status}`);
+
+    /*
+      A gated card carries no WhatsApp link. That is the assertion worth
+      making: the name has a stand-in the page shows either way, but a `wa.me`
+      href is unambiguous — it is either there or it is not, and for a visitor
+      with no session it must not be.
+    */
+    check(`/agents/${slug} gives a stranger no number to call`,
+      !/wa\.me\/\d/.test(body));
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
