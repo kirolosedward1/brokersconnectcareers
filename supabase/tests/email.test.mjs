@@ -338,5 +338,83 @@ for (const table of ['email_log', 'email_suppressions']) {
   report.is(rows[0].policies, 0, `${table} has no policies — deny-all, service role only`);
 }
 
+
+// ---------------------------------------------------------------------------
+// Every link in every template points at a page that exists
+// ---------------------------------------------------------------------------
+
+report.section('every button in every template opens a page that exists');
+{
+  /*
+    A renamed route would not break a build — the href is a string — and would
+    not break a test that renders the mail. It would break the mail, for every
+    reader, until somebody clicked one. So each `${env.siteUrl}/…` in the
+    email code is resolved against src/app the way Next does: route groups in
+    parentheses are transparent, `[param]` matches any segment, and the leaf
+    must hold a page.tsx or route.ts.
+  */
+  const { readdirSync, existsSync, statSync } = await import('node:fs');
+  const APP = join(ROOT, 'src/app');
+
+  const resolves = (path) => {
+    const segments = path.split('?')[0].split('#')[0].split('/').filter(Boolean);
+    const walk = (dir, i) => {
+      if (i === segments.length) {
+        return existsSync(join(dir, 'page.tsx')) || existsSync(join(dir, 'route.ts')) ||
+          readdirSync(dir).some((e) => e.startsWith('(') && statSync(join(dir, e)).isDirectory() && walk(join(dir, e), i));
+      }
+      const wanted = segments[i];
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (!statSync(full).isDirectory()) continue;
+        if (entry.startsWith('(')) { if (walk(full, i)) return true; continue; }
+        if (entry === wanted) { if (walk(full, i + 1)) return true; }
+      }
+      // Only if nothing static matched: a [param] directory takes any value,
+      // so borrowing one for a static name is a guess. A catch-all is not a
+      // page for arbitrary paths at all — it is where a wrong path ends up.
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (!statSync(full).isDirectory() || !entry.startsWith('[') || entry.startsWith('[...')) continue;
+        if (walk(full, i + 1)) return true;
+      }
+      return false;
+    };
+    // Every page lives under app/[locale]; the api routes under app/api.
+    // Pages live under app/[locale]; the api routes under app/api. Not app
+    // itself: [locale] is a dynamic directory and would match any segment.
+    return walk(join(APP, '[locale]'), 0) || walk(join(APP, 'api'), 0);
+  };
+
+  const sources = ['src/lib/email/notify.ts', 'src/lib/email/envelope.ts', 'src/lib/email/components.ts'];
+  const seen = new Set();
+  for (const file of sources) {
+    const code = read(file);
+    for (const m of code.matchAll(/\$\{env\.siteUrl\}([^`]*)/g)) {
+      // A `${…}` that is a plain value is one segment of the path; one that is
+      // a ternary (`${args.query ? … : ''}`) is where the path ends.
+      const path = m[1]
+        .replace(/\$\{([^}]*)\}/g, (_, expr) => (expr.includes('?') ? '\u0000' : 'x'))
+        .split('\u0000')[0]
+        .split('?')[0]
+        .split('#')[0]
+        .replace(/['"].*$/, '')
+        // A nested template literal ends the match at its backtick and leaves an
+        // unterminated `${`; whatever follows a bare `$` is not path.
+        .split('$')[0]
+        .replace(/\/$/, '');
+      if (seen.has(path)) continue;
+      seen.add(path);
+      // A file with an extension is an asset served from public/, not a page.
+      if (/\.[a-z0-9]+$/i.test(path)) {
+        report.ok(existsSync(join(ROOT, 'public', path)), `${path} (from ${file.split('/').pop()}) exists in public/`);
+        continue;
+      }
+      report.ok(resolves(path), `${path} (from ${file.split('/').pop()}) is a real page`);
+    }
+  }
+  report.ok(seen.size >= 10, `found ${seen.size} distinct link targets to check`);
+}
+
 await db.close?.();
 process.exitCode = report.finish() ? 0 : 1;

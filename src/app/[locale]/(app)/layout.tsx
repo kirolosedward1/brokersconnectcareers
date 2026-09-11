@@ -4,6 +4,7 @@ import { redirect } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { CONSOLE_MESSAGES, PUBLIC_MESSAGES, pick } from '@/i18n/client-messages';
 import { AppShell, type AppNavGroup } from '@/components/dashboard/app-shell';
+import { MailOffBanner } from '@/components/admin/mail-off-banner';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { NotificationItem } from '@/components/notifications/notification-item';
 import { Link } from '@/i18n/navigation';
@@ -232,6 +233,9 @@ export default async function AppLayout({
       roleLabel={role === 'employer' ? tOnboarding('roleEmployer') : role === 'admin' ? tAdmin('title') : tOnboarding('roleCandidate')}
       locale={locale}
     >
+      {/* Admins only: a platform that cannot send email should say so on every
+          console page, not only the one page about email. */}
+      {role === 'admin' ? <MailOffBanner /> : null}
       {children}
     </AppShell>
     </NextIntlClientProvider>

@@ -156,6 +156,14 @@ export function AuthForm({
   /** Kept so the confirmation can be sent again without retyping it. */
   const [pendingEmail, setPendingEmail] = useState('');
   const [resent, setResent] = useState<'sent' | 'wait' | null>(null);
+  /**
+   * Sign-in refused because the address was never confirmed. The message
+   * alone told somebody to "check your inbox" for a mail that may have gone
+   * to spam, expired, or never arrived — and the only way to get another was
+   * to find the sign-up page and start over. The button that fixes that
+   * already exists on the sign-up screen; this shows it here too.
+   */
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -184,7 +192,7 @@ export function AuthForm({
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/onboarding?confirmed=1')}` },
         });
         if (signUpError) {
           setError(readable(signUpError));
@@ -200,6 +208,8 @@ export function AuthForm({
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) {
           setError(readable(signInError));
+          setUnconfirmed(signInError.code === 'email_not_confirmed' || /email not confirmed/i.test(signInError.message));
+          setPendingEmail(email);
           return;
         }
       }
@@ -331,7 +341,7 @@ export function AuthForm({
               const { error: resendError } = await createClient().auth.resend({
                 type: 'signup',
                 email: pendingEmail,
-                options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+                options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/onboarding?confirmed=1')}` },
               });
               setResent(resendError ? 'wait' : 'sent');
             });
@@ -430,6 +440,36 @@ export function AuthForm({
           <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
+        ) : null}
+
+        {error && unconfirmed && mode === 'sign-in' ? (
+          <div className="space-y-2">
+            {resent === 'sent' ? (
+              <p className="text-sm font-medium text-success">{t('resendSent')}</p>
+            ) : resent === 'wait' ? (
+              <p className="text-sm text-destructive">{t('resendWait')}</p>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={pending || !pendingEmail}
+              onClick={() => {
+                setResent(null);
+                startTransition(async () => {
+                  const { error: resendError } = await createClient().auth.resend({
+                    type: 'signup',
+                    email: pendingEmail,
+                    options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/onboarding?confirmed=1')}` },
+                  });
+                  setResent(resendError ? 'wait' : 'sent');
+                });
+              }}
+            >
+              <RefreshCw aria-hidden />
+              {pending ? tCommon('loading') : t('resendConfirmation')}
+            </Button>
+          </div>
         ) : null}
 
         <SubmitButton className="w-full" size="lg" disabled={pending}>

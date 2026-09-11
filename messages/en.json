@@ -291,7 +291,8 @@
     "companyWebsite": "Website",
     "companyDistrict": "Area",
     "companyHeadcount": "Company size",
-    "companyReviewNote": "We review every company before its first listing. It does not take long, and you will be notified when it is done."
+    "companyReviewNote": "We review every company before its first listing. It does not take long, and you will be notified when it is done.",
+    "confirmedBanner": "Your email is confirmed — one step and your account is ready."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -595,7 +596,9 @@
     "emailPreviewHint": "Every template can be previewed at",
     "emailOffTitle": "Email sending is switched off",
     "emailOffOutbox": "Nothing is being recorded at all — the service key is missing, so a message fails before it is ever written. Set these in Vercel and redeploy.",
-    "emailOffSending": "Messages are recorded but never sent — the Resend credentials are missing. Set these in Vercel and redeploy."
+    "emailOffSending": "Messages are recorded but never sent — the Resend credentials are missing. Set these in Vercel and redeploy.",
+    "mailOffTitle": "The platform cannot send email",
+    "mailOffBody": "Every email — application receipts, new applicants, digests — is being dropped silently. These variables are missing in Vercel:"
   },
   "reportReason": {
     "fake_listing": "Fake listing",

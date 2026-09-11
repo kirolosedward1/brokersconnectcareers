@@ -315,4 +315,20 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
   report.ok(/link_expired/.test(signIn) && /missing_code/.test(signIn) && /exchange_failed/.test(signIn), 'the sign-in page explains all three link failures');
 }
 
+/*
+  An unconfirmed sign-in offers the mail again, and a confirmation is
+  acknowledged where it lands. Both are one-line facts about the source that a
+  refactor could quietly lose.
+*/
+{
+  const form = read(j(ROOT, 'src/components/auth/auth-form.tsx'), 'utf8');
+  report.ok(/setUnconfirmed\(signInError\.code === 'email_not_confirmed'/.test(form), 'sign-in detects the unconfirmed-email refusal');
+  report.ok(/error && unconfirmed && mode === 'sign-in'/.test(form), 'and offers the confirmation mail again right there');
+  report.ok((form.match(/onboarding\?confirmed=1/g) || []).length >= 2, 'every confirmation link the app requests lands with the confirmed flag');
+  const rescue = read(j(ROOT, 'src/components/auth/fragment-session.tsx'), 'utf8');
+  report.ok(/confirmed: '1'/.test(rescue), 'the fragment rescue carries the flag for a sign-up too');
+  const onboarding = read(j(ROOT, 'src/app/[locale]/onboarding/page.tsx'), 'utf8');
+  report.ok(/confirmed === '1'/.test(onboarding), 'onboarding shows the acknowledgement');
+}
+
 process.exitCode = base.finish() ? 0 : 1;

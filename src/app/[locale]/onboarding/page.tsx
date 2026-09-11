@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { MailCheck } from 'lucide-react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
@@ -25,7 +26,7 @@ export default async function OnboardingPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ next?: string; role?: string }>;
+  searchParams: Promise<{ next?: string; role?: string; confirmed?: string }>;
 }) {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
@@ -42,7 +43,7 @@ export default async function OnboardingPage({
     });
   }
 
-  const { next, role } = await searchParams;
+  const { next, role, confirmed } = await searchParams;
 
   // Pre-selected, not decided. The account type cannot be changed once the
   // profile exists, and a permanent choice should not be made by a URL the
@@ -58,6 +59,18 @@ export default async function OnboardingPage({
   return (
     <AuthShell>
         <div className="mx-auto w-full max-w-lg px-4">
+        {/* The click that got them here is acknowledged. A confirmation link
+            that lands on a form with no word about the confirmation reads as
+            "did that work?", which is the question the link was meant to
+            answer. Arrives via ?confirmed=1 from both the callback and the
+            fragment rescue; absent for a Google sign-up, which confirmed
+            nothing. */}
+        {confirmed === '1' ? (
+          <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-success-muted px-3 py-1 text-sm font-medium text-success">
+            <MailCheck className="size-4" aria-hidden />
+            {t('confirmedBanner')}
+          </p>
+        ) : null}
         <h1 className="text-2xl font-bold">{t('title')}</h1>
         <p className="mt-1 text-muted-foreground">{t('subtitle')}</p>
         <div className="mt-8">

@@ -63,7 +63,13 @@ export function FragmentSession() {
           router.replace({ pathname: '/sign-in', query: { error: 'link_expired' } });
           return;
         }
-        router.replace(type === 'recovery' ? '/sign-in/new-password' : '/onboarding');
+        router.replace(
+          type === 'recovery'
+            ? '/sign-in/new-password'
+            : type === 'signup'
+              ? { pathname: '/onboarding', query: { confirmed: '1' } }
+              : '/onboarding',
+        );
         router.refresh();
       });
     };
