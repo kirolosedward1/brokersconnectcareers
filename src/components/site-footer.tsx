@@ -8,6 +8,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
+import { getViewer } from '@/lib/auth';
 import { env } from '@/lib/env';
 
 /**
@@ -43,6 +44,20 @@ const FEATURED_DISTRICTS = [
 ] as const;
 
 export async function SiteFooter({ locale }: { locale: string }) {
+  /*
+    Signed in, the two doors below are a question already answered.
+
+    They ask "are you looking for work, or hiring?" — which is the choice
+    somebody makes at the sign-up door and then lives inside. Shown to a
+    consultant who is three applications in, it reads as a site that has
+    forgotten who they are; and its employer half links to
+    /employer/jobs/new, which that consultant cannot use at all.
+
+    Cached per request and already read by SiteHeader above, so this costs
+    nothing.
+  */
+  const viewer = await getViewer();
+
   const t = await getTranslations('footer');
   const tNav = await getTranslations('nav');
   const tTrack = await getTranslations('track');
@@ -74,8 +89,11 @@ export async function SiteFooter({ locale }: { locale: string }) {
   return (
     <footer className="mt-16 border-t border-border bg-muted/40">
       <div className="mx-auto max-w-6xl px-4">
-        {/* The two doors. Same words as the landing page's segmented control,
-            so a reader who scrolled past it meets the same choice here. */}
+        {/* The two doors, for visitors only. Same words as the landing page's
+            segmented control, so a reader who scrolled past it meets the same
+            choice here — and the landing page makes the same swap, showing a
+            signed-in reader their own dashboard instead of the pitch. */}
+        {viewer ? null : (
         <div className="grid gap-3 py-10 sm:grid-cols-2">
           <div className="flex gap-4 rounded-2xl border border-border bg-card p-5">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -107,8 +125,12 @@ export async function SiteFooter({ locale }: { locale: string }) {
             </div>
           </div>
         </div>
+        )}
 
-        {/* The index. Two groups to a row on a phone, four on a desktop. */}
+        {/* The index. Two groups to a row on a phone, four on a desktop. The
+            top border is the doors' bottom edge when they are there and the
+            page's when they are not, so a visitor and a signed-in reader both
+            get one rule above this and not two or none. */}
         <div className="grid grid-cols-2 gap-x-6 gap-y-8 border-t border-border py-10 lg:grid-cols-4">
           <nav aria-labelledby="footer-product">
             <p id="footer-product" className={headingClass}>
