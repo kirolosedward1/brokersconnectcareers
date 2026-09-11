@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, Download, FileX2 } from 'lucide-react';
+import { Download, FileX2, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -180,6 +180,12 @@ export function ApplicantCard({
             once per applicant down a list of them. The whole panel is the
             link, so the affordance was never the sentence; it is one mark at
             the end of the row, named for a screen reader and on hover.
+
+            A magnifier rather than an arrow: an arrow says "onward", which is
+            true of every link on the page, and what this one actually offers
+            is a closer look at the person whose name is beside it. No
+            rtl-flip — a magnifier has a handed shape of its own and mirroring
+            it produces a glyph nobody draws.
           */}
           <div className="min-w-0 flex-1">
             {headline ? (
@@ -225,7 +231,7 @@ export function ApplicantCard({
             aria-hidden
             className="grid size-8 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors group-hover/profile:border-primary/40 group-hover/profile:bg-primary/5 group-hover/profile:text-primary"
           >
-            <ArrowLeft className="rtl-flip size-4" />
+            <Search className="size-4" />
           </span>
         </Link>
       ) : (

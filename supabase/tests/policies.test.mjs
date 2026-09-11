@@ -405,6 +405,38 @@ report.section('a company waits for a person; a consultant does not');
     !selfAdmin.ok && /own approval/.test(selfAdmin.error ?? ''),
     selfAdmin.ok ? 'call was allowed' : selfAdmin.error);
 
+  /*
+    Nor by going round the function.
+
+    set_account_approval() has refused this since migration 16 and was the only
+    thing refusing it: guard_profile_update returned early for an admin before
+    reaching any check, and profiles_admin_all permitted the write, so a direct
+    PostgREST update did what the function would not. Not an escalation — an
+    admin can approve anybody — but a rule the product states in an error
+    message and the database did not keep.
+  */
+  const direct = await as(admin,
+    `update profiles set approval_status = 'approved', approved_at = now() where id = '${admin}'`);
+  report.check('nor by updating the row directly',
+    !direct.ok && /own approval/.test(direct.error ?? ''),
+    direct.ok ? 'update was allowed' : direct.error);
+
+  const selfRole = await as(admin, `update profiles set role = 'candidate' where id = '${admin}'`);
+  report.check('nor demote themselves by hand',
+    !selfRole.ok && /own approval/.test(selfRole.error ?? ''),
+    selfRole.ok ? 'update was allowed' : selfRole.error);
+
+  // And everything else about their own row is still theirs.
+  const ordinary = await as(admin,
+    `update profiles set full_name = 'المشرف' where id = '${admin}' returning id`);
+  report.check('an admin still edits their own name',
+    ordinary.ok && ordinary.rows.length === 1, ordinary.error);
+
+  const other = await as(admin,
+    `update profiles set approval_status = 'approved' where id = '${candidate}' returning id`);
+  report.check('and still approves somebody else',
+    other.ok && other.rows.length === 1, other.error);
+
   await db.exec(`update profiles set approval_status='approved' where id='${PENDING}'`);
   const post2 = await as(PENDING, draft('pending-job-2'));
   report.check('once approved, the same company can', post2.ok, post2.error);
