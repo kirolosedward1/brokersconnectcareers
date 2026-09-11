@@ -16,6 +16,7 @@ import type {
   AgentEducationRow,
   AgentExperienceRow,
   AgentProfileRow,
+  CandidateSummary,
 } from '@/lib/supabase/database.types';
 
 export async function generateMetadata({
@@ -51,14 +52,25 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
   const typedAgent = (agent as AgentProfileRow | null) ?? null;
 
   // The CV sections only exist once there is a profile to hang them on.
-  const [experience, education, certifications, completeness] = typedAgent
+  const [experience, education, certifications, completeness, summary] = typedAgent
     ? await Promise.all([
         supabase.from('agent_experience').select('*').eq('agent_id', typedAgent.id).order('started', { ascending: false }),
         supabase.from('agent_education').select('*').eq('agent_id', typedAgent.id).order('graduated', { ascending: false }),
         supabase.from('agent_certifications').select('*').eq('agent_id', typedAgent.id).order('issued', { ascending: false }),
         supabase.rpc('profile_completeness', { p_agent_id: typedAgent.id }),
+        /*
+          For one integer, and through the summary rather than a read of its
+          own, because `agent_profile_views` has no SELECT policy — the only
+          route to the number is a function that aggregates the caller's own
+          rows and hands back a count. Parallel with the four above, so it
+          costs no wall-clock time on a page that was already asking four
+          questions.
+        */
+        supabase.rpc('candidate_summary'),
       ])
-    : [null, null, null, null];
+    : [null, null, null, null, null];
+
+  const views = (summary?.data as CandidateSummary | null)?.profile_views_30d ?? 0;
 
   const t = await getTranslations('dashboard');
 
@@ -87,6 +99,32 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
           </Button>
         ) : null}
       </header>
+
+      {/*
+        Only when somebody has actually looked.
+
+        Zero is not a number worth printing here: it would be the first thing a
+        consultant reads on the page they came to improve, it says nothing they
+        can act on, and on a directory this size it mostly reports how new the
+        platform is rather than anything about them. So the line appears the
+        day it becomes true and not before — which is also the only honest way
+        to show a figure this young.
+
+        Companies, not visits, and never which companies. "Three companies
+        looked" is useful; naming them is a different product with different
+        consequences for a consultant whose employer does not know they are
+        looking, and it is not one to introduce as a side effect of adding a
+        counter.
+      */}
+      {views > 0 ? (
+        <p className="flex items-center gap-2 rounded-xl border border-success/25 bg-success-muted px-4 py-3 text-sm text-success">
+          <Eye className="size-4 shrink-0" aria-hidden />
+          <span>{t.rich('profileViews', {
+            count: views,
+            v: (chunks) => <span className="numeral">{chunks}</span>,
+          })}</span>
+        </p>
+      ) : null}
 
       {/* Above the form, because it is the reason to scroll into it. Renders
           nothing once the profile is complete. */}

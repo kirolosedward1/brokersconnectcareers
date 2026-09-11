@@ -411,7 +411,8 @@
     "savedOpenHeading": "Still open",
     "savedClosedHeading": "No longer open",
     "savedClosedLede": "These listings have expired or been closed by the company. They stay here until you remove them.",
-    "profilePreview": "See your profile as companies see it"
+    "profilePreview": "See your profile as companies see it",
+    "profileViews": "{count, plural, one {<v>#</v> company has} other {<v>#</v> companies have}} opened your profile in the last 30 days."
   },
   "applicationStatus": {
     "new": "New",

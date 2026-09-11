@@ -411,7 +411,8 @@
     "savedOpenHeading": "لسه شغّالة",
     "savedClosedHeading": "اتقفلت",
     "savedClosedLede": "الإعلانات دي خلص وقتها أو الشركة قفلتها. سايبينها هنا لحد ما تشيلها بنفسك.",
-    "profilePreview": "شوف ملفك زي ما الشركات بتشوفه"
+    "profilePreview": "شوف ملفك زي ما الشركات بتشوفه",
+    "profileViews": "{count, plural, one {شركة واحدة فتحت} two {شركتين فتحوا} few {<v>#</v> شركات فتحوا} many {<v>#</v> شركة فتحت} other {<v>#</v> شركة فتحت}} ملفك في آخر 30 يوم."
   },
   "applicationStatus": {
     "new": "جديد",

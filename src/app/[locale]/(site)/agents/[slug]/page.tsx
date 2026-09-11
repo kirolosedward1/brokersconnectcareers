@@ -10,6 +10,7 @@ import { AgentCv } from '@/components/agents/agent-cv';
 import { ShortlistButton } from '@/components/agents/shortlist-toggle';
 import { Button } from '@/components/ui/button';
 import { getAgentCard, shortlistedAgentIds } from '@/lib/queries/agents';
+import { recordAgentView } from '@/lib/agent-views';
 import { getDistrictMap, getDevelopers } from '@/lib/queries/taxonomy';
 import { getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -117,6 +118,16 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
   */
   const canShortlist = Boolean(viewer?.company) && agent.is_unlocked && !isOwner;
   const shortlisted = canShortlist ? (await shortlistedAgentIds([agent.id])).has(agent.id) : false;
+
+  /*
+    And the fact that they looked.
+
+    Called for anybody with a company — the function itself decides whether the
+    row is worth writing, including the owner's own preview — and never awaited
+    by the page. A consultant who fills in a profile has had no signal that it
+    is working; this is where that signal starts.
+  */
+  if (viewer?.company) await recordAgentView(agent.slug);
 
   const areas = agent.district_ids
     .map((id) => districts.get(id))

@@ -2462,4 +2462,170 @@ report.section('a salary reference that stays quiet until it has earned the righ
   await db.exec(`delete from jobs where slug like 'salary-ref-%'`);
 }
 
+report.section('who looked at your profile, counted and never named');
+{
+  const slugOf = async (userId) =>
+    (await db.query(`select slug from agent_profiles where user_id = '${userId}'`)).rows[0].slug;
+
+  const openSlug = await slugOf(publicAgent);
+  const openId = (
+    await db.query(`select id from agent_profiles where user_id = '${publicAgent}'`)
+  ).rows[0].id;
+
+  const views = async () =>
+    (await db.query(`select count(*)::int as n from agent_profile_views where agent_id = '${openId}'`))
+      .rows[0].n;
+
+  const companies = async () =>
+    (await db.query(`
+      select count(distinct company_id)::int as n from agent_profile_views
+       where agent_id = '${openId}'`)).rows[0].n;
+
+  /*
+    as() rolls back, so every call here has to be committed to be observed. The
+    point of this section is what a second call does to the first one's row.
+  */
+  const viewAs = async (userId) => {
+    await db.exec(`
+      set local role authenticated;
+      set local request.jwt.claim.sub = '${userId}';
+      set local request.jwt.claims = '{"role":"authenticated","sub":"${userId}"}';
+      select public.record_agent_view('${openSlug}');
+      reset role;
+    `);
+  };
+
+  await viewAs(employerVerified);
+  report.check('an employer opening a profile is one row', (await views()) === 1);
+
+  // The deduplication is the primary key, not a rule somebody remembers.
+  await viewAs(employerVerified);
+  report.check('and opening it again the same day is still one', (await views()) === 1);
+
+  await viewAs(employerUnverified);
+  report.check('a second company is a second row', (await views()) === 2);
+  report.check('and two companies', (await companies()) === 2);
+
+  /*
+    The owner's own preview is not a view.
+
+    Migration 40 gave them a link to it, so they have a reason to load their
+    own card — and a counter that included that would show a consultant their
+    own refreshes back as interest.
+  */
+  const ownerSlug = await slugOf(candidate);
+  const ownerId = (
+    await db.query(`select id from agent_profiles where user_id = '${candidate}'`)
+  ).rows[0].id;
+
+  await db.exec(`
+    set local role authenticated;
+    set local request.jwt.claim.sub = '${candidate}';
+    set local request.jwt.claims = '{"role":"authenticated","sub":"${candidate}"}';
+    select public.record_agent_view('${ownerSlug}');
+    reset role;
+  `);
+  const ownRows = (
+    await db.query(`select count(*)::int as n from agent_profile_views where agent_id = '${ownerId}'`)
+  ).rows[0].n;
+  report.check('a consultant previewing their own profile writes nothing', ownRows === 0);
+
+  // Nobody without a company writes a row either — the useful question is
+  // whether people who hire are looking.
+  await db.exec(`
+    set local role authenticated;
+    set local request.jwt.claim.sub = '${OUTSIDER}';
+    set local request.jwt.claims = '{"role":"authenticated","sub":"${OUTSIDER}"}';
+    select public.record_agent_view('${openSlug}');
+    reset role;
+  `);
+  report.check('and neither does somebody with no company', (await views()) === 2);
+
+  // A slug that matches nothing is not an error. The page calls this in
+  // after(), where nobody is listening.
+  const nonsense = await as(employerVerified, `select public.record_agent_view('no-such-agent-1')`);
+  report.check('an unknown slug is silent, not a failure', nonsense.ok, nonsense.error);
+
+  /*
+    The table has no SELECT policy at all, so there is no careful rule to get
+    wrong: nobody reads rows, including the consultant they are about and the
+    company that wrote them. The only route to a number is the summary.
+  */
+  const nosyOwner = await as(publicAgent, `select count(*)::int as n from agent_profile_views`);
+  report.check('the consultant cannot read the rows about them',
+    nosyOwner.ok && nosyOwner.rows[0].n === 0, nosyOwner.error ?? JSON.stringify(nosyOwner.rows));
+
+  const nosyCompany = await as(employerVerified, `select count(*)::int as n from agent_profile_views`);
+  report.check('nor can the company that wrote them',
+    nosyCompany.ok && nosyCompany.rows[0].n === 0, nosyCompany.error ?? JSON.stringify(nosyCompany.rows));
+
+  const summary = await as(publicAgent, `select public.candidate_summary() as s`);
+  report.check('but the summary hands them the count',
+    summary.ok && summary.rows[0].s.profile_views_30d === 2,
+    summary.error ?? JSON.stringify(summary.rows[0]?.s?.profile_views_30d));
+
+  const someoneElse = await as(candidate, `select public.candidate_summary() as s`);
+  report.check("and only ever their own count",
+    someoneElse.ok && someoneElse.rows[0].s.profile_views_30d === 0,
+    JSON.stringify(someoneElse.rows[0]?.s?.profile_views_30d));
+
+  /*
+    Companies, not visits, across days.
+
+    A brokerage that came back on Thursday is two rows and one company, so the
+    summary has to count distinct company_id rather than rows — otherwise
+    "three companies looked" is one company that looked three times, which is
+    a different and much weaker fact.
+  */
+  await db.exec(`
+    insert into agent_profile_views (agent_id, company_id, day)
+    select '${openId}', company_id, (now() at time zone 'Africa/Cairo')::date - 3
+      from agent_profile_views where agent_id = '${openId}'
+    on conflict do nothing`);
+  const acrossDays = await as(publicAgent, `select public.candidate_summary() as s`);
+  report.check('a company that came back twice is still one company',
+    acrossDays.rows[0].s.profile_views_30d === 2,
+    JSON.stringify(acrossDays.rows[0]?.s?.profile_views_30d));
+
+  // And the window is a window.
+  // Shifted rather than set: the rows above are already distinct by day, and
+  // collapsing them onto one date would collide with the primary key that is
+  // the whole point of the table.
+  await db.exec(`
+    update agent_profile_views set day = day - 40 where agent_id = '${openId}'`);
+  const stale = await as(publicAgent, `select public.candidate_summary() as s`);
+  report.check('and one that looked six weeks ago has fallen out of the window',
+    stale.rows[0].s.profile_views_30d === 0,
+    JSON.stringify(stale.rows[0]?.s?.profile_views_30d));
+
+  /*
+    And the retention floor, which runs on the write rather than on a cron —
+    the four crons this platform has need a key production does not have, so a
+    fifth would be a promise that never runs. The privacy policy says rows
+    older than sixty days are deleted, so something has to actually delete
+    them.
+  */
+  await db.exec(`
+    insert into agent_profile_views (agent_id, company_id, day)
+    values ('${openId}', (select id from companies where slug='al-rowad-real-estate-309047'),
+            (now() at time zone 'Africa/Cairo')::date - 200)
+    on conflict do nothing`);
+  const ancient = (
+    await db.query(`
+      select count(*)::int as n from agent_profile_views
+       where agent_id = '${openId}' and day < (now() at time zone 'Africa/Cairo')::date - 60`)
+  ).rows[0].n;
+  report.check('a row from six months ago is there to be cleaned', ancient === 1);
+
+  await viewAs(employerVerified);
+  const swept = (
+    await db.query(`
+      select count(*)::int as n from agent_profile_views
+       where agent_id = '${openId}' and day < (now() at time zone 'Africa/Cairo')::date - 60`)
+  ).rows[0].n;
+  report.check('and the next view sweeps it', swept === 0);
+
+  await db.exec(`delete from agent_profile_views`);
+}
+
 process.exit(report.finish() ? 0 : 1);

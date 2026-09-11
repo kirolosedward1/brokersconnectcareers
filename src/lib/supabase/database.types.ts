@@ -190,6 +190,13 @@ export type CandidateSummary = {
   alerts_on: number;
   profile_completeness: number;
   has_profile: boolean;
+  /**
+   * Distinct companies that opened this consultant's profile in the last
+   * thirty days. Companies, not visits — the log holds one row per company per
+   * day, so a brokerage that came back on Thursday is two rows and one
+   * company. Zero until somebody looks; the dashboard shows nothing then.
+   */
+  profile_views_30d: number;
   open_jobs: number;
 };
 
@@ -662,6 +669,14 @@ export type Database = {
         Returns: AgentCardRow[];
       };
       get_agent_card: { Args: { p_slug: string }; Returns: AgentCardDetail[] };
+      /**
+       * One row per consultant per company per day, and nothing comes back.
+       * Every refusal — no company, the owner's own preview, an unknown slug —
+       * is silent, because none of them is a failure the page should hear
+       * about. `agent_profile_views` has no SELECT policy at all: the only
+       * route to a number is candidate_summary().
+       */
+      record_agent_view: { Args: { p_slug: string }; Returns: undefined };
       /**
        * What a role like this pays on the board right now, or nothing.
        *
