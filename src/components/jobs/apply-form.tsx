@@ -223,7 +223,7 @@ export function ApplyForm({
           inputMode="tel"
           autoComplete="tel"
           defaultValue={defaultPhone}
-          className="numeral"
+          className="numeral-field"
         />
       </Field>
 

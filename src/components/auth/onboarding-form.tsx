@@ -37,12 +37,10 @@ export function OnboardingForm({
   /*
     Somebody who came through the "شركة عقارات" door has answered this
     already; asking again reads as the site not having listened. So when a
-    role arrived, the two cards give way to one line saying which, with a way
-    to change it — kept, because the type cannot be changed after this step
-    and a wrong door is cheaper to fix here than never.
+    role arrived, the two cards give way to one line saying which. No control
+    to change it: the door is the decision, and the line is a receipt.
   */
-  const [changingRole, setChangingRole] = useState(false);
-  const roleSettled = Boolean(defaultRole) && !changingRole;
+  const roleSettled = Boolean(defaultRole);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
 
@@ -100,7 +98,7 @@ export function OnboardingForm({
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       {roleSettled ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm">
+        <div className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm">
           <span className="inline-flex items-center gap-2 font-medium">
             {role === 'employer' ? (
               <Briefcase className="size-4 text-primary" aria-hidden />
@@ -109,13 +107,6 @@ export function OnboardingForm({
             )}
             {role === 'employer' ? t('roleKnownEmployer') : t('roleKnownCandidate')}
           </span>
-          <button
-            type="button"
-            onClick={() => setChangingRole(true)}
-            className="font-medium text-primary hover:underline"
-          >
-            {t('roleChange')}
-          </button>
         </div>
       ) : (
       <fieldset>
@@ -157,7 +148,6 @@ export function OnboardingForm({
 
       <Field
         label={t('whatsapp')}
-        hint={t('whatsappHint')}
         htmlFor="whatsapp"
         error={errors.whatsapp ? tValidation('invalidPhone') : undefined}
       >
@@ -170,7 +160,7 @@ export function OnboardingForm({
           inputMode="tel"
           autoComplete="tel"
           placeholder={t('whatsappPlaceholder')}
-          className="numeral"
+          className="numeral-field"
         />
       </Field>
 

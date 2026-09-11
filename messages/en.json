@@ -281,7 +281,6 @@
     "roleEmployerHint": "Post jobs, manage applicants, and search the consultant directory.",
     "fullName": "Full name",
     "whatsapp": "WhatsApp number",
-    "whatsappHint": "This market runs on WhatsApp. Your number is shown only to an employer you apply to.",
     "whatsappPlaceholder": "+201001234567",
     "locale": "Interface language",
     "submit": "Get started",
@@ -294,8 +293,7 @@
     "companyReviewNote": "We review every company before its first listing. It does not take long, and you will be notified when it is done.",
     "confirmedBanner": "Your email is confirmed — one step and your account is ready.",
     "roleKnownCandidate": "You are registered as a consultant.",
-    "roleKnownEmployer": "You are registered as a company.",
-    "roleChange": "Not right? Change"
+    "roleKnownEmployer": "You are registered as a company."
   },
   "dashboard": {
     "title": "Dashboard",

@@ -345,7 +345,7 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
   const viewer = read(j(ROOT, 'src/lib/auth.ts'), 'utf8');
   report.ok(/suggestedRole/.test(viewer), 'getViewer exposes the stored role as a suggestion');
   const onboarding = read(j(ROOT, 'src/components/auth/onboarding-form.tsx'), 'utf8');
-  report.ok(/roleSettled \? \(/.test(onboarding) && /roleChange/.test(onboarding), 'onboarding skips the role question when it is known, with a way to change it');
+  report.ok(/roleSettled \? \(/.test(onboarding) && !/roleChange/.test(onboarding), 'onboarding skips the role question when it is known, and does not ask again');
 }
 
 process.exitCode = base.finish() ? 0 : 1;

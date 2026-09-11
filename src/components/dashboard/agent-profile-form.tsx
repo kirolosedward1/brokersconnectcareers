@@ -128,7 +128,6 @@ export function AgentProfileForm({
 
         <Field
           label={tOnboarding('whatsapp')}
-          hint={tOnboarding('whatsappHint')}
           htmlFor="whatsapp"
           error={errors.whatsapp ? tValidation('invalidPhone') : undefined}
         >
