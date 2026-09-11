@@ -11,7 +11,8 @@ import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
-import type { ApplicationStatus, ExperienceBand } from '@/lib/supabase/database.types';
+import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
+import type { ApplicationStatus, ExperienceBand, JobTrack } from '@/lib/supabase/database.types';
 
 export async function generateMetadata({
   params,
@@ -37,7 +38,7 @@ type Row = {
     avatar_url: string | null;
     agent_profiles: ApplicantProfile | null;
   } | null;
-  job: { id: string; title_ar: string; title_en: string | null } | null;
+  job: { id: string; title_ar: string; title_en: string | null; track: JobTrack } | null;
 };
 
 const STAGES = ['new', 'shortlisted', 'interview', 'hired', 'rejected'] as const;
@@ -61,13 +62,30 @@ export default async function AllApplicantsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ stage?: string; job?: string; q?: string }>;
+  searchParams: Promise<{ stage?: string; job?: string; q?: string; band?: string; track?: string }>;
 }) {
   const locale = asLocale((await params).locale);
   setRequestLocale(locale);
 
   const viewer = await requireEmployer(locale);
-  const { stage, job: jobFilter, q: rawQuery } = await searchParams;
+  const { stage, job: jobFilter, q: rawQuery, band: rawBand, track: rawTrack } = await searchParams;
+
+  /*
+    Two more ways to narrow, both real columns rather than derived guesses.
+
+    The experience band is the applicant's own answer at apply time, on the
+    application row itself. The specialisation is the listing's track — the
+    thing a brokerage hiring for three primary-sales roles and one rentals
+    role wants to slice by, and which the per-listing chips only offer one
+    listing at a time. The applicant's *own* tracks live on their profile and
+    are shown on the card; filtering by those would need an inner join that
+    drops applicants without a profile, which is the wrong trade.
+
+    Narrowed against the enums like ?stage= is, so an unknown value is ignored
+    rather than sent to the database.
+  */
+  const band = EXPERIENCE_BANDS.find((value) => value === rawBand);
+  const track = JOB_TRACKS.find((value) => value === rawTrack);
 
   /*
     A name to look for.
@@ -98,7 +116,7 @@ export default async function AllApplicantsPage({
           tracks, district_ids, units_closed, volume_egp
         )
       ),
-      job:jobs!inner (id, title_ar, title_en)
+      job:jobs!inner (id, title_ar, title_en, track)
     `,
     )
     .order('created_at', { ascending: false })
@@ -109,6 +127,10 @@ export default async function AllApplicantsPage({
   const activeStage = STAGES.find((value) => value === stage);
   if (activeStage) query = query.eq('status', activeStage);
   if (jobFilter) query = query.eq('job_id', jobFilter);
+  if (band) query = query.eq('experience_band', band);
+  // On the joined listing — `jobs!inner` above is what makes this a filter
+  // rather than a null-out of the embed.
+  if (track) query = query.eq('job.track', track);
   // On the joined profile, which is why that embed is `!inner`. Filtered in
   // the database rather than over the 200 rows this page fetches — a search
   // that quietly only looks at the most recent page is worse than none.
@@ -128,9 +150,11 @@ export default async function AllApplicantsPage({
   // no count.
   let counter = supabase
     .from('applications')
-    .select('status, candidate:profiles!inner (full_name)')
+    .select('status, candidate:profiles!inner (full_name), job:jobs!inner (track)')
     .limit(2000);
   if (jobFilter) counter = counter.eq('job_id', jobFilter);
+  if (band) counter = counter.eq('experience_band', band);
+  if (track) counter = counter.eq('job.track', track);
   // The counts are what each chip is worth *within the current search*. Left
   // unfiltered they would promise applicants that clicking cannot produce.
   if (pattern) counter = counter.ilike('candidate.full_name', pattern);
@@ -158,6 +182,8 @@ export default async function AllApplicantsPage({
   const t = await getTranslations('employer');
   const tStatus = await getTranslations('applicationStatus');
   const tFilters = await getTranslations('filters');
+  const tExp = await getTranslations('experienceBand');
+  const tTrack = await getTranslations('track');
 
   const companyName = viewer.company
     ? localized(locale, viewer.company.name_ar, viewer.company.name_en)
@@ -201,13 +227,15 @@ export default async function AllApplicantsPage({
     'shrink-0 rounded-full ps-3 pe-2.5 py-1.5 text-sm inline-flex items-center gap-2 transition-colors ' +
     (active ? 'font-medium text-white' : 'border border-border hover:bg-muted');
 
-  const href = (next: { stage?: string; job?: string; q?: string }) => {
+  const href = (next: { stage?: string; job?: string; q?: string; band?: string; track?: string }) => {
     const search = new URLSearchParams();
     if (next.stage) search.set('stage', next.stage);
     if (next.job) search.set('job', next.job);
     // Carried by every chip, so narrowing by stage does not silently throw the
     // search away — and the form below carries the chips the same way.
     if (next.q) search.set('q', next.q);
+    if (next.band) search.set('band', next.band);
+    if (next.track) search.set('track', next.track);
     const query = search.toString();
     return query ? `/employer/applicants?${query}` : '/employer/applicants';
   };
@@ -259,20 +287,58 @@ export default async function AllApplicantsPage({
           />
         </div>
 
+        {/* Native selects, submitted with the same button as the search. No
+            JavaScript, same as the search field: this form has to work before
+            the page hydrates, and a select that only applies on submit is
+            honest about that. */}
+        <label className="sr-only" htmlFor="applicant-band">
+          {t('filterExperience')}
+        </label>
+        <select
+          id="applicant-band"
+          name="band"
+          defaultValue={band ?? ''}
+          className="h-11 rounded-xl border border-input bg-card px-3 text-sm shadow-xs"
+        >
+          <option value="">{t('filterExperience')}: {tFilters('any')}</option>
+          {EXPERIENCE_BANDS.map((value) => (
+            <option key={value} value={value}>
+              {tExp(value)}
+            </option>
+          ))}
+        </select>
+
+        <label className="sr-only" htmlFor="applicant-track">
+          {t('filterTrack')}
+        </label>
+        <select
+          id="applicant-track"
+          name="track"
+          defaultValue={track ?? ''}
+          className="h-11 rounded-xl border border-input bg-card px-3 text-sm shadow-xs"
+        >
+          <option value="">{t('filterTrack')}: {tFilters('any')}</option>
+          {JOB_TRACKS.map((value) => (
+            <option key={value} value={value}>
+              {tTrack(value)}
+            </option>
+          ))}
+        </select>
+
         <Button type="submit" variant="secondary">
-          {t('searchApplicants')}
+          {t('filterApply')}
         </Button>
 
-        {query_ ? (
+        {query_ || band || track ? (
           <Button asChild variant="ghost">
-            <Link href={href({ stage, job: jobFilter })}>{t('searchClear')}</Link>
+            <Link href={href({ stage, job: jobFilter })}>{t('filterClear')}</Link>
           </Button>
         ) : null}
       </form>
 
       <nav className={row} aria-label={t('stageFilter')}>
         <Link
-          href={href({ job: jobFilter, q: query_ })}
+          href={href({ job: jobFilter, q: query_, band, track })}
           aria-current={!stage ? 'page' : undefined}
           className={stageChip(!stage) + (stage ? ' text-muted-foreground' : '')}
           style={!stage ? { backgroundColor: 'oklch(0.45 0.02 265)' } : undefined}
@@ -289,7 +355,7 @@ export default async function AllApplicantsPage({
           return (
             <Link
               key={value}
-              href={href({ stage: value, job: jobFilter, q: query_ })}
+              href={href({ stage: value, job: jobFilter, q: query_, band, track })}
               aria-current={active ? 'page' : undefined}
               className={stageChip(active) + (active ? '' : ' text-muted-foreground')}
               style={active ? { backgroundColor: STAGE_COLOUR[value] } : undefined}
@@ -320,7 +386,7 @@ export default async function AllApplicantsPage({
       {jobs.length > 1 ? (
         <nav className={row} aria-label={t('jobs')}>
           <Link
-            href={href({ stage, q: query_ })}
+            href={href({ stage, q: query_, band, track })}
             aria-current={!jobFilter ? 'page' : undefined}
             className={chip(!jobFilter)}
           >
@@ -329,7 +395,7 @@ export default async function AllApplicantsPage({
           {jobs.map((item) => (
             <Link
               key={item.id}
-              href={href({ stage, job: item.id, q: query_ })}
+              href={href({ stage, job: item.id, q: query_, band, track })}
               aria-current={jobFilter === item.id ? 'page' : undefined}
               className={chip(jobFilter === item.id)}
             >
@@ -344,7 +410,7 @@ export default async function AllApplicantsPage({
           {/* "Nobody has applied" and "nobody by that name" are different
               facts, and an employer who reads the first when the second is
               true concludes their listings are dead. */}
-          {query_ ? t('searchEmpty') : t('noApplicants')}
+          {query_ ? t('searchEmpty') : band || track ? t('filterEmpty') : t('noApplicants')}
         </p>
       ) : (
         <ul className="space-y-3">

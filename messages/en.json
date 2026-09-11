@@ -479,7 +479,6 @@
     "stageFilter": "Filter by stage",
     "searchApplicants": "Search by name",
     "searchApplicantsPlaceholder": "Applicant's name",
-    "searchClear": "Clear the search",
     "searchEmpty": "No applicants by that name.",
     "setupTitle": "Getting started",
     "setupLede": "Finish these to start receiving applicants.",
@@ -497,7 +496,12 @@
     "setupPostFirstJob": "Post your first job",
     "noApplicantsHint": "Nobody has applied to this listing yet. Read the advert the way a consultant reads it, or check your other listings.",
     "viewListing": "Read the listing",
-    "applicantsPrivacy": "These numbers and CVs reached you because their owners applied to your listings. Use them for this role only, and do not share them outside your company."
+    "applicantsPrivacy": "These numbers and CVs reached you because their owners applied to your listings. Use them for this role only, and do not share them outside your company.",
+    "filterExperience": "Experience",
+    "filterTrack": "Listing specialisation",
+    "filterApply": "Apply",
+    "filterEmpty": "No applicants match these filters.",
+    "filterClear": "Clear filters"
   },
   "jobForm": {
     "basics": "Basics",
