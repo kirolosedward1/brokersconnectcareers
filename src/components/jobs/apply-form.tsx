@@ -13,6 +13,7 @@ import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { applyToJob } from '@/lib/actions/applications';
 import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { track } from '@/lib/analytics';
+import { shareSource } from '@/lib/share-source';
 import { uuid } from '@/lib/utils';
 import { useSessionRecovery } from '@/lib/session-expired';
 
@@ -157,11 +158,18 @@ export function ApplyForm({
         return;
       }
 
-      // The half of view -> apply that a page view cannot see. No properties:
-      // the only one available here is the job id, and a per-job breakdown is
-      // high-cardinality noise in an analytics dashboard. The ratio is the
-      // question; the listing that produced it is a database query.
-      track('apply_completed');
+      /*
+        The half of view -> apply that a page view cannot see.
+
+        Still no job id: a per-job breakdown is high-cardinality noise in an
+        analytics dashboard, the ratio is the question, and the listing that
+        produced it is a database query. The one property that is not noise is
+        where the visit began — `share` on an application that started as a
+        forwarded link, absent otherwise — because that turns two separate
+        numbers into the ratio that says whether forwarding works.
+      */
+      const src = shareSource();
+      track('apply_completed', src ? { src } : undefined);
 
       // Deliberately no router.refresh() here.
       //

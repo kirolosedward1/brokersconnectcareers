@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { withShareSource } from '@/lib/share-source';
 
 /**
  * Share a listing.
@@ -26,7 +27,15 @@ export function ShareJobButton({ title }: { title: string }) {
   const [copied, setCopied] = useState(false);
 
   async function share() {
-    const url = window.location.href;
+    /*
+      Tagged, so the arrival is visible.
+
+      A WhatsApp forward carries no referrer, so a listing that spreads through
+      a group lands in analytics as direct traffic and the cheapest
+      distribution this board has is the one it cannot see. The tag is read and
+      removed on arrival, so nobody ends up forwarding a share of a share.
+    */
+    const url = withShareSource(window.location.href);
 
     if (navigator.share) {
       try {

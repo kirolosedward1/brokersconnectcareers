@@ -15,6 +15,7 @@ import { SaveJobButton } from '@/components/jobs/save-job-button';
 import { ReportJobDialog } from '@/components/jobs/report-job-dialog';
 import { AppliedNotice } from '@/components/jobs/applied-notice';
 import { ShareJobButton } from '@/components/jobs/share-job-button';
+import { ShareArrival } from '@/components/jobs/share-arrival';
 import { formatDate, formatNumber, isoDate } from '@/lib/utils';
 import { getSimilarJobs, type JobDetail } from '@/lib/queries/jobs';
 import { getViewer } from '@/lib/auth';
@@ -222,6 +223,8 @@ export async function JobDetailView({
               labels={{ save: t('save'), saved: t('saved') }}
             />
             <ShareJobButton title={title} />
+            {/* Renders nothing; notices that this visit began with a forward. */}
+            <ShareArrival />
             <ReportJobDialog
               jobId={job.id}
               jobSlug={job.slug}

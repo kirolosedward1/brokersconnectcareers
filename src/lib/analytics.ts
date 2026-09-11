@@ -3,6 +3,7 @@
  *
  *   view -> apply     does a listing convert a reader into an applicant
  *   post -> publish   does an employer who starts a listing finish it
+ *   share -> apply    does a forwarded listing bring anybody who applies
  *
  * Page views are counted by the script itself. This is only for the moments
  * that page views cannot see, and it stays deliberately small: an event with
@@ -27,7 +28,17 @@ export type AnalyticsEvent =
   /** An employer sent a listing for review. */
   | 'job_submitted'
   /** A signed-out reader hit the sign-in wall on the apply form. */
-  | 'apply_blocked_signed_out';
+  | 'apply_blocked_signed_out'
+  /**
+   * A reader arrived on a listing from a forwarded link.
+   *
+   * Its own event because a WhatsApp forward carries no referrer: without
+   * this every one of them is direct traffic, indistinguishable from somebody
+   * typing the address. Paired with the `src` property on apply_completed, it
+   * answers the question worth asking — not how far a share travelled, but
+   * whether it brought anybody who applied.
+   */
+  | 'arrived_from_share';
 
 export function track(event: AnalyticsEvent, props?: Props): void {
   if (typeof window === 'undefined') return;
