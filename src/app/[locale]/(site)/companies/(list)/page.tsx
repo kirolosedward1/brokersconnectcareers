@@ -43,7 +43,9 @@ export default async function CompaniesPage({
   // the query wants the id.
   const districtId = district ? districts.find((item) => item.slug === district)?.id : undefined;
 
-  const { companies, pageCount } = await queryCompanies({
+  // `served`, because `page` is already taken by the raw search parameter
+  // above — and the two are deliberately different numbers.
+  const { companies, pageCount, page: served } = await queryCompanies({
     q,
     districtId,
     verifiedOnly: verified === '1',
@@ -125,8 +127,10 @@ export default async function CompaniesPage({
         </ul>
       )}
 
+      {/* `served`, not `current`: a request past the end is answered with the
+          last page, and the footer has to name the page that was served. */}
       <Pagination
-        page={current}
+        page={served}
         pageCount={pageCount}
         buildHref={(next) => {
           const search = new URLSearchParams();

@@ -457,6 +457,28 @@ section('the board holds its shape under a hostile query string');
     agentCards(agentsPast.body) > 0 && agentCards(agentsPast.body) === agentCards(agentsFirst.body),
   );
 
+  /*
+    And the company directory, which had the board's *other* half: it paginates
+    with `.range()`, so a far page was refused by PostgREST outright and the
+    page rendered the error boundary carrying the database's own sentence about
+    offsets. Three lists, one bug, found by asking each of them the same
+    hostile question.
+  */
+  const coFirst = await get('/companies?page=1');
+  const coPast = await get('/companies?page=400');
+  const coCards = (body) => new Set(body.match(/\/companies\/[a-z0-9-]+-\d{6}/g) ?? []).size;
+
+  check('a company page past the end is still a page', coPast.status === 200, `got ${coPast.status}`);
+  check(
+    'and it does not carry a database error',
+    !/PGRST|Requested range|listing companies/.test(coPast.body),
+    'the response carried a database error',
+  );
+  check(
+    `and it shows companies rather than nothing (${coCards(coPast.body)} of ${coCards(coFirst.body)})`,
+    coCards(coPast.body) > 0 && coCards(coPast.body) === coCards(coFirst.body),
+  );
+
   for (const [term, label] of [
     ['"unbalanced', 'an unbalanced quote'],
     ['a | b', 'a tsquery operator'],
