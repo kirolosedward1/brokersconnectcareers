@@ -105,6 +105,8 @@ export type CompanyRow = Timestamped & {
   verification_status: VerificationStatus;
   verified_at: string | null;
   post_credits: number;
+  /** Bumped on every update; the edit form sends back the one it loaded. */
+  version: number;
 };
 
 export type CompanyDocumentRow = Timestamped & {
@@ -154,6 +156,8 @@ export type JobRow = Timestamped & {
   expires_at: string | null;
   view_count: number;
   rejection_note: string | null;
+  /** Bumped on every update; the edit form sends back the one it loaded. */
+  version: number;
 };
 
 export type ApplicationRow = Timestamped & {

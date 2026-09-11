@@ -18,6 +18,8 @@ const schema = z.object({
   website: z.string().trim().url().max(200).optional().nullable().or(z.literal('')),
   headcountBand: z.enum(HEADCOUNT_BANDS).optional().nullable(),
   districtId: z.coerce.number().int().positive().optional().nullable(),
+  /** The version the form was built from; absent when creating. */
+  version: z.coerce.number().int().positive().optional(),
 });
 
 export async function saveCompany(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -48,18 +50,36 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
   const { data: existing } = await supabase.rpc('my_company_id');
 
   if (existing) {
-    // The slug is deliberately not regenerated on rename — it is a public URL
-    // that other sites may already link to.
-    const { data: saved, error } = await supabase
-      .from('companies')
-      .update(payload)
-      .eq('id', existing)
-      .select('id');
+    /*
+      The slug is deliberately not regenerated on rename — it is a public URL
+      that other sites may already link to.
+
+      Matched on the version the form loaded, so a second admin saving the
+      company profile between this form opening and submitting is refused
+      rather than overwritten. One statement, so there is no window between
+      checking and writing.
+    */
+    const query = supabase.from('companies').update(payload).eq('id', existing);
+
+    const { data: saved, error } = await (
+      parsed.data.version ? query.eq('version', parsed.data.version) : query
+    ).select('id');
 
     if (error) return { ok: false, error: error.message };
+
     // companies_update_own is admin-only, so a recruiter reaches zero rows
-    // rather than an error, and was previously told it saved.
-    if (!saved?.length) return { ok: false, error: 'forbidden' };
+    // rather than an error, and was previously told it saved. A version that
+    // has moved reaches zero rows too, and means something different — asked,
+    // rather than reported as the same refusal.
+    if (!saved?.length) {
+      const { data: now } = await supabase
+        .from('companies')
+        .select('version')
+        .eq('id', existing)
+        .maybeSingle();
+      const moved = parsed.data.version != null && now != null && now.version !== parsed.data.version;
+      return { ok: false, error: moved ? 'stale' : 'forbidden' };
+    }
 
     revalidatePath('/employer/company');
     return { ok: true, data: { id: existing } };
@@ -166,6 +186,16 @@ export async function recordCompanyDocument(input: unknown): Promise<ActionResul
 /** Verified companies get one free single post per calendar month. */
 export async function claimMonthlyFreePost(): Promise<ActionResult<{ claimed: boolean }>> {
   const supabase = await createClient();
+
+  // Answered here rather than left to the RPC's own error, so an expired
+  // session reaches the caller as `unauthenticated` — the one error every form
+  // in this app knows how to recover from — instead of a Postgres message
+  // about a policy.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
   const { data, error } = await supabase.rpc('claim_monthly_free_post');
   if (error) return { ok: false, error: error.message };
 

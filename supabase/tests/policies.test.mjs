@@ -191,6 +191,67 @@ report.section('reposting puts the listing back on the board');
   `);
 }
 
+report.section('two people editing one listing, and one of them losing');
+{
+  /*
+    A company is a team: every admin member may edit every listing on it, so
+    two people on the same advert is what inviting a colleague produces. The
+    second save used to win and the first simply ceased to exist — and on a
+    live listing it is the second saver's copy that goes back to the moderation
+    queue, so what returns to the board is what nobody meant to send.
+  */
+  const before = (
+    await db.query(`select version from jobs where id = '${liveJob}'`)
+  ).rows[0].version;
+
+  const first = await as(employerVerified,
+    `update jobs set requirements_ar = 'النسخة الأولى'
+      where id = '${liveJob}' and version = ${before} returning version`);
+  report.check('a save carrying the version it loaded goes through',
+    first.ok && first.rows.length === 1, first.error);
+  report.check('and the version moves', first.rows[0]?.version === before + 1,
+    JSON.stringify(first.rows[0]));
+
+  /*
+    The runner rolls each call back, so the row is at `before` again — which
+    is the wrong shape for this assertion. Committed deliberately, then put
+    back at the end.
+  */
+  await db.exec(`update jobs set requirements_ar = 'النسخة الأولى' where id = '${liveJob}'`);
+  const moved = (await db.query(`select version from jobs where id = '${liveJob}'`)).rows[0].version;
+  report.check('a committed save really did move it', moved === before + 1, `${before} -> ${moved}`);
+
+  const second = await as(employerVerified,
+    `update jobs set requirements_ar = 'النسخة التانية'
+      where id = '${liveJob}' and version = ${before} returning id`);
+  report.check('a save carrying a version that has moved changes nothing',
+    second.ok && second.rows.length === 0, JSON.stringify(second.rows));
+
+  const still = (
+    await db.query(`select requirements_ar from jobs where id = '${liveJob}'`)
+  ).rows[0].requirements_ar;
+  report.check('and the first save is still there',
+    still === 'النسخة الأولى', String(still));
+
+  // Companies too, for the same reason: a company can have several admins.
+  const company = (
+    await db.query(`select company_id from company_members where user_id = '${employerVerified}' limit 1`)
+  ).rows[0].company_id;
+  const companyBefore = (
+    await db.query(`select version from companies where id = '${company}'`)
+  ).rows[0].version;
+
+  await db.exec(`update companies set about_ar = 'نسخة زميل' where id = '${company}'`);
+
+  const late = await as(employerVerified,
+    `update companies set about_ar = 'نسخة متأخرة'
+      where id = '${company}' and version = ${companyBefore} returning id`);
+  report.check('a company profile saved from a stale form changes nothing',
+    late.ok && late.rows.length === 0, JSON.stringify(late.rows));
+
+  await db.exec(`update jobs set requirements_ar = null where id = '${liveJob}'`);
+}
+
 report.section('verification and credits are granted, never claimed');
 {
   const r = await as(employerUnverified, `update companies set verification_status='verified' where id='${unverifiedCo}'`);
@@ -1197,9 +1258,21 @@ report.section('a company is a team, not a login');
       values ('${COLLEAGUE}', 'employer', 'زميلة', '+201666666666');
   `);
 
+  /*
+    The company this fixture is an admin of, asked for by membership.
+
+    It used to look up a slug the seed no longer generates and fall back to
+    `select id from companies limit 1` — an arbitrary row, which happened to be
+    the right one only because nothing had rewritten the heap. The first
+    committed UPDATE anywhere earlier in the suite reordered it and every
+    assertion below started failing for a reason that had nothing to do with
+    what they test.
+  */
   const alRowad = (
-    await db.query("select id from companies where slug = 'al-rowad-real-estate-455213'")
-  ).rows[0]?.id ?? (await db.query('select id from companies limit 1')).rows[0].id;
+    await db.query(
+      `select company_id from company_members where user_id = '${employerVerified}' and role = 'admin' limit 1`,
+    )
+  ).rows[0].company_id;
 
   const before = await as(COLLEAGUE,
     `select count(*)::int as n from applications a join jobs j on j.id = a.job_id

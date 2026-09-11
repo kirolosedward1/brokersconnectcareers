@@ -166,6 +166,9 @@ export function JobForm({
     startTransition(async () => {
       const result = await saveJob({
         id: job?.id,
+        // What this form was built from. The action matches on it, so a
+        // colleague's save in between is refused rather than overwritten.
+        version: job?.version,
         titleAr: values.titleAr,
         titleEn: values.titleEn,
         track: values.track,
@@ -189,6 +192,13 @@ export function JobForm({
 
       if (recoverSession(result)) return;
       if (!result.ok) {
+        if (result.error === 'stale') {
+          // Somebody else saved this listing while this form was open. Their
+          // work is on the server and this form's is on the screen; reloading
+          // is the only answer that does not silently discard one of them.
+          setErrors({ form: tEmployer('listingMoved') });
+          return;
+        }
         if (result.error === 'invalid_transition') {
           // The listing moved under this form — closed in another tab,
           // approved by a moderator — and the save it was built for no longer

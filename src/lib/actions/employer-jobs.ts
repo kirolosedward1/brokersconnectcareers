@@ -40,6 +40,8 @@ const jobSchema = z
     descriptionEn: z.string().trim().max(8000).optional().nullable(),
     requirementsAr: z.string().trim().max(4000).optional().nullable(),
     developerIds: z.array(z.coerce.number().int().positive()).max(30),
+    /** The version the form was built from; absent when creating. */
+    version: z.coerce.number().int().positive().optional(),
     submit: z.boolean(),
   })
   .refine(
@@ -109,7 +111,7 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     the employer a day off the board.
   */
   const { data: current } = value.id
-    ? await supabase.from('jobs').select('status').eq('id', value.id).maybeSingle()
+    ? await supabase.from('jobs').select('status, version').eq('id', value.id).maybeSingle()
     : { data: null };
 
   const live = current?.status === 'active';
@@ -143,13 +145,32 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     // .select() so a listing the caller does not belong to is a refusal rather
     // than a save that quietly changed nothing. RLS filtering an update to zero
     // rows produces no error.
-    const { data: saved, error } = await supabase
+    /*
+      Compare and swap, not last-write-wins.
+
+      A company is a team, and every admin may edit every listing on it — so
+      two people on the same advert is what inviting a colleague produces, not
+      a contrived case. The second save used to win silently and the first
+      simply ceased to exist; on a live listing it is the second saver's copy
+      that then goes back to the moderation queue, so what returns to the board
+      is what nobody meant to send.
+
+      Matching on the version the form was built from makes the update itself
+      the check — one statement, no window between reading and writing. Zero
+      rows then means one of two things, and `current` says which: the listing
+      moved under them, or it was never theirs to edit.
+    */
+    const query = supabase
       .from('jobs')
       .update(live ? payload : { ...payload, status })
-      .eq('id', jobId)
-      .select('id');
+      .eq('id', jobId);
+
+    const { data: saved, error } = await (
+      value.version ? query.eq('version', value.version) : query
+    ).select('id');
+
     if (error) return { ok: false, error: mapJobError(error.message) };
-    if (!saved?.length) return { ok: false, error: 'forbidden' };
+    if (!saved?.length) return { ok: false, error: current ? 'stale' : 'forbidden' };
   } else {
     const districts = await getDistricts();
     const district = districts.find((d) => d.id === value.districtId);

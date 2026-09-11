@@ -46,11 +46,18 @@ export function CompanyForm({
         website: String(form.get('website') ?? ''),
         headcountBand: String(form.get('headcountBand') ?? '') || null,
         districtId: String(form.get('districtId') ?? '') || null,
+        // What this form was built from. A second admin saving in between is
+        // refused rather than overwritten.
+        version: company?.version,
       });
 
       if (recoverSession(result)) return;
       if (!result.ok) {
-        setError(tCommon('errorBody'));
+        // Somebody else saved the company profile while this form was open.
+        // Their work is on the server and this form's is on the screen;
+        // everything typed here stays put, and reloading is the only answer
+        // that does not silently discard one of the two.
+        setError(result.error === 'stale' ? t('companyMoved') : tCommon('errorBody'));
         return;
       }
 
