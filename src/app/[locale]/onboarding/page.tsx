@@ -35,6 +35,13 @@ export default async function OnboardingPage({
   const viewer = await getViewer();
   if (!viewer) redirect({ href: '/sign-in', locale });
 
+  // A profile that could not be read is not a profile that does not exist, and
+  // this page is the one place where confusing the two does real damage: it
+  // would ask an established account to sign up again.
+  if (viewer!.profileUnreadable) {
+    throw new Error('the profile row could not be read');
+  }
+
   // Already onboarded — nothing to ask.
   if (viewer!.profile) {
     redirect({

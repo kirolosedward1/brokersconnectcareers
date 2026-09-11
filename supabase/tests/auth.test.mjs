@@ -439,4 +439,43 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
   );
 }
 
+/*
+  A failing console page does not take the console with it.
+
+  Next resolves an error boundary at the nearest segment above the failure, and
+  the console had none of its own — so anything under (app) was caught at
+  [locale], one level above the layout that draws the sidebar and the account
+  menu. ErrorState is deliberately a panel over the thing you were doing rather
+  than a page you have arrived at, and with the shell unmounted behind it that
+  reading was simply false.
+
+  And the redirect it exists to replace: a profile row that cannot be read
+  arrives as `profile: null`, which is how this app spells "has not onboarded"
+  — so a database hiccup sent an established account back to the sign-up form.
+*/
+{
+  const { existsSync } = await import('node:fs');
+
+  report.ok(
+    existsSync(j(ROOT, 'src/app/[locale]/(app)/error.tsx')),
+    'the signed-in console has an error boundary of its own',
+  );
+
+  const auth = read(j(ROOT, 'src/lib/auth.ts'), 'utf8');
+  report.ok(
+    /profileUnreadable/.test(auth),
+    'getViewer distinguishes a profile it could not read from one that is not there',
+  );
+  report.ok(
+    /profileUnreadable[\s\S]{0,400}throw new Error/.test(auth),
+    'and requireProfile raises rather than sending them to onboarding',
+  );
+
+  const onboarding = read(j(ROOT, 'src/app/[locale]/onboarding/page.tsx'), 'utf8');
+  report.ok(
+    /profileUnreadable/.test(onboarding),
+    'onboarding will not ask an established account to sign up again',
+  );
+}
+
 process.exitCode = base.finish() ? 0 : 1;

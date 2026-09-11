@@ -19,6 +19,17 @@ export type Viewer = {
   suggestedRole?: 'candidate' | 'employer';
   profile: ProfileRow | null;
   company: CompanyRow | null;
+  /**
+   * The profile row could not be read — as distinct from not existing.
+   *
+   * The absence of a profile is how this app knows onboarding has not run, so
+   * a failed read looked exactly like a new account: a database blip sent an
+   * established user back through the sign-up form. Recorded rather than
+   * flattened, so the protected pages can say "something went wrong" while the
+   * public header carries on treating an unreachable database as "nobody is
+   * signed in", which is all it needs to know.
+   */
+  profileUnreadable: boolean;
 };
 
 /**
@@ -58,7 +69,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 
   if (!user) return null;
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
@@ -103,6 +114,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     suggestedRole,
     profile: profile ?? null,
     company,
+    profileUnreadable: Boolean(profileError),
   };
 });
 
@@ -110,6 +122,21 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 export async function requireProfile(locale: Locale): Promise<Viewer & { profile: ProfileRow }> {
   const viewer = await getViewer();
   if (!viewer) redirect({ href: '/sign-in', locale });
+
+  /*
+    A read that failed is not an account that has not onboarded.
+
+    Both arrive here as `profile: null`, and treating them alike sent somebody
+    with a perfectly good account back to /onboarding the moment the database
+    hiccupped — where the form would have been filled in again, met the
+    duplicate key, and bounced them onward. Thrown instead, so the console's
+    error boundary says what actually happened and offers Retry, with the
+    shell still around it.
+  */
+  if (viewer!.profileUnreadable) {
+    throw new Error('the profile row could not be read');
+  }
+
   if (!viewer!.profile) redirect({ href: '/onboarding', locale });
   return viewer as Viewer & { profile: ProfileRow };
 }
