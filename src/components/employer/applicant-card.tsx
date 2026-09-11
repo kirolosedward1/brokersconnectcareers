@@ -168,49 +168,64 @@ export function ApplicantCard({
       {profile ? (
         <Link
           href={`/agents/${profile.slug}`}
-          className="group/profile mt-3 block rounded-xl border border-border p-3 transition-colors hover:border-primary/40 hover:bg-muted/60"
+          title={tAgents('viewProfile')}
+          aria-label={tAgents('viewProfile')}
+          className="group/profile mt-3 flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:border-primary/40 hover:bg-muted/60"
         >
-          {headline ? (
-            <p className="text-sm font-medium group-hover/profile:text-primary">{headline}</p>
-          ) : null}
+          {/*
+            The arrow carries what a line of text used to.
 
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <span>{tAgents('yearsExperience', { count: profile.years_experience })}</span>
-
-            {profile.tracks.length ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{formatList(profile.tracks.map((track) => tTrack(track)), locale)}</span>
-              </>
+            "شوف الملف الكامل" sat under every applicant panel saying what the
+            panel already looks like — a card you can open — and repeated it
+            once per applicant down a list of them. The whole panel is the
+            link, so the affordance was never the sentence; it is one mark at
+            the end of the row, named for a screen reader and on hover.
+          */}
+          <div className="min-w-0 flex-1">
+            {headline ? (
+              <p className="text-sm font-medium group-hover/profile:text-primary">{headline}</p>
             ) : null}
 
-            {districtNames.length ? (
-              <>
-                <span aria-hidden>·</span>
-                <span>{formatList(districtNames, locale)}</span>
-              </>
-            ) : null}
-          </p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <span>{tAgents('yearsExperience', { count: profile.years_experience })}</span>
 
-          {/* Self-reported, and the directory says so on the profile itself. */}
-          {profile.units_closed != null || profile.volume_egp != null ? (
-            <p className="mt-1.5 flex flex-wrap gap-x-3 text-xs font-medium">
-              {profile.units_closed != null ? (
-                <span>
-                  {tAgents('unitsClosedShort', {
-                    count: formatNumber(profile.units_closed, locale),
-                  })}
-                </span>
+              {profile.tracks.length ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{formatList(profile.tracks.map((track) => tTrack(track)), locale)}</span>
+                </>
               ) : null}
-              {profile.volume_egp != null ? (
-                <span>{formatEgp(profile.volume_egp, locale)} {tCommon('egp')}</span>
+
+              {districtNames.length ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{formatList(districtNames, locale)}</span>
+                </>
               ) : null}
             </p>
-          ) : null}
 
-          <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
-            {tAgents('viewProfile')}
-            <ArrowLeft className="rtl-flip size-3" aria-hidden />
+            {/* Self-reported, and the directory says so on the profile itself. */}
+            {profile.units_closed != null || profile.volume_egp != null ? (
+              <p className="mt-1.5 flex flex-wrap gap-x-3 text-xs font-medium">
+                {profile.units_closed != null ? (
+                  <span>
+                    {tAgents('unitsClosedShort', {
+                      count: formatNumber(profile.units_closed, locale),
+                    })}
+                  </span>
+                ) : null}
+                {profile.volume_egp != null ? (
+                  <span>{formatEgp(profile.volume_egp, locale)} {tCommon('egp')}</span>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+
+          <span
+            aria-hidden
+            className="grid size-8 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors group-hover/profile:border-primary/40 group-hover/profile:bg-primary/5 group-hover/profile:text-primary"
+          >
+            <ArrowLeft className="rtl-flip size-4" />
           </span>
         </Link>
       ) : (

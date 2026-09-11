@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { JobStatusActions } from '@/components/employer/job-status-actions';
 import { requireEmployer } from '@/lib/auth';
+import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate, formatNumber, isoDate } from '@/lib/utils';
 import type { JobRow, JobStatus } from '@/lib/supabase/database.types';
@@ -107,19 +108,31 @@ export default async function EmployerJobsPage({
         <ul className="space-y-3">
           {jobs.map((job) => {
             const applicants = job.applications?.[0]?.count ?? 0;
+            /*
+              The date, not the label.
+
+              `status` is relabelled by a nightly cron, and on production that
+              cron returns 503 for want of a service-role key — so a listing
+              has been sitting here badged "منشورة", linked to its public page,
+              and showing an expiry date in the past, while the board (which
+              filters on the date) showed nothing. Whatever this console says
+              about a listing has to be the same thing a candidate would see.
+            */
+            const live = jobIsLive(job);
+            const shownStatus = displayJobStatus(job);
             return (
               <li key={job.id} className="rounded-xl border border-border bg-card p-5">
                 <div>
                   <div className="min-w-0">
                     <h2 className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 font-semibold">
-                      {job.status === 'active' ? (
+                      {live ? (
                         <Link href={`/jobs/${job.slug}`} className="hover:underline">
                           {localized(locale, job.title_ar, job.title_en)}
                         </Link>
                       ) : (
                         localized(locale, job.title_ar, job.title_en)
                       )}
-                      <Badge variant={STATUS_VARIANT[job.status]}>{tStatus(job.status)}</Badge>
+                      <Badge variant={STATUS_VARIANT[shownStatus]}>{tStatus(shownStatus)}</Badge>
                     </h2>
 
                     <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -134,7 +147,7 @@ export default async function EmployerJobsPage({
                         <span className="numeral">{formatNumber(job.seats, locale)}</span>
                         {tJobs('seatsLabel', { count: job.seats })}
                       </span>
-                      {job.status === 'active' ? (
+                      {live ? (
                         <span className="numeral inline-flex items-center gap-1">
                           <Eye className="size-3.5" aria-hidden />
                           {formatNumber(job.view_count, locale)}
@@ -144,7 +157,7 @@ export default async function EmployerJobsPage({
                           and this is a sentence rather than a figure — "تنتهي
                           في 13 سبتمبر" came out with the date before the words.
                           A date inside RTL prose orders itself correctly. */}
-                      {job.expires_at && job.status === 'active' ? (
+                      {job.expires_at && live ? (
                         <time dateTime={isoDate(job.expires_at)}>
                           {tJobs('expiresOn', { date: formatDate(job.expires_at, locale) })}
                         </time>
@@ -185,7 +198,7 @@ export default async function EmployerJobsPage({
                   </Button>
                   <JobStatusActions
                     jobId={job.id}
-                    status={job.status}
+                    status={shownStatus}
                     labels={{
                       close: t('closeJob'),
                       reopen: t('reopenJob'),

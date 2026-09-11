@@ -6,6 +6,7 @@ import { JobDetailView } from '@/components/jobs/job-detail-view';
 import { TrackDistrictLanding } from '@/components/jobs/track-district-landing';
 import { JsonLd } from '@/components/json-ld';
 import { jobPostingJsonLd } from '@/lib/seo/job-posting';
+import { jobIsLive } from '@/lib/job-state';
 import { EMPTY_FILTERS, getJobBySlug, queryJobs } from '@/lib/queries/jobs';
 import { parseLandingSlug } from '@/lib/taxonomy';
 import { getDistrictBySlug, getGovernorates } from '@/lib/queries/taxonomy';
@@ -31,9 +32,7 @@ type Params = { locale: string; slug: string };
  * whether this listing is live — the markup, the banner, the view counter, the
  * robots directive — has to agree, and they did not.
  */
-function isOpen(job: JobDetail): boolean {
-  return job.status === 'active' && (!job.expires_at || new Date(job.expires_at) > new Date());
-}
+const isOpen = jobIsLive;
 
 type Resolved =
   | { kind: 'landing'; track: JobTrack; district: DistrictRow }

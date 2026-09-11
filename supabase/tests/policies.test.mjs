@@ -105,6 +105,92 @@ report.section('editing a live listing is possible, and says so');
     stranger.ok && stranger.rows.length === 0, JSON.stringify(stranger.rows));
 }
 
+report.section('reposting puts the listing back on the board');
+{
+  /*
+    closed -> pending_review -> active is the only path an employer has back
+    onto the board, and stamp_job_publication used to carry the original
+    expires_at across it. A listing whose window had run out came back active
+    and already expired: invisible to the board, which filters on the date, and
+    flipped straight back by the next nightly run.
+
+    Written with db.exec rather than as(): the runner rolls every call back, so
+    it answers "was this permitted" and nothing about what the trigger wrote.
+    The listing is put back the way it was found at the end.
+  */
+  await db.exec(`
+    update jobs set expires_at = now() - interval '2 days' where id = '${liveJob}';
+    update jobs set status = 'closed'         where id = '${liveJob}';
+    update jobs set status = 'pending_review' where id = '${liveJob}';
+    update jobs set status = 'active'         where id = '${liveJob}';
+  `);
+
+  const back = (
+    await db.query(`select status, expires_at > now() as on_the_board from jobs where id = '${liveJob}'`)
+  ).rows[0];
+  report.check('a listing whose window ran out comes back with a new one',
+    back.status === 'active' && back.on_the_board === true, JSON.stringify(back));
+
+  /*
+    And the other half: closing for a day is not a way to buy another month. A
+    window still running is carried across untouched.
+  */
+  await db.exec(`
+    update jobs set expires_at = now() + interval '10 days' where id = '${liveJob}';
+    update jobs set status = 'closed'         where id = '${liveJob}';
+    update jobs set status = 'pending_review' where id = '${liveJob}';
+  `);
+  const before = (await db.query(`select expires_at from jobs where id = '${liveJob}'`)).rows[0].expires_at;
+  await db.exec(`update jobs set status = 'active' where id = '${liveJob}'`);
+  const after = (await db.query(`select expires_at from jobs where id = '${liveJob}'`)).rows[0].expires_at;
+  report.check('a window still running is not extended by a round trip',
+    String(before) === String(after), `${before} -> ${after}`);
+
+  /*
+    The post cap counted listings whose window had run out, so an unverified
+    company could not replace an advert that had quietly ended. The cron that
+    would have relabelled it returns 503 on production for want of a service
+    role key, which is exactly why the date has to be the thing that decides.
+  */
+  await db.exec(`
+    update jobs set expires_at = now() - interval '10 days'
+     where company_id = '${unverifiedCo}' and status = 'active';
+  `);
+
+  const replacement = await as(null,
+    `update jobs set status = 'active' where id = '${draftJob}' returning id`, 'service_role');
+  report.check('an expired advert does not fill the one slot an unverified company has',
+    replacement.ok && replacement.rows.length === 1, replacement.error);
+
+  /*
+    And the repost button the console now offers on a listing whose label has
+    not caught up. It is shown as expired because the date says so, and the
+    transition table used to permit pending_review only from the label the cron
+    writes — so the button would have been refused by the database.
+  */
+  await db.exec(`update jobs set expires_at = now() - interval '1 day' where id = '${liveJob}'`);
+
+  const repostStale = await as(employerVerified,
+    `update jobs set status = 'pending_review' where id = '${liveJob}' returning status`);
+  report.check('a listing past its window can be reposted whatever its label says',
+    repostStale.ok && repostStale.rows.length === 1, repostStale.error);
+
+  // And a listing still inside its window cannot take itself off the board
+  // that way — closing is the only route.
+  await db.exec(`update jobs set expires_at = now() + interval '10 days' where id = '${liveJob}'`);
+  const stillLive = await as(employerVerified,
+    `update jobs set status = 'pending_review' where id = '${liveJob}'`);
+  report.check('a live one still cannot',
+    !stillLive.ok && /cannot go from active to pending_review/.test(stillLive.error ?? ''),
+    stillLive.error);
+
+  // Back the way it was found, for every section after this one.
+  await db.exec(`
+    update jobs set expires_at = now() + interval '30 days'
+     where id = '${liveJob}' or (company_id = '${unverifiedCo}' and status = 'active');
+  `);
+}
+
 report.section('verification and credits are granted, never claimed');
 {
   const r = await as(employerUnverified, `update companies set verification_status='verified' where id='${unverifiedCo}'`);
