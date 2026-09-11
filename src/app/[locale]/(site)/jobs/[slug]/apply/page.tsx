@@ -102,7 +102,7 @@ export default async function ApplyPage({
   let personalised = false;
   if (existing && justApplied) {
     const [openRoles, { data: agent }, { data: mine }] = await Promise.all([
-      optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0 }),
+      optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0, page: 1 }),
       supabase
         .from('agent_profiles')
         .select('tracks, district_ids, years_experience')

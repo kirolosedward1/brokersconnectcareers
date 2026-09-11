@@ -797,6 +797,42 @@ report.section('the agent directory gate');
   report.check('while a public row is readable directly', rawPublic.rows.length === 1);
 }
 
+report.section('the directory pages in a total order');
+{
+  /*
+    An order with ties is not an order: Postgres may return tied rows in a
+    different sequence for the query that builds page one and the query that
+    builds page two, which shows one consultant twice and another not at all.
+    Every key search_agents used could tie — years by design, since it is a
+    small integer most people share, and created_at the moment two people
+    finish onboarding in the same instant.
+
+    Asserted on the ORDER BY rather than by walking the pages, and that is
+    deliberate. I wrote the walking version first: it forced every row to the
+    same years and the same created_at, paged through in threes, and passed
+    with the tiebreaker removed — eight rows come back from a sequential scan
+    in heap order every time, so the test demonstrated the planner's habits
+    rather than the function's correctness. A test that passes for the wrong
+    reason is worse than none.
+
+    What can be established here is the property that makes the order total:
+    the last key is a column with a unique constraint on it.
+  */
+  const body = (
+    await db.query(
+      `select prosrc from pg_proc where proname = 'search_agents' and pronamespace = 'public'::regnamespace`,
+    )
+  ).rows[0]?.prosrc;
+
+  report.check('found search_agents', Boolean(body));
+
+  const order = /order\s+by([^\n]*)/i.exec(body ?? '')?.[1] ?? '';
+  const lastKey = order.split(',').pop()?.trim() ?? '';
+
+  report.check('the directory order ends on the primary key',
+    /^m\.id\b/.test(lastKey), `order by${order}`);
+}
+
 report.section('a CV section never outlives the gate on its profile');
 {
   // hiddenAgent's profile is invisible to everyone but its owner. Its work

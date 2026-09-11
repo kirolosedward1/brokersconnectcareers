@@ -54,7 +54,7 @@ export default async function JobsPage({
   const filters = parseJobFilters(resolved);
   const activeCount = countActiveFilters(filters);
 
-  const [{ jobs, total, pageCount }, districts, governorates, viewer] = await Promise.all([
+  const [{ jobs, total, pageCount, page }, districts, governorates, viewer] = await Promise.all([
     queryJobs(filters),
     getDistricts(),
     getGovernorates(),
@@ -191,10 +191,10 @@ export default async function JobsPage({
                 ))}
               </ul>
 
-              <Pagination page={filters.page} pageCount={pageCount} buildHref={buildHref} />
+              <Pagination page={page} pageCount={pageCount} buildHref={buildHref} />
 
               <p className="mt-4 text-center text-xs text-muted-foreground">
-                {t('page', { page: formatNumber(filters.page, locale), total: formatNumber(pageCount, locale) })}
+                {t('page', { page: formatNumber(page, locale), total: formatNumber(pageCount, locale) })}
               </p>
             </>
           )}

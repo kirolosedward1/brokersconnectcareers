@@ -101,7 +101,7 @@ export default async function DashboardOverviewPage({
       what is open". Ranking has neither problem: the same listings appear, best
       fit first, so the objection to filtering does not apply to ordering.
     */
-    optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0 }),
+    optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0, page: 1 }),
     /*
       What the ranking is against — the consultant's own stated track,
       districts and years. Nothing inferred.

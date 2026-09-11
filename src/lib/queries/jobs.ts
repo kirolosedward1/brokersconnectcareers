@@ -143,6 +143,8 @@ export const queryJobs = cache(async function queryJobs(
   jobs: JobListItem[];
   total: number;
   pageCount: number;
+  /** The page actually returned, which is not always the one asked for. */
+  page: number;
 }> {
   const supabase = client ?? (await createClient());
   const districts = await getDistricts();
@@ -170,7 +172,7 @@ export const queryJobs = cache(async function queryJobs(
 
   // An empty id set after intersection means nothing can match.
   if (districtIds && districtIds.length === 0) {
-    return { jobs: [], total: 0, pageCount: 0 };
+    return { jobs: [], total: 0, pageCount: 0, page: 1 };
   }
 
   let query = supabase
@@ -207,16 +209,51 @@ export const queryJobs = cache(async function queryJobs(
     query = query.order('seats', { ascending: false });
   }
   query = query.order('published_at', { ascending: false });
+  /*
+    The last key, so the order is total.
+
+    Every key above it can tie — `seats` on almost every listing, salary
+    wherever two companies pay the same, and `published_at` the moment a
+    moderator approves two in the same second. An order with ties is not an
+    order: Postgres is free to return the tied rows differently between the
+    query for page one and the query for page two, which shows one listing
+    twice and hides another entirely. It costs nothing and it cannot tie.
+  */
+  query = query.order('id', { ascending: false });
 
   const from = (filters.page - 1) * JOBS_PER_PAGE;
   const { data, error, count } = await query.range(from, from + JOBS_PER_PAGE - 1);
   if (error) raise(error, 'searching jobs');
 
   const total = count ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / JOBS_PER_PAGE));
+
+  /*
+    A page past the end is answered with the end, not with "no listings match".
+
+    `?page=99` on a board with one page produced an empty range, and the board
+    rendered its no-results panel — "nothing matches your filters", offered on
+    a search that matches fifteen — under a footer reading "page 99 of 1". The
+    count is only known after the query, so the clamp is a second read, and
+    only in the case that was broken.
+  */
+  if (filters.page > pageCount && total > 0) {
+    const last = (pageCount - 1) * JOBS_PER_PAGE;
+    const { data: lastPage, error: lastError } = await query.range(last, last + JOBS_PER_PAGE - 1);
+    if (lastError) raise(lastError, 'searching jobs');
+    return {
+      jobs: (lastPage ?? []) as unknown as JobListItem[],
+      total,
+      pageCount,
+      page: pageCount,
+    };
+  }
+
   return {
     jobs: (data ?? []) as unknown as JobListItem[],
     total,
-    pageCount: Math.max(1, Math.ceil(total / JOBS_PER_PAGE)),
+    pageCount,
+    page: filters.page,
   };
 });
 

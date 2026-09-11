@@ -99,4 +99,41 @@ report.section('a listing is found by what somebody would type');
   report.check('a word that is not there is not found', !(await finds('محاسب')));
 }
 
+report.section('a company search is a search, not a filter expression');
+{
+  /*
+    queryCompanies builds a PostgREST `or()` and used to interpolate the raw
+    query into it, so a comma became extra OR terms, a `)` became a syntax
+    error, and `%` or `_` became ilike wildcards nobody typed. A brokerage
+    called "الرواد، للتطوير" could not be searched for by its own name.
+
+    Imported rather than restated, because a second copy of the rule is how the
+    two drift apart — the same argument this file makes about the Arabic
+    normalisers. It lives in its own file with no imports for the same reason
+    the normaliser does: everything in queries/ pulls in the server client and
+    `server-only`, which this runner cannot load.
+  */
+  const { likeNeedle } = await import('../../src/lib/search/needle.ts');
+
+  const cases = [
+    // The Arabic comma is not PostgREST's separator and is left alone — this
+    // is a name, and stripping punctuation the grammar does not care about
+    // would be damage rather than safety.
+    ['الرواد، للتطوير', 'الرواد، للتطوير'],
+    // The ASCII one is.
+    ['الرواد, للتطوير', 'الرواد للتطوير'],
+    // A crafted term that would otherwise have closed the expression and
+    // added a condition of its own. `_` goes too: it is an ilike wildcard.
+    ['x%),verification_status.eq.verified', 'x verification status.eq.verified'],
+    ['100% عقارات', '100 عقارات'],
+    ['a_b', 'a b'],
+    ['  الرواد   ', 'الرواد'],
+  ];
+
+  for (const [input, want] of cases) {
+    const got = likeNeedle(input);
+    report.check(`likeNeedle(${JSON.stringify(input)})`, got === want, JSON.stringify(got));
+  }
+}
+
 process.exit(report.finish() ? 0 : 1);
