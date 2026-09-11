@@ -77,7 +77,7 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
     supabase.from('agent_experience').select('*').eq('agent_id', agent.id).order('started', { ascending: false }),
     supabase.from('agent_education').select('*').eq('agent_id', agent.id).order('graduated', { ascending: false }),
     supabase.from('agent_certifications').select('*').eq('agent_id', agent.id).order('issued', { ascending: false }),
-    supabase.from('agent_profiles').select('summary_ar, summary_en, units_closed, volume_egp').eq('id', agent.id).maybeSingle(),
+    supabase.from('agent_profiles').select('summary_ar, summary_en, units_closed, volume_egp, user_id, visibility').eq('id', agent.id).maybeSingle(),
   ]);
 
   const t = await getTranslations('agents');
@@ -86,6 +86,8 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
   // Was a ternary over two of the three languages the product offers, so a
   // consultant who ticked French had their badge render the string "fr".
   const tLanguage = await getTranslations('language');
+
+  const isOwner = Boolean(viewer?.userId && profileRow.data?.user_id === viewer.userId);
 
   const name = agent.is_unlocked && agent.full_name ? agent.full_name : t('anonymous');
   const headline = localized(locale, agent.headline_ar, agent.headline_en);
@@ -114,6 +116,24 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
+      {/* The owner, reading their own card. They see everything because RLS
+          already lets them read every one of these columns; what they need to
+          know is what everybody else sees, which depends on one setting. */}
+      {isOwner ? (
+        <div className="mb-6 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm">
+          <p className="font-semibold">{t('ownerBanner')}</p>
+          <p className="mt-1 text-muted-foreground">
+            {profileRow.data?.visibility === 'public'
+              ? t('ownerPublic')
+              : profileRow.data?.visibility === 'hidden'
+                ? t('ownerHidden')
+                : t('ownerVerified')}
+          </p>
+          <Link href="/dashboard/profile" className="mt-2 inline-block font-medium text-primary hover:underline">
+            {t('ownerEdit')}
+          </Link>
+        </div>
+      ) : null}
       <header className="flex flex-wrap items-start gap-4">
         {/* Same treatment as the directory card: a monogram rather than a
             silhouette when there is no photo, and a fallback when the photo

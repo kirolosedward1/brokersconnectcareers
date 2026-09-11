@@ -195,7 +195,12 @@
     "viewProfile": "View full profile",
     "unitsClosedShort": "{count} units closed",
     "headlineAr": "Professional headline (Arabic)",
-    "headlineEn": "Professional headline (English)"
+    "headlineEn": "Professional headline (English)",
+    "ownerBanner": "This is your profile. You see everything because it is yours — visitors and companies see it according to your visibility setting.",
+    "ownerPublic": "Your visibility is “public”: any visitor sees your name, photo and number exactly as you see them now.",
+    "ownerVerified": "Your visibility is “verified employers only”: visitors see the card without a name or number; only verified companies see it in full.",
+    "ownerHidden": "Your visibility is “hidden”: nobody but you can open this page. Companies you applied to still see your application.",
+    "ownerEdit": "Edit your profile"
   },
   "availability": {
     "open_to_offers": "Open to offers",
@@ -377,7 +382,8 @@
     "nextProfileCta": "Complete your profile",
     "savedOpenHeading": "Still open",
     "savedClosedHeading": "No longer open",
-    "savedClosedLede": "These listings have expired or been closed by the company. They stay here until you remove them."
+    "savedClosedLede": "These listings have expired or been closed by the company. They stay here until you remove them.",
+    "profilePreview": "See your profile as companies see it"
   },
   "applicationStatus": {
     "new": "New",
@@ -501,7 +507,11 @@
     "filterTrack": "Listing specialisation",
     "filterApply": "Apply",
     "filterEmpty": "No applicants match these filters.",
-    "filterClear": "Clear filters"
+    "filterClear": "Clear filters",
+    "duplicateTitle": "You already have a listing with this title in this area",
+    "duplicateBody": "“{title}” has {seats, plural, one {# open seat} other {# open seats}}. If this is the same role, add seats to it instead of posting again — a duplicate costs a credit and splits your applicants.",
+    "duplicateEdit": "Edit the existing listing",
+    "duplicateDismiss": "Continue with the new one"
   },
   "jobForm": {
     "basics": "Basics",

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { getViewer } from '@/lib/auth';
 import { buildJobSlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { getDistricts } from '@/lib/queries/taxonomy';
@@ -188,4 +189,67 @@ function mapJobError(message: string): string {
   if (message.includes('unverified_company_post_cap')) return 'post_cap';
   if (message.includes('job status cannot go from')) return 'invalid_transition';
   return message;
+}
+
+
+/**
+ * Whether this company already has a listing that is, to a reader, this one.
+ *
+ * Nothing stopped a brokerage posting "Property Consultant – New Cairo" three
+ * times to fill three seats, which the seats field already models. Each copy
+ * costs a credit and splits the applicants three ways. This is a warning at
+ * the wizard's first step, never a block: legitimate near-duplicates exist,
+ * and the employer, not the form, knows which this is.
+ *
+ * Scoped to the caller's own company explicitly. RLS lets everyone read
+ * active listings, so without the company filter this would match a
+ * competitor's advert and tell an employer they had posted something they had
+ * not. Titles compare after the same normalisation a reader's eye performs —
+ * diacritics, tatweel, alef and ya variants, spacing — so "استشاري" and
+ * "إستشاري" are one title.
+ */
+const similarSchema = z.object({
+  titleAr: z.string().trim().min(1).max(160),
+  districtId: z.coerce.number().int().positive(),
+  excludeId: z.string().uuid().optional().nullable(),
+});
+
+function normaliseTitle(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+export async function findSimilarListing(
+  input: unknown,
+): Promise<ActionResult<{ match: { id: string; title: string; seats: number } | null }>> {
+  const none = { ok: true as const, data: { match: null } };
+  const parsed = similarSchema.safeParse(input);
+  if (!parsed.success) return none;
+
+  const viewer = await getViewer();
+  if (!viewer?.company) return none;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('jobs')
+    .select('id, title_ar, seats')
+    .eq('company_id', viewer.company.id)
+    .eq('district_id', parsed.data.districtId)
+    .in('status', ['active', 'pending_review', 'draft']);
+
+  const wanted = normaliseTitle(parsed.data.titleAr);
+  const match = (data ?? []).find(
+    (row) => row.id !== parsed.data.excludeId && normaliseTitle(row.title_ar) === wanted,
+  );
+
+  return {
+    ok: true,
+    data: { match: match ? { id: match.id, title: match.title_ar, seats: match.seats } : null },
+  };
 }

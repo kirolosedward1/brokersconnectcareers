@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
-import { useRouter } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import {
   JOB_TRACKS,
   LEADS_SOURCES,
 } from '@/lib/taxonomy';
-import { saveJob } from '@/lib/actions/employer-jobs';
+import { findSimilarListing, saveJob } from '@/lib/actions/employer-jobs';
 import type {
   Benefit,
   CommissionType,
@@ -125,9 +125,23 @@ export function JobForm({
    * it through validation would refuse to save the half-finished listing that
    * is the entire reason the draft button exists.
    */
+  /*
+    A listing this company already has that reads like this one. Asked once,
+    on leaving the first step, and answered on the second so nobody waits on a
+    round trip to move forward. Dismissed with a tap; never enforced.
+  */
+  const [similar, setSimilar] = useState<{ id: string; title: string; seats: number } | null>(null);
+
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (step < STEPS.length - 1) {
+      if (step === 0) {
+        void findSimilarListing({
+          titleAr: values.titleAr,
+          districtId: values.districtId,
+          excludeId: job?.id,
+        }).then((result) => setSimilar(result.ok ? result.data?.match ?? null : null));
+      }
       setStep((current) => current + 1);
       return;
     }
@@ -201,6 +215,22 @@ export function JobForm({
   return (
     <div>
       <form onSubmit={onSubmit}>
+      {similar && step > 0 ? (
+        <div className="rounded-xl border border-warning/40 bg-warning-muted p-4 text-sm" role="status">
+          <p className="font-semibold">{tEmployer('duplicateTitle')}</p>
+          <p className="mt-1 leading-relaxed text-muted-foreground">
+            {tEmployer('duplicateBody', { title: similar.title, seats: similar.seats })}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/employer/jobs/${similar.id}/edit`}>{tEmployer('duplicateEdit')}</Link>
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setSimilar(null)}>
+              {tEmployer('duplicateDismiss')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
         <ol className="mb-8 flex flex-wrap gap-2">
           {STEPS.map((name, index) => (
             <li key={name}>
