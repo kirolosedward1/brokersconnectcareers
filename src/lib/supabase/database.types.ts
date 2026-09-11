@@ -484,6 +484,45 @@ export type AgentCardRow = {
 };
 
 /**
+ * The company's shortlist. Nothing here is a copy of the directory: the row
+ * is an id and a timestamp, and `saved_agent_cards()` decides on every read
+ * what of the consultant may still be shown.
+ */
+export type SavedAgentRow = {
+  company_id: string;
+  agent_id: string;
+  saved_by: string | null;
+  created_at: string;
+};
+
+/**
+ * Row shape returned by the saved_agent_cards() RPC.
+ *
+ * Everything but `id`, `is_listed` and `saved_at` is nullable, and not as a
+ * convenience: a consultant who has left the directory comes back as a row
+ * with nothing in it, which is what lets an employer tidy a list they can no
+ * longer read without the list telling them anything about why.
+ */
+export type SavedAgentCardRow = {
+  id: string;
+  slug: string | null;
+  is_listed: boolean;
+  is_unlocked: boolean;
+  full_name: string | null;
+  avatar_url: string | null;
+  headline_ar: string | null;
+  headline_en: string | null;
+  years_experience: number | null;
+  tracks: JobTrack[] | null;
+  district_ids: number[] | null;
+  languages: string[] | null;
+  availability: AgentAvailability | null;
+  saved_at: string;
+  saved_by_name: string | null;
+  total_count: number;
+};
+
+/**
  * Insert shape: everything optional except the columns that have no default
  * and must be supplied by the caller.
  */
@@ -562,6 +601,15 @@ export type Database = {
         Insertable<SavedSearchRow, 'candidate_id' | 'label'>
       >;
       saved_jobs: Table<SavedJobRow, Insertable<SavedJobRow, 'candidate_id' | 'job_id'>>;
+      /**
+       * No Update shape that means anything — every column is either the
+       * identity of the row or a record of who made it and when, so the
+       * table carries no update policy either.
+       */
+      saved_agents: Table<
+        SavedAgentRow,
+        Insertable<SavedAgentRow, 'company_id' | 'agent_id' | 'saved_by'>
+      >;
       reports: Table<ReportRow, Insertable<ReportRow, 'reason'>>;
       orders: Table<OrderRow, Insertable<OrderRow, 'company_id' | 'pack_key' | 'credits' | 'amount_egp'>>;
       monthly_free_post_grants: Table<
@@ -594,6 +642,16 @@ export type Database = {
         Returns: AgentCardRow[];
       };
       get_agent_card: { Args: { p_slug: string }; Returns: AgentCardDetail[] };
+      /**
+       * The caller's company shortlist. No argument saying whose — it resolves
+       * `my_company_id()` itself, so there is nothing to forge, and it
+       * re-derives each consultant's visibility rather than trusting what was
+       * true when the row was written.
+       */
+      saved_agent_cards: {
+        Args: { p_limit?: number; p_offset?: number };
+        Returns: SavedAgentCardRow[];
+      };
       increment_job_view: { Args: { job_slug: string }; Returns: undefined };
       claim_monthly_free_post: { Args: Empty; Returns: boolean };
       /** The company the caller belongs to, resolved through membership. */

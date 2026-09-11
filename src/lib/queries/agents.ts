@@ -7,6 +7,7 @@ import type {
   AgentCardDetail,
   AgentCardRow,
   JobTrack,
+  SavedAgentCardRow,
 } from '@/lib/supabase/database.types';
 
 export const AGENTS_PER_PAGE = 24;
@@ -102,4 +103,55 @@ export async function getAgentCard(slug: string): Promise<AgentCardDetail | null
   const { data, error } = await supabase.rpc('get_agent_card', { p_slug: slug });
   if (error) raise(error, 'loading an agent profile');
   return (data as AgentCardDetail[])?.[0] ?? null;
+}
+
+export const SAVED_AGENTS_PER_PAGE = 24;
+
+/**
+ * The company's shortlist.
+ *
+ * Through the same kind of definer function the directory uses, and for the
+ * same reason: a plain table read would answer with what was true when each
+ * row was written. A consultant who has since switched to `hidden` has left
+ * the directory, and a list that kept showing their name would be a copy of
+ * the directory taken before they went. The function re-derives it, so this
+ * only has to render what it is handed.
+ */
+export async function querySavedAgents(page = 1): Promise<{
+  agents: SavedAgentCardRow[];
+  total: number;
+  pageCount: number;
+}> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc('saved_agent_cards', {
+    p_limit: SAVED_AGENTS_PER_PAGE,
+    p_offset: (page - 1) * SAVED_AGENTS_PER_PAGE,
+  });
+
+  if (error) raise(error, 'loading the shortlist');
+
+  const agents = (data ?? []) as SavedAgentCardRow[];
+  const total = agents[0]?.total_count ? Number(agents[0].total_count) : 0;
+
+  return { agents, total, pageCount: Math.max(1, Math.ceil(total / SAVED_AGENTS_PER_PAGE)) };
+}
+
+/**
+ * Which of the consultants on this page the viewer's company already keeps.
+ *
+ * One small read keyed to the ids on screen rather than a column folded into
+ * the directory query — /agents is public and the same result set is shown to
+ * everyone, and making it per-reader would give that up for a bookmark.
+ *
+ * Row-level security scopes this to the caller's own company, so no company_id
+ * is written here; a viewer with no company simply reads nothing.
+ */
+export async function shortlistedAgentIds(ids: string[]): Promise<Set<string>> {
+  if (!ids.length) return new Set();
+
+  const supabase = await createClient();
+  const { data } = await supabase.from('saved_agents').select('agent_id').in('agent_id', ids);
+
+  return new Set((data ?? []).map((row) => row.agent_id));
 }

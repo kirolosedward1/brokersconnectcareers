@@ -7,8 +7,9 @@ import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { AgentCv } from '@/components/agents/agent-cv';
+import { ShortlistButton } from '@/components/agents/shortlist-toggle';
 import { Button } from '@/components/ui/button';
-import { getAgentCard } from '@/lib/queries/agents';
+import { getAgentCard, shortlistedAgentIds } from '@/lib/queries/agents';
 import { getDistrictMap, getDevelopers } from '@/lib/queries/taxonomy';
 import { getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -108,6 +109,15 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
         )
       : null;
 
+  /*
+    Only for somebody with a company to keep them in, and only on an unlocked
+    card — which is also all migration 60's insert policy permits, so the
+    button is offered exactly where it can work rather than offered everywhere
+    and refused.
+  */
+  const canShortlist = Boolean(viewer?.company) && agent.is_unlocked && !isOwner;
+  const shortlisted = canShortlist ? (await shortlistedAgentIds([agent.id])).has(agent.id) : false;
+
   const areas = agent.district_ids
     .map((id) => districts.get(id))
     .filter((d): d is NonNullable<typeof d> => Boolean(d));
@@ -181,6 +191,13 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
                 {t('downloadCv')}
               </a>
             </Button>
+          ) : null}
+          {canShortlist ? (
+            <ShortlistButton
+              agentId={agent.id}
+              initialSaved={shortlisted}
+              labels={{ add: t('shortlistAdd'), remove: t('shortlistRemove') }}
+            />
           ) : null}
         </div>
       ) : (

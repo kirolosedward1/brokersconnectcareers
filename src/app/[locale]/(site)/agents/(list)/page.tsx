@@ -9,7 +9,12 @@ import { MobileFilters } from '@/components/mobile-filters';
 import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import { getDistricts, getDistrictMap } from '@/lib/queries/taxonomy';
-import { parseAgentFilters, queryAgents, serializeAgentFilters } from '@/lib/queries/agents';
+import {
+  parseAgentFilters,
+  queryAgents,
+  serializeAgentFilters,
+  shortlistedAgentIds,
+} from '@/lib/queries/agents';
 import { getViewer } from '@/lib/auth';
 
 export async function generateMetadata({
@@ -45,6 +50,18 @@ export default async function AgentsPage({
     getDistrictMap(),
     getViewer(),
   ]);
+
+  /*
+    Which of these the viewer's company already keeps.
+
+    Only for somebody who has a company to keep them in, and only for the ids
+    on this page — the directory itself is the same list for everybody, and
+    folding a per-reader column into it would make every result set personal.
+  */
+  const canShortlist = Boolean(viewer?.company);
+  const shortlisted = canShortlist
+    ? await shortlistedAgentIds(agents.map((agent) => agent.id))
+    : new Set<string>();
 
   const t = await getTranslations('agents');
   const tJobs = await getTranslations('jobs');
@@ -116,7 +133,13 @@ export default async function AgentsPage({
               <ul className="space-y-4">
               {agents.map((agent) => (
                 <li key={agent.id}>
-                  <AgentCard agent={agent} locale={locale} districts={districtMap} />
+                  <AgentCard
+                    agent={agent}
+                    locale={locale}
+                    districts={districtMap}
+                    shortlistable={canShortlist}
+                    shortlisted={shortlisted.has(agent.id)}
+                  />
                 </li>
               ))}
               </ul>

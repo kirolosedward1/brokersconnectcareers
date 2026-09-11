@@ -132,6 +132,7 @@ export default async function AppLayout({
         badge: employerCounts?.applicants_new,
       },
       { href: '/employer/jobs', label: tEmployer('jobs'), icon: 'applications' },
+      { href: '/employer/talent', label: tEmployer('shortlist'), icon: 'shortlist' },
       { href: '/employer/company', label: tEmployer('company'), icon: 'company' },
       { href: '/employer/billing', label: tEmployer('billing'), icon: 'billing' },
     ],

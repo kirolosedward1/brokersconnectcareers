@@ -54,6 +54,20 @@ alter table storage.objects enable row level security;
 
 create or replace function storage.foldername(name text) returns text[]
   language sql immutable as $fn$ select string_to_array(name, '/'); $fn$;
+
+-- Supabase grants EXECUTE on every function created in \`public\` to anon,
+-- authenticated and service_role, through default privileges, as the function
+-- is created.
+--
+-- Set here rather than with the other grants below, because default privileges
+-- apply at creation time and the migrations run in between. Without it the
+-- harness is kinder than production in one specific way: a migration writing
+-- \`revoke execute ... from public\` looks like it closed a function to anon,
+-- when on Supabase that revoke does not touch anon's *explicit* grant and the
+-- function stays open to the internet. A test written against the kinder
+-- harness passes for the wrong reason, which is worse than not having it.
+alter default privileges in schema public
+  grant execute on functions to anon, authenticated, service_role;
 `;
 
 const GRANTS = `

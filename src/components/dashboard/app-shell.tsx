@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   UserCog,
   UserRound,
+  UserRoundCheck,
   Users,
   X,
 } from 'lucide-react';
@@ -44,6 +45,9 @@ const ICONS = {
   saved: Bookmark,
   browse: Search,
   profile: UserRound,
+  // The company's shortlist of people, which is not the candidate's
+  // bookmark of listings — a different noun deserves a different mark.
+  shortlist: UserRoundCheck,
   company: Building2,
   billing: CreditCard,
   queue: FileCheck2,

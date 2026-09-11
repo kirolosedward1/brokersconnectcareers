@@ -2168,4 +2168,151 @@ report.section('an application remembers how it moved');
     nosy.ok && nosy.rows[0].n === 0, nosy.error ?? `saw ${nosy.rows?.[0]?.n}`);
 }
 
+report.section('a shortlist that outlives one listing');
+{
+  const alRowad = (
+    await db.query("select id from companies where slug='al-rowad-real-estate-309047'")
+  ).rows[0].id;
+  const propertyHub = (
+    await db.query(`select company_id from company_members where user_id = '${employerUnverified}'`)
+  ).rows[0].company_id;
+
+  const agentOf = async (userId) =>
+    (await db.query(`select id from agent_profiles where user_id = '${userId}'`)).rows[0].id;
+
+  const openCard = await agentOf(publicAgent);
+  const hidden = await agentOf(hiddenAgent);
+  const applicant = await agentOf(candidate);
+
+  /*
+    Computed, not a fixture.
+
+    The named gated fixture applied to the unverified company's listing, and
+    migration 43 says applying is consent — so their card is legitimately open
+    to that company and the refusal below would never have fired. The rule
+    being tested needs a gated consultant who is a stranger to them, and which
+    of the seed's consultants that is, is a fact about the seed.
+  */
+  const stranger = (
+    await db.query(`
+      select a.id from agent_profiles a
+       where a.visibility = 'verified_employers_only'
+         and not exists (
+           select 1 from applications ap join jobs j on j.id = ap.job_id
+            where ap.candidate_id = a.user_id and j.company_id = '${propertyHub}')
+       limit 1`)
+  ).rows[0].id;
+
+  /*
+    Going in: only a card that is open to this viewer right now.
+
+    Al Rowad is verified, so a gated profile is legible to them already and
+    saving it keeps nothing they could not read. Property Hub is not, and if
+    the save went through anyway the gate would become a formality — collect
+    the directory as ids now, become verified later.
+  */
+  const r = await as(employerVerified, `
+    insert into saved_agents (company_id, agent_id, saved_by)
+    values ('${alRowad}', '${stranger}', '${employerVerified}') returning agent_id`);
+  report.check('a verified company may shortlist a gated consultant',
+    r.ok && r.rows.length === 1, r.error);
+
+  const r2 = await as(employerUnverified, `
+    insert into saved_agents (company_id, agent_id, saved_by)
+    values ('${propertyHub}', '${stranger}', '${employerUnverified}') returning agent_id`);
+  report.check('an unverified one may not', !r2.ok, r2.ok ? 'insert was allowed' : r2.error);
+
+  const r3 = await as(employerUnverified, `
+    insert into saved_agents (company_id, agent_id, saved_by)
+    values ('${propertyHub}', '${openCard}', '${employerUnverified}') returning agent_id`);
+  report.check('but may shortlist a public one', r3.ok && r3.rows.length === 1, r3.error);
+
+  // The same rule that opens the applicant panel opens the shortlist. Somebody
+  // who applied here has already handed this company their name.
+  const r4 = await as(employerUnverified, `
+    insert into saved_agents (company_id, agent_id, saved_by)
+    values ('${propertyHub}', '${applicant}', '${employerUnverified}') returning agent_id`);
+  report.check('and may keep somebody who applied to them', r4.ok && r4.rows.length === 1, r4.error);
+
+  // Hidden is hidden. Not anonymised — absent, for everybody.
+  const r5 = await as(employerVerified, `
+    insert into saved_agents (company_id, agent_id, saved_by)
+    values ('${alRowad}', '${hidden}', '${employerVerified}') returning agent_id`);
+  report.check('nobody shortlists a hidden consultant',
+    !r5.ok, r5.ok ? 'insert was allowed' : r5.error);
+
+  const r6 = await as(employerVerified, `
+    insert into saved_agents (company_id, agent_id, saved_by)
+    values ('${alRowad}', '${openCard}', '${employerUnverified}') returning agent_id`);
+  report.check("and nobody saves in a colleague's name",
+    !r6.ok, r6.ok ? 'insert was allowed' : r6.error);
+
+  const r7 = await as(employerUnverified, `
+    insert into saved_agents (company_id, agent_id, saved_by)
+    values ('${alRowad}', '${openCard}', '${employerUnverified}') returning agent_id`);
+  report.check("nor into another company's shortlist",
+    !r7.ok, r7.ok ? 'insert was allowed' : r7.error);
+}
+
+report.section('a shortlist is not a copy of the directory');
+{
+  const alRowad = (
+    await db.query("select id from companies where slug='al-rowad-real-estate-309047'")
+  ).rows[0].id;
+  const open = (
+    await db.query(`select id from agent_profiles where user_id = '${publicAgent}'`)
+  ).rows[0].id;
+
+  // Committed, because the point of this section is what a later change does
+  // to a row that already exists. as() rolls back, so the save has to happen
+  // outside it.
+  await db.exec(`
+    insert into saved_agents (company_id, agent_id, saved_by)
+    values ('${alRowad}', '${open}', '${employerVerified}')
+    on conflict do nothing;
+  `);
+
+  const before = await as(employerVerified,
+    `select id, slug, is_listed, is_unlocked, full_name from saved_agent_cards()
+      where id = '${open}'`);
+  report.check('a saved consultant reads back with their name',
+    before.ok && before.rows.length === 1 && before.rows[0].is_listed === true &&
+      before.rows[0].is_unlocked === true && Boolean(before.rows[0].full_name),
+    before.error ?? JSON.stringify(before.rows));
+
+  /*
+    And then they leave.
+
+    The row is still the company's and they may still remove it, so it comes
+    back — carrying nothing. The slug especially: it is the name transliterated,
+    so returning it would hand back exactly what the name column withholds.
+  */
+  await db.exec(`update agent_profiles set visibility = 'hidden' where id = '${open}'`);
+
+  const after = await as(employerVerified,
+    `select id, slug, is_listed, is_unlocked, full_name, headline_ar, years_experience, saved_at
+       from saved_agent_cards() where id = '${open}'`);
+  const row = after.rows[0];
+  report.check('one who has left the directory comes back as a row and nothing else',
+    after.ok && after.rows.length === 1 && row.is_listed === false &&
+      row.slug === null && row.full_name === null && row.headline_ar === null &&
+      row.years_experience === null && row.saved_at !== null,
+    after.error ?? JSON.stringify(after.rows));
+
+  await db.exec(`update agent_profiles set visibility = 'public' where id = '${open}'`);
+
+  const stranger = await as(employerUnverified,
+    `select count(*)::int as n from saved_agent_cards()`);
+  report.check('another company sees none of it',
+    stranger.ok && stranger.rows[0].n === 0, stranger.error ?? JSON.stringify(stranger.rows));
+
+  const nobody = await as(OUTSIDER, `select count(*)::int as n from saved_agent_cards()`);
+  report.check('and somebody with no company sees none of it either',
+    nobody.ok && nobody.rows[0].n === 0, nobody.error ?? JSON.stringify(nobody.rows));
+
+  const direct = await as(OUTSIDER, `select count(*)::int as n from saved_agents`);
+  report.check('the table itself is closed to them',
+    direct.ok && direct.rows[0].n === 0, direct.error ?? JSON.stringify(direct.rows));
+}
+
 process.exit(report.finish() ? 0 : 1);

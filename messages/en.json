@@ -216,7 +216,9 @@
     "ownerPublic": "Your visibility is “public”: any visitor sees your name, photo and number exactly as you see them now.",
     "ownerVerified": "Your visibility is “verified employers only”: visitors see the card without a name or number; only verified companies see it in full.",
     "ownerHidden": "Your visibility is “hidden”: nobody but you can open this page. Companies you applied to still see your application.",
-    "ownerEdit": "Edit your profile"
+    "ownerEdit": "Edit your profile",
+    "shortlistAdd": "Add to shortlist",
+    "shortlistRemove": "Remove from shortlist"
   },
   "availability": {
     "open_to_offers": "Open to offers",
@@ -546,7 +548,15 @@
     "duplicateTitle": "You already have a listing with this title in this area",
     "duplicateBody": "“{title}” has {seats, plural, one {# open seat} other {# open seats}}. If this is the same role, add seats to it instead of posting again — a duplicate costs a credit and splits your applicants.",
     "duplicateEdit": "Edit the existing listing",
-    "duplicateDismiss": "Continue with the new one"
+    "duplicateDismiss": "Continue with the new one",
+    "shortlist": "Shortlist",
+    "shortlistLede": "People worth remembering, kept for the whole company — not tied to one listing.",
+    "shortlistEmpty": "Nobody on the shortlist yet.",
+    "shortlistEmptyHint": "From the consultant directory, or any consultant’s page, press “Add to shortlist”.",
+    "shortlistGone": "No longer in the directory",
+    "shortlistGoneHint": "They chose to hide their profile, so we cannot show their details. You can remove them from the list.",
+    "shortlistSavedBy": "Added by {name} on {date}",
+    "shortlistSavedOn": "Added on {date}"
   },
   "jobForm": {
     "basics": "Basics",

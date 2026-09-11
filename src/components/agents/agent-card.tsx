@@ -3,6 +3,7 @@ import { Briefcase, CircleDot, Lock, MapPin, UserRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Avatar } from '@/components/ui/avatar';
+import { ShortlistToggle } from '@/components/agents/shortlist-toggle';
 import { formatList, formatNumber } from '@/lib/utils';
 import type { AgentCardRow, DistrictRow } from '@/lib/supabase/database.types';
 
@@ -23,10 +24,15 @@ export function AgentCard({
   agent,
   locale,
   districts,
+  shortlistable = false,
+  shortlisted = false,
 }: {
   agent: AgentCardRow;
   locale: string;
   districts: Map<number, DistrictRow>;
+  /** Whether the viewer has a company to keep this consultant in. */
+  shortlistable?: boolean;
+  shortlisted?: boolean;
 }) {
   const t = useTranslations('agents');
   const tTrack = useTranslations('track');
@@ -105,6 +111,15 @@ export function AgentCard({
             </ul>
           ) : null}
         </div>
+
+        {shortlistable ? (
+          <ShortlistToggle
+            agentId={agent.id}
+            initialSaved={shortlisted}
+            labels={{ add: t('shortlistAdd'), remove: t('shortlistRemove') }}
+            className="-mt-1 -me-1"
+          />
+        ) : null}
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-4 text-sm text-muted-foreground">
