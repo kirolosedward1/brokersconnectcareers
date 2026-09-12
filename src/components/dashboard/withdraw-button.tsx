@@ -26,9 +26,20 @@ export function WithdrawButton({
 
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
+      {/*
+        Red, because withdrawing is the irreversible one.
+
+        It sat in the same grey as every other line on the card, which made the
+        action that takes an application back — and it cannot be put back, the
+        unique index refuses a second one — the least conspicuous thing there.
+        The employer console already settled this for "close the listing": a
+        colour each, and each one means something rather than varying for
+        variety.
+      */}
       <Button
         variant="ghost"
         size="sm"
+        className="text-destructive hover:bg-destructive-muted hover:text-destructive"
         disabled={pending}
         onClick={() =>
           startTransition(async () => {

@@ -155,8 +155,21 @@ export function AccountSettings({
         {isEmployer ? null : (
           <>
             <label className="mt-4 block text-sm">
+              {/*
+                `word` is an ICU *argument*, not a tag, so the arrow function
+                that used to be passed for it rendered nothing at all: the
+                label read "اكتب عشان تأكّد" — type to confirm — without ever
+                saying what to type. Which made the button below it
+                permanently disabled, because it compares the input against a
+                word the reader was never shown. Deleting an account was not
+                difficult, it was impossible.
+
+                The emphasis is a real tag now, the way every other
+                highlighted value in this catalogue is written.
+              */}
               {t.rich('deleteConfirmLabel', {
-                word: () => <span className="font-semibold">{CONFIRM_WORD}</span>,
+                word: CONFIRM_WORD,
+                b: (chunks) => <span className="font-semibold">{chunks}</span>,
               })}
               <input
                 value={confirm}

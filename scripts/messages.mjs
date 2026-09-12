@@ -144,6 +144,151 @@ console.log('\n— tagged messages are read with t.rich');
     offenders.length === 0, offenders.join('; '));
 }
 
+console.log('\n— a placeholder is supplied, and supplied as what it is');
+{
+  /*
+    ICU has two kinds of hole and they are not interchangeable. `{word}` is an
+    argument: you pass it a value. `<b>…</b>` is a tag: you pass it a function
+    that renders its children. Pass a function for an argument and next-intl
+    hands React a function as a child, React renders nothing, and the hole
+    closes up silently.
+
+    Which is what happened to the account-deletion confirmation. The label
+    declared `اكتب {word} عشان تأكّد` and the caller passed
+    `word: () => <span>حذف</span>`, so the rendered sentence was "اكتب عشان
+    تأكّد" — type to confirm, without saying what to type. The button beside it
+    compares the input against that word, so it could never enable: deleting an
+    account was not difficult, it was impossible. Nothing caught it, because
+    every check above asks whether keys and placeholders *match across
+    locales*, and this one matched perfectly in both.
+
+    Keys are resolved through the namespace the calling variable was created
+    with, not by leaf name. The first draft matched leaves across every
+    namespace and reported six phantoms — `apply.title` wanting `{job}` because
+    a page also had a `t('title')` for its own heading. A check that cries wolf
+    gets switched off.
+  */
+  const declared = new Map(
+    flatten(load('ar')).map(([key, value]) => {
+      const text = String(value);
+      return [
+        key,
+        {
+          // `{name}` and `{name, plural, …}` alike: the argument still has to
+          // be supplied, and the branches after the comma are ICU's business.
+          args: new Set([...text.matchAll(/\{\s*(\w+)\s*[,}]/g)].map((m) => m[1])),
+        },
+      ];
+    }),
+  );
+
+  const sources = [];
+  (function walk(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(entry)) sources.push(full);
+    }
+  })(join(ROOT, 'src'));
+
+  /** The object literal a call passes, brace-matched from its opening brace. */
+  function argumentBody(text, from) {
+    const open = text.indexOf('{', from);
+    if (open === -1) return null;
+    let depth = 0;
+    for (let i = open; i < text.length; i += 1) {
+      if (text[i] === '{') depth += 1;
+      else if (text[i] === '}') {
+        depth -= 1;
+        if (depth === 0) return text.slice(open + 1, i);
+      }
+    }
+    return null;
+  }
+
+  const missing = [];
+  const asFunction = [];
+  let resolved = 0;
+
+  for (const file of sources) {
+    const text = readFileSync(file, 'utf8');
+    const where = file.replace(ROOT + '/', '');
+
+    /*
+      Which namespace each translator variable was made with. Three shapes in
+      this codebase: useTranslations('x'), getTranslations('x') and
+      getTranslations({ locale, namespace: 'x' }).
+    */
+    const namespaces = new Map();
+    for (const match of text.matchAll(
+      /const\s+(\w+)\s*=\s*(?:await\s+)?(?:useTranslations|getTranslations)\(\s*(?:\{[^}]*?namespace:\s*)?(['"`])([\w.]+)\2/g,
+    )) {
+      namespaces.set(match[1], match[3]);
+    }
+
+    for (const match of text.matchAll(/\b(\w+)(?:\.rich)?\((['"`])([\w.]+)\2\s*,/g)) {
+      const namespace = namespaces.get(match[1]);
+      if (!namespace) continue;
+
+      const key = `${namespace}.${match[3]}`;
+      const entry = declared.get(key);
+      if (!entry || entry.args.size === 0) continue;
+
+      const body = argumentBody(text, match.index + match[0].length - 1);
+      if (body === null) continue;
+      resolved += 1;
+
+      /*
+        Split on the commas that are actually separators, then read each
+        entry. Line-based was the first attempt and it only ever saw the first
+        key of a one-line object — `{ page: …, total: … }` reported `total` as
+        missing, from the very call that supplies it. Shorthand counts too:
+        `{ name }` supplies `name`.
+      */
+      const supplied = new Map();
+      let depth = 0;
+      let current = '';
+      const entries = [];
+      for (const character of body) {
+        if ('{(['.includes(character)) depth += 1;
+        else if ('})]'.includes(character)) depth -= 1;
+
+        if (character === ',' && depth === 0) {
+          entries.push(current);
+          current = '';
+        } else {
+          current += character;
+        }
+      }
+      entries.push(current);
+
+      for (const raw of entries) {
+        const piece = raw.trim();
+        const named = piece.match(/^(\w+)\s*:\s*([\s\S]*)$/);
+        if (named) supplied.set(named[1], /^\(/.test(named[2].trim()));
+        else if (/^\w+$/.test(piece)) supplied.set(piece, false);
+      }
+
+      for (const arg of entry.args) {
+        if (!supplied.has(arg)) missing.push(`${key} needs {${arg}} — ${where}`);
+        else if (supplied.get(arg)) asFunction.push(`${key}.${arg} — ${where}`);
+      }
+    }
+  }
+
+  /*
+    Only the inline-arrow form is flagged, and that is the honest limit of a
+    grep: a tag handed a *named* function — `v: num`, which several
+    compensation strings do — is indistinguishable from a value without type
+    information. The reverse mistake is the silent one, and it is always
+    written inline, because the whole point of it is to render an element.
+  */
+  check(`every declared argument is supplied (${resolved} calls resolved)`,
+    missing.length === 0, missing.slice(0, 6).join('; '));
+  check('and none is supplied as a tag renderer',
+    asFunction.length === 0, asFunction.slice(0, 6).join('; '));
+}
+
 console.log('\n— every key a component asks for exists');
 {
   const ar = new Map(flatten(load('ar')));

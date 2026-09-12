@@ -911,7 +911,7 @@
     "exportCta": "Download my data",
     "deleteTitle": "Delete account",
     "deleteBody": "This removes your account, profile, applications and uploaded files. It cannot be undone.",
-    "deleteConfirmLabel": "Type {word} to confirm.",
+    "deleteConfirmLabel": "Type <b>{word}</b> to confirm.",
     "deleteConfirmWord": "delete",
     "deleteCta": "Delete my account permanently",
     "deleteBlockedCompany": "Your account owns a company. Deleting it would remove the company, every listing it published, and every application other people sent you — that is their data too, not only yours. Contact us and we will handle it properly.",
