@@ -96,6 +96,11 @@ export function JobForm({
     returns it to review only when something material changed, and this is the
     half of that the employer can see.
   */
+  // The stored label, deliberately. The question here is not "is this on the
+  // board" but "is this row published" — which is what decides whether a save
+  // omits `status` and lets the database rule on returning it to review. A
+  // listing whose window has closed is still published, and reopening it is a
+  // separate action with its own button.
   const live = job?.status === 'active';
 
   /*

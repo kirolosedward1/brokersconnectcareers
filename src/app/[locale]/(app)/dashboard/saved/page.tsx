@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import { raise } from '@/lib/queries/error';
 import type { JobListItem } from '@/lib/queries/jobs';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
+import { jobIsLive } from '@/lib/job-state';
 
 export async function generateMetadata({
   params,
@@ -79,12 +80,11 @@ export default async function SavedJobsPage({
    * unreliable; the closed ones move below a heading that says why, and the
    * bookmark on each card is how they leave.
    */
-  const now = Date.now();
-  const isClosed = (job: JobListItem) =>
-    job.status !== 'active' || (job.expires_at != null && new Date(job.expires_at).getTime() <= now);
-
-  const open = jobs.filter((job) => !isClosed(job));
-  const closed = jobs.filter(isClosed);
+  // Through jobIsLive(), not a second copy of it. This was the same
+  // expression written out again, and a rule in three places is a rule that
+  // will eventually be three rules.
+  const open = jobs.filter((job) => jobIsLive(job));
+  const closed = jobs.filter((job) => !jobIsLive(job));
 
   const { data: searchRows, error: searchError } = await supabase
     .from('saved_searches')

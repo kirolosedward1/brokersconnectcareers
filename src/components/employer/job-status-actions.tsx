@@ -56,6 +56,8 @@ export function JobStatusActions({
     </p>
   ) : null;
 
+  // The stored label, deliberately: the caller already ran it through
+  // displayJobStatus, so what arrives here is the status the page shows.
   if (status === 'active') {
     return (
       <>

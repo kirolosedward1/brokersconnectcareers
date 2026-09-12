@@ -2,10 +2,11 @@
  * Does the schema apply at all, and do the triggers do their job on seed data?
  * Run with: pnpm test:db
  */
-import { createTestDb, reporter } from './setup.mjs';
+import { createTestDb, reporter, runner } from './setup.mjs';
 
 const report = reporter();
 const db = await createTestDb();
+const as = runner(db);
 
 report.section('the schema applies and the taxonomies land');
 for (const [label, sql, expected] of [
@@ -30,6 +31,71 @@ report.section('publishing stamps the 30-day window');
   report.check('every live listing has an expiry', rows.length > 0 && rows.every((r) => r.stamped));
   report.check('and it is exactly 30 days out', rows.every((r) => Number(r.days) === 30),
     JSON.stringify(rows.map((r) => r.days)));
+
+  /*
+    And the table says so, rather than the trigger being the only reason.
+
+    Three places had written code for an active listing with no expiry, and
+    they disagreed: the board's `.gt()` drops it, the sitemap's `.or()`
+    advertises it, jobIsLive() calls it live. Three readings of a state that
+    cannot happen is worse than any one of them being wrong, because nothing
+    reveals the disagreement until it does.
+  */
+  /*
+    With the trigger out of the way, because otherwise nothing is being tested.
+
+    `jobs_30_stamp_publication` fires BEFORE INSERT as well as UPDATE, so an
+    insert stating `active` with no date is given one and the constraint never
+    sees it. The first version of this test asserted a refusal and got a
+    successful insert with an expiry the trigger had filled in — passing for a
+    reason that had nothing to do with the constraint, in the direction that
+    looks like a failure, which is at least the harmless direction.
+
+    Disabling the trigger inside a transaction is what makes this a test of
+    the table rather than of the trigger, which is the whole reason for a
+    constraint that duplicates a trigger's effect: the trigger is the
+    behaviour, and this is the thing that still holds if the behaviour
+    changes.
+  */
+  await db.exec('begin');
+  await db.exec('alter table jobs disable trigger jobs_30_stamp_publication');
+
+  /*
+    A savepoint each, because a failed statement poisons the transaction — the
+    draft insert below came back refused too, with "current transaction is
+    aborted", and read exactly like the constraint catching something it
+    should not.
+  */
+  let refusal = null;
+  await db.exec('savepoint probe_active');
+  try {
+    await db.query(`
+      insert into jobs (company_id, district_id, track, title_ar, description_ar, slug,
+                        status, commission_type, leads_source, employment_type, experience_band)
+      values ((select id from companies limit 1), 1, 'primary', 'بدون تاريخ', 'وصف وصف وصف وصف',
+              'no-expiry-probe', 'active', 'none', 'company_provided', 'full_time', 'mid_3_5')`);
+  } catch (error) {
+    refusal = error.message;
+  }
+  await db.exec('rollback to savepoint probe_active');
+
+  let draftAllowed = false;
+  try {
+    await db.query(`
+      insert into jobs (company_id, district_id, track, title_ar, description_ar, slug,
+                        status, commission_type, leads_source, employment_type, experience_band)
+      values ((select id from companies limit 1), 1, 'primary', 'مسودة', 'وصف وصف وصف وصف',
+              'draft-no-expiry-probe', 'draft', 'none', 'company_provided', 'full_time', 'mid_3_5')`);
+    draftAllowed = true;
+  } catch {
+    draftAllowed = false;
+  }
+
+  await db.exec('rollback');
+
+  report.check('an active listing with no end date is refused by the table itself',
+    /jobs_active_has_expiry/.test(refusal ?? ''), refusal ?? 'the insert was allowed');
+  report.check('while a draft without one is untouched', draftAllowed);
 }
 
 report.section('a commission value is required only where it means something');

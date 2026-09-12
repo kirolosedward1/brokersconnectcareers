@@ -123,6 +123,9 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     ? await supabase.from('jobs').select('status, version').eq('id', value.id).maybeSingle()
     : { data: null };
 
+  // The stored label, deliberately, and this is the authority the form above
+  // mirrors: the write is gated on whether the row is published, not on
+  // whether it is currently on the board.
   const live = current?.status === 'active';
   const status = value.submit ? 'pending_review' : 'draft';
 

@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 import { raise } from '@/lib/queries/error';
 import { formatDate, isoDate } from '@/lib/utils';
 import type { ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
+import { displayJobStatus } from '@/lib/job-state';
 
 const STATUS_VARIANT: Record<ApplicationStatus, 'default' | 'primary' | 'success' | 'destructive'> = {
   new: 'default',
@@ -65,7 +66,7 @@ export default async function ApplicationsPage({
       `
       id, status, created_at, decision_note, employer_viewed_at,
       job:jobs (
-        slug, status, title_ar, title_en,
+        slug, status, expires_at, title_ar, title_en,
         company:companies (name_ar, name_en, slug),
         district:districts (name_ar, name_en)
       )
@@ -85,6 +86,7 @@ export default async function ApplicationsPage({
     job: {
       slug: string;
       status: JobStatus;
+      expires_at: string | null;
       title_ar: string;
       title_en: string | null;
       company: { name_ar: string; name_en: string | null; slug: string };
@@ -174,11 +176,27 @@ export default async function ApplicationsPage({
               to leave somebody guessing at: the question a candidate has here
               is whether anybody is still reading.
             */}
-            {job.status !== 'active' ? (
+            {/*
+              The date, not the label — the last page in the product still
+              reading the stored status directly.
+
+              The nightly cron that writes `expired` needs a service-role key
+              production does not have, so a listing whose window closed sits
+              at `active` indefinitely; one has since 10 September. Everywhere
+              else asks the date: the board filters on it, the job card and
+              /dashboard/saved mark the role closed, the employer console
+              relabels it. Here the note simply did not appear, so a candidate
+              waiting on a reply was the only person on the platform still
+              being told the listing was open.
+            */}
+            {displayJobStatus(job) !== 'active' ? (
               <p className="mt-3 rounded-lg border border-dashed border-border p-3 text-xs leading-relaxed text-muted-foreground">
-                {job.status === 'closed' || job.status === 'expired'
-                  ? t('applicationListingClosed')
-                  : t('applicationListingOffBoard')}
+                {(() => {
+                  const shown = displayJobStatus(job);
+                  return shown === 'closed' || shown === 'expired'
+                    ? t('applicationListingClosed')
+                    : t('applicationListingOffBoard');
+                })()}
               </p>
             ) : null}
 

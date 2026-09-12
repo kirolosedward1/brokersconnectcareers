@@ -132,5 +132,75 @@ console.log('\n— and the exemption stays rare');
   );
 }
 
+/*
+  The other half of the same habit: trusting the stored label.
+
+  `status = 'active'` is a claim the nightly cron keeps true, and that cron
+  needs a service-role key production does not have — so on the live site a
+  listing whose window closed reads `active` indefinitely. One has since
+  10 September. `jobIsLive()` and `displayJobStatus()` exist so nothing has to
+  remember that, and every surface uses them except, until now, the candidate's
+  own applications page: the note saying the listing had closed simply never
+  appeared, leaving the person waiting on a reply as the only one still told it
+  was open.
+
+  So: a comparison against `'active'` in a component or page has to be either
+  a filter in a query (which bounds `expires_at` right there) or routed
+  through the helpers. Anything else names the label and means the date.
+*/
+console.log('\n— nothing trusts the active label on its own');
+{
+  const offenders = [];
+
+  /*
+    Every source file, not just pages: the third copy of this rule was in
+    `job-card.tsx`, which `walk` above deliberately does not reach because the
+    read check is about empty states.
+  */
+  const everything = [];
+  (function collect(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) collect(full);
+      else if (/\.tsx?$/.test(entry)) everything.push(full);
+    }
+  })(join(ROOT, 'src'));
+
+  for (const file of everything) {
+    // job-state.ts is where the rule lives; it has to name the label.
+    if (file.endsWith('job-state.ts')) continue;
+
+    const text = code(file);
+    text.split('\n').forEach((line, index) => {
+      // A comparison, not a query filter: `.eq('status', 'active')` is fine,
+      // because the query beside it bounds the date.
+      if (!/(?:status\s*[!=]==?\s*'active'|'active'\s*[!=]==?\s*\w*status)/.test(line)) return;
+      if (/\.eq\(|\.in\(|filter\(/.test(line)) return;
+      // The helpers are the sanctioned form, and admin queues legitimately
+      // compare the stored label because that is the column they moderate.
+      if (/jobIsLive|displayJobStatus/.test(line)) return;
+      if (file.includes('/admin/')) return;
+
+      /*
+        And a stated exemption, for the three places where the label really is
+        the question: two gate a *write* on whether the row is published,
+        which a closed window does not change, and one receives a status its
+        caller already ran through displayJobStatus.
+      */
+      const raw = readFileSync(file, 'utf8').split('\n');
+      const above = raw.slice(Math.max(0, index - 5), index).join('\n');
+      if (/the stored label, deliberately/i.test(above)) return;
+
+      offenders.push(`${file.replace(ROOT + '/', '')}:${index + 1}`);
+    });
+  }
+
+  check(
+    'every status comparison outside the admin queues goes through job-state',
+    offenders.length === 0,
+    offenders.slice(0, 8).join('; '),
+  );
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

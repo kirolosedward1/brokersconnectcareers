@@ -9,6 +9,7 @@ import { LeadsSourceBadge, SalaryLine } from '@/components/jobs/compensation';
 import { SaveJobToggle } from '@/components/jobs/save-job-toggle';
 import { cn, formatNumber } from '@/lib/utils';
 import type { JobListItem } from '@/lib/queries/jobs';
+import { jobIsLive } from '@/lib/job-state';
 
 export function JobCard({
   job,
@@ -48,8 +49,7 @@ export function JobCard({
    * where it matters: a saved list, where a role can close after it was
    * bookmarked and used to look identical to one still open.
    */
-  const closed =
-    job.status !== 'active' || (job.expires_at != null && new Date(job.expires_at) <= new Date());
+  const closed = !jobIsLive(job);
 
   const title = localized(locale, job.title_ar, job.title_en);
   const company = localized(locale, job.company.name_ar, job.company.name_en);
