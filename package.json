@@ -34,7 +34,8 @@
     "test:share": "node --experimental-strip-types scripts/share-source.test.mjs",
     "test:saved": "node --experimental-strip-types scripts/saved-search.test.mjs",
     "test:nextaction": "node --experimental-strip-types scripts/next-action.test.mjs",
-    "test:reads": "node scripts/reads.test.mjs"
+    "test:reads": "node scripts/reads.test.mjs",
+    "crawl": "node scripts/crawl.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",
