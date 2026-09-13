@@ -8,6 +8,40 @@ const report = reporter();
 const db = await createTestDb();
 const as = runner(db);
 
+report.section('every migration has a version of its own');
+{
+  /*
+    The file prefix is the migration's version, and two files sharing one is
+    not a naming slip. The PGlite harness applies them in sorted filename
+    order, so a duplicate still runs — alphabetically by whatever words follow
+    the number, which is nobody's intended order. `supabase db push` treats
+    the prefix as the key in its ledger and refuses the second outright.
+
+    Written the day three different branches each wrote a
+    `20260101000064_*.sql`: this one's, already applied to production, and two
+    from parallel sessions branched before it landed. None of them could have
+    seen the others. This is where the merge finds out, instead of production.
+  */
+  const { readdirSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+
+  const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'migrations');
+  const byVersion = new Map();
+  for (const file of readdirSync(dir).filter((name) => name.endsWith('.sql'))) {
+    const version = file.split('_')[0];
+    byVersion.set(version, [...(byVersion.get(version) ?? []), file]);
+  }
+
+  const shared = [...byVersion.values()].filter((files) => files.length > 1);
+  report.check(
+    `no two migrations share a version (${byVersion.size} versions)`,
+    shared.length === 0,
+    shared.map((files) => files.join(' + ')).join('; ') +
+      ' — renumber the newer one to the next free version',
+  );
+}
+
 report.section('the schema applies and the taxonomies land');
 for (const [label, sql, expected] of [
   ['governorates', 'select count(*)::int as n from governorates', 7],
