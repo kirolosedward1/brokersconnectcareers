@@ -98,6 +98,21 @@ export default async function JobsPage({
   */
   const pinnedCompany = filters.companySlug ? await getCompanyBySlug(filters.companySlug) : null;
 
+  /*
+    Who is offered a saved search.
+
+    Candidates, and readers who are not signed in — the control points those at
+    sign-in with a `next` back to the search they built, which is the only way
+    somebody without an account finds out the feature exists.
+
+    Nobody else. What "Alert me" writes is a saved search, which is a
+    candidate's row: /dashboard/saved is the one page that lists it and it
+    turns employers away, and the weekly digest it feeds is written for
+    somebody looking for work. An account still mid-onboarding has no profile
+    row yet and so no row to own one, which is the other case this excludes.
+  */
+  const offerSavedSearch = !viewer || viewer.profile?.role === 'candidate';
+
   const t = await getTranslations('jobs');
   const tTrack = await getTranslations('track');
 
@@ -141,8 +156,13 @@ export default async function JobsPage({
         </div>
 
         {/* Only once the reader has narrowed something down. Offering to save an
-            unfiltered list is offering to email them the whole board weekly. */}
-        {activeCount > 0 ? (
+            unfiltered list is offering to email them the whole board weekly.
+
+            And only to the side of the market it was built for — the same test
+            the bookmark on each card below already applies. An employer who
+            pressed this got a row that no page of theirs lists and a weekly
+            email they had no switch for. */}
+        {activeCount > 0 && offerSavedSearch ? (
           <SaveSearch signedIn={Boolean(viewer)} defaultLabel={defaultSearchLabel} />
         ) : null}
       </header>

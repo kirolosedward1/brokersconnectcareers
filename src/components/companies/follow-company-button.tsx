@@ -21,6 +21,11 @@ import { useSessionRecovery } from '@/lib/session-expired';
  * the company. Hiding it would mean only people who already have an account
  * ever discover it, which is backwards for something whose whole job is to
  * bring people back.
+ *
+ * Signed-in readers get it only if they are candidates, which the company page
+ * decides — the row this writes is a candidate's, and the insert policy says
+ * so too. `signedIn` is therefore about where the press goes, not about who is
+ * allowed to press.
  */
 export function FollowCompanyButton({
   slug,

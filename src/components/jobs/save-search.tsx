@@ -19,6 +19,11 @@ import { useSessionRecovery } from '@/lib/session-expired';
  * back to the search they built. Hiding it would mean the feature is only
  * discovered by people who already have an account, which is exactly backwards
  * for something whose job is to bring people back.
+ *
+ * Signed-in readers get it only if they are candidates, which the board
+ * decides — what this writes is a candidate's row, and the insert policy says
+ * so too. `signedIn` is therefore about which of two controls to draw, not
+ * about who is allowed one.
  */
 export function SaveSearch({ signedIn, defaultLabel }: { signedIn: boolean; defaultLabel: string }) {
   const t = useTranslations('savedSearch');

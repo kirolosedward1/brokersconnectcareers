@@ -89,22 +89,37 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
 
   const jobs = (data ?? []) as unknown as JobListItem[];
 
+  const viewer = await getViewer();
+
+  /*
+    Who is offered the follow.
+
+    Candidates, and readers who are not signed in — the button points those at
+    sign-in with a `next` back here, and hiding it would mean only people who
+    already have an account ever discover it.
+
+    Not employers. Following writes a saved search, and a saved search is a
+    candidate's row: the digest it feeds is worded for somebody looking for
+    work, and /dashboard/saved, the one page that lists it, turns employers
+    away. An employer who pressed this got a follow they could undo only by
+    finding this page again and mail they had no switch for. That covers the
+    company's own people as a special case of the rule rather than as one of
+    its own — being told weekly about listings you posted yourself was never a
+    feature either.
+  */
+  const offerFollow = !viewer || viewer.profile?.role === 'candidate';
+
   /*
     Whether this reader already follows the company.
 
-    One row lookup, and only for somebody signed in — there is no answer to
-    give a visitor, and the page is otherwise public and cacheable. Row-level
-    security scopes saved_searches to its owner, so no candidate_id is written
-    here, for the same reason it is not written on the inbox.
-
-    Hidden from the company's own people: being told weekly about listings you
-    posted yourself is not a feature.
+    One row lookup, and only for somebody who could act on the answer — there
+    is none to give a visitor, and the page is otherwise public and cacheable.
+    Row-level security scopes saved_searches to its owner, so no candidate_id
+    is written here, for the same reason it is not written on the inbox.
   */
-  const viewer = await getViewer();
-  const ownHouse = viewer?.company?.id === company.id;
   let following = false;
 
-  if (viewer && !ownHouse) {
+  if (viewer && offerFollow) {
     // Allowed to fail quietly: the button falls back to "follow", and
     // pressing it lands on the unique constraint and reports success, because
     // already following is the outcome it was asked for.
@@ -209,7 +224,7 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
             `basis-full` makes the button claim a line of its own at that width
             and sit back beside the name from `sm` up.
           */}
-          {ownHouse ? null : (
+          {offerFollow ? (
             <FollowCompanyButton
               slug={company.slug}
               label={name}
@@ -217,7 +232,7 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
               signedIn={Boolean(viewer)}
               className="basis-full sm:basis-auto"
             />
-          )}
+          ) : null}
         </header>
 
         {about ? (

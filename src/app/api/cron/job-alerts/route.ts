@@ -63,6 +63,8 @@ export async function GET(request: NextRequest) {
 
   let sent = 0;
   let empty = 0;
+  /** Rows whose owner is no longer somebody this digest is written for. */
+  let notForCandidates = 0;
 
   for (const search of searches ?? []) {
     try {
@@ -81,14 +83,38 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // Allowed to fail quietly: falls back to Arabic, this market's default.
+      /*
+        The owner's language, and whether they are still somebody this mail is
+        for.
+
+        The insert policy now refuses a saved search to anyone but a candidate,
+        and migration 65 removed the rows employers had already accumulated —
+        but a role is not frozen. An admin moving an account from candidate to
+        employer leaves rows that were created legitimately and are now
+        unreachable to their owner, and the digest is the one thing that would
+        still reach *them*: it is worded for somebody looking for work, and the
+        only page with the switch to stop it turns employers away.
+
+        Skipped rather than deleted. The row is the person's, not this job's to
+        throw away, and last_sent_at is untouched by a skip — so if they are
+        moved back, the week they missed is still there to cover.
+
+        Allowed to fail quietly: a read that fails now skips the week rather
+        than falling back to Arabic — recipient() re-reads this row inside the
+        send and returns null when it cannot, so it already meant no mail.
+      */
       const { data: profile } = await admin
         .from('profiles')
-        .select('locale')
+        .select('role, locale')
         .eq('id', search.candidate_id)
         .maybeSingle();
 
-      const locale = profile?.locale === 'en' ? 'en' : 'ar';
+      if (profile?.role !== 'candidate') {
+        notForCandidates += 1;
+        continue;
+      }
+
+      const locale = profile.locale === 'en' ? 'en' : 'ar';
 
       const outcome = await sendSavedSearchDigest({
         userId: search.candidate_id,
@@ -124,6 +150,7 @@ export async function GET(request: NextRequest) {
     considered: searches?.length ?? 0,
     sent,
     nothing_new: empty,
+    not_candidates: notForCandidates,
     at: new Date().toISOString(),
   });
 }

@@ -110,8 +110,8 @@ console.log('\n— no read in src/app drops its error');
   And the other direction, so the marker cannot become a habit: it has to be
   rare. Twelve today: seven in pages, all cosmetic — two developer chip lists,
   two "applied" badges, two note-author lookups, one follow state — and five in
-  routes, where the fallbacks are a digest in Arabic rather than English, an
-  email that names no listings, and an admin check that fails closed. Fifteen
+  routes, where the fallbacks are a digest held over to next week, an email
+  that names no listings, and an admin check that fails closed. Fifteen
   leaves room for the next honest one and still notices a habit forming, at
   which point the question is not "raise or not" but why so many of these
   reads exist at all.

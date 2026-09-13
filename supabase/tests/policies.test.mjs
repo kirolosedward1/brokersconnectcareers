@@ -1150,6 +1150,37 @@ report.section('saved searches are private to their owner');
   const r5 = await as(candidate, `update saved_searches set alerts=false returning alerts`);
   report.check('but can turn its alerts off', r5.ok && r5.rows.length === 1, r5.error);
 
+  /*
+    And who may own one at all.
+
+    Both controls that write these rows — "Alert me" on the board, "Follow" on
+    a company — were offered to anybody signed in, but /dashboard/saved is the
+    only page that lists what they write and it sends employers to their own
+    console before rendering. So an employer got a row they could not reach and
+    a weekly digest, worded for somebody job-hunting, with no switch to stop
+    it. The pages ask the question now; this is the same rule where the server
+    action cannot get past it.
+  */
+  const rEmployer = await as(
+    employerVerified,
+    `insert into saved_searches (candidate_id, label, query)
+       values ('${employerVerified}', 'المنافسين', 'company=al-rowad-1')`,
+  );
+  report.check('an employer cannot save a search or follow a company',
+    !rEmployer.ok, rEmployer.ok ? 'insert was allowed' : rEmployer.error);
+
+  // Staff are not job-hunting either, and the board offers them no control —
+  // the bookmark on a job card has always tested for `candidate` exactly.
+  const rAdmin = await as(admin, `insert into saved_searches (candidate_id, label, query)
+                                  values ('${admin}', 'مراجعة', 'q=admin')`);
+  report.check('nor can an admin', !rAdmin.ok, rAdmin.ok ? 'insert was allowed' : rAdmin.error);
+
+  const rCandidate = await as(candidate,
+    `insert into saved_searches (candidate_id, label, query)
+       values ('${candidate}', 'إيجارات المعادي', 'district=maadi') returning id`);
+  report.check('while a candidate still can', rCandidate.ok && rCandidate.rows.length === 1,
+    rCandidate.error);
+
   // The filters the board can actually produce have to fit in the column that
   // stores them. 21 districts alone are 388 characters and every facet
   // together is 677; the check used to stop at 500, so an ordinary "everything
