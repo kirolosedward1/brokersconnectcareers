@@ -67,6 +67,11 @@ export async function moderateJob(input: unknown): Promise<ActionResult> {
     if (error.message.includes('unverified_company_post_cap')) {
       return { ok: false, error: 'post_cap' };
     }
+    // Approval is where a new posting window spends a credit (migration 66),
+    // so a company with none left is refused at this button.
+    if (error.message.includes('insufficient_post_credits')) {
+      return { ok: false, error: 'no_credits' };
+    }
     return { ok: false, error: error.message };
   }
 

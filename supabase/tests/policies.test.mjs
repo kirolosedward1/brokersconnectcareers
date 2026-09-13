@@ -270,6 +270,112 @@ report.section('verification and credits are granted, never claimed');
   report.check('nobody self-assigns the admin role', !r5.ok, r5.ok ? 'update was allowed' : r5.error);
 }
 
+report.section('an approval spends a credit, once per window');
+{
+  /*
+    post_credits had two grant paths and no spend path, so the billing page
+    showed a balance that changed nothing. The rule migration 66 encodes: the
+    moderator's approval spends one when it starts a new 30-day window, and
+    only when the platform has switched credits on.
+
+    as() rolls back before anyone can read what the trigger wrote to the
+    company, so this approves inside its own transaction and reads the balance
+    before throwing it away.
+  */
+  const verifiedCo = (await db.query(`select company_id from jobs where id = '${liveJob}'`)).rows[0].company_id;
+  const balance = async (id) =>
+    (await db.query(`select post_credits from companies where id = '${id}'`)).rows[0].post_credits;
+  const found = { verified: await balance(verifiedCo), unverified: await balance(unverifiedCo) };
+
+  const approve = async (jobId, companyId) => {
+    await db.exec('begin');
+    try {
+      await db.exec('set local role authenticated;');
+      await db.exec(`set local request.jwt.claim.sub = '${admin}';`);
+      await db.exec(`set local request.jwt.claims = '{"role":"authenticated","sub":"${admin}"}';`);
+      await db.query(`update jobs set status = 'active' where id = '${jobId}'`);
+      await db.exec('reset role;');
+      const { post_credits } = (
+        await db.query(`select post_credits from companies where id = '${companyId}'`)
+      ).rows[0];
+      await db.exec('rollback');
+      return { ok: true, credits: post_credits };
+    } catch (error) {
+      await db.exec('rollback');
+      return { ok: false, error: error.message };
+    }
+  };
+
+  // Verified, so the one-listing cap is not what answers.
+  await db.exec(`update companies set verification_status = 'verified', post_credits = 2 where id = '${unverifiedCo}'`);
+
+  const off = await approve(draftJob, unverifiedCo);
+  report.check('while credits are switched off, approving costs nothing',
+    off.ok && off.credits === 2, JSON.stringify(off));
+
+  await db.exec('update app_settings set credits_required = true');
+
+  const on = await approve(draftJob, unverifiedCo);
+  report.check('switched on, approving a first publication spends one',
+    on.ok && on.credits === 1, JSON.stringify(on));
+
+  await db.exec(`update companies set post_credits = 0 where id = '${unverifiedCo}'`);
+  const broke = await approve(draftJob, unverifiedCo);
+  report.check('and a company with none left is refused by name',
+    !broke.ok && /insufficient_post_credits/.test(broke.error ?? ''), JSON.stringify(broke));
+
+  /*
+    A listing coming back with time on the clock is the same posting. Migration
+    46 carries its window across rather than renewing it, so charging here would
+    bill for a month the company already has.
+  */
+  await db.exec(`
+    update companies set post_credits = 3 where id = '${verifiedCo}';
+    update jobs set expires_at = now() + interval '10 days' where id = '${liveJob}';
+    update jobs set status = 'closed'         where id = '${liveJob}';
+    update jobs set status = 'pending_review' where id = '${liveJob}';
+  `);
+  const carried = await approve(liveJob, verifiedCo);
+  report.check('reopening a listing whose window is still running costs nothing',
+    carried.ok && carried.credits === 3, JSON.stringify(carried));
+
+  await db.exec(`update jobs set published_at = now() - interval '32 days', expires_at = now() - interval '2 days' where id = '${liveJob}'`);
+  const repost = await approve(liveJob, verifiedCo);
+  report.check('a repost starts a new window, so it spends one',
+    repost.ok && repost.credits === 2, JSON.stringify(repost));
+
+  /*
+    Once the window is what a credit buys, an owner who can write the window
+    can renew for free. Nothing in the application writes either column; the
+    guard now says so for everyone else.
+  */
+  const renew = await as(employerVerified,
+    `update jobs set expires_at = now() + interval '1 year' where id = '${liveJob}'`);
+  report.check('the owner cannot extend the window themselves',
+    !renew.ok && /posting window is stamped/.test(renew.error ?? ''), renew.ok ? 'update was allowed' : renew.error);
+
+  const backdate = await as(employerVerified,
+    `update jobs set published_at = now() where id = '${liveJob}'`);
+  report.check('or restamp when it began',
+    !backdate.ok && /posting window is stamped/.test(backdate.error ?? ''), backdate.ok ? 'update was allowed' : backdate.error);
+
+  const flip = await as(employerVerified, 'update app_settings set credits_required = false returning id');
+  report.check('and an employer cannot switch credits off',
+    flip.ok && flip.rows.length === 0, JSON.stringify(flip.rows ?? flip.error));
+
+  const anyone = await as(null, 'select credits_required from app_settings', 'anon');
+  report.check('while anyone can read whether they are on',
+    anyone.ok && anyone.rows.length === 1, anyone.error);
+
+  // Back the way it was found, for every section after this one.
+  await db.exec(`
+    update app_settings set credits_required = false;
+    update jobs set status = 'active', published_at = now(), expires_at = now() + interval '30 days' where id = '${liveJob}';
+    update companies set verification_status = 'unverified', post_credits = ${found.unverified} where id = '${unverifiedCo}';
+    update companies set post_credits = ${found.verified} where id = '${verifiedCo}';
+  `);
+}
+
 report.section('a company slug is permanent');
 {
   /*
@@ -372,7 +478,10 @@ report.section('an employer may explain a decision, and nothing more');
 report.section('notifications are written by the platform, not by their reader');
 {
   const live = (
-    await db.query("select id, company_id from jobs where status='active' and expires_at > now() limit 1")
+    // Never liveJob: a later section needs it to have an outsider who did not
+    // apply. Unordered, `limit 1` answered by physical row order, so any earlier
+    // update to liveJob could make this pick it.
+    await db.query(`select id, company_id from jobs where status='active' and expires_at > now() and id <> '${liveJob}' order by id limit 1`)
   ).rows[0];
   const owner = (
     await db.query(`select owner_id from companies where id='${live.company_id}'`)
@@ -1577,7 +1686,11 @@ report.section('the bell rings for everyone who does the work');
     await db.query(`select company_id from company_members where user_id = '${employerVerified}' and role = 'admin' limit 1`)
   ).rows[0].company_id;
   const job = (
-    await db.query(`select id from jobs where company_id = '${company}' and status = 'active' limit 1`)
+    // One the outsider has not already applied to, or the insert below is a
+    // conflict that does nothing and nobody is told anything.
+    await db.query(`select id from jobs where company_id = '${company}' and status = 'active'
+                      and not exists (select 1 from applications where job_id = jobs.id and candidate_id = '${OUTSIDER}')
+                    order by id limit 1`)
   ).rows[0].id;
 
   await db.exec(`

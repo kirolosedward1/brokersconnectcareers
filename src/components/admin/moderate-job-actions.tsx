@@ -29,7 +29,13 @@ export function ModerateJobActions({
     startTransition(async () => {
       const result = await fn();
       if (!result.ok) {
-        setError(result.error === 'post_cap' ? t('postCapBlocked') : result.error ?? null);
+        setError(
+          result.error === 'post_cap'
+            ? t('postCapBlocked')
+            : result.error === 'no_credits'
+              ? t('noCreditsBlocked')
+              : result.error ?? null,
+        );
         return;
       }
       setError(null);

@@ -620,6 +620,7 @@
     "feature": "Feature listing",
     "unfeature": "Remove feature",
     "postCapBlocked": "This company is unverified and already has an active listing. Verify it first, or close the existing post.",
+    "noCreditsBlocked": "This company has no post credits left, and publishing spends one. It needs to top up before this listing can go live.",
     "users": "Accounts",
     "usersLede": "Approve companies and manage every account.",
     "approveAccount": "Approve",
