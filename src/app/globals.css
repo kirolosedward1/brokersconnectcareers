@@ -264,6 +264,21 @@
     letter-spacing: -0.02em;
   }
 
+  /* Wrapped Arabic headings need more air than Latin ones: the script stacks
+     marks above and below the line, and at Tailwind's `leading-tight` (1.25) a
+     two-line job title has its kasra touching the next line's shadda. Scoped
+     to headings that opt into the tight leading, and to Arabic only — Latin
+     titles keep the tighter setting they were designed at. */
+  html[lang='ar'] :is(h1, h2, h3).leading-tight {
+    line-height: 1.4;
+  }
+
+  /* A lone word on the last line of a paragraph reads as a mistake in either
+     script; let the browser rebalance the last lines where it can. */
+  p {
+    text-wrap: pretty;
+  }
+
   /* Arabic underlines collide with descenders; offset them. */
   html[lang='ar'] a {
     text-underline-offset: 0.25em;

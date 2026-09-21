@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation';
 import { localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FactLine } from '@/components/ui/fact-line';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
@@ -153,7 +154,9 @@ export async function JobDetailView({
                     href={`/companies/${job.company.slug}`}
                     className="font-medium hover:underline"
                   >
-                    {companyName}
+                    {/* Often Latin inside an Arabic line; isolated so its own
+                        punctuation cannot reorder the facts beside it. */}
+                    <bdi>{companyName}</bdi>
                   </Link>
                   <VerifiedBadge
                     status={job.company.verification_status}
@@ -182,23 +185,20 @@ export async function JobDetailView({
               Where the clients come from is not repeated here — it has a cell
               of its own in the compensation block directly below.
             */}
-            <p className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground">
+            <FactLine className="mt-3 text-sm text-muted-foreground">
               <span>{tTrack(job.track)}</span>
-              <span aria-hidden className="text-border">|</span>
               <span>{tType(job.employment_type)}</span>
-              <span aria-hidden className="text-border">|</span>
               <span className="inline-flex items-center gap-1">
                 <Users className="size-3.5 shrink-0" aria-hidden />
                 {tExp(job.experience_band)}
               </span>
-              <span aria-hidden className="text-border">|</span>
               <span>
                 <span className="numeral font-semibold text-foreground">
                   {formatNumber(job.seats, locale)}
                 </span>{' '}
                 {t('seatsLabel', { count: job.seats })}
               </span>
-            </p>
+            </FactLine>
           </header>
 
           {/* Compensation is the differentiator, so it sits above the fold, in
@@ -331,11 +331,10 @@ export async function JobDetailView({
             <p className="text-base">
               <SalaryLine job={job} locale={locale} />
             </p>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            <FactLine className="mt-1.5 text-sm text-muted-foreground">
               <CommissionLine job={job} locale={locale} />
-              <span aria-hidden className="text-border">|</span>
               <LeadsSourceText job={job} />
-            </p>
+            </FactLine>
 
             <div className="mt-4">
               {!open ? (
@@ -376,7 +375,9 @@ export async function JobDetailView({
                   seed={job.company.slug}
                   size="sm"
                 />
-                <p className="min-w-0 font-medium">{companyName}</p>
+                <p className="min-w-0 font-medium">
+                  <bdi>{companyName}</bdi>
+                </p>
               </div>
               {/* Only for a company that holds the badge. There is no matching
                   line for one that does not: 'unverified' covers a company

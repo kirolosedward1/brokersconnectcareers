@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Download, FileX2, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import { FactLine } from '@/components/ui/fact-line';
 import { Button, ICON_HIT_AREA } from '@/components/ui/button';
 import { Select } from '@/components/ui/field';
 import { Link } from '@/i18n/navigation';
@@ -174,17 +175,12 @@ export function ApplicantCard({
 
           <div className="min-w-0">
             <Heading className="font-semibold">{candidate?.full_name ?? '—'}</Heading>
-            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
-              {application.experience_band ? (
-                <>
-                  <span>{tExp(application.experience_band)}</span>
-                  <span aria-hidden className="text-border">|</span>
-                </>
-              ) : null}
+            <FactLine className="mt-0.5 text-sm text-muted-foreground">
+              {application.experience_band ? <span>{tExp(application.experience_band)}</span> : null}
               <time dateTime={isoDate(application.created_at)}>
                 {tJobs('postedOn', { date: formatDate(application.created_at, locale) })}
               </time>
-            </p>
+            </FactLine>
           </div>
         </div>
 

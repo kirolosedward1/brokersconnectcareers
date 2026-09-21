@@ -260,7 +260,9 @@ export default async function JobsPage({
       <header className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-1 items-baseline gap-2.5">
           <h1 className="text-xl font-bold">{t('title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('resultsCount', { count: total })}</p>
+          <p className="text-sm whitespace-nowrap text-muted-foreground">
+            {t('resultsCount', { count: total })}
+          </p>
         </div>
 
         {/* Only once the reader has narrowed something down. Offering to save an
@@ -275,7 +277,10 @@ export default async function JobsPage({
         ) : null}
 
         <div className="flex items-center gap-2">
-          <label htmlFor="sort" className="text-sm text-muted-foreground">
+          {/* Heard on a phone, not seen: the select's own value — "newest" —
+              says what it is, and the visible label was what pushed the count
+              onto two lines at 360px. */}
+          <label htmlFor="sort" className="text-sm text-muted-foreground max-sm:sr-only">
             {t('sortBy')}
           </label>
           <SortSelect

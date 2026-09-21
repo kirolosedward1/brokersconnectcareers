@@ -52,8 +52,10 @@ export function StatStrip({ cells, label }: { cells: StatCell[]; label: string }
       aria-label={label}
       // Hairlines come from the gap over a border-coloured ground, so they
       // stay correct however the cells wrap — two across on a phone, all in
-      // one row on a desktop — without a rule per breakpoint.
-      className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3 lg:grid-flow-col lg:auto-cols-fr lg:grid-cols-none"
+      // one row from `sm` — without a rule per breakpoint.
+      // An odd count would leave the last cell of a two-column phone grid
+      // beside a hole showing the rule colour, so the last cell takes the row.
+      className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1"
     >
       {cells.map(({ label: cellLabel, value, href, tone = 'default', hint, delta }) => {
         const t = STRIP_TONES[tone];

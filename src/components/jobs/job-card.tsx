@@ -3,6 +3,7 @@ import { BookmarkCheck, CheckCheck, CircleSlash, MapPin, Star } from 'lucide-rea
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
+import { FactLine } from '@/components/ui/fact-line';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { CommissionLine, LeadsSourceText, SalaryLine } from '@/components/jobs/compensation';
@@ -73,12 +74,6 @@ export function JobCard({
     show mixed tracks, and there the row could not say whether a role was
     resale or primary without being opened.
   */
-  const sep = (
-    <span aria-hidden className="text-border">
-      |
-    </span>
-  );
-
   return (
     <article
       className={cn(
@@ -88,7 +83,17 @@ export function JobCard({
         closed && 'opacity-70',
       )}
     >
-      <div className="flex items-start gap-3">
+      {/*
+        A grid rather than a flex row, for the phone.
+
+        As a row, the facts shared their line with the logo on one side and
+        the date on the other, which on a 360px screen left them about 190px —
+        so two lines of facts wrapped to six and a results page showed one and
+        a half jobs. Here the facts are a second grid row: beside the logo from
+        `sm`, where there is room, and under it at the card's full width below
+        that, which halves their height on a phone.
+      */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3">
         {/* The company's mark, so a listings page is scannable by who is
             hiring and not only by job title. */}
         <CompanyLogo
@@ -98,7 +103,7 @@ export function JobCard({
           size="sm"
         />
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 self-center sm:self-start">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h3 className="text-base font-semibold leading-snug">
               {/* Stretched link keeps the whole card clickable without nesting
@@ -145,12 +150,14 @@ export function JobCard({
               </Badge>
             ) : null}
           </div>
+        </div>
 
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
+        <div className="col-span-3 row-start-2 mt-2 min-w-0 sm:col-span-1 sm:col-start-2 sm:mt-0.5">
+          <FactLine className="text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1 font-medium text-foreground">
               {/* A company's name is whatever the company typed, often Latin
                   in an Arabic row. Isolated, so its punctuation cannot reorder
-                  the separators around it. */}
+                  the facts around it. */}
               <bdi>{company}</bdi>
               <VerifiedBadge
                 compact
@@ -158,50 +165,42 @@ export function JobCard({
                 label={tCompanies('verified')}
               />
             </span>
-            {sep}
             <span className="inline-flex items-center gap-1">
               <MapPin className="size-3.5 shrink-0" aria-hidden />
               {district}
             </span>
-            {sep}
             <span>{tTrack(job.track)}</span>
-            {sep}
             <span>{tBand(job.experience_band)}</span>
-          </p>
+          </FactLine>
 
           {/* The pay, the commission where it is a number, where the clients
               come from, and how many of them. Seats used to be a gradient
               panel in the corner, which outweighed the job title; it is a
               figure people scan, so it reads as one. */}
-          <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
+          <FactLine className="mt-1.5 text-sm">
             <SalaryLine job={job} locale={locale} />
             {/* Only a stated percentage. "Undisclosed" and "split" are words,
                 not terms, and the listing is where they are explained. */}
             {job.commission_type === 'percentage' && job.commission_value != null ? (
-              <>
-                {sep}
-                <span className="text-muted-foreground">
-                  <CommissionLine job={job} locale={locale} />
-                </span>
-              </>
+              <span className="text-muted-foreground">
+                <CommissionLine job={job} locale={locale} />
+              </span>
             ) : null}
-            {sep}
             <span className="text-muted-foreground">
               <LeadsSourceText job={job} />
             </span>
-            {sep}
-            <span className="inline-flex items-baseline gap-1 text-muted-foreground">
+            <span className="text-muted-foreground">
               <span className="numeral font-medium text-foreground">
                 {formatNumber(job.seats, locale)}
-              </span>
+              </span>{' '}
               {t('seatsLabel', { count: job.seats })}
             </span>
-          </p>
+          </FactLine>
         </div>
 
         {/* Freshness at the inline end, above everything else in that column:
             it is the one fact read across rows rather than along one. */}
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="col-start-3 row-start-1 flex shrink-0 flex-col items-end gap-1 sm:row-span-2">
           {job.published_at ? (
             <time
               dateTime={job.published_at}
