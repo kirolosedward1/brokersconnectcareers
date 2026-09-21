@@ -78,7 +78,7 @@ export function Label({
   );
 }
 
-/** Label + control + optional hint and error, in the order forms want them. */
+/** Label, control, then the hint or the error — in the order forms want them. */
 export function Field({
   label,
   hint,
@@ -99,9 +99,19 @@ export function Field({
       <label htmlFor={htmlFor} className="text-sm font-medium">
         {label}
       </label>
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       {children}
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {/* Under the control, not between it and its label. Above, a hint pushed
+          its own input down by a line, so two fields side by side — one with a
+          hint, one without — never shared a baseline, and every form that
+          wanted columns had to stack instead. Below, the label stays attached
+          to what it labels and the controls in a row line up. An error takes
+          the hint's place rather than stacking under it: once something is
+          wrong, what is wrong is the help. */}
+      {error ? (
+        <p className="text-xs text-destructive">{error}</p>
+      ) : hint ? (
+        <p className="text-xs leading-relaxed text-muted-foreground">{hint}</p>
+      ) : null}
     </div>
   );
 }

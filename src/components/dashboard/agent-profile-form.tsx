@@ -133,8 +133,11 @@ export function AgentProfileForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-8">
-      <section className="space-y-5">
+    <form onSubmit={onSubmit} className="space-y-6">
+      {/* Name and number side by side. Each is a short value, and stacked at
+          the form's full width they were two 800px inputs holding twelve
+          characters apiece. */}
+      <section className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
         <Field label={tOnboarding('fullName')} htmlFor="fullName">
           <Input id="fullName" name="fullName" required defaultValue={profile.full_name} />
         </Field>
@@ -156,10 +159,10 @@ export function AgentProfileForm({
         </Field>
       </section>
 
-      <section className="space-y-5 border-t border-border pt-8">
+      <section className="space-y-4 border-t border-border pt-6">
         <div>
-          <h2 className="text-lg font-semibold">{t('agentProfile')}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t('agentProfileHint')}</p>
+          <h2 className="text-base font-semibold">{t('agentProfile')}</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t('agentProfileHint')}</p>
         </div>
 
         {/* Visibility comes first, before anything is filled in — the reader
@@ -203,19 +206,32 @@ export function AgentProfileForm({
           </div>
         </fieldset>
 
-        <Field label={tAgents('availability')} htmlFor="availability">
-          <Select
-            id="availability"
-            name="availability"
-            defaultValue={agent?.availability ?? 'open_to_offers'}
-          >
-            {AVAILABILITIES.map((value) => (
-              <option key={value} value={value}>
-                {tAvailability(value)}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+          <Field label={tAgents('availability')} htmlFor="availability">
+            <Select
+              id="availability"
+              name="availability"
+              defaultValue={agent?.availability ?? 'open_to_offers'}
+            >
+              {AVAILABILITIES.map((value) => (
+                <option key={value} value={value}>
+                  {tAvailability(value)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label={tFilters('experienceBand')} htmlFor="yearsExperience">
+            <Input
+              id="yearsExperience"
+              name="yearsExperience"
+              type="number"
+              min={0}
+              max={60}
+              className="numeral-field sm:w-28"
+              defaultValue={agent?.years_experience ?? 0}
+            />
+          </Field>
+        </div>
 
         <Field label={tAgents('headlineAr')} htmlFor="headlineAr">
           <Textarea
@@ -238,17 +254,6 @@ export function AgentProfileForm({
           />
         </Field>
 
-        <Field label={tFilters('experienceBand')} htmlFor="yearsExperience">
-          <Input
-            id="yearsExperience"
-            name="yearsExperience"
-            type="number"
-            min={0}
-            max={60}
-            className="numeral-field w-28"
-            defaultValue={agent?.years_experience ?? 0}
-          />
-        </Field>
 
         <CheckboxGroup
           legend={tAgents('tracks')}

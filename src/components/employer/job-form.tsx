@@ -322,6 +322,7 @@ export function JobForm({
 
         {step === 0 ? (
           <div className="space-y-5">
+            <div className="grid gap-5 sm:grid-cols-2">
             <Field
               label={t('titleAr')}
               htmlFor="titleAr"
@@ -333,6 +334,7 @@ export function JobForm({
             <Field label={t('titleEn')} hint={t('titleEnHint')} htmlFor="titleEn">
               <Input id="titleEn" dir="ltr" value={values.titleEn} onChange={set('titleEn')} maxLength={160} />
             </Field>
+            </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label={t('track')} htmlFor="track">
