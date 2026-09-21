@@ -64,7 +64,7 @@ export async function TrackDistrictLanding({
           ))}
         </ul>
       ) : (
-        <div className="mt-6 rounded-xl border border-dashed border-border py-12 text-center">
+        <div className="mt-6 rounded-xl border border-dashed border-border px-6 py-8 text-center">
           <p className="font-medium">{tJobs('empty')}</p>
           <Button asChild variant="outline" className="mt-4">
             <Link href="/jobs">{tJobs('title')}</Link>

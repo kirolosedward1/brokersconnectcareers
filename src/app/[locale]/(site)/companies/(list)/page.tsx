@@ -55,7 +55,7 @@ export default async function CompaniesPage({
   const t = await getTranslations('companies');
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="shell py-8">
       <h1 className="text-2xl font-bold">{t('title')}</h1>
       <p className="mt-1 text-muted-foreground">{t('lede')}</p>
 
@@ -66,7 +66,7 @@ export default async function CompaniesPage({
       />
 
       {companies.length === 0 ? (
-        <p className="mt-8 rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
+        <p className="mt-8 rounded-xl border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
           {t('empty')}
         </p>
       ) : (

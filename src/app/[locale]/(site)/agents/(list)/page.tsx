@@ -76,7 +76,7 @@ export default async function AgentsPage({
   const showGate = !unlocked && viewer?.company?.verification_status !== 'verified';
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="shell py-8">
       <header className="max-w-2xl">
         <h1 className="text-3xl font-bold">{t('title')}</h1>
         <p className="mt-2 text-lg leading-relaxed text-muted-foreground">{t('subtitle')}</p>
@@ -120,7 +120,7 @@ export default async function AgentsPage({
           </p>
 
           {agents.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border py-16 text-center">
+            <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
               <UsersRound className="mx-auto size-8 text-muted-foreground" aria-hidden />
               <p className="mt-4 font-medium">{t('empty')}</p>
             </div>

@@ -11,15 +11,13 @@ export default function AppLoading() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-6 w-48" />
         <Skeleton className="h-4 w-64" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        {Array.from({ length: 6 }, (_, index) => (
-          <Skeleton key={index} className="h-32 rounded-xl" />
-        ))}
-      </div>
+      {/* The strip and then rows — the shape of every console page now, so the
+          placeholder no longer promises a wall of tiles that never arrives. */}
+      <Skeleton className="h-[4.25rem] rounded-xl" />
 
       <Skeleton className="h-72 rounded-xl" />
     </div>

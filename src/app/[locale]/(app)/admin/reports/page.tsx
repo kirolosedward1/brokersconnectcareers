@@ -118,7 +118,7 @@ export default async function AdminReportsPage({
       </header>
 
       {queue.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
           {t('emptyQueue')}
         </p>
       ) : (

@@ -109,7 +109,7 @@ export default async function TalentPoolPage({
       </header>
 
       {total === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-16 text-center">
+        <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
           <UsersRound className="mx-auto size-8 text-muted-foreground" aria-hidden />
           <p className="mt-4 font-medium">{t('shortlistEmpty')}</p>
           <p className="mt-1 text-sm text-muted-foreground">{t('shortlistEmptyHint')}</p>

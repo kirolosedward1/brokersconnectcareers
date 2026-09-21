@@ -209,7 +209,7 @@ export async function SignedInHome({
             </ul>
           </>
         ) : (
-          <p className="mt-4 rounded-xl border border-dashed border-border py-12 text-center text-muted-foreground">
+          <p className="mt-4 rounded-xl border border-dashed border-border px-6 py-8 text-center text-muted-foreground">
             {tJobs("empty")}
           </p>
         )}

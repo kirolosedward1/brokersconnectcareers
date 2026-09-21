@@ -29,7 +29,6 @@
     "browseAll": "Browse all jobs",
     "featuredJobs": "Featured jobs",
     "latestJobs": "Latest jobs",
-    "byTrack": "By track",
     "byDistrict": "By district",
     "statJobs": "live jobs",
     "statSeats": "open seats",
@@ -352,7 +351,6 @@
     "statSaved": "Saved jobs",
     "statAlerts": "Active alerts",
     "statCompleteness": "Profile completeness",
-    "statOpenJobs": "Open roles right now",
     "statLiveJobs": "Live listings",
     "statPending": "In review",
     "statExpiring": "Expiring within a week",
@@ -864,11 +862,6 @@
       "proofSalary": "Basic salary",
       "proofCommission": "Commission rate",
       "proofLeads": "Lead source",
-      "kindClarity": "Clarity",
-      "kindNiche": "Focus",
-      "kindPipeline": "Pipeline",
-      "kindVerified": "Verification",
-      "kindSeats": "Seats",
       "kindFresh": "Freshness"
     }
   },

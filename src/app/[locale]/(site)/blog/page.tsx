@@ -47,7 +47,7 @@ export default async function BlogIndexPage({
       </header>
 
       {posts.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border py-20 text-center text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
           {t('empty')}
         </p>
       ) : (

@@ -129,7 +129,7 @@ export default async function SavedJobsPage({
         </h2>
 
         {jobs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border py-16 text-center">
+          <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
             <p className="font-medium">{t('emptySaved')}</p>
             <Button asChild className="mt-5">
               <Link href="/jobs">{tJobs('title')}</Link>

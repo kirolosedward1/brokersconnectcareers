@@ -37,7 +37,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
   // and the header has to stop floating when it does.
   return (
     <HeaderShell hasHomeHero={!viewer?.profile}>
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4">
+      <div className="shell flex h-14 items-center gap-2 sm:h-16">
         <Link href="/" className="flex min-h-11 shrink-0 items-center">
           <Logo name={tMeta('siteName')} />
         </Link>

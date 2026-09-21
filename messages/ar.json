@@ -29,7 +29,6 @@
     "browseAll": "شوف كل الوظائف",
     "featuredJobs": "وظائف مختارة",
     "latestJobs": "أحدث الوظائف",
-    "byTrack": "حسب التخصص",
     "byDistrict": "حسب المنطقة",
     "statJobs": "وظيفة منشورة",
     "statSeats": "فرصة خالية",
@@ -352,7 +351,6 @@
     "statSaved": "وظائف محفوظة",
     "statAlerts": "تنبيهات شغّالة",
     "statCompleteness": "اكتمال ملفك",
-    "statOpenJobs": "وظائف مفتوحة دلوقتي",
     "statLiveJobs": "إعلانات منشورة",
     "statPending": "تحت المراجعة",
     "statExpiring": "بتنتهي خلال أسبوع",
@@ -864,11 +862,6 @@
       "proofSalary": "الراتب الأساسي",
       "proofCommission": "نسبة العمولة",
       "proofLeads": "مصدر العملاء",
-      "kindClarity": "الوضوح",
-      "kindNiche": "التخصص",
-      "kindPipeline": "المتابعة",
-      "kindVerified": "التوثيق",
-      "kindSeats": "الشواغر",
       "kindFresh": "الصلاحية"
     }
   },
