@@ -1,6 +1,7 @@
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
+import { EmptyIllustration, type IllustrationName } from '@/components/illustration';
 
 /**
  * Dashboard figures.
@@ -108,13 +109,17 @@ export function EmptyDashboard({
   title,
   body,
   action,
+  illustration,
 }: {
   title: string;
   body: string;
   action: React.ReactNode;
+  /** Which drawing greets the new account — a candidate's differs from a company's. */
+  illustration?: IllustrationName;
 }) {
   return (
     <div className="rounded-xl border border-dashed border-border px-6 py-8 text-center">
+      {illustration ? <EmptyIllustration name={illustration} /> : null}
       <p className="font-medium">{title}</p>
       <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{body}</p>
       <div className="mt-4">{action}</div>

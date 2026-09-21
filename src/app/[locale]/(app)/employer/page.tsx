@@ -63,6 +63,7 @@ export default async function EmployerOverviewPage({
           <h1 className="text-xl font-bold">{t('overview')}</h1>
         </header>
         <EmptyDashboard
+          illustration="write"
           title={t('emptyEmployerTitle')}
           body={t('emptyEmployerBody')}
           action={

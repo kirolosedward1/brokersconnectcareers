@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
@@ -130,6 +131,7 @@ export default async function SavedJobsPage({
 
         {jobs.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+            <EmptyIllustration name="choose" />
             <p className="font-medium">{t('emptySaved')}</p>
             <Button asChild className="mt-5">
               <Link href="/jobs">{tJobs('title')}</Link>

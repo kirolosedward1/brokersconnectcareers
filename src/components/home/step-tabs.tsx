@@ -108,7 +108,7 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
       {/* One panel per step rather than one panel whose contents swap: it keeps
           each tab's aria-controls pointing at something real, and lets the
           inactive ones stay in the DOM so switching costs no layout. */}
-      <div className="relative min-h-[20rem] rounded-xl border border-border bg-card p-4 shadow-sm sm:p-8">
+      <div className="relative min-h-[18rem] rounded-xl border border-border bg-card p-4 sm:p-6">
         {steps.map((step, index) => (
           <div
             key={step.key}

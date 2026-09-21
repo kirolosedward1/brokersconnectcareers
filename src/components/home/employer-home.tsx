@@ -4,6 +4,7 @@ import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { StatStrip } from '@/components/dashboard/stat-tile';
+import { EmptyIllustration } from '@/components/illustration';
 import { formatNumber } from '@/lib/utils';
 
 /**
@@ -128,6 +129,7 @@ export async function EmployerHome({
         /* No company row yet, so there is nothing to count. The one thing that
            unblocks everything else is the only thing offered. */
         <div className="mt-6 rounded-xl border border-dashed border-border px-6 py-8 text-center">
+          <EmptyIllustration name="write" />
           <p className="font-medium">{tDash('emptyEmployerTitle')}</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
             {tDash('emptyEmployerBody')}

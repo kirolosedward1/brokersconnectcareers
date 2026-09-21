@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { CalendarDays, Clock } from 'lucide-react';
+import { Illustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, routing, type Locale } from '@/i18n/routing';
 import { CoverArt } from '@/components/blog/cover-art';
@@ -38,12 +39,16 @@ export default async function BlogIndexPage({
   const t = await getTranslations('blog');
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-14">
-      <header className="mb-12 text-center">
-        <h1 className="text-3xl font-bold text-balance sm:text-4xl">{t('title')}</h1>
-        <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
-          {t('subtitle')}
-        </p>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
+      {/* The one public page that is about reading rather than doing, so it
+          is the one that opens with a picture — beside the title from `sm`,
+          absent on a phone, where it would only push the first article down. */}
+      <header className="mb-8 flex items-center justify-between gap-8 border-b border-border pb-6">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-balance sm:text-3xl">{t('title')}</h1>
+          <p className="mt-2 max-w-xl leading-relaxed text-muted-foreground">{t('subtitle')}</p>
+        </div>
+        <Illustration name="blog" sizes="13rem" className="hidden w-52 shrink-0 sm:block" priority />
       </header>
 
       {posts.length === 0 ? (

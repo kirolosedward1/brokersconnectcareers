@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { SearchX, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, localized, type Locale } from '@/i18n/routing';
 import { JobCard } from '@/components/jobs/job-card';
@@ -372,8 +373,8 @@ export default async function JobsPage({
 
           {jobs.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
-              <SearchX className="mx-auto size-8 text-muted-foreground" aria-hidden />
-              <p className="mt-4 font-medium">{t('empty')}</p>
+              <EmptyIllustration name="search" />
+              <p className="font-medium">{t('empty')}</p>
               <p className="mt-1 text-sm text-muted-foreground">{t('emptyHint')}</p>
               {activeCount > 0 ? (
                 <Button asChild variant="outline" className="mt-5">

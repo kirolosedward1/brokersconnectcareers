@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { EmptyIllustration } from '@/components/illustration';
 import { asLocale } from '@/i18n/routing';
 import { NotificationItem } from '@/components/notifications/notification-item';
 import { MarkAllReadButton } from '@/components/notifications/mark-all-read-button';
@@ -78,7 +79,8 @@ export default async function NotificationsPage({
           product to do. "Nothing here" with no way onward is a page that can
           only be left with the back button.
         */
-        <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center">
+        <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+          <EmptyIllustration name="updates" />
           <p className="font-medium">{t('empty')}</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
             {t('emptyHint')}

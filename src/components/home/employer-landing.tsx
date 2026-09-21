@@ -13,7 +13,7 @@ import { type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { HeroShell } from '@/components/home/hero-shell';
 import { StepTabs } from '@/components/home/step-tabs';
-import { ContactStep, PostStep, VerifyStep } from '@/components/home/employer-steps';
+import { Illustration } from '@/components/illustration';
 import { POST_PACKS } from '@/lib/taxonomy';
 import { BILLING_ENABLED } from '@/lib/env';
 import { formatEgp, formatNumber } from '@/lib/utils';
@@ -159,19 +159,19 @@ export async function EmployerLanding({
                 key: 'employer1',
                 title: t('how.employer1Title'),
                 body: t('how.employer1Body'),
-                illustration: <VerifyStep className="h-auto w-full max-w-lg" />,
+                illustration: <Illustration name="verify" className="max-w-md" />,
               },
               {
                 key: 'employer2',
                 title: t('how.employer2Title'),
                 body: t('how.employer2Body'),
-                illustration: <PostStep className="h-auto w-full max-w-lg" />,
+                illustration: <Illustration name="write" className="max-w-md" />,
               },
               {
                 key: 'employer3',
                 title: t('how.employer3Title'),
                 body: t('how.employer3Body'),
-                illustration: <ContactStep className="h-auto w-full max-w-lg" />,
+                illustration: <Illustration name="review" className="max-w-md" />,
               },
             ]}
           />

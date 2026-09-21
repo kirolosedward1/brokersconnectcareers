@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { ShieldCheck, UsersRound } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
+import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
 import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
 import { AgentCard } from '@/components/agents/agent-card';
@@ -125,8 +126,8 @@ export default async function AgentsPage({
 
           {agents.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
-              <UsersRound className="mx-auto size-8 text-muted-foreground" aria-hidden />
-              <p className="mt-4 font-medium">{t('empty')}</p>
+              <EmptyIllustration name="choose" />
+              <p className="font-medium">{t('empty')}</p>
             </div>
           ) : (
             <>

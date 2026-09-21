@@ -203,6 +203,7 @@ export default async function DashboardOverviewPage({
 
       {!s || s.applications_total === 0 ? (
         <EmptyDashboard
+          illustration="apply"
           title={t('emptyCandidateTitle')}
           body={t('emptyCandidateBody')}
           action={

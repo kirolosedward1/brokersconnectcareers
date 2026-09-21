@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { BriefcaseBusiness, Eye, MapPin, Pencil, Plus, Users } from 'lucide-react';
+import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -110,6 +111,7 @@ export default async function EmployerJobsPage({
 
       {jobs.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+          <EmptyIllustration name="write" />
           <p className="font-medium">{t('noJobs')}</p>
           <Button asChild className="mt-5">
             <Link href="/employer/jobs/new">{t('newJob')}</Link>

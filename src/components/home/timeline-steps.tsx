@@ -31,49 +31,47 @@ export function TimelineSteps({
   className?: string;
 }) {
   return (
-    <ol className={cn('relative', className)}>
-      {steps.map((step, index) => {
-        const last = index === steps.length - 1;
+    /*
+      Across from `lg`, down below it.
 
-        return (
-          <li key={step.key} className="grid grid-cols-[2rem_1fr] gap-x-4 sm:gap-x-5">
-            {/* Node and spine */}
-            <div className="flex flex-col items-center">
+      This was a vertical spine on every screen: numeral, text, and the picture
+      pushed to the far edge of a row as wide as the page, with a column of
+      nothing between the sentence and the drawing it belonged to. Three steps
+      took a thousand pixels to say three sentences. Side by side each step is
+      one glance — drawing, numeral, sentence — and the sequence reads in the
+      direction the language does, which a numbered row gets for free in RTL.
+
+      The pictures share one fixed height and sit on a common baseline, so
+      square and landscape drawings line up and the three headings start level.
+    */
+    <ol className={cn('grid gap-x-10 gap-y-8 lg:grid-cols-3', className)}>
+      {steps.map((step, index) => (
+        <li key={step.key} className="flex gap-4 lg:flex-col lg:gap-0">
+          <div className="flex h-24 w-24 shrink-0 items-end justify-center sm:h-32 sm:w-32 lg:h-44 lg:w-full lg:justify-start">
+            <div className="flex h-full w-full items-end [&_img]:max-h-full [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain">
+              {step.illustration}
+            </div>
+          </div>
+
+          <div className="min-w-0 lg:mt-4 lg:border-t lg:border-border lg:pt-4">
+            <h3 className="flex items-center gap-2.5 text-base font-semibold text-balance">
               <span
                 aria-hidden
-                className="numeral grid size-8 shrink-0 place-items-center rounded-lg bg-foreground text-sm font-bold text-background"
+                className="numeral grid size-6 shrink-0 place-items-center rounded-md bg-foreground text-xs font-bold text-background"
               >
                 {index + 1}
               </span>
-              {last ? null : <span aria-hidden className="w-px flex-1 bg-border" />}
-            </div>
+              {step.title}
+            </h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
 
-            <div className={cn('min-w-0', last ? 'pb-0' : 'pb-8')}>
-              {/* No panel. The step sat in a tinted box and its illustration in
-                  a bordered, shadowed card inside that — a card in a card, on a
-                  page section with a border of its own. The spine and the
-                  numeral already group a step; the illustration keeps one
-                  hairline because it is a picture of an interface and needs an
-                  edge to read as one. */}
-              <div className="grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-10">
-                <div>
-                  <h3 className="text-lg font-semibold text-balance">{step.title}</h3>
-                  <p className="mt-1.5 leading-relaxed text-muted-foreground">{step.body}</p>
-
-                  <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium">
-                    <ArrowLeft className="rtl-flip size-4 text-primary" aria-hidden />
-                    {step.takeaway}
-                  </p>
-                </div>
-
-                <div className="overflow-hidden rounded-xl border border-border bg-card p-3">
-                  {step.illustration}
-                </div>
-              </div>
-            </div>
-          </li>
-        );
-      })}
+            <p className="mt-2.5 inline-flex items-center gap-1.5 text-sm font-medium">
+              <ArrowLeft className="rtl-flip size-3.5 text-primary" aria-hidden />
+              {step.takeaway}
+            </p>
+          </div>
+        </li>
+      ))}
     </ol>
   );
 }

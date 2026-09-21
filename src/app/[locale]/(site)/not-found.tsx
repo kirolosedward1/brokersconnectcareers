@@ -2,6 +2,7 @@ import { getTranslations, getLocale } from 'next-intl/server';
 import { Briefcase, Building2, Search, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { Illustration } from '@/components/illustration';
 import { ChipRow } from '@/components/ui/chip-row';
 
 /**
@@ -31,9 +32,13 @@ export default async function NotFound() {
   ] as const;
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-20 text-center sm:py-28">
-      <p className="numeral text-6xl font-bold text-muted-foreground/60">404</p>
-      <h1 className="mt-4 text-2xl font-bold">{t('notFound')}</h1>
+    <div className="mx-auto max-w-xl px-4 py-12 text-center sm:py-16">
+      {/* The man with the magnifier who has not found it either. He replaces
+          a 60px "404", which told a visitor the status code and nothing else;
+          the number is still here, small, for whoever wants to report it. */}
+      <Illustration name="search" sizes="13rem" className="mx-auto w-52" priority />
+      <p className="numeral mt-2 text-sm font-medium text-muted-foreground">404</p>
+      <h1 className="mt-1 text-2xl font-bold">{t('notFound')}</h1>
       <p className="mt-2 text-muted-foreground">{t('notFoundBody')}</p>
 
       <form action={action} className="mt-8 flex flex-col gap-2 sm:flex-row">
@@ -47,10 +52,10 @@ export default async function NotFound() {
             name="q"
             placeholder={tHome('searchPlaceholder')}
             aria-label={tHome('searchPlaceholder')}
-            className="h-12 w-full rounded-xl border border-border bg-card px-4 ps-11 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
+            className="h-12 w-full rounded-lg border border-border bg-card px-4 ps-11 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
           />
         </div>
-        <Button type="submit" size="lg" className="h-12 shrink-0 rounded-xl px-8">
+        <Button type="submit" size="lg" className="shrink-0 px-8">
           {tHome('searchButton')}
         </Button>
       </form>
@@ -62,7 +67,7 @@ export default async function NotFound() {
           <Link
             key={href}
             href={href}
-            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium transition-colors hover:border-primary/40 hover:bg-muted"
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:border-primary/40 hover:bg-muted"
           >
             <Icon className="size-4 text-muted-foreground" aria-hidden />
             {label}

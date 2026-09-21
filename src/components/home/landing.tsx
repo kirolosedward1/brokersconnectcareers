@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { VisibilityIllustration } from '@/components/home/illustrations';
 import { HeroShell } from '@/components/home/hero-shell';
 import { TimelineSteps } from '@/components/home/timeline-steps';
-import { ApplyStep, FilterStep, TrackStep } from '@/components/home/candidate-steps';
+import { Illustration } from '@/components/illustration';
 import type { DistrictRow } from '@/lib/supabase/database.types';
 import { WhatsAppMark } from '@/components/brand-marks';
 import { JobBrowse } from '@/components/home/job-browse';
@@ -237,8 +237,8 @@ export async function Landing({
   async function HowItWorks() {
     return (
       <section className="border-y border-border bg-background" aria-labelledby="how-heading">
-        <div className="mx-auto max-w-5xl px-4 py-12 sm:py-14">
-          <h2 id="how-heading" className="mb-8 text-xl font-bold text-balance sm:text-2xl">
+        <div className="shell py-12 sm:py-14">
+          <h2 id="how-heading" className="mb-6 text-xl font-bold text-balance sm:text-2xl">
             {t('how.title')}
           </h2>
 
@@ -250,21 +250,21 @@ export async function Landing({
                 title: t('how.candidate1Title'),
                 body: t('how.candidate1Body'),
                 takeaway: t('how.candidate1Takeaway'),
-                illustration: <FilterStep className="h-auto w-full" />,
+                illustration: <Illustration name="browse" />,
               },
               {
                 key: 'candidate2',
                 title: t('how.candidate2Title'),
                 body: t('how.candidate2Body'),
                 takeaway: t('how.candidate2Takeaway'),
-                illustration: <ApplyStep className="h-auto w-full" />,
+                illustration: <Illustration name="apply" />,
               },
               {
                 key: 'candidate3',
                 title: t('how.candidate3Title'),
                 body: t('how.candidate3Body'),
                 takeaway: t('how.candidate3Takeaway'),
-                illustration: <TrackStep className="h-auto w-full" />,
+                illustration: <Illustration name="updates" />,
               },
             ]}
           />
