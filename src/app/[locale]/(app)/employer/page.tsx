@@ -159,7 +159,7 @@ export default async function EmployerOverviewPage({
           the listing form refuse them, with no explanation of what to do about
           it — so this says what is happening and what moves it along. */}
       {viewer.profile.approval_status !== 'approved' ? (
-        <div className="rounded-2xl border border-warning/40 bg-warning-muted p-5">
+        <div className="rounded-xl border border-warning/40 bg-warning-muted p-5">
           <p className="flex items-center gap-2 font-semibold">
             <Clock className="size-4" aria-hidden />
             {tEmployer('pendingTitle')}

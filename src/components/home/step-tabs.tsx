@@ -53,7 +53,7 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
         role="tablist"
         aria-orientation="vertical"
         onKeyDown={onKeyDown}
-        className="bg-brand-gradient flex flex-col gap-1 rounded-3xl p-3 shadow-lg sm:p-4"
+        className="bg-brand-gradient flex flex-col gap-1 rounded-xl p-3 shadow-lg sm:p-4"
       >
         {steps.map((step, index) => {
           const selected = index === active;
@@ -68,7 +68,7 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
               tabIndex={selected ? 0 : -1}
               onClick={() => setActive(index)}
               className={cn(
-                'group/step rounded-2xl p-4 text-start transition-colors sm:p-5',
+                'group/step rounded-xl p-4 text-start transition-colors sm:p-5',
                 selected ? 'bg-white/15 shadow-sm' : 'hover:bg-white/10',
               )}
             >
@@ -108,7 +108,7 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
       {/* One panel per step rather than one panel whose contents swap: it keeps
           each tab's aria-controls pointing at something real, and lets the
           inactive ones stay in the DOM so switching costs no layout. */}
-      <div className="relative min-h-[20rem] rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-8">
+      <div className="relative min-h-[20rem] rounded-xl border border-border bg-card p-4 shadow-sm sm:p-8">
         {steps.map((step, index) => (
           <div
             key={step.key}
@@ -117,7 +117,7 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
             aria-labelledby={`${id}-tab-${index}`}
             hidden={index !== active}
             tabIndex={0}
-            className="grid h-full place-items-center rounded-2xl"
+            className="grid h-full place-items-center rounded-xl"
           >
             {step.illustration}
           </div>

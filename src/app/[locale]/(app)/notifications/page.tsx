@@ -78,7 +78,7 @@ export default async function NotificationsPage({
           product to do. "Nothing here" with no way onward is a page that can
           only be left with the back button.
         */
-        <div className="rounded-2xl border border-dashed border-border px-6 py-16 text-center">
+        <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center">
           <p className="font-medium">{t('empty')}</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
             {t('emptyHint')}
@@ -92,7 +92,7 @@ export default async function NotificationsPage({
           </Button>
         </div>
       ) : (
-        <ul className="divide-y divide-border rounded-2xl border border-border bg-card p-2">
+        <ul className="divide-y divide-border rounded-xl border border-border bg-card p-2">
           {notifications.map((notification) => (
             <li key={notification.id}>
               <NotificationItem notification={notification} locale={locale} />

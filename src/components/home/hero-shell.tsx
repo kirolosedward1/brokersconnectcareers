@@ -38,7 +38,7 @@ export function HeroShell({ children }: { children: React.ReactNode }) {
       />
 
       <div className="relative mx-auto flex min-h-[38rem] max-w-4xl flex-col items-center justify-center px-4 py-24 text-center sm:min-h-[42rem]">
-        <div className="rise-in mb-8">
+        <div className="mb-8">
           <HomeTabs />
         </div>
 

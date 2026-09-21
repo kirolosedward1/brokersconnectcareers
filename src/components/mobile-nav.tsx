@@ -79,7 +79,7 @@ export function MobileNav({ label, children }: { label: string; children: React.
           and this panel inherited it while drawing its own light ground — so
           the whole phone menu rendered white on white on the two landing
           pages, the first thing a new visitor on a phone opens. */}
-      <div className="animate-in fade-in slide-in-from-top-1 text-popover-foreground absolute end-0 top-full z-50 mt-2 w-56 rounded-2xl border border-border bg-popover p-1.5 shadow-lg duration-150">
+      <div className="animate-in fade-in slide-in-from-top-1 text-popover-foreground absolute end-0 top-full z-50 mt-2 w-56 rounded-xl border border-border bg-popover p-1.5 shadow-lg duration-150">
         {children}
       </div>
     </details>

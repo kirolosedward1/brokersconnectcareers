@@ -78,7 +78,7 @@ export default async function UnsubscribePage({
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
-      <span className="mb-4 grid size-14 place-items-center rounded-2xl bg-muted">{icon}</span>
+      <span className="mb-4 grid size-14 place-items-center rounded-xl bg-muted">{icon}</span>
 
       <h1 className="text-xl font-semibold">{heading}</h1>
       <p className="mt-2 text-muted-foreground">{body}</p>

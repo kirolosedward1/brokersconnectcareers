@@ -138,6 +138,31 @@ export function LeadsSourceBadge({ job }: { job: Pick<JobRow, 'leads_source'> })
 }
 
 /**
+ * The same fact as a run of text, for a results row.
+ *
+ * Company-provided leads is the claim this board is built on, so it keeps the
+ * brand colour and a weight; the other two are set like any other fact on the
+ * line. The target mark stays on all three — it is what lets an eye running
+ * down the column find "where do the clients come from" without reading.
+ */
+export function LeadsSourceText({ job }: { job: Pick<JobRow, 'leads_source'> }) {
+  const t = useTranslations('leadsSource');
+
+  return (
+    <span
+      className={
+        job.leads_source === 'company_provided'
+          ? 'inline-flex items-center gap-1 font-medium text-primary'
+          : 'inline-flex items-center gap-1'
+      }
+    >
+      <Target className="size-3.5 shrink-0" aria-hidden />
+      {t(`${job.leads_source}_short`)}
+    </span>
+  );
+}
+
+/**
  * The compensation block, above the fold on the job page, as a structured card
  * rather than a sentence buried in the description.
  */

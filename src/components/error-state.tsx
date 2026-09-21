@@ -61,7 +61,7 @@ export function ErrorState({
         aria-modal="true"
         aria-labelledby="error-state-title"
         aria-describedby="error-state-body"
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-lg"
+        className="w-full max-w-md rounded-xl border border-border bg-card p-6 text-center shadow-lg"
       >
         <span className="mx-auto grid size-12 place-items-center rounded-full bg-destructive/10 text-destructive">
           <AlertTriangle className="size-6" aria-hidden />

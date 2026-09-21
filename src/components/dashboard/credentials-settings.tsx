@@ -104,7 +104,7 @@ export function CredentialsSettings({
 
   return (
     <>
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h2 className="font-semibold">{t('passwordTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {hasPassword ? t('passwordBody') : t('oauthOnly')}
@@ -157,7 +157,7 @@ export function CredentialsSettings({
         ) : null}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h2 className="font-semibold">{t('emailTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t('emailBody')}</p>
 

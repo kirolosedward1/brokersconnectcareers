@@ -160,7 +160,7 @@ export function EmptyDashboard({
   action: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border p-10 text-center">
+    <div className="rounded-xl border border-dashed border-border p-10 text-center">
       <p className="font-medium">{title}</p>
       <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{body}</p>
       <div className="mt-6">{action}</div>

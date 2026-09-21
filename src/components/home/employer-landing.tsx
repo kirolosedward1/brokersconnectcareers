@@ -47,15 +47,15 @@ export async function EmployerLanding({
     <>
       <HeroShell>
 
-        <h1 className="rise-in mt-2 text-4xl font-bold leading-[1.15] text-balance text-white sm:text-6xl">
+        <h1 className="mt-2 text-4xl font-bold leading-[1.15] text-balance text-white sm:text-6xl">
           {t('employerHero.title')}
         </h1>
 
-        <p className="rise-in [--rise-delay:210ms] mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-white/75">
+        <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-white/75">
           {t('employerHero.subtitle')}
         </p>
 
-        <div className="rise-in [--rise-delay:280ms] mt-10 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Button asChild size="lg" className="h-13 rounded-full px-8">
             <Link href={postHref}>{t('employerHero.cta')}</Link>
           </Button>
@@ -71,7 +71,7 @@ export async function EmployerLanding({
 
         {/* Three numbers rather than three claims. The first is live from the
             directory; the other two are policy, and policy is a fact. */}
-        <dl className="rise-in [--rise-delay:350ms] mt-12 grid w-full max-w-lg grid-cols-3 gap-4">
+        <dl className="mt-12 grid w-full max-w-lg grid-cols-3 gap-4">
           {[
             [formatNumber(consultantCount, locale), t('employerHero.stat1')],
             [formatNumber(30, locale), t('employerHero.stat2')],
@@ -86,14 +86,14 @@ export async function EmployerLanding({
           ))}
         </dl>
 
-        <p className="rise-in [--rise-delay:420ms] mt-8 inline-flex items-center gap-1.5 text-sm text-white/60">
+        <p className="mt-8 inline-flex items-center gap-1.5 text-sm text-white/60">
           <Check className="size-4 text-emerald-400" aria-hidden />
           {t('employerHero.trustFree')}
         </p>
       </HeroShell>
 
       <section className="mx-auto max-w-6xl px-4 py-24" aria-labelledby="employer-why">
-        <div className="reveal mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-2xl text-center">
           <h2 id="employer-why" className="text-3xl font-bold text-balance sm:text-4xl">
             {t('employerWhy.title')}
           </h2>
@@ -105,7 +105,7 @@ export async function EmployerLanding({
         {/* No cards. Six bordered tiles gave six claims the same weight and put
             a box around each one; columns let the type do the work, and the
             one coloured tile says which argument the other five support. */}
-        <ul className="reveal mt-16 grid gap-x-10 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-16 grid gap-x-10 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
           {(
             [
               [Target, 'kindClarity', 'clarityTitle', 'clarityBody', true],
@@ -170,13 +170,13 @@ export async function EmployerLanding({
         <div className="mx-auto max-w-6xl px-4 py-24">
           <h2
             id="employer-how"
-            className="reveal mb-12 text-center text-3xl font-bold text-balance sm:text-4xl"
+            className="mb-12 text-center text-3xl font-bold text-balance sm:text-4xl"
           >
             {t('how.title')}
           </h2>
 
           <StepTabs
-            className="reveal"
+            
             steps={[
               {
                 key: 'employer1',
@@ -204,13 +204,13 @@ export async function EmployerLanding({
       {/* Pricing, priced at zero while BILLING_ENABLED is off — showing the
           real tiers now means the day it flips is not a surprise. */}
       <section className="mx-auto max-w-6xl px-4 py-20" aria-labelledby="employer-packs">
-        <h2 id="employer-packs" className="reveal text-center text-2xl font-bold sm:text-3xl">
+        <h2 id="employer-packs" className="text-center text-2xl font-bold sm:text-3xl">
           {t('employerHero.trustFree')}
         </h2>
 
-        <ul className="reveal mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {POST_PACKS.map((pack) => (
-            <li key={pack.key} className="lift rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <li key={pack.key} className="lift rounded-xl border border-border bg-card p-5 shadow-sm">
               <p className="text-sm font-medium text-muted-foreground">{pack.key}</p>
               <p className="mt-2 text-2xl font-bold">
                 <span className="numeral">
@@ -233,7 +233,7 @@ export async function EmployerLanding({
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pb-20">
-        <div className="bg-brand-gradient reveal relative overflow-hidden rounded-[1.75rem] px-6 py-16 text-center text-primary-foreground shadow-lg">
+        <div className="bg-brand-gradient relative overflow-hidden rounded-xl px-6 py-16 text-center text-primary-foreground shadow-lg">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] [background-size:2.5rem_2.5rem] [mask-image:radial-gradient(30rem_16rem_at_50%_0%,black,transparent)]"

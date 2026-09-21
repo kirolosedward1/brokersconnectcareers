@@ -23,15 +23,28 @@
 --------------------------------------------------------------------------- */
 
 :root {
-  --radius: 0.875rem;
+  /* The one number the radius scale hangs off. 8px, down from 14: at 14 the
+     scale topped out at 24px, and a page of 24px corners is a page of
+     lozenges — every surface claimed the same softness, so none of them read
+     as a different kind of thing. The scale below now runs 4 / 6 / 8 / 10 / 12,
+     which is enough to tell a tag from a field from a panel and no more. */
+  --radius: 0.5rem;
 
   /* Elevation, tinted with the brand hue rather than neutral black — a pure
-     black shadow over a blue-tinted surface reads as dirt. */
-  --shadow-xs: 0 1px 2px -1px oklch(0.35 0.08 266 / 0.10);
-  --shadow-sm: 0 1px 2px -1px oklch(0.35 0.08 266 / 0.08), 0 2px 6px -2px oklch(0.35 0.08 266 / 0.08);
-  --shadow-md: 0 2px 4px -2px oklch(0.35 0.08 266 / 0.08), 0 8px 20px -6px oklch(0.35 0.08 266 / 0.12);
-  --shadow-lg: 0 4px 8px -4px oklch(0.35 0.08 266 / 0.10), 0 18px 40px -12px oklch(0.35 0.08 266 / 0.16);
-  --shadow-primary: 0 2px 6px -2px oklch(0.52 0.25 266 / 0.35), 0 10px 24px -8px oklch(0.52 0.25 266 / 0.30);
+     black shadow over a blue-tinted surface reads as dirt.
+
+     Structure on this product is drawn with borders, so the two small steps
+     are close to nothing: they settle a surface onto the page rather than
+     float it. Only things that genuinely sit above the page — a menu, a
+     dialog — use md and lg. */
+  --shadow-xs: 0 1px 1px 0 oklch(0.35 0.08 266 / 0.04);
+  --shadow-sm: 0 1px 2px 0 oklch(0.35 0.08 266 / 0.06);
+  --shadow-md: 0 2px 4px -2px oklch(0.35 0.08 266 / 0.08), 0 6px 16px -6px oklch(0.35 0.08 266 / 0.12);
+  --shadow-lg: 0 4px 8px -4px oklch(0.35 0.08 266 / 0.10), 0 16px 32px -12px oklch(0.35 0.08 266 / 0.18);
+  /* Was a coloured glow under every primary button. The fill already says
+     "primary"; the glow only said "template". Kept as a token because a dozen
+     call sites name it, and reduced to an edge. */
+  --shadow-primary: 0 1px 2px 0 oklch(0.35 0.12 266 / 0.22);
 
   --brand-blue: oklch(0.5221 0.2499 266.6);
   --brand-cyan: oklch(0.8389 0.1153 198.7);
@@ -79,11 +92,11 @@
 .dark {
   /* Shadows carry almost nothing on a dark ground; elevation there comes from
      the raised surface colour instead, so these stay deliberately faint. */
-  --shadow-xs: 0 1px 2px -1px oklch(0 0 0 / 0.4);
-  --shadow-sm: 0 1px 2px -1px oklch(0 0 0 / 0.45), 0 2px 6px -2px oklch(0 0 0 / 0.4);
-  --shadow-md: 0 2px 4px -2px oklch(0 0 0 / 0.45), 0 8px 20px -6px oklch(0 0 0 / 0.5);
-  --shadow-lg: 0 4px 8px -4px oklch(0 0 0 / 0.5), 0 18px 40px -12px oklch(0 0 0 / 0.55);
-  --shadow-primary: 0 2px 6px -2px oklch(0.7 0.175 266 / 0.30), 0 10px 24px -8px oklch(0.7 0.175 266 / 0.25);
+  --shadow-xs: 0 1px 1px 0 oklch(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.4);
+  --shadow-md: 0 2px 4px -2px oklch(0 0 0 / 0.45), 0 6px 16px -6px oklch(0 0 0 / 0.5);
+  --shadow-lg: 0 4px 8px -4px oklch(0 0 0 / 0.5), 0 16px 32px -12px oklch(0 0 0 / 0.55);
+  --shadow-primary: 0 1px 2px 0 oklch(0 0 0 / 0.4);
 
   --brand-blue: oklch(0.70 0.175 266.6);
   --brand-cyan: oklch(0.8389 0.1153 198.7);
@@ -156,11 +169,19 @@
   --color-brand-blue: var(--brand-blue);
   --color-brand-cyan: var(--brand-cyan);
 
-  --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: calc(var(--radius) - 3px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 10px);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 4px);
+  /* Capped with the rest. Tailwind's own 3xl is 24px, which is the corner this
+     scale exists to retire; without this line two call sites would keep it. */
+  --radius-3xl: calc(var(--radius) + 6px);
+
+  /* The public content shell. 1280px: wide enough that a results list and its
+     filter rail sit side by side without either being squeezed, narrow enough
+     that a line of Arabic never runs the width of a 27-inch monitor. */
+  --container-shell: 80rem;
 
   --shadow-xs: var(--shadow-xs);
   --shadow-sm: var(--shadow-sm);
@@ -346,76 +367,55 @@
     color: transparent;
   }
 
-  /* Cards that respond to the pointer. Kept to transform + shadow so it stays
-     on the compositor, and dropped entirely when motion is reduced. */
+  /* A surface that is itself a link says so with its edge, and nothing else.
+
+     This used to raise the card 2px and grow a shadow under it. On a results
+     page that is twenty objects twitching under a moving pointer, and the
+     movement told the reader nothing the cursor had not. A border that takes
+     the brand colour is the same signal at rest. */
   .lift {
     transition:
-      transform 160ms ease,
-      box-shadow 160ms ease,
-      border-color 160ms ease;
+      border-color 120ms ease,
+      background-color 120ms ease;
   }
 
   .lift:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .lift,
-    .lift:hover {
+    .lift {
       transition: none;
-      transform: none;
+    }
+  }
+
+  /* --- Layout ---------------------------------------------------------------
+     One public content shell, so a page never has to choose its own width or
+     gutter. 16px gutters on a phone, 24px from `sm`, 32px from `lg`. */
+  .shell {
+    margin-inline: auto;
+    width: 100%;
+    max-width: var(--container-shell);
+    padding-inline: 1rem;
+  }
+
+  @media (width >= 40rem) {
+    .shell {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (width >= 64rem) {
+    .shell {
+      padding-inline: 2rem;
     }
   }
 
   /* --- Motion -------------------------------------------------------------
-     Two entrances, both opacity + a short translate only, so they stay on the
-     compositor and never trigger layout. Nothing here moves more than 12px:
-     the point is to give a section a moment of arrival, not to put on a show
-     over a job board someone is trying to read. */
-
-  @keyframes bc-rise {
-    from {
-      opacity: 0;
-      transform: translateY(0.6rem);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-
-  /* On-load entrance for above-the-fold content. --rise-delay staggers a row
-     without needing a class per position. */
-  .rise-in {
-    animation: bc-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    animation-delay: var(--rise-delay, 0ms);
-  }
-
-  /* Scroll-driven entrance for sections further down.
-     Deliberately inside @supports and with no styles outside it: a browser
-     without view() timelines renders the element plainly visible rather than
-     stuck at the keyframe's starting opacity. An animation that can hide
-     content permanently is worse than no animation. The range closes at
-     `entry 85%` for the same reason — it finishes before the element is fully
-     on screen, so a section at the very bottom of a barely-scrollable page
-     cannot strand itself half-faded. */
-  @supports (animation-timeline: view()) {
-    .reveal {
-      animation: bc-rise 1ms linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 85%;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .rise-in,
-    .reveal {
-      animation: none;
-      opacity: 1;
-      transform: none;
-    }
-  }
+     There are no entrance animations. Sections used to fade up on load and
+     again on scroll, which made a job board perform its own arrival every
+     time somebody opened it. Motion here is reserved for things that change
+     state while you watch: a drawer, a disclosure, a saved bookmark. */
 
   /* A fixed bottom bar covers the end of the document, and no amount of
      scrolling reveals what is under it. The listing page's mobile apply bar

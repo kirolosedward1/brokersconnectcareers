@@ -91,7 +91,7 @@ export function TrendChart({
   const ticks = [0, Math.floor((days.length - 1) / 2), days.length - 1];
 
   return (
-    <figure className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <figure className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <figcaption className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div>
           <h2 className="font-semibold">{title}</h2>

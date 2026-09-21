@@ -77,7 +77,7 @@ export default async function CompaniesPage({
               <li key={company.id}>
                 <Link
                   href={`/companies/${company.slug}`}
-                  className="lift reveal flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
+                  className="lift flex items-center gap-4 rounded-xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
                 >
                   <CompanyLogo
                     name={localized(locale, company.name_ar, company.name_en)}

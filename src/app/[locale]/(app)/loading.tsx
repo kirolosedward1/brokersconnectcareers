@@ -21,7 +21,7 @@ export default function AppLoading() {
         ))}
       </div>
 
-      <Skeleton className="h-72 rounded-2xl" />
+      <Skeleton className="h-72 rounded-xl" />
     </div>
   );
 }

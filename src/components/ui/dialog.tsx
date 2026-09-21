@@ -105,7 +105,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-lg"
+        className="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg"
       >
         <button
           type="button"

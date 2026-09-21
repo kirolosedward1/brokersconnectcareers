@@ -2,7 +2,7 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 const control =
-  'w-full rounded-xl border border-input bg-card px-3.5 py-2 text-sm shadow-xs ' +
+  'w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm ' +
   'transition-colors placeholder:text-muted-foreground hover:border-border ' +
   'focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-60';
 

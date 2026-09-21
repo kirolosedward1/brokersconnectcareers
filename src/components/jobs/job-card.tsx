@@ -5,9 +5,9 @@ import { localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
-import { LeadsSourceBadge, SalaryLine } from '@/components/jobs/compensation';
+import { CommissionLine, LeadsSourceText, SalaryLine } from '@/components/jobs/compensation';
 import { SaveJobToggle } from '@/components/jobs/save-job-toggle';
-import { cn, formatNumber } from '@/lib/utils';
+import { cn, formatNumber, formatRelativeDay } from '@/lib/utils';
 import type { JobListItem } from '@/lib/queries/jobs';
 import { jobIsLive } from '@/lib/job-state';
 
@@ -39,6 +39,8 @@ export function JobCard({
 }) {
   const t = useTranslations('jobs');
   const tCompanies = useTranslations('companies');
+  const tTrack = useTranslations('track');
+  const tBand = useTranslations('experienceBand');
 
   /**
    * Whether this listing is still taking applications.
@@ -55,10 +57,32 @@ export function JobCard({
   const company = localized(locale, job.company.name_ar, job.company.name_en);
   const district = localized(locale, job.district.name_ar, job.district.name_en);
 
+  /*
+    The facts, in the order a consultant weighs them.
+
+    Two lines of text rather than a row of tags. Who and where first, because
+    that is what decides whether the rest is worth reading; then what it pays
+    and where the clients come from, which is what decides whether to open it.
+    Everything sits on a shared baseline and a shared left edge, so running an
+    eye down a page of these compares like with like — which a wrapped cluster
+    of pills, each a different width, never allowed.
+
+    Track and experience are back on the row. They had been dropped as
+    "restating the filter", which holds on a filtered board and nowhere else:
+    the home page, a company's page, the saved list and an unfiltered board all
+    show mixed tracks, and there the row could not say whether a role was
+    resale or primary without being opened.
+  */
+  const sep = (
+    <span aria-hidden className="text-border">
+      |
+    </span>
+  );
+
   return (
     <article
       className={cn(
-        'lift reveal group relative rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30',
+        'lift group relative rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5',
         // Still readable, still clickable — just no longer competing with the
         // roles somebody can actually apply to.
         closed && 'opacity-70',
@@ -75,7 +99,7 @@ export function JobCard({
         />
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h3 className="text-base font-semibold leading-snug">
               {/* Stretched link keeps the whole card clickable without nesting
                   interactive elements inside an anchor. */}
@@ -122,56 +146,78 @@ export function JobCard({
             ) : null}
           </div>
 
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{company}</span>
-            <VerifiedBadge
-              status={job.company.verification_status}
-              label={tCompanies('verified')}
-            />
-            <span aria-hidden>·</span>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1 font-medium text-foreground">
+              {/* A company's name is whatever the company typed, often Latin
+                  in an Arabic row. Isolated, so its punctuation cannot reorder
+                  the separators around it. */}
+              <bdi>{company}</bdi>
+              <VerifiedBadge
+                compact
+                status={job.company.verification_status}
+                label={tCompanies('verified')}
+              />
+            </span>
+            {sep}
             <span className="inline-flex items-center gap-1">
-              <MapPin className="size-3.5" aria-hidden />
+              <MapPin className="size-3.5 shrink-0" aria-hidden />
               {district}
+            </span>
+            {sep}
+            <span>{tTrack(job.track)}</span>
+            {sep}
+            <span>{tBand(job.experience_band)}</span>
+          </p>
+
+          {/* The pay, the commission where it is a number, where the clients
+              come from, and how many of them. Seats used to be a gradient
+              panel in the corner, which outweighed the job title; it is a
+              figure people scan, so it reads as one. */}
+          <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
+            <SalaryLine job={job} locale={locale} />
+            {/* Only a stated percentage. "Undisclosed" and "split" are words,
+                not terms, and the listing is where they are explained. */}
+            {job.commission_type === 'percentage' && job.commission_value != null ? (
+              <>
+                {sep}
+                <span className="text-muted-foreground">
+                  <CommissionLine job={job} locale={locale} />
+                </span>
+              </>
+            ) : null}
+            {sep}
+            <span className="text-muted-foreground">
+              <LeadsSourceText job={job} />
+            </span>
+            {sep}
+            <span className="inline-flex items-baseline gap-1 text-muted-foreground">
+              <span className="numeral font-medium text-foreground">
+                {formatNumber(job.seats, locale)}
+              </span>
+              {t('seatsLabel', { count: job.seats })}
             </span>
           </p>
         </div>
 
-        {savable ? (
-          <SaveJobToggle
-            jobId={job.id}
-            initialSaved={saved}
-            labels={{ save: t('save'), remove: t('removeSaved') }}
-          />
-        ) : null}
-      </div>
-
-      {/* The pay and how many of them, on one line.
-          Seats used to be a gradient panel in the corner, which outweighed the
-          job title and forced it to wrap on a phone. It is a number people
-          scan, not a headline — so it reads as one, beside the figure it
-          belongs next to. */}
-      <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-sm">
-        <SalaryLine job={job} locale={locale} />
-        <span aria-hidden className="text-muted-foreground">·</span>
-        <span className="inline-flex items-baseline gap-1 font-medium text-primary">
-          {formatNumber(job.seats, locale)}
-          <span className="text-xs font-normal text-muted-foreground">
-            {t('seatsLabel', { count: job.seats })}
-          </span>
-        </span>
-      </p>
-
-      {/* One chip, not four.
-          Track, employment type and experience band are the dimensions the
-          filter rail already offers — repeating them on every result that
-          matched them is restating the question as the answer. They are on the
-          listing itself, where somebody has decided to read.
-
-          Where the leads come from stays, because it is the claim this board
-          is built on and the one thing a reader cannot infer from their own
-          filters. */}
-      <div className="mt-2.5">
-        <LeadsSourceBadge job={job} />
+        {/* Freshness at the inline end, above everything else in that column:
+            it is the one fact read across rows rather than along one. */}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {job.published_at ? (
+            <time
+              dateTime={job.published_at}
+              className="relative text-xs whitespace-nowrap text-muted-foreground"
+            >
+              {formatRelativeDay(job.published_at, locale)}
+            </time>
+          ) : null}
+          {savable ? (
+            <SaveJobToggle
+              jobId={job.id}
+              initialSaved={saved}
+              labels={{ save: t('save'), remove: t('removeSaved') }}
+            />
+          ) : null}
+        </div>
       </div>
     </article>
   );

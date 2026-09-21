@@ -107,7 +107,7 @@ export default async function AgentsPage({
 
       <div className="mt-6 grid gap-6 lg:mt-8 lg:grid-cols-[1fr_18rem] lg:gap-8">
         <aside className="hidden lg:col-start-2 lg:row-start-1 lg:block">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:sticky lg:top-24">
+          <div className="rounded-xl border border-border bg-card p-5 shadow-sm lg:sticky lg:top-24">
             <AgentFilters locale={locale} districts={districts} activeCount={activeCount} />
           </div>
         </aside>

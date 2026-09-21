@@ -275,7 +275,7 @@ export default async function DashboardOverviewPage({
             </Link>
           </div>
 
-          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
             {applications.map((application) => (
               <li key={application.id} className="flex flex-wrap items-center gap-3 p-4">
                 <div className="min-w-0 flex-1">

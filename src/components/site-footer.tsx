@@ -95,7 +95,7 @@ export async function SiteFooter({ locale }: { locale: string }) {
             signed-in reader their own dashboard instead of the pitch. */}
         {viewer ? null : (
         <div className="grid gap-3 py-10 sm:grid-cols-2">
-          <div className="flex gap-4 rounded-2xl border border-border bg-card p-5">
+          <div className="flex gap-4 rounded-xl border border-border bg-card p-5">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
               <Search className="size-5" aria-hidden />
             </span>
@@ -110,7 +110,7 @@ export async function SiteFooter({ locale }: { locale: string }) {
             </div>
           </div>
 
-          <div className="flex gap-4 rounded-2xl border border-border bg-card p-5">
+          <div className="flex gap-4 rounded-xl border border-border bg-card p-5">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
               <Briefcase className="size-5" aria-hidden />
             </span>

@@ -20,10 +20,9 @@ import { cn } from '@/lib/utils';
 export const ICON_HIT_AREA = 'grid size-11 place-items-center';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ' +
-    'transition-[background-color,box-shadow,transform,border-color] duration-150 ' +
-    'active:translate-y-px disabled:pointer-events-none disabled:opacity-50 ' +
-    'motion-reduce:transition-none motion-reduce:active:translate-y-0 ' +
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium ' +
+    'transition-[background-color,border-color,color] duration-100 ' +
+    'disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none ' +
     '[&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
@@ -46,8 +45,8 @@ const buttonVariants = cva(
       // button would shout.
       size: {
         default: 'h-11 px-4 py-2',
-        sm: 'h-8 rounded-lg px-3 text-xs',
-        lg: 'h-12 rounded-xl px-6 text-base',
+        sm: 'h-8 rounded-md px-3 text-xs',
+        lg: 'h-12 px-6 text-base',
         icon: 'size-11',
       },
     },

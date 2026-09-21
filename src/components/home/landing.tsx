@@ -63,11 +63,11 @@ export async function Landing({
     return (
       <HeroShell>
 
-        <h1 className="rise-in mt-2 text-4xl font-bold leading-[1.15] text-balance text-white sm:text-6xl">
+        <h1 className="mt-2 text-4xl font-bold leading-[1.15] text-balance text-white sm:text-6xl">
           {t('hero.title')}
         </h1>
 
-        <p className="rise-in [--rise-delay:210ms] mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-white/75">
+        <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-white/75">
           {t('hero.subtitle')}
         </p>
 
@@ -76,7 +76,7 @@ export async function Landing({
             unreadable slivers. */}
         <form
           action={action}
-          className="rise-in [--rise-delay:280ms] mt-10 w-full max-w-3xl rounded-2xl border border-white/15 bg-white/10 p-2 shadow-2xl backdrop-blur-md sm:rounded-full"
+          className="mt-10 w-full max-w-3xl rounded-xl border border-white/15 bg-white/10 p-2 shadow-2xl backdrop-blur-md sm:rounded-full"
         >
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative flex-1">
@@ -122,7 +122,7 @@ export async function Landing({
         {/* The label sits above the row rather than inside it. In the row it
             was one more thing competing for the line, and it is the item that
             must never be the one scrolled out of view. */}
-        <div className="rise-in [--rise-delay:350ms] mt-7">
+        <div className="mt-7">
           <p className="text-center text-sm text-white/60">{t('hero.popular')}</p>
           <ChipRow center className="mt-2.5">
             {JOB_TRACKS.slice(0, 4).map((track) => (
@@ -137,7 +137,7 @@ export async function Landing({
           </ChipRow>
         </div>
 
-        <p className="rise-in [--rise-delay:420ms] mt-8 inline-flex items-center gap-1.5 text-sm text-white/60">
+        <p className="mt-8 inline-flex items-center gap-1.5 text-sm text-white/60">
           <Check className="size-4 text-emerald-400" aria-hidden />
           {t('hero.trustNoSpam')}
         </p>
@@ -166,7 +166,7 @@ export async function Landing({
 
     return (
       <section className="mx-auto max-w-6xl px-4 py-24" aria-labelledby="features-heading">
-        <div className="reveal mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-2xl text-center">
           <h2 id="features-heading" className="text-3xl font-bold text-balance sm:text-4xl">
             {t('features.title')}
           </h2>
@@ -175,7 +175,7 @@ export async function Landing({
         {/* Columns rather than cards, matching the employer side: an icon, a
             category word, a heading, the body. Two coloured tiles mark the
             arguments the other four support. */}
-        <ul className="reveal mt-16 grid gap-x-10 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-16 grid gap-x-10 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
           {items.map(({ icon: Icon, kind, title, body, lead }) => (
             <li key={title}>
               <span
@@ -217,13 +217,13 @@ export async function Landing({
         <div className="mx-auto max-w-5xl px-4 py-24">
           <h2
             id="how-heading"
-            className="reveal mb-14 text-center text-3xl font-bold text-balance sm:text-4xl"
+            className="mb-14 text-center text-3xl font-bold text-balance sm:text-4xl"
           >
             {t('how.title')}
           </h2>
 
           <TimelineSteps
-            className="reveal"
+            
             steps={[
               {
                 key: 'candidate1',
@@ -304,11 +304,11 @@ export async function Landing({
     return (
       <section className="border-y border-border bg-muted/40" aria-labelledby="browse-heading">
         <div className="mx-auto max-w-6xl px-4 py-16">
-          <h2 id="browse-heading" className="reveal text-center text-lg font-semibold">
+          <h2 id="browse-heading" className="text-center text-lg font-semibold">
             {t('browse.title')}
           </h2>
 
-          <div className="reveal mt-8 grid gap-10 sm:grid-cols-2">
+          <div className="mt-8 grid gap-10 sm:grid-cols-2">
             <div>
               <h3 className="text-sm font-medium text-muted-foreground">{t('browse.byTrack')}</h3>
               <ul className="mt-3 flex flex-wrap gap-2">
@@ -351,7 +351,7 @@ export async function Landing({
   async function EmployerBand() {
     return (
       <section className="mx-auto max-w-6xl px-4 py-20">
-        <div className="bg-brand-gradient reveal relative overflow-hidden rounded-[1.75rem] px-6 py-16 text-center text-primary-foreground shadow-lg">
+        <div className="bg-brand-gradient relative overflow-hidden rounded-xl px-6 py-16 text-center text-primary-foreground shadow-lg">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] [background-size:2.5rem_2.5rem] [mask-image:radial-gradient(30rem_16rem_at_50%_0%,black,transparent)]"

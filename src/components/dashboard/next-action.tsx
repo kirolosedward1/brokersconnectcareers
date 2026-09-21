@@ -62,7 +62,7 @@ export function NextAction({
   return (
     <Link
       href={href}
-      className={`group flex items-start gap-4 rounded-2xl border p-5 transition-colors hover:bg-card sm:p-6 ${TONES[tone]}`}
+      className={`group flex items-start gap-4 rounded-xl border p-5 transition-colors hover:bg-card sm:p-6 ${TONES[tone]}`}
     >
       <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl bg-card/70">
         <Icon className="size-5" aria-hidden />

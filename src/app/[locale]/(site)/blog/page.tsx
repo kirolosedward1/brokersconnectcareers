@@ -47,14 +47,14 @@ export default async function BlogIndexPage({
       </header>
 
       {posts.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border py-20 text-center text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-border py-20 text-center text-muted-foreground">
           {t('empty')}
         </p>
       ) : (
         <ul className="space-y-4">
           {posts.map((post) => (
             <li key={post.slug}>
-              <article className="lift reveal relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm hover:border-primary/30 sm:flex">
+              <article className="lift relative overflow-hidden rounded-xl border border-border bg-card shadow-sm hover:border-primary/30 sm:flex">
                 {/* Fixed-height band on a phone, a fixed-width column from sm
                     up, so the art never dictates how tall the card gets. */}
                 <CoverArt

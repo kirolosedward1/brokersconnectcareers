@@ -59,7 +59,7 @@ export function Tabs({
       <div
         role="tablist"
         aria-orientation="horizontal"
-        className="mx-auto flex w-fit max-w-full gap-1 overflow-x-auto rounded-2xl border border-border bg-card p-1.5 shadow-sm"
+        className="mx-auto flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1.5 shadow-sm"
       >
         {tabs.map((tab, index) => {
           const selected = index === active;
@@ -102,7 +102,7 @@ export function Tabs({
           aria-labelledby={`${base}-tab-${tabs[index]?.id}`}
           hidden={index !== active}
           tabIndex={0}
-          className="mt-10 rounded-2xl"
+          className="mt-10 rounded-xl"
         >
           {panel}
         </div>

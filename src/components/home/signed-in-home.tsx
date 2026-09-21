@@ -88,7 +88,7 @@ export async function SignedInHome({
       {hiring ? null : (
         <form
           action={action}
-          className="mt-6 rounded-2xl border border-border bg-card p-2 shadow-sm"
+          className="mt-6 rounded-xl border border-border bg-card p-2 shadow-sm"
         >
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative flex-1">
@@ -137,7 +137,7 @@ export async function SignedInHome({
       )}
 
       {hiring ? (
-        <section className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-primary/20 bg-primary/[0.04] p-4">
+        <section className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
           <p className="me-auto text-sm font-medium">{t("hiringStrip")}</p>
           <Button asChild variant="outline">
             <Link href="/employer/jobs">

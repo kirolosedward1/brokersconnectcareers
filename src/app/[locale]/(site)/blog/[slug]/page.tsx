@@ -96,7 +96,7 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
             <CoverArt
               slug={post.slug}
               variant={post.cover}
-              className="mb-8 h-44 w-full rounded-2xl border border-border sm:h-56"
+              className="mb-8 h-44 w-full rounded-xl border border-border sm:h-56"
             />
 
             <div className="flex flex-wrap gap-1.5">
@@ -132,7 +132,7 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
           <div className="prose" dangerouslySetInnerHTML={{ __html: post.html }} />
         </article>
 
-        <aside className="bg-brand-gradient mt-16 rounded-[1.75rem] p-8 text-center text-primary-foreground shadow-lg">
+        <aside className="bg-brand-gradient mt-16 rounded-xl p-8 text-center text-primary-foreground shadow-lg">
           <h2 className="text-xl font-bold">{t('ctaTitle')}</h2>
           <p className="mx-auto mt-2 max-w-sm leading-relaxed opacity-90">{t('ctaBody')}</p>
           <Button asChild variant="secondary" size="lg" className="mt-6">
@@ -154,7 +154,7 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
                 <li key={item.slug} className="min-w-0">
                   <Link
                     href={`/blog/${item.slug}`}
-                    className="lift block h-full rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
+                    className="lift block h-full rounded-xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
                   >
                     <p className="font-medium leading-snug break-words">{item.title}</p>
                     <p className="mt-2 text-xs text-muted-foreground">

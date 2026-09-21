@@ -158,7 +158,7 @@ export default async function AdminUsersPage({
       </nav>
 
       {sorted.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
           {t('emptyQueue')}
         </p>
       ) : (
@@ -168,7 +168,7 @@ export default async function AdminUsersPage({
             return (
               <li
                 key={profile.id}
-                className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-border bg-card p-4"
+                className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-border bg-card p-4"
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <span

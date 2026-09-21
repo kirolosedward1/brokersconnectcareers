@@ -45,6 +45,7 @@
     "empty": "No jobs match your search.",
     "emptyHint": "Try widening the search or removing a filter.",
     "clearFilters": "Clear all filters",
+    "removeFilter": "Remove filter: {name}",
     "filters": "Filters",
     "apply": "Apply now",
     "applied": "Applied",

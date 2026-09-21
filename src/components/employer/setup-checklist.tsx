@@ -77,7 +77,7 @@ export async function SetupChecklist({
   return (
     <section
       aria-labelledby="employer-setup"
-      className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"
+      className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>

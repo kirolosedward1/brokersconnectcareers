@@ -70,7 +70,7 @@ export async function EmployerHome({
       </header>
 
       {approvalStatus !== 'approved' ? (
-        <div className="mt-8 rounded-2xl border border-warning/40 bg-warning-muted p-5">
+        <div className="mt-8 rounded-xl border border-warning/40 bg-warning-muted p-5">
           <p className="flex items-center gap-2 font-semibold">
             <Clock className="size-4" aria-hidden />
             {tEmployer('pendingTitle')}
@@ -135,7 +135,7 @@ export async function EmployerHome({
       ) : (
         /* No company row yet, so there is nothing to count. The one thing that
            unblocks everything else is the only thing offered. */
-        <div className="mt-8 rounded-2xl border border-dashed border-border py-14 text-center">
+        <div className="mt-8 rounded-xl border border-dashed border-border py-14 text-center">
           <p className="font-medium">{tDash('emptyEmployerTitle')}</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
             {tDash('emptyEmployerBody')}

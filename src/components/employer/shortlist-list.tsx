@@ -69,7 +69,7 @@ export function ShortlistList({ rows: fromServer }: { rows: ShortlistRow[] }) {
 
       <ul className="mt-3 space-y-3">
         {rows.map((row) => (
-          <li key={row.id} className="relative rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <li key={row.id} className="relative rounded-xl border border-border bg-card p-5 shadow-sm">
             <div className="flex gap-4">
               {row.isUnlocked && row.name ? (
                 <Avatar name={row.name} src={row.avatarUrl} seed={row.slug ?? row.id} size="lg" />

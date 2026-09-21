@@ -30,7 +30,7 @@ export function Skeleton({ className }: { className?: string }) {
 /** A stand-in for one job or company row. */
 export function CardSkeleton() {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start gap-3">
         <Skeleton className="size-10 shrink-0 rounded-lg" />
         <div className="min-w-0 flex-1 space-y-2">

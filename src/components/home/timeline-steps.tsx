@@ -41,7 +41,7 @@ export function TimelineSteps({
             <div className="flex flex-col items-center">
               <span
                 aria-hidden
-                className="numeral grid size-10 shrink-0 place-items-center rounded-2xl bg-foreground text-sm font-bold text-background sm:size-12 sm:text-base"
+                className="numeral grid size-10 shrink-0 place-items-center rounded-xl bg-foreground text-sm font-bold text-background sm:size-12 sm:text-base"
               >
                 {index + 1}
               </span>
@@ -49,7 +49,7 @@ export function TimelineSteps({
             </div>
 
             <div className={cn('min-w-0', last ? 'pb-0' : 'pb-8 sm:pb-12')}>
-              <div className="grid items-center gap-6 rounded-3xl bg-muted/50 p-6 sm:p-8 lg:grid-cols-2 lg:gap-10">
+              <div className="grid items-center gap-6 rounded-xl bg-muted/50 p-6 sm:p-8 lg:grid-cols-2 lg:gap-10">
                 <div>
                   <h3 className="text-xl font-semibold text-balance sm:text-2xl">{step.title}</h3>
                   <p className="mt-3 leading-relaxed text-muted-foreground">{step.body}</p>
@@ -60,7 +60,7 @@ export function TimelineSteps({
                   </p>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm">
                   {step.illustration}
                 </div>
               </div>

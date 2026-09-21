@@ -558,7 +558,7 @@ export default async function AllApplicantsPage({
       ) : null}
 
       {rows.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
           {/* "Nobody has applied" and "nobody by that name" are different
               facts, and an employer who reads the first when the second is
               true concludes their listings are dead. */}
