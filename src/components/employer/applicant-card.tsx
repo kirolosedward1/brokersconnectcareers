@@ -159,7 +159,7 @@ export function ApplicantCard({
   }
 
   return (
-    <article className="rounded-xl border border-border bg-card p-5">
+    <article className="rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {/* Seeded on the directory slug where there is one, so the same
@@ -174,9 +174,12 @@ export function ApplicantCard({
 
           <div className="min-w-0">
             <Heading className="font-semibold">{candidate?.full_name ?? '—'}</Heading>
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
               {application.experience_band ? (
-                <Badge variant="outline">{tExp(application.experience_band)}</Badge>
+                <>
+                  <span>{tExp(application.experience_band)}</span>
+                  <span aria-hidden className="text-border">|</span>
+                </>
               ) : null}
               <time dateTime={isoDate(application.created_at)}>
                 {tJobs('postedOn', { date: formatDate(application.created_at, locale) })}
@@ -185,9 +188,7 @@ export function ApplicantCard({
           </div>
         </div>
 
-        <Badge variant={STATUS_VARIANT[status]} size="lg">
-          {tStatus(status)}
-        </Badge>
+        <Badge variant={STATUS_VARIANT[status]}>{tStatus(status)}</Badge>
       </div>
 
       {/* Who this actually is.
@@ -199,7 +200,11 @@ export function ApplicantCard({
           href={`/agents/${profile.slug}`}
           title={tAgents('viewProfile')}
           aria-label={tAgents('viewProfile')}
-          className="group/profile mt-3 flex items-center gap-3 rounded-xl border border-border p-3 transition-colors hover:border-primary/40 hover:bg-muted/60"
+          // A rule down the leading edge, not a box. Inside a card that is
+          // already bordered, a second border around the record, a third around
+          // the magnifier and a fill behind the note made every applicant four
+          // nested rectangles deep.
+          className="group/profile mt-2.5 flex items-center gap-3 border-s-2 border-border ps-3 transition-colors hover:border-primary"
         >
           {/*
             The arrow carries what a line of text used to.
@@ -221,7 +226,7 @@ export function ApplicantCard({
               <p className="text-sm font-medium group-hover/profile:text-primary">{headline}</p>
             ) : null}
 
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
               <span>{tAgents('yearsExperience', { count: profile.years_experience })}</span>
 
               {profile.tracks.length ? (
@@ -241,7 +246,7 @@ export function ApplicantCard({
 
             {/* Self-reported, and the directory says so on the profile itself. */}
             {profile.units_closed != null || profile.volume_egp != null ? (
-              <p className="mt-1.5 flex flex-wrap gap-x-3 text-xs font-medium">
+              <p className="mt-1 flex flex-wrap gap-x-3 text-xs font-medium">
                 {profile.units_closed != null ? (
                   <span>
                     {tAgents('unitsClosedShort', {
@@ -260,8 +265,8 @@ export function ApplicantCard({
             aria-hidden
             className={cn(
               ICON_HIT_AREA,
-              'shrink-0 rounded-lg border border-border text-muted-foreground transition-colors',
-              'group-hover/profile:border-primary/40 group-hover/profile:bg-primary/5 group-hover/profile:text-primary',
+              'shrink-0 rounded-lg text-muted-foreground transition-colors',
+              'group-hover/profile:bg-primary/5 group-hover/profile:text-primary',
             )}
           >
             <Search className="size-4" />
@@ -279,16 +284,20 @@ export function ApplicantCard({
           unfair impression. The line says which it is, and points back at what
           they did send.
         */
-        <p className="mt-3 rounded-xl border border-dashed border-border p-3 text-xs leading-relaxed text-muted-foreground">
+        <p className="mt-2.5 border-s-2 border-dashed border-border ps-3 text-xs leading-relaxed text-muted-foreground">
           {t('applicantProfilePrivate')}
         </p>
       )}
 
       {application.note ? (
-        <p className="mt-3 rounded-lg bg-muted p-3 text-sm leading-relaxed">{application.note}</p>
+        <p className="mt-2.5 text-sm leading-relaxed">
+          <span aria-hidden className="text-muted-foreground">«</span>
+          {application.note}
+          <span aria-hidden className="text-muted-foreground">»</span>
+        </p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {/* Contact in this market is WhatsApp, with the opener already written. */}
         {candidate ? (
           <Button asChild size="sm">
