@@ -826,7 +826,7 @@
       "byTrack": "By track",
       "byDistrict": "By district",
       "byCompanyType": "By company type",
-      "allJobs": "All jobs (<v>{count}</v>)",
+      "allJobs": "All jobs <v>{count}</v>",
       "jobsCount": "{count, plural, one {# job} other {# jobs}}"
     },
     "tabs": {

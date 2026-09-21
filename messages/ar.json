@@ -826,7 +826,7 @@
       "byTrack": "حسب التخصص",
       "byDistrict": "حسب المنطقة",
       "byCompanyType": "حسب نوع الشركة",
-      "allJobs": "كل الوظائف (<v>{count}</v>)",
+      "allJobs": "كل الوظائف <v>{count}</v>",
       "jobsCount": "{count, plural, one {وظيفة واحدة} two {وظيفتان} few {# وظائف} many {# وظيفة} other {# وظيفة}}"
     },
     "tabs": {

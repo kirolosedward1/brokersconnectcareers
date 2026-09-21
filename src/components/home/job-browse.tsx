@@ -113,7 +113,9 @@ export async function JobBrowse({
           >
             {t.rich('allJobs', {
               count: formatNumber(counts.total, locale),
-              v: (chunks) => <span className="numeral">{chunks}</span>,
+              v: (chunks) => (
+                <span className="numeral font-normal text-muted-foreground">{chunks}</span>
+              ),
             })}
             <ArrowRight className="rtl-flip size-3.5" aria-hidden />
           </Link>
