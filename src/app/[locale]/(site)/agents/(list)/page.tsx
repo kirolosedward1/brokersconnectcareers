@@ -76,14 +76,14 @@ export default async function AgentsPage({
   const showGate = !unlocked && viewer?.company?.verification_status !== 'verified';
 
   return (
-    <div className="shell py-8">
+    <div className="shell py-6">
       <header className="max-w-2xl">
-        <h1 className="text-3xl font-bold">{t('title')}</h1>
-        <p className="mt-2 text-lg leading-relaxed text-muted-foreground">{t('subtitle')}</p>
+        <h1 className="text-xl font-bold">{t('title')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('subtitle')}</p>
       </header>
 
       {showGate ? (
-        <div className="mt-6 flex flex-wrap items-center gap-4 rounded-xl border border-primary/30 bg-primary/5 p-5">
+        <div className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3.5">
           <ShieldCheck className="size-6 shrink-0 text-primary" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="font-medium">{t('locked')}</p>
@@ -105,17 +105,21 @@ export default async function AgentsPage({
         </MobileFilters>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:mt-8 lg:grid-cols-[1fr_18rem] lg:gap-8">
-        <aside className="hidden lg:col-start-2 lg:row-start-1 lg:block">
-          <div className="rounded-xl border border-border bg-card p-5 shadow-sm lg:sticky lg:top-24">
+      {/* The rail sits where the jobs board puts its own — leading side, same
+          width, no box around it. It was on the trailing side in a shadowed
+          card, so the two list pages of one product filtered from opposite
+          edges of the screen. */}
+      <div className="mt-4 grid gap-6 lg:mt-5 lg:grid-cols-[15.5rem_minmax(0,1fr)] xl:gap-8">
+        <aside className="hidden lg:block">
+          <div className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto pe-2">
             <AgentFilters locale={locale} districts={districts} activeCount={activeCount} />
           </div>
         </aside>
 
-        <div className="lg:col-start-1 lg:row-start-1">
+        <div className="min-w-0">
           {/* The count sits with the results rather than under the title: it
               describes the list, and it changes when the filters do. */}
-          <p className="mb-4 text-sm text-muted-foreground">
+          <p className="mb-3 text-sm text-muted-foreground">
             {tJobs('resultsCount', { count: total })}
           </p>
 
@@ -130,7 +134,7 @@ export default async function AgentsPage({
                   heading for the region the page skips h1 to h3. */}
               <h2 className="sr-only">{tJobs('resultsCount', { count: total })}</h2>
 
-              <ul className="space-y-4">
+              <ul className="grid gap-2 xl:grid-cols-2">
               {agents.map((agent) => (
                 <li key={agent.id}>
                   <AgentCard

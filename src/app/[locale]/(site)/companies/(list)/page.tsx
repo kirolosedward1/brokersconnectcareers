@@ -55,9 +55,9 @@ export default async function CompaniesPage({
   const t = await getTranslations('companies');
 
   return (
-    <div className="shell py-8">
-      <h1 className="text-2xl font-bold">{t('title')}</h1>
-      <p className="mt-1 text-muted-foreground">{t('lede')}</p>
+    <div className="shell py-6">
+      <h1 className="text-xl font-bold">{t('title')}</h1>
+      <p className="mt-0.5 text-sm text-muted-foreground">{t('lede')}</p>
 
       <CompanyFilters
         locale={locale}
@@ -70,14 +70,19 @@ export default async function CompaniesPage({
           {t('empty')}
         </p>
       ) : (
-        <ul className="mt-6 space-y-3">
+        /* Columns, because a company row is short: a mark, a name, a district
+           and one figure. One to a line, each stretched the width of the page
+           with a name at one end, a number at the other and a metre of card
+           between them — five companies to a laptop screen. Three across, the
+           same screen holds fifteen. */
+        <ul className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {companies.map((company) => {
             const openRoles = company.open_roles?.[0]?.count ?? 0;
             return (
               <li key={company.id}>
                 <Link
                   href={`/companies/${company.slug}`}
-                  className="lift flex items-center gap-4 rounded-xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
+                  className="lift flex h-full items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
                 >
                   <CompanyLogo
                     name={localized(locale, company.name_ar, company.name_en)}
@@ -86,18 +91,19 @@ export default async function CompaniesPage({
                   />
 
                   <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-center gap-2 font-semibold">
-                      <span className="truncate">
+                    <p className="flex items-center gap-1.5 font-semibold">
+                      <bdi className="truncate">
                         {localized(locale, company.name_ar, company.name_en)}
-                      </span>
+                      </bdi>
                       <VerifiedBadge
+                        compact
                         status={company.verification_status}
                         label={t('verified')}
                       />
                     </p>
 
                     {company.district ? (
-                      <p className="mt-1 inline-flex items-center gap-1 text-sm text-muted-foreground">
+                      <p className="mt-0.5 inline-flex items-center gap-1 text-sm text-muted-foreground">
                         <MapPin className="size-3.5" aria-hidden />
                         {localized(locale, company.district.name_ar, company.district.name_en)}
                       </p>
@@ -111,7 +117,7 @@ export default async function CompaniesPage({
                       phrase wrapped to two lines on a phone. The sentence is
                       still there for screen readers, which do have to read it. */}
                   <span
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary"
+                    className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-primary"
                     title={t('openRoles', { count: openRoles })}
                   >
                     <Briefcase className="size-4" aria-hidden />
