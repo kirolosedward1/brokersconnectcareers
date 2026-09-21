@@ -45,6 +45,7 @@
     "emptyHint": "جرّب توسّع البحث شوية أو تشيل بعض الفلاتر.",
     "clearFilters": "امسح كل الفلاتر",
     "removeFilter": "شيل فلتر {name}",
+    "showResultsCount": "شوف النتايج · <v>{count}</v>",
     "filters": "الفلاتر",
     "apply": "قدّم دلوقتي",
     "applied": "قدّمت بالفعل",

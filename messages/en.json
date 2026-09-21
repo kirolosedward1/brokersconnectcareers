@@ -45,6 +45,7 @@
     "emptyHint": "Try widening the search or removing a filter.",
     "clearFilters": "Clear all filters",
     "removeFilter": "Remove filter: {name}",
+    "showResultsCount": "Show results · <v>{count}</v>",
     "filters": "Filters",
     "apply": "Apply now",
     "applied": "Applied",

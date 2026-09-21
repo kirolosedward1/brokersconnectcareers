@@ -4,42 +4,18 @@ import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
 /**
- * The one dialog.
+ * What makes a layer modal, shared by the dialog and the phone's filter sheet.
  *
- * This was written inside ReportJobDialog and was the only correct modal in
- * the product; anything else that needed one would have grown a second, worse
- * copy. The keyboard behaviour is the reason it is worth sharing rather than
- * repeating — that component carried `aria-modal="true"`, which tells
- * assistive technology that everything outside is inert, while focus stayed on
- * the button behind the overlay, Escape did nothing, and the role sat on the
- * backdrop rather than on the box. A keyboard user could open it and not get
- * into it, or not get out.
- *
- * So all four promises are kept here, once:
- *
- *   - focus moves into the dialog on open, so the first Tab stays inside
- *   - Tab and Shift+Tab wrap, which is what aria-modal actually claims
- *   - Escape closes
- *   - closing returns focus to whatever opened it, not to <body>
- *
- * The backdrop is a backdrop: the dialog role belongs on the box, and clicking
- * outside closes, because that is the gesture everybody tries first.
+ * Focus moves into the layer when it opens, Tab cycles inside it, Escape
+ * closes it, the page behind stops scrolling, and focus goes back to whatever
+ * opened it when it closes. Written once: a second copy of a focus trap is the
+ * copy that forgets to return focus.
  */
-export function Dialog({
-  open,
-  onClose,
-  label,
-  children,
-  closeLabel,
-}: {
-  open: boolean;
-  onClose: () => void;
-  /** Names the dialog for assistive technology. */
-  label: string;
-  children: React.ReactNode;
-  closeLabel: string;
-}) {
-  const boxRef = useRef<HTMLDivElement>(null);
+export function useModalLayer(
+  open: boolean,
+  onClose: () => void,
+  boxRef: React.RefObject<HTMLElement | null>,
+) {
   const openedBy = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -90,6 +66,46 @@ export function Dialog({
       openedBy.current?.focus({ preventScroll: true });
     };
   }, [open, onClose]);
+}
+
+/**
+ * The one dialog.
+ *
+ * This was written inside ReportJobDialog and was the only correct modal in
+ * the product; anything else that needed one would have grown a second, worse
+ * copy. The keyboard behaviour is the reason it is worth sharing rather than
+ * repeating — that component carried `aria-modal="true"`, which tells
+ * assistive technology that everything outside is inert, while focus stayed on
+ * the button behind the overlay, Escape did nothing, and the role sat on the
+ * backdrop rather than on the box. A keyboard user could open it and not get
+ * into it, or not get out.
+ *
+ * So all four promises are kept here, once:
+ *
+ *   - focus moves into the dialog on open, so the first Tab stays inside
+ *   - Tab and Shift+Tab wrap, which is what aria-modal actually claims
+ *   - Escape closes
+ *   - closing returns focus to whatever opened it, not to <body>
+ *
+ * The backdrop is a backdrop: the dialog role belongs on the box, and clicking
+ * outside closes, because that is the gesture everybody tries first.
+ */
+export function Dialog({
+  open,
+  onClose,
+  label,
+  children,
+  closeLabel,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Names the dialog for assistive technology. */
+  label: string;
+  children: React.ReactNode;
+  closeLabel: string;
+}) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  useModalLayer(open, onClose, boxRef);
 
   if (!open) return null;
 

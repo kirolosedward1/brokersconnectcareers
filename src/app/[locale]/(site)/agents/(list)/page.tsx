@@ -95,12 +95,12 @@ export default async function AgentsPage({
         </div>
       ) : null}
 
-      {/* Behind a disclosure on a phone. Expanded, this rail is two selects,
+      {/* Behind a sheet on a phone. Expanded, this rail is two selects,
           six specialisation checkboxes and a district list — fifteen controls
           between the heading and the first consultant, on the page whose job
           is to show consultants. */}
-      <div className="mt-6 lg:hidden">
-        <MobileFilters count={activeCount}>
+      <div className="mt-4 lg:hidden">
+        <MobileFilters count={activeCount} total={total} locale={locale} clearHref="/agents">
           <AgentFilters locale={locale} districts={districts} activeCount={activeCount} />
         </MobileFilters>
       </div>

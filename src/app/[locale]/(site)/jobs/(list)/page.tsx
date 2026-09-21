@@ -324,8 +324,10 @@ export default async function JobsPage({
         </div>
       ) : null}
 
-      <div className="mb-4 lg:hidden">
-        <MobileFilters count={activeCount}>{filterPanel}</MobileFilters>
+      <div className="mb-3">
+        <MobileFilters count={activeCount} total={total} locale={locale}>
+          {filterPanel}
+        </MobileFilters>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[15.5rem_minmax(0,1fr)] xl:gap-8">
