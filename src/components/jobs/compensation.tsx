@@ -117,26 +117,6 @@ export function CommissionLine({ job, locale }: { job: Comp; locale: string }) {
   return <span>{t(job.commission_type)}</span>;
 }
 
-export function LeadsSourceBadge({ job }: { job: Pick<JobRow, 'leads_source'> }) {
-  const t = useTranslations('leadsSource');
-
-  // Company-provided leads are the strongest signal on the whole card, so it is
-  // the only one that gets a filled treatment.
-  const variant =
-    job.leads_source === 'company_provided'
-      ? 'primary'
-      : job.leads_source === 'hybrid'
-        ? 'outline'
-        : 'default';
-
-  return (
-    <Badge variant={variant}>
-      <Target aria-hidden />
-      {t(`${job.leads_source}_short`)}
-    </Badge>
-  );
-}
-
 /**
  * The same fact as a run of text, for a results row.
  *
