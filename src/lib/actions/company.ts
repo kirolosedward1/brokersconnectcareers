@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_LOGOS_BUCKET } from '@/lib/storage';
 import { buildCompanySlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
-import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
+import { COMPANY_TYPES, HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 
 const schema = z.object({
@@ -17,6 +17,7 @@ const schema = z.object({
   aboutEn: z.string().trim().max(2000).optional().nullable(),
   website: z.string().trim().url().max(200).optional().nullable().or(z.literal('')),
   headcountBand: z.enum(HEADCOUNT_BANDS).optional().nullable(),
+  companyType: z.enum(COMPANY_TYPES).optional().nullable(),
   districtId: z.coerce.number().int().positive().optional().nullable(),
   /** The version the form was built from; absent when creating. */
   version: z.coerce.number().int().positive().optional(),
@@ -40,6 +41,10 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
     website: parsed.data.website || null,
     headcount_band: parsed.data.headcountBand || null,
     district_id: parsed.data.districtId || null,
+    // Only when the form carried a choice. Left out otherwise, so saving the
+    // rest of the profile never clears a type somebody set, and never names a
+    // column the database does not have yet (migration 67).
+    ...(parsed.data.companyType ? { company_type: parsed.data.companyType } : {}),
   };
 
   // Through membership, not ownership. Keyed on owner_id this returned null for

@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
 import { optional } from '@/lib/queries/error';
+import { getBrowseCounts } from '@/lib/queries/browse';
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
@@ -21,7 +22,18 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const districts = await optional(getDistricts(), []);
 
   if (!viewer?.profile) {
-    return <Landing locale={locale} districts={districts} />;
+    /*
+      The board's own evidence, for the landing page: how many live listings
+      sit behind each way of browsing, and the newest of them. Both in one
+      await, both allowed to fail — without them the page is the explanation
+      it always was, which is the contract the comment above sets.
+    */
+    const [counts, latest] = await Promise.all([
+      optional(getBrowseCounts(), null),
+      optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0, page: 1 }),
+    ]);
+
+    return <Landing locale={locale} districts={districts} counts={counts} jobs={latest.jobs} />;
   }
 
   // Somebody who hires does not get a feed of other companies' listings. They

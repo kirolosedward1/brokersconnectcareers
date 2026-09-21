@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { raise } from './error';
 import { getDistricts, getGovernorates } from './taxonomy';
 import {
+  COMPANY_TYPES,
   EMPLOYMENT_TYPES,
   EXPERIENCE_BANDS,
   JOB_TRACKS,
@@ -10,6 +11,7 @@ import {
 } from '@/lib/taxonomy';
 import type {
   CompanyRow,
+  CompanyType,
   DistrictRow,
   EmploymentType,
   ExperienceBand,
@@ -48,6 +50,11 @@ export type JobFilters = {
    * and no second copy of the filter model to drift out of step.
    */
   companySlug: string | null;
+  /**
+   * Brokerages or developers — what the company said it is, see migration 67.
+   * Several values mean "either", like every other multi-select here.
+   */
+  companyTypes: CompanyType[];
   sort: JobSort;
   page: number;
 };
@@ -62,6 +69,7 @@ export const EMPTY_FILTERS: JobFilters = {
   governorateSlug: null,
   hasBasicSalary: null,
   companySlug: null,
+  companyTypes: [],
   sort: 'newest',
   page: 1,
 };
@@ -96,6 +104,7 @@ export function parseJobFilters(searchParams: SearchParams): JobFilters {
     governorateSlug: typeof searchParams.gov === 'string' ? searchParams.gov : null,
     hasBasicSalary: salary === 'yes' ? true : salary === 'no' ? false : null,
     companySlug: companySlugOrNull(searchParams.company),
+    companyTypes: only(many(searchParams.ctype), COMPANY_TYPES),
     sort: sort === 'salary' || sort === 'seats' ? sort : 'newest',
     page: Number.isFinite(page) && page > 0 ? Math.min(page, 500) : 1,
   };
@@ -114,6 +123,7 @@ export function serializeJobFilters(filters: JobFilters): URLSearchParams {
   if (filters.hasBasicSalary === true) params.set('salary', 'yes');
   if (filters.hasBasicSalary === false) params.set('salary', 'no');
   if (filters.companySlug) params.set('company', filters.companySlug);
+  for (const type of filters.companyTypes) params.append('ctype', type);
   if (filters.sort !== 'newest') params.set('sort', filters.sort);
   if (filters.page > 1) params.set('page', String(filters.page));
   return params;
@@ -129,7 +139,8 @@ export function countActiveFilters(filters: JobFilters): number {
     filters.districtSlugs.length +
     (filters.governorateSlug ? 1 : 0) +
     (filters.hasBasicSalary === null ? 0 : 1) +
-    (filters.companySlug ? 1 : 0)
+    (filters.companySlug ? 1 : 0) +
+    filters.companyTypes.length
   );
 }
 
@@ -238,6 +249,13 @@ export const queryJobs = cache(async function queryJobs(
   */
   if (filters.companySlug) query = query.eq('company.slug', filters.companySlug);
 
+  // Same embedded-company route as the slug above. An unclassified company has
+  // a null here and so matches neither value — absent from a by-type view
+  // rather than filed under a guess.
+  if (filters.companyTypes.length) {
+    query = query.in('company.company_type', filters.companyTypes);
+  }
+
   // Featured listings pin to the top of every sort; the paid placement is
   // worthless if a sort change buries it.
   query = query.order('is_featured', { ascending: false });
@@ -300,6 +318,21 @@ export const queryJobs = cache(async function queryJobs(
       pageCount,
       page: pageCount,
     };
+  }
+
+  /*
+    A by-type search against a database that does not record types yet.
+
+    42703 is "no such column", and the only column this query names that a
+    deployed database may lack is companies.company_type — code reaches
+    production before migration 67 as often as after. The honest answer to
+    "show me developers' listings" when no company has said it is a developer
+    is that there are none, which is also exactly what the query returns the
+    moment the column exists and is still empty. A 500 would be the wrong
+    answer on both sides of the migration.
+  */
+  if (error?.code === '42703' && filters.companyTypes.length) {
+    return { jobs: [], total: 0, pageCount: 0, page: 1 };
   }
 
   if (error) raise(error, 'searching jobs');

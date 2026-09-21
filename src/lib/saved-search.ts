@@ -26,6 +26,7 @@ export function toCanonicalQuery(filters: JobFilters): string {
   if (filters.hasBasicSalary === true) params.set('salary', 'yes');
   if (filters.hasBasicSalary === false) params.set('salary', 'no');
   if (filters.companySlug) params.set('company', filters.companySlug);
+  add('ctype', filters.companyTypes);
 
   // Sort the whole thing so key order cannot vary either.
   const sorted = [...params.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));

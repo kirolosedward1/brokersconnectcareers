@@ -123,6 +123,7 @@
     "governorate": "Governorate",
     "any": "Any",
     "showResults": "Show results",
+    "companyType": "Company type",
     "verifiedOnly": "Verified only"
   },
   "track": {
@@ -158,6 +159,12 @@
     "undisclosed": "Undisclosed",
     "none": "No commission"
   },
+  "companyType": {
+    "brokerage": "Brokerage",
+    "developer": "Developer",
+    "brokerage_jobs": "Jobs at brokerages",
+    "developer_jobs": "Jobs at developers"
+  },
   "benefits": {
     "social_insurance": "Social insurance",
     "medical": "Medical cover",
@@ -172,6 +179,9 @@
     "unverified": "Unverified",
     "openRoles": "{count, plural, =0 {No open roles} one {1 open role} other {# open roles}}",
     "headcount": "Headcount",
+    "companyType": "Company type",
+    "companyTypeHint": "Shown to consultants looking specifically for a brokerage or a developer.",
+    "companyTypeUnset": "Choose a company type",
     "website": "Website",
     "location": "Location",
     "about": "About",
@@ -757,7 +767,6 @@
       "searchPlaceholder": "Property consultant, New Cairo…",
       "cta": "Browse jobs",
       "ctaEmployer": "I'm hiring",
-      "popular": "Popular searches",
       "trustNoSpam": "Always free for candidates"
     },
     "features": {
@@ -773,13 +782,7 @@
       "applyTitle": "Apply in under a minute",
       "applyBody": "Name, WhatsApp number, experience band. The CV is optional and there is no cover letter.",
       "whatsappTitle": "Contact is WhatsApp",
-      "whatsappBody": "Employers reach you directly on WhatsApp. Nothing lost to a spam folder.",
-      "kindPay": "The numbers",
-      "kindLeads": "Leads",
-      "kindSeats": "Seats",
-      "kindFresh": "Freshness",
-      "kindApply": "Applying",
-      "kindWhatsapp": "Contact"
+      "whatsappBody": "Employers reach you directly on WhatsApp. Nothing lost to a spam folder."
     },
     "how": {
       "title": "How it works",
@@ -815,10 +818,16 @@
       "cta": "Post a job",
       "secondary": "See who's hiring"
     },
+    "latest": {
+      "title": "Latest jobs"
+    },
     "browse": {
-      "title": "Browse quickly",
+      "title": "Browse real estate jobs",
       "byTrack": "By track",
-      "byDistrict": "By district"
+      "byDistrict": "By district",
+      "byCompanyType": "By company type",
+      "allJobs": "All jobs (<v>{count}</v>)",
+      "jobsCount": "{count, plural, one {# job} other {# jobs}}"
     },
     "tabs": {
       "label": "Choose your side",

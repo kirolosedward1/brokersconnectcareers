@@ -139,6 +139,7 @@ export default async function JobsPage({
   const tExp = await getTranslations('experienceBand');
   const tType = await getTranslations('employmentType');
   const tFilters = await getTranslations('filters');
+  const tCompanyType = await getTranslations('companyType');
 
   // A name the reader would recognise in a list a month from now. Their own
   // search words if they typed any, otherwise the filters that narrowed it.
@@ -202,6 +203,11 @@ export default async function JobsPage({
           },
         ]
       : []),
+    ...filters.companyTypes.map((value) => ({
+      key: `ctype-${value}`,
+      label: tCompanyType(value),
+      href: buildHref(1, { companyTypes: filters.companyTypes.filter((item) => item !== value) }),
+    })),
     ...filters.leadsSources.map((value) => ({
       key: `leads-${value}`,
       label: tLeads(`${value}_short`),

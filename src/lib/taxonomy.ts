@@ -2,6 +2,7 @@ import type {
   AgentAvailability,
   Benefit,
   CommissionType,
+  CompanyType,
   EmploymentType,
   ExperienceBand,
   JobTrack,
@@ -96,6 +97,12 @@ export function parseLandingSlug(slug: string): { track: JobTrack; districtSlug:
 export function buildLandingSlug(track: JobTrack, districtSlug: string): string {
   return `${trackSlug(track)}-${districtSlug}`;
 }
+
+/**
+ * What kind of employer a company is — stated by the company, never inferred
+ * from its name. See migration 67.
+ */
+export const COMPANY_TYPES = ['brokerage', 'developer'] as const satisfies readonly CompanyType[];
 
 export const HEADCOUNT_BANDS = ['1_10', '11_50', '51_200', '201_500', '500_plus'] as const;
 

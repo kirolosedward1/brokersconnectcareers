@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { localized } from '@/i18n/routing';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
-import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
+import { COMPANY_TYPES, HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { saveCompany } from '@/lib/actions/company';
 import type { CompanyRow, DistrictRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
@@ -23,6 +23,7 @@ export function CompanyForm({
 }) {
   const t = useTranslations('employer');
   const tCompanies = useTranslations('companies');
+  const tCompanyType = useTranslations('companyType');
   const tFilters = useTranslations('filters');
   const tCommon = useTranslations('common');
 
@@ -45,6 +46,7 @@ export function CompanyForm({
         aboutEn: String(form.get('aboutEn') ?? ''),
         website: String(form.get('website') ?? ''),
         headcountBand: String(form.get('headcountBand') ?? '') || null,
+        companyType: String(form.get('companyType') ?? '') || null,
         districtId: String(form.get('districtId') ?? '') || null,
         // What this form was built from. A second admin saving in between is
         // refused rather than overwritten.
@@ -108,6 +110,21 @@ export function CompanyForm({
             placeholder="https://"
             defaultValue={company?.website ?? ''}
           />
+        </Field>
+
+        <Field
+          label={tCompanies('companyType')}
+          hint={tCompanies('companyTypeHint')}
+          htmlFor="companyType"
+        >
+          <Select id="companyType" name="companyType" defaultValue={company?.company_type ?? ''}>
+            <option value="">{tCompanies('companyTypeUnset')}</option>
+            {COMPANY_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {tCompanyType(type)}
+              </option>
+            ))}
+          </Select>
         </Field>
 
         <Field label={tCompanies('headcount')} htmlFor="headcountBand">
