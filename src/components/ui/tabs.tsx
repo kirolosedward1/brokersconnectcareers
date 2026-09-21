@@ -59,7 +59,7 @@ export function Tabs({
       <div
         role="tablist"
         aria-orientation="horizontal"
-        className="mx-auto flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1.5 shadow-sm"
+        className="mx-auto flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1"
       >
         {tabs.map((tab, index) => {
           const selected = index === active;
@@ -82,9 +82,9 @@ export function Tabs({
               }}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={cn(
-                'whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-medium transition-colors',
+                'whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors',
                 selected
-                  ? 'bg-brand-gradient text-primary-foreground shadow-[var(--shadow-primary)]'
+                  ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground',
               )}
             >

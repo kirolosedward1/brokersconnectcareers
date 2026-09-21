@@ -53,7 +53,7 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
         role="tablist"
         aria-orientation="vertical"
         onKeyDown={onKeyDown}
-        className="bg-brand-gradient flex flex-col gap-1 rounded-xl p-3 shadow-lg sm:p-4"
+        className="flex flex-col gap-1 rounded-xl bg-primary p-2 sm:p-3"
       >
         {steps.map((step, index) => {
           const selected = index === active;

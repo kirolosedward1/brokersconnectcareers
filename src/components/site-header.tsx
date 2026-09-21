@@ -138,7 +138,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
 
             <Link
               href="/employer/jobs/new"
-              className="bg-brand-gradient mt-1 flex min-h-11 items-center justify-center rounded-lg px-3 text-center text-sm font-medium text-primary-foreground"
+              className="mt-1 flex min-h-11 bg-primary items-center justify-center rounded-lg px-3 text-center text-sm font-medium text-primary-foreground"
             >
               {t('postJob')}
             </Link>
