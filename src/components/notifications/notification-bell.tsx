@@ -89,14 +89,14 @@ export function NotificationBell({
         edge. The width was already clamped — it was the position that was
         not, and no width can fix an anchor that leaves too little room.
 
-        The header is `sticky top-0 h-16`, so `top-16` puts the panel directly
+        The header is `sticky top-0 h-14`, so `top-14` puts the panel directly
         under it whatever the page has scrolled to, and `inset-x-4` gives it
         the same gutter as everything else on the screen.
       */}
       <div
         className={[
           'z-50 overflow-hidden rounded-xl border border-border bg-popover shadow-lg',
-          'fixed inset-x-4 top-16',
+          'fixed inset-x-4 top-14',
           'sm:absolute sm:inset-x-auto sm:end-0 sm:top-auto sm:mt-2 sm:w-[22rem]',
         ].join(' ')}
       >

@@ -113,10 +113,10 @@ export default async function SavedJobsPage({
   const tSearch = await getTranslations('savedSearch');
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-bold">{t('saved')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('savedLede')}</p>
+        <h1 className="text-xl font-bold">{t('saved')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('savedLede')}</p>
       </header>
 
       {/* The saved listings first, and with no heading of its own: the page
@@ -136,7 +136,7 @@ export default async function SavedJobsPage({
             </Button>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {open.length > 0 ? (
               <div>
                 {/* The heading only earns its place once there is a second

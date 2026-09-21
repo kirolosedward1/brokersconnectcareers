@@ -32,10 +32,16 @@ export async function JobBrowse({
   locale,
   counts,
   districts,
+  embedded = false,
 }: {
   locale: Locale;
   counts: BrowseCounts | null;
   districts: DistrictRow[];
+  /**
+   * Inside a page that already has its own shell and rhythm — the signed-in
+   * home — rather than as a full-width band of the landing page.
+   */
+  embedded?: boolean;
 }) {
   if (!counts || counts.total === 0) return null;
 
@@ -92,8 +98,11 @@ export async function JobBrowse({
   if (groups.length === 0) return null;
 
   return (
-    <section aria-labelledby="browse-heading" className="border-b border-border">
-      <div className="shell py-8 sm:py-10">
+    <section
+      aria-labelledby="browse-heading"
+      className={embedded ? undefined : 'border-b border-border'}
+    >
+      <div className={embedded ? undefined : 'shell py-8 sm:py-10'}>
         <div className="flex items-baseline justify-between gap-4">
           <h2 id="browse-heading" className="text-lg font-bold sm:text-xl">
             {t('title')}

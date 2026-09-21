@@ -110,8 +110,8 @@ export default async function AdminEmailPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('emailActivity')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('emailActivityLede')}</p>
+        <h1 className="text-xl font-bold">{t('emailActivity')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('emailActivityLede')}</p>
       </header>
 
       {/*

@@ -100,8 +100,8 @@ export default async function ApplicationsPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('applications')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('applicationsLede')}</p>
+        <h1 className="text-xl font-bold">{t('applications')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('applicationsLede')}</p>
       </header>
 
       {applications.length === 0 ? (

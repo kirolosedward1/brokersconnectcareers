@@ -1,17 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import {
-  Building2,
-  Clock,
-  FileCheck2,
-  Flag,
-  Send,
-  ShieldAlert,
-  UserPlus,
-  Users,
-} from 'lucide-react';
 import { asLocale } from '@/i18n/routing';
-import { StatTile } from '@/components/dashboard/stat-tile';
+import { StatStrip } from '@/components/dashboard/stat-tile';
 import { TrendChart } from '@/components/dashboard/trend-chart';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -59,62 +49,53 @@ export default async function AdminOverviewPage({
   if (!s) return null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('overview')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('adminLede')}</p>
+        <h1 className="text-xl font-bold">{t('overview')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('adminLede')}</p>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <StatTile
-          label={t('statQueue')}
-          value={n(s.queue_total)}
-          href="/admin/jobs"
-          icon={FileCheck2}
-          tone={s.queue_total > 0 ? 'accent' : 'default'}
+      {/* The queues first, because they are the work; the week's totals
+          under them, a step quieter, because they are context for it. */}
+      <div className="space-y-2">
+        <StatStrip
+          label={t('overview')}
+          cells={[
+            {
+              label: t('statQueue'),
+              value: n(s.queue_total),
+              href: '/admin/jobs',
+              tone: s.queue_total > 0 ? 'accent' : 'default',
+            },
+            {
+              label: t('statQueueOld'),
+              value: n(s.queue_over_24h),
+              href: '/admin/jobs',
+              tone: s.queue_over_24h > 0 ? 'urgent' : 'default',
+            },
+            {
+              label: t('statReports'),
+              value: n(s.reports_open),
+              href: '/admin/reports',
+              tone: s.reports_open > 0 ? 'warn' : 'default',
+            },
+            {
+              label: t('statCompaniesPending'),
+              value: n(s.companies_pending),
+              href: '/admin/companies',
+              tone: s.companies_pending > 0 ? 'warn' : 'default',
+            },
+          ]}
         />
-        <StatTile
-          label={t('statQueueOld')}
-          value={n(s.queue_over_24h)}
-          href="/admin/jobs"
-          icon={Clock}
-          tone={s.queue_over_24h > 0 ? 'urgent' : 'default'}
-        />
-        <StatTile
-          label={t('statReports')}
-          value={n(s.reports_open)}
-          href="/admin/reports"
-          icon={Flag}
-          tone={s.reports_open > 0 ? 'warn' : 'default'}
-        />
-        <StatTile
-          label={t('statCompaniesPending')}
-          value={n(s.companies_pending)}
-          href="/admin/companies"
-          icon={ShieldAlert}
-          tone={s.companies_pending > 0 ? 'warn' : 'default'}
-        />
-
-        <StatTile label={t('statLiveJobs')} value={n(s.live_jobs)} href="/jobs" icon={Send} />
-        <StatTile
-          label={t('statPublished')}
-          value={n(s.published_7d)}
-          href="/admin/jobs"
-          icon={FileCheck2}
-        />
-        <StatTile label={t('statSignups')} value={n(s.signups_7d)} href="/admin" icon={UserPlus} />
-        <StatTile
-          label={t('statApplications')}
-          value={n(s.applications_7d)}
-          href="/admin"
-          icon={Users}
-        />
-
-        <StatTile
-          label={t('statCompanies')}
-          value={n(s.companies_total)}
-          href="/admin/companies"
-          icon={Building2}
+        <StatStrip
+          label={t('title')}
+          cells={[
+            { label: t('statLiveJobs'), value: n(s.live_jobs), href: '/jobs' },
+            { label: t('statPublished'), value: n(s.published_7d), href: '/admin/jobs' },
+            { label: t('statSignups'), value: n(s.signups_7d), href: '/admin/users' },
+            { label: t('statApplications'), value: n(s.applications_7d), href: '/admin' },
+            { label: t('statCompanies'), value: n(s.companies_total), href: '/admin/companies' },
+          ]}
         />
       </div>
 

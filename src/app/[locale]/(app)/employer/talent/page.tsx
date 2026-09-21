@@ -104,8 +104,8 @@ export default async function TalentPoolPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('shortlist')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('shortlistLede')}</p>
+        <h1 className="text-xl font-bold">{t('shortlist')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('shortlistLede')}</p>
       </header>
 
       {total === 0 ? (

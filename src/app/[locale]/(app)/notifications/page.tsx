@@ -64,8 +64,8 @@ export default async function NotificationsPage({
     <div className="mx-auto max-w-2xl space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{t('title')}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t('lede')}</p>
+          <h1 className="text-xl font-bold">{t('title')}</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t('lede')}</p>
         </div>
 
         {unread > 0 ? <MarkAllReadButton label={t('markAllRead')} /> : null}

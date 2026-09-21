@@ -60,12 +60,15 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
     );
   }
 
-  const { jobs, total } = await optional(queryJobs({ ...EMPTY_FILTERS }), {
-    jobs: [],
-    total: 0,
-    pageCount: 0,
-    page: 1,
-  });
+  const [{ jobs, total }, counts] = await Promise.all([
+    optional(queryJobs({ ...EMPTY_FILTERS }), {
+      jobs: [],
+      total: 0,
+      pageCount: 0,
+      page: 1,
+    }),
+    optional(getBrowseCounts(), null),
+  ]);
 
   return (
     <SignedInHome
@@ -75,6 +78,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       districts={districts}
       jobs={jobs}
       total={total}
+      counts={counts}
     />
   );
 }

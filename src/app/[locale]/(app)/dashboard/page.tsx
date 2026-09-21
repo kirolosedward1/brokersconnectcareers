@@ -1,11 +1,10 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Bell, BookmarkCheck, Briefcase, MessageSquare, Search, UserRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { EmptyDashboard, StatTile } from '@/components/dashboard/stat-tile';
+import { EmptyDashboard, StatStrip } from '@/components/dashboard/stat-tile';
 import { NextAction } from '@/components/dashboard/next-action';
 import { JobCard } from '@/components/jobs/job-card';
 import { requireCandidate } from '@/lib/auth';
@@ -175,12 +174,12 @@ export default async function DashboardOverviewPage({
   const n = (value: number) => formatNumber(value, locale);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">
+        <h1 className="text-xl font-bold">
           {t('candidateGreeting', { name: viewer.profile.full_name })}
         </h1>
-        <p className="mt-1 text-muted-foreground">{t('candidateLede')}</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('candidateLede')}</p>
       </header>
 
       {/*
@@ -214,48 +213,37 @@ export default async function DashboardOverviewPage({
         />
       ) : null}
 
+      {/*
+        Five figures in one strip, each about this consultant and each a link
+        to where it can be changed. The sixth tile — how many jobs are open on
+        the board — was a fact about the site, not about them, and the list of
+        open roles below says it better.
+      */}
       {s ? (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <StatTile
-            label={t('statApplications')}
-            value={n(s.applications_total)}
-            href="/dashboard/applications"
-            icon={Briefcase}
-            tone="accent"
-          />
-          <StatTile
-            label={t('statReplies')}
-            value={n(s.replies)}
-            href="/dashboard/applications"
-            icon={MessageSquare}
-            tone={s.replies > 0 ? 'good' : 'default'}
-          />
-          <StatTile
-            label={t('statCompleteness')}
-            value={`${n(s.profile_completeness)}%`}
-            href="/dashboard/profile"
-            icon={UserRound}
-            tone={s.profile_completeness < 60 ? 'warn' : 'default'}
-          />
-          <StatTile
-            label={t('statSaved')}
-            value={n(s.saved_jobs)}
-            href="/dashboard/saved"
-            icon={BookmarkCheck}
-          />
-          <StatTile
-            label={t('statAlerts')}
-            value={n(s.alerts_on)}
-            href="/dashboard/saved"
-            icon={Bell}
-          />
-          <StatTile
-            label={t('statOpenJobs')}
-            value={n(s.open_jobs)}
-            href="/jobs"
-            icon={Search}
-          />
-        </div>
+        <StatStrip
+          label={t('overview')}
+          cells={[
+            {
+              label: t('statApplications'),
+              value: n(s.applications_total),
+              href: '/dashboard/applications',
+            },
+            {
+              label: t('statReplies'),
+              value: n(s.replies),
+              href: '/dashboard/applications',
+              tone: s.replies > 0 ? 'good' : 'default',
+            },
+            {
+              label: t('statCompleteness'),
+              value: `${n(s.profile_completeness)}%`,
+              href: '/dashboard/profile',
+              tone: s.profile_completeness < 60 ? 'warn' : 'default',
+            },
+            { label: t('statSaved'), value: n(s.saved_jobs), href: '/dashboard/saved' },
+            { label: t('statAlerts'), value: n(s.alerts_on), href: '/dashboard/saved' },
+          ]}
+        />
       ) : null}
 
       {/* Where your applications actually stand.
@@ -264,7 +252,7 @@ export default async function DashboardOverviewPage({
       {applications.length ? (
         <section className="space-y-3" aria-labelledby="recent-applications">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 id="recent-applications" className="text-lg font-semibold">
+            <h2 id="recent-applications" className="text-base font-semibold">
               {t('applications')}
             </h2>
             <Link
@@ -277,7 +265,7 @@ export default async function DashboardOverviewPage({
 
           <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
             {applications.map((application) => (
-              <li key={application.id} className="flex flex-wrap items-center gap-3 p-4">
+              <li key={application.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">
                     {application.job
@@ -297,7 +285,7 @@ export default async function DashboardOverviewPage({
                   </p>
                 </div>
 
-                <Badge variant={STATUS_VARIANT[application.status]} size="lg">
+                <Badge variant={STATUS_VARIANT[application.status]}>
                   {tStatus(application.status)}
                 </Badge>
               </li>
@@ -311,7 +299,7 @@ export default async function DashboardOverviewPage({
       {suggestions.length ? (
         <section className="space-y-3" aria-labelledby="open-roles">
           <div className="flex items-baseline justify-between gap-3">
-            <h2 id="open-roles" className="text-lg font-semibold">
+            <h2 id="open-roles" className="text-base font-semibold">
               {personalised ? t('matchedRoles') : t('openRoles')}
             </h2>
             <Link href="/jobs" className="text-sm font-medium text-primary hover:underline">
@@ -331,7 +319,7 @@ export default async function DashboardOverviewPage({
             </p>
           )}
 
-          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="grid gap-2 xl:grid-cols-2">
             {suggestions.map(({ job, score, reasons }) => (
               <li key={job.id} className="flex flex-col gap-1.5">
                 <JobCard job={job} locale={locale} saved={savedIds.has(job.id)} savable />

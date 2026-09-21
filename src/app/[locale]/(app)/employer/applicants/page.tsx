@@ -395,8 +395,8 @@ export default async function AllApplicantsPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('allApplicants')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('allApplicantsLede')}</p>
+        <h1 className="text-xl font-bold">{t('allApplicants')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('allApplicantsLede')}</p>
         {/*
           The other half of what the applicant was told before they pressed
           send. They were promised this list is the only place their number

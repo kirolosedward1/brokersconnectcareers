@@ -62,22 +62,24 @@ export function NextAction({
   return (
     <Link
       href={href}
-      className={`group flex items-start gap-4 rounded-xl border p-5 transition-colors hover:bg-card sm:p-6 ${TONES[tone]}`}
+      className={`group flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border px-4 py-3 transition-colors hover:bg-card ${TONES[tone]}`}
     >
-      <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl bg-card/70">
-        <Icon className="size-5" aria-hidden />
-      </span>
+      <Icon className="size-5 shrink-0" aria-hidden />
 
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold text-foreground">{title}</p>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{body}</p>
-        <span className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium">
-          {cta}
-          {/* Points the way the language runs, so it reads as "onward" in
-              Arabic rather than "back". */}
-          <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5 rtl:rotate-0 ltr:rotate-180" aria-hidden />
-        </span>
+      {/* The message and its action on one line. Stacked in a padded panel
+          with the icon in a tile of its own, this was the tallest thing on the
+          page and said one sentence. */}
+      <div className="min-w-0 flex-1 basis-64">
+        <p className="font-semibold leading-snug text-foreground">{title}</p>
+        <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{body}</p>
       </div>
+
+      <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold">
+        {cta}
+        {/* Points the way the language runs, so it reads as "onward" in
+            Arabic rather than "back". */}
+        <ArrowLeft className="size-4 rtl:rotate-0 ltr:rotate-180" aria-hidden />
+      </span>
     </Link>
   );
 }

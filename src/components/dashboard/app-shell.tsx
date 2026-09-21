@@ -189,21 +189,21 @@ export function AppShell({
   }
 
   const rail = (
-    <div className="flex h-full flex-col gap-6 p-4">
+    <div className="flex h-full flex-col gap-4 p-3">
       <Link href="/" className="flex min-h-11 items-center gap-2.5 px-2">
         <LogoMark className="size-8" />
         {collapsed ? null : <span className="font-semibold">{tNav('dashboard')}</span>}
       </Link>
 
-      <nav className="flex-1 space-y-6 overflow-y-auto">
+      <nav className="flex-1 space-y-5 overflow-y-auto">
         {groups.map((group) => (
           <div key={group.label}>
             {collapsed ? null : (
-              <p className="mb-2 px-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              <p className="mb-1.5 px-3 text-xs font-medium text-muted-foreground">
                 {group.label}
               </p>
             )}
-            <ul className="space-y-1">
+            <ul className="space-y-0.5">
               {group.items.map(({ href, label, icon, badge }) => {
                 const Icon = ICONS[icon];
                 const active = pathname === href;
@@ -219,9 +219,20 @@ export function AppShell({
                       onMouseLeave={hideTip}
                       onBlur={hideTip}
                       className={cn(
-                        'relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors',
+                        'relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors lg:min-h-10',
+                        /*
+                          Where you are, said quietly: a tint, the brand colour
+                          on the label, and a bar on the rail's inner edge.
+
+                          It was a gradient slab with a glow under it, which is
+                          the loudest thing a console can draw — spent on the
+                          one fact the page title already states, and louder
+                          than any number on the page it was pointing at. The
+                          bar is there so the state is not carried by colour
+                          alone.
+                        */
                         active
-                          ? 'bg-brand-gradient text-primary-foreground shadow-[var(--shadow-primary)]'
+                          ? 'bg-primary/[0.08] font-semibold text-primary before:absolute before:inset-y-2 before:start-0 before:w-[3px] before:rounded-full before:bg-primary'
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                         collapsed && 'justify-center px-2',
                       )}
@@ -243,7 +254,7 @@ export function AppShell({
                             className={cn(
                               'numeral ms-auto rounded-full px-1.5 text-xs font-semibold leading-5',
                               active
-                                ? 'bg-white/25 text-primary-foreground'
+                                ? 'bg-primary/15 text-primary'
                                 : 'bg-destructive/12 text-destructive',
                             )}
                           >
@@ -268,7 +279,7 @@ export function AppShell({
         onMouseLeave={hideTip}
         onBlur={hideTip}
         className={cn(
-          'flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-destructive',
+          'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-destructive lg:min-h-10',
           collapsed && 'justify-center px-2',
         )}
       >
@@ -284,7 +295,7 @@ export function AppShell({
       <aside
         className={cn(
           'fixed inset-y-0 start-0 z-30 hidden border-e border-border bg-card lg:block',
-          collapsed ? 'w-[5.25rem]' : 'w-64',
+          collapsed ? 'w-[4.5rem]' : 'w-60',
         )}
       >
         {rail}
@@ -313,8 +324,8 @@ export function AppShell({
         </>
       ) : null}
 
-      <div className={cn('flex min-h-dvh flex-col', collapsed ? 'lg:ps-[5.25rem]' : 'lg:ps-64')}>
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-card px-4">
+      <div className={cn('flex min-h-dvh flex-col', collapsed ? 'lg:ps-[4.5rem]' : 'lg:ps-60')}>
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-card px-4">
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -357,7 +368,7 @@ export function AppShell({
           a row, and squeezing those to fit a reading measure would trade one
           bad layout for another.
         */}
-        <main id="main" tabIndex={-1} className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main id="main" tabIndex={-1} className="flex-1 p-4 sm:p-6 lg:px-8">
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>
