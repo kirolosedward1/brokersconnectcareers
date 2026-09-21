@@ -37,8 +37,6 @@ const SOURCES = {
   write: { src: '/illustrations/write.png', width: 960, height: 702 },
   /** Reading through applicants' cards — the inbox. */
   review: { src: '/illustrations/review.png', width: 960, height: 702 },
-  /** Sorting people into a structure — listings and who is on them. */
-  organise: { src: '/illustrations/organise.png', width: 960, height: 703 },
   /** Writing at a laptop with a phone of posts behind — the blog. */
   blog: { src: '/illustrations/blog.png', width: 960, height: 702 },
 } as const;
