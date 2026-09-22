@@ -225,13 +225,17 @@ export async function SiteFooter({ locale }: { locale: string }) {
       </div>
 
       <div className="border-t border-border py-5">
-        <div className="shell flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        {/* Centred and stacked on a phone — mark, tagline, copyright, then the
+            theme switch under them — where the two-column arrangement left the
+            switch floating beside a line of small print. The row returns from
+            `sm`, where there is room for the two ends to be two ends. */}
+        <div className="shell flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-start">
+          <div className="flex flex-col items-center sm:items-start">
             <Logo name={tMeta('siteName')} />
             <p className="mt-1 text-sm text-muted-foreground">{tMeta('tagline')}</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+          <div className="flex flex-col items-center gap-3 text-xs text-muted-foreground sm:flex-row sm:gap-x-4">
             <p>
               <span className="numeral">{new Date().getFullYear()}</span> · {tMeta('siteName')} ·{' '}
               {t('rights')}

@@ -37,8 +37,22 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
   // and the header has to stop floating when it does.
   return (
     <HeaderShell hasHomeHero={!viewer?.profile}>
-      <div className="shell flex h-14 items-center gap-2 sm:h-16">
-        <Link href="/" className="flex min-h-11 shrink-0 items-center">
+      {/* Three cells below `md` — search, the mark, menu and account — with the
+          two outer cells the same width, so the mark sits at the true centre
+          of the bar. `minmax(0, 1fr)` rather than `1fr`: the bare form has an
+          `auto` minimum, so the heavier end cell widened itself and dragged
+          the mark off centre. From `md` it is the ordinary row: mark at the
+          start, nav beside it, controls pushed to the end. */}
+      <div className="shell grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:h-16 md:flex">
+        <Link
+          href="/jobs"
+          aria-label={t('jobs')}
+          className="grid size-11 place-items-center justify-self-start rounded-lg transition-colors hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15 md:hidden"
+        >
+          <Search className="size-4" />
+        </Link>
+
+        <Link href="/" className="flex min-h-11 shrink-0 items-center justify-self-center">
           <Logo name={tMeta('siteName')} />
         </Link>
 
@@ -53,15 +67,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           ))}
         </nav>
 
-        <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
-          <Link
-            href="/jobs"
-            aria-label={t('jobs')}
-            className="grid size-11 place-items-center rounded-lg transition-colors hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15 md:hidden"
-          >
-            <Search className="size-4" />
-          </Link>
-
+        <div className="ms-auto flex shrink-0 items-center justify-self-end gap-0.5 sm:gap-2">
           {ENGLISH_ENABLED ? <LocaleSwitcher locale={locale} label={t('language')} /> : null}
 
           {role === 'admin' ? (
