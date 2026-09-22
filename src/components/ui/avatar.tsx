@@ -46,6 +46,8 @@ function initialOf(name: string) {
 }
 
 const SIZES = {
+  /** Inside a button, beside a name — the header chip. */
+  xs: 'size-7 text-xs',
   sm: 'size-9 text-sm',
   md: 'size-11 text-base',
   lg: 'size-16 text-2xl',

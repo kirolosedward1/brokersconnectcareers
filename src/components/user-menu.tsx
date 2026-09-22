@@ -1,19 +1,23 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localeHref, type Locale } from '@/i18n/routing';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Avatar } from '@/components/ui/avatar';
 
 export function UserMenu({
   name,
+  avatarUrl,
   signOutLabel,
   accountLabel,
   locale,
 }: {
   name: string;
+  /** The profile photo; the initial in a coloured circle when there is none. */
+  avatarUrl?: string | null;
   signOutLabel: string;
   accountLabel: string;
   locale: Locale;
@@ -67,7 +71,12 @@ export function UserMenu({
         aria-expanded={open}
         aria-haspopup="menu"
       >
-        <User />
+        {/* The person, not a glyph of one. The console header already shows
+            the photo; the site header showed a generic outline beside the
+            same name, so the two halves of the product disagreed about who
+            was signed in. 28px, so it sits inside the 44px button like the
+            icon it replaces rather than turning the chip into a badge. */}
+        <Avatar name={name} src={avatarUrl} size="xs" />
         <span className="hidden max-w-24 truncate sm:inline">{name}</span>
       </Button>
 

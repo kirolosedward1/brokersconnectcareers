@@ -82,6 +82,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               </Button>
               <UserMenu
                 name={viewer.profile.full_name}
+                avatarUrl={viewer.profile.avatar_url}
                 signOutLabel={t('signOut')}
                 accountLabel={tAccount('title')}
                 locale={locale}
