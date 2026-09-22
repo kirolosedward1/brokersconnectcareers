@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import { ArrowRight } from 'lucide-react';
+import { FooterGroup } from '@/components/footer-group';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Logo } from '@/components/logo';
@@ -87,7 +88,6 @@ export async function SiteFooter({ locale }: { locale: string }) {
    */
   const linkClass =
     'inline-flex min-h-11 items-center py-1 text-sm text-muted-foreground transition-colors hover:text-foreground lg:min-h-8';
-  const headingClass = 'text-sm font-semibold';
 
   return (
     <footer className="mt-12 border-t border-border bg-muted/40">
@@ -145,12 +145,9 @@ export async function SiteFooter({ locale }: { locale: string }) {
             top border is the doors' bottom edge when they are there and the
             page's when they are not, so a visitor and a signed-in reader both
             get one rule above this and not two or none. */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-6 border-t border-border py-8 lg:grid-cols-4">
-          <nav aria-labelledby="footer-product">
-            <p id="footer-product" className={headingClass}>
-              {t('product')}
-            </p>
-            <ul className="mt-2">
+        <div className="grid border-t border-border py-4 lg:grid-cols-4 lg:gap-x-6 lg:py-8">
+          <FooterGroup title={t('product')}>
+            <ul className="lg:mt-2">
               <li>
                 <Link href="/jobs" className={linkClass}>
                   {tNav('jobs')}
@@ -172,13 +169,10 @@ export async function SiteFooter({ locale }: { locale: string }) {
                 </Link>
               </li>
             </ul>
-          </nav>
+          </FooterGroup>
 
-          <nav aria-labelledby="footer-tracks">
-            <p id="footer-tracks" className={headingClass}>
-              {t('byTrack')}
-            </p>
-            <ul className="mt-2">
+          <FooterGroup title={t('byTrack')}>
+            <ul className="lg:mt-2">
               {JOB_TRACKS.map((track) => (
                 <li key={track}>
                   <Link href={{ pathname: '/jobs', query: { track } }} className={linkClass}>
@@ -187,14 +181,11 @@ export async function SiteFooter({ locale }: { locale: string }) {
                 </li>
               ))}
             </ul>
-          </nav>
+          </FooterGroup>
 
           {areas.length ? (
-            <nav aria-labelledby="footer-areas">
-              <p id="footer-areas" className={headingClass}>
-                {t('byArea')}
-              </p>
-              <ul className="mt-2">
+            <FooterGroup title={t('byArea')}>
+              <ul className="lg:mt-2">
                 {areas.map((district) => (
                   <li key={district.slug}>
                     <Link
@@ -206,14 +197,11 @@ export async function SiteFooter({ locale }: { locale: string }) {
                   </li>
                 ))}
               </ul>
-            </nav>
+            </FooterGroup>
           ) : null}
 
-          <nav aria-labelledby="footer-legal">
-            <p id="footer-legal" className={headingClass}>
-              {t('about')}
-            </p>
-            <ul className="mt-2">
+          <FooterGroup title={t('about')}>
+            <ul className="lg:mt-2">
               <li>
                 <Link href="/privacy" className={linkClass}>
                   {t('privacy')}
@@ -232,7 +220,7 @@ export async function SiteFooter({ locale }: { locale: string }) {
                 </li>
               ) : null}
             </ul>
-          </nav>
+          </FooterGroup>
         </div>
       </div>
 
