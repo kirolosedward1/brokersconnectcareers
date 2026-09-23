@@ -33,18 +33,35 @@ export function formatDate(value: string | Date, locale: string): string {
  * How long ago, to the day — "today", "yesterday", "3 days ago" — and the plain
  * date once it is older than a month.
  *
- * Days, not hours: a listing's freshness is read as "this week or not", and a
- * figure that changes every hour would disagree with itself between a cached
- * render and the next one. Past thirty days "41 days ago" is arithmetic the
- * reader has to undo, so it becomes the date.
+ * Calendar days in Cairo, not elapsed 24-hour periods. Flooring the
+ * millisecond difference called a listing posted at 11pm "today" at 9am the
+ * next morning, and the server renders in UTC, which in Egypt is two or three
+ * hours behind the reader's own midnight. Both dates are read off Cairo's
+ * calendar and the whole days between them are counted, which is also what
+ * keeps the answer stable across a daylight-saving change.
+ *
+ * Past thirty days "41 days ago" is arithmetic the reader has to undo, so it
+ * becomes the date.
  */
+const CAIRO_DAY = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Africa/Cairo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+function cairoDayNumber(date: Date): number {
+  const [year, month, day] = CAIRO_DAY.format(date).split('-').map(Number);
+  return Date.UTC(year, month - 1, day) / 86_400_000;
+}
+
 export function formatRelativeDay(
   value: string | Date,
   locale: string,
   now: Date = new Date(),
 ): string {
   const date = typeof value === 'string' ? new Date(value) : value;
-  const days = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
+  const days = cairoDayNumber(now) - cairoDayNumber(date);
 
   if (days > 30 || days < 0) return formatDayMonth(date, locale);
 
