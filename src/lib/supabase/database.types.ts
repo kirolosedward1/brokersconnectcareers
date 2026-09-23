@@ -28,6 +28,7 @@ export type Benefit =
   | 'transport'
   | 'training'
   | 'mobile_allowance';
+export type CompanyType = 'brokerage' | 'developer';
 export type HeadcountBand = '1_10' | '11_50' | '51_200' | '201_500' | '500_plus';
 export type PackKey = 'single' | 'bulk' | 'mass_hiring' | 'featured_addon';
 export type ReportReason =
@@ -101,6 +102,8 @@ export type CompanyRow = Timestamped & {
   about_en: string | null;
   website: string | null;
   headcount_band: HeadcountBand | null;
+  /** Stated by the company. Null is unclassified, and absent before migration 67. */
+  company_type?: CompanyType | null;
   district_id: number | null;
   verification_status: VerificationStatus;
   verified_at: string | null;

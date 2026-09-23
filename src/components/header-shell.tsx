@@ -65,7 +65,7 @@ export function HeaderShell({
       // muted one everywhere else.
       data-over-hero={floating ? 'true' : undefined}
       className={cn(
-        'group/header z-40 transition-colors duration-300',
+        'group/header z-40 transition-colors duration-150',
         overHero ? 'fixed inset-x-0 top-0' : 'sticky top-0',
         floating
           ? 'border-b border-transparent bg-transparent text-white'

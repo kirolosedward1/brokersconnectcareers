@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { UsersRound } from 'lucide-react';
+import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
@@ -104,14 +104,14 @@ export default async function TalentPoolPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('shortlist')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('shortlistLede')}</p>
+        <h1 className="text-xl font-bold">{t('shortlist')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('shortlistLede')}</p>
       </header>
 
       {total === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-16 text-center">
-          <UsersRound className="mx-auto size-8 text-muted-foreground" aria-hidden />
-          <p className="mt-4 font-medium">{t('shortlistEmpty')}</p>
+        <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+          <EmptyIllustration name="choose" />
+          <p className="font-medium">{t('shortlistEmpty')}</p>
           <p className="mt-1 text-sm text-muted-foreground">{t('shortlistEmptyHint')}</p>
           <Button asChild className="mt-5">
             <Link href="/agents">{tAgents('title')}</Link>

@@ -136,8 +136,8 @@ export default async function AdminUsersPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('users')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('usersLede')}</p>
+        <h1 className="text-xl font-bold">{t('users')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('usersLede')}</p>
       </header>
 
       <nav className="flex flex-wrap gap-2" aria-label={t('users')}>
@@ -158,7 +158,7 @@ export default async function AdminUsersPage({
       </nav>
 
       {sorted.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
           {t('emptyQueue')}
         </p>
       ) : (
@@ -168,7 +168,7 @@ export default async function AdminUsersPage({
             return (
               <li
                 key={profile.id}
-                className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-border bg-card p-4"
+                className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-border bg-card p-4"
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <span

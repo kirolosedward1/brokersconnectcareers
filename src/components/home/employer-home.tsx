@@ -1,9 +1,10 @@
 import { getTranslations } from 'next-intl/server';
-import { ArrowRight, Building2, Clock, Eye, FileClock, Plus, TimerReset, Users } from 'lucide-react';
+import { ArrowRight, Building2, Clock, Plus, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
-import { StatTile } from '@/components/dashboard/stat-tile';
+import { StatStrip } from '@/components/dashboard/stat-tile';
+import { EmptyIllustration } from '@/components/illustration';
 import { formatNumber } from '@/lib/utils';
 
 /**
@@ -54,11 +55,11 @@ export async function EmployerHome({
   const hasCompany = Boolean(summary?.has_company);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
+    <div className="shell py-6 sm:py-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">{t('welcome', { name })}</h1>
-          <p className="mt-1 text-muted-foreground">{tDash('employerLede')}</p>
+          <h1 className="text-xl font-bold">{t('welcome', { name })}</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">{tDash('employerLede')}</p>
         </div>
 
         <Button asChild variant="outline">
@@ -70,7 +71,7 @@ export async function EmployerHome({
       </header>
 
       {approvalStatus !== 'approved' ? (
-        <div className="mt-8 rounded-2xl border border-warning/40 bg-warning-muted p-5">
+        <div className="mt-6 rounded-xl border border-warning/40 bg-warning-muted px-4 py-3.5">
           <p className="flex items-center gap-2 font-semibold">
             <Clock className="size-4" aria-hidden />
             {tEmployer('pendingTitle')}
@@ -81,43 +82,35 @@ export async function EmployerHome({
 
       {hasCompany && summary ? (
         <>
-          <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <StatTile
-              label={tDash('statApplicantsNew')}
-              value={n(summary.applicants_new)}
-              href="/employer/applicants?stage=new"
-              icon={Users}
-              tone={summary.applicants_new > 0 ? 'accent' : 'default'}
-            />
-            <StatTile
-              label={tDash('statLiveJobs')}
-              value={n(summary.live_jobs)}
-              href="/employer/jobs"
-              icon={Building2}
-            />
-            <StatTile
-              label={tDash('statPending')}
-              value={n(summary.pending_jobs)}
-              href="/employer/jobs"
-              icon={FileClock}
-              tone={summary.pending_jobs > 0 ? 'warn' : 'default'}
-            />
-            <StatTile
-              label={tDash('statExpiring')}
-              value={n(summary.expiring_soon)}
-              href="/employer/jobs"
-              icon={TimerReset}
-              tone={summary.expiring_soon > 0 ? 'urgent' : 'default'}
-            />
-            <StatTile
-              label={tDash('statViews')}
-              value={n(summary.total_views)}
-              href="/employer/jobs"
-              icon={Eye}
+          <div className="mt-6">
+            <StatStrip
+              label={tDash('overview')}
+              cells={[
+                {
+                  label: tDash('statApplicantsNew'),
+                  value: n(summary.applicants_new),
+                  href: '/employer/applicants?stage=new',
+                  tone: summary.applicants_new > 0 ? 'accent' : 'default',
+                },
+                { label: tDash('statLiveJobs'), value: n(summary.live_jobs), href: '/employer/jobs' },
+                {
+                  label: tDash('statPending'),
+                  value: n(summary.pending_jobs),
+                  href: '/employer/jobs',
+                  tone: summary.pending_jobs > 0 ? 'warn' : 'default',
+                },
+                {
+                  label: tDash('statExpiring'),
+                  value: n(summary.expiring_soon),
+                  href: '/employer/jobs',
+                  tone: summary.expiring_soon > 0 ? 'urgent' : 'default',
+                },
+                { label: tDash('statViews'), value: n(summary.total_views), href: '/employer/jobs' },
+              ]}
             />
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-wrap gap-2">
             <Button asChild>
               <Link href="/employer/jobs/new">
                 <Plus aria-hidden />
@@ -135,12 +128,13 @@ export async function EmployerHome({
       ) : (
         /* No company row yet, so there is nothing to count. The one thing that
            unblocks everything else is the only thing offered. */
-        <div className="mt-8 rounded-2xl border border-dashed border-border py-14 text-center">
+        <div className="mt-6 rounded-xl border border-dashed border-border px-6 py-8 text-center">
+          <EmptyIllustration name="write" />
           <p className="font-medium">{tDash('emptyEmployerTitle')}</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
             {tDash('emptyEmployerBody')}
           </p>
-          <Button asChild className="mt-6">
+          <Button asChild className="mt-4">
             <Link href="/employer/company">
               <Building2 aria-hidden />
               {tDash('emptyEmployerCta')}

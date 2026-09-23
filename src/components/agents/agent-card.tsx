@@ -48,7 +48,7 @@ export function AgentCard({
   const looking = agent.availability === 'actively_searching';
 
   return (
-    <article className="lift reveal relative rounded-2xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/30 sm:p-6">
+    <article className="lift relative h-full rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5">
       <div className="flex gap-4">
         {/*
           The same avatar the rest of the product draws.

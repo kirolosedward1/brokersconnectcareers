@@ -1,9 +1,9 @@
 import { getTranslations } from 'next-intl/server';
-import { Briefcase, Search } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { FooterGroup } from '@/components/footer-group';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Logo } from '@/components/logo';
-import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import { getDistricts } from '@/lib/queries/taxonomy';
@@ -81,62 +81,73 @@ export async function SiteFooter({ locale }: { locale: string }) {
    * people tap on a phone — the worst place to be under the target size.
    * `inline-flex` with vertical padding rather than a taller line-height, so
    * the text keeps its own spacing and only the hit area grows.
+   *
+   * From `lg` it relaxes to 32px. The 44px rule is about thumbs, and at that
+   * width the reader has a pointer; held to 44 there, four short lists made a
+   * footer taller than the viewport above it.
    */
   const linkClass =
-    'inline-flex min-h-11 items-center py-1 text-sm text-muted-foreground transition-colors hover:text-foreground';
-  const headingClass = 'text-sm font-semibold';
+    'inline-flex min-h-11 items-center py-1 text-sm text-muted-foreground transition-colors hover:text-foreground lg:min-h-8';
 
   return (
-    <footer className="mt-16 border-t border-border bg-muted/40">
-      <div className="mx-auto max-w-6xl px-4">
+    <footer className="mt-12 border-t border-border bg-muted/40">
+      <div className="shell">
         {/* The two doors, for visitors only. Same words as the landing page's
             segmented control, so a reader who scrolled past it meets the same
             choice here — and the landing page makes the same swap, showing a
             signed-in reader their own dashboard instead of the pitch. */}
         {viewer ? null : (
-        <div className="grid gap-3 py-10 sm:grid-cols-2">
-          <div className="flex gap-4 rounded-2xl border border-border bg-card p-5">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Search className="size-5" aria-hidden />
-            </span>
-            <div className="min-w-0">
-              <p className="font-semibold">{t('doorCandidateTitle')}</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                {t('doorCandidateBody')}
-              </p>
-              <Button asChild size="sm" className="mt-3">
-                <Link href="/jobs">{t('doorCandidateCta')}</Link>
-              </Button>
-            </div>
-          </div>
+          /* Two lines, not two cards. Each door was a bordered panel with an
+             icon tile, a heading, a paragraph and a button, above the footer
+             of every public page — a second call to action under whatever the
+             page itself had just asked for. The choice is worth keeping at the
+             foot of a long read; it does not need two hundred pixels. */
+          <div className="grid gap-x-10 sm:grid-cols-2">
+            <Link
+              href="/jobs"
+              className="group flex min-h-14 items-center justify-between gap-3 border-b border-border py-3 sm:border-b-0"
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold">{t('doorCandidateTitle')}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {t('doorCandidateBody')}
+                </span>
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary group-hover:underline">
+                {t('doorCandidateCta')}
+                <ArrowRight className="rtl-flip size-3.5" aria-hidden />
+              </span>
+            </Link>
 
-          <div className="flex gap-4 rounded-2xl border border-border bg-card p-5">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Briefcase className="size-5" aria-hidden />
-            </span>
-            <div className="min-w-0">
-              <p className="font-semibold">{t('doorEmployerTitle')}</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                {t('doorEmployerBody')}
-              </p>
-              <Button asChild size="sm" variant="outline" className="mt-3">
-                <Link href="/employer/jobs/new">{tNav('postJob')}</Link>
-              </Button>
-            </div>
+            {/* The employer's own sign-in, carrying them on to the wizard —
+                the same door the landing page uses. Pointed straight at the
+                protected route, a visitor was bounced to the consultants'
+                sign-in instead. */}
+            <Link
+              href={{ pathname: '/sign-in/employer', query: { next: '/employer/jobs/new' } }}
+              className="group flex min-h-14 items-center justify-between gap-3 py-3"
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold">{t('doorEmployerTitle')}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {t('doorEmployerBody')}
+                </span>
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary group-hover:underline">
+                {tNav('postJob')}
+                <ArrowRight className="rtl-flip size-3.5" aria-hidden />
+              </span>
+            </Link>
           </div>
-        </div>
         )}
 
         {/* The index. Two groups to a row on a phone, four on a desktop. The
             top border is the doors' bottom edge when they are there and the
             page's when they are not, so a visitor and a signed-in reader both
             get one rule above this and not two or none. */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-8 border-t border-border py-10 lg:grid-cols-4">
-          <nav aria-labelledby="footer-product">
-            <p id="footer-product" className={headingClass}>
-              {t('product')}
-            </p>
-            <ul className="mt-2">
+        <div className="grid border-t border-border py-4 lg:grid-cols-4 lg:gap-x-6 lg:py-8">
+          <FooterGroup title={t('product')}>
+            <ul className="lg:mt-2">
               <li>
                 <Link href="/jobs" className={linkClass}>
                   {tNav('jobs')}
@@ -158,13 +169,10 @@ export async function SiteFooter({ locale }: { locale: string }) {
                 </Link>
               </li>
             </ul>
-          </nav>
+          </FooterGroup>
 
-          <nav aria-labelledby="footer-tracks">
-            <p id="footer-tracks" className={headingClass}>
-              {t('byTrack')}
-            </p>
-            <ul className="mt-2">
+          <FooterGroup title={t('byTrack')}>
+            <ul className="lg:mt-2">
               {JOB_TRACKS.map((track) => (
                 <li key={track}>
                   <Link href={{ pathname: '/jobs', query: { track } }} className={linkClass}>
@@ -173,14 +181,11 @@ export async function SiteFooter({ locale }: { locale: string }) {
                 </li>
               ))}
             </ul>
-          </nav>
+          </FooterGroup>
 
           {areas.length ? (
-            <nav aria-labelledby="footer-areas">
-              <p id="footer-areas" className={headingClass}>
-                {t('byArea')}
-              </p>
-              <ul className="mt-2">
+            <FooterGroup title={t('byArea')}>
+              <ul className="lg:mt-2">
                 {areas.map((district) => (
                   <li key={district.slug}>
                     <Link
@@ -192,14 +197,11 @@ export async function SiteFooter({ locale }: { locale: string }) {
                   </li>
                 ))}
               </ul>
-            </nav>
+            </FooterGroup>
           ) : null}
 
-          <nav aria-labelledby="footer-legal">
-            <p id="footer-legal" className={headingClass}>
-              {t('about')}
-            </p>
-            <ul className="mt-2">
+          <FooterGroup title={t('about')}>
+            <ul className="lg:mt-2">
               <li>
                 <Link href="/privacy" className={linkClass}>
                   {t('privacy')}
@@ -218,18 +220,22 @@ export async function SiteFooter({ locale }: { locale: string }) {
                 </li>
               ) : null}
             </ul>
-          </nav>
+          </FooterGroup>
         </div>
       </div>
 
-      <div className="border-t border-border py-6">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+      <div className="border-t border-border py-5">
+        {/* Centred and stacked on a phone — mark, tagline, copyright, then the
+            theme switch under them — where the two-column arrangement left the
+            switch floating beside a line of small print. The row returns from
+            `sm`, where there is room for the two ends to be two ends. */}
+        <div className="shell flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-start">
+          <div className="flex flex-col items-center sm:items-start">
             <Logo name={tMeta('siteName')} />
             <p className="mt-1 text-sm text-muted-foreground">{tMeta('tagline')}</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+          <div className="flex flex-col items-center gap-3 text-xs text-muted-foreground sm:flex-row sm:gap-x-4">
             <p>
               <span className="numeral">{new Date().getFullYear()}</span> · {tMeta('siteName')} ·{' '}
               {t('rights')}

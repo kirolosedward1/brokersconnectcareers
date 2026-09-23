@@ -59,7 +59,7 @@ export async function ProfileGaps({
   return (
     <section
       aria-labelledby="profile-gaps"
-      className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"
+      className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="profile-gaps" className="text-lg font-semibold">

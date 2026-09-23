@@ -76,10 +76,10 @@ export default async function EmployerCompanyPage({
   const t = await getTranslations('employer');
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('company')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('companyLede')}</p>
+        <h1 className="text-xl font-bold">{t('company')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('companyLede')}</p>
       </header>
 
       {/* Above the form, because it is the one field on this page that shows

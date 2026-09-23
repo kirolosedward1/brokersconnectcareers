@@ -4,10 +4,16 @@ import { Link } from '@/i18n/navigation';
 import { localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FactLine } from '@/components/ui/fact-line';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
-import { CompensationCard, LeadsSourceBadge } from '@/components/jobs/compensation';
+import {
+  CommissionLine,
+  CompensationCard,
+  LeadsSourceText,
+  SalaryLine,
+} from '@/components/jobs/compensation';
 import { CommissionPicture } from '@/components/jobs/commission-picture';
 import { commissionPicture, type CommissionPicture as CommissionPictureData } from '@/lib/earnings';
 import { JobCard } from '@/components/jobs/job-card';
@@ -119,8 +125,8 @@ export async function JobDetailView({
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <nav aria-label="breadcrumb" className="mb-4 text-sm text-muted-foreground">
+    <div className="shell py-6">
+      <nav aria-label="breadcrumb" className="mb-3 text-sm text-muted-foreground">
         <Link href="/jobs" className="hover:text-foreground">
           {t('title')}
         </Link>
@@ -130,10 +136,10 @@ export async function JobDetailView({
         <span>{title}</span>
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_18rem]">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] xl:gap-12">
         <div className="min-w-0">
           <header>
-            <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
               <div className="flex min-w-0 items-start gap-3">
                 <CompanyLogo
                   name={companyName}
@@ -148,7 +154,9 @@ export async function JobDetailView({
                     href={`/companies/${job.company.slug}`}
                     className="font-medium hover:underline"
                   >
-                    {companyName}
+                    {/* Often Latin inside an Arabic line; isolated so its own
+                        punctuation cannot reorder the facts beside it. */}
+                    <bdi>{companyName}</bdi>
                   </Link>
                   <VerifiedBadge
                     status={job.company.verification_status}
@@ -165,36 +173,43 @@ export async function JobDetailView({
                 </div>
               </div>
 
-              <div className="rounded-lg bg-primary/10 px-4 py-3 text-center">
-                <p className="text-2xl font-bold leading-none text-primary">
-                  <span className="numeral">{formatNumber(job.seats, locale)}</span>
-                </p>
-                <p className="mt-1 text-xs text-primary/80">
-                  {t('seatsLabel', { count: job.seats })}
-                </p>
-              </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-1.5">
-              <LeadsSourceBadge job={job} />
-              <Badge variant="outline">{tTrack(job.track)}</Badge>
-              <Badge variant="outline">{tType(job.employment_type)}</Badge>
-              <Badge variant="outline">
-                <Users aria-hidden />
+            {/*
+              The role's facts as a line of text under the title.
+
+              They were four outlined pills and a tinted box holding the seat
+              count at twice the size of anything else in the header. None of
+              them is a state and none is a button, so none of them is a tag:
+              they are what kind of job this is, and they read as a sentence.
+              Where the clients come from is not repeated here — it has a cell
+              of its own in the compensation block directly below.
+            */}
+            <FactLine className="mt-3 text-sm text-muted-foreground">
+              <span>{tTrack(job.track)}</span>
+              <span>{tType(job.employment_type)}</span>
+              <span className="inline-flex items-center gap-1">
+                <Users className="size-3.5 shrink-0" aria-hidden />
                 {tExp(job.experience_band)}
-              </Badge>
-            </div>
+              </span>
+              <span>
+                <span className="numeral font-semibold text-foreground">
+                  {formatNumber(job.seats, locale)}
+                </span>{' '}
+                {t('seatsLabel', { count: job.seats })}
+              </span>
+            </FactLine>
           </header>
 
           {/* Compensation is the differentiator, so it sits above the fold, in
               structured form, before any prose. */}
-          <div className="mt-6">
+          <div className="mt-5">
             <CompensationCard job={job} locale={locale} reference={reference} />
 
             {picture ? <CommissionPicture picture={picture} locale={locale} /> : null}
           </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-2">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
             {/*
               A closed listing offered "Apply" like any other, and the apply
               route then refused — a button whose only outcome is a page saying
@@ -221,9 +236,14 @@ export async function JobDetailView({
                 {tApply('employerCannotApply')}
               </p>
             ) : alreadyApplied ? (
-              <AppliedNotice />
+              <div className="lg:hidden">
+                <AppliedNotice />
+              </div>
             ) : (
-              <Button asChild size="lg">
+              /* From `lg` the apply action lives in the summary beside the
+                 text, where it stays in view for the whole read. Two primary
+                 buttons a few hundred pixels apart is one too many. */
+              <Button asChild size="lg" className="lg:hidden">
                 <Link href={`/jobs/${job.slug}/apply`}>{t('apply')}</Link>
               </Button>
             )}
@@ -244,16 +264,16 @@ export async function JobDetailView({
             />
           </div>
 
-          <section className="mt-8" aria-labelledby="description-heading">
-            <h2 id="description-heading" className="text-lg font-semibold">
+          <section className="mt-7 max-w-3xl border-t border-border pt-6" aria-labelledby="description-heading">
+            <h2 id="description-heading" className="text-base font-semibold">
               {t('description')}
             </h2>
             <div className="mt-3 whitespace-pre-line leading-relaxed">{description}</div>
           </section>
 
           {job.requirements_ar ? (
-            <section className="mt-8" aria-labelledby="requirements-heading">
-              <h2 id="requirements-heading" className="text-lg font-semibold">
+            <section className="mt-7 max-w-3xl border-t border-border pt-6" aria-labelledby="requirements-heading">
+              <h2 id="requirements-heading" className="text-base font-semibold">
                 {t('requirements')}
               </h2>
               <div className="mt-3 whitespace-pre-line leading-relaxed">{job.requirements_ar}</div>
@@ -261,15 +281,15 @@ export async function JobDetailView({
           ) : null}
 
           {job.job_developers.length ? (
-            <section className="mt-8" aria-labelledby="developers-heading">
-              <h2 id="developers-heading" className="text-lg font-semibold">
+            <section className="mt-7 max-w-3xl border-t border-border pt-6" aria-labelledby="developers-heading">
+              <h2 id="developers-heading" className="text-base font-semibold">
                 {t('developers')}
               </h2>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {job.job_developers.map(({ developer }) => (
                   <li key={developer.id}>
                     <Badge variant="outline" size="lg">
-                      {localized(locale, developer.name_ar, developer.name_en)}
+                      <bdi>{localized(locale, developer.name_ar, developer.name_en)}</bdi>
                     </Badge>
                   </li>
                 ))}
@@ -298,7 +318,48 @@ export async function JobDetailView({
           </p>
         </div>
 
-        <aside className="space-y-4">
+        {/* Sticky as a whole from `lg`, so the action and who is hiring stay
+            beside the description for the length of the read instead of
+            leaving a blank rail once the company card scrolls away. */}
+        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+          {/*
+            The decision, in one place: what it pays, where the clients come
+            from, how long it is open, and the button. Desktop only — a phone
+            has the fixed bar below for the same job.
+          */}
+          <div className="hidden rounded-xl border border-border bg-card p-5 lg:block">
+            <p className="text-base">
+              <SalaryLine job={job} locale={locale} />
+            </p>
+            <FactLine className="mt-1.5 text-sm text-muted-foreground">
+              <CommissionLine job={job} locale={locale} />
+              <LeadsSourceText job={job} />
+            </FactLine>
+
+            <div className="mt-4">
+              {!open ? (
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/jobs">{t('browseOpen')}</Link>
+                </Button>
+              ) : !canApply ? null : alreadyApplied ? (
+                <AppliedNotice full />
+              ) : (
+                <Button asChild size="lg" className="w-full">
+                  <Link href={`/jobs/${job.slug}/apply`}>{t('apply')}</Link>
+                </Button>
+              )}
+            </div>
+
+            {open && job.expires_at ? (
+              <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CalendarClock className="size-3.5 shrink-0" aria-hidden />
+                <time dateTime={isoDate(job.expires_at)}>
+                  {t('expiresOn', { date: formatDate(job.expires_at, locale) })}
+                </time>
+              </p>
+            ) : null}
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -314,7 +375,9 @@ export async function JobDetailView({
                   seed={job.company.slug}
                   size="sm"
                 />
-                <p className="min-w-0 font-medium">{companyName}</p>
+                <p className="min-w-0 font-medium">
+                  <bdi>{companyName}</bdi>
+                </p>
               </div>
               {/* Only for a company that holds the badge. There is no matching
                   line for one that does not: 'unverified' covers a company
@@ -363,11 +426,14 @@ export async function JobDetailView({
       </div>
 
       {similar.length ? (
-        <section className="mt-14 pb-20 lg:pb-0" aria-labelledby="similar-heading">
-          <h2 id="similar-heading" className="text-lg font-semibold">
+        <section
+          className="mt-10 border-t border-border pt-6 pb-20 lg:pb-0"
+          aria-labelledby="similar-heading"
+        >
+          <h2 id="similar-heading" className="text-base font-semibold">
             {t('similarJobs')}
           </h2>
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-3 grid gap-2 lg:grid-cols-2">
             {similar.map((item) => (
               <li key={item.id}>
                 <JobCard job={item} locale={locale} />

@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { Lock, Trash2 } from 'lucide-react';
+import { ChevronDown, Lock, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatDate, isoDate } from '@/lib/utils';
+import { cn, formatDate, isoDate } from '@/lib/utils';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { addApplicationNote, deleteApplicationNote } from '@/lib/actions/applications';
 import type { ApplicationNoteRow } from '@/lib/supabase/database.types';
@@ -67,6 +67,17 @@ export function ApplicantNotes({
   );
 
   const [draft, setDraft] = useState('');
+  /*
+    Closed until there is something in it.
+
+    Every applicant card carried an open composer — a heading, a hint, a
+    two-line textarea and a button — so a page of ten applicants was ten empty
+    boxes nobody was typing in, and roughly a third of each card's height. A
+    note that exists is part of the applicant's record and stays on show; an
+    invitation to write one is a line, one press from the same form.
+  */
+  const [open, setOpen] = useState(fromServer.length > 0);
+  const panelId = useId();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
@@ -108,20 +119,34 @@ export function ApplicantNotes({
   }
 
   return (
-    <div className="mt-4 border-t border-border pt-4">
-      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-        <Lock className="size-3.5" aria-hidden />
+    <div className="mt-3 border-t border-border pt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="flex min-h-9 w-full items-center gap-1.5 rounded-md text-start text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <Lock className="size-3.5 shrink-0" aria-hidden />
         {t('notesTitle')}
-      </p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{t('notesHint')}</p>
+        {notes.length ? (
+          <span className="numeral rounded bg-muted px-1.5 text-foreground">{notes.length}</span>
+        ) : null}
+        <span className="font-normal">— {t('notesHint')}</span>
+        <ChevronDown
+          className={cn('ms-auto size-4 shrink-0 transition-transform', open && 'rotate-180')}
+          aria-hidden
+        />
+      </button>
 
+      <div id={panelId} hidden={!open}>
       {notes.length ? (
-        <ul className="mt-3 space-y-2">
+        <ul className="mt-1 space-y-2">
           {notes.map((note) => (
-            <li key={note.id} className="rounded-lg bg-muted/60 p-2.5 text-sm">
+            <li key={note.id} className="border-s-2 border-border ps-3 text-sm">
               <p className="leading-relaxed">{note.body}</p>
 
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                 {/* The author's account may be closed — the note outlives it,
                     which is why author_id is `on delete set null`. */}
                 <span>{note.author_id ? (authors[note.author_id] ?? t('notesFormerColleague')) : t('notesFormerColleague')}</span>
@@ -153,7 +178,7 @@ export function ApplicantNotes({
           rows={2}
           placeholder={t('notesPlaceholder')}
           aria-label={t('notesTitle')}
-          className="min-w-0 flex-1 rounded-lg border border-input bg-background p-2.5 text-sm shadow-xs"
+          className="min-w-0 flex-1 rounded-lg border border-input bg-background p-2.5 text-sm"
         />
         <Button
           type="button"
@@ -171,6 +196,7 @@ export function ApplicantNotes({
           {error}
         </p>
       ) : null}
+      </div>
     </div>
   );
 }

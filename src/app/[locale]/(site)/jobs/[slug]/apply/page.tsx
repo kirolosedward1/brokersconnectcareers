@@ -154,7 +154,7 @@ export default async function ApplyPage({
     if (justApplied) {
       return (
         <div className="mx-auto max-w-lg px-4 py-12">
-          <div className="rounded-2xl border border-success/30 bg-success-muted p-6 text-center">
+          <div className="rounded-xl border border-success/30 bg-success-muted p-6 text-center">
             <CheckCircle2 className="mx-auto size-9 text-success" aria-hidden />
             <h1 className="mt-3 text-xl font-bold">{t('success')}</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">{t('successBody')}</p>

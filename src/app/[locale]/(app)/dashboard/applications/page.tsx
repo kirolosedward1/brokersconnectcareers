@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Building2, Eye, MapPin } from 'lucide-react';
+import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -100,19 +101,25 @@ export default async function ApplicationsPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('applications')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('applicationsLede')}</p>
+        <h1 className="text-xl font-bold">{t('applications')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('applicationsLede')}</p>
       </header>
 
       {applications.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-16 text-center">
+        <div className="rounded-xl border border-dashed border-border px-6 py-8 text-center">
+          <EmptyIllustration name="apply" />
           <p className="font-medium">{t('emptyApplications')}</p>
-          <Button asChild className="mt-5">
+          <Button asChild className="mt-4">
             <Link href="/jobs">{t('emptyApplicationsCta')}</Link>
           </Button>
         </div>
       ) : (
-        <ul className="space-y-3">
+        /* One surface, ruled rows. Each application was a card of its own with
+           up to two more bordered boxes inside it — the listing's state, the
+           company's reason — so a page of five applications was fifteen
+           rectangles. The notes are sentences about the row they sit in, and
+           are set as that: a line of text with a rule down its leading edge. */
+        <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
       {applications.map((application) => {
         const job = application.job;
         if (!job) return null;
@@ -120,7 +127,7 @@ export default async function ApplicationsPage({
         return (
           <li
             key={application.id}
-            className="rounded-xl border border-border bg-card p-5"
+            className="px-4 py-3.5 sm:px-5"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
@@ -129,7 +136,7 @@ export default async function ApplicationsPage({
                     {localized(locale, job.title_ar, job.title_en)}
                   </Link>
                 </h2>
-                <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
                     <Building2 className="size-3.5" aria-hidden />
                     {localized(locale, job.company.name_ar, job.company.name_en)}
@@ -141,7 +148,7 @@ export default async function ApplicationsPage({
                 </p>
               </div>
 
-              <Badge variant={STATUS_VARIANT[application.status]} size="lg">
+              <Badge variant={STATUS_VARIANT[application.status]}>
                 {tStatus(application.status)}
               </Badge>
             </div>
@@ -160,7 +167,7 @@ export default async function ApplicationsPage({
               it.
             */}
             {application.status === 'new' && application.employer_viewed_at ? (
-              <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-success-muted px-3 py-1 text-xs font-medium text-success">
+              <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-success">
                 <Eye className="size-3.5" aria-hidden />
                 {t('applicationOpened')}
               </p>
@@ -190,7 +197,7 @@ export default async function ApplicationsPage({
               being told the listing was open.
             */}
             {displayJobStatus(job) !== 'active' ? (
-              <p className="mt-3 rounded-lg border border-dashed border-border p-3 text-xs leading-relaxed text-muted-foreground">
+              <p className="mt-2 border-s-2 border-border ps-3 text-xs leading-relaxed text-muted-foreground">
                 {(() => {
                   const shown = displayJobStatus(job);
                   return shown === 'closed' || shown === 'expired'
@@ -203,15 +210,15 @@ export default async function ApplicationsPage({
             {/* The reason, when the company gave one. This is the whole point
                 of the board: a decision you can act on rather than guess at. */}
             {application.decision_note ? (
-              <div className="mt-4 rounded-lg border border-border bg-muted/50 p-3">
+              <div className="mt-2.5 border-s-2 border-primary/40 ps-3">
                 <p className="text-xs font-medium text-muted-foreground">
                   {t('decisionFromCompany')}
                 </p>
-                <p className="mt-1 text-sm leading-relaxed">{application.decision_note}</p>
+                <p className="mt-0.5 text-sm leading-relaxed">{application.decision_note}</p>
               </div>
             ) : null}
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
               {/* Not `.numeral`: "قدّمت يوم 10 سبتمبر" is a sentence with a
                   date in it, and forcing it left-to-right put the date before
                   the words. Bidi lays out digits inside Arabic text correctly

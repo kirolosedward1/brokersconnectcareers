@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { BriefcaseBusiness, Eye, MapPin, Pencil, Plus, Users } from 'lucide-react';
+import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -48,7 +49,7 @@ export default async function EmployerJobsPage({
 
   if (!viewer.company) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-16 text-center">
+      <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
         <p className="font-medium">{t('createCompanyFirst')}</p>
         <p className="mt-1 text-sm text-muted-foreground">{t('createCompanyFirstBody')}</p>
         <Button asChild className="mt-5">
@@ -93,8 +94,8 @@ export default async function EmployerJobsPage({
           reads as a mistake. */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{t('jobs')}</h1>
-          <p className="mt-1 text-muted-foreground">{t('jobsLede')}</p>
+          <h1 className="text-xl font-bold">{t('jobs')}</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t('jobsLede')}</p>
         </div>
         <Button asChild className="self-start">
           <Link href="/employer/jobs/new">
@@ -109,7 +110,8 @@ export default async function EmployerJobsPage({
       </p>
 
       {jobs.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-16 text-center">
+        <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+          <EmptyIllustration name="write" />
           <p className="font-medium">{t('noJobs')}</p>
           <Button asChild className="mt-5">
             <Link href="/employer/jobs/new">{t('newJob')}</Link>

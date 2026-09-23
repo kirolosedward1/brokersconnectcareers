@@ -38,7 +38,17 @@ export type AnalyticsEvent =
    * answers the question worth asking — not how far a share travelled, but
    * whether it brought anybody who applied.
    */
-  | 'arrived_from_share';
+  | 'arrived_from_share'
+  /**
+   * A visitor entered the board from the home page's browse module — by
+   * district, by track, or by the kind of company. Three events rather than
+   * one with a `dimension` property, so each is a goal on its own in a
+   * dashboard that cannot filter a goal by property. `value` is the taxonomy
+   * slug that was chosen.
+   */
+  | 'homepage_job_browse_location'
+  | 'homepage_job_browse_category'
+  | 'homepage_job_browse_company_type';
 
 export function track(event: AnalyticsEvent, props?: Props): void {
   if (typeof window === 'undefined') return;

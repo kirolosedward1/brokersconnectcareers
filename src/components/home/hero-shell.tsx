@@ -37,8 +37,12 @@ export function HeroShell({ children }: { children: React.ReactNode }) {
         className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(8,12,24,0.85)_0%,rgba(8,12,24,0.45)_40%,rgba(8,12,24,0.92)_100%)]"
       />
 
-      <div className="relative mx-auto flex min-h-[38rem] max-w-4xl flex-col items-center justify-center px-4 py-24 text-center sm:min-h-[42rem]">
-        <div className="rise-in mb-8">
+      {/* Sized by what is in it. This had a 42rem floor, which on a laptop is
+          the whole screen: a visitor's first view of a job board was a film
+          and a search box, with no sign below the fold that there were jobs.
+          The top padding clears the header, which floats over the film. */}
+      <div className="relative mx-auto flex max-w-4xl flex-col items-center px-4 pt-24 pb-10 text-center sm:pt-28 sm:pb-12">
+        <div className="mb-6">
           <HomeTabs />
         </div>
 

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 import {
+  COMPANY_TYPES,
   EMPLOYMENT_TYPES,
   EXPERIENCE_BANDS,
   JOB_TRACKS,
@@ -36,6 +37,7 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
   const tLeads = useTranslations('leadsSource');
   const tExp = useTranslations('experienceBand');
   const tType = useTranslations('employmentType');
+  const tCompanyType = useTranslations('companyType');
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -170,6 +172,18 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
             checked={isOn('track', value)}
             onChange={() => toggle('track', value)}
             label={tTrack(value)}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title={t('companyType')}>
+        {COMPANY_TYPES.map((value) => (
+          <Choice
+            key={value}
+            type="checkbox"
+            checked={isOn('ctype', value)}
+            onChange={() => toggle('ctype', value)}
+            label={tCompanyType(value)}
           />
         ))}
       </FilterGroup>

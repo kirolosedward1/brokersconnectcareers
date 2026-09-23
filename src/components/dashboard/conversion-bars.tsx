@@ -34,7 +34,7 @@ export async function ConversionBars({
   const best = Math.max(0, ...rows.map((row) => rate(row) ?? 0));
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <h2 className="font-semibold">{t('conversionTitle')}</h2>
       <p className="mt-0.5 text-sm text-muted-foreground">{t('conversionHint')}</p>
 

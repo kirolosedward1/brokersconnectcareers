@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { EmptyIllustration } from '@/components/illustration';
 import { asLocale } from '@/i18n/routing';
 import { NotificationItem } from '@/components/notifications/notification-item';
 import { MarkAllReadButton } from '@/components/notifications/mark-all-read-button';
@@ -64,8 +65,8 @@ export default async function NotificationsPage({
     <div className="mx-auto max-w-2xl space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{t('title')}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t('lede')}</p>
+          <h1 className="text-xl font-bold">{t('title')}</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t('lede')}</p>
         </div>
 
         {unread > 0 ? <MarkAllReadButton label={t('markAllRead')} /> : null}
@@ -78,7 +79,8 @@ export default async function NotificationsPage({
           product to do. "Nothing here" with no way onward is a page that can
           only be left with the back button.
         */
-        <div className="rounded-2xl border border-dashed border-border px-6 py-16 text-center">
+        <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+          <EmptyIllustration name="updates" />
           <p className="font-medium">{t('empty')}</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
             {t('emptyHint')}
@@ -92,7 +94,7 @@ export default async function NotificationsPage({
           </Button>
         </div>
       ) : (
-        <ul className="divide-y divide-border rounded-2xl border border-border bg-card p-2">
+        <ul className="divide-y divide-border rounded-xl border border-border bg-card p-2">
           {notifications.map((notification) => (
             <li key={notification.id}>
               <NotificationItem notification={notification} locale={locale} />

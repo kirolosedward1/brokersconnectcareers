@@ -111,7 +111,7 @@ export function AvatarUpload({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
+    <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <Avatar name={name} src={avatarUrl} size="lg" />
 

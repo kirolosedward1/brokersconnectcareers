@@ -33,6 +33,7 @@ export const PUBLIC_MESSAGES = [
   'availability',
   'common',
   'companies',
+  'companyType',
   'employmentType',
   'experienceBand',
   'filters',

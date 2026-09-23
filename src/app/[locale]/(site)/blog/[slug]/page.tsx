@@ -96,7 +96,7 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
             <CoverArt
               slug={post.slug}
               variant={post.cover}
-              className="mb-8 h-44 w-full rounded-2xl border border-border sm:h-56"
+              className="mb-8 h-44 w-full rounded-xl border border-border sm:h-56"
             />
 
             <div className="flex flex-wrap gap-1.5">
@@ -132,16 +132,21 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
           <div className="prose" dangerouslySetInnerHTML={{ __html: post.html }} />
         </article>
 
-        <aside className="bg-brand-gradient mt-16 rounded-[1.75rem] p-8 text-center text-primary-foreground shadow-lg">
-          <h2 className="text-xl font-bold">{t('ctaTitle')}</h2>
-          <p className="mx-auto mt-2 max-w-sm leading-relaxed opacity-90">{t('ctaBody')}</p>
-          <Button asChild variant="secondary" size="lg" className="mt-6">
+        {/* A ruled line at the end of the article, not a gradient panel: the
+            reader has just finished a piece of writing, and the next step is
+            offered in the same voice the piece was in. */}
+        <aside className="mt-12 flex flex-col gap-4 border-y border-border py-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-md">
+            <h2 className="text-lg font-bold">{t('ctaTitle')}</h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{t('ctaBody')}</p>
+          </div>
+          <Button asChild className="shrink-0">
             <Link href="/jobs">{t('ctaButton')}</Link>
           </Button>
         </aside>
 
         {more.length ? (
-          <section className="mt-16" aria-labelledby="more-reading">
+          <section className="mt-10" aria-labelledby="more-reading">
             <h2 id="more-reading" className="text-lg font-semibold">
               {t('moreReading')}
             </h2>
@@ -154,7 +159,7 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
                 <li key={item.slug} className="min-w-0">
                   <Link
                     href={`/blog/${item.slug}`}
-                    className="lift block h-full rounded-2xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
+                    className="lift block h-full rounded-xl border border-border bg-card p-5 shadow-sm hover:border-primary/30"
                   >
                     <p className="font-medium leading-snug break-words">{item.title}</p>
                     <p className="mt-2 text-xs text-muted-foreground">

@@ -106,7 +106,7 @@ export function AccountSettings({
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h2 className="font-semibold">{t('emailsTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t('emailsBody')}</p>
 
@@ -133,7 +133,7 @@ export function AccountSettings({
         {saved ? <p className="mt-3 text-sm text-success">{tCommon('saveSuccess')}</p> : null}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h2 className="font-semibold">{t('exportTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t('exportBody')}</p>
         <Button asChild variant="outline" className="mt-4">
@@ -146,7 +146,7 @@ export function AccountSettings({
         </Button>
       </section>
 
-      <section className="rounded-2xl border border-destructive/30 bg-destructive/[0.03] p-6">
+      <section className="rounded-xl border border-destructive/30 bg-destructive/[0.03] p-6">
         <h2 className="font-semibold text-destructive">{t('deleteTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {isEmployer ? t('deleteBlockedCompany') : t('deleteBody')}

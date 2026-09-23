@@ -29,7 +29,6 @@
     "browseAll": "شوف كل الوظائف",
     "featuredJobs": "وظائف مختارة",
     "latestJobs": "أحدث الوظائف",
-    "byTrack": "حسب التخصص",
     "byDistrict": "حسب المنطقة",
     "statJobs": "وظيفة منشورة",
     "statSeats": "فرصة خالية",
@@ -45,6 +44,8 @@
     "empty": "مفيش وظائف مطابقة لبحثك.",
     "emptyHint": "جرّب توسّع البحث شوية أو تشيل بعض الفلاتر.",
     "clearFilters": "امسح كل الفلاتر",
+    "removeFilter": "شيل فلتر {name}",
+    "showResultsCount": "شوف النتايج · <v>{count}</v>",
     "filters": "الفلاتر",
     "apply": "قدّم دلوقتي",
     "applied": "قدّمت بالفعل",
@@ -122,6 +123,7 @@
     "governorate": "المحافظة",
     "any": "الكل",
     "showResults": "شوف النتايج",
+    "companyType": "نوع الشركة",
     "verifiedOnly": "الموثّقة بس"
   },
   "track": {
@@ -157,6 +159,12 @@
     "undisclosed": "غير معلنة",
     "none": "لا توجد عمولة"
   },
+  "companyType": {
+    "brokerage": "شركة وساطة عقارية",
+    "developer": "مطوّر عقاري",
+    "brokerage_jobs": "وظائف شركات الوساطة",
+    "developer_jobs": "وظائف المطوّرين العقاريين"
+  },
   "benefits": {
     "social_insurance": "تأمين اجتماعي",
     "medical": "تأمين طبي",
@@ -171,6 +179,9 @@
     "unverified": "غير موثّقة",
     "openRoles": "{count, plural, =0 {لا توجد وظائف مفتوحة} one {وظيفة مفتوحة واحدة} two {وظيفتان مفتوحتان} few {# وظائف مفتوحة} many {# وظيفة مفتوحة} other {# وظيفة مفتوحة}}",
     "headcount": "عدد الموظفين",
+    "companyType": "نوع الشركة",
+    "companyTypeHint": "بيظهر للاستشاريين اللي بيدوّروا على وساطة أو مطوّر بالتحديد.",
+    "companyTypeUnset": "اختار نوع الشركة",
     "website": "الموقع الإلكتروني",
     "location": "المقر",
     "about": "عن الشركة",
@@ -341,7 +352,6 @@
     "statSaved": "وظائف محفوظة",
     "statAlerts": "تنبيهات شغّالة",
     "statCompleteness": "اكتمال ملفك",
-    "statOpenJobs": "وظائف مفتوحة دلوقتي",
     "statLiveJobs": "إعلانات منشورة",
     "statPending": "تحت المراجعة",
     "statExpiring": "بتنتهي خلال أسبوع",
@@ -756,7 +766,6 @@
       "searchPlaceholder": "استشاري عقاري، التجمع الخامس…",
       "cta": "تصفّح الوظائف",
       "ctaEmployer": "أنا صاحب عمل",
-      "popular": "الأكثر بحثاً",
       "trustNoSpam": "من غير رسوم على الباحثين عن عمل"
     },
     "features": {
@@ -772,13 +781,7 @@
       "applyTitle": "تقديم في أقل من دقيقة",
       "applyBody": "اسمك، رقم الواتساب، وسنين خبرتك. السيرة الذاتية اختيارية، ومفيش خطاب تغطية.",
       "whatsappTitle": "التواصل واتساب",
-      "whatsappBody": "صاحب العمل بيكلمك على الواتساب مباشرة. مفيش إيميلات بتضيع في الـ spam.",
-      "kindPay": "الأرقام",
-      "kindLeads": "العملاء",
-      "kindSeats": "الشواغر",
-      "kindFresh": "الصلاحية",
-      "kindApply": "التقديم",
-      "kindWhatsapp": "التواصل"
+      "whatsappBody": "صاحب العمل بيكلمك على الواتساب مباشرة. مفيش إيميلات بتضيع في الـ spam."
     },
     "how": {
       "title": "إزاي بتشتغل",
@@ -814,10 +817,16 @@
       "cta": "انشر وظيفة",
       "secondary": "شوف الشركات على بروكرز كونكت"
     },
+    "latest": {
+      "title": "أحدث الوظائف"
+    },
     "browse": {
-      "title": "تصفّح بسرعة",
+      "title": "تصفّح وظائف العقارات",
       "byTrack": "حسب التخصص",
-      "byDistrict": "حسب المنطقة"
+      "byDistrict": "حسب المنطقة",
+      "byCompanyType": "حسب نوع الشركة",
+      "allJobs": "كل الوظائف <v>{count}</v>",
+      "jobsCount": "{count, plural, one {وظيفة واحدة} two {وظيفتان} few {# وظائف} many {# وظيفة} other {# وظيفة}}"
     },
     "tabs": {
       "label": "اختار الجانب اللي يخصك",
@@ -854,11 +863,6 @@
       "proofSalary": "الراتب الأساسي",
       "proofCommission": "نسبة العمولة",
       "proofLeads": "مصدر العملاء",
-      "kindClarity": "الوضوح",
-      "kindNiche": "التخصص",
-      "kindPipeline": "المتابعة",
-      "kindVerified": "التوثيق",
-      "kindSeats": "الشواغر",
       "kindFresh": "الصلاحية"
     }
   },

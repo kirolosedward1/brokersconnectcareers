@@ -100,7 +100,7 @@ export function TeamSettings({
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
       <h2 className="font-semibold">{t('teamTitle')}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{t('teamBody')}</p>
 

@@ -61,10 +61,10 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('title')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('lede')}</p>
+        <h1 className="text-xl font-bold">{t('title')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('lede')}</p>
       </header>
 
       {/* Billing is built and reachable; it is simply priced at zero until the

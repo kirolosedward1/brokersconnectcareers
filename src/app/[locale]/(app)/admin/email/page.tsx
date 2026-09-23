@@ -110,8 +110,8 @@ export default async function AdminEmailPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('emailActivity')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('emailActivityLede')}</p>
+        <h1 className="text-xl font-bold">{t('emailActivity')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('emailActivityLede')}</p>
       </header>
 
       {/*
@@ -184,7 +184,7 @@ export default async function AdminEmailPage({
       </nav>
 
       {activity.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border py-16 text-center text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
           {t('emailEmpty')}
         </p>
       ) : (

@@ -29,6 +29,31 @@ export function formatDate(value: string | Date, locale: string): string {
   }).format(date);
 }
 
+/**
+ * How long ago, to the day — "today", "yesterday", "3 days ago" — and the plain
+ * date once it is older than a month.
+ *
+ * Days, not hours: a listing's freshness is read as "this week or not", and a
+ * figure that changes every hour would disagree with itself between a cached
+ * render and the next one. Past thirty days "41 days ago" is arithmetic the
+ * reader has to undo, so it becomes the date.
+ */
+export function formatRelativeDay(
+  value: string | Date,
+  locale: string,
+  now: Date = new Date(),
+): string {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  const days = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
+
+  if (days > 30 || days < 0) return formatDayMonth(date, locale);
+
+  return new Intl.RelativeTimeFormat(NUMBER_LOCALE(locale), { numeric: 'auto' }).format(
+    -days,
+    'day',
+  );
+}
+
 /** Day and month only — for a chart axis, where the year is the same on every tick. */
 export function formatDayMonth(value: string | Date, locale: string): string {
   const date = typeof value === 'string' ? new Date(value) : value;

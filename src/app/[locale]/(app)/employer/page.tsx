@@ -1,20 +1,10 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import {
-  AlertTriangle,
-  Clock,
-  BadgeCheck,
-  CreditCard,
-  Eye,
-  FileClock,
-  Send,
-  ShieldCheck,
-  Users,
-} from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
-import { EmptyDashboard, StatTile } from '@/components/dashboard/stat-tile';
+import { EmptyDashboard, StatStrip } from '@/components/dashboard/stat-tile';
 import { SetupChecklist } from '@/components/employer/setup-checklist';
 import { NextAction } from '@/components/dashboard/next-action';
 import { employerNextAction } from '@/lib/employer-next-action';
@@ -68,11 +58,12 @@ export default async function EmployerOverviewPage({
 
   if (!s || !s.has_company) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <header>
-          <h1 className="text-2xl font-bold">{t('overview')}</h1>
+          <h1 className="text-xl font-bold">{t('overview')}</h1>
         </header>
         <EmptyDashboard
+          illustration="write"
           title={t('emptyEmployerTitle')}
           body={t('emptyEmployerBody')}
           action={
@@ -101,10 +92,10 @@ export default async function EmployerOverviewPage({
       : undefined;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('overview')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('employerLede')}</p>
+        <h1 className="text-xl font-bold">{t('overview')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('employerLede')}</p>
       </header>
 
       {/*
@@ -159,83 +150,77 @@ export default async function EmployerOverviewPage({
           the listing form refuse them, with no explanation of what to do about
           it — so this says what is happening and what moves it along. */}
       {viewer.profile.approval_status !== 'approved' ? (
-        <div className="rounded-2xl border border-warning/40 bg-warning-muted p-5">
+        <div className="rounded-xl border border-warning/40 bg-warning-muted px-4 py-3.5">
           <p className="flex items-center gap-2 font-semibold">
             <Clock className="size-4" aria-hidden />
             {tEmployer('pendingTitle')}
           </p>
-          <p className="mt-2 text-sm leading-relaxed">{tEmployer('pendingBody')}</p>
-          <Button asChild size="sm" variant="outline" className="mt-4">
+          <p className="mt-1 text-sm leading-relaxed">{tEmployer('pendingBody')}</p>
+          <Button asChild size="sm" variant="outline" className="mt-3">
             <Link href="/employer/company">{tEmployer('company')}</Link>
           </Button>
         </div>
       ) : null}
 
+      {/*
+        Two strips, in the order they are acted on. The first is the work:
+        people waiting, listings about to lapse, listings in review. The second
+        is the account's standing — reach, balance, verification — which
+        changes weekly rather than daily and so sits a step quieter.
+      */}
       {s.live_jobs + s.pending_jobs === 0 ? null : (
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <StatTile
-          label={t('statApplicantsNew')}
-          value={n(s.applicants_new)}
-          // Was /employer/jobs — a list of listings, one click short of the
-          // applicants the tile is counting.
-          href="/employer/applicants?stage=new"
-          icon={Users}
-          tone={s.applicants_new > 0 ? 'accent' : 'default'}
-        />
-        <StatTile
-          label={t('statApplicants7d')}
-          value={n(s.applicants_7d)}
-          href="/employer/applicants"
-          icon={Send}
-          hint={delta ? t('vsLastWeek') : undefined}
-          delta={delta}
-        />
-        <StatTile
-          label={t('statExpiring')}
-          value={n(s.expiring_soon)}
-          href="/employer/jobs"
-          icon={AlertTriangle}
-          tone={s.expiring_soon > 0 ? 'urgent' : 'default'}
-        />
-        <StatTile
-          label={t('statLiveJobs')}
-          value={n(s.live_jobs)}
-          href="/employer/jobs"
-          icon={BadgeCheck}
-        />
-        <StatTile
-          label={t('statPending')}
-          value={n(s.pending_jobs)}
-          href="/employer/jobs"
-          icon={FileClock}
-          tone={s.pending_jobs > 0 ? 'warn' : 'default'}
-        />
-        <StatTile
-          label={t('statViews')}
-          value={n(s.total_views)}
-          href="/employer/jobs"
-          icon={Eye}
-        />
-        <StatTile
-          label={t('statCredits')}
-          value={n(s.credits)}
-          href="/employer/billing"
-          icon={CreditCard}
-        />
-        <StatTile
-          label={t('statSeats')}
-          value={n(s.seats_advertised)}
-          href="/employer/jobs"
-          icon={Users}
-        />
-        <StatTile
-          label={t('statVerification')}
-          value={s.verification === 'verified' ? tCompanies('verified') : tCompanies('unverified')}
-          href="/employer/company"
-          icon={ShieldCheck}
-          tone={s.verification === 'verified' ? 'good' : 'warn'}
-        />
-      </div>
+        <div className="space-y-2">
+          <StatStrip
+            label={t('overview')}
+            cells={[
+              {
+                label: t('statApplicantsNew'),
+                value: n(s.applicants_new),
+                // Was /employer/jobs — a list of listings, one click short of
+                // the applicants the figure is counting.
+                href: '/employer/applicants?stage=new',
+                tone: s.applicants_new > 0 ? 'accent' : 'default',
+              },
+              {
+                label: t('statApplicants7d'),
+                value: n(s.applicants_7d),
+                href: '/employer/applicants',
+                hint: delta ? t('vsLastWeek') : undefined,
+                delta,
+              },
+              {
+                label: t('statExpiring'),
+                value: n(s.expiring_soon),
+                href: '/employer/jobs',
+                tone: s.expiring_soon > 0 ? 'urgent' : 'default',
+              },
+              { label: t('statLiveJobs'), value: n(s.live_jobs), href: '/employer/jobs' },
+              {
+                label: t('statPending'),
+                value: n(s.pending_jobs),
+                href: '/employer/jobs',
+                tone: s.pending_jobs > 0 ? 'warn' : 'default',
+              },
+            ]}
+          />
+          <StatStrip
+            label={tEmployer('company')}
+            cells={[
+              { label: t('statViews'), value: n(s.total_views), href: '/employer/jobs' },
+              { label: t('statSeats'), value: n(s.seats_advertised), href: '/employer/jobs' },
+              { label: t('statCredits'), value: n(s.credits), href: '/employer/billing' },
+              {
+                label: t('statVerification'),
+                value:
+                  s.verification === 'verified'
+                    ? tCompanies('verified')
+                    : tCompanies('unverified'),
+                href: '/employer/company',
+                tone: s.verification === 'verified' ? 'good' : 'warn',
+              },
+            ]}
+          />
+        </div>
       )}
 
       {/* Below the tiles, not above them. The numbers are what needs acting on

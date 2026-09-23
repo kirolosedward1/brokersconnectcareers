@@ -32,7 +32,7 @@ export default function JobLoading() {
           </div>
 
           {/* The compensation card, which is the reason this page exists. */}
-          <Skeleton className="h-56 rounded-2xl" />
+          <Skeleton className="h-56 rounded-xl" />
 
           <div className="space-y-2">
             <Skeleton className="h-5 w-32" />
@@ -43,8 +43,8 @@ export default function JobLoading() {
         </div>
 
         <div className="hidden space-y-4 lg:block">
-          <Skeleton className="h-40 rounded-2xl" />
-          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-40 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
         </div>
       </div>
     </div>

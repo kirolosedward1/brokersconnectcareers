@@ -54,6 +54,7 @@ const NONE = {
   governorateSlug: null,
   hasBasicSalary: null,
   companySlug: null,
+  companyTypes: [],
   sort: 'newest',
   page: 1,
 };

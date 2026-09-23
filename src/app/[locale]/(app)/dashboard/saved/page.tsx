@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
@@ -113,10 +114,10 @@ export default async function SavedJobsPage({
   const tSearch = await getTranslations('savedSearch');
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-bold">{t('saved')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('savedLede')}</p>
+        <h1 className="text-xl font-bold">{t('saved')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('savedLede')}</p>
       </header>
 
       {/* The saved listings first, and with no heading of its own: the page
@@ -129,14 +130,15 @@ export default async function SavedJobsPage({
         </h2>
 
         {jobs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border py-16 text-center">
+          <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+            <EmptyIllustration name="choose" />
             <p className="font-medium">{t('emptySaved')}</p>
             <Button asChild className="mt-5">
               <Link href="/jobs">{tJobs('title')}</Link>
             </Button>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {open.length > 0 ? (
               <div>
                 {/* The heading only earns its place once there is a second

@@ -1,11 +1,12 @@
-import { ArrowLeft, TrendingDown, TrendingUp } from 'lucide-react';
+import { TrendingDown, TrendingUp } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
+import { EmptyIllustration, type IllustrationName } from '@/components/illustration';
 
 /**
- * A dashboard tile.
+ * Dashboard figures.
  *
- * Two rules the whole grid follows.
+ * Two rules every figure follows.
  *
  * Every tile links somewhere you can act. A number with nowhere to click is a
  * decoration, and a dashboard of those is a screen people stop opening.
@@ -16,131 +17,85 @@ import { cn } from '@/lib/utils';
  */
 export type Tone = 'default' | 'accent' | 'warn' | 'urgent' | 'good';
 
-const TONES: Record<Tone, { tile: string; icon: string; value: string }> = {
-  default: {
-    tile: 'border-border bg-card hover:border-primary/30',
-    icon: 'bg-muted text-muted-foreground',
-    value: 'text-foreground',
-  },
-  accent: {
-    tile: 'border-primary/25 bg-primary/[0.04] hover:border-primary/45',
-    icon: 'bg-brand-gradient text-primary-foreground shadow-[var(--shadow-primary)]',
-    value: 'text-foreground',
-  },
-  good: {
-    tile: 'border-success/25 bg-success/[0.05] hover:border-success/45',
-    icon: 'bg-success/15 text-success',
-    value: 'text-success',
-  },
-  warn: {
-    tile: 'border-warning/30 bg-warning/[0.06] hover:border-warning/50',
-    icon: 'bg-warning/15 text-warning',
-    value: 'text-foreground',
-  },
-  urgent: {
-    tile: 'border-destructive/30 bg-destructive/[0.05] hover:border-destructive/50',
-    icon: 'bg-destructive/12 text-destructive',
-    value: 'text-destructive',
-  },
+/**
+ * The same figures as a ruled strip: one row, one container.
+ *
+ * A grid of tiles gives every number its own box, border, shadow and icon
+ * chip, and nine of those is a screen of furniture around nine digits. The
+ * strip keeps what the tiles got right — every figure links to where it can be
+ * acted on, and state is said with tone before the digit is read — and spends
+ * one border on all of them. Roughly a third of the height, and the figures
+ * share a baseline, so they can be compared instead of visited.
+ *
+ * Tone colours the figure and adds a dot beside the label, so a warning is not
+ * carried by colour alone: the dot is a shape that is absent on a calm cell.
+ */
+const STRIP_TONES: Record<Tone, { value: string; dot: string | null }> = {
+  default: { value: 'text-foreground', dot: null },
+  accent: { value: 'text-primary', dot: 'bg-primary' },
+  good: { value: 'text-success', dot: 'bg-success' },
+  warn: { value: 'text-foreground', dot: 'bg-warning' },
+  urgent: { value: 'text-destructive', dot: 'bg-destructive' },
 };
 
-export function StatTile({
-  label,
-  value,
-  href,
-  icon: Icon,
-  tone = 'default',
-  hint,
-  delta,
-}: {
+export type StatCell = {
   label: string;
   value: string;
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
   tone?: Tone;
   hint?: string;
-  /** Change against the previous period. Omitted when there is nothing to compare. */
   delta?: { value: string; direction: 'up' | 'down' | 'flat' };
-}) {
-  const t = TONES[tone];
-  const Trend = delta?.direction === 'down' ? TrendingDown : TrendingUp;
-  const isFigure = /[0-9]/.test(value);
+};
 
+export function StatStrip({ cells, label }: { cells: StatCell[]; label: string }) {
   return (
-    <Link
-      href={href}
-      className={cn(
-        'lift group/tile relative flex flex-col rounded-xl border p-4 shadow-sm transition-colors',
-        t.tile,
-      )}
+    <dl
+      aria-label={label}
+      // Hairlines come from the gap over a border-coloured ground, so they
+      // stay correct however the cells wrap — two across on a phone, all in
+      // one row from `sm` — without a rule per breakpoint.
+      // An odd count would leave the last cell of a two-column phone grid
+      // beside a hole showing the rule colour, so the last cell takes the row.
+      className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1"
     >
-      {/* Icon and figure on one line, label beneath.
+      {cells.map(({ label: cellLabel, value, href, tone = 'default', hint, delta }) => {
+        const t = STRIP_TONES[tone];
+        const isFigure = /[0-9]/.test(value);
+        const Trend = delta?.direction === 'down' ? TrendingDown : TrendingUp;
 
-          Stacked, the icon sat on a row of its own and bought nothing — it is
-          a marker for the figure, and a marker a whole line away from the
-          thing it marks is decoration. Side by side the pair reads as one
-          object, and the tile loses a line of height on a screen that shows
-          nine of them. */}
-      <div className="flex items-center gap-2.5">
-        <span
-          aria-hidden
-          className={cn('grid size-8 shrink-0 place-items-center rounded-lg', t.icon)}
-        >
-          <Icon className="size-4" />
-        </span>
-
-        {/*
-          The isolation goes on the digits, not on the paragraph.
-          `.numeral` sets `direction: ltr`, and on a block that also flips where
-          `text-align: start` resolves to — so the figure sat against the left
-          edge of the tile while its label sat against the right, on every tile
-          of every dashboard. Inline, the paragraph keeps the document's
-          direction and only the digit run is isolated.
-
-          And only when there are digits to isolate. One tile's value is a word —
-          the verification status — and forcing an Arabic word left-to-right is
-          the bug this class exists to prevent, not an instance of it.
-
-          That word is also set smaller, because it is not a figure. At the
-          figure's size «مش موثّقة» is wider than the tile it sits in once the
-          icon is beside it, and a status is a label rather than a quantity.
-        */}
-        <p
-          className={cn(
-            'min-w-0 font-bold leading-none',
-            isFigure ? 'text-2xl' : 'text-base',
-            t.value,
-          )}
-        >
-          {isFigure ? <span className="numeral">{value}</span> : value}
-        </p>
-
-        {delta && delta.direction !== 'flat' ? (
-          <span
-            className={cn(
-              'numeral ms-auto inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium',
-              delta.direction === 'up'
-                ? 'bg-success/12 text-success'
-                : 'bg-destructive/10 text-destructive',
-            )}
+        return (
+          <Link
+            key={cellLabel}
+            href={href}
+            className="group/cell flex min-h-[4.25rem] flex-col justify-center bg-card px-4 py-2.5 transition-colors hover:bg-muted/60"
           >
-            <Trend className="size-3" aria-hidden />
-            {delta.value}
-          </span>
-        ) : null}
-      </div>
-
-      <p className="mt-2.5 text-[13px] font-medium leading-snug">{label}</p>
-      {hint ? <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</p> : null}
-
-      {/* The affordance without the height. This used to be a row of its own
-          at the foot of every tile, which cost a line of space on all nine of
-          them to say something the hover state already says. */}
-      <ArrowLeft
-        aria-hidden
-        className="rtl-flip absolute bottom-3 end-3 size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover/tile:opacity-100"
-      />
-    </Link>
+            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover/cell:text-foreground">
+              {t.dot ? <span aria-hidden className={cn('size-1.5 rounded-full', t.dot)} /> : null}
+              {cellLabel}
+            </dt>
+            <dd className="mt-0.5 flex items-baseline gap-2">
+              {/* A status word is a label, not a quantity — same rule as the
+                  tile: smaller, and never forced left-to-right. */}
+              <span className={cn('font-bold leading-tight', isFigure ? 'text-xl' : 'text-sm', t.value)}>
+                {isFigure ? <span className="numeral">{value}</span> : value}
+              </span>
+              {delta && delta.direction !== 'flat' ? (
+                <span
+                  className={cn(
+                    'numeral inline-flex items-center gap-0.5 text-[11px] font-medium',
+                    delta.direction === 'up' ? 'text-success' : 'text-destructive',
+                  )}
+                >
+                  <Trend className="size-3" aria-hidden />
+                  {delta.value}
+                </span>
+              ) : null}
+              {hint ? <span className="text-[11px] text-muted-foreground">{hint}</span> : null}
+            </dd>
+          </Link>
+        );
+      })}
+    </dl>
   );
 }
 
@@ -154,16 +109,20 @@ export function EmptyDashboard({
   title,
   body,
   action,
+  illustration,
 }: {
   title: string;
   body: string;
   action: React.ReactNode;
+  /** Which drawing greets the new account — a candidate's differs from a company's. */
+  illustration?: IllustrationName;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border p-10 text-center">
+    <div className="rounded-xl border border-dashed border-border px-6 py-8 text-center">
+      {illustration ? <EmptyIllustration name={illustration} /> : null}
       <p className="font-medium">{title}</p>
-      <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{body}</p>
-      <div className="mt-6">{action}</div>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{body}</p>
+      <div className="mt-4">{action}</div>
     </div>
   );
 }

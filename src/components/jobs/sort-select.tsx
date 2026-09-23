@@ -33,7 +33,9 @@ export function SortSelect({
       value={value}
       onChange={onChange}
       disabled={pending}
-      className="h-9 w-auto min-w-36"
+      // 44px under a thumb, 36px beside a pointer — the same split the footer
+      // links make, for the same reason.
+      className="h-11 w-auto min-w-36 lg:h-9"
     >
       <option value="newest">{labels.newest}</option>
       <option value="salary">{labels.salary}</option>

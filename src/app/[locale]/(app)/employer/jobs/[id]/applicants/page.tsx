@@ -180,7 +180,7 @@ export default async function ApplicantsPage({
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">{jobTitle}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-0.5 text-sm text-muted-foreground">
             {t.rich('pipelineCount', {
               count: applications.length,
               v: (chunks) => <span className="numeral">{chunks}</span>,
@@ -214,7 +214,7 @@ export default async function ApplicantsPage({
           </div>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {PIPELINE.map((stage) => {
             const inStage = applications.filter((application) => application.status === stage);
             if (inStage.length === 0) return null;

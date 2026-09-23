@@ -27,7 +27,7 @@ export default async function NewJobPage({ params }: { params: Promise<{ locale:
 
   if (!viewer.company) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-16 text-center">
+      <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
         <p className="font-medium">{t('createCompanyFirst')}</p>
         <p className="mt-1 text-sm text-muted-foreground">{t('createCompanyFirstBody')}</p>
         <Button asChild className="mt-5">
@@ -42,8 +42,8 @@ export default async function NewJobPage({ params }: { params: Promise<{ locale:
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">{t('newJob')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('newJobLede')}</p>
+        <h1 className="text-xl font-bold">{t('newJob')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('newJobLede')}</p>
       </header>
 
       <JobForm

@@ -351,12 +351,6 @@ export default async function AllApplicantsPage({
    */
   const row = 'flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-x-visible';
 
-  const chip = (active: boolean) =>
-    (active
-      ? 'bg-primary text-primary-foreground font-medium'
-      : 'border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground') +
-    ' shrink-0 rounded-full px-3.5 py-1.5 text-sm';
-
   /**
    * A hue per stage, matching what the badge on each card already means:
    * blue is untouched, violet is picked out, amber is in progress, green is
@@ -376,7 +370,7 @@ export default async function AllApplicantsPage({
   };
 
   const stageChip = (active: boolean) =>
-    'shrink-0 rounded-full ps-3 pe-2.5 py-1.5 text-sm inline-flex items-center gap-2 transition-colors ' +
+    'shrink-0 rounded-lg ps-3 pe-2 min-h-9 text-sm inline-flex items-center gap-2 transition-colors ' +
     (active ? 'font-medium text-white' : 'border border-border hover:bg-muted');
 
   const href = (next: { stage?: string; job?: string; q?: string; band?: string; track?: string }) => {
@@ -393,18 +387,18 @@ export default async function AllApplicantsPage({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header>
-        <h1 className="text-2xl font-bold">{t('allApplicants')}</h1>
-        <p className="mt-1 text-muted-foreground">{t('allApplicantsLede')}</p>
+        <h1 className="text-xl font-bold">{t('allApplicants')}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{t('allApplicantsLede')}</p>
         {/*
           The other half of what the applicant was told before they pressed
           send. They were promised this list is the only place their number
           goes; saying so here is what makes that promise something an employer
           has read too, rather than a claim made behind their back.
         */}
-        <p className="mt-3 flex items-start gap-2 rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+          <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           {t('applicantsPrivacy')}
         </p>
       </header>
@@ -418,7 +412,6 @@ export default async function AllApplicantsPage({
       */}
       <form method="get" className="flex flex-wrap items-center gap-2">
         {activeStage ? <input type="hidden" name="stage" value={activeStage} /> : null}
-        {jobFilter ? <input type="hidden" name="job" value={jobFilter} /> : null}
 
         <div className="relative min-w-0 flex-1 sm:max-w-sm">
           <Search
@@ -435,7 +428,7 @@ export default async function AllApplicantsPage({
             defaultValue={query_}
             maxLength={80}
             placeholder={t('searchApplicantsPlaceholder')}
-            className="h-11 w-full rounded-xl border border-input bg-card ps-9 pe-3 text-sm shadow-xs transition-colors placeholder:text-muted-foreground hover:border-border focus-visible:border-ring focus-visible:outline-none"
+            className="h-11 w-full rounded-lg border border-input bg-card ps-9 pe-3 text-sm transition-colors placeholder:text-muted-foreground hover:border-border focus-visible:border-ring focus-visible:outline-none"
           />
         </div>
 
@@ -450,7 +443,7 @@ export default async function AllApplicantsPage({
           id="applicant-band"
           name="band"
           defaultValue={band ?? ''}
-          className="h-11 rounded-xl border border-input bg-card px-3 text-sm shadow-xs"
+          className="h-11 rounded-lg border border-input bg-card px-3 text-sm"
         >
           <option value="">{t('filterExperience')}: {tFilters('any')}</option>
           {EXPERIENCE_BANDS.map((value) => (
@@ -467,7 +460,7 @@ export default async function AllApplicantsPage({
           id="applicant-track"
           name="track"
           defaultValue={track ?? ''}
-          className="h-11 rounded-xl border border-input bg-card px-3 text-sm shadow-xs"
+          className="h-11 rounded-lg border border-input bg-card px-3 text-sm"
         >
           <option value="">{t('filterTrack')}: {tFilters('any')}</option>
           {JOB_TRACKS.map((value) => (
@@ -476,6 +469,39 @@ export default async function AllApplicantsPage({
             </option>
           ))}
         </select>
+
+        {/*
+          Which listing, as a third select rather than a row of chips.
+
+          The chips were one per listing, wrapping: a company with eight live
+          roles had three rows of pills between the filters and the first
+          applicant, and the titles are long enough that most were truncated by
+          the phone's scroller anyway. A select holds any number of listings in
+          one control's height, reads each title in full when open, and submits
+          with the same button as its neighbours.
+        */}
+        {jobs.length > 1 ? (
+          <>
+            <label className="sr-only" htmlFor="applicant-job">
+              {t('jobs')}
+            </label>
+            <select
+              id="applicant-job"
+              name="job"
+              defaultValue={jobFilter ?? ''}
+              className="h-11 max-w-[16rem] rounded-lg border border-input bg-card px-3 text-sm"
+            >
+              <option value="">{t('allListings')}</option>
+              {jobs.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {localized(locale, item.title_ar, item.title_en)}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : jobFilter ? (
+          <input type="hidden" name="job" value={jobFilter} />
+        ) : null}
 
         <Button type="submit" variant="secondary">
           {t('filterApply')}
@@ -496,7 +522,7 @@ export default async function AllApplicantsPage({
           style={!stage ? { backgroundColor: 'oklch(0.45 0.02 265)' } : undefined}
         >
           {tFilters('any')}
-          <span className="numeral rounded-full bg-black/15 px-1.5 text-xs font-semibold tabular-nums">
+          <span className="numeral rounded bg-black/15 px-1.5 text-xs font-semibold tabular-nums">
             {formatNumber(totalCount, locale)}
           </span>
         </Link>
@@ -524,7 +550,7 @@ export default async function AllApplicantsPage({
               {tStatus(value)}
               <span
                 className={
-                  'numeral rounded-full px-1.5 text-xs font-semibold tabular-nums ' +
+                  'numeral rounded px-1.5 text-xs font-semibold tabular-nums ' +
                   (active ? 'bg-black/15' : 'bg-muted text-foreground')
                 }
               >
@@ -535,37 +561,16 @@ export default async function AllApplicantsPage({
         })}
       </nav>
 
-      {jobs.length > 1 ? (
-        <nav className={row} aria-label={t('jobs')}>
-          <Link
-            href={href({ stage, q: query_, band, track })}
-            aria-current={!jobFilter ? 'page' : undefined}
-            className={chip(!jobFilter)}
-          >
-            {t('allListings')}
-          </Link>
-          {jobs.map((item) => (
-            <Link
-              key={item.id}
-              href={href({ stage, job: item.id, q: query_, band, track })}
-              aria-current={jobFilter === item.id ? 'page' : undefined}
-              className={chip(jobFilter === item.id)}
-            >
-              {localized(locale, item.title_ar, item.title_en)}
-            </Link>
-          ))}
-        </nav>
-      ) : null}
 
       {rows.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
           {/* "Nobody has applied" and "nobody by that name" are different
               facts, and an employer who reads the first when the second is
               true concludes their listings are dead. */}
           {query_ ? t('searchEmpty') : band || track ? t('filterEmpty') : t('noApplicants')}
         </p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-2.5">
           {rows.map((row) => (
             <li key={row.id}>
               {/* Which listing this was for. On the per-listing page that is

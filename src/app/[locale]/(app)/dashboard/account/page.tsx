@@ -40,8 +40,8 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-bold">{t('title')}</h1>
-      <p className="mt-2 text-muted-foreground">{t('subtitle')}</p>
+      <h1 className="text-xl font-bold">{t('title')}</h1>
+      <p className="mt-0.5 text-sm text-muted-foreground">{t('subtitle')}</p>
 
       <div className="mt-8 space-y-8">
         {/* First, because it is the one thing on this page that other people

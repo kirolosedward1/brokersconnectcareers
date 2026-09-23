@@ -100,8 +100,8 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
     <div className="mx-auto max-w-4xl space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{t('profile')}</h1>
-          <p className="mt-1 text-muted-foreground">{t('profileLede')}</p>
+          <h1 className="text-xl font-bold">{t('profile')}</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t('profileLede')}</p>
         </div>
         {/* The result of everything below, one tap away. The gaps list says
             what to fill in; this is why. get_agent_card() lets an owner open
