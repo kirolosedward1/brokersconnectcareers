@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { raise } from './error';
 import { createPublicClient } from '@/lib/supabase/public';
 import { COMPANY_TYPES, JOB_TRACKS } from '@/lib/taxonomy';
@@ -10,8 +11,8 @@ import type { CompanyType, JobTrack } from '@/lib/supabase/database.types';
  * One read, grouped here. The alternative was a count per track, per district
  * and per company type — twenty-odd round trips to draw one module on the home
  * page — or an RPC, which is a migration for something three narrow columns
- * already answer. The rows are a few dozen bytes each and the read is capped,
- * so the home page pays for one small query and nothing else.
+ * already answer. The rows are a few dozen bytes each, so the home page pays
+ * for one small query per thousand live listings.
  *
  * Read through the public client on purpose. A count is a claim about what the
  * reader will find when they click, so it has to be made under the same
@@ -39,8 +40,12 @@ export type BrowseCounts = {
   companyTypes: { type: CompanyType; count: number }[] | null;
 };
 
-/** Far above the board's size today; a guard, not a page size. */
-const CAP = 2000;
+/**
+ * Rows per request. Supabase's API answers at most 1,000 rows however many
+ * are asked for, so the read pages through the board in steps of that size
+ * rather than asking once and treating whatever came back as all of it.
+ */
+const PAGE = 1000;
 
 type Row = {
   track: JobTrack;
@@ -52,13 +57,43 @@ export const getBrowseCounts = cache(async function getBrowseCounts(): Promise<B
   const supabase = createPublicClient();
   const now = new Date().toISOString();
 
-  const read = (select: string) =>
-    supabase
-      .from('jobs')
-      .select(select)
-      .eq('status', 'active')
-      .gt('expires_at', now)
-      .limit(CAP);
+  /*
+    Every live row, a page at a time, plus the exact total.
+
+    The first version asked once with a limit and reported the number of rows
+    it got as the total. The API's own cap is 1,000 rows, so past that the
+    home page would have said "1,000 jobs" over a board holding more, and
+    every district and track below it would have been short too. The exact
+    count comes from the database and is checked against the rows gathered, so
+    the figures cannot quietly describe a sample. Ordered by id, so a listing
+    published mid-read cannot shift the pages and be counted twice.
+  */
+  const read = async (
+    select: string,
+  ): Promise<
+    | { data: unknown[]; error: null; total: number }
+    | { data: null; error: PostgrestError; total?: undefined }
+  > => {
+    const rows: unknown[] = [];
+    let total = 0;
+
+    for (let from = 0; ; from += PAGE) {
+      const { data, error, count } = await supabase
+        .from('jobs')
+        .select(select, { count: from === 0 ? 'exact' : undefined })
+        .eq('status', 'active')
+        .gt('expires_at', now)
+        .order('id')
+        .range(from, from + PAGE - 1);
+
+      if (error) return { data: null, error };
+      if (from === 0) total = count ?? 0;
+      rows.push(...(data ?? []));
+      if (!data || data.length < PAGE || rows.length >= total) break;
+    }
+
+    return { data: rows, error: null, total };
+  };
 
   /*
     With the company's type if the column is there, without it if not.
@@ -69,15 +104,15 @@ export const getBrowseCounts = cache(async function getBrowseCounts(): Promise<B
     actually depends on it.
   */
   let typed = true;
-  let { data, error } = await read('track, district_id, company:companies!inner (company_type)');
+  let result = await read('track, district_id, company:companies!inner (company_type)');
 
-  if (error) {
+  if (result.error) {
     typed = false;
-    ({ data, error } = await read('track, district_id'));
+    result = await read('track, district_id');
   }
-  if (error) raise(error, 'counting live listings');
+  if (result.error) raise(result.error, 'counting live listings');
 
-  const rows = (data ?? []) as unknown as Row[];
+  const rows = (result.data ?? []) as unknown as Row[];
 
   const byTrack = new Map<JobTrack, number>();
   const byDistrict = new Map<number, number>();
@@ -99,7 +134,8 @@ export const getBrowseCounts = cache(async function getBrowseCounts(): Promise<B
     taxonomy's own order, districts to their id.
   */
   return {
-    total: rows.length,
+    // The database's count, which is what the board will report on arrival.
+    total: result.total ?? rows.length,
     tracks: JOB_TRACKS.filter((track) => byTrack.has(track))
       .map((track) => ({ track, count: byTrack.get(track)! }))
       .sort((a, b) => b.count - a.count),

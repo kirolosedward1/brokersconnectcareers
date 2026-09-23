@@ -52,6 +52,17 @@ export function VisibilityIllustration({
   const id = 'bc-ill-vis';
   const t = COPY[locale] ?? COPY.ar;
   const dir = locale === 'ar' ? 'rtl' : 'ltr';
+  /*
+    Where a start-aligned label and its dot go, per direction.
+
+    Under `direction: rtl` an SVG <text> is anchored at its right end and grows
+    leftward from x. The coordinates below were written for English — dot at
+    the left, label starting just after it — so in Arabic every label grew back
+    over its own dot and out through the edge of its card. `at(ltr, rtl)`
+    states both positions: in Arabic the dot sits at the inline start (the
+    right) and the label runs leftward from beside it.
+  */
+  const at = (ltr: number, rtl: number) => (dir === 'rtl' ? rtl : ltr);
 
   return (
     <svg viewBox="0 0 460 320" className={className} {...svgProps}>
@@ -110,8 +121,8 @@ export function VisibilityIllustration({
       </g>
 
       <g fontSize={12} direction={dir}>
-        <circle cx={58} cy={192} r={4} fill={OK} />
-        <text x={72} y={196} fill={SOFT}>
+        <circle cx={at(58, 244)} cy={192} r={4} fill={OK} />
+        <text x={at(72, 232)} y={196} fill={SOFT}>
           {t.years}
         </text>
       </g>
@@ -119,7 +130,7 @@ export function VisibilityIllustration({
       <path d="M50 216 h200" stroke={LINE} strokeWidth={1} />
 
       <g fontSize={11} direction={dir}>
-        <text x={50} y={238} fill={SOFT} opacity={0.75}>
+        <text x={at(50, 250)} y={238} fill={SOFT} opacity={0.75}>
           {locale === 'ar' ? 'التواصل بعد الموافقة' : 'Contact after approval'}
         </text>
       </g>
@@ -129,20 +140,20 @@ export function VisibilityIllustration({
 
       <g fontSize={11} direction={dir}>
         <rect x={314} y={126} width={108} height={34} rx={10} fill={MUTED} />
-        <circle cx={332} cy={143} r={6} fill={SOFT} opacity={0.3} />
-        <text x={348} y={147} fill={SOFT}>
+        <circle cx={at(332, 404)} cy={143} r={6} fill={SOFT} opacity={0.3} />
+        <text x={at(348, 392)} y={147} fill={SOFT}>
           {t.everyone}
         </text>
 
         <rect x={314} y={168} width={108} height={34} rx={10} fill={`url(#${id}-brand)`} />
-        <circle cx={332} cy={185} r={6} fill="white" opacity={0.95} />
-        <text x={348} y={189} fill="white" fontWeight={600}>
+        <circle cx={at(332, 404)} cy={185} r={6} fill="white" opacity={0.95} />
+        <text x={at(348, 392)} y={189} fill="white" fontWeight={600}>
           {t.verified}
         </text>
 
         <rect x={314} y={210} width={108} height={34} rx={10} fill={MUTED} />
-        <circle cx={332} cy={227} r={6} fill={SOFT} opacity={0.3} />
-        <text x={348} y={231} fill={SOFT}>
+        <circle cx={at(332, 404)} cy={227} r={6} fill={SOFT} opacity={0.3} />
+        <text x={at(348, 392)} y={231} fill={SOFT}>
           {t.hidden}
         </text>
       </g>

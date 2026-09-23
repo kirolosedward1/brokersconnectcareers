@@ -44,8 +44,32 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
     // Only when the form carried a choice. Left out otherwise, so saving the
     // rest of the profile never clears a type somebody set, and never names a
     // column the database does not have yet (migration 67).
-    ...(parsed.data.companyType ? { company_type: parsed.data.companyType } : {}),
+    /*
+      Written whenever the form carried the field — a chosen type, or null for
+      "unclassified", so a company that set a type can take it back. Left out
+      only when the field was absent altogether (`undefined`), which is an
+      older form, and an older form must not clear something it never showed.
+    */
+    ...(parsed.data.companyType !== undefined ? { company_type: parsed.data.companyType } : {}),
   };
+
+  /*
+    The same write again without the type, if the database has never heard of
+    it.
+
+    42703 is "no such column": code deployed ahead of migration 67. The rest of
+    the profile is what the person came to save, and refusing all of it over a
+    field the database cannot hold yet would be the wrong failure. Only the
+    type is dropped, and only on that error.
+  */
+  const { company_type: _type, ...withoutType } = payload as typeof payload & {
+    company_type?: unknown;
+  };
+  const retryWithoutType = <T extends { error: { code?: string | null } | null }>(
+    first: T,
+    again: () => PromiseLike<T>,
+  ): PromiseLike<T> | T =>
+    first.error?.code === '42703' && 'company_type' in payload ? again() : first;
 
   // Through membership, not ownership. Keyed on owner_id this returned null for
   // a recruiter, who then fell through to the create branch below and made
@@ -64,11 +88,14 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
       rather than overwritten. One statement, so there is no window between
       checking and writing.
     */
-    const query = supabase.from('companies').update(payload).eq('id', existing);
+    const update = (values: typeof withoutType) => {
+      const query = supabase.from('companies').update(values).eq('id', existing);
+      return (parsed.data.version ? query.eq('version', parsed.data.version) : query).select('id');
+    };
 
-    const { data: saved, error } = await (
-      parsed.data.version ? query.eq('version', parsed.data.version) : query
-    ).select('id');
+    const { data: saved, error } = await retryWithoutType(await update(payload), () =>
+      update(withoutType),
+    );
 
     if (error) return { ok: false, error: error.message };
 
@@ -90,11 +117,14 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
     return { ok: true, data: { id: existing } };
   }
 
-  const { data, error } = await withUniqueSlug<{ id: string }>(
-    () => buildCompanySlug(parsed.data.nameEn || parsed.data.nameAr),
-    (slug) =>
-      supabase.from('companies').insert({ owner_id: user.id, slug, ...payload }).select('id').single(),
-  );
+  const insert = (values: typeof withoutType) =>
+    withUniqueSlug<{ id: string }>(
+      () => buildCompanySlug(parsed.data.nameEn || parsed.data.nameAr),
+      (slug) =>
+        supabase.from('companies').insert({ owner_id: user.id, slug, ...values }).select('id').single(),
+    );
+
+  const { data, error } = await retryWithoutType(await insert(payload), () => insert(withoutType));
 
   if (error || !data) return { ok: false, error: error?.message ?? 'insert_failed' };
 
