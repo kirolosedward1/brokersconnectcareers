@@ -179,7 +179,7 @@ export default async function AppLayout({
     >
     <AppShell
       groups={groups}
-      bell={<NotificationMenu locale={locale} />}
+      bell={<NotificationMenu locale={locale} userId={viewer!.userId} />}
       name={profile.full_name}
       avatarUrl={profile.avatar_url}
       roleLabel={role === 'employer' ? tOnboarding('roleEmployer') : role === 'admin' ? tAdmin('title') : tOnboarding('roleCandidate')}

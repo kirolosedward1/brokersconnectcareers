@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { LogOut, Settings } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localeHref, type Locale } from '@/i18n/routing';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 
@@ -49,6 +48,10 @@ export function UserMenu({
 
   function signOut() {
     startTransition(async () => {
+      // Fetched on the click, not with the header: this menu sits in the public
+      // header on every page, and a static import put the whole Supabase client
+      // (~65 KB gzipped) in every visitor's first load to serve one button.
+      const { createClient } = await import('@/lib/supabase/client');
       await createClient().auth.signOut();
       /*
         A document navigation, not a router push. Signing out changes who the

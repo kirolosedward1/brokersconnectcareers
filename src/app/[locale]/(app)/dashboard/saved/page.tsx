@@ -9,7 +9,7 @@ import { SavedSearchList } from '@/components/dashboard/saved-search-list';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from '@/lib/queries/error';
-import type { JobListItem } from '@/lib/queries/jobs';
+import { LIST_SELECT, type JobListItem } from '@/lib/queries/jobs';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
 import { jobIsLive } from '@/lib/job-state';
 
@@ -44,11 +44,7 @@ export default async function SavedJobsPage({
     .select(
       `
       created_at,
-      job:jobs!inner (
-        *,
-        company:companies!inner (id, name_ar, name_en, slug, logo_url, verification_status),
-        district:districts!inner (id, governorate_id, name_ar, name_en, slug)
-      )
+      job:jobs!inner (${LIST_SELECT})
     `,
     )
     /*
