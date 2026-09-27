@@ -58,27 +58,38 @@ export async function deleteMyAccount(): Promise<ActionResult> {
     return { ok: false, error: 'unavailable' };
   }
 
-  // Uploaded files first. Storage objects are not reached by the database
-  // cascade, and a CV outliving the account it belonged to is the exact
-  // failure this feature exists to prevent.
+  /*
+    The account first, the files second.
+
+    This used to run the other way round, and a failure in between left the
+    worse of the two half-states: files gone, account still alive, with a
+    profile and applications pointing at CVs that no longer existed. In this
+    order a failure leaves the opposite — no account, a file behind it — and
+    that is the state the storage sweep exists to finish (migration 69): the
+    cascade has already queued every CV and photo this account referenced.
+
+    Removed here as well, immediately, rather than left to the sweep's grace
+    period. The grace period protects a public URL somebody may still be
+    looking at; a person asking to be deleted is owed the prompt removal of
+    their CV, which nobody else is looking at.
+  */
+  const { error } = await admin.auth.admin.deleteUser(user.id);
+  if (error) return { ok: false, error: error.message };
+
   for (const bucket of ['cvs', 'avatars'] as const) {
     try {
       const { data: files } = await admin.storage.from(bucket).list(user.id);
       const paths = (files ?? []).map((file) => `${user.id}/${file.name}`);
       if (paths.length) await admin.storage.from(bucket).remove(paths);
     } catch (error) {
-      // A missing bucket must not block the deletion. Losing the account is
-      // the part the person asked for; an orphaned file is a smaller wrong
-      // than an account that would not die.
+      // The account is already gone; a file left behind is queued for the
+      // sweep and will not outlive its grace period.
       console.warn(
         `[account] could not clear ${bucket} for ${user.id}:`,
         error instanceof Error ? error.message : error,
       );
     }
   }
-
-  const { error } = await admin.auth.admin.deleteUser(user.id);
-  if (error) return { ok: false, error: error.message };
 
   await supabase.auth.signOut();
   return { ok: true };
