@@ -296,7 +296,7 @@ export default async function AdminCompanyPage({
           </Section>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="order-first space-y-5 lg:order-none">
           <Section title={t('verification.title')}>
             <div className="flex flex-wrap gap-2">
               {status !== 'verified' ? (

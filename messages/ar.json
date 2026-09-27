@@ -977,7 +977,9 @@
       "developer": "المطوّرين",
       "fixed": "القوايم الثابتة"
     },
-    "openDocument": "افتح المستند"
+    "openDocument": "افتح المستند",
+    "doneWhat": "تم: {what}",
+    "company": "الشركة"
   },
   "reportReason": {
     "fake_listing": "إعلان وهمي",

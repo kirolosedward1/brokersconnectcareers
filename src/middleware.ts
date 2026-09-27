@@ -109,16 +109,19 @@ async function handle(request: NextRequest): Promise<NextResponse> {
   // updateSession guards its own failures, but a session that cannot be read is
   // still a better outcome than falling all the way through to the bare
   // fallback below and losing the locale rewrite with it.
+  const { locale, path } = stripLocale(request.nextUrl.pathname);
+  const inConsole = path === '/admin' || path.startsWith('/admin/');
+
   let user = null;
+  let isAdmin: boolean | null | undefined;
   try {
-    ({ user } = await updateSession(request, response));
+    ({ user, isAdmin } = await updateSession(request, response, { checkAdmin: inConsole }));
   } catch (error) {
     console.warn(
       '[middleware] session refresh failed, treating the request as anonymous:',
       error instanceof Error ? error.message : error,
     );
   }
-  const { locale, path } = stripLocale(request.nextUrl.pathname);
 
   const needsAuth = PROTECTED.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 
@@ -130,6 +133,13 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     // day it is turned on.
     signIn.searchParams.set('next', path + request.nextUrl.search);
     return NextResponse.redirect(signIn);
+  }
+
+  // Signed in, and definitely not an admin: refused here, with a real 307,
+  // before any of the console is rendered. `null` (the role could not be read)
+  // falls through to the layout, which checks the same row.
+  if (inConsole && user && isAdmin === false) {
+    return NextResponse.redirect(new URL(localized(locale, '/'), request.url));
   }
 
   // A signed-in user with nothing left to do on /sign-in should not sit there.

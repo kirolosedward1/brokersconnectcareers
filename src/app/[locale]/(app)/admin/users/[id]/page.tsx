@@ -255,7 +255,7 @@ export default async function AdminUserPage({
           </Section>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="order-first space-y-5 lg:order-none">
           <Section title={t('actions')}>
             {profile.role === 'admin' ? (
               <p className="text-sm text-muted-foreground">{t('adminNoLever')}</p>

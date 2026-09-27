@@ -977,7 +977,9 @@
       "developer": "Developers",
       "fixed": "Fixed lists"
     },
-    "openDocument": "Open the document"
+    "openDocument": "Open the document",
+    "doneWhat": "Done: {what}",
+    "company": "Company"
   },
   "reportReason": {
     "fake_listing": "Fake listing",

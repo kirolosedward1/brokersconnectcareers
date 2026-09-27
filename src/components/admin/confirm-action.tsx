@@ -19,6 +19,7 @@ import {
 } from '@/lib/actions/admin';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { isAdminErrorCode } from '@/lib/admin/errors';
+import { announceDone } from '@/components/admin/console-toaster';
 import type { ApprovalStatus, TaxonomyKind } from '@/lib/supabase/database.types';
 
 /**
@@ -159,6 +160,7 @@ export function ConfirmAction({
       setOpen(false);
       setText('');
       setDone(true);
+      announceDone(t('doneWhat', { what: title }));
       router.refresh();
     });
   }

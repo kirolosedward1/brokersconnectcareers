@@ -196,7 +196,7 @@ export default async function AdminAgentPage({ params }: { params: Promise<{ loc
           </Section>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="order-first space-y-5 lg:order-none">
           <Section title={t('actions')}>
             {restricted ? (
               <ConfirmAction

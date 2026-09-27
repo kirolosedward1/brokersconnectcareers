@@ -253,7 +253,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
           </Section>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="order-first space-y-5 lg:order-none">
           <Section title={t('moderation')}>
             <div className="flex flex-wrap gap-2">
               {job.status === 'pending_review' ? (
@@ -342,7 +342,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
             </div>
           </Section>
 
-          <Section title={t('companies')}>
+          <Section title={t('company')}>
             <div className="space-y-2 text-sm">
               <Link href={`/admin/companies/${job.company.id}`} className="font-medium hover:text-primary hover:underline">
                 {localized(locale, job.company.name_ar, job.company.name_en)}

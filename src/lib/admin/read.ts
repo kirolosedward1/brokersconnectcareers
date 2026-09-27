@@ -23,7 +23,10 @@ export function must<T>(result: Result<T>, context: string): { data: T; count: n
     }
     raise(result.error, context);
   }
-  return { data: (result.data ?? ([] as unknown as T)) as T, count: result.count ?? 0 };
+  // Passed through as it came. A single-row read that found nothing is null,
+  // and must stay null: coercing it to [] made "no consultant profile" truthy,
+  // and an employer's page grew an empty consultant panel.
+  return { data: result.data as T, count: result.count ?? 0 };
 }
 
 /**
