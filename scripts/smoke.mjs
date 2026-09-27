@@ -190,6 +190,14 @@ section('endpoints that change things refuse to on a GET');
   const exportRoute = await get('/api/account/export');
   check('the data export needs a session', exportRoute.status === 401, `got ${exportRoute.status}`);
 
+  // Both CV doors: the applicant's and the consultant's. Neither answers a
+  // stranger, and neither answers with anything but a status.
+  const applicantCv = await get('/api/cv/00000000-0000-0000-0000-000000000000');
+  check('an applicant CV needs a session', applicantCv.status === 401, `got ${applicantCv.status}`);
+
+  const agentCv = await get('/api/agent-cv/00000000-0000-0000-0000-000000000000');
+  check('a consultant CV needs a session', agentCv.status === 401, `got ${agentCv.status}`);
+
   const webhook = await get('/api/paymob/webhook', { method: 'POST', body: '{}' });
   check(
     'the payment webhook refuses an unsigned body',

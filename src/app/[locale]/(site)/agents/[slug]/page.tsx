@@ -32,7 +32,6 @@ import { getDistrictMap, getDevelopers } from '@/lib/queries/taxonomy';
 import { actorOf, getViewer, requireAgentProfileViewer } from '@/lib/auth';
 import { canContactAgent, canShortlistAgents, isAdmin } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
-import { CV_BUCKET, signedUrl } from '@/lib/storage';
 import { employerToAgentOpener } from '@/lib/whatsapp';
 import type { AgentExperienceRow } from '@/lib/supabase/database.types';
 
@@ -127,8 +126,11 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
   const headline = localized(locale, agent.headline_ar, agent.headline_en);
 
   // cv_path is only ever returned by get_agent_card() when the viewer is
-  // entitled to it, so its presence is the authorisation.
-  const cvUrl = agent.cv_path ? await signedUrl(CV_BUCKET, agent.cv_path, 600) : null;
+  // entitled to it, so its presence is the authorisation. The link goes
+  // through a route that asks the same question again and redirects to a
+  // signed URL minted for that request — nothing signed is printed into the
+  // page, for the reason /api/cv gives.
+  const cvUrl = agent.cv_path ? `/api/agent-cv/${agent.id}` : null;
 
   const contactable =
     canContactAgent(actor, { ...agent, user_id: owner }) && viewer?.company ? true : false;
