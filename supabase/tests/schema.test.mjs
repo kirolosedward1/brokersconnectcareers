@@ -308,11 +308,7 @@ report.section('who may call a definer function, on purpose');
     the API, and this schema has thirty-eight of them. Left as a wall of
     warnings the list means nothing; pinned, it means somebody decided.
 
-    Two reasons a function is anon-callable here and no third:
-
-      the public API   search_agents, get_agent_card and increment_job_view
-                       are what the directory, the card and the view counter
-                       are made of, and none of them needs a session.
+    One reason a function is anon-callable here and no second:
 
       RLS calls it     Postgres evaluates a policy as the *calling* role, so a
                        policy invoking a function anon cannot execute does not
@@ -322,14 +318,17 @@ report.section('who may call a definer function, on purpose');
                        these answers about the caller and returns false or
                        null to a stranger.
 
+    The directory functions used to be the other reason. search_agents,
+    get_agent_card and increment_job_view were what the directory, the card
+    and the view counter were made of, and none needed a session — which also
+    meant a script could page the whole directory through PostgREST without
+    ever touching the site. Migration 69 closed them to anon: the server calls
+    them for a signed-out visitor, where the edge can see who is asking.
+
     A new name in this list is a decision, so it should cost a line in this
     file rather than arriving with a migration nobody re-read.
   */
   const EXPECTED = new Set([
-    // Public API.
-    'search_agents',
-    'get_agent_card',
-    'increment_job_view',
     // Predicates that row-level security itself calls.
     'applied_to_job',
     'applied_to_my_job',

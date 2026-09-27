@@ -7,6 +7,7 @@ import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { AgentCv } from '@/components/agents/agent-cv';
+import { ContactReveal } from '@/components/agents/contact-reveal';
 import { ShortlistButton } from '@/components/agents/shortlist-toggle';
 import { Button } from '@/components/ui/button';
 import { getAgentCard, shortlistedAgentIds } from '@/lib/queries/agents';
@@ -14,10 +15,6 @@ import { recordAgentView } from '@/lib/agent-views';
 import { getDistrictMap, getDevelopers } from '@/lib/queries/taxonomy';
 import { getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { CV_BUCKET, signedUrl } from '@/lib/storage';
-import { whatsappLink } from '@/lib/utils';
-import { employerToAgentOpener } from '@/lib/whatsapp';
-import { WhatsAppMark } from '@/components/brand-marks';
 
 type Params = { locale: string; slug: string };
 
@@ -94,21 +91,18 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
   const name = agent.is_unlocked && agent.full_name ? agent.full_name : t('anonymous');
   const headline = localized(locale, agent.headline_ar, agent.headline_en);
 
-  // cv_path is only ever returned by get_agent_card() when the viewer is
-  // entitled to it, so its presence is the authorisation.
-  const cvUrl = agent.cv_path ? await signedUrl(CV_BUCKET, agent.cv_path, 600) : null;
+  /*
+    No number on this page, and no CV link, until somebody asks.
 
-  const contactUrl =
-    agent.whatsapp_phone && viewer?.company
-      ? whatsappLink(
-          agent.whatsapp_phone,
-          employerToAgentOpener({
-            agentName: agent.full_name ?? name,
-            companyName: localized(locale, viewer.company.name_ar, viewer.company.name_en),
-            locale,
-          }),
-        )
-      : null;
+    get_agent_card() stopped returning either (migration 69). `can_reveal` says
+    whether this viewer — an employer in good standing with a company, or an
+    admin — may ask, and the button below asks: one call, one recorded
+    reveal, and the number arrives in the response to a press rather than in
+    the HTML of a page a scraper can fetch. The owner reads their own CV
+    through the same route, which recognises them.
+  */
+  const canReveal = agent.can_reveal && !isOwner;
+  const ownCvHref = isOwner && agent.has_cv ? `/api/agent-cv/${encodeURIComponent(agent.slug)}` : null;
 
   /*
     Only for somebody with a company to keep them in, and only on an unlocked
@@ -187,17 +181,10 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
 
       {agent.is_unlocked ? (
         <div className="mt-6 flex flex-wrap gap-2">
-          {contactUrl ? (
-            <Button asChild size="lg">
-              <a href={contactUrl} target="_blank" rel="noopener noreferrer">
-                <WhatsAppMark className="size-5 shrink-0" />
-                {t('contact')}
-              </a>
-            </Button>
-          ) : null}
-          {cvUrl ? (
+          {canReveal ? <ContactReveal handle={agent.slug} hasCv={agent.has_cv} /> : null}
+          {ownCvHref ? (
             <Button asChild variant="outline" size="lg">
-              <a href={cvUrl} target="_blank" rel="noopener noreferrer">
+              <a href={ownCvHref} target="_blank" rel="noopener noreferrer">
                 <Download />
                 {t('downloadCv')}
               </a>

@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getViewer } from '@/lib/auth';
 import { raise } from './error';
 import { JOB_TRACKS, AVAILABILITIES } from '@/lib/taxonomy';
 import { getDistricts } from './taxonomy';
@@ -64,6 +66,31 @@ export function serializeAgentFilters(filters: AgentFilters): URLSearchParams {
 }
 
 /**
+ * Who reads the directory functions.
+ *
+ * search_agents() and get_agent_card() are closed to the anon role since
+ * migration 69, so a script cannot page the directory through PostgREST while
+ * the site never sees it. A signed-in reader still calls them as themselves —
+ * the visibility gate needs to know who is asking. A visitor is served by the
+ * server with the service role, which the functions treat as a stranger: no
+ * company, no admin, so every gated card comes back anonymous exactly as it
+ * did for anon before.
+ *
+ * Falls back to the public client when no service key is configured, which
+ * on a database past migration 69 answers "permission denied" and renders the
+ * directory's error state — /api/health names the missing key.
+ */
+async function directoryClient() {
+  const viewer = await getViewer();
+  if (viewer) return createClient();
+  try {
+    return createAdminClient();
+  } catch {
+    return createClient();
+  }
+}
+
+/**
  * Directory results come from a SECURITY DEFINER function, not a table read.
  * RLS hides gated rows outright — correct for the profile page, useless for a
  * directory that must show anonymised cards to everyone. The function decides
@@ -76,7 +103,7 @@ export async function queryAgents(filters: AgentFilters): Promise<{
   /** The page actually returned, which is not always the one asked for. */
   page: number;
 }> {
-  const supabase = await createClient();
+  const supabase = await directoryClient();
   const districts = await getDistricts();
 
   const districtIds = filters.districtSlugs.length
@@ -137,9 +164,11 @@ export async function queryAgents(filters: AgentFilters): Promise<{
   };
 }
 
-export async function getAgentCard(slug: string): Promise<AgentCardDetail | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc('get_agent_card', { p_slug: slug });
+/** By slug, or by id for a card whose name the reader may not see. */
+export async function getAgentCard(handle: string): Promise<AgentCardDetail | null> {
+  if (!/^(?:[a-z0-9][a-z0-9-]{0,118}|[0-9a-f-]{36})$/.test(handle)) return null;
+  const supabase = await directoryClient();
+  const { data, error } = await supabase.rpc('get_agent_card', { p_handle: handle });
   if (error) raise(error, 'loading an agent profile');
   return (data as AgentCardDetail[])?.[0] ?? null;
 }

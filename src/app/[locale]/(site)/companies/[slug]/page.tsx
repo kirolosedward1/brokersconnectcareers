@@ -8,6 +8,7 @@ import { CompanyLogo } from '@/components/companies/company-logo';
 import { FollowCompanyButton } from '@/components/companies/follow-company-button';
 import { JobCard } from '@/components/jobs/job-card';
 import { JsonLd } from '@/components/json-ld';
+import { safeHttpUrl } from '@/lib/security/sanitize';
 import { getCompanyBySlug } from '@/lib/queries/companies';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from '@/lib/queries/error';
@@ -131,6 +132,18 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
     following = Boolean(follow);
   }
 
+  /*
+
+    Drawn as a link only when it parses as http(s). The column is checked the
+
+    same way on the way in now (migration 72), but a row written before that
+
+    could still hold a `javascript:` URL, and an href is where it would run.
+
+  */
+
+  const websiteHref = safeHttpUrl(company.website);
+
   const t = await getTranslations('companies');
   const tJobs = await getTranslations('jobs');
 
@@ -146,7 +159,7 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
           name,
           url: `${env.siteUrl}/companies/${company.slug}`,
           ...(company.logo_url ? { logo: company.logo_url } : {}),
-          ...(company.website ? { sameAs: [company.website] } : {}),
+          ...(websiteHref ? { sameAs: [websiteHref] } : {}),
           ...(about ? { description: toPlainText(about) } : {}),
           address: {
             '@type': 'PostalAddress',
@@ -195,19 +208,19 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
                 </div>
               ) : null}
 
-              {company.website ? (
+              {websiteHref ? (
                 <div className="inline-flex items-center gap-1.5">
                   <dt className="sr-only">{t('website')}</dt>
                   <Globe className="size-3.5" aria-hidden />
                   <dd>
                     <a
-                      href={company.website}
+                      href={websiteHref}
                       target="_blank"
                       rel="noopener noreferrer nofollow"
                       dir="ltr"
                       className="hover:text-foreground hover:underline"
                     >
-                      {company.website.replace(/^https?:\/\//, '')}
+                      {websiteHref.replace(/^https?:\/\//, '').replace(/\/$/, '')}
                     </a>
                   </dd>
                 </div>

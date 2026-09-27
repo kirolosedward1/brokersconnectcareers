@@ -45,7 +45,8 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
     }
 
     startTransition(async () => {
-      const { error: updateError } = await createClient().auth.updateUser({ password });
+      const supabase = createClient();
+      const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) {
         setError(
           /session|jwt|expired/i.test(updateError.message)
@@ -55,6 +56,9 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
         return;
       }
       setDone(true);
+      // A recovery is the strongest reason to end every other session: the
+      // account was, by the person's own account, out of their control.
+      await supabase.auth.signOut({ scope: 'others' }).catch(() => {});
       /*
         Same as sign-in: the session has just changed, so the server has to
         be asked again from scratch rather than through a router push racing

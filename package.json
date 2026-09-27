@@ -19,11 +19,11 @@
     "doctor": "node scripts/doctor.mjs",
     "db:rehearse": "node scripts/db-rehearse.mjs",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
-    "test:db": "node supabase/tests/schema.test.mjs && node supabase/tests/policies.test.mjs && node --experimental-strip-types supabase/tests/hmac.test.mjs && pnpm test:search && pnpm test:email && pnpm test:auth",
+    "test:db": "node supabase/tests/schema.test.mjs && node supabase/tests/policies.test.mjs && node supabase/tests/security.test.mjs && node --experimental-strip-types supabase/tests/hmac.test.mjs && pnpm test:search && pnpm test:email && pnpm test:auth",
     "test:hmac": "node --experimental-strip-types supabase/tests/hmac.test.mjs",
     "smoke": "node --env-file-if-exists=.env.local scripts/smoke.mjs",
     "test:messages": "node --experimental-strip-types scripts/messages.mjs",
-    "check": "pnpm typecheck && pnpm test:messages && pnpm test:compat && pnpm test:match && pnpm test:earnings && pnpm test:share && pnpm test:saved && pnpm test:nextaction && pnpm test:reads && pnpm test:db",
+    "check": "pnpm typecheck && pnpm test:messages && pnpm test:compat && pnpm test:match && pnpm test:earnings && pnpm test:share && pnpm test:saved && pnpm test:nextaction && pnpm test:reads && pnpm test:security-libs && pnpm test:db",
     "test:search": "node --experimental-strip-types supabase/tests/search.test.mjs",
     "test:email": "node --experimental-strip-types supabase/tests/email.test.mjs",
     "auth:templates": "node --experimental-strip-types scripts/auth-templates.mjs",
@@ -35,6 +35,8 @@
     "test:saved": "node --experimental-strip-types scripts/saved-search.test.mjs",
     "test:nextaction": "node --experimental-strip-types scripts/next-action.test.mjs",
     "test:reads": "node scripts/reads.test.mjs",
+    "test:security": "node supabase/tests/security.test.mjs",
+    "test:security-libs": "node --experimental-strip-types scripts/security-libs.test.mjs",
     "crawl": "node scripts/crawl.mjs"
   },
   "dependencies": {
@@ -49,6 +51,7 @@
     "next-intl": "^4.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sharp": "^0.34.5",
     "tailwind-merge": "^3.0.2",
     "zod": "^3.24.2"
   },

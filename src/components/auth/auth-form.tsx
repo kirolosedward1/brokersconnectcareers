@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
 import { safeNext } from '@/lib/safe-next';
+import { Turnstile, turnstileEnabled } from '@/components/security/turnstile';
+import { reportAuthOutcome, type AuthFriction } from '@/lib/actions/security';
 
 /**
  * Google's mark, inline.
@@ -176,11 +178,39 @@ export function AuthForm({
   const [unconfirmed, setUnconfirmed] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  /*
+    Friction that grows with failure, and stays invisible without it.
+
+    Turnstile runs in its interaction-only appearance: Cloudflare decides from
+    its own signals whether this browser has to do anything, and for nearly
+    everyone the answer is no and nothing is drawn. The token it produces goes
+    to Supabase Auth with the credentials, and Supabase verifies it against the
+    secret set in its dashboard — which means a script that skips this page
+    and calls the auth server directly meets the same check.
+
+    After a run of failed attempts — reported to the server, which counts them
+    by client and by address — the form pauses for a few seconds before it
+    will try again, and the widget is shown rather than hidden. That is a
+    courtesy to the honest person who mistyped twice and a cost to a script;
+    the enforcement lives in Supabase's own limits, not here.
+  */
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+  const [friction, setFriction] = useState<AuthFriction>({ pause: 0, challenge: false });
+  const [pausedUntil, setPausedUntil] = useState(0);
+  const captcha = () => (captchaToken ? { captchaToken } : {});
+
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const email = String(form.get('email') ?? '');
     const password = String(form.get('password') ?? '');
+
+    const wait = Math.ceil((pausedUntil - Date.now()) / 1000);
+    if (wait > 0) {
+      setError(t('slowDown', { seconds: wait }));
+      return;
+    }
 
     if (password.length < 8) {
       setError(tValidation('passwordShort'));
@@ -205,10 +235,13 @@ export function AuthForm({
           options: {
             emailRedirectTo: confirmationRedirect(),
             ...(audience ? { data: { role: audience } } : {}),
+            ...captcha(),
           },
         });
         if (signUpError) {
           setError(readable(signUpError));
+          setCaptchaReset((n) => n + 1);
+          void reportAuthOutcome({ kind: 'sign_up_failed', email });
           return;
         }
         // With email confirmation enabled there is no session yet.
@@ -218,11 +251,22 @@ export function AuthForm({
           return;
         }
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+          options: captcha(),
+        });
         if (signInError) {
           setError(readable(signInError));
           setUnconfirmed(signInError.code === 'email_not_confirmed' || /email not confirmed/i.test(signInError.message));
           setPendingEmail(email);
+          // A token is spent on use, so the widget is asked for a fresh one.
+          setCaptchaReset((n) => n + 1);
+          setCaptchaToken(null);
+          // Tell the server, and take its advice on how much to slow down.
+          const next = await reportAuthOutcome({ kind: 'sign_in_failed', email });
+          setFriction(next);
+          if (next.pause > 0) setPausedUntil(Date.now() + next.pause * 1000);
           return;
         }
       }
@@ -354,8 +398,9 @@ export function AuthForm({
               const { error: resendError } = await createClient().auth.resend({
                 type: 'signup',
                 email: pendingEmail,
-                options: { emailRedirectTo: confirmationRedirect() },
+                options: { emailRedirectTo: confirmationRedirect(), ...captcha() },
               });
+              setCaptchaReset((n) => n + 1);
               setResent(resendError ? 'wait' : 'sent');
             });
           }}
@@ -363,6 +408,8 @@ export function AuthForm({
           <RefreshCw aria-hidden />
           {pending ? tCommon('loading') : t('resendConfirmation')}
         </Button>
+
+        <Turnstile action="resend" locale={locale} resetKey={captchaReset} onToken={setCaptchaToken} />
 
         <p className="text-center text-sm">
           <Link href="/sign-in" className="font-medium text-primary hover:underline">
@@ -473,8 +520,9 @@ export function AuthForm({
                   const { error: resendError } = await createClient().auth.resend({
                     type: 'signup',
                     email: pendingEmail,
-                    options: { emailRedirectTo: confirmationRedirect() },
+                    options: { emailRedirectTo: confirmationRedirect(), ...captcha() },
                   });
+                  setCaptchaReset((n) => n + 1);
                   setResent(resendError ? 'wait' : 'sent');
                 });
               }}
@@ -485,7 +533,22 @@ export function AuthForm({
           </div>
         ) : null}
 
-        <SubmitButton className="w-full" size="lg" disabled={pending}>
+        <Turnstile
+          action={mode}
+          locale={locale}
+          visible={friction.challenge}
+          resetKey={captchaReset}
+          onToken={setCaptchaToken}
+        />
+        {friction.challenge && turnstileEnabled() ? (
+          <p className="text-xs text-muted-foreground">{t('challengeHint')}</p>
+        ) : null}
+
+        <SubmitButton
+          className="w-full"
+          size="lg"
+          disabled={pending || (friction.challenge && turnstileEnabled() && !captchaToken)}
+        >
           {pending ? tCommon('loading') : mode === 'sign-up' ? t('signUp') : t('signIn')}
         </SubmitButton>
       </form>

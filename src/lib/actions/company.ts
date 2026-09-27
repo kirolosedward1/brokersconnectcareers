@@ -9,13 +9,30 @@ import { buildCompanySlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { COMPANY_TYPES, HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
+import { COMPANY_DOCS_BUCKET } from '@/lib/buckets';
+import { DOCUMENT_KINDS, MAX_BYTES, isOwnedPath, verifyStoredObject } from '@/lib/security/files';
+import { recordSecurityEvent } from '@/lib/security/events';
+import { clean, cleanText, safeHttpUrl } from '@/lib/security/sanitize';
+import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 
 const schema = z.object({
   nameAr: z.string().trim().min(2).max(160),
   nameEn: z.string().trim().max(160).optional().nullable(),
   aboutAr: z.string().trim().max(2000).optional().nullable(),
   aboutEn: z.string().trim().max(2000).optional().nullable(),
-  website: z.string().trim().url().max(200).optional().nullable().or(z.literal('')),
+  /*
+    http(s) only. zod's `.url()` accepts any scheme a parser recognises, and a
+    `javascript:` one was rendered as the company page's website link. The
+    same rule is a CHECK on the column (migration 72) and is applied again
+    where the link is drawn.
+  */
+  website: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .nullable()
+    .refine((value) => !value || safeHttpUrl(value) !== null, { message: 'invalidUrl' }),
   headcountBand: z.enum(HEADCOUNT_BANDS).optional().nullable(),
   companyType: z.enum(COMPANY_TYPES).optional().nullable(),
   districtId: z.coerce.number().int().positive().optional().nullable(),
@@ -33,12 +50,17 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
+  const aboutAr = cleanText(parsed.data.aboutAr, { multiline: true, maxLinks: 3 });
+  const aboutEn = cleanText(parsed.data.aboutEn, { multiline: true, maxLinks: 3 });
+  if (!aboutAr.ok) return { ok: false, error: 'invalid', fieldErrors: { aboutAr: 'tooManyLinks' } };
+  if (!aboutEn.ok) return { ok: false, error: 'invalid', fieldErrors: { aboutEn: 'tooManyLinks' } };
+
   const payload = {
-    name_ar: parsed.data.nameAr,
-    name_en: parsed.data.nameEn || null,
-    about_ar: parsed.data.aboutAr || null,
-    about_en: parsed.data.aboutEn || null,
-    website: parsed.data.website || null,
+    name_ar: clean(parsed.data.nameAr),
+    name_en: clean(parsed.data.nameEn) || null,
+    about_ar: aboutAr.value || null,
+    about_en: aboutEn.value || null,
+    website: safeHttpUrl(parsed.data.website),
     headcount_band: parsed.data.headcountBand || null,
     district_id: parsed.data.districtId || null,
     // Only when the form carried a choice. Left out otherwise, so saving the
@@ -97,7 +119,7 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
       update(withoutType),
     );
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: 'failed' };
 
     // companies_update_own is admin-only, so a recruiter reaches zero rows
     // rather than an error, and was previously told it saved. A version that
@@ -126,7 +148,7 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
 
   const { data, error } = await retryWithoutType(await insert(payload), () => insert(withoutType));
 
-  if (error || !data) return { ok: false, error: error?.message ?? 'insert_failed' };
+  if (error || !data) return { ok: false, error: 'failed' };
 
   revalidatePath('/employer/company');
   return { ok: true, data: { id: data.id } };
@@ -157,6 +179,13 @@ export async function saveCompanyLogo(input: unknown): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
+  // The company's own folder and one file name, or nothing at all: the path
+  // was not held to the folder before, so any object in the public bucket
+  // could be pointed at as this company's logo.
+  if (parsed.data.storagePath && !isOwnedPath(parsed.data.storagePath, parsed.data.companyId)) {
+    return { ok: false, error: 'invalid_path' };
+  }
+
   const url = parsed.data.storagePath
     ? supabase.storage.from(COMPANY_LOGOS_BUCKET).getPublicUrl(parsed.data.storagePath).data
         .publicUrl
@@ -175,7 +204,7 @@ export async function saveCompanyLogo(input: unknown): Promise<ActionResult> {
     .eq('id', parsed.data.companyId)
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'failed' };
   if (!updated?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/employer/company');
@@ -198,11 +227,40 @@ export async function recordCompanyDocument(input: unknown): Promise<ActionResul
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // Storage RLS already confines uploads to the owner's own company folder;
-  // this check keeps a crafted request from pointing the row somewhere else.
-  if (!parsed.data.storagePath.startsWith(`${parsed.data.companyId}/`)) {
+  // The company's folder, one file name, no dot segments.
+  if (!isOwnedPath(parsed.data.storagePath, parsed.data.companyId)) {
     return { ok: false, error: 'invalid_path' };
+  }
+
+  // Only a company admin's document is worth reading: the row insert below
+  // would refuse anyone else, and the object check must not run for them.
+  const { data: membership } = await supabase
+    .from('company_members')
+    .select('role')
+    .eq('company_id', parsed.data.companyId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (membership?.role !== 'admin') return { ok: false, error: 'forbidden' };
+
+  // A commercial register is a PDF or a photograph, whatever the browser
+  // said. Anything else is removed from the bucket before a row names it.
+  const verdict = await verifyStoredObject(
+    COMPANY_DOCS_BUCKET,
+    parsed.data.storagePath,
+    DOCUMENT_KINDS,
+    MAX_BYTES.document,
+  );
+  if (!verdict.ok && verdict.reason !== 'unavailable') {
+    void recordSecurityEvent('upload.rejected', {
+      actorId: user.id,
+      metadata: { kind: 'document', reason: verdict.reason, sniffed: verdict.kind ?? null },
+    });
+    return { ok: false, error: 'file_type' };
   }
 
   const { error } = await supabase.from('company_documents').insert({
@@ -211,7 +269,7 @@ export async function recordCompanyDocument(input: unknown): Promise<ActionResul
     storage_path: parsed.data.storagePath,
   });
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'failed' };
 
   revalidatePath('/employer/company');
   revalidatePath('/admin/companies');
@@ -278,6 +336,33 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
   if (!companyId) return { ok: false, error: 'no_company' };
 
   /*
+    Admins only, and a bounded number of times.
+
+    The address lookup answers whether an email has an account, which is an
+    oracle. It used to run for any member before the insert policy refused
+    the recruiter; now the same policy's question is asked first, through the
+    caller's own session, and the lookups a person may make in a day are
+    counted. What remains is a slow, authenticated, audited oracle available
+    to people who run a company — which is what the feature is.
+  */
+  const { data: membership } = await supabase
+    .from('company_members')
+    .select('role')
+    .eq('company_id', companyId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (membership?.role !== 'admin') return { ok: false, error: 'forbidden' };
+
+  const lookups = await rateLimit(
+    `member_lookup:user:${user.id}`,
+    await policyFor('member_lookup:user:day', { windowSeconds: 86400, max: 20 }),
+  );
+  if (!lookups.allowed) {
+    void recordSecurityEvent('members.lookup_rate_limited', { severity: 'warning', actorId: user.id });
+    return { ok: false, error: 'rate_limit' };
+  }
+
+  /*
     Asked of the database rather than scanned for in a page of accounts.
 
     This listed the first 200 users on the platform and searched them in
@@ -303,6 +388,8 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_member' };
     if (error.message.includes('company_member_role')) return { ok: false, error: 'not_employer' };
+    // One company per account (migration 72): somebody already on another
+    // team is answered the same way as somebody who may not be added.
     return { ok: false, error: 'forbidden' };
   }
 

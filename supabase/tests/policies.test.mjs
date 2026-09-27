@@ -828,7 +828,7 @@ report.section('applying is consent, and the applicant inbox may read it');
 
   // The card the applicant list links to opens too, or the panel would fill in
   // beside a link to an anonymous page.
-  const card = await as(employerUnverified, `select is_unlocked, whatsapp_phone from get_agent_card('shy-consultant-000001')`);
+  const card = await as(employerUnverified, `select is_unlocked, can_reveal from get_agent_card('shy-consultant-000001')`);
   report.check('the card behind the link opens',
     card.rows[0]?.is_unlocked === true, JSON.stringify(card.rows[0] ?? card.error));
 
@@ -897,31 +897,89 @@ report.section('the agent directory gate');
 {
   const GATED = 'ahmed-mahmoud-818804'; // verified_employers_only
   const PUBLIC = 'menna-sherif-909521'; // public
+  const gatedId = (await db.query(`select id from agent_profiles where slug = '${GATED}'`)).rows[0].id;
+  const publicId = (await db.query(`select id from agent_profiles where slug = '${PUBLIC}'`)).rows[0].id;
 
-  const anon = await as(null, 'select slug, is_unlocked, full_name from search_agents(null,null,null,null,60,0)', 'anon');
-  const anonGated = anon.rows.find((row) => row.slug === GATED);
-  const anonPublic = anon.rows.find((row) => row.slug === PUBLIC);
+  /*
+    A visitor with no session reaches the directory through the server, which
+    reads it with the service role — never through PostgREST, where a script
+    could page the whole thing without the site ever seeing it (migration 69).
+  */
+  const direct = await as(null, 'select id from search_agents(null,null,null,null,60,0)', 'anon');
+  report.check('anonymous cannot call the directory function directly',
+    !direct.ok && /permission denied/.test(direct.error ?? ''), direct.error);
 
-  report.check('anonymous sees the directory at all', anon.rows.length > 1, JSON.stringify(anon.error));
+  const anon = await as(null, 'select id, slug, is_unlocked, full_name from search_agents(null,null,null,null,60,0)', 'service_role');
+  const anonGated = anon.rows.find((row) => row.id === gatedId);
+  const anonPublic = anon.rows.find((row) => row.id === publicId);
+
+  report.check('the server sees the directory for a visitor', anon.rows.length > 1, JSON.stringify(anon.error));
   report.check('a gated profile comes back with no name',
     anonGated?.is_unlocked === false && anonGated?.full_name === null, JSON.stringify(anonGated));
+  // The slug is the name transliterated, so a locked card is known by its id.
+  report.check('and not by its slug either',
+    anonGated?.slug === gatedId, JSON.stringify(anonGated));
   report.check('a public profile keeps its name',
-    anonPublic?.is_unlocked === true && anonPublic?.full_name !== null, JSON.stringify(anonPublic));
+    anonPublic?.is_unlocked === true && anonPublic?.full_name !== null && anonPublic?.slug === PUBLIC,
+    JSON.stringify(anonPublic));
 
-  const unverified = await as(employerUnverified, 'select slug, full_name from search_agents(null,null,null,null,60,0)');
+  const unverified = await as(employerUnverified, 'select id, slug, full_name from search_agents(null,null,null,null,60,0)');
+  const unverifiedGated = unverified.rows.find((row) => row.id === gatedId);
   report.check('an unverified employer still gets no name on gated rows',
-    unverified.rows.find((row) => row.slug === GATED)?.full_name === null);
+    unverifiedGated?.full_name === null && unverifiedGated?.slug === gatedId, JSON.stringify(unverifiedGated));
 
   const verified = await as(employerVerified, 'select slug, is_unlocked, full_name from search_agents(null,null,null,null,60,0)');
   const verifiedGated = verified.rows.find((row) => row.slug === GATED);
   report.check('a verified employer gets the name',
     verifiedGated?.is_unlocked === true && verifiedGated?.full_name !== null);
 
-  const phoneAnon = await as(null, `select whatsapp_phone from get_agent_card('${GATED}')`, 'anon');
-  report.check('anonymous gets no contact details', phoneAnon.rows[0]?.whatsapp_phone === null);
+  // The card by its id opens the same page the directory links to.
+  const byId = await as(employerVerified, `select slug, is_unlocked from get_agent_card('${gatedId}')`);
+  report.check('a card opens by id as well as by slug',
+    byId.rows[0]?.is_unlocked === true && byId.rows[0]?.slug === GATED, JSON.stringify(byId.rows[0] ?? byId.error));
 
-  const phoneVerified = await as(employerVerified, `select whatsapp_phone from get_agent_card('${GATED}')`);
-  report.check('a verified employer gets contact details', phoneVerified.rows[0]?.whatsapp_phone !== null);
+  /*
+    The number is never on the card. It comes from reveal_agent_contact(),
+    which wants a signed-in employer in good standing with a company to act
+    for, applies the same gate, and counts what it hands over.
+  */
+  const cardAnon = await as(null, `select id from get_agent_card('${GATED}')`, 'anon');
+  report.check('anonymous cannot open a card directly',
+    !cardAnon.ok && /permission denied/.test(cardAnon.error ?? ''), cardAnon.error);
+
+  const revealAnon = await as(null, `select status from reveal_agent_contact('${PUBLIC}')`, 'anon');
+  report.check('anonymous gets no contact details',
+    !revealAnon.ok && /permission denied/.test(revealAnon.error ?? ''), revealAnon.error);
+
+  const revealCandidate = await as(candidate, `select status, whatsapp_phone from reveal_agent_contact('${PUBLIC}')`);
+  report.check('a candidate gets no contact details, even on a public card',
+    revealCandidate.rows[0]?.status === 'forbidden' && revealCandidate.rows[0]?.whatsapp_phone === null,
+    JSON.stringify(revealCandidate.rows[0] ?? revealCandidate.error));
+
+  /*
+    A gated consultant who has never applied to this company. The seed spreads
+    applications around, and an application opens the card by consent
+    (migration 43) — so the fixture consultant may legitimately be open to the
+    unverified company, and the assertion needs one who is not.
+  */
+  const LOCKED = '77777777-7777-4777-8777-777777777777';
+  await db.exec(`
+    insert into auth.users (id, email) values ('${LOCKED}', 'locked@demo.test');
+    insert into profiles (id, role, full_name, whatsapp_phone)
+      values ('${LOCKED}', 'candidate', 'مقفول', '+201777777777');
+    insert into agent_profiles (user_id, slug, visibility, years_experience)
+      values ('${LOCKED}', 'locked-consultant-000001', 'verified_employers_only', 4);
+  `);
+  const revealLocked = await as(employerUnverified, `select status, whatsapp_phone from reveal_agent_contact('locked-consultant-000001')`);
+  report.check('an unverified employer is told the card is locked',
+    revealLocked.rows[0]?.status === 'locked' && revealLocked.rows[0]?.whatsapp_phone === null,
+    JSON.stringify(revealLocked.rows[0] ?? revealLocked.error));
+  await db.exec(`delete from auth.users where id = '${LOCKED}';`);
+
+  const phoneVerified = await as(employerVerified, `select status, whatsapp_phone from reveal_agent_contact('${GATED}')`);
+  report.check('a verified employer gets contact details',
+    phoneVerified.rows[0]?.status === 'ok' && phoneVerified.rows[0]?.whatsapp_phone !== null,
+    JSON.stringify(phoneVerified.rows[0] ?? phoneVerified.error));
 
   const raw = await as(null, `select id from agent_profiles where slug = '${GATED}'`, 'anon');
   report.check('and the gated row is unreadable directly', raw.rows.length === 0);
@@ -1835,12 +1893,33 @@ report.section('applications are capped per day too');
   ).rows.map((row) => row.id);
 
   const needed = 30 - held;
+
+  /*
+    Two windows since migration 71. Eight applications in ten minutes is the
+    first wall — a person filing that fast is a script — so the rows are
+    written eight at a time and aged past the short window between batches,
+    which is what a day of honest applying looks like to the counter.
+  */
+  const ageTheShortWindow = () =>
+    db.exec(`update applications set created_at = created_at - interval '11 minutes'
+              where candidate_id = '${candidate}' and created_at > now() - interval '10 minutes'`);
+
+  // Whatever earlier sections filed for this candidate counts against the
+  // short window too, so it is aged before the first batch.
+  await ageTheShortWindow();
+  let written = 0;
   for (const id of fixtures.slice(0, needed)) {
+    if (written > 0 && written % 8 === 0) await ageTheShortWindow();
     await db.exec(`insert into applications (job_id, candidate_id) values ('${id}','${candidate}')`);
+    written += 1;
   }
 
   const atCap = (await db.query(inWindow)).rows[0].n;
   report.check(`thirty applications in a day are allowed (${atCap})`, atCap === 30);
+
+  // Age the last batch too, so what refuses the thirty-first is the day, not
+  // the ten minutes.
+  await ageTheShortWindow();
 
   // service_role, so this proves the trigger holds even for a caller that RLS
   // does not apply to — the cap is a property of the table, not of a policy.
@@ -2137,6 +2216,11 @@ report.section('the same request twice converges on one answer');
     await db.query(`select company_id from company_members where user_id = '${employerVerified}' and role = 'admin' limit 1`)
   ).rows[0].company_id;
   const KEY = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+
+  // The seed wrote this company's listings a moment ago, which to the daily
+  // cap (migration 71) is a busy day already. Age them: this section is about
+  // the retry, and the cap has a section of its own.
+  await db.exec(`update jobs set created_at = created_at - interval '2 days' where company_id = '${company}'`);
 
   const post = (slug) => as(employerVerified, `
     insert into jobs (company_id, slug, title_ar, track, employment_type, experience_band,

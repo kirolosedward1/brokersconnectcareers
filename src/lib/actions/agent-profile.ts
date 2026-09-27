@@ -10,6 +10,10 @@ import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
 import { notifyProfileReady, notifyVisibilityChanged } from '@/lib/email/notify';
+import { CV_BUCKET } from '@/lib/buckets';
+import { CV_KINDS, MAX_BYTES, isOwnedPath, verifyStoredObject } from '@/lib/security/files';
+import { recordSecurityEvent } from '@/lib/security/events';
+import { clean } from '@/lib/security/sanitize';
 
 const schema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -48,16 +52,26 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  if (parsed.data.cvPath && !parsed.data.cvPath.startsWith(`${user.id}/`)) {
-    return { ok: false, error: 'invalid_cv_path' };
+  // Own folder, one file name, and bytes that are a document — see applyToJob.
+  if (parsed.data.cvPath) {
+    if (!isOwnedPath(parsed.data.cvPath, user.id)) return { ok: false, error: 'invalid_cv_path' };
+
+    const verdict = await verifyStoredObject(CV_BUCKET, parsed.data.cvPath, CV_KINDS, MAX_BYTES.cv);
+    if (!verdict.ok && verdict.reason !== 'unavailable') {
+      void recordSecurityEvent('upload.rejected', {
+        actorId: user.id,
+        metadata: { kind: 'cv', reason: verdict.reason, sniffed: verdict.kind ?? null },
+      });
+      return { ok: false, error: 'invalid', fieldErrors: { cv: 'fileType' } };
+    }
   }
 
   const { data: profileSaved, error: profileError } = await supabase
     .from('profiles')
-    .update({ full_name: parsed.data.fullName, whatsapp_phone: phone })
+    .update({ full_name: clean(parsed.data.fullName), whatsapp_phone: phone })
     .eq('id', user.id)
     .select('id');
-  if (profileError) return { ok: false, error: profileError.message };
+  if (profileError) return { ok: false, error: 'failed' };
   if (!profileSaved?.length) return { ok: false, error: 'not_found' };
 
   const { data: existing } = await supabase
@@ -67,8 +81,8 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
     .maybeSingle();
 
   const payload = {
-    headline_ar: parsed.data.headlineAr || null,
-    headline_en: parsed.data.headlineEn || null,
+    headline_ar: clean(parsed.data.headlineAr) || null,
+    headline_en: clean(parsed.data.headlineEn) || null,
     years_experience: parsed.data.yearsExperience,
     tracks: parsed.data.tracks,
     district_ids: parsed.data.districtIds,

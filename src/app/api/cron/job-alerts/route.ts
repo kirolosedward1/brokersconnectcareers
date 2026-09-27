@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createPublicClient } from '@/lib/supabase/public';
 import { env } from '@/lib/env';
+import { bearerToken, secretsMatch } from '@/lib/security/secrets';
 import { localized } from '@/i18n/routing';
 import { parseJobFilters, queryJobs } from '@/lib/queries/jobs';
 import { sendSavedSearchDigest } from '@/lib/email/notify';
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
   const secret = env.cronSecret;
   const authorization = request.headers.get('authorization');
 
-  if (!secret || authorization !== `Bearer ${secret}`) {
+  if (!secretsMatch(bearerToken(authorization), secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

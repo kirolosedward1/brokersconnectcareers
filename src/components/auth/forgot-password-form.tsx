@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
+import { Turnstile } from '@/components/security/turnstile';
+import { reportAuthOutcome } from '@/lib/actions/security';
+import { useLocale } from 'next-intl';
 
 /**
  * Ask for a reset link.
@@ -24,8 +27,11 @@ import { createClient } from '@/lib/supabase/client';
  */
 export function ForgotPasswordForm() {
   const t = useTranslations('auth');
+  const locale = useLocale();
   const [sent, setSent] = useState(false);
   const [pending, startTransition] = useTransition();
+  // See auth-form.tsx: invisible for nearly everyone, verified by Supabase.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,7 +41,12 @@ export function ForgotPasswordForm() {
     startTransition(async () => {
       await createClient().auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/callback?next=/sign-in/new-password`,
+        ...(captchaToken ? { captchaToken } : {}),
       });
+      // Recorded as a hashed address and a hashed client, so a run of reset
+      // requests against one inbox is visible to whoever is watching — and
+      // nothing about whether the address exists is learned or kept.
+      void reportAuthOutcome({ kind: 'reset_requested', email });
       // Shown whether or not that address exists. See above.
       setSent(true);
     });
@@ -59,6 +70,8 @@ export function ForgotPasswordForm() {
       <Field label={t('email')} htmlFor="email">
         <Input id="email" name="email" type="email" required autoComplete="email" dir="ltr" />
       </Field>
+
+      <Turnstile action="password-reset" locale={locale} onToken={setCaptchaToken} />
 
       <SubmitButton className="w-full" disabled={pending}>
         <Mail aria-hidden />
