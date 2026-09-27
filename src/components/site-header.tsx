@@ -9,6 +9,7 @@ import { LocaleSwitcher } from '@/components/locale-switcher';
 import { UserMenu } from '@/components/user-menu';
 import { MobileNav } from '@/components/mobile-nav';
 import { NavLink } from '@/components/nav-link';
+import { NotificationMenu } from '@/components/notifications/notification-menu';
 import { HeaderShell } from '@/components/header-shell';
 
 const NAV = [
@@ -22,6 +23,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
   const t = await getTranslations('nav');
   const tMeta = await getTranslations('meta');
   const tAccount = await getTranslations('account');
+  const tNotifications = await getTranslations('notifications');
   const viewer = await getViewer();
   const role = viewer?.profile?.role;
 
@@ -86,6 +88,12 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
                   {role === 'employer' ? t('employerArea') : t('dashboard')}
                 </Link>
               </Button>
+              {/* The same bell the console has. An employer reading their own
+                  company page is where an application lands, and until now the
+                  only place that said so was a screen they had navigated away
+                  from. It never sits on the hero film: HeaderShell floats only
+                  when nobody is signed in, and nobody signed out has a bell. */}
+              <NotificationMenu locale={locale} />
               <UserMenu
                 name={viewer.profile.full_name}
                 avatarUrl={viewer.profile.avatar_url}
@@ -124,6 +132,12 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
                     className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
                   >
                     {role === 'employer' ? t('employerArea') : t('dashboard')}
+                  </Link>
+                  <Link
+                    href="/notifications"
+                    className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                  >
+                    {tNotifications('title')}
                   </Link>
                   {role === 'admin' ? (
                     <Link
