@@ -81,8 +81,13 @@ are taken on other branches.
   profiles (name, phone), companies (names), jobs (titles, 0→null salary, dedupe
   benefits), agent_profiles (headlines, dedupe arrays; *new* district ids must
   exist), the CV tables, and governorates/districts/developers.
-- Constraints: add NOT VALID, then VALIDATE only when no violators remain;
-  violators go to review.
+- Constraints: add NOT VALID, then VALIDATE only when no violators remain.
+  A NOT VALID constraint still refuses every new write that breaks it, so a
+  bad value arriving after the migration is rejected, with the app showing a
+  readable field error. Only rows that already broke a rule when the migration
+  ran go to review. A violation is never queued at write time; the one thing
+  queued as it happens is a possible company duplicate, which is not a
+  violation (see below).
   - Egyptian phones must be `^\+201\d{9}$`.
   - Basic salary ≥ 1000 when stated.
   - Percentage > 0.
