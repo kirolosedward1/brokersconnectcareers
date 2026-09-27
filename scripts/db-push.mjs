@@ -42,6 +42,19 @@ if (!connectionString) {
   process.exit(1);
 }
 
+// --reset drops the public schema with everything in it. Against production
+// that is the whole platform, so it needs the project ref typed out as well.
+// scripts/dr/db-restore.sh passes the operator's DR_ALLOW_PRODUCTION through.
+const PRODUCTION_REF = 'hiwdhicwsohbipxzazmb';
+if (reset && connectionString.includes(PRODUCTION_REF) && process.env.DR_ALLOW_PRODUCTION !== PRODUCTION_REF) {
+  console.error(
+    `--reset against PRODUCTION (${PRODUCTION_REF}) refused: it drops every table.\n` +
+      'See docs/disaster-recovery.md. To do it anyway, set ' +
+      `DR_ALLOW_PRODUCTION=${PRODUCTION_REF}.`,
+  );
+  process.exit(1);
+}
+
 const client = new pg.Client({
   connectionString,
   // Supabase terminates TLS with a certificate this client has no root for;
