@@ -34,11 +34,11 @@ create schema if not exists extensions;
 
 create table auth.users (
   id uuid primary key, instance_id uuid, aud text, role text, email text,
+  -- last_sign_in_at is present on the real table; the console's account facts
+  -- (admin_user_facts) and the lifecycle report both read it.
   encrypted_password text, email_confirmed_at timestamptz, last_sign_in_at timestamptz,
   raw_app_meta_data jsonb, raw_user_meta_data jsonb,
-  created_at timestamptz, updated_at timestamptz,
-  -- Present on the real table; the lifecycle report reads it (migration 69).
-  last_sign_in_at timestamptz
+  created_at timestamptz, updated_at timestamptz
 );
 
 create or replace function auth.uid() returns uuid language sql stable as $fn$
