@@ -143,6 +143,22 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
   }
 
   /*
+    The CV nothing points at any more, removed the moment that becomes true.
+
+    This ran after the developer tags below, so a tag write that failed
+    returned before it and the replaced file stayed in the bucket with
+    nothing referencing it. The row is the authority: once it is written,
+    the old file is an orphan whatever happens next, so it goes now. Through
+    the account's own session, which the storage policy confines to its own
+    folder. A failure here is logged and the save stands: the row is right,
+    and a stray file in a private bucket is the smaller wrong.
+  */
+  if (orphanedCv && isOwnStoragePath(user.id, orphanedCv)) {
+    const { error: removeError } = await supabase.storage.from(CV_BUCKET).remove([orphanedCv]);
+    if (removeError) logFailure('profile', 'could not remove the replaced CV', { user: user.id });
+  }
+
+  /*
     The developer tags, changed by difference rather than replaced.
 
     This used to delete every row and insert the new set, with neither result
@@ -182,15 +198,6 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
       );
       if (error) return { ok: false, error: error.message };
     }
-  }
-
-  // The CV nothing points at any more. Through the account's own session,
-  // which the storage policy confines to its own folder. A failure here is
-  // logged and the save stands: the row is right, and a stray file in a
-  // private bucket is the smaller wrong.
-  if (orphanedCv && isOwnStoragePath(user.id, orphanedCv)) {
-    const { error: removeError } = await supabase.storage.from(CV_BUCKET).remove([orphanedCv]);
-    if (removeError) logFailure('profile', 'could not remove the replaced CV', { user: user.id });
   }
 
   // Two different events, and only one of them can be true on a given save.
