@@ -24,7 +24,8 @@ import { ShareJobButton } from '@/components/jobs/share-job-button';
 import { ShareArrival } from '@/components/jobs/share-arrival';
 import { formatDate, formatNumber, isoDate } from '@/lib/utils';
 import { getSimilarJobs, salaryReference, type JobDetail } from '@/lib/queries/jobs';
-import { getViewer } from '@/lib/auth';
+import { actorOf, getViewer } from '@/lib/auth';
+import { canSaveJobs } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
 
 export async function JobDetailView({
@@ -247,13 +248,19 @@ export async function JobDetailView({
                 <Link href={`/jobs/${job.slug}/apply`}>{t('apply')}</Link>
               </Button>
             )}
-            <SaveJobButton
-              jobId={job.id}
-              jobSlug={job.slug}
-              initialSaved={alreadySaved}
-              canSave={Boolean(viewer?.profile)}
-              labels={{ save: t('save'), saved: t('saved') }}
-            />
+            {/* A bookmark is a candidate's: the only page that lists them turns
+                employers away, and since migration 68 the insert policy does
+                too. Offered to a visitor, who is sent to sign in, and to a
+                candidate — never to somebody it cannot work for. */}
+            {!viewer?.profile || canSaveJobs(actorOf(viewer)) ? (
+              <SaveJobButton
+                jobId={job.id}
+                jobSlug={job.slug}
+                initialSaved={alreadySaved}
+                canSave={Boolean(viewer?.profile)}
+                labels={{ save: t('save'), saved: t('saved') }}
+              />
+            ) : null}
             <ShareJobButton title={title} />
             {/* Renders nothing; notices that this visit began with a forward. */}
             <ShareArrival />

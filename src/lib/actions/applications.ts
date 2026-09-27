@@ -5,6 +5,7 @@ import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { normalisePhone, isValidPhone } from '@/lib/phone';
+import { isOwnStoragePath } from '@/lib/storage-path';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 import {
@@ -64,9 +65,10 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // A CV path must sit under the applicant's own folder. Without this check a
-  // crafted request could attach someone else's file to an application.
-  if (parsed.data.cvPath && !parsed.data.cvPath.startsWith(`${user.id}/`)) {
+  // A CV path is exactly the applicant's own folder and one file in it.
+  // `startsWith` let `<uid>/../<somebody else>/cv.pdf` through; the database
+  // now refuses that shape too (migration 68), and this is the earlier no.
+  if (parsed.data.cvPath && !isOwnStoragePath(user.id, parsed.data.cvPath)) {
     return { ok: false, error: 'invalid_cv_path' };
   }
 
@@ -137,10 +139,17 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
 }
 
 export async function withdrawApplication(applicationId: string): Promise<ActionResult> {
+  // A server action can be called with anything; an id that is not one is
+  // answered here rather than by a Postgres cast error with the query in it.
+  if (!z.string().uuid().safeParse(applicationId).success) return { ok: false, error: 'invalid' };
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  // `unauthenticated`, so the form offers sign-in instead of "forbidden" to
+  // somebody whose session merely ended.
+  if (!user) return { ok: false, error: 'unauthenticated' };
 
   // Read the title before the delete, not after: withdrawing removes the row,
   // and the confirmation has to name the role the person just withdrew from.
@@ -172,7 +181,7 @@ export async function withdrawApplication(applicationId: string): Promise<Action
   }
 
   const job = (before as unknown as WithdrawnJob | null)?.job;
-  if (user && job) {
+  if (job) {
     const titleAr = job.title_ar;
     const titleEn = job.title_en;
     after(() =>
@@ -214,12 +223,41 @@ const statusSchema = z.object({
   from: z.enum(['new', 'shortlisted', 'interview', 'hired', 'rejected']).optional(),
 });
 
-/** Employer pipeline move. RLS restricts this to jobs the caller owns. */
+/**
+ * Employer pipeline move.
+ *
+ * RLS restricts the write to applications on the caller's company's own
+ * listings — for an employer. An admin's row policy is `is_admin()`, so an
+ * admin could move any company's applicant through this and the candidate
+ * would be emailed as though the company had decided. Scoped explicitly to
+ * the company the caller acts for, whoever they are: moving applicants is a
+ * company's act, and an admin who is not in the company has the moderation
+ * queues instead.
+ */
 export async function setApplicationStatus(input: unknown): Promise<ActionResult> {
   const parsed = statusSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'forbidden' };
+
+  // The listing this application is on belongs to the caller's company, or
+  // there is nothing to move. Read under the caller's session, so an
+  // application they may not see is answered "forbidden" and not found.
+  const { data: target } = await supabase
+    .from('applications')
+    .select('id, job:jobs!inner (company_id)')
+    .eq('id', parsed.data.applicationId)
+    .maybeSingle();
+  const targetCompany = (target as unknown as { job: { company_id: string } | null } | null)?.job
+    ?.company_id;
+  if (!target || targetCompany !== companyId) return { ok: false, error: 'forbidden' };
 
   // Compare and swap, in one statement: matching the status the card rendered
   // makes "somebody moved this first" a refusal rather than an overwrite, and
@@ -344,6 +382,8 @@ export async function addApplicationNote(
  * keeps meeting.
  */
 export async function deleteApplicationNote(id: number): Promise<ActionResult> {
+  if (!z.number().int().positive().safeParse(id).success) return { ok: false, error: 'invalid' };
+
   const supabase = await createClient();
   const {
     data: { user },

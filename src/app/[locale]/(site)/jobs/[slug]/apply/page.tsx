@@ -8,7 +8,8 @@ import { ApplyForm } from '@/components/jobs/apply-form';
 import { Button } from '@/components/ui/button';
 import { getJobBySlug } from '@/lib/queries/jobs';
 import { jobIsLive } from '@/lib/job-state';
-import { getViewer } from '@/lib/auth';
+import { actorOf, getViewer } from '@/lib/auth';
+import { isCandidate, isSuspended } from '@/lib/permissions';
 import { JobCard } from '@/components/jobs/job-card';
 import { EMPTY_FILTERS, queryJobs, type JobListItem } from '@/lib/queries/jobs';
 import { optional, raise } from '@/lib/queries/error';
@@ -77,10 +78,28 @@ export default async function ApplyPage({
 
   const profile = viewer!.profile!;
 
-  // An employer landing here is almost always a mis-click; send them somewhere
-  // useful rather than letting them apply to their own board.
-  if (profile.role === 'employer') {
+  // An employer or an admin landing here is a mis-click; send them back to
+  // the listing rather than to a form the database will refuse (migration 68
+  // refuses any applicant who is not a candidate, admins included).
+  if (!isCandidate(actorOf(viewer))) {
     redirect({ href: `/jobs/${slug}`, locale });
+  }
+
+  /*
+    A suspended candidate. The insert policy refuses them — is_candidate()
+    requires an approved account — and the form would have shown "something
+    went wrong" with nothing to do about it. Said in words instead.
+  */
+  if (isSuspended(actorOf(viewer))) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <h1 className="text-xl font-semibold">{t('suspendedTitle')}</h1>
+        <p className="mt-2 text-muted-foreground">{t('suspendedBody')}</p>
+        <Button asChild variant="outline" className="mt-6">
+          <Link href={`/jobs/${slug}`}>{title}</Link>
+        </Button>
+      </div>
+    );
   }
 
   const supabase = await createClient();

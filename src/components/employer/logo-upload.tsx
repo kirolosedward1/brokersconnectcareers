@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { COMPANY_LOGOS_BUCKET } from '@/lib/buckets';
 import { saveCompanyLogo } from '@/lib/actions/company';
 import { uuid } from '@/lib/utils';
+import { safeExtension } from '@/lib/storage-path';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -38,7 +39,12 @@ const MAX_BYTES = 2 * 1024 * 1024;
  * these are uploaded by anybody who registers a company. PNG, JPEG and WebP
  * cover every real logo.
  */
-const TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const EXTENSIONS: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+};
+const TYPES = Object.keys(EXTENSIONS);
 
 export function LogoUpload({
   companyId,
@@ -76,7 +82,11 @@ export function LogoUpload({
     }
 
     startTransition(async () => {
-      const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png';
+      // The extension comes from the type the browser sniffed, not from the
+      // name the file arrived with: `logo.png.exe`, `logo.` and `logo` all
+      // upload as what they are, and the path stays one the database's own
+      // rule for storage paths accepts.
+      const extension = EXTENSIONS[file.type] ?? safeExtension(file.name, 'png');
       // A fresh name every time rather than a fixed one: the URL is public and
       // cached, and overwriting in place would leave the old logo showing.
       const path = `${companyId}/logo-${uuid()}.${extension}`;
@@ -105,9 +115,9 @@ export function LogoUpload({
 
   function remove() {
     startTransition(async () => {
-      // The column is cleared; the file is left in the bucket. Deleting it
-      // would break any page still holding the old URL, and a 2 MB image is
-      // not worth that.
+      // The column is cleared and the action removes the file it pointed at,
+      // the same way it removes a replaced one: a logo taken down should not
+      // stay reachable at a public URL somebody may have kept.
       const result = await saveCompanyLogo({ companyId, storagePath: null });
       if (recoverSession(result)) return;
       if (!result.ok) setError(tCommon('errorBody'));

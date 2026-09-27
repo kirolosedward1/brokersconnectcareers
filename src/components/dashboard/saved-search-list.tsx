@@ -9,6 +9,7 @@ import { followedCompany } from '@/lib/saved-search';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
 import { ICON_HIT_AREA } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
  * The saved searches, with their alert switch.
@@ -27,6 +28,7 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
   const t = useTranslations('savedSearch');
   const [rows, setRows] = useState(searches);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   if (rows.length === 0) {
     return (
@@ -41,6 +43,7 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
     setRows((current) => current.map((r) => (r.id === row.id ? { ...r, alerts: next } : r)));
     startTransition(async () => {
       const result = await setSearchAlerts({ id: row.id, alerts: next });
+      if (recoverSession(result)) return;
       if (!result.ok) {
         setRows((current) => current.map((r) => (r.id === row.id ? { ...r, alerts: !next } : r)));
       }
@@ -52,6 +55,7 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
     setRows((current) => current.filter((r) => r.id !== id));
     startTransition(async () => {
       const result = await deleteSavedSearch(id);
+      if (recoverSession(result)) return;
       if (!result.ok) setRows(before);
     });
   }

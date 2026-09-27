@@ -58,10 +58,11 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
       /*
         Same as sign-in: the session has just changed, so the server has to
         be asked again from scratch rather than through a router push racing
-        a refresh. /dashboard redirects by role, and a swallowed redirect
-        leaves a blank page.
+        a refresh. /onboarding is the page that reads the profile and sends
+        each kind of account to its own console (homeFor), and a swallowed
+        redirect leaves a blank page.
       */
-      window.location.assign(localeHref(locale, '/dashboard'));
+      window.location.assign(localeHref(locale, '/onboarding'));
     });
   }
 

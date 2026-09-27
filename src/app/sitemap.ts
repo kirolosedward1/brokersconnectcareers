@@ -34,7 +34,6 @@ function entry(
 type DbRows = {
   jobs: { slug: string; published_at: string | null }[];
   companies: { slug: string; created_at: string }[];
-  agents: { slug: string; created_at: string }[];
   districts: { slug: string }[];
   /** `track:districtSlug` for every pair that actually has an open listing. */
   liveLandings: Set<string>;
@@ -57,7 +56,6 @@ async function fromDatabase(): Promise<DbRows> {
   const empty: DbRows = {
     jobs: [],
     companies: [],
-    agents: [],
     districts: [],
     liveLandings: new Set(),
   };
@@ -65,7 +63,13 @@ async function fromDatabase(): Promise<DbRows> {
   try {
     const supabase = createPublicClient();
 
-    const [jobs, companies, agents, districts, landings] = await Promise.all([
+    /*
+      No consultants. The directory is behind a sign-in since migration 68 —
+      it answers approved employers and admins and nobody else — so a profile
+      URL in a sitemap would advertise a page every crawler is turned away
+      from, and name a person while doing it.
+    */
+    const [jobs, companies, districts, landings] = await Promise.all([
       supabase
         .from('jobs')
         .select('slug, published_at')
@@ -76,9 +80,6 @@ async function fromDatabase(): Promise<DbRows> {
         .order('published_at', { ascending: false })
         .limit(5000),
       supabase.from('companies').select('slug, created_at').limit(5000),
-      // Only profiles the owner has made public belong in a sitemap. A gated
-      // profile must not be advertised to a crawler.
-      supabase.from('agent_profiles').select('slug, created_at').eq('visibility', 'public').limit(5000),
       supabase.from('districts').select('slug'),
       /**
        * Which track x district pages have anything on them.
@@ -108,7 +109,6 @@ async function fromDatabase(): Promise<DbRows> {
     return {
       jobs: jobs.data ?? [],
       companies: companies.data ?? [],
-      agents: agents.data ?? [],
       districts: districts.data ?? [],
       liveLandings,
     };
@@ -124,13 +124,12 @@ async function fromDatabase(): Promise<DbRows> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const { jobs, companies, agents, districts, liveLandings } = await fromDatabase();
+  const { jobs, companies, districts, liveLandings } = await fromDatabase();
 
   const staticPages: MetadataRoute.Sitemap = [
     entry('/', { changeFrequency: 'daily', priority: 1 }),
     entry('/jobs', { changeFrequency: 'hourly', priority: 0.9 }),
     entry('/companies', { changeFrequency: 'daily', priority: 0.6 }),
-    entry('/agents', { changeFrequency: 'daily', priority: 0.6 }),
     entry('/employers', { changeFrequency: 'monthly', priority: 0.8 }),
     entry('/blog', { changeFrequency: 'weekly', priority: 0.6 }),
   ];
@@ -169,20 +168,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   );
 
-  const agentPages: MetadataRoute.Sitemap = agents.map((agent) =>
-    entry(`/agents/${agent.slug}`, {
-      lastModified: agent.created_at,
-      changeFrequency: 'weekly',
-      priority: 0.4,
-    }),
-  );
-
-  return [
-    ...staticPages,
-    ...blogPages,
-    ...landingPages,
-    ...jobPages,
-    ...companyPages,
-    ...agentPages,
-  ];
+  return [...staticPages, ...blogPages, ...landingPages, ...jobPages, ...companyPages];
 }

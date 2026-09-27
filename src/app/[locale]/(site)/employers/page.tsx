@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale, alternatesFor } from '@/i18n/routing';
 import { EmployerLanding } from '@/components/home/employer-landing';
-import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -38,14 +37,25 @@ export default async function EmployersPage({
   const locale = asLocale((await params).locale);
   setRequestLocale(locale);
 
-  // The one live number on the page. An unreachable database renders zero
-  // rather than failing the page — the argument stands without it.
+  /*
+    The one live number on the page. An unreachable database renders zero
+    rather than failing the page — the argument stands without it.
+
+    Counted with the service role, deliberately: this page is read by
+    visitors, and since migration 68 the viewer's own session reads no
+    consultant rows at all unless they are an approved employer — so the
+    count under RLS was "how many can *you* see", which for a visitor is
+    zero. The number is a fact about the directory, not about the reader,
+    and it says nothing about anybody in it. Only listed profiles: a
+    consultant on `hidden` is not in the directory being advertised.
+  */
   let consultantCount = 0;
   try {
-    const supabase = await createClient();
-    const { count } = await supabase
+    const { createAdminClient } = await import('@/lib/supabase/admin');
+    const { count } = await createAdminClient()
       .from('agent_profiles')
-      .select('id', { count: 'exact', head: true });
+      .select('id', { count: 'exact', head: true })
+      .neq('visibility', 'hidden');
     consultantCount = count ?? 0;
   } catch {
     /* zero is an honest fallback */

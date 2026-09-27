@@ -319,6 +319,12 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  // The one error every form here knows how to recover from.
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
   const { data: moved, error } = await supabase
     .from('jobs')
     .update({ status: parsed.data.status })

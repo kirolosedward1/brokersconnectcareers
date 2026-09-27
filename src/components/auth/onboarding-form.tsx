@@ -86,8 +86,10 @@ export function OnboardingForm({
         `//evil.example` through: a protocol-relative URL, and an open redirect
         the moment the last hop stopped going through next-intl's router.
       */
+      // The same answer homeFor gives on the server: the console for the role
+      // the database recorded, not the one the form asked for.
       const destination =
-        safeNext(next) ?? (result.data!.role === 'employer' ? '/employer' : '/dashboard/applications');
+        safeNext(next) ?? (result.data!.role === 'employer' ? '/employer' : '/dashboard');
       /*
         The profile did not exist a moment ago and now does, which changes
         what every server component on the other side renders. Fetched

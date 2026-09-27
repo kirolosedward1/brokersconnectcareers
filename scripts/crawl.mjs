@@ -45,7 +45,7 @@
  */
 const BASE = (process.argv[2] ?? 'http://localhost:3000').replace(/\/$/, '');
 
-const SEEDS = ['/', '/jobs', '/companies', '/agents', '/blog', '/employers', '/privacy', '/terms'];
+const SEEDS = ['/', '/jobs', '/companies', '/blog', '/employers', '/privacy', '/terms'];
 
 /** Behind a sign-in, or not a page. Crawling these proves nothing about links. */
 const PRIVATE =

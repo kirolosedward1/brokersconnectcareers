@@ -10,6 +10,8 @@ export type ActionResult<T = undefined> =
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
 export async function toggleSavedJob(jobId: string): Promise<ActionResult<{ saved: boolean }>> {
+  if (!z.string().uuid().safeParse(jobId).success) return { ok: false, error: 'invalid' };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -38,7 +40,18 @@ export async function toggleSavedJob(jobId: string): Promise<ActionResult<{ save
   const { error } = await supabase
     .from('saved_jobs')
     .insert({ job_id: jobId, candidate_id: user.id });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    // Two taps in flight at once: the second insert meets the primary key.
+    // The listing is saved, which is what both taps asked for.
+    if (error.code === '23505') {
+      revalidatePath('/dashboard/saved');
+      return { ok: true, data: { saved: true } };
+    }
+    // Refused by the policy — an employer or admin account, which the button
+    // is not shown to but a request can still come from.
+    if (/row-level security/.test(error.message)) return { ok: false, error: 'forbidden' };
+    return { ok: false, error: error.message };
+  }
 
   revalidatePath('/dashboard/saved');
   return { ok: true, data: { saved: true } };

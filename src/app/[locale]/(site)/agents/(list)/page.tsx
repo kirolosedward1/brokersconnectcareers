@@ -16,7 +16,9 @@ import {
   serializeAgentFilters,
   shortlistedAgentIds,
 } from '@/lib/queries/agents';
-import { getViewer } from '@/lib/auth';
+import { actorOf, requireDirectoryViewer } from '@/lib/auth';
+import { canShortlistAgents, hasVerifiedCompany, isAdmin } from '@/lib/permissions';
+import { createClient } from '@/lib/supabase/server';
 
 export async function generateMetadata({
   params,
@@ -30,9 +32,20 @@ export async function generateMetadata({
     title: t('title'),
     description: t('subtitle'),
     alternates: alternatesFor('/agents', locale),
+    // A directory of people, for the companies that hire them. Not for a
+    // crawler, whatever a crawler is told elsewhere.
+    robots: { index: false, follow: false },
   };
 }
 
+/**
+ * The consultant directory, for the people who hire.
+ *
+ * Approved employers and admins. requireDirectoryViewer turns everybody else
+ * away before a single row is asked for — and the database would have
+ * answered them with nothing anyway, which is the arrangement that makes the
+ * page a courtesy rather than a control (see migration 68).
+ */
 export default async function AgentsPage({
   params,
   searchParams,
@@ -44,12 +57,14 @@ export default async function AgentsPage({
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
+  const viewer = await requireDirectoryViewer(locale);
+  const actor = actorOf(viewer);
+
   const filters = parseAgentFilters(await searchParams);
-  const [{ agents, total, pageCount, page }, districts, districtMap, viewer] = await Promise.all([
+  const [{ agents, total, pageCount, page }, districts, districtMap] = await Promise.all([
     queryAgents(filters),
     getDistricts(),
     getDistrictMap(),
-    getViewer(),
   ]);
 
   /*
@@ -59,10 +74,29 @@ export default async function AgentsPage({
     on this page — the directory itself is the same list for everybody, and
     folding a per-reader column into it would make every result set personal.
   */
-  const canShortlist = Boolean(viewer?.company);
+  const canShortlist = canShortlistAgents(actor);
   const shortlisted = canShortlist
     ? await shortlistedAgentIds(agents.map((agent) => agent.id))
     : new Set<string>();
+
+  /*
+    Whether this member may act on the "verify your company" call to action.
+    The verification panel is a company admin's; a recruiter sent there finds
+    nothing to press, so they are told who can instead.
+  */
+  let isCompanyAdmin = false;
+  if (viewer.company && !isAdmin(actor)) {
+    const supabase = await createClient();
+    // Allowed to fail quietly: it only decides whether a button or a
+    // sentence sits in the banner, and the sentence is the safe default.
+    const { data: membership } = await supabase
+      .from('company_members')
+      .select('role')
+      .eq('company_id', viewer.company.id)
+      .eq('user_id', viewer.userId)
+      .maybeSingle();
+    isCompanyAdmin = membership?.role === 'admin';
+  }
 
   const t = await getTranslations('agents');
   const tJobs = await getTranslations('jobs');
@@ -73,8 +107,9 @@ export default async function AgentsPage({
     (filters.availability ? 1 : 0) +
     (filters.minYears ? 1 : 0);
 
-  const unlocked = agents.some((agent) => agent.is_unlocked && agent.full_name);
-  const showGate = !unlocked && viewer?.company?.verification_status !== 'verified';
+  // The gate explained, once, to a company that is not yet verified. An admin
+  // reads everything and needs no explanation.
+  const showGate = !isAdmin(actor) && !hasVerifiedCompany(actor);
 
   return (
     <div className="shell py-6">
@@ -88,11 +123,15 @@ export default async function AgentsPage({
           <ShieldCheck className="size-6 shrink-0 text-primary" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="font-medium">{t('locked')}</p>
-            <p className="text-sm text-muted-foreground">{t('lockedBody')}</p>
+            <p className="text-sm text-muted-foreground">
+              {isCompanyAdmin ? t('lockedBody') : t('lockedRecruiter')}
+            </p>
           </div>
-          <Button asChild>
-            <Link href="/employer/company">{t('lockedCta')}</Link>
-          </Button>
+          {isCompanyAdmin ? (
+            <Button asChild>
+              <Link href="/employer/company">{t('lockedCta')}</Link>
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -107,9 +146,7 @@ export default async function AgentsPage({
       </div>
 
       {/* The rail sits where the jobs board puts its own — leading side, same
-          width, no box around it. It was on the trailing side in a shadowed
-          card, so the two list pages of one product filtered from opposite
-          edges of the screen. */}
+          width, no box around it. */}
       <div className="mt-4 grid gap-6 lg:mt-5 lg:grid-cols-[15.5rem_minmax(0,1fr)] xl:gap-8">
         <aside className="hidden lg:block">
           <div className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto pe-2">
@@ -128,6 +165,12 @@ export default async function AgentsPage({
             <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
               <EmptyIllustration name="choose" />
               <p className="font-medium">{t('empty')}</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{t('emptyHint')}</p>
+              {activeCount > 0 ? (
+                <Button asChild variant="outline" className="mt-5">
+                  <Link href="/agents">{tJobs('clearFilters')}</Link>
+                </Button>
+              ) : null}
             </div>
           ) : (
             <>
@@ -142,7 +185,10 @@ export default async function AgentsPage({
                     agent={agent}
                     locale={locale}
                     districts={districtMap}
-                    shortlistable={canShortlist}
+                    // Only an open card can be kept: migration 60's insert
+                    // policy refuses a locked one, so the control is offered
+                    // exactly where it can work.
+                    shortlistable={canShortlist && agent.is_unlocked}
                     shortlisted={shortlisted.has(agent.id)}
                   />
                 </li>

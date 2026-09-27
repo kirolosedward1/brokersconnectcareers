@@ -48,6 +48,11 @@ export async function saveExperience(input: unknown): Promise<ActionResult<{ id:
     parsed.data;
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
   const row = {
     agent_id: agentId,
     company_name: companyName,
@@ -86,6 +91,11 @@ export async function saveEducation(input: unknown): Promise<ActionResult<{ id: 
   const { id, agentId, institution, degree, field, graduated } = parsed.data;
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
   const row = {
     agent_id: agentId,
     institution,
@@ -126,6 +136,11 @@ export async function saveCertification(input: unknown): Promise<ActionResult<{ 
   const { id, agentId, name, issuer, issued, expires } = parsed.data;
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
   const row = {
     agent_id: agentId,
     name,
@@ -155,9 +170,16 @@ export async function deleteCvEntry(
   section: keyof typeof SECTIONS,
   id: string,
 ): Promise<ActionResult> {
-  if (!(section in SECTIONS)) return { ok: false, error: 'invalid' };
+  // An own key, not `in`: `'constructor' in SECTIONS` is true, and the table
+  // name it resolves to is a function. And the id has to be one.
+  if (!Object.prototype.hasOwnProperty.call(SECTIONS, section)) return { ok: false, error: 'invalid' };
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
   /*
     Asked, not assumed. A delete that RLS filters to zero rows comes back with
     no error at all, so an entry on somebody else's profile — or one already

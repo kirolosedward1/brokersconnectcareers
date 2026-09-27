@@ -60,7 +60,6 @@ for (const path of [
   '/jobs',
   '/employers',
   '/companies',
-  '/agents',
   '/blog',
   '/sign-in',
   '/sign-up',
@@ -82,6 +81,10 @@ for (const path of [
   '/employer/applicants',
   '/notifications',
   '/onboarding',
+  // The consultant directory, since migration 68: a directory of people, for
+  // the companies that hire them.
+  '/agents',
+  '/agents/menna-sherif-909521',
 ]) {
   const { status, headers } = await get(path);
   const location = headers.get('location') ?? '';
@@ -333,7 +336,6 @@ section('every page announces what it is');
     '/jobs',
     '/employers',
     '/companies',
-    '/agents',
     '/blog',
     '/sign-in',
     '/sign-up',
@@ -374,7 +376,7 @@ section('the marketing header appears once, and only where it belongs');
   // one; these assert the public and auth halves of that.
   const headers = (body) => (body.match(/group\/header/g) ?? []).length;
 
-  for (const path of ['/', '/jobs', '/companies', '/agents', '/blog', '/employers']) {
+  for (const path of ['/', '/jobs', '/companies', '/blog', '/employers']) {
     const { body } = await get(path);
     check(`${path} renders exactly one site header`, headers(body) === 1, `found ${headers(body)}`);
   }
@@ -395,7 +397,6 @@ section('a URL with no record behind it is never indexable');
   for (const path of [
     '/jobs/no-such-listing',
     '/companies/no-such-company',
-    '/agents/no-such-consultant',
   ]) {
     const { body } = await get(path);
     check(`${path} is served noindex`, /<meta name="robots" content="noindex/.test(body));
@@ -439,23 +440,12 @@ section('the board holds its shape under a hostile query string');
   );
 
   /*
-    The directory had the same bug and was never revisited.
-
-    Its total rides along on each row as `count(*) over ()`, so a page with no
-    rows carried no total — and `?page=99` reported zero consultants and
-    rendered "مفيش استشاريين مطابقين لبحثك" on an unfiltered directory of
-    seven people. Not a 500 like the board's, which is why nobody noticed: a
-    confident empty state is quieter than an error and says something false.
+    The directory had the same bug and was fixed the same way (queryAgents in
+    src/lib/queries/agents.ts). It cannot be probed from here any more: it
+    answers approved employers and admins only, and this script has no
+    session. The policy suite covers the function; the page is asserted below
+    to turn a stranger away.
   */
-  const agentsFirst = await get('/agents?page=1');
-  const agentsPast = await get('/agents?page=99');
-  const agentCards = (body) => new Set(body.match(/\/agents\/[a-z0-9-]+-\d{6}/g) ?? []).size;
-
-  check('a directory page past the end is still a page', agentsPast.status === 200, `got ${agentsPast.status}`);
-  check(
-    `and it shows consultants rather than "nobody matches" (${agentCards(agentsPast.body)} of ${agentCards(agentsFirst.body)})`,
-    agentCards(agentsPast.body) > 0 && agentCards(agentsPast.body) === agentCards(agentsFirst.body),
-  );
 
   /*
     And the company directory, which had the board's *other* half: it paginates
@@ -567,42 +557,31 @@ section('the public API refuses what the pages refuse');
 }
 
 // ---------------------------------------------------------------------------
-section('the directory names nobody it should not');
+section('the directory is closed to strangers');
 {
+  /*
+    A directory of people, for the companies that hire them (migration 68).
+    A visitor with no session gets sent to sign in from the listing and from
+    any profile URL, and nothing about anybody — no card, no name, no
+    wa.me link — is in the response that sends them.
+  */
   const list = await get('/agents');
-  check('the consultant directory renders', list.status === 200);
+  check('the consultant directory turns a stranger away',
+    list.status === 307 && (list.headers.get('location') ?? '').includes('/sign-in'),
+    `got ${list.status}`);
+  check('and names nobody on the way', !/\/agents\/[a-z0-9-]+-\d{6}/.test(list.body) && !/wa\.me\/\d/.test(list.body));
 
-  /*
-    An anonymous visitor sees gated cards without a name — search_agents()
-    returns null for full_name unless the viewer is a verified employer. The
-    page says so in words, which is what this looks for: if the gate ever
-    stopped applying, the anonymous label would stop appearing while the cards
-    stayed.
-  */
-  /*
-    The six-digit suffix is the slug builder's, and it is what separates a real
-    consultant from `/agents/agent-card` — a chunk filename that appears in the
-    RSC payload and matched a looser pattern, quietly turning four of these
-    assertions into checks that the not-found page renders.
-  */
-  const slugs = [
-    ...new Set([...list.body.matchAll(/\/agents\/([a-z0-9-]+-\d{6})\b/g)].map((m) => m[1])),
-  ];
-  check(`found consultants to open (${slugs.length})`, slugs.length > 0);
+  const profile = await get('/agents/menna-sherif-909521');
+  check('a profile URL turns a stranger away too',
+    profile.status === 307 && (profile.headers.get('location') ?? '').includes('/sign-in'),
+    `got ${profile.status}`);
+  check('with no number to call in the response', !/wa\.me\/\d/.test(profile.body));
 
-  for (const slug of slugs.slice(0, 6)) {
-    const { status, body } = await get(`/agents/${slug}`);
-    check(`/agents/${slug} renders`, status === 200, `got ${status}`);
-
-    /*
-      A gated card carries no WhatsApp link. That is the assertion worth
-      making: the name has a stand-in the page shows either way, but a `wa.me`
-      href is unambiguous — it is either there or it is not, and for a visitor
-      with no session it must not be.
-    */
-    check(`/agents/${slug} gives a stranger no number to call`,
-      !/wa\.me\/\d/.test(body));
-  }
+  // The sitemap and robots agree: nothing under /agents is advertised.
+  const sitemap = await get('/sitemap.xml');
+  check('the sitemap advertises no consultant', !/\/agents/.test(sitemap.body));
+  const robots = await get('/robots.txt');
+  check('and robots disallows the directory', /Disallow:\s*\/agents/.test(robots.body));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

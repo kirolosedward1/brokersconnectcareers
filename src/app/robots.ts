@@ -13,6 +13,8 @@ export default function robots(): MetadataRoute.Robots {
         '/admin',
         '/notifications',
         '/onboarding',
+        // A directory of people, behind a sign-in since migration 68.
+        '/agents',
         '/auth',
         '/api',
       ],

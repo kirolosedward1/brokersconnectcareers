@@ -1,5 +1,6 @@
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
+import { ShieldAlert } from 'lucide-react';
 import { redirect } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { CONSOLE_MESSAGES, PUBLIC_MESSAGES, pick } from '@/i18n/client-messages';
@@ -16,6 +17,13 @@ import type {
   NotificationRow,
 } from '@/lib/supabase/database.types';
 import { getViewer } from '@/lib/auth';
+import {
+  canAccessAdminArea,
+  canAccessCandidateArea,
+  canAccessEmployerArea,
+  canBrowseAgentDirectory,
+  isSuspended,
+} from '@/lib/permissions';
 
 /**
  * Everything behind a sign-in, under its own chrome.
@@ -26,9 +34,10 @@ import { getViewer } from '@/lib/auth';
  * products for the same person, and sharing a shell would make every decision
  * about one a compromise about the other.
  *
- * The rail is built from the viewer's role rather than from the section they
- * happen to be in, so an admin can see the moderation queues and their own
- * employer area at once instead of navigating between two separate menus.
+ * The rail is built from what the viewer may reach, asked of permissions.ts
+ * rather than of the role directly, so an admin who also runs a company sees
+ * the moderation queues and their own employer area at once, and an admin
+ * with no company sees no employer area at all.
  */
 export default async function AppLayout({
   children,
@@ -42,12 +51,23 @@ export default async function AppLayout({
 
   const viewer = await getViewer();
   if (!viewer) redirect({ href: '/sign-in', locale });
+
+  /*
+    A read that failed is not an account that has not onboarded — the same
+    distinction requireProfile makes, made here too. This layout sent an
+    unreadable profile to /onboarding, which then threw, so a database blip
+    lost the console shell on the way to the error it was about to show.
+  */
+  if (viewer!.profileUnreadable) {
+    throw new Error('the profile row could not be read');
+  }
   if (!viewer!.profile) redirect({ href: '/onboarding', locale });
 
   // redirect() throws, but its return type does not narrow, so this is the
   // one place the assertion is made rather than repeated at every use.
   const profile = viewer!.profile!;
   const role = profile.role;
+  const actor = viewer!;
 
   // The feed and its count, read under the viewer's own session — RLS is what
   // scopes them, not a filter written here. Six is what fits in the panel
@@ -66,26 +86,26 @@ export default async function AppLayout({
   ]);
   const notifications = (recent ?? []) as NotificationRow[];
 
+  const showEmployer = canAccessEmployerArea(actor);
+  const showAdmin = canAccessAdminArea(actor);
+  const showCandidate = canAccessCandidateArea(actor);
+
   /**
    * What is waiting, for the badges on the rail.
    *
-   * One summary call, chosen by role, and only for the two roles that have
-   * queues. A candidate gets none: the numbers available for them — total
-   * applications, total replies — only ever go up, and a badge that never
-   * clears teaches people to ignore the badges that do.
+   * One summary call per area the viewer actually has. A candidate gets none:
+   * the numbers available for them — total applications, total replies —
+   * only ever go up, and a badge that never clears teaches people to ignore
+   * the badges that do.
    *
    * Wrapped so the console still renders if the call fails. A rail without
    * counts is a rail; a rail that throws is a locked-out user.
    */
   const [adminSummary, employerSummary] = await Promise.all([
-    role === 'admin'
+    showAdmin
       ? optional(supabase.rpc('admin_summary').then((r) => r.data), null)
       : Promise.resolve(null),
-    // Admins get this one too. The rail shows them both areas, so scoping the
-    // applicant count to `role === 'employer'` would leave an admin who also
-    // runs a company with a badge on the moderation queues and none on their
-    // own applicants — a rule with a hole in it rather than a rule.
-    role === 'admin' || role === 'employer'
+    showEmployer
       ? optional(supabase.rpc('employer_summary').then((r) => r.data), null)
       : Promise.resolve(null),
   ]);
@@ -132,6 +152,16 @@ export default async function AppLayout({
         badge: employerCounts?.applicants_new,
       },
       { href: '/employer/jobs', label: tEmployer('jobs'), icon: 'applications' },
+      /*
+        The directory, from the console. It was reachable only through the
+        public site's header, so an employer working the inbox had to leave
+        the console to find the one page that answers "who else is out
+        there". Offered only to accounts the directory answers — an employer
+        still awaiting approval sees the item the day they are approved.
+      */
+      ...(canBrowseAgentDirectory(actor)
+        ? [{ href: '/agents' as const, label: tNav('agents'), icon: 'directory' as const }]
+        : []),
       { href: '/employer/talent', label: tEmployer('shortlist'), icon: 'shortlist' },
       { href: '/employer/company', label: tEmployer('company'), icon: 'company' },
       { href: '/employer/billing', label: tEmployer('billing'), icon: 'billing' },
@@ -167,6 +197,8 @@ export default async function AppLayout({
         badge: adminCounts?.accounts_pending,
       },
       { href: '/admin/email', label: tAdmin('emailActivity'), icon: 'email' },
+      // The directory, for review. Admins read it whole.
+      { href: '/agents', label: tNav('agents'), icon: 'directory' },
     ],
   };
 
@@ -178,12 +210,25 @@ export default async function AppLayout({
     ],
   };
 
-  const groups =
-    role === 'admin'
-      ? [adminGroup, employerGroup, accountGroup]
-      : role === 'employer'
-        ? [employerGroup, accountGroup]
-        : [candidateGroup, accountGroup];
+  const groups: AppNavGroup[] = [
+    ...(showAdmin ? [adminGroup] : []),
+    ...(showEmployer ? [employerGroup] : []),
+    ...(showCandidate ? [candidateGroup] : []),
+    accountGroup,
+  ];
+
+  /*
+    A suspended account.
+
+    An admin turned this account off, and until now the console did not say
+    so: the pages rendered, the database quietly returned nothing, and the
+    person was left with empty lists and buttons that did not work. The
+    reason for suspending somebody is that they should not be doing any of
+    this, so the console says that instead of the pages — with the account
+    settings and sign-out still reachable, because their own data is still
+    theirs.
+  */
+  const suspended = isSuspended(actor);
 
   /*
     A second provider, nested inside the public one.
@@ -198,7 +243,7 @@ export default async function AppLayout({
       messages={pick(await getMessages(), [...PUBLIC_MESSAGES, ...CONSOLE_MESSAGES])}
     >
     <AppShell
-      groups={groups}
+      groups={suspended ? [accountGroup] : groups}
       bell={
         <NotificationBell label={tNotifications('title')} unread={unread ?? 0}>
           <div className="flex items-center justify-between gap-2 border-b border-border ps-3 pe-1.5 py-1">
@@ -236,8 +281,27 @@ export default async function AppLayout({
     >
       {/* Admins only: a platform that cannot send email should say so on every
           console page, not only the one page about email. */}
-      {role === 'admin' ? <MailOffBanner /> : null}
-      {children}
+      {showAdmin ? <MailOffBanner /> : null}
+
+      {suspended ? (
+        <div
+          role="alert"
+          className="mx-auto max-w-2xl rounded-xl border border-destructive/30 bg-destructive/5 p-6"
+        >
+          <p className="flex items-center gap-2 text-lg font-semibold">
+            <ShieldAlert className="size-5 shrink-0 text-destructive" aria-hidden />
+            {tAccount('suspendedTitle')}
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {tAccount('suspendedBody')}
+          </p>
+          {profile.approval_note ? (
+            <p className="mt-3 rounded-lg bg-card px-4 py-3 text-sm">{profile.approval_note}</p>
+          ) : null}
+        </div>
+      ) : (
+        children
+      )}
     </AppShell>
     </NextIntlClientProvider>
   );

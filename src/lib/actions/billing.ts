@@ -48,6 +48,18 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
     : { data: null };
   if (!company) return { ok: false, error: 'no_company' };
 
+  // Buying is a company admin's act, from an account in good standing. The
+  // order row is written with the service role below, so the caller's
+  // standing has to be established here — orders_select_own is admin-only,
+  // and a recruiter could otherwise create orders they can never read.
+  const [{ data: isCompanyAdmin }, { data: standing }] = await Promise.all([
+    supabase.rpc('is_company_admin', { target: company.id }),
+    supabase.from('profiles').select('approval_status').eq('id', user.id).maybeSingle(),
+  ]);
+  if (!isCompanyAdmin || standing?.approval_status !== 'approved') {
+    return { ok: false, error: 'forbidden' };
+  }
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name, whatsapp_phone')

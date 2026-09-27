@@ -54,6 +54,11 @@ export async function moderateJob(input: unknown): Promise<ActionResult> {
         : { status: 'rejected', rejection_note: parsed.data.note || null },
     )
     .eq('id', parsed.data.jobId)
+    // Only a listing that is actually waiting. A queue open in a stale tab
+    // used to publish a listing the employer had since pulled back to draft,
+    // or closed — an admin bypasses the transition guard, so nothing else
+    // would have refused it.
+    .eq('status', 'pending_review')
     // An id that matches nothing is not a successful moderation. Without this
     // the reviewer was told it worked and the employer was emailed about a
     // decision on a listing that does not exist.
@@ -75,7 +80,9 @@ export async function moderateJob(input: unknown): Promise<ActionResult> {
     return { ok: false, error: error.message };
   }
 
-  if (!moderated?.length) return { ok: false, error: 'not_found' };
+  // Nothing waiting under that id: gone, or already decided, or withdrawn by
+  // the employer. Named for the queue, which re-reads on it.
+  if (!moderated?.length) return { ok: false, error: 'stale' };
 
   // The employer has been waiting on this decision; it is the one moderation
   // outcome they actually need pushed to them rather than discovered.
@@ -106,12 +113,16 @@ export async function setJobFeatured(input: unknown): Promise<ActionResult> {
         : null,
     })
     .eq('id', parsed.data.jobId)
+    // A featured slot is a place on the board; a draft or a rejected listing
+    // has no place on it to be given.
+    .eq('status', 'active')
     .select('id');
 
   if (error) return { ok: false, error: error.message };
-  if (!featured?.length) return { ok: false, error: 'not_found' };
+  if (!featured?.length) return { ok: false, error: 'stale' };
 
   revalidatePath('/admin/jobs');
+  revalidatePath('/jobs');
   return { ok: true };
 }
 
@@ -145,7 +156,7 @@ export async function verifyCompany(input: unknown): Promise<ActionResult> {
   // A company id that matches nothing is not a completed review.
   if (!verified?.length) return { ok: false, error: 'not_found' };
 
-  await supabase
+  const { error: documentsError } = await supabase
     .from('company_documents')
     .update({
       status: parsed.data.approve ? 'verified' : 'rejected',
@@ -155,6 +166,11 @@ export async function verifyCompany(input: unknown): Promise<ActionResult> {
     })
     .eq('company_id', parsed.data.companyId)
     .eq('status', 'pending');
+
+  // The company is decided and the papers are not: said, rather than reported
+  // as a finished review with documents still sitting at `pending` in the
+  // queue the reviewer is looking at.
+  if (documentsError) return { ok: false, error: documentsError.message };
 
   // The owner is told what the review decided. Transactional: a company left
   // waiting on verification has no other way to find out, and the bell only
@@ -250,16 +266,26 @@ export async function actOnReportedJob(input: unknown): Promise<ActionResult<{ t
 
 /** Mints a short-lived signed URL for a verification document. */
 export async function getDocumentUrl(documentId: string): Promise<ActionResult<{ url: string }>> {
+  if (!z.string().uuid().safeParse(documentId).success) return { ok: false, error: 'invalid' };
+
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
   const { data: document } = await supabase
     .from('company_documents')
-    .select('storage_path')
+    .select('storage_path, company_id')
     .eq('id', documentId)
     .maybeSingle();
 
   if (!document) return { ok: false, error: 'not_found' };
+
+  // The row's path is one the company wrote, and the signed URL is minted with
+  // the service role — so the path is checked to be that company's own folder
+  // and one file before anything is signed.
+  const { isOwnStoragePath } = await import('@/lib/storage-path');
+  if (!isOwnStoragePath(document.company_id, document.storage_path)) {
+    return { ok: false, error: 'not_found' };
+  }
 
   const { signedUrl, COMPANY_DOCS_BUCKET } = await import('@/lib/storage');
   const url = await signedUrl(COMPANY_DOCS_BUCKET, document.storage_path, 300);

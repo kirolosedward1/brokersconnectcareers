@@ -4,6 +4,17 @@ import { redirect } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
 import type { Locale } from '@/i18n/routing';
+import {
+  canAccessAdminArea,
+  canAccessCandidateArea,
+  canAccessEmployerArea,
+  canBrowseAgentDirectory,
+  canViewAgentProfile,
+  directoryDeniedRedirect,
+  homeFor,
+  isAdmin,
+  type Actor,
+} from '@/lib/permissions';
 
 export type Viewer = {
   userId: string;
@@ -33,9 +44,10 @@ export type Viewer = {
 };
 
 /**
- * The signed-in user together with their profile and (for employers) their
- * company. Cached per request, so calling it from a layout and again from a
- * page inside that layout costs one round trip, not two.
+ * The signed-in user together with their profile and (for anyone who acts
+ * for a company) their company. Cached per request, so calling it from a
+ * layout and again from a page inside that layout costs one round trip, not
+ * two.
  *
  * A null profile means the user authenticated but has not been through
  * /onboarding yet — the absence of the row is the signal.
@@ -76,7 +88,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     .maybeSingle();
 
   let company: CompanyRow | null = null;
-  if (profile?.role === 'employer') {
+  if (profile?.role === 'employer' || profile?.role === 'admin') {
     /*
       Through membership, not ownership.
 
@@ -90,6 +102,11 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 
       my_company_id() is the single answer to "which company am I acting
       for", and it breaks ties deterministically: admin first, then oldest.
+
+      Admins too. The rail offered an admin the whole employer console and
+      this never looked their company up, so every page in it rendered the
+      "create your company first" state — including for an admin who runs
+      one. An admin with no membership gets null here and no employer console.
     */
     const { data: companyId } = await supabase.rpc('my_company_id');
     if (companyId) {
@@ -141,26 +158,88 @@ export async function requireProfile(locale: Locale): Promise<Viewer & { profile
   return viewer as Viewer & { profile: ProfileRow };
 }
 
+/**
+ * The employer console: an employer, or an admin who belongs to a company.
+ *
+ * Everybody else goes home — to the place `homeFor` names for them, so a
+ * candidate lands on their dashboard and an admin with no company on the
+ * moderation queues rather than on a console full of empty states.
+ */
 export async function requireEmployer(locale: Locale) {
   const viewer = await requireProfile(locale);
-  if (viewer.profile.role !== 'employer' && viewer.profile.role !== 'admin') {
-    redirect({ href: '/dashboard', locale });
+  if (!canAccessEmployerArea(viewer)) {
+    redirect({ href: homeFor(viewer), locale });
   }
   return viewer;
 }
 
+/**
+ * The candidate's own pages. Candidates only: an employer goes to their
+ * console and an admin to theirs. An admin used to be let through here and
+ * ended up on a dashboard with no rail entry pointing back to it.
+ */
 export async function requireCandidate(locale: Locale) {
   const viewer = await requireProfile(locale);
-  if (viewer.profile.role === 'employer') {
-    redirect({ href: '/employer/jobs', locale });
+  if (!canAccessCandidateArea(viewer)) {
+    redirect({ href: homeFor(viewer), locale });
   }
   return viewer;
 }
 
 export async function requireAdmin(locale: Locale) {
   const viewer = await requireProfile(locale);
-  if (viewer.profile.role !== 'admin') {
-    redirect({ href: '/', locale });
+  if (!canAccessAdminArea(viewer)) {
+    redirect({ href: homeFor(viewer), locale });
   }
   return viewer;
 }
+
+/**
+ * The consultant directory: an approved employer or an admin.
+ *
+ * The page is the courtesy; the database is the rule. `search_agents()` and
+ * every agent_profiles policy already answer a candidate with nothing, so a
+ * candidate who typed /agents would see an empty directory rather than
+ * anybody's data. This sends them somewhere that makes sense instead.
+ */
+export async function requireDirectoryViewer(locale: Locale) {
+  const viewer = await requireProfile(locale);
+  if (!canBrowseAgentDirectory(viewer)) {
+    redirect({ href: directoryDeniedRedirect(viewer), locale });
+  }
+  return viewer;
+}
+
+/**
+ * One consultant's page: the directory's readers, or the consultant it
+ * belongs to. Called after the card has been fetched, because the card is
+ * what says whose it is — and get_agent_card() has already refused to return
+ * one to anybody outside these two groups, so `agent` being present is
+ * itself most of the answer.
+ */
+export async function requireAgentProfileViewer(
+  locale: Locale,
+  agent: { user_id: string | null },
+): Promise<Viewer & { profile: ProfileRow }> {
+  const viewer = await requireProfile(locale);
+  if (!canViewAgentProfile(viewer, agent)) {
+    redirect({ href: directoryDeniedRedirect(viewer), locale });
+  }
+  return viewer;
+}
+
+/** The viewer as the permission helpers see them. */
+export function actorOf(viewer: Viewer | null): Actor {
+  if (!viewer) return null;
+  return {
+    userId: viewer.userId,
+    profile: viewer.profile
+      ? { role: viewer.profile.role, approval_status: viewer.profile.approval_status }
+      : null,
+    company: viewer.company
+      ? { id: viewer.company.id, verification_status: viewer.company.verification_status }
+      : null,
+  };
+}
+
+export { isAdmin };

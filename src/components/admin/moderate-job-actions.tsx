@@ -18,6 +18,7 @@ export function ModerateJobActions({
   showFeature: boolean;
 }) {
   const t = useTranslations('admin');
+  const tCommon = useTranslations('common');
   const router = useRouter();
 
   const [rejecting, setRejecting] = useState(false);
@@ -29,13 +30,19 @@ export function ModerateJobActions({
     startTransition(async () => {
       const result = await fn();
       if (!result.ok) {
+        // Named, never echoed: `result.error` was printed as it stood, which
+        // put a Postgres constraint name under the reviewer's button.
         setError(
           result.error === 'post_cap'
             ? t('postCapBlocked')
             : result.error === 'no_credits'
               ? t('noCreditsBlocked')
-              : result.error ?? null,
+              : result.error === 'stale'
+                ? t('staleListing')
+                : tCommon('errorBody'),
         );
+        // The queue has moved on; show it as it is.
+        if (result.error === 'stale') router.refresh();
         return;
       }
       setError(null);

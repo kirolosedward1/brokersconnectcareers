@@ -11,9 +11,16 @@ import { COMPANY_DOCS_BUCKET } from '@/lib/buckets';
 import { recordCompanyDocument } from '@/lib/actions/company';
 import type { CompanyDocumentRow, VerificationStatus } from '@/lib/supabase/database.types';
 import { uuid } from '@/lib/utils';
+import { safeExtension } from '@/lib/storage-path';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 const MAX_BYTES = 10 * 1024 * 1024;
-const TYPES = ['application/pdf', 'image/png', 'image/jpeg'];
+const EXTENSIONS: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+};
+const TYPES = Object.keys(EXTENSIONS);
 
 export function VerificationPanel({
   companyId,
@@ -32,6 +39,7 @@ export function VerificationPanel({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function upload(docType: 'commercial_register' | 'tax_card') {
     return (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,7 +58,10 @@ export function VerificationPanel({
       }
 
       startTransition(async () => {
-        const extension = file.name.split('.').pop()?.toLowerCase() ?? 'pdf';
+        // From the type, not the name: a name with no extension, or one with
+        // characters the storage path rule refuses, must not fail an upload
+        // that is otherwise a perfectly good PDF.
+        const extension = EXTENSIONS[file.type] ?? safeExtension(file.name, 'pdf');
         // Private bucket, keyed by company id. Nothing here is ever served
         // publicly — reviewers read it through a signed URL.
         const path = `${companyId}/${docType}-${uuid()}.${extension}`;
@@ -65,6 +76,8 @@ export function VerificationPanel({
         }
 
         const result = await recordCompanyDocument({ companyId, docType, storagePath: path });
+
+        if (recoverSession(result)) return;
         if (!result.ok) {
           // The file is already in the private bucket and nothing will ever
           // point at it now — and a tax card is not a thing to leave lying

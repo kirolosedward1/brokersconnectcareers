@@ -5,17 +5,28 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { COMPANY_LOGOS_BUCKET } from '@/lib/storage';
+import { isOwnStoragePath } from '@/lib/storage-path';
 import { buildCompanySlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { COMPANY_TYPES, HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
+import { logFailure } from '@/lib/observe';
 
 const schema = z.object({
   nameAr: z.string().trim().min(2).max(160),
   nameEn: z.string().trim().max(160).optional().nullable(),
   aboutAr: z.string().trim().max(2000).optional().nullable(),
   aboutEn: z.string().trim().max(2000).optional().nullable(),
-  website: z.string().trim().url().max(200).optional().nullable().or(z.literal('')),
+  // http(s) only. zod's .url() accepts `javascript:` and the value is rendered
+  // as a link on the public company page.
+  website: z
+    .string()
+    .trim()
+    .max(200)
+    .refine((value) => !value || /^https?:\/\/[^\s]+$/i.test(value), 'url')
+    .optional()
+    .nullable()
+    .or(z.literal('')),
   headcountBand: z.enum(HEADCOUNT_BANDS).optional().nullable(),
   companyType: z.enum(COMPANY_TYPES).optional().nullable(),
   districtId: z.coerce.number().int().positive().optional().nullable(),
@@ -157,6 +168,22 @@ export async function saveCompanyLogo(input: unknown): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
+  // The file is in this company's own folder and nowhere else. The column
+  // used to take any path at all, which made it a way to point a company's
+  // logo at another company's file, or at `..`.
+  if (
+    parsed.data.storagePath &&
+    !isOwnStoragePath(parsed.data.companyId, parsed.data.storagePath)
+  ) {
+    return { ok: false, error: 'invalid_path' };
+  }
+
+  const { data: before } = await supabase
+    .from('companies')
+    .select('logo_url')
+    .eq('id', parsed.data.companyId)
+    .maybeSingle();
+
   const url = parsed.data.storagePath
     ? supabase.storage.from(COMPANY_LOGOS_BUCKET).getPublicUrl(parsed.data.storagePath).data
         .publicUrl
@@ -178,6 +205,22 @@ export async function saveCompanyLogo(input: unknown): Promise<ActionResult> {
   if (error) return { ok: false, error: error.message };
   if (!updated?.length) return { ok: false, error: 'forbidden' };
 
+  // The logo it replaced, gone — for the reason saveAvatar gives. Through the
+  // caller's session, which the storage policy confines to the company's own
+  // folder; a failure is logged and the save stands.
+  const marker = `/storage/v1/object/public/${COMPANY_LOGOS_BUCKET}/`;
+  const previousAt = before?.logo_url?.indexOf(marker) ?? -1;
+  const previous =
+    previousAt >= 0 ? decodeURIComponent(before!.logo_url!.slice(previousAt + marker.length).split('?')[0]) : null;
+  if (
+    previous &&
+    previous !== parsed.data.storagePath &&
+    isOwnStoragePath(parsed.data.companyId, previous)
+  ) {
+    const { error: removeError } = await supabase.storage.from(COMPANY_LOGOS_BUCKET).remove([previous]);
+    if (removeError) logFailure('company', 'could not remove the replaced logo', { company: parsed.data.companyId });
+  }
+
   revalidatePath('/employer/company');
   revalidatePath('/companies');
   return { ok: true };
@@ -198,10 +241,15 @@ export async function recordCompanyDocument(input: unknown): Promise<ActionResul
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
 
   // Storage RLS already confines uploads to the owner's own company folder;
-  // this check keeps a crafted request from pointing the row somewhere else.
-  if (!parsed.data.storagePath.startsWith(`${parsed.data.companyId}/`)) {
+  // this keeps a crafted request from pointing the row somewhere else — and
+  // exactly one file in that folder, not `<company>/../<other>/register.pdf`.
+  if (!isOwnStoragePath(parsed.data.companyId, parsed.data.storagePath)) {
     return { ok: false, error: 'invalid_path' };
   }
 
@@ -278,23 +326,61 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
   if (!companyId) return { ok: false, error: 'no_company' };
 
   /*
-    Asked of the database rather than scanned for in a page of accounts.
+    Before anything is looked up: the caller is an admin of this company and
+    their account is in good standing.
 
-    This listed the first 200 users on the platform and searched them in
-    JavaScript, which is right until account 201 and then quietly wrong:
-    inviting a colleague who does have an account starts answering "no account
-    with that email", confidently, with nothing for either person to go on.
+    The lookup below runs with the service role and answers whether an email
+    address has an account and, through the insert's refusal, whether it is a
+    candidate's — which is the one fact a consultant on `hidden` is entitled
+    to keep from an employer. It was reachable by any member, recruiters and
+    accounts still awaiting approval included, before the insert policy had
+    its say. The policy still decides the insert; this decides the question.
+  */
+  const [{ data: isAdmin }, { data: profile }] = await Promise.all([
+    supabase.rpc('is_company_admin', { target: companyId }),
+    supabase.from('profiles').select('approval_status').eq('id', user.id).maybeSingle(),
+  ]);
+  if (!isAdmin || profile?.approval_status !== 'approved') return { ok: false, error: 'forbidden' };
+
+  /*
+    Asked of the database rather than scanned for in a page of accounts.
 
     user_id_by_email is granted to service_role alone — the answer is whether
     an address has an account, which is not for every signed-in user to ask —
     and authorisation is unchanged: the membership row below still goes in
     through the caller's own session, so company_members_manage decides.
   */
-  const admin = createAdminClient();
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { ok: false, error: 'unavailable' };
+  }
   const { data: invitee } = await admin.rpc('user_id_by_email', { p_email: parsed.data.email });
 
   if (!invitee) return { ok: false, error: 'no_account' };
   if (invitee === user.id) return { ok: false, error: 'already_member' };
+
+  /*
+    One company per account, from this door.
+
+    my_company_id() picks an admin membership first, then the oldest, so
+    adding somebody who already works for another company as an admin here
+    silently switched their whole console — their listings, their applicants,
+    their free post — to this company. An account that belongs to a company
+    already is not one this button may claim.
+  */
+  const { data: elsewhere } = await admin
+    .from('company_members')
+    .select('company_id')
+    .eq('user_id', invitee)
+    .limit(1);
+  if (elsewhere?.length) {
+    return {
+      ok: false,
+      error: elsewhere[0].company_id === companyId ? 'already_member' : 'elsewhere',
+    };
+  }
 
   const { error } = await supabase
     .from('company_members')
@@ -311,7 +397,14 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
 }
 
 export async function removeCompanyMember(userId: string): Promise<ActionResult> {
+  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: 'invalid' };
+
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
   const { data: companyId } = await supabase.rpc('my_company_id');
   if (!companyId) return { ok: false, error: 'no_company' };
 

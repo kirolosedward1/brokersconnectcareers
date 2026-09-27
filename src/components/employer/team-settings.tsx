@@ -75,7 +75,9 @@ export function TeamSettings({
               ? t('teamAlreadyMember')
               : result.error === 'not_employer'
                 ? t('teamNotEmployer')
-                : tCommon('errorBody'),
+                : result.error === 'elsewhere'
+                  ? t('teamElsewhere')
+                  : tCommon('errorBody'),
         );
         return;
       }

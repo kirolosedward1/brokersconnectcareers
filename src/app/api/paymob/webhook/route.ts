@@ -51,9 +51,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'bad_signature' }, { status: 401 });
   }
 
-  const order = transaction.order as { id?: number; merchant_order_id?: string } | undefined;
-  const merchantOrderId = order?.merchant_order_id;
-  const paymobOrderId = order?.id != null ? String(order.id) : null;
+  const paymobOrder = transaction.order as { id?: number; merchant_order_id?: string } | undefined;
+  const merchantOrderId = paymobOrder?.merchant_order_id;
+  const paymobOrderId = paymobOrder?.id != null ? String(paymobOrder.id) : null;
   const success = transaction.success === true;
 
   if (!merchantOrderId) {
@@ -69,6 +69,38 @@ export async function POST(request: NextRequest) {
     // Retrying is the right behaviour here: the payment is real and our
     // configuration is the thing that is broken.
     return NextResponse.json({ error: 'not_configured' }, { status: 503 });
+  }
+
+  /*
+    The payment is for this order, and for this order's price.
+
+    merchant_order_id is not among the fields Paymob signs, so a genuinely
+    signed callback for one cheap payment could be re-posted with any other
+    pending order's id in it and settle that order too. The amount and the
+    currency are signed, so they are what the order is checked against:
+    a callback that paid less than the order costs, or paid in something
+    other than pounds, settles nothing — whatever id it carries.
+  */
+  const { data: ours, error: orderError } = await admin
+    .from('orders')
+    .select('id, amount_egp, status')
+    .eq('id', merchantOrderId)
+    .maybeSingle();
+
+  if (orderError) {
+    // Ours to fix, so a 5xx asks Paymob to try again.
+    console.error('[paymob] could not read the order:', orderError.message);
+    return NextResponse.json({ error: 'settle_failed' }, { status: 500 });
+  }
+  if (!ours) {
+    return NextResponse.json({ ok: true, outcome: 'unknown_order' });
+  }
+
+  const paidCents = Number(transaction.amount_cents);
+  const currency = String(transaction.currency ?? 'EGP').toUpperCase();
+  if (success && (currency !== 'EGP' || !Number.isFinite(paidCents) || paidCents < ours.amount_egp * 100)) {
+    console.warn(`[paymob] order ${merchantOrderId}: amount ${paidCents} ${currency} does not cover ${ours.amount_egp} EGP`);
+    return NextResponse.json({ error: 'amount_mismatch' }, { status: 400 });
   }
 
   const { data, error } = await admin.rpc('settle_order', {

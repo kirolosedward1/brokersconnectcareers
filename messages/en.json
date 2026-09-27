@@ -124,7 +124,8 @@
     "any": "Any",
     "showResults": "Show results",
     "companyType": "Company type",
-    "verifiedOnly": "Verified only"
+    "verifiedOnly": "Verified only",
+    "minYears": "{count}+ years of experience"
   },
   "track": {
     "primary": "Primary sales",
@@ -205,7 +206,7 @@
   },
   "agents": {
     "title": "Real estate consultant directory",
-    "subtitle": "Real estate consultants in the Egyptian market, ranked by experience and specialism.",
+    "subtitle": "Real estate consultants in the Egyptian market, ranked by experience and specialism. For approved employer accounts.",
     "locked": "Full profiles are for verified employers",
     "lockedBody": "Verify your company to see names, contact details and CVs.",
     "lockedCta": "Verify your company",
@@ -224,13 +225,29 @@
     "unitsClosedShort": "{count} units closed",
     "headlineAr": "Professional headline (Arabic)",
     "headlineEn": "Professional headline (English)",
-    "ownerBanner": "This is your profile. You see everything because it is yours — visitors and companies see it according to your visibility setting.",
-    "ownerPublic": "Your visibility is “public”: any visitor sees your name, photo and number exactly as you see them now.",
-    "ownerVerified": "Your visibility is “verified employers only”: visitors see the card without a name or number; only verified companies see it in full.",
+    "ownerBanner": "This is your profile. You see everything because it is yours — the directory is for approved companies only, and they see it according to your visibility setting.",
+    "ownerPublic": "Your visibility is “all companies”: any approved company on the platform sees your name, photo, number and CV exactly as you see them now.",
+    "ownerVerified": "Your visibility is “verified employers only”: unverified companies see the card without a name or number; verified companies see the full profile.",
     "ownerHidden": "Your visibility is “hidden”: nobody but you can open this page. Companies you applied to still see your application.",
     "ownerEdit": "Edit your profile",
     "shortlistAdd": "Add to shortlist",
-    "shortlistRemove": "Remove from shortlist"
+    "shortlistRemove": "Remove from shortlist",
+    "lockedRecruiter": "Only a company admin can upload the verification papers, from the company page.",
+    "emptyHint": "Try removing a filter or two, or change the specialism or area.",
+    "deniedNotice": "The consultant directory is for companies that hire. This is your profile as they see it — complete it here.",
+    "contactTitle": "Contact",
+    "contactHint": "This number reached you because its owner chose to be visible to companies. Use it for hiring only.",
+    "call": "Call",
+    "copyNumber": "Copy number",
+    "copied": "Copied",
+    "noHeadline": "Real estate consultant",
+    "cvCurrent": "Current CV",
+    "cvRemove": "Remove CV",
+    "cvHint": "PDF or Word, up to 10 MB.",
+    "cvReplace": "Replace CV",
+    "cvNone": "No CV uploaded.",
+    "backToDirectory": "Back to directory",
+    "previewOnly": "Preview"
   },
   "availability": {
     "open_to_offers": "Open to offers",
@@ -238,11 +255,11 @@
     "actively_searching": "Actively searching"
   },
   "visibility": {
-    "public": "Visible to everyone",
+    "public": "Visible to all companies",
     "verified_employers_only": "Verified employers only",
     "hidden": "Completely hidden",
-    "publicHint": "Your profile shows your name to any visitor.",
-    "verifiedHint": "Visitors see an unnamed card. Verified employers see the full profile.",
+    "publicHint": "Every approved company on the platform sees your name, number and CV.",
+    "verifiedHint": "Unverified companies see an unnamed card. Verified companies see the full profile.",
     "hiddenHint": "Your profile does not appear in the directory at all — including to your current employer."
   },
   "auth": {
@@ -456,7 +473,9 @@
     "privacyTitle": "Who sees your details",
     "privacyBody": "Only the company that posted this role sees your name, WhatsApp number, years of experience, and your CV and note if you attach them. Other companies and site visitors see none of it.",
     "privacyProfile": "The name and number you enter here also update your account.",
-    "privacyNote": "This is separate from your directory visibility, and you can withdraw the application at any time from “My applications”."
+    "privacyNote": "This is separate from your directory visibility, and you can withdraw the application at any time from “My applications”.",
+    "suspendedTitle": "Your account is suspended",
+    "suspendedBody": "You cannot apply to roles until an administrator has reviewed your account."
   },
   "employer": {
     "company": "Company profile",
@@ -573,7 +592,8 @@
     "shortlistSavedBy": "Added by {name} on {date}",
     "shortlistSavedOn": "Added on {date}",
     "reopenHint": "It goes back for review first; the 30 days start again once it is published.",
-    "applicantsCapped": "Showing the newest <v>{count}</v> applicants only. Narrow with the filters or the search to reach the rest."
+    "applicantsCapped": "Showing the newest <v>{count}</v> applicants only. Narrow with the filters or the search to reach the rest.",
+    "teamElsewhere": "That account already belongs to another company’s team. An account belongs to one company."
   },
   "jobForm": {
     "basics": "Basics",
@@ -662,7 +682,8 @@
     "emailOffSending": "Messages are recorded but never sent — the Resend credentials are missing. Set these in Vercel and redeploy.",
     "mailOffTitle": "The platform cannot send email",
     "mailOffBody": "Every email — application receipts, new applicants, digests — is being dropped silently. These variables are missing in Vercel:",
-    "usersCapped": "Showing the newest <v>{count}</v> accounts only. Filter by role or status to reach the rest."
+    "usersCapped": "Showing the newest <v>{count}</v> accounts only. Filter by role or status to reach the rest.",
+    "staleListing": "This listing changed elsewhere — it is no longer waiting for review. Refresh the page."
   },
   "reportReason": {
     "fake_listing": "Fake listing",
@@ -933,9 +954,11 @@
     "notifyApplicantDigest": "One email a day instead of one per applicant",
     "notifyApplicantDigestHint": "For listings that attract a lot of people. The summary arrives in the morning and replaces the individual notice.",
     "photo": "Your photo",
-    "photoHint": "Shown to employers with your application, and on your directory profile. PNG or JPG, up to 2 MB.",
+    "photoHint": "Shown to employers with your application and on your directory profile. PNG, JPG or WebP, up to 2 MB.",
     "photoUpload": "Upload a photo",
-    "photoReplace": "Replace photo"
+    "photoReplace": "Replace photo",
+    "suspendedTitle": "Your account is suspended",
+    "suspendedBody": "An administrator has suspended this account. You will not be able to use the platform until it is reviewed. If you think this is a mistake, get in touch."
   },
   "savedSearch": {
     "cta": "Alert me",

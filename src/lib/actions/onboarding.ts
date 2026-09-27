@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { normalisePhone } from '@/lib/phone';
+import { isValidPhone, normalisePhone } from '@/lib/phone';
 import { buildAgentSlug, buildCompanySlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
@@ -21,7 +21,14 @@ import { notifyWelcome } from '@/lib/email/notify';
  */
 const companySchema = z.object({
   nameAr: z.string().trim().min(2).max(160),
-  website: z.string().trim().max(200).optional().nullable(),
+  // http(s) only: the value is rendered as a link on the public company page.
+  website: z
+    .string()
+    .trim()
+    .max(200)
+    .refine((value) => !value || /^https?:\/\/[^\s]+$/i.test(value), 'url')
+    .optional()
+    .nullable(),
   headcountBand: z.enum(HEADCOUNT_BANDS).optional().nullable(),
   districtId: z.coerce.number().int().positive().optional().nullable(),
 });
@@ -50,7 +57,7 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
   }
 
   const phone = normalisePhone(parsed.data.whatsapp);
-  if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
+  if (!isValidPhone(phone)) {
     return { ok: false, error: 'invalid', fieldErrors: { whatsapp: 'invalidPhone' } };
   }
 
@@ -61,6 +68,20 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
 
   if (!user) return { ok: false, error: 'unauthenticated' };
 
+  /*
+    The picture the identity provider handed over, if it is one the database
+    accepts. profiles_10_guard_avatar (migration 68) refuses any avatar URL
+    that is not a file in the account's own folder or a Google picture, so
+    anything else is left null here rather than failing the whole onboarding
+    over a photo nobody asked for.
+  */
+  const providerAvatar = user.user_metadata?.avatar_url;
+  const avatarUrl =
+    typeof providerAvatar === 'string' &&
+    /^https:\/\/lh3\.googleusercontent\.com\/[A-Za-z0-9._~%/=-]+$/.test(providerAvatar)
+      ? providerAvatar
+      : null;
+
   const { data: inserted, error } = await supabase
     .from('profiles')
     .insert({
@@ -69,7 +90,7 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
       full_name: parsed.data.fullName,
       whatsapp_phone: phone,
       locale: parsed.data.locale,
-      avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+      avatar_url: avatarUrl,
     })
     .select('role')
     .maybeSingle();

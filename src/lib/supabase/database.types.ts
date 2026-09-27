@@ -463,10 +463,16 @@ export type OrderRow = Timestamped & {
   status: 'pending' | 'paid' | 'failed' | 'refunded';
 };
 
-/** Row shape returned by the get_agent_card() RPC. */
+/**
+ * Row shape returned by the get_agent_card() RPC.
+ *
+ * `slug` is null on a locked card: it is the name transliterated, and the
+ * card withholds it with the name. Link by id instead — the function answers
+ * to either (migration 68).
+ */
 export type AgentCardDetail = {
   id: string;
-  slug: string;
+  slug: string | null;
   is_unlocked: boolean;
   full_name: string | null;
   avatar_url: string | null;
@@ -482,10 +488,10 @@ export type AgentCardDetail = {
   developer_ids: number[];
 };
 
-/** Row shape returned by the search_agents() RPC. */
+/** Row shape returned by the search_agents() RPC. `slug` is null on a locked card; see AgentCardDetail. */
 export type AgentCardRow = {
   id: string;
-  slug: string;
+  slug: string | null;
   is_unlocked: boolean;
   full_name: string | null;
   avatar_url: string | null;
@@ -705,6 +711,8 @@ export type Database = {
       claim_monthly_free_post: { Args: Empty; Returns: boolean };
       /** The company the caller belongs to, resolved through membership. */
       my_company_id: { Args: Empty; Returns: string | null };
+      /** Whether the caller administers this company — the narrower half of membership. */
+      is_company_admin: { Args: { target: string }; Returns: boolean };
       /**
        * Service-role only, and called with the admin client: the answer is
        * whether an address has an account, which is not for every signed-in

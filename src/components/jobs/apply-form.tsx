@@ -15,6 +15,7 @@ import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { track } from '@/lib/analytics';
 import { shareSource } from '@/lib/share-source';
 import { uuid } from '@/lib/utils';
+import { safeExtension } from '@/lib/storage-path';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 const MAX_CV_BYTES = 10 * 1024 * 1024;
@@ -23,6 +24,11 @@ const CV_TYPES = [
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
+const CV_EXTENSIONS: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+};
 
 export function ApplyForm({
   jobId,
@@ -98,8 +104,9 @@ export function ApplyForm({
 
       if (file) {
         // The CV goes straight to the private bucket from the browser; storage
-        // RLS confines every candidate to their own folder.
-        const extension = file.name.split('.').pop()?.toLowerCase() ?? 'pdf';
+        // RLS confines every candidate to their own folder. The extension comes
+        // from the type the browser reported, which the bucket also checks.
+        const extension = CV_EXTENSIONS[file.type] ?? safeExtension(file.name, 'pdf');
         const path = `${userId}/${uuid()}.${extension}`;
 
         const { error: uploadError } = await createClient()

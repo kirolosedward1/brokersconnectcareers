@@ -25,6 +25,12 @@ export async function GET() {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
+  // The company through membership, the way every other read resolves it: a
+  // recruiter's export used to say they had no company.
+  // Allowed to fail quietly: the export is about the person, and a company
+  // section that could not be resolved is left out rather than failing it.
+  const { data: companyId } = await supabase.rpc('my_company_id');
+
   const [profile, agentProfile, applications, savedJobs, company] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
     supabase.from('agent_profiles').select('*').eq('user_id', user.id).maybeSingle(),
@@ -33,7 +39,9 @@ export async function GET() {
       .select('id, status, created_at, experience_band, note, cv_path, job:jobs (title_ar, slug)')
       .eq('candidate_id', user.id),
     supabase.from('saved_jobs').select('created_at, job:jobs (title_ar, slug)').eq('candidate_id', user.id),
-    supabase.from('companies').select('*').eq('owner_id', user.id).maybeSingle(),
+    companyId
+      ? supabase.from('companies').select('*').eq('id', companyId).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const payload = {

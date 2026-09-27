@@ -8,7 +8,8 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
-import { getViewer } from '@/lib/auth';
+import { actorOf, getViewer } from '@/lib/auth';
+import { siteNavFor } from '@/lib/permissions';
 import { env } from '@/lib/env';
 
 /**
@@ -147,27 +148,16 @@ export async function SiteFooter({ locale }: { locale: string }) {
             get one rule above this and not two or none. */}
         <div className="grid border-t border-border py-4 lg:grid-cols-4 lg:gap-x-6 lg:py-8">
           <FooterGroup title={t('product')}>
+            {/* The same list the header draws, so the directory appears here
+                for exactly the people it appears there for. */}
             <ul className="lg:mt-2">
-              <li>
-                <Link href="/jobs" className={linkClass}>
-                  {tNav('jobs')}
-                </Link>
-              </li>
-              <li>
-                <Link href="/companies" className={linkClass}>
-                  {tNav('companies')}
-                </Link>
-              </li>
-              <li>
-                <Link href="/agents" className={linkClass}>
-                  {tNav('agents')}
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className={linkClass}>
-                  {tNav('blog')}
-                </Link>
-              </li>
+              {siteNavFor(actorOf(viewer)).map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className={linkClass}>
+                    {tNav(item.key)}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </FooterGroup>
 
