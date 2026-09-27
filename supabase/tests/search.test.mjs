@@ -377,14 +377,14 @@ report.section('the agent directory searches only what the card shows');
   // The headline is on every card, so everyone may search it.
   const headline = await search(null, 'إيجارات', 'anon');
   report.check('a signed-out visitor finds a consultant by headline',
-    headline.ok && slugs(headline).includes('menna-sherif-909521'), headline.error);
+    headline.ok && slugs(headline).includes('consultant-90952122'), headline.error);
 
   const english = await search(null, 'lettings Maadi', 'anon');
-  report.check('in English too', slugs(english).includes('menna-sherif-909521'));
+  report.check('in English too', slugs(english).includes('consultant-90952122'));
 
   // A public profile shows its name, so its name is searchable.
   const publicName = await search(null, 'منة الله', 'anon');
-  report.check('a public consultant is found by name', slugs(publicName).includes('menna-sherif-909521'));
+  report.check('a public consultant is found by name', slugs(publicName).includes('consultant-90952122'));
 
   /*
     The gate. «أحمد محمود» is verified-employers-only: a stranger sees the card
@@ -400,12 +400,12 @@ report.section('the agent directory searches only what the card shows');
 
   const gatedVerified = await search(FIXTURES.employerVerified, 'احمد محمود');
   report.check('a verified employer finds them by name, typed without the hamza',
-    slugs(gatedVerified).includes('ahmed-mahmoud-818804'));
+    slugs(gatedVerified).includes('consultant-81880411'));
 
   // Hidden means hidden, name or headline, to everyone short of admin.
   const hidden = await search(FIXTURES.employerVerified, 'عقارات تجارية');
   report.check('a hidden profile is not found even by its headline',
-    !slugs(hidden).includes('mostafa-elgendy-339125'));
+    !slugs(hidden).includes('consultant-33912555'));
 
   const unfiltered = await search(null, null, 'anon');
   const everyone = await as(null, 'select slug from search_agents(null,null,null,null,60,0)', 'anon');

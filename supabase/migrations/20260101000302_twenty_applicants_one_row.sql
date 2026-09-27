@@ -233,14 +233,24 @@ security definer
 set search_path = public
 as $$
 declare
+  v_read integer := public.retention_days('notifications_read');
+  v_unread integer := public.retention_days('notifications_unread');
   v_count integer;
 begin
+  if v_read is null and v_unread is null then
+    return 0;
+  end if;
+
   with doomed as (
     select id from notifications
-     where read_at is not null
-       and created_at < now() - interval '180 days'
+     where ((v_read is not null and read_at is not null
+               and created_at < now() - make_interval(days => v_read))
+         or (v_unread is not null and read_at is null
+               and created_at < now() - make_interval(days => v_unread)))
        and folded_into is null
+     order by created_at
      limit least(greatest(p_limit, 1), 50000)
+     for update skip locked
   )
   delete from notifications n using doomed d where n.id = d.id;
 
@@ -265,7 +275,8 @@ as $$
     delete from notifications
      where user_id = (select auth.uid())
        and read_at is not null
-       and created_at < now() - interval '180 days'
+       and public.retention_days('notifications_read') is not null
+       and created_at < now() - make_interval(days => public.retention_days('notifications_read'))
        and folded_into is null
   ),
   updated as (

@@ -309,7 +309,15 @@ report.section('deleted targets');
   // A notification survives the listing it is about — the snapshot is
   // deliberate (migration 17) — and the reader's session can tell it is gone,
   // which is what openNotification checks before following the link.
-  const victim = (await db.query(`select id from jobs where company_id = '${company}' order by id desc limit 1`)).rows[0].id;
+  const victim = (await db.query(`
+    insert into jobs (company_id, title_ar, slug, track, employment_type, experience_band,
+                      district_id, commission_type, leads_source, description_ar, status,
+                      published_at, expires_at)
+    values ('${company}', 'وظيفة محذوفة للاختبار', 'notification-deleted-target-test',
+            'primary', 'full_time', 'junior_1_3', (select id from districts limit 1),
+            'none', 'company_provided', 'وصف', 'active', now(), now() + interval '30 days')
+    returning id
+  `)).rows[0].id;
   await db.exec(`select public.notify_company('${company}', 'job_published',
                    jsonb_build_object('job_id', '${victim}'), '/employer/jobs/${victim}/edit', 'deleted-target-${victim}')`);
   await db.exec(`delete from jobs where id = '${victim}'`);

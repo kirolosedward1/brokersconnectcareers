@@ -760,7 +760,40 @@ export type Database = {
        * user to ask. Used to find the colleague an employer is inviting.
        */
       user_id_by_email: { Args: { p_email: string }; Returns: string | null };
-      expire_stale_jobs: { Args: Empty; Returns: number };
+      /** Bounded since migration 204; the limit defaults to 500 per call. */
+      expire_stale_jobs: { Args: { p_limit?: number }; Returns: number };
+
+      /*
+        The data lifecycle (migration 204). Service role only, except the two
+        readers, which answer admins and refuse everybody else.
+      */
+      run_lifecycle_maintenance: { Args: Empty; Returns: Record<string, unknown> };
+      claim_storage_gc: {
+        Args: { p_limit?: number };
+        Returns: { bucket: string; path: string }[];
+      };
+      finish_storage_gc: {
+        Args: { p_bucket: string; p_removed: string[]; p_failed?: string[]; p_error?: string | null };
+        Returns: undefined;
+      };
+      abandoned_signups: {
+        Args: { p_limit?: number };
+        Returns: { user_id: string; created_at: string }[];
+      };
+      lifecycle_integrity_report: {
+        Args: Empty;
+        Returns: {
+          check_name: string;
+          severity: 'error' | 'warn' | 'info';
+          repairable: boolean;
+          found: number;
+          sample: string[];
+        }[];
+      };
+      repair_lifecycle_integrity: {
+        Args: { p_apply?: boolean };
+        Returns: { repair: string; affected: number; applied: boolean }[];
+      };
       profile_completeness: { Args: { p_agent_id: string }; Returns: number };
 
       /**
