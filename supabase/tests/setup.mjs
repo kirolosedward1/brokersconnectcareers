@@ -48,7 +48,9 @@ create table storage.buckets (
 );
 create table storage.objects (
   id uuid primary key default gen_random_uuid(),
-  bucket_id text, name text, owner uuid
+  bucket_id text, name text, owner uuid,
+  -- Real Supabase has it; the orphan sweep (migration 70) ages files by it.
+  created_at timestamptz default now()
 );
 alter table storage.objects enable row level security;
 

@@ -980,6 +980,75 @@ report.section('a page view is not an edit: the listing version stays put');
   await db.query('update jobs set title_ar = title_ar where id = $1', [id]);
   report.is((await one('select version from jobs where id = $1', [id])).version, version + 1,
     'a no-op write by anyone else still moves it, as migration 50 intends');
+
+  // Featuring and the nightly un-featuring are platform writes, like a view.
+  const before = (await one('select version from jobs where id = $1', [id])).version;
+  await db.query(
+    `update jobs set is_featured = true, featured_until = now() - interval '1 minute' where id = $1`,
+    [id],
+  );
+  await db.query('select public.expire_stale_jobs()');
+  const featured = await one('select version, is_featured from jobs where id = $1', [id]);
+  report.ok(featured.is_featured === false && featured.version === before,
+    'featuring and the expiry of a feature leave the version alone, so a retried approval email keeps its key');
+  await db.query('update jobs set is_featured = true, title_ar = title_ar || $2 where id = $1', [id, ' ']);
+  report.is((await one('select version from jobs where id = $1', [id])).version, before + 1,
+    'an edit that happens to ride along with a feature change still counts');
+}
+
+report.section('cleanup: uploads nothing points at, and the ones that must be kept');
+{
+  const { employer1: owner, candidate1: cand } = USERS;
+  const company = (await one('select id from companies where owner_id = $1 limit 1', [owner])).id;
+  const old = "now() - interval '8 days'";
+  const put = (bucket, name, age = old) =>
+    db.query(`insert into storage.objects (bucket_id, name, created_at) values ($1, $2, ${age})`, [bucket, name]);
+  const publicUrl = (bucket, name) =>
+    `https://x.supabase.co/storage/v1/object/public/${bucket}/${name}`;
+
+  // Avatars: the current one, a replaced one, a fresh upload, one of a deleted account.
+  await put('avatars', `${cand}/current.png`);
+  await put('avatars', `${cand}/replaced.png`);
+  await put('avatars', `${cand}/fresh.png`, 'now()');
+  await put('avatars', `00000000-0000-0000-0000-00000000dead/gone.png`);
+  await db.query('update profiles set avatar_url = $2 where id = $1', [cand, publicUrl('avatars', `${cand}/current.png`) + '?v=2']);
+
+  // Logos: an owner whose URL is in a shape the sweep does not recognise keeps everything.
+  await put('company-logos', `${company}/logo-a.png`);
+  await db.query('update companies set logo_url = $2 where id = $1', [company, 'https://cdn.example.net/brand/logo.png']);
+
+  // CVs: one on a profile, one on an application, one nobody submitted.
+  await put('cvs', `${cand}/profile.pdf`);
+  await put('cvs', `${cand}/applied.pdf`);
+  await put('cvs', `${cand}/abandoned.pdf`);
+  await db.query('update agent_profiles set cv_path = $2 where user_id = $1', [cand, `${cand}/profile.pdf`]);
+  await db.query(
+    'update applications set cv_path = $2 where id = (select id from applications where candidate_id = $1 limit 1)',
+    [cand, `${cand}/applied.pdf`],
+  );
+
+  const orphans = (await q('select bucket_id, name from public.orphaned_storage_objects(100)'))
+    .map((r) => `${r.bucket_id}:${r.name}`);
+  const has = (k) => orphans.includes(k);
+
+  report.ok(has(`avatars:${cand}/replaced.png`), 'a replaced avatar is found');
+  report.ok(!has(`avatars:${cand}/current.png`), 'the avatar in use is kept, cache-buster and all');
+  report.ok(!has(`avatars:${cand}/fresh.png`), 'an upload inside the grace period is kept — its row may not be written yet');
+  report.ok(has('avatars:00000000-0000-0000-0000-00000000dead/gone.png'), 'a deleted account\'s avatar is found');
+  report.ok(!has(`company-logos:${company}/logo-a.png`),
+    'an owner whose URL the sweep cannot read keeps every file: unsure means keep');
+  report.ok(!has(`cvs:${cand}/profile.pdf`) && !has(`cvs:${cand}/applied.pdf`),
+    'a CV on a profile or an application is kept');
+  report.ok(has(`cvs:${cand}/abandoned.pdf`), 'a CV nobody submitted is found');
+
+  const tiny = await q(`select * from public.orphaned_storage_objects(100, interval '1 minute')`);
+  report.ok(!tiny.some((r) => r.name === `${cand}/fresh.png`), 'the grace never drops below a day, whatever is passed');
+
+  for (const role of ['anon', 'authenticated']) {
+    const r = await as(role === 'anon' ? null : cand, 'select * from public.orphaned_storage_objects(10)', role);
+    report.ok(!r.ok, `${role} cannot list storage orphans`);
+  }
+  await db.query(`delete from storage.objects`);
 }
 
 report.section('release_email_claim is disarmed for the old sweeper still deployed');

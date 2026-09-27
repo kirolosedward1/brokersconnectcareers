@@ -124,7 +124,7 @@ duration, counts and a sanitised error.
 | Job | Schedule (UTC) | What it does |
 |---|---|---|
 | `email-retry` | every 10 min | Leases due outbox rows and retries them in place |
-| `maintenance` | hourly at :41 | Relabels expired listings, dead-letters stale outbox rows, prunes `job_runs` older than 90 days |
+| `maintenance` | hourly at :41 | Relabels expired listings, dead-letters stale outbox rows, prunes `job_runs` older than 90 days, removes up to 100 orphaned uploads (replaced avatars/logos/CVs older than 7 days; `company-documents` is never touched) |
 | `expire-jobs` | 01:00 daily | Expires listings; sends "expiring in 3 days" and "has expired (last 7 days)" notices |
 | `daily-digest` | 06:00 daily | Applicant digests (window starts at each employer's last digest, capped at 7 days) and reminders |
 | `job-alerts` | 06:00–11:00 Mondays, hourly | Saved-search alerts, oldest-checked first, resuming where the last run stopped |

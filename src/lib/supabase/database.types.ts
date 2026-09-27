@@ -919,6 +919,15 @@ export type Database = {
       };
       /** Deletes run rows older than p_keep. Returns how many. Service role only. */
       prune_job_runs: { Args: { p_keep?: string }; Returns: number };
+      /**
+       * Service role only. Uploads nothing references, past the grace period
+       * (never under a day). Removed by the maintenance job through the
+       * Storage API, a bounded batch per run.
+       */
+      orphaned_storage_objects: {
+        Args: { p_limit?: number; p_grace?: string };
+        Returns: { bucket_id: string; name: string }[];
+      };
       /** Admin only. */
       scheduled_job_overview: { Args: Empty; Returns: ScheduledJobOverviewRow[] };
       /** Admin only. Newest first. */
