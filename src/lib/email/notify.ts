@@ -58,12 +58,21 @@ async function recipient(
 ): Promise<Recipient | null> {
   const { data: profile } = await admin
     .from('profiles')
-    .select(`locale, unsubscribe_token, ${PREFERENCE_COLUMNS}`)
+    .select(`locale, ${PREFERENCE_COLUMNS}`)
     .eq('id', userId)
     .maybeSingle();
 
   if (!profile) return null;
   if (preference && (profile as Record<string, unknown>)[preference] === false) return null;
+
+  // The token lives on profile_private (migration 305), where no company that
+  // reads an applicant's profile can reach it. Service role, as before.
+  const { data: secret } = await admin
+    .from('profile_private')
+    .select('unsubscribe_token')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (!secret) return null;
 
   // The address lives on auth.users, not profiles.
   const { data, error } = await admin.auth.admin.getUserById(userId);
@@ -73,7 +82,7 @@ async function recipient(
     userId,
     email: data.user.email,
     locale: localeOf(profile.locale),
-    unsubscribeToken: profile.unsubscribe_token,
+    unsubscribeToken: secret.unsubscribe_token,
   };
 }
 
@@ -117,7 +126,9 @@ type ApplicationForCandidate = {
     | null;
 };
 
-type JobForOwner = JobBits & { company: { owner_id: string; name_ar: string } | null };
+type JobForOwner = JobBits & {
+  company: { id: string; owner_id: string; name_ar: string } | null;
+};
 
 // `version` is here for the dedupe keys below: it moves on every update, so a
 // listing that enters the moderation queue a second time is a second event
@@ -733,13 +744,36 @@ export async function notifyApplicationWithdrawn(args: {
 // Listings
 // ---------------------------------------------------------------------------
 
-/** Employer: their listing entered the review queue. */
-export async function notifyJobSubmitted(jobId: string): Promise<SendOutcome> {
+/**
+ * Employer: their listing entered the review queue.
+ *
+ * To whoever submitted it, which on a company with recruiters is not
+ * necessarily the owner — the receipt is for the person who pressed the
+ * button. Falls back to the owner when the submitter is unknown (an old outbox
+ * row) or is no longer a member of the company.
+ */
+export async function notifyJobSubmitted(
+  jobId: string,
+  submittedBy?: string | null,
+): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
     const job = await ownedJob(admin, jobId);
-    const ownerId = job?.company?.owner_id;
-    if (!job || !ownerId) return 'skipped';
+    const companyId = job?.company?.id;
+    if (!job || !companyId) return 'skipped';
+
+    let recipientId = job.company?.owner_id ?? null;
+    if (submittedBy) {
+      const { data: member } = await admin
+        .from('company_members')
+        .select('user_id')
+        .eq('company_id', companyId)
+        .eq('user_id', submittedBy)
+        .maybeSingle();
+      if (member) recipientId = submittedBy;
+    }
+    if (!recipientId) return 'skipped';
+    const ownerId = recipientId;
 
     const to = await recipient(admin, ownerId, null);
     if (!to) return 'skipped';
@@ -788,7 +822,14 @@ export async function notifyJobSubmitted(jobId: string): Promise<SendOutcome> {
   }
 }
 
-/** Employer: moderation decided on a listing. */
+/**
+ * Employer: moderation decided on a listing.
+ *
+ * Every member of the company, each under their own preference — the same
+ * audience the bell has had since migration 51. Addressed to owner_id alone,
+ * the recruiter who wrote the listing heard about it only if they happened to
+ * look at the bell, and a company whose owner had left heard nothing.
+ */
 export async function notifyEmployerOfModeration(
   jobId: string,
   approved: boolean,
@@ -797,138 +838,46 @@ export async function notifyEmployerOfModeration(
   try {
     const admin = createAdminClient();
     const job = await ownedJob(admin, jobId);
-    const ownerId = job?.company?.owner_id;
-    if (!job || !ownerId) return 'skipped';
+    const companyId = job?.company?.id;
+    if (!job || !companyId) return 'skipped';
 
-    const to = await recipient(admin, ownerId, 'notify_status');
-    if (!to) return 'skipped';
-
-    const c = copyFor(to.locale);
-    const title = localized(to.locale, job.title_ar, job.title_en);
-    const audience = audienceOf(to, 'notify_status');
-
-    if (approved) {
-      const t = c.jobApproved;
-      return deliver({
-        template: 'job_approved',
-        to: to.email,
-        userId: ownerId,
-        dedupeKey: `job_approved:${jobId}:${job.version}`,
-        entity: { type: 'job', id: jobId },
-        envelope: buildEnvelope({
-          audience,
-          subject: t.subject(title),
-          preheader: t.preheader,
-          heading: t.heading,
-          blocks: [
-            { kind: 'text', value: t.body(title) },
-            {
-              kind: 'facts',
-              rows: [
-                [t.labelJob, title],
-                ...(job.published_at
-                  ? ([[t.labelPublished, formatDay(job.published_at, to.locale)]] as [
-                      string,
-                      string,
-                    ][])
-                  : []),
-                ...(job.expires_at
-                  ? ([[t.labelExpires, formatDay(job.expires_at, to.locale)]] as [string, string][])
-                  : []),
-              ],
-            },
-            { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs/${job.slug}` },
-          ],
-        }),
-      });
-    }
-
-    const t = c.jobRejected;
-    return deliver({
-      template: 'job_rejected',
-      to: to.email,
-      userId: ownerId,
-      dedupeKey: `job_rejected:${jobId}:${job.version}`,
-      entity: { type: 'job', id: jobId },
-      envelope: buildEnvelope({
-        audience,
-        subject: t.subject(title),
-        preheader: t.preheader,
-        heading: t.heading,
-        blocks: [
-          { kind: 'text', value: t.body(title) },
-          ...(note ? [{ kind: 'text' as const, value: t.reason(note) }] : []),
-          { kind: 'facts', rows: [[t.labelJob, title]] },
-          { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs/${job.id}/edit` },
-        ],
-      }),
-    });
+    return forEachMember(admin, companyId, (memberId) =>
+      oneModerationNotice({ admin, memberId, job, approved, note }),
+    );
   } catch (error) {
     console.warn('[email] moderation notice failed:', asMessage(error));
     return 'failed';
   }
 }
 
-/** Employer: a listing is near the end of its run, or past it. */
-export async function notifyJobExpiry(
-  jobId: string,
-  stage: 'expiring' | 'expired',
-  applicantCount: number,
-): Promise<SendOutcome> {
-  try {
-    const admin = createAdminClient();
-    const job = await ownedJob(admin, jobId);
-    const ownerId = job?.company?.owner_id;
-    if (!job || !ownerId) return 'skipped';
+async function oneModerationNotice({
+  admin,
+  memberId,
+  job,
+  approved,
+  note,
+}: {
+  admin: ReturnType<typeof createAdminClient>;
+  memberId: string;
+  job: JobForOwner;
+  approved: boolean;
+  note?: string | null;
+}): Promise<SendOutcome> {
+  const to = await recipient(admin, memberId, 'notify_status');
+  if (!to) return 'skipped';
 
-    const to = await recipient(admin, ownerId, 'notify_status');
-    if (!to) return 'skipped';
+  const c = copyFor(to.locale);
+  const title = localized(to.locale, job.title_ar, job.title_en);
+  const audience = audienceOf(to, 'notify_status');
+  const jobId = job.id;
 
-    const c = copyFor(to.locale);
-    const title = localized(to.locale, job.title_ar, job.title_en);
-    const audience = audienceOf(to, 'notify_status');
-    const count = String(applicantCount);
-
-    if (stage === 'expiring') {
-      const t = c.jobExpiring;
-      const days = daysUntil(job.expires_at);
-      return deliver({
-        template: 'job_expiring',
-        to: to.email,
-        userId: ownerId,
-        // One warning per listing per run, ever. A listing that is renewed and
-        // expires again is a different expires_at and so a different key.
-        dedupeKey: `job_expiring:${jobId}:${job.expires_at ?? ''}`,
-        entity: { type: 'job', id: jobId },
-        envelope: buildEnvelope({
-          audience,
-          subject: t.subject(title),
-          preheader: t.preheader,
-          heading: t.heading,
-          blocks: [
-            { kind: 'text', value: t.body(title, days) },
-            {
-              kind: 'facts',
-              rows: [
-                [t.labelJob, title],
-                ...(job.expires_at
-                  ? ([[t.labelExpires, formatDay(job.expires_at, to.locale)]] as [string, string][])
-                  : []),
-                [t.labelApplicants, count],
-              ],
-            },
-            { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs` },
-          ],
-        }),
-      });
-    }
-
-    const t = c.jobExpired;
+  if (approved) {
+    const t = c.jobApproved;
     return deliver({
-      template: 'job_expired',
+      template: 'job_approved',
       to: to.email,
-      userId: ownerId,
-      dedupeKey: `job_expired:${jobId}:${job.expires_at ?? ''}`,
+      userId: memberId,
+      dedupeKey: `job_approved:${jobId}:${job.version}:${memberId}`,
       entity: { type: 'job', id: jobId },
       envelope: buildEnvelope({
         audience,
@@ -941,8 +890,112 @@ export async function notifyJobExpiry(
             kind: 'facts',
             rows: [
               [t.labelJob, title],
+              ...(job.published_at
+                ? ([[t.labelPublished, formatDay(job.published_at, to.locale)]] as [
+                    string,
+                    string,
+                  ][])
+                : []),
               ...(job.expires_at
-                ? ([[t.labelExpired, formatDay(job.expires_at, to.locale)]] as [string, string][])
+                ? ([[t.labelExpires, formatDay(job.expires_at, to.locale)]] as [string, string][])
+                : []),
+            ],
+          },
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs/${job.slug}` },
+        ],
+      }),
+    });
+  }
+
+  const t = c.jobRejected;
+  return deliver({
+    template: 'job_rejected',
+    to: to.email,
+    userId: memberId,
+    dedupeKey: `job_rejected:${jobId}:${job.version}:${memberId}`,
+    entity: { type: 'job', id: jobId },
+    envelope: buildEnvelope({
+      audience,
+      subject: t.subject(title),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.body(title) },
+        ...(note ? [{ kind: 'text' as const, value: t.reason(note) }] : []),
+        { kind: 'facts', rows: [[t.labelJob, title]] },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs/${job.id}/edit` },
+      ],
+    }),
+  });
+}
+
+/** Employer: a listing is near the end of its run, or past it. Every member. */
+export async function notifyJobExpiry(
+  jobId: string,
+  stage: 'expiring' | 'expired',
+  applicantCount: number,
+): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const job = await ownedJob(admin, jobId);
+    const companyId = job?.company?.id;
+    if (!job || !companyId) return 'skipped';
+
+    return forEachMember(admin, companyId, (memberId) =>
+      oneExpiryNotice({ admin, memberId, job, stage, applicantCount }),
+    );
+  } catch (error) {
+    console.warn('[email] expiry notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+async function oneExpiryNotice({
+  admin,
+  memberId,
+  job,
+  stage,
+  applicantCount,
+}: {
+  admin: ReturnType<typeof createAdminClient>;
+  memberId: string;
+  job: JobForOwner;
+  stage: 'expiring' | 'expired';
+  applicantCount: number;
+}): Promise<SendOutcome> {
+  const to = await recipient(admin, memberId, 'notify_status');
+  if (!to) return 'skipped';
+
+  const c = copyFor(to.locale);
+  const title = localized(to.locale, job.title_ar, job.title_en);
+  const audience = audienceOf(to, 'notify_status');
+  const count = String(applicantCount);
+  const jobId = job.id;
+
+  if (stage === 'expiring') {
+    const t = c.jobExpiring;
+    const days = daysUntil(job.expires_at);
+    return deliver({
+      template: 'job_expiring',
+      to: to.email,
+      userId: memberId,
+      // One warning per listing per run, per member. A listing that is renewed
+      // and expires again is a different expires_at and so a different key.
+      dedupeKey: `job_expiring:${jobId}:${job.expires_at ?? ''}:${memberId}`,
+      entity: { type: 'job', id: jobId },
+      envelope: buildEnvelope({
+        audience,
+        subject: t.subject(title),
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body(title, days) },
+          {
+            kind: 'facts',
+            rows: [
+              [t.labelJob, title],
+              ...(job.expires_at
+                ? ([[t.labelExpires, formatDay(job.expires_at, to.locale)]] as [string, string][])
                 : []),
               [t.labelApplicants, count],
             ],
@@ -951,10 +1004,36 @@ export async function notifyJobExpiry(
         ],
       }),
     });
-  } catch (error) {
-    console.warn('[email] expiry notice failed:', asMessage(error));
-    return 'failed';
   }
+
+  const t = c.jobExpired;
+  return deliver({
+    template: 'job_expired',
+    to: to.email,
+    userId: memberId,
+    dedupeKey: `job_expired:${jobId}:${job.expires_at ?? ''}:${memberId}`,
+    entity: { type: 'job', id: jobId },
+    envelope: buildEnvelope({
+      audience,
+      subject: t.subject(title),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.body(title) },
+        {
+          kind: 'facts',
+          rows: [
+            [t.labelJob, title],
+            ...(job.expires_at
+              ? ([[t.labelExpired, formatDay(job.expires_at, to.locale)]] as [string, string][])
+              : []),
+            [t.labelApplicants, count],
+          ],
+        },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs` },
+      ],
+    }),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1015,7 +1094,7 @@ export async function notifyAccountDecision(
   }
 }
 
-/** Employer: the document review finished, one way or the other. */
+/** Employer: the document review finished, one way or the other. Every member. */
 export async function notifyCompanyVerification(
   companyId: string,
   verified: boolean,
@@ -1031,44 +1110,46 @@ export async function notifyCompanyVerification(
       .maybeSingle();
     if (!company) return 'skipped';
 
-    const to = await recipient(admin, company.owner_id, null);
-    if (!to) return 'skipped';
+    return forEachMember(admin, companyId, async (memberId) => {
+      const to = await recipient(admin, memberId, null);
+      if (!to) return 'skipped';
 
-    const c = copyFor(to.locale);
-    const t = verified ? c.companyVerified : c.companyVerificationNeeded;
-    const name = localized(to.locale, company.name_ar, company.name_en);
+      const c = copyFor(to.locale);
+      const t = verified ? c.companyVerified : c.companyVerificationNeeded;
+      const name = localized(to.locale, company.name_ar, company.name_en);
 
-    return deliver({
-      template: verified ? 'company_verified' : 'company_verification_needed',
-      to: to.email,
-      userId: company.owner_id,
-      dedupeKey: `company_verification:${companyId}:${verified}`,
-      entity: { type: 'company', id: companyId },
-      envelope: buildEnvelope({
-        audience: audienceOf(to, null),
-        subject: t.subject,
-        preheader: t.preheader,
-        heading: t.heading,
-        blocks: [
-          { kind: 'text', value: t.body(name) },
-          {
-            kind: 'company',
-            name,
-            logoUrl: company.logo_url,
-            href: `${env.siteUrl}/companies/${company.slug}`,
-          },
-          ...(!verified && note
-            ? [{ kind: 'text' as const, value: c.companyVerificationNeeded.reason(note) }]
-            : []),
-          {
-            kind: 'button',
-            label: t.cta,
-            href: verified
-              ? `${env.siteUrl}/companies/${company.slug}`
-              : `${env.siteUrl}/employer/company`,
-          },
-        ],
-      }),
+      return deliver({
+        template: verified ? 'company_verified' : 'company_verification_needed',
+        to: to.email,
+        userId: memberId,
+        dedupeKey: `company_verification:${companyId}:${verified}:${memberId}`,
+        entity: { type: 'company', id: companyId },
+        envelope: buildEnvelope({
+          audience: audienceOf(to, null),
+          subject: t.subject,
+          preheader: t.preheader,
+          heading: t.heading,
+          blocks: [
+            { kind: 'text', value: t.body(name) },
+            {
+              kind: 'company',
+              name,
+              logoUrl: company.logo_url,
+              href: `${env.siteUrl}/companies/${company.slug}`,
+            },
+            ...(!verified && note
+              ? [{ kind: 'text' as const, value: c.companyVerificationNeeded.reason(note) }]
+              : []),
+            {
+              kind: 'button',
+              label: t.cta,
+              href: verified
+                ? `${env.siteUrl}/companies/${company.slug}`
+                : `${env.siteUrl}/employer/company`,
+            },
+          ],
+        }),
+      });
     });
   } catch (error) {
     console.warn('[email] company verification notice failed:', asMessage(error));
@@ -1220,6 +1301,44 @@ export async function sendApplicantDigest(args: {
 // Shared
 // ---------------------------------------------------------------------------
 
+/**
+ * Everyone at a company, one message each.
+ *
+ * The in-app bell has addressed company_members since migration 51; email
+ * addressed owner_id, so the two channels disagreed about who "the employer"
+ * is. This is the one place email answers that question now. Sequential, so a
+ * company of ten does not fire ten requests at a rate-limited provider at once,
+ * and each member's preference is read for that member alone.
+ *
+ * 'sent' if anybody was sent one, 'failed' if nobody was and somebody's
+ * failed, otherwise 'skipped' — the same fold notifyEmployerOfApplication uses.
+ */
+async function forEachMember(
+  admin: ReturnType<typeof createAdminClient>,
+  companyId: string,
+  send: (memberId: string) => Promise<SendOutcome>,
+): Promise<SendOutcome> {
+  const { data: members } = await admin
+    .from('company_members')
+    .select('user_id')
+    .eq('company_id', companyId);
+
+  let outcome: SendOutcome = 'skipped';
+  for (const { user_id } of members ?? []) {
+    let result: SendOutcome;
+    try {
+      result = await send(user_id);
+    } catch (error) {
+      // One member's failure is not the next member's.
+      console.warn('[email] member notice failed:', asMessage(error));
+      result = 'failed';
+    }
+    if (result === 'sent') outcome = 'sent';
+    else if (result === 'failed' && outcome !== 'sent') outcome = 'failed';
+  }
+  return outcome;
+}
+
 function audienceOf(to: Recipient, preference: Preference): Audience {
   return {
     locale: to.locale,
@@ -1249,7 +1368,7 @@ async function candidateApplication(
 async function ownedJob(admin: ReturnType<typeof createAdminClient>, jobId: string) {
   const { data } = await admin
     .from('jobs')
-    .select(`${JOB_FIELDS}, company:companies (owner_id, name_ar)`)
+    .select(`${JOB_FIELDS}, company:companies (id, owner_id, name_ar)`)
     .eq('id', jobId)
     .maybeSingle();
   return data as unknown as JobForOwner | null;

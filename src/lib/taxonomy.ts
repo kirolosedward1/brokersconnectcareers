@@ -35,6 +35,20 @@ export const LEADS_SOURCES = ['company_provided', 'self_generated', 'hybrid'] as
 
 export const COMMISSION_TYPES = ['percentage', 'split', 'undisclosed', 'none'] as const satisfies readonly CommissionType[];
 
+/**
+ * "Posted within" on the board, in days. The three windows a job seeker
+ * actually checks: since yesterday, this week, this listing cycle — a listing
+ * runs thirty days, so a longer window is the same as no window.
+ */
+export const POSTED_WITHIN_DAYS = [1, 7, 30] as const;
+
+/**
+ * "Basic salary of at least" on the board, EGP a month. Steps rather than a
+ * free number, so each one is a URL worth sharing and a saved search two
+ * people arrive at the same way.
+ */
+export const MIN_SALARY_STEPS = [5000, 8000, 10000, 15000, 20000] as const;
+
 export const BENEFITS = [
   'social_insurance',
   'medical',
@@ -116,7 +130,7 @@ export const REPORT_REASONS = [
 ] as const;
 
 /**
- * Why somebody reports a company rather than a listing (migration 206).
+ * Why somebody reports a company rather than a listing (migration 315).
  * `other` last, as on listings, so the specific reasons are read first.
  */
 export const COMPANY_REPORT_REASONS = [

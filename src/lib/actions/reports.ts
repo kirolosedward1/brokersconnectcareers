@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { AGENT_REPORT_REASONS, COMPANY_REPORT_REASONS, REPORT_REASONS } from '@/lib/taxonomy';
+import { clean } from '@/lib/security/sanitize';
+import { logFailure } from '@/lib/observe';
 
 export type ReportTarget = 'job' | 'company' | 'agent';
 
@@ -29,7 +31,7 @@ const detailSchema = z.string().trim().max(1000).optional();
  * person, which is exactly what makes it worth flooding.
  *
  * The same door now serves companies and consultant profiles. The rules are
- * the database's (migration 206): one report per person per target, ten a day,
+ * the database's (migration 315): one report per person per target, ten a day,
  * none from a suspended account, none about your own company or profile.
  *
  * The distinct outcomes are named rather than collapsed into one failure,
@@ -55,14 +57,17 @@ export async function reportTarget(input: unknown): Promise<ActionResult> {
     agent_id: target === 'agent' ? targetId : null,
     reporter_id: user.id,
     reason: parsed.data.reason,
-    detail: detail.data || null,
+    detail: clean(detail.data, true) || null,
   });
 
   if (error) {
     if (error.message.includes('report_rate_limit')) return { ok: false, error: 'rate_limit' };
     // The unique indexes on (target, reporter_id).
     if (error.code === '23505') return { ok: false, error: 'already_reported' };
-    return { ok: false, error: error.message };
+    // The database's own words name constraints and triggers; they go to the
+    // log with the row's identifiers, and the caller gets a code.
+    logFailure('report', 'report refused', { [target]: targetId, code: error.code ?? undefined });
+    return { ok: false, error: 'failed' };
   }
 
   return { ok: true };

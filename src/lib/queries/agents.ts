@@ -13,6 +13,8 @@ import type {
 export const AGENTS_PER_PAGE = 24;
 
 export type AgentFilters = {
+  /** Words matched against what each card shows the viewer; see search_agents(). */
+  q: string;
   tracks: JobTrack[];
   districtSlugs: string[];
   availability: AgentAvailability | null;
@@ -21,6 +23,7 @@ export type AgentFilters = {
 };
 
 export const EMPTY_AGENT_FILTERS: AgentFilters = {
+  q: '',
   tracks: [],
   districtSlugs: [],
   availability: null,
@@ -41,6 +44,7 @@ export function parseAgentFilters(searchParams: SearchParams): AgentFilters {
   const page = Number.parseInt(String(searchParams.page ?? '1'), 10);
 
   return {
+    q: (typeof searchParams.q === 'string' ? searchParams.q : '').trim().slice(0, 120),
     tracks: many(searchParams.track).filter((v): v is JobTrack =>
       (JOB_TRACKS as readonly string[]).includes(v),
     ),
@@ -55,6 +59,7 @@ export function parseAgentFilters(searchParams: SearchParams): AgentFilters {
 
 export function serializeAgentFilters(filters: AgentFilters): URLSearchParams {
   const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
   for (const track of filters.tracks) params.append('track', track);
   for (const district of filters.districtSlugs) params.append('district', district);
   if (filters.availability) params.set('availability', filters.availability);
@@ -91,6 +96,9 @@ export async function queryAgents(filters: AgentFilters): Promise<{
       p_min_years: filters.minYears,
       p_limit: AGENTS_PER_PAGE,
       p_offset: (page - 1) * AGENTS_PER_PAGE,
+      // Omitted rather than sent as null when empty, so a database that has
+      // not reached migration 68 still finds the six-argument function.
+      ...(filters.q ? { p_q: filters.q } : {}),
     });
 
   const { data, error } = await pageOf(filters.page);
@@ -137,9 +145,11 @@ export async function queryAgents(filters: AgentFilters): Promise<{
   };
 }
 
-export async function getAgentCard(slug: string): Promise<AgentCardDetail | null> {
+/** By slug, or by id for a card whose name the reader may not see. */
+export async function getAgentCard(handle: string): Promise<AgentCardDetail | null> {
+  if (!/^(?:[a-z0-9][a-z0-9-]{0,118}|[0-9a-f-]{36})$/.test(handle)) return null;
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc('get_agent_card', { p_slug: slug });
+  const { data, error } = await supabase.rpc('get_agent_card', { p_handle: handle });
   if (error) raise(error, 'loading an agent profile');
   return (data as AgentCardDetail[])?.[0] ?? null;
 }

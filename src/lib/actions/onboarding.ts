@@ -8,7 +8,8 @@ import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
-import { notifyWelcome } from '@/lib/email/notify';
+import { clean, safeHttpUrl } from '@/lib/security/sanitize';
+import { publish } from '@/lib/notifications/events';
 
 /**
  * A company answers more questions than a consultant does.
@@ -61,15 +62,30 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
 
   if (!user) return { ok: false, error: 'unauthenticated' };
 
+  /*
+    The photo the identity provider supplied, or nothing.
+
+    user_metadata is the account's to write — supabase.auth.updateUser({ data })
+    from the browser — so a URL there is a URL the person chose, and it is
+    drawn as an <img> on the applicant card and the public directory. https
+    only, bounded, and only from the providers this platform signs in with;
+    the person can upload a photo of their own afterwards.
+  */
+  const suggestedAvatar = safeHttpUrl(user.user_metadata?.avatar_url as string | undefined, 512);
+  const avatarUrl =
+    suggestedAvatar && /^https:\/\/[a-z0-9.-]*googleusercontent\.com\//i.test(suggestedAvatar)
+      ? suggestedAvatar
+      : null;
+
   const { data: inserted, error } = await supabase
     .from('profiles')
     .insert({
       id: user.id,
       role: parsed.data.role,
-      full_name: parsed.data.fullName,
+      full_name: clean(parsed.data.fullName),
       whatsapp_phone: phone,
       locale: parsed.data.locale,
-      avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+      avatar_url: avatarUrl,
     })
     .select('role')
     .maybeSingle();
@@ -96,7 +112,7 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
   let role = parsed.data.role;
 
   if (error) {
-    if (error.code !== '23505') return { ok: false, error: error.message };
+    if (error.code !== '23505') return { ok: false, error: 'failed' };
 
     const { data: existing } = await supabase
       .from('profiles')
@@ -137,7 +153,7 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
 
     if (!alreadyThere) {
       await withUniqueSlug<{ id: string }>(
-        () => buildAgentSlug(parsed.data.fullName),
+        () => buildAgentSlug(),
         (slug) =>
           supabase.from('agent_profiles').insert({ user_id: user.id, slug }).select('id').single(),
       );
@@ -177,8 +193,8 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
             .insert({
               owner_id: user.id,
               slug,
-              name_ar: company.nameAr,
-              website: company.website || null,
+              name_ar: clean(company.nameAr),
+              website: safeHttpUrl(company.website),
               headcount_band: company.headcountBand || null,
               district_id: company.districtId || null,
             })
@@ -189,8 +205,8 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
   }
 
   // The account exists whether or not this goes out — after() runs once the
-  // response is on its way, and notifyWelcome swallows its own failures.
-  after(() => notifyWelcome(user.id));
+  // response is on its way, and publish() swallows its own failures.
+  after(() => publish({ type: 'ACCOUNT_ONBOARDED', userId: user.id }));
 
   return { ok: true, data: { role } };
 }

@@ -33,7 +33,7 @@ const TARGET_HREF: Partial<Record<AuditTargetType, (id: string) => string>> = {
  * Every decision, newest first, and nothing that can be edited.
  *
  * The table is append-only for everybody including the service role
- * (migration 205), so this page is a record rather than a report somebody could
+ * (migration 314), so this page is a record rather than a report somebody could
  * tidy. `direct` isolates changes an admin made through the API rather than
  * through a lever — each one worth a second look, because it skipped the
  * transition rules and the reason prompt.

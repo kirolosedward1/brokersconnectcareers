@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { routing, locales, ENGLISH_ENABLED } from '@/i18n/routing';
 import { updateSession } from '@/lib/supabase/middleware';
 import { safeNext } from '@/lib/safe-next';
+import { recordState } from '@/lib/seo/record-exists';
+import { parseLandingSlug } from '@/lib/taxonomy';
 
 const handleI18n = createIntlMiddleware(routing);
 
@@ -140,6 +142,28 @@ async function handle(request: NextRequest): Promise<NextResponse> {
   // falls through to the layout, which checks the same row.
   if (inConsole && user && isAdmin === false) {
     return NextResponse.redirect(new URL(localized(locale, '/'), request.url));
+  }
+
+  /*
+    A detail URL whose record an anonymous visitor cannot see gets a real 404.
+
+    The job, company and agent pages stream behind a loading skeleton, so by
+    the time they learn their record is missing the 200 has been sent and
+    notFound() can only draw the not-found UI under it. Asked here instead,
+    before anything is sent, and answered with the catch-all route — which
+    does not stream and so 404s properly — in the visitor's own language.
+
+    Anonymous requests only. That is every crawler, and it is the one reader
+    for whom "not visible" and "not there" are the same thing: an owner
+    previewing a draft, or somebody a hidden profile applied to, is signed in
+    and goes through to the page, which decides for them as it always has.
+    Any failure to get an answer lets the request through unchanged.
+  */
+  if (!user && request.method === 'GET' && (await recordState(path, parseLandingSlug)) === 'missing') {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${locale}/__missing${path}`;
+    url.search = '';
+    return NextResponse.rewrite(url);
   }
 
   // A signed-in user with nothing left to do on /sign-in should not sit there.

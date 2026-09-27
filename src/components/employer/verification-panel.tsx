@@ -11,6 +11,7 @@ import { COMPANY_DOCS_BUCKET } from '@/lib/buckets';
 import { recordCompanyDocument } from '@/lib/actions/company';
 import type { CompanyDocumentRow, VerificationStatus } from '@/lib/supabase/database.types';
 import { uuid } from '@/lib/utils';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const TYPES = ['application/pdf', 'image/png', 'image/jpeg'];
@@ -32,6 +33,7 @@ export function VerificationPanel({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function upload(docType: 'commercial_register' | 'tax_card') {
     return (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,9 +70,11 @@ export function VerificationPanel({
         if (!result.ok) {
           // The file is already in the private bucket and nothing will ever
           // point at it now — and a tax card is not a thing to leave lying
-          // around unreferenced.
+          // around unreferenced. (A refused file type was already removed by
+          // the server; removing it again is harmless.)
           await createClient().storage.from(COMPANY_DOCS_BUCKET).remove([path]);
-          setError(tCommon('errorBody'));
+          if (recoverSession(result)) return;
+          setError(result.error === 'file_type' ? tValidation('fileType') : tCommon('errorBody'));
           return;
         }
 

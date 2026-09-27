@@ -1,5 +1,5 @@
 -- =============================================================================
--- 206 — Levers the console did not have
+-- 315 — Levers the console did not have
 --
 -- The console could approve or suspend an *account*, and verify or reject a
 -- company's *papers*. Four things an operator needs had no state to write to,
@@ -210,7 +210,7 @@ create index if not exists reports_company_idx on reports (company_id) where com
 create index if not exists reports_agent_idx on reports (agent_id) where agent_id is not null;
 
 -- `status` is the truth and `resolved` follows it, because existing readers
--- (and the rail badge until migration 207) ask the boolean. A write that only
+-- (and the rail badge until migration 316) ask the boolean. A write that only
 -- flips the boolean — the old console did exactly that — is translated rather
 -- than ignored.
 create or replace function public.sync_report_status()

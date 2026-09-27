@@ -2,8 +2,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createPublicClient } from '@/lib/supabase/public';
 import { env } from '@/lib/env';
+import { bearerToken, secretsMatch } from '@/lib/security/secrets';
 import { localized } from '@/i18n/routing';
 import { parseJobFilters, queryJobs } from '@/lib/queries/jobs';
+import { queryParams } from '@/lib/saved-search';
 import { sendSavedSearchDigest } from '@/lib/email/notify';
 
 export const dynamic = 'force-dynamic';
@@ -36,7 +38,7 @@ export async function GET(request: NextRequest) {
   const secret = env.cronSecret;
   const authorization = request.headers.get('authorization');
 
-  if (!secret || authorization !== `Bearer ${secret}`) {
+  if (!secretsMatch(bearerToken(authorization), secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -69,7 +71,7 @@ export async function GET(request: NextRequest) {
   for (const search of searches ?? []) {
     try {
       const since = search.last_sent_at ?? firstRunCutoff;
-      const filters = parseJobFilters(Object.fromEntries(new URLSearchParams(search.query)));
+      const filters = parseJobFilters(queryParams(search.query));
 
       // Newest first, so everything published since the cutoff is at the top.
       const { jobs } = await queryJobs({ ...filters, sort: 'newest', page: 1 }, publicClient);

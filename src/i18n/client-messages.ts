@@ -31,6 +31,8 @@ export const PUBLIC_MESSAGES = [
   'apply',
   'auth',
   'availability',
+  // The commission filter on the board; four labels.
+  'commissionType',
   'common',
   'companies',
   'companyType',

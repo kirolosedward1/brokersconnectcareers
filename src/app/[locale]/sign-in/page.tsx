@@ -6,6 +6,7 @@ import { asLocale, type Locale } from '@/i18n/routing';
 import { AuthForm } from '@/components/auth/auth-form';
 import { AudienceSwitch } from '@/components/auth/audience-switch';
 import { ReturnIntent } from '@/components/auth/return-intent';
+import { safeNext } from '@/lib/safe-next';
 import { AuthShell } from '../auth-shell';
 import { enabledProviders } from '@/lib/auth-providers';
 
@@ -48,6 +49,9 @@ export default async function SignInPage({
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
   const { next, error } = await searchParams;
+  // Validated once here for the two links that carry it onward; ReturnIntent
+  // and the form validate their own copies.
+  const intended = safeNext(next) ?? undefined;
 
   /*
     Three things send somebody back here with a reason: a fragment session
@@ -79,7 +83,14 @@ export default async function SignInPage({
         <h1 className="text-3xl font-bold">{t('signInTitle')}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {t('noAccount')}{' '}
-          <Link href="/sign-up" className="font-medium text-primary hover:underline">
+          {/* Carries `next` across. This is where Apply sends a signed-out
+              reader, and most of them have no account yet: without it they
+              signed up, confirmed, onboarded and landed on an empty dashboard
+              with the listing they started on forgotten. */}
+          <Link
+            href={{ pathname: '/sign-up', query: intended ? { next: intended } : {} }}
+            className="font-medium text-primary hover:underline"
+          >
             {t('signUp')}
           </Link>
         </p>
@@ -93,7 +104,7 @@ export default async function SignInPage({
         <ReturnIntent next={next} locale={locale} />
 
         <div className="mt-8">
-          <AudienceSwitch mode="sign-in" />
+          <AudienceSwitch mode="sign-in" next={intended} />
         </div>
 
         <div className="mt-6">

@@ -151,6 +151,7 @@ export default async function AppLayout({
       { href: '/admin/audit', label: tAdmin('auditLog'), icon: 'audit' },
       { href: '/admin/taxonomy', label: tAdmin('taxonomy'), icon: 'taxonomy' },
       { href: '/admin/email', label: tAdmin('emailActivity'), icon: 'email' },
+      { href: '/admin/security', label: tAdmin('security'), icon: 'security' },
     ],
   };
 

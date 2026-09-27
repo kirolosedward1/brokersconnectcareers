@@ -26,6 +26,7 @@ import { formatDate, formatNumber, isoDate } from '@/lib/utils';
 import { getSimilarJobs, salaryReference, type JobDetail } from '@/lib/queries/jobs';
 import { getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { buildLandingSlug } from '@/lib/taxonomy';
 
 export async function JobDetailView({
   job,
@@ -47,6 +48,7 @@ export async function JobDetailView({
   const tExp = await getTranslations('experienceBand');
   const tCompanies = await getTranslations('companies');
   const tApply = await getTranslations('apply');
+  const tLanding = await getTranslations('landing');
 
   const [similar, viewer, reference] = await Promise.all([
     getSimilarJobs(job),
@@ -126,6 +128,11 @@ export async function JobDetailView({
 
   return (
     <div className="shell py-6">
+      {/*
+        The middle step is the listing's own track-in-district page — the one
+        indexable page that holds this role alongside its neighbours. Those
+        pages had no way in but each other; every listing now links to one.
+      */}
       <nav aria-label="breadcrumb" className="mb-3 text-sm text-muted-foreground">
         <Link href="/jobs" className="hover:text-foreground">
           {t('title')}
@@ -133,7 +140,17 @@ export async function JobDetailView({
         <span className="mx-2" aria-hidden>
           /
         </span>
-        <span>{title}</span>
+        <Link href={`/jobs/${buildLandingSlug(job.track, job.district.slug)}`} className="hover:text-foreground">
+          {tLanding('title', { track: tTrack(job.track), district: districtName })}
+        </Link>
+        {/* The title is the h1 right below. On a phone repeating it here
+            wrapped the trail onto a second line for nothing. */}
+        <span className="mx-2 max-sm:hidden" aria-hidden>
+          /
+        </span>
+        <span aria-current="page" className="max-sm:hidden">
+          {title}
+        </span>
       </nav>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] xl:gap-12">
@@ -306,9 +323,11 @@ export async function JobDetailView({
                 </time>
               </span>
             ) : null}
+            {/* Past tense once the listing is closed: "closes 26 September"
+                under a banner saying it already has read as a contradiction. */}
             {job.expires_at ? (
               <time dateTime={isoDate(job.expires_at)} >
-                {t('expiresOn', { date: formatDate(job.expires_at, locale) })}
+                {t(open ? 'expiresOn' : 'endedOn', { date: formatDate(job.expires_at, locale) })}
               </time>
             ) : null}
             <span className="inline-flex items-center gap-1">
@@ -396,7 +415,10 @@ export async function JobDetailView({
                 </p>
               ) : null}
               <Button asChild variant="outline" className="w-full">
-                <Link href={`/companies/${job.company.slug}`}>{tCompanies('title')}</Link>
+                {/* This company's page, so it says so. It used to carry the
+                    directory's own title, "Real estate companies", which is
+                    the label of the header link to the list of all of them. */}
+                <Link href={`/companies/${job.company.slug}`}>{t('companyPage')}</Link>
               </Button>
             </CardContent>
           </Card>

@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { env } from '@/lib/env';
-import { notifyJobExpiry } from '@/lib/email/notify';
+import { bearerToken, secretsMatch } from '@/lib/security/secrets';
+import { publish } from '@/lib/notifications/events';
+import { notifyJobChanged } from '@/lib/seo/indexing-api';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
   const secret = env.cronSecret;
   const authorization = request.headers.get('authorization');
 
-  if (!secret || authorization !== `Bearer ${secret}`) {
+  if (!secretsMatch(bearerToken(authorization), secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -68,7 +70,7 @@ export async function GET(request: NextRequest) {
   // expire_stale_jobs()'s return value, which is a count and names no ids.
   const justExpired = await admin
     .from('jobs')
-    .select('id')
+    .select('id, slug')
     .eq('status', 'expired')
     .gte('expires_at', new Date(now - day).toISOString())
     .lte('expires_at', new Date(now).toISOString())
@@ -84,13 +86,41 @@ export async function GET(request: NextRequest) {
     .lte('expires_at', new Date(now + WARN_DAYS * day).toISOString())
     .limit(200);
 
+  /*
+    The bell first, for everybody at once. One idempotent statement: the keys
+    carry each listing's expires_at, so this run, tomorrow's, and every
+    employer console load in between write each notice once. The same sweep
+    runs for a single company when its console loads (sync_my_job_notifications),
+    which is what keeps the bell honest on a deployment where this cron cannot
+    run at all. A failure here is logged and does not stop the emails.
+  */
+  const inApp = await admin.rpc('emit_job_expiry_notifications', { p_warn_days: WARN_DAYS });
+  if (inApp.error) console.warn('[cron] expiry notifications failed:', inApp.error.message);
+
+  // Read notifications older than 180 days, for everybody. Each reader's own
+  // are also pruned whenever they mark their feed read, so this is the sweep
+  // for people who never do — not the only thing standing between the table
+  // and unbounded growth.
+  const pruned = await admin.rpc('prune_notifications', { p_limit: 5000 });
+  if (pruned.error) console.warn('[cron] notification prune failed:', pruned.error.message);
+
   const warned = await notifyAll(admin, expiringSoon.data ?? [], 'expiring');
   const closed = await notifyAll(admin, justExpired.data ?? [], 'expired');
 
+  // The pages stay up — closed banner, noindex, no JobPosting — so each is an
+  // update for Google to recrawl. Inert unless the Indexing API is configured.
+  let indexed = 0;
+  for (const job of justExpired.data ?? []) {
+    if ((await notifyJobChanged(job.slug, 'URL_UPDATED')) === 'sent') indexed += 1;
+  }
+
   return NextResponse.json({
     expired: data ?? 0,
+    in_app: inApp.data ?? 0,
+    pruned: pruned.data ?? 0,
     warned,
     closed,
+    indexed,
     at: new Date().toISOString(),
   });
 }
@@ -111,8 +141,12 @@ async function notifyAll(
       .select('id', { count: 'exact', head: true })
       .eq('job_id', job.id);
 
-    const outcome = await notifyJobExpiry(job.id, stage, count ?? 0);
-    if (outcome === 'sent') sent += 1;
+    const report = await publish(
+      stage === 'expiring'
+        ? { type: 'JOB_EXPIRING', jobId: job.id, applicantCount: count ?? 0 }
+        : { type: 'JOB_EXPIRED', jobId: job.id, applicantCount: count ?? 0 },
+    );
+    if (report.email.includes('sent')) sent += 1;
   }
 
   return sent;

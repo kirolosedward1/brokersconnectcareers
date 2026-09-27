@@ -95,8 +95,15 @@ URL Configuration, set Site URL to your production URL and add
 `https://your-domain/auth/callback` to the redirect allow-list. Until you do,
 confirmation emails and Google sign-in will send people to `localhost:3000`.
 
+**Email** needs `RESEND_API_KEY`, `RESEND_FROM` and `RESEND_WEBHOOK_SECRET`
+too, plus Supabase Auth's SMTP settings. Everything about it — architecture,
+events, DNS status, and the provider steps still outstanding — is in
+[`docs/email.md`](docs/email.md).
+
 The nightly expiry cron is already declared in `vercel.json` and runs at 01:00
-UTC. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
+UTC. Expiry and retention also run hourly inside the database through pg_cron,
+which needs no application secret; `/api/cron/lifecycle` deletes released files
+through the Storage API. See `docs/data-lifecycle.md`. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
 variable is set; the route returns 401 to anything else.
 
 ## Commands
@@ -106,11 +113,17 @@ variable is set; the route returns 401 to anything else.
 | `pnpm dev` | Dev server |
 | `pnpm build` | Production build |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test:db` | Runs the schema and RLS suites against an in-process Postgres |
+| `pnpm test:db` | Runs the schema, RLS, security, notifications and lifecycle suites against an in-process Postgres |
+| `pnpm test:security` | The hardening round's rules alone (audit trail, reveal, limits, MFA, storage) |
+| `pnpm test:security-libs` | Byte recognition, text sanitising, href and secret checks |
+| `pnpm test:notifications` | Notification idempotency, read state, paging, role-safe links and channel isolation (see `docs/notifications.md`) |
 | `pnpm db:push:url` | Applies migrations + taxonomies over `DATABASE_URL` (no CLI, no Docker) |
 | `pnpm db:seed:demo` | Creates demo accounts via the Auth admin API + sample listings |
 | `pnpm doctor` | Preflight: env, REST, schema, storage, auth |
 | `pnpm db:rehearse` | Runs the setup scripts against a throwaway wire-protocol Postgres |
+| `pnpm test:lifecycle` | Expiry, deletion, file replacement, retention and cleanup, including a two-worker race against a real Postgres when one is installed |
+| `pnpm lifecycle:audit` | Read-only integrity/orphan report over `DATABASE_URL` (`--repair` dry run, `--apply` safe repairs) |
+| `pnpm bench:search` | Query plans for board, company and agent search on a 20k-listing synthetic board |
 | `pnpm db:types` | Regenerates `src/lib/supabase/database.types.ts` from a linked project |
 
 ### `pnpm test:db`
@@ -127,6 +140,21 @@ Supabase's `auth` and `storage` schemas are stubbed in `tests/setup.mjs`, but
 pgcrypto and unaccent are loaded for real, so the `create extension` lines and the
 seed's `crypt()`/`gen_salt()` calls are genuinely exercised. Everything below that
 line is the production SQL, verbatim.
+
+## Security
+
+The hardening round of September 2026 is documented under `docs/security/`:
+
+- `THREAT_MODEL.md` — data classification, trust boundaries, adversaries and the control that answers each.
+- `SECURITY_REPORT.md` — what was found, what was fixed, what remains, and the production-readiness verdict.
+- `SUPABASE_SETTINGS.md` — the dashboard settings the code depends on (Turnstile CAPTCHA, MFA, rate limits, PITR).
+- `EDGE_WAF.md` + `vercel-firewall.json` — the Vercel Firewall rules, applied with `scripts/vercel-firewall.mjs`.
+- `RUNBOOKS.md` — incident response, backups and restore, change control, alerting.
+- `../load/` — k6 load, spike and abuse scripts (staging only).
+
+The rules themselves live in the database (migrations 303–313) and are exercised by `pnpm test:security`; the pure helpers (byte recognition, sanitising, URL and secret checks) by `pnpm test:security-libs`. Both run as part of `pnpm check`.
+
+Three environment variables were added — `SECURITY_SALT`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` — and one switch, `ADMIN_MFA_REQUIRED`. All are described in `.env.example`; `/api/health` reports which are set.
 
 ## Layout
 
@@ -167,6 +195,18 @@ show anonymised cards to everyone. `search_agents()` and `get_agent_card()` are
 `SECURITY DEFINER` and strip identity themselves, so the gate cannot be bypassed by
 crafting a query.
 
+**Search is Postgres full-text search, on purpose.** Each public listing has a
+row in `job_search_documents` — title, specialisation, district and governorate
+(names and aliases, both languages), company, developers and description,
+weighted so a prefix matches the short fields and only whole words match the
+prose. Triggers keep it current; a draft or a rejected listing has none. Arabic
+is folded identically in SQL (`ar_normalise`, `ar_strip_al`) and TypeScript
+(`src/lib/search/arabic.ts`), and `pnpm test:search` asserts the two agree.
+Extra place and specialisation names («القاهرة الجديدة», «ريسيل») are rows in
+`search_aliases`, seeded in `seed.sql` — add one with an insert, not a deploy.
+`pnpm bench:search` has the measured plans behind not reaching for a search
+engine.
+
 **CVs are never linked directly.** `/api/cv/[applicationId]` checks entitlement
 through RLS, mints a five-minute signed URL, and redirects. A URL rendered into the
 page would outlive the session and be shareable with anyone.
@@ -187,7 +227,7 @@ the audit log, internal notes, global search and taxonomy management sit beside
 them.
 
 **Every lever is a database function, and every decision is recorded.**
-Migration 207's `admin_*` functions check `is_admin()`, lock the row, refuse a
+Migration 316's `admin_*` functions check `is_admin()`, lock the row, refuse a
 transition the product does not have, require a reason where somebody is owed
 one, and write to `admin_audit_log` in the same transaction as the change. The
 log is append-only for everyone, the service role included. An admin writing
@@ -199,7 +239,7 @@ reason, and the request is recorded. Opening a company's verification document
 is recorded the same way.
 
 **Deploy the migrations before the code.** The console reads functions and
-columns from migrations 205–207; against a database without them, console pages
+columns from migrations 314–317; against a database without them, console pages
 show an error naming the missing migrations. The public site tolerates either
 order.
 

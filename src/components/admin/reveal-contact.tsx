@@ -16,7 +16,7 @@ import { whatsappLink } from '@/lib/utils';
  *
  * The details are held in this component's state and nowhere else: they are
  * not in the page's HTML, not in a URL, and gone on the next navigation. The
- * reason is recorded with the request (migration 207), so "who looked this
+ * reason is recorded with the request (migration 316), so "who looked this
  * person up, and why" always has an answer.
  */
 export function RevealContact({ userId }: { userId: string }) {

@@ -27,7 +27,7 @@ const TABS = ['district', 'governorate', 'developer', 'fixed'] as const;
  *
  * Locations and developers are rows: they can be added and renamed here, and
  * deleted only when nothing uses them — the database refuses the delete
- * otherwise (migration 206), including a district that only a consultant's
+ * otherwise (migration 315), including a district that only a consultant's
  * profile names, which no foreign key would have noticed. A slug is permanent
  * because it is part of public URLs.
  *

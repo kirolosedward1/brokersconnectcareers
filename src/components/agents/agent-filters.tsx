@@ -1,13 +1,13 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/field';
+import { Input, Select } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
 import type { DistrictRow } from '@/lib/supabase/database.types';
@@ -32,10 +32,16 @@ export function AgentFilters({
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
+  const urlKeyword = searchParams.get('q') ?? '';
+  const [keyword, setKeyword] = useState(urlKeyword);
+  // Follows the URL after Back, like the board's search box.
+  useEffect(() => setKeyword(urlKeyword), [urlKeyword]);
+
+  // Pushed, so Back undoes one filter rather than leaving the directory.
   function push(next: URLSearchParams) {
     next.delete('page');
     const query = next.toString();
-    startTransition(() => router.replace(query ? `/agents?${query}` : '/agents', { scroll: false }));
+    startTransition(() => router.push(query ? `/agents?${query}` : '/agents', { scroll: false }));
   }
 
   function toggle(key: string, value: string) {
@@ -58,12 +64,44 @@ export function AgentFilters({
 
   return (
     <div className={cn('space-y-6', pending && 'opacity-70')}>
+      {/* Searches the headline, and the name only on cards that show one —
+          see search_agents() in migration 68. */}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          setSingle('q', keyword.trim());
+        }}
+        className="flex gap-2"
+      >
+        <div className="relative flex-1">
+          <Search
+            className="pointer-events-none absolute inset-y-0 start-3 my-auto size-4 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            type="search"
+            name="q"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder={tAgents('searchPlaceholder')}
+            aria-label={t('search')}
+            className="ps-9"
+          />
+        </div>
+        <Button type="submit" variant="secondary" disabled={pending}>
+          {t('showResults')}
+        </Button>
+      </form>
+
       {activeCount > 0 ? (
         <Button
           variant="ghost"
           size="sm"
           className="w-full justify-start"
-          onClick={() => startTransition(() => router.replace('/agents', { scroll: false }))}
+          onClick={() => {
+            setKeyword('');
+            startTransition(() => router.push('/agents', { scroll: false }));
+          }}
         >
           <X />
           {tJobs('clearFilters')}
