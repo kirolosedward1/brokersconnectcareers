@@ -1,5 +1,5 @@
 -- =============================================================================
--- 106 — A bucket is not a drive
+-- 208 — A bucket is not a drive
 --
 -- Every storage policy is "your own folder, anything you like": no count, no
 -- total. An account could put ten thousand ten-megabyte objects into `cvs`
@@ -18,6 +18,15 @@
 -- `avatars` and every company folder in `company-logos`. The owner keeps
 -- select through the manage policy; the world keeps the URLs it was given.
 -- =============================================================================
+
+-- rollback: re-create the four manage policies without the storage_folder_count() cap (their bodies from migrations 06 and 35) and the two select policies: create policy "avatars are world readable" on storage.objects for select using (bucket_id = 'avatars'); create policy "company logos are world readable" on storage.objects for select using (bucket_id = 'company-logos'); drop function if exists public.storage_folder_count;
+-- safety: rls — the four manage policies keep their USING clauses and gain one condition
+--   in WITH CHECK (fewer than twenty objects already in the caller's own folder); the
+--   two select policies removed allowed only *listing* a public bucket through the
+--   API — public URLs are served for a public bucket without a policy, which the
+--   smoke test checks after deploy.
+-- safety: ships-with-code — the app never lists these buckets and never writes twenty
+--   objects to one folder, so neither order changes what the running code can do.
 
 create or replace function public.storage_folder_count(p_bucket text, p_folder text)
 returns int

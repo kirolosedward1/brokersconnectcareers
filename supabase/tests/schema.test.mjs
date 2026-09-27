@@ -318,17 +318,27 @@ report.section('who may call a definer function, on purpose');
                        these answers about the caller and returns false or
                        null to a stranger.
 
-    The directory functions used to be the other reason. search_agents,
-    get_agent_card and increment_job_view were what the directory, the card
-    and the view counter were made of, and none needed a session — which also
-    meant a script could page the whole directory through PostgREST without
-    ever touching the site. Migration 101 closed them to anon: the server calls
-    them for a signed-out visitor, where the edge can see who is asking.
+    The directory functions are the other reason. search_agents and
+    get_agent_card are what the public directory and a public card are made
+    of, and neither needs a session. Since migration 203 neither returns a
+    phone number, a CV path or a locked card's slug, so what a script can page
+    is what the page already shows. increment_job_view() left the list there:
+    the server counts views, and a visitor's own call was never bounded.
 
     A new name in this list is a decision, so it should cost a line in this
     file rather than arriving with a migration nobody re-read.
   */
   const EXPECTED = new Set([
+    // Public API: the directory and the card, without contact details.
+    'search_agents',
+    'get_agent_card',
+    // Support (migration 201). The failures that most need a reference happen
+    // to people who are not signed in — sign-up, sign-in, a confirmation link
+    // — and production has no service-role key to write for them. Both take
+    // the caller's identity from the session rather than an argument, and
+    // both are capped per account, per address and across the signed-out side.
+    'record_support_event',
+    'submit_support_request',
     // Predicates that row-level security itself calls.
     'applied_to_job',
     'applied_to_my_job',

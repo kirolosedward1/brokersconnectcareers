@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
   try {
     const admin = createAdminClient();
 
-    // The token is a uuid on profile_private (migration 102). Anything else
+    // The token is a uuid on profile_private (migration 204). Anything else
     // shaped differently is not worth a query.
     const owner = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
       ? await admin.from('profile_private').select('user_id').eq('unsubscribe_token', token).maybeSingle()

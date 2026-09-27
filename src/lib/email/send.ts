@@ -1,6 +1,7 @@
 import 'server-only';
 import { withoutAddresses } from '@/lib/observe';
 import { configuredValue } from '@/lib/env';
+import { senderProblem } from './sender';
 
 /**
  * The provider transport. One POST, and nothing above this layer knows the
@@ -61,8 +62,16 @@ export function configuredSender(): string | null {
   return configuredValue(process.env.RESEND_FROM) ?? null;
 }
 
+function isProduction(): boolean {
+  return process.env.VERCEL_ENV === 'production';
+}
+
 export function emailConfigured(): boolean {
-  return Boolean(configuredValue(process.env.RESEND_API_KEY) && configuredSender());
+  return Boolean(
+    configuredValue(process.env.RESEND_API_KEY) &&
+      configuredSender() &&
+      !(isProduction() && senderProblem(configuredSender())),
+  );
 }
 
 export async function sendEmail(message: EmailMessage): Promise<SendResult> {
@@ -76,6 +85,18 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
     console.warn(`[email] not configured; skipped "${message.subject}"`);
     return { outcome: 'skipped', error: 'not_configured' };
   }
+
+  // Skipped, not failed: the row stays queued, and the sweeper sends it once a
+  // real sender is configured rather than burning its retries on a config bug.
+  const problem = senderProblem(from);
+  if (problem && isProduction()) {
+    console.warn(`[email] sender refused in production: ${problem}, skipped "${message.subject}"`);
+    return { outcome: 'skipped', error: problem };
+  }
+
+  // The sender is noreply, so a reply needs somewhere to go. Only when a real
+  // support address is configured — a reply-to that bounces is worse than none.
+  const replyTo = configuredValue(process.env.SUPPORT_EMAIL);
 
   const headers: Record<string, string> = {};
   if (message.unsubscribeUrl) {
@@ -96,6 +117,7 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
         subject: message.subject,
         html: message.html,
         text: message.text,
+        ...(replyTo ? { reply_to: replyTo } : {}),
         ...(Object.keys(headers).length ? { headers } : {}),
       }),
     });

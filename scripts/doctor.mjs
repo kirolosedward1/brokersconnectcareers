@@ -67,6 +67,9 @@ for (const [table, minimum] of [
   ['governorates', 7],
   ['districts', 21],
   ['developers', 17],
+  // Migration 68 creates the table; seed.sql fills it. A database that got
+  // the one without the other searches, but «القاهرة الجديدة» finds nothing.
+  ['search_aliases', 25],
 ]) {
   const response = await rest(`${table}?select=id`);
   if (!response.ok) {
@@ -90,6 +93,23 @@ if (jobs.ok) {
     );
 } else {
   bad(`jobs not readable (HTTP ${jobs.status})`, 'Run: pnpm db:push:url');
+}
+
+// Every live listing needs a search document or the keyword search skips it.
+// The triggers write them; this catches a database where the backfill in
+// migration 68 never ran.
+const [live, documents] = await Promise.all([
+  rest('jobs?select=id&status=eq.active'),
+  rest('job_search_documents?select=job_id'),
+]);
+if (live.ok && documents.ok) {
+  const liveIds = (await live.json()).map((row) => row.id);
+  const indexed = new Set((await documents.json()).map((row) => row.job_id));
+  const missing = liveIds.filter((id) => !indexed.has(id));
+  if (!missing.length) ok('every live listing is searchable', `${liveIds.length}`);
+  else bad(`${missing.length} live listings have no search document`, 'Run: pnpm db:push:url');
+} else if (!documents.ok) {
+  bad(`job_search_documents not readable (HTTP ${documents.status})`, 'Run: pnpm db:push:url');
 }
 
 // Public profiles are meant to be readable anonymously; gated ones are not.

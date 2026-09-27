@@ -1,5 +1,5 @@
 -- =============================================================================
--- 110 — What the security page reads
+-- 212 — What the security page reads
 --
 -- One round trip for the admin's security overview, the way admin_summary()
 -- draws the moderation one. Counts only, over the last day: what the
@@ -8,6 +8,10 @@
 -- numbers a scale. The rows themselves — the audit trail, the event list —
 -- are read straight from their tables under the admin policies.
 -- =============================================================================
+
+-- rollback: drop function if exists public.security_summary();
+-- safety: ships-with-code — a new admin-only function read by one new admin page and
+--   nothing else, so either order is safe.
 
 create or replace function public.security_summary()
 returns jsonb

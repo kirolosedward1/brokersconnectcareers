@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   /*
     The signed facts, all of them. `merchant_order_id` is the one field here
     Paymob's HMAC does not cover, so it is treated as a lookup key and nothing
-    more: settle_order() (migration 109) refuses unless the signed Paymob order
+    more: settle_order() (migration 211) refuses unless the signed Paymob order
     id, amount and currency describe the order it names. A refunded or voided
     transaction is not a success whatever `success` says.
   */

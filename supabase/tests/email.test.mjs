@@ -22,6 +22,9 @@ import { fileURLToPath } from 'node:url';
 import { createTestDb, reporter } from './setup.mjs';
 import { escape as escapeHtml, safeHref } from '../../src/lib/email/components.ts';
 import { verifySvix } from '../../src/lib/email/svix.ts';
+import { eventKind } from '../../src/lib/email/events.ts';
+import { senderProblem } from '../../src/lib/email/sender.ts';
+import { TEMPLATES } from '../../src/lib/email/templates.ts';
 
 const base = reporter();
 const report = {
@@ -328,7 +331,7 @@ report.is(unknown[0].n, 0, 'an event about a message we never sent matches nothi
 
 report.section('the outbox is closed to users');
 
-for (const table of ['email_log', 'email_suppressions']) {
+for (const table of ['email_log', 'email_suppressions', 'email_webhook_events', 'rate_limit_hits']) {
   const { rows } = await db.query(
     `select relrowsecurity as on, (select count(*) from pg_policies where tablename = $1)::int as policies
        from pg_class where relname = $1`,
@@ -338,6 +341,164 @@ for (const table of ['email_log', 'email_suppressions']) {
   report.is(rows[0].policies, 0, `${table} has no policies — deny-all, service role only`);
 }
 
+
+// ---------------------------------------------------------------------------
+// Delivery events (migration 68)
+// ---------------------------------------------------------------------------
+
+report.section('webhook payloads are read the way the provider means them');
+
+const ev = (type, extra = {}) => eventKind({ type, data: { email_id: 'p1', ...extra } });
+report.is(ev('email.delivered')?.kind, 'delivered', 'delivered');
+report.is(ev('email.bounced', { bounce: { type: 'Permanent' } })?.kind, 'bounced_hard', 'a permanent bounce is hard');
+report.is(ev('email.bounced', { bounce: { type: 'Transient' } })?.kind, 'bounced_soft', 'a transient bounce is soft — a full inbox is not a dead address');
+report.is(ev('email.bounced', { bounce: { type: 'Undetermined' } })?.kind, 'bounced_hard', 'an undetermined bounce is treated as hard');
+report.is(ev('email.bounced')?.kind, 'bounced_hard', 'a bounce with no detail is treated as hard');
+report.is(ev('email.complained')?.kind, 'complained', 'complained');
+report.is(ev('email.failed')?.kind, 'failed', 'email.failed is no longer ignored');
+report.is(ev('email.suppressed')?.kind, 'suppressed', 'email.suppressed is no longer ignored');
+report.is(ev('email.delivery_delayed')?.kind, 'delayed', 'a delay is its own kind');
+report.is(ev('email.opened'), null, 'opens are not tracked');
+report.is(ev('email.sent'), null, 'sent is already known from the API response');
+report.is(eventKind({ type: 'email.delivered', data: {} }), null, 'an event with no message id is ignored');
+report.is(eventKind('nonsense'), null, 'a non-object is ignored');
+
+report.section('no development sender in production');
+
+report.is(senderProblem('Brokers Connect <noreply@brokersconnect.net>'), null, 'the branded sender is fine');
+report.is(senderProblem('Lavista <onboarding@resend.dev>'), 'test_sender', "Resend's shared test sender is refused");
+report.is(senderProblem('onboarding@RESEND.dev'), 'test_sender', 'case does not hide it');
+report.is(senderProblem('Brokers <noreply>'), 'malformed_sender', 'an address with no domain is refused');
+
+report.section('every template has a declared category');
+
+const declared = new Set(Object.keys(TEMPLATES));
+const undeclared = [...new Set(sent)].filter((name) => !declared.has(name));
+report.is(undeclared.join(', ') || 'none', 'none', 'every template notify.ts sends is in the registry');
+const stale = [...declared].filter((name) => !sent.includes(name));
+report.is(stale.join(', ') || 'none', 'none', 'no registry entry outlives its template');
+report.is(TEMPLATES.password_changed, 'security', 'a password notice is a security message');
+report.is(TEMPLATES.saved_search_digest, 'preference', 'a digest is a preference stream');
+
+report.section('delivery events: replays, order, and whose mail it was');
+
+async function sentRow(key, to, providerId, template = 'application_receipt', essential = false) {
+  const { rows } = await db.query(
+    'select public.claim_email($1, $2, $3, null, null, null, $4) as id',
+    [key, template, to, essential],
+  );
+  await db.query(`select public.record_email_attempt($1, 'sent', $2, null, false)`, [rows[0].id, providerId]);
+  return rows[0].id;
+}
+async function event(id, providerId, kind) {
+  const { rows } = await db.query('select public.record_email_event($1, $2, $3) as r', [id, providerId, kind]);
+  return rows[0].r;
+}
+async function statusOf(id) {
+  const { rows } = await db.query('select status, attempts from email_log where id = $1', [id]);
+  return rows[0];
+}
+async function suppressedAs(address) {
+  const { rows } = await db.query('select reason from email_suppressions where email = $1', [address]);
+  return rows[0]?.reason ?? null;
+}
+
+const r1 = await sentRow('ev:1', 'ev1@brokersconnect.net', 'pv-1');
+const firstEvent = await event('evt_1', 'pv-1', 'delivered');
+report.is(firstEvent.matched, 1, 'an event about our message matches it');
+const replay = await event('evt_1', 'pv-1', 'delivered');
+report.is(replay.duplicate, true, 'the same event id a second time is recognised as a replay');
+report.is((await statusOf(r1)).status, 'delivered', 'and delivered stands');
+
+await event('evt_2', 'pv-1', 'delayed');
+report.is((await statusOf(r1)).status, 'delivered', 'a late delivery_delayed cannot turn delivered back into sent');
+
+await event('evt_3', 'pv-1', 'complained');
+report.is((await statusOf(r1)).status, 'complained', 'a complaint after delivery is recorded');
+await event('evt_4', 'pv-1', 'delivered');
+report.is((await statusOf(r1)).status, 'complained', 'and a late delivery cannot overwrite the complaint');
+report.is(await suppressedAs('ev1@brokersconnect.net'), 'complaint', 'the complainer is suppressed');
+
+const foreign = await event('evt_5', 'someone-elses-message', 'complained');
+report.is(foreign.matched, 0, "an event about another site's mail on the shared account matches nothing");
+const { rows: foreignSup } = await db.query('select count(*)::int as n from email_suppressions where reason = $1', ['complaint']);
+report.is(foreignSup[0].n, 1, 'and suppresses nobody');
+
+const r2 = await sentRow('ev:2', 'Hard@BrokersConnect.net', 'pv-2');
+await event('evt_6', 'pv-2', 'bounced_hard');
+report.is((await statusOf(r2)).status, 'bounced', 'a hard bounce marks the message bounced');
+report.is(await suppressedAs('hard@brokersconnect.net'), 'hard_bounce', 'and suppresses the recorded recipient, lower-cased');
+
+const r3 = await sentRow('ev:3', 'gone@brokersconnect.net', 'pv-3');
+await event('evt_7', 'pv-3', 'failed');
+const failedRow = await statusOf(r3);
+report.is(failedRow.status, 'failed', 'a provider failure after acceptance is recorded');
+report.ok(failedRow.attempts >= 3, 'and is never picked up by the sweeper to be sent twice');
+
+const r4 = await sentRow('ev:4', 'listed@brokersconnect.net', 'pv-4');
+await event('evt_8', 'pv-4', 'suppressed');
+report.is((await statusOf(r4)).status, 'suppressed', "the provider's own suppression is recorded");
+report.is(await suppressedAs('listed@brokersconnect.net'), 'provider', 'and mirrored locally');
+
+report.section('repeated soft bounces');
+
+for (let i = 1; i <= 2; i += 1) {
+  await sentRow(`soft:${i}`, 'full@brokersconnect.net', `ps-${i}`);
+  await event(`evt_soft_${i}`, `ps-${i}`, 'bounced_soft');
+}
+report.is(await suppressedAs('full@brokersconnect.net'), null, 'two soft bounces do not suppress — a full inbox recovers');
+await sentRow('soft:3', 'full@brokersconnect.net', 'ps-3');
+await event('evt_soft_3', 'ps-3', 'bounced_soft');
+report.is(await suppressedAs('full@brokersconnect.net'), 'repeated_soft_bounce', 'the third in thirty days does');
+await event('evt_soft_3', 'ps-3', 'bounced_soft');
+const { rows: softCount } = await db.query(
+  `select count(*)::int as n from email_webhook_events where kind = 'bounced_soft' and recipient = 'full@brokersconnect.net'`,
+);
+report.is(softCount[0].n, 3, 'a replayed soft bounce is not counted twice');
+
+report.section('security notices get through a complaint, nothing gets through a dead address');
+
+async function claimAs(key, to, template, essential) {
+  const { rows } = await db.query(
+    'select public.claim_email($1, $2, $3, null, null, null, $4) as id',
+    [key, template, to, essential],
+  );
+  return rows[0].id;
+}
+report.is(await claimAs('c:1', 'ev1@brokersconnect.net', 'saved_search_digest', false), null,
+  'a complainer gets no digest');
+report.is(await claimAs('c:2', 'ev1@brokersconnect.net', 'application_receipt', false), null,
+  'and no ordinary transactional mail');
+report.ok(await claimAs('c:3', 'ev1@brokersconnect.net', 'password_changed', true),
+  'but is still told their password changed');
+report.is(await claimAs('c:4', 'hard@brokersconnect.net', 'password_changed', true), null,
+  'a hard-bounced address gets nothing, security included');
+
+report.section('one inbox cannot be flooded');
+
+for (let i = 0; i < 30; i += 1) {
+  await claimAs(`flood:${i}`, 'target@brokersconnect.net', 'new_application', false);
+}
+report.is(await claimAs('flood:30', 'target@brokersconnect.net', 'new_application', false), null,
+  'the thirty-first message in an hour to one address is refused');
+const { rows: flood } = await db.query(`select status, error from email_log where dedupe_key = 'flood:30'`);
+report.is(flood[0]?.status, 'suppressed', 'and the refusal is on the record');
+report.ok(await claimAs('flood:sec', 'target@brokersconnect.net', 'password_changed', true),
+  'a security notice still reaches that inbox');
+
+report.section('rate limits for actions that leave no row');
+
+const hits = [];
+for (let i = 0; i < 4; i += 1) {
+  const { rows } = await db.query(`select public.hit_rate_limit('reset:email:abc', 3, 3600) as ok`);
+  hits.push(rows[0].ok);
+}
+report.is(hits.join(','), 'true,true,true,false', 'three allowed, the fourth refused');
+const { rows: otherBucket } = await db.query(`select public.hit_rate_limit('reset:email:xyz', 3, 3600) as ok`);
+report.is(otherBucket[0].ok, true, 'buckets are independent');
+await db.query(`update rate_limit_hits set created_at = now() - interval '2 hours' where bucket = 'reset:email:abc'`);
+const { rows: expired } = await db.query(`select public.hit_rate_limit('reset:email:abc', 3, 3600) as ok`);
+report.is(expired[0].ok, true, 'the window slides — an hour later it is allowed again');
 
 // ---------------------------------------------------------------------------
 // Every link in every template points at a page that exists

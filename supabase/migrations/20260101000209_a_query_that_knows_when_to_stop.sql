@@ -1,5 +1,5 @@
 -- =============================================================================
--- 107 — A query that knows when to stop
+-- 209 — A query that knows when to stop
 --
 -- Nothing bounded how long a request could hold a connection. A pathological
 -- search — or a deliberate one — could sit on the pool until the pooler gave
@@ -15,6 +15,12 @@
 -- which is by experience and then age over a partial set, and the per-company
 -- day count the listing cap reads.
 -- =============================================================================
+
+-- rollback: alter role anon reset statement_timeout; alter role authenticated reset statement_timeout; drop index if exists agent_profiles_directory_order_idx, jobs_company_created_idx; select pg_notify('pgrst', 'reload config');
+-- safety: ships-with-code — the timeouts (5 s for anon, 10 s for authenticated) are far
+--   above anything the app runs, and the two indexes cover the two heaviest reads on
+--   tables of a few thousand rows, so the write lock lasts a moment. Either order is
+--   safe.
 
 do $$
 begin

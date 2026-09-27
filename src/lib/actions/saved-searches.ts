@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { parseJobFilters } from '@/lib/queries/jobs';
-import { followQuery, toCanonicalQuery } from '@/lib/saved-search';
+import { followQuery, queryParams, toCanonicalQuery } from '@/lib/saved-search';
 import type { ActionResult } from '@/lib/actions/jobs';
 
 const saveSchema = z.object({
@@ -31,7 +31,7 @@ export async function saveSearch(input: unknown): Promise<ActionResult<{ id: str
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  const filters = parseJobFilters(Object.fromEntries(new URLSearchParams(parsed.data.query)));
+  const filters = parseJobFilters(queryParams(parsed.data.query));
   const query = toCanonicalQuery(filters);
   if (!query) return { ok: false, error: 'no_filters' };
 

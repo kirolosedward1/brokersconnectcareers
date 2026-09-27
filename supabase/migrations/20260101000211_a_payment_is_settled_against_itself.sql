@@ -1,5 +1,5 @@
 -- =============================================================================
--- 109 — A payment is settled against itself
+-- 211 — A payment is settled against itself
 --
 -- settle_order() trusted the callback's merchant_order_id, and that is the
 -- one field in Paymob's callback its HMAC does not cover. A buyer holds a
@@ -15,6 +15,12 @@
 -- settles nothing and says why. The older signature stays callable for the
 -- migration window; the route passes the new arguments.
 -- =============================================================================
+
+-- rollback: drop function if exists public.settle_order(uuid, text, boolean, bigint, text); restate the three-argument settle_order(uuid, text, boolean) from its previous migration;
+-- safety: ships-with-code — the old webhook's three-argument call still resolves through
+--   the two defaults, so old code keeps settling (without the amount check) after this
+--   runs; new code against the old schema finds no matching function and answers 500
+--   to Paymob, which retries, until this runs. Apply the migration first.
 
 -- The old three-argument signature would make every call ambiguous beside the
 -- new one, so it goes first; the new one carries defaults for the same call.

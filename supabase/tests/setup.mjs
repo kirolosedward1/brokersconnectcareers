@@ -31,11 +31,16 @@ create schema if not exists auth;
 create schema if not exists storage;
 create schema if not exists extensions;
 
+-- The four timestamps at the end are what support reads to answer "I never got
+-- the email" and "I can't sign in" (admin_support_facts, migration 201). Same
+-- names and types as GoTrue's own table, checked against production.
 create table auth.users (
   id uuid primary key, instance_id uuid, aud text, role text, email text,
   encrypted_password text, email_confirmed_at timestamptz,
   raw_app_meta_data jsonb, raw_user_meta_data jsonb,
-  created_at timestamptz, updated_at timestamptz
+  created_at timestamptz, updated_at timestamptz,
+  confirmation_sent_at timestamptz, recovery_sent_at timestamptz,
+  last_sign_in_at timestamptz, banned_until timestamptz
 );
 
 create or replace function auth.uid() returns uuid language sql stable as $fn$
@@ -43,7 +48,7 @@ create or replace function auth.uid() returns uuid language sql stable as $fn$
 $fn$;
 
 -- The whole claim set, the way Supabase exposes it. is_admin() reads the
--- \`aal\` claim from here (migration 108).
+-- \`aal\` claim from here (migration 210).
 create or replace function auth.jwt() returns jsonb language sql stable as $fn$
   select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
 $fn$;

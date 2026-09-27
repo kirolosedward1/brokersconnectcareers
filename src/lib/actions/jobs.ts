@@ -105,7 +105,7 @@ export async function reportJob(input: unknown): Promise<ActionResult> {
  * Bumps the view counter.
  *
  * With the service role, on purpose. The function is closed to anon and
- * authenticated since migration 101 — a visitor could call it without limit,
+ * authenticated since migration 203 — a visitor could call it without limit,
  * and as it turned out could not call it at all, because guard_job_update
  * refuses a view_count change from anyone not acting as admin and every call
  * from a visitor's session had been raising into a discarded promise. The

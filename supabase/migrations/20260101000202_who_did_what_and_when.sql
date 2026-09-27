@@ -1,5 +1,5 @@
 -- =============================================================================
--- 100 — Who did what, and when
+-- 202 — Who did what, and when
 --
 -- Every privileged action on this platform changed a row and left nothing
 -- else behind. An account approved, a company verified, a listing taken down,
@@ -28,6 +28,11 @@
 -- Both are readable by admins alone and writable by nobody through the API:
 -- the only writers are the SECURITY DEFINER helpers below.
 -- =============================================================================
+
+-- rollback: drop trigger if exists profiles_90_audit on profiles; drop trigger if exists companies_90_audit on companies; drop trigger if exists jobs_90_audit on jobs; drop trigger if exists company_members_90_audit on company_members; drop trigger if exists agent_profiles_90_audit on agent_profiles; drop trigger if exists reports_90_audit on reports; drop function if exists public.audit_profile_changes, public.audit_company_changes, public.audit_job_changes, public.audit_membership_changes, public.audit_agent_visibility, public.audit_report_resolution, public.audit, public.record_security_event, public.request_role; drop table if exists audit_log, security_events;
+-- safety: ships-with-code — the triggers only insert into two new tables and never
+--   refuse a write, and the one page that reads them (/admin/security) is admin-only
+--   and shows an empty page until this has run, so either order is safe.
 
 create table audit_log (
   id           bigserial primary key,

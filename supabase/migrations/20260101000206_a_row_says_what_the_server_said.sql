@@ -1,5 +1,5 @@
 -- =============================================================================
--- 104 — A row says what the server said
+-- 206 — A row says what the server said
 --
 -- Row-level security decides whether a row may be written. It says almost
 -- nothing about which columns the writer chose the values of, and on an INSERT
@@ -50,6 +50,17 @@
 -- URL, which includes `javascript:` — and the company page rendered it as a
 -- link. Checked here as data, and re-checked wherever it is rendered.
 -- =============================================================================
+
+-- rollback: for a constraint that turns out to bite, alter table <t> drop constraint <name> (the names are listed in the CHECK section below; each is NOT VALID and validated by the DO block at the end); the triggers: drop trigger if exists applications_05_stamp on applications, reports_05_stamp on reports, jobs_02_stamp on jobs, profiles_02_stamp on profiles, companies_05_stamp on companies, company_documents_05_stamp on company_documents, saved_searches_05_stamp on saved_searches, saved_agents_05_stamp on saved_agents, agent_profiles_05_stamp on agent_profiles, application_notes_05_stamp on application_notes, jobs_03_guard_insert on jobs, applications_03_guard_insert on applications, reports_03_guard_insert on reports, company_documents_03_guard_insert on company_documents, companies_03_guard_insert on companies; drop function if exists public.stamp_created_at, public.guard_job_insert, public.guard_application_insert, public.guard_report_insert, public.guard_company_document_insert, public.guard_company_insert; restate guard_job_update() and guard_company_membership() from migration 66.
+-- safety: constraint — every CHECK is added NOT VALID and then validated inside a DO
+--   block that catches a failure and raises a notice instead of aborting, so no
+--   existing row can fail the migration and no table is held for a scan that fails;
+--   the two CV-path constraints are the ones migration 48 added, restated in a shape
+--   a `..` segment cannot satisfy.
+-- safety: ships-with-code — the insert guards null out columns the client was never
+--   meant to set (publication dates, view counts, featured flags, reviewer fields) and
+--   stamp created_at; neither the old nor the new code sends any of them, and the
+--   constraints accept every value both forms produce, so either order is safe.
 
 -- ---------------------------------------------------------------------------
 -- The server's columns

@@ -1,5 +1,5 @@
 -- =============================================================================
--- 103 — How fast is too fast
+-- 205 — How fast is too fast
 --
 -- Migration 19 put the first two caps in: thirty applications a day, ten
 -- reports a day. Both were written as constants inside their triggers, both
@@ -11,7 +11,7 @@
 --
 -- What changes here.
 --
--- Every threshold is a row in abuse_limits (migration 101), so the number can
+-- Every threshold is a row in abuse_limits (migration 203), so the number can
 -- move without a deploy when it turns out to be wrong in either direction. The
 -- defaults are deliberately loose: an honest person should never meet them,
 -- and a script should find them long before it has done any damage.
@@ -32,10 +32,18 @@
 -- The in-app bell deduplicates: the same notification to the same person with
 -- the same payload inside ten minutes is one notification.
 --
--- And a small generic bucket counter, rate_limit_hit(), for the things only the
--- application server can see — a CV download, a data export, an account
--- lookup — callable by the service role alone.
+-- And rate_limit_hit(), a second reader of the rate_limit_hits counter that
+-- migration 68 created, for the things only the application server can see —
+-- a CV download, a data export, an account lookup — callable by the service
+-- role alone.
 -- =============================================================================
+
+-- rollback: drop trigger if exists jobs_15_enforce_post_rate on jobs; drop function if exists public.enforce_job_post_rate, public.rate_limit_hit; restate enforce_application_rate(), enforce_report_rate() and notify() from the migrations that last defined them (19 for the first two); delete from abuse_limits where key in ('applications:user:10min','applications:user:day','reports:user:day','jobs:company:day','jobs:company_unverified:day','jobs:duplicate_copies:30d','cv_download:user:hour','export:user:day','member_lookup:user:day','checkout:company:hour','auth_report:ip:hour');
+-- safety: ships-with-code — the triggers refuse only what the old code already showed as
+--   an error (the thirty-first application in a day, the eleventh report) plus a short
+--   window and a listing cap an honest user does not reach; rate_limit_hit() is called
+--   by new code only and reads a table that has existed since migration 68, so either
+--   order is safe.
 
 insert into abuse_limits (key, window_seconds, max_hits, note) values
   ('applications:user:10min',        600,   8,   'Applications one candidate may file in ten minutes.'),
@@ -55,72 +63,46 @@ on conflict (key) do nothing;
 -- A counter for the server
 -- ---------------------------------------------------------------------------
 
-create table rate_limit_buckets (
-  key          text not null,
-  window_start timestamptz not null,
-  hits         int not null default 0,
-  primary key (key, window_start)
-);
-
-alter table rate_limit_buckets enable row level security;
--- No policies: the two functions below are the only readers and writers.
-
-/**
- * Counts one hit against a fixed window and says whether it was allowed.
- *
- * Fixed windows rather than sliding: a row per key per window, one upsert per
- * hit, and a sweep that deletes anything older than a day. Precise enough for
- * what it guards — nothing here is billing.
- */
+-- Migration 68 created rate_limit_hits and hit_rate_limit(), a sliding-window
+-- counter that answers yes or no. The routes here also need to know how long
+-- to tell a client to wait, so this is a second reader of the same table under
+-- the same advisory lock — one counter, two questions — rather than a second
+-- table. Each call prunes its own bucket, so nothing needs sweeping.
 create or replace function public.rate_limit_hit(p_key text, p_window_seconds int, p_max int)
 returns table (allowed boolean, remaining int, retry_after_seconds int)
 language plpgsql
-volatile
 security definer
 set search_path = public, pg_temp
 as $$
 declare
-  v_window  int := greatest(1, coalesce(p_window_seconds, 60));
-  v_start   timestamptz;
-  v_hits    int;
+  v_window interval := make_interval(secs => greatest(1, p_window_seconds));
+  v_count  int;
+  v_oldest timestamptz;
 begin
-  v_start := to_timestamp(floor(extract(epoch from now()) / v_window) * v_window);
+  perform pg_advisory_xact_lock(hashtext('rate:' || p_key));
 
-  insert into rate_limit_buckets as b (key, window_start, hits)
-  values (left(p_key, 200), v_start, 1)
-  on conflict (key, window_start) do update set hits = b.hits + 1
-  returning b.hits into v_hits;
+  delete from rate_limit_hits
+   where bucket = p_key
+     and created_at < now() - v_window;
 
-  return query select
-    v_hits <= p_max,
-    greatest(0, p_max - v_hits),
-    case when v_hits <= p_max then 0
-         else greatest(1, ceil(extract(epoch from (v_start + make_interval(secs => v_window) - now())))::int)
-    end;
+  select count(*), min(created_at) into v_count, v_oldest
+    from rate_limit_hits
+   where bucket = p_key;
+
+  if v_count >= p_max then
+    return query
+      select false, 0,
+             greatest(1, ceil(extract(epoch from (v_oldest + v_window - now())))::int);
+    return;
+  end if;
+
+  insert into rate_limit_hits (bucket) values (p_key);
+  return query select true, greatest(0, p_max - v_count - 1), 0;
 end;
 $$;
 
 revoke execute on function public.rate_limit_hit(text, int, int) from public, anon, authenticated;
 grant  execute on function public.rate_limit_hit(text, int, int) to service_role;
-
-create or replace function public.rate_limit_sweep()
-returns int
-language plpgsql
-volatile
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  n int;
-begin
-  delete from rate_limit_buckets where window_start < now() - interval '1 day';
-  get diagnostics n = row_count;
-  return n;
-end;
-$$;
-
-revoke execute on function public.rate_limit_sweep() from public, anon, authenticated;
-grant  execute on function public.rate_limit_sweep() to service_role;
 
 -- ---------------------------------------------------------------------------
 -- Applications: two windows, one lock

@@ -8,6 +8,8 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
 import { localeHref, type Locale } from '@/i18n/routing';
+import { announcePasswordChange } from '@/lib/actions/account';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
  * Set the new password, on the session the recovery link just created.
@@ -28,6 +30,7 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,6 +62,16 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
       // A recovery is the strongest reason to end every other session: the
       // account was, by the person's own account, out of their control.
       await supabase.auth.signOut({ scope: 'others' }).catch(() => {});
+      /*
+        The security notice, which the reset path never sent — only the
+        settings page asked for it, so the one password change most likely to
+        be somebody else's went unannounced. Awaited, because the navigation
+        below would abort the request; the action returns as soon as the send
+        is queued, and a failure must not strand the person on this page.
+        A session that vanished in between goes to sign-in, as everywhere.
+      */
+      const notice = await announcePasswordChange().catch(() => null);
+      if (notice && recoverSession(notice)) return;
       /*
         Same as sign-in: the session has just changed, so the server has to
         be asked again from scratch rather than through a router push racing

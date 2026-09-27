@@ -1,6 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { getViewer } from '@/lib/auth';
 import { raise } from './error';
 import { JOB_TRACKS, AVAILABILITIES } from '@/lib/taxonomy';
 import { getDistricts } from './taxonomy';
@@ -15,6 +13,8 @@ import type {
 export const AGENTS_PER_PAGE = 24;
 
 export type AgentFilters = {
+  /** Words matched against what each card shows the viewer; see search_agents(). */
+  q: string;
   tracks: JobTrack[];
   districtSlugs: string[];
   availability: AgentAvailability | null;
@@ -23,6 +23,7 @@ export type AgentFilters = {
 };
 
 export const EMPTY_AGENT_FILTERS: AgentFilters = {
+  q: '',
   tracks: [],
   districtSlugs: [],
   availability: null,
@@ -43,6 +44,7 @@ export function parseAgentFilters(searchParams: SearchParams): AgentFilters {
   const page = Number.parseInt(String(searchParams.page ?? '1'), 10);
 
   return {
+    q: (typeof searchParams.q === 'string' ? searchParams.q : '').trim().slice(0, 120),
     tracks: many(searchParams.track).filter((v): v is JobTrack =>
       (JOB_TRACKS as readonly string[]).includes(v),
     ),
@@ -57,37 +59,13 @@ export function parseAgentFilters(searchParams: SearchParams): AgentFilters {
 
 export function serializeAgentFilters(filters: AgentFilters): URLSearchParams {
   const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
   for (const track of filters.tracks) params.append('track', track);
   for (const district of filters.districtSlugs) params.append('district', district);
   if (filters.availability) params.set('availability', filters.availability);
   if (filters.minYears) params.set('years', String(filters.minYears));
   if (filters.page > 1) params.set('page', String(filters.page));
   return params;
-}
-
-/**
- * Who reads the directory functions.
- *
- * search_agents() and get_agent_card() are closed to the anon role since
- * migration 101, so a script cannot page the directory through PostgREST while
- * the site never sees it. A signed-in reader still calls them as themselves —
- * the visibility gate needs to know who is asking. A visitor is served by the
- * server with the service role, which the functions treat as a stranger: no
- * company, no admin, so every gated card comes back anonymous exactly as it
- * did for anon before.
- *
- * Falls back to the public client when no service key is configured, which
- * on a database past migration 101 answers "permission denied" and renders the
- * directory's error state — /api/health names the missing key.
- */
-async function directoryClient() {
-  const viewer = await getViewer();
-  if (viewer) return createClient();
-  try {
-    return createAdminClient();
-  } catch {
-    return createClient();
-  }
 }
 
 /**
@@ -103,7 +81,7 @@ export async function queryAgents(filters: AgentFilters): Promise<{
   /** The page actually returned, which is not always the one asked for. */
   page: number;
 }> {
-  const supabase = await directoryClient();
+  const supabase = await createClient();
   const districts = await getDistricts();
 
   const districtIds = filters.districtSlugs.length
@@ -118,6 +96,9 @@ export async function queryAgents(filters: AgentFilters): Promise<{
       p_min_years: filters.minYears,
       p_limit: AGENTS_PER_PAGE,
       p_offset: (page - 1) * AGENTS_PER_PAGE,
+      // Omitted rather than sent as null when empty, so a database that has
+      // not reached migration 68 still finds the six-argument function.
+      ...(filters.q ? { p_q: filters.q } : {}),
     });
 
   const { data, error } = await pageOf(filters.page);
@@ -167,7 +148,7 @@ export async function queryAgents(filters: AgentFilters): Promise<{
 /** By slug, or by id for a card whose name the reader may not see. */
 export async function getAgentCard(handle: string): Promise<AgentCardDetail | null> {
   if (!/^(?:[a-z0-9][a-z0-9-]{0,118}|[0-9a-f-]{36})$/.test(handle)) return null;
-  const supabase = await directoryClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc('get_agent_card', { p_handle: handle });
   if (error) raise(error, 'loading an agent profile');
   return (data as AgentCardDetail[])?.[0] ?? null;

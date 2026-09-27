@@ -1,5 +1,6 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
-import { asLocale, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
 import { Landing } from '@/components/home/landing';
 import { EmployerHome, type EmployerSummary } from '@/components/home/employer-home';
 import { SignedInHome } from '@/components/home/signed-in-home';
@@ -9,6 +10,16 @@ import { getDistricts } from '@/lib/queries/taxonomy';
 import { EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
 import { optional } from '@/lib/queries/error';
 import { getBrowseCounts } from '@/lib/queries/browse';
+
+/** The title and description come from the locale layout's defaults. */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  return { alternates: alternatesFor('/', locale) };
+}
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;

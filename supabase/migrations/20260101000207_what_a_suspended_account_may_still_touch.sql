@@ -1,5 +1,5 @@
 -- =============================================================================
--- 105 — What a suspended account may still touch
+-- 207 — What a suspended account may still touch
 --
 -- Migration 33 made suspension take a company's listings down. It did not take
 -- the company's data away from the suspended person: every policy that grants
@@ -17,6 +17,11 @@
 -- policy and every storage policy goes through these five functions, a
 -- suspension now closes the console, the API and the buckets in one place.
 -- =============================================================================
+
+-- rollback: restate owns_company(), is_company_admin(), owns_job(), viewer_has_verified_company() and my_company_id() without the in_good_standing() conjunct (their bodies from migration 66 and before); drop function if exists public.in_good_standing;
+-- safety: ships-with-code — no signature changes; the helpers answer false for a
+--   rejected account and exactly what they did before for everybody else, so old and
+--   new code behave the same whichever lands first.
 
 create or replace function public.in_good_standing()
 returns boolean

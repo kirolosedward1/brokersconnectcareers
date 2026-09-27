@@ -24,7 +24,7 @@ export function SortSelect({
     next.delete('page');
 
     const query = next.toString();
-    startTransition(() => router.replace(query ? `/jobs?${query}` : '/jobs', { scroll: false }));
+    startTransition(() => router.push(query ? `/jobs?${query}` : '/jobs', { scroll: false }));
   }
 
   return (

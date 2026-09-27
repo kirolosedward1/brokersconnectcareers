@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { env } from '@/lib/env';
 import { bearerToken, secretsMatch } from '@/lib/security/secrets';
 import { notifyJobExpiry } from '@/lib/email/notify';
+import { notifyJobChanged } from '@/lib/seo/indexing-api';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -61,11 +62,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // The server-side rate counters (migration 103) keep a day of windows;
-  // anything older is swept here rather than by a fifth cron.
-  // Allowed to fail quietly: a missed sweep leaves stale rows for tomorrow's.
-  const { data: swept } = await admin.rpc('rate_limit_sweep');
-
   const now = Date.now();
   const day = 86_400_000;
 
@@ -74,7 +70,7 @@ export async function GET(request: NextRequest) {
   // expire_stale_jobs()'s return value, which is a count and names no ids.
   const justExpired = await admin
     .from('jobs')
-    .select('id')
+    .select('id, slug')
     .eq('status', 'expired')
     .gte('expires_at', new Date(now - day).toISOString())
     .lte('expires_at', new Date(now).toISOString())
@@ -93,11 +89,18 @@ export async function GET(request: NextRequest) {
   const warned = await notifyAll(admin, expiringSoon.data ?? [], 'expiring');
   const closed = await notifyAll(admin, justExpired.data ?? [], 'expired');
 
+  // The pages stay up — closed banner, noindex, no JobPosting — so each is an
+  // update for Google to recrawl. Inert unless the Indexing API is configured.
+  let indexed = 0;
+  for (const job of justExpired.data ?? []) {
+    if ((await notifyJobChanged(job.slug, 'URL_UPDATED')) === 'sent') indexed += 1;
+  }
+
   return NextResponse.json({
     expired: data ?? 0,
     warned,
     closed,
-    swept: swept ?? 0,
+    indexed,
     at: new Date().toISOString(),
   });
 }

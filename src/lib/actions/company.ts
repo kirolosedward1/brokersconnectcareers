@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { allow } from '@/lib/rate-limit';
 import { COMPANY_LOGOS_BUCKET } from '@/lib/storage';
 import { buildCompanySlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
@@ -23,7 +24,7 @@ const schema = z.object({
   /*
     http(s) only. zod's `.url()` accepts any scheme a parser recognises, and a
     `javascript:` one was rendered as the company page's website link. The
-    same rule is a CHECK on the column (migration 104) and is applied again
+    same rule is a CHECK on the column (migration 206) and is applied again
     where the link is drawn.
   */
   website: z
@@ -309,9 +310,9 @@ const memberSchema = z.object({
  * Add a colleague to the company by email address.
  *
  * Adding an *existing* account only. Creating one for somebody who has never
- * signed up needs an invitation email, and no mail leaves this platform until
- * a sending domain is verified — so an invite flow built today would be a
- * button that silently does nothing. When the address is unknown the answer
+ * signed up needs an invitation email carrying a sign-up token, which does not
+ * exist yet (the sending domain is verified now, so it can be built; it has
+ * not been). When the address is unknown the answer
  * says so and says what to do instead, which is a complete feature rather than
  * a broken half of a better one.
  *
@@ -375,6 +376,15 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
     and authorisation is unchanged: the membership row below still goes in
     through the caller's own session, so company_members_manage decides.
   */
+  /*
+    Counted before the lookup, because the lookup is the sensitive part: its
+    answer is whether an address has an account here. Any employer could walk
+    a list through this form and learn which addresses belong to consultants
+    on the platform. Twenty an hour is a whole team onboarded in one sitting
+    and far short of a list.
+  */
+  if (!(await allow(`team_add:${user.id}`, 20, 3600))) return { ok: false, error: 'rate_limited' };
+
   const admin = createAdminClient();
   const { data: invitee } = await admin.rpc('user_id_by_email', { p_email: parsed.data.email });
 
@@ -388,7 +398,7 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_member' };
     if (error.message.includes('company_member_role')) return { ok: false, error: 'not_employer' };
-    // One company per account (migration 104): somebody already on another
+    // One company per account (migration 206): somebody already on another
     // team is answered the same way as somebody who may not be added.
     return { ok: false, error: 'forbidden' };
   }

@@ -1,5 +1,5 @@
 -- =============================================================================
--- 108 — An admin who proved it twice
+-- 210 — An admin who proved it twice
 --
 -- Every admin policy, every guard's bypass and every moderation function
 -- asks is_admin(), and is_admin() asked one thing: does this account's profile
@@ -20,6 +20,12 @@
 -- already trust. It is evaluated only when the profile row says admin, so
 -- every other account pays nothing for it.
 -- =============================================================================
+
+-- rollback: restate is_admin() as the role check alone (its previous body: the caller's profile row has role = 'admin');
+-- safety: ships-with-code — an admin with no enrolled factor is unaffected in either
+--   order; an admin who has enrolled is refused at AAL1 by the database whether or not
+--   the console yet knows to send them to the challenge, which is a locked door rather
+--   than an open one. Apply with the code that adds the enrolment screen.
 
 create or replace function public.is_admin()
 returns boolean

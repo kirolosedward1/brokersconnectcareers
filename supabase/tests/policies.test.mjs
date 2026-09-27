@@ -901,19 +901,19 @@ report.section('the agent directory gate');
   const publicId = (await db.query(`select id from agent_profiles where slug = '${PUBLIC}'`)).rows[0].id;
 
   /*
-    A visitor with no session reaches the directory through the server, which
-    reads it with the service role — never through PostgREST, where a script
-    could page the whole thing without the site ever seeing it (migration 101).
+    A visitor with no session reads the directory as anon, the way the public
+    page does. What changed (migration 203) is the row: a locked card has no
+    name, no avatar and no slug — only an id — and no directory row anywhere
+    carries a phone number or a CV path, so paging it yields the page.
   */
-  const direct = await as(null, 'select id from search_agents(null,null,null,null,60,0)', 'anon');
-  report.check('anonymous cannot call the directory function directly',
-    !direct.ok && /permission denied/.test(direct.error ?? ''), direct.error);
-
-  const anon = await as(null, 'select id, slug, is_unlocked, full_name from search_agents(null,null,null,null,60,0)', 'service_role');
+  const anon = await as(null, 'select * from search_agents(null,null,null,null,60,0)', 'anon');
   const anonGated = anon.rows.find((row) => row.id === gatedId);
   const anonPublic = anon.rows.find((row) => row.id === publicId);
 
-  report.check('the server sees the directory for a visitor', anon.rows.length > 1, JSON.stringify(anon.error));
+  report.check('a visitor sees the directory', anon.ok && anon.rows.length > 1, JSON.stringify(anon.error));
+  report.check('and no row carries a phone number or a CV path',
+    anon.rows.length > 0 && anon.rows.every((row) => !('whatsapp_phone' in row) && !('cv_path' in row)),
+    Object.keys(anon.rows[0] ?? {}).join(','));
   report.check('a gated profile comes back with no name',
     anonGated?.is_unlocked === false && anonGated?.full_name === null, JSON.stringify(anonGated));
   // The slug is the name transliterated, so a locked card is known by its id.
@@ -943,9 +943,11 @@ report.section('the agent directory gate');
     which wants a signed-in employer in good standing with a company to act
     for, applies the same gate, and counts what it hands over.
   */
-  const cardAnon = await as(null, `select id from get_agent_card('${GATED}')`, 'anon');
-  report.check('anonymous cannot open a card directly',
-    !cardAnon.ok && /permission denied/.test(cardAnon.error ?? ''), cardAnon.error);
+  const cardAnon = await as(null, `select * from get_agent_card('${GATED}')`, 'anon');
+  report.check('a visitor opens a gated card anonymous, known only by its id',
+    cardAnon.ok && cardAnon.rows[0]?.is_unlocked === false && cardAnon.rows[0]?.full_name === null
+      && cardAnon.rows[0]?.slug === gatedId && !('whatsapp_phone' in (cardAnon.rows[0] ?? {})),
+    JSON.stringify(cardAnon.rows[0] ?? cardAnon.error));
 
   const revealAnon = await as(null, `select status from reveal_agent_contact('${PUBLIC}')`, 'anon');
   report.check('anonymous gets no contact details',
@@ -1895,7 +1897,7 @@ report.section('applications are capped per day too');
   const needed = 30 - held;
 
   /*
-    Two windows since migration 103. Eight applications in ten minutes is the
+    Two windows since migration 205. Eight applications in ten minutes is the
     first wall — a person filing that fast is a script — so the rows are
     written eight at a time and aged past the short window between batches,
     which is what a day of honest applying looks like to the counter.
@@ -2218,7 +2220,7 @@ report.section('the same request twice converges on one answer');
   const KEY = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 
   // The seed wrote this company's listings a moment ago, which to the daily
-  // cap (migration 103) is a busy day already. Age them: this section is about
+  // cap (migration 205) is a busy day already. Age them: this section is about
   // the retry, and the cap has a section of its own.
   await db.exec(`update jobs set created_at = created_at - interval '2 days' where company_id = '${company}'`);
 

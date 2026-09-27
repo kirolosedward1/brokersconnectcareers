@@ -1,5 +1,5 @@
 -- =============================================================================
--- 101 — A number you ask for, not one you are handed
+-- 203 — A number you ask for, not one you are handed
 --
 -- The consultant directory is the most valuable thing on this platform to the
 -- wrong reader. Every card is a person with a phone number, and get_agent_card()
@@ -31,11 +31,22 @@
 -- card this viewer may not open, the handle is the row's id; the profile page
 -- accepts either. Migration 60 already made this call for the shortlist.
 --
--- And the directory functions are no longer callable anonymously at all. The
--- public /agents page reads them through the server, which is the only place
--- the platform's edge protections can see a scraper. A signed-in reader keeps
--- calling them as themselves, which is what the visibility gate needs.
+-- The directory functions stay callable anonymously — /agents is a public
+-- page, and migration 68 (search) settled that its readers need no session —
+-- but what they return is now exactly what that page shows: no phone number,
+-- no CV path, and for a locked card no slug. A signed-in reader keeps calling
+-- them as themselves, which is what the visibility gate needs.
 -- =============================================================================
+
+-- rollback: forward-fix only for the two directory functions — get_agent_card() and search_agents() change shape here and the pages on this branch read the new shape; going back means restating the bodies from migrations 60 and 68. The rest can go: drop function if exists public.reveal_agent_contact, public.agent_card_open_to_viewer, public.limit_for; drop table if exists agent_contact_reveals, abuse_limits;
+-- safety: grant, revoke-anon — get_agent_card() and search_agents() stay open to anon on
+--   purpose: the directory and a card are public pages, and from this migration neither
+--   returns a phone number, a CV path or a locked card's slug, so anon learns nothing
+--   through PostgREST that the page does not already show.
+-- safety: ships-with-code — the agent profile page is down for the minutes between the
+--   two steps whichever lands first (old code asks for p_slug, new code for p_handle);
+--   nothing is exposed in that window, because the old code never receives the phone
+--   number and the new code never asks the old function. Deploy in one window.
 
 -- ---------------------------------------------------------------------------
 -- Thresholds, as data
@@ -235,20 +246,32 @@ as $$
   from card c;
 $$;
 
-revoke execute on function public.get_agent_card(text) from public, anon;
-grant  execute on function public.get_agent_card(text) to authenticated, service_role;
+-- A card without its contact details is a public page, so anon keeps it.
+revoke execute on function public.get_agent_card(text) from public;
+grant  execute on function public.get_agent_card(text) to anon, authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- The directory, with locked cards anonymous in every column
 -- ---------------------------------------------------------------------------
 
-create or replace function public.search_agents(
+-- Migration 68 (search) gave the directory a keyword, p_q, and dropped the
+-- six-argument form. Both signatures go here so that a call which omits p_q
+-- finds exactly one candidate, and the keyword search is kept as written
+-- there: the headline is on every card, so everyone may search it; the name
+-- is searchable only where it is shown. What this version adds is the rest of
+-- the row: a locked card has no slug (the slug is the name, transliterated),
+-- only approved accounts are listed, and the offset has a ceiling.
+drop function if exists public.search_agents(job_track[], int[], agent_availability, int, int, int);
+drop function if exists public.search_agents(job_track[], int[], agent_availability, int, int, int, text);
+
+create function public.search_agents(
   p_tracks       job_track[] default null,
   p_district_ids int[]       default null,
   p_availability agent_availability default null,
   p_min_years    int         default null,
   p_limit        int         default 24,
-  p_offset       int         default 0
+  p_offset       int         default 0,
+  p_q            text        default null
 )
 returns table (
   id               uuid,
@@ -273,10 +296,23 @@ as $$
   with viewer as (
     select (public.viewer_has_verified_company() or public.is_admin()) as unlocked
   ),
+  needles as (
+    -- At most eight words, each folded the way the text is.
+    select array(
+      select w
+        from unnest(string_to_array(
+               public.ar_strip_al(public.ar_normalise(left(coalesce(p_q, ''), 120))), ' ')) as w
+       where w <> ''
+       limit 8
+    ) as words
+  ),
   matched as (
-    select a.*, p.full_name, p.avatar_url
+    select a.*, p.full_name, p.avatar_url,
+           (a.visibility = 'public' or v.unlocked) as shows_name
       from agent_profiles a
       join profiles p on p.id = a.user_id
+      cross join viewer v
+      cross join needles n
      where a.visibility <> 'hidden'
        and p.role = 'candidate'
        and p.approval_status = 'approved'
@@ -284,13 +320,25 @@ as $$
        and (p_district_ids is null or a.district_ids && p_district_ids)
        and (p_availability is null or a.availability = p_availability)
        and (p_min_years    is null or a.years_experience >= p_min_years)
+       and (
+         cardinality(n.words) = 0
+         or not exists (
+           select 1
+             from unnest(n.words) as w
+            where strpos(
+                    concat_ws(' ',
+                      a.search_headline,
+                      case when a.visibility = 'public' or v.unlocked then p.search_name end),
+                    w) = 0
+         )
+       )
   )
   select
     m.id,
-    case when m.visibility = 'public' or v.unlocked then m.slug else m.id::text end as slug,
-    (m.visibility = 'public' or v.unlocked)                                as is_unlocked,
-    case when m.visibility = 'public' or v.unlocked then m.full_name  end  as full_name,
-    case when m.visibility = 'public' or v.unlocked then m.avatar_url end  as avatar_url,
+    case when m.shows_name then m.slug else m.id::text end as slug,
+    m.shows_name                                  as is_unlocked,
+    case when m.shows_name then m.full_name  end  as full_name,
+    case when m.shows_name then m.avatar_url end  as avatar_url,
     m.headline_ar,
     m.headline_en,
     m.years_experience,
@@ -298,16 +346,18 @@ as $$
     m.district_ids,
     m.languages,
     m.availability,
-    count(*) over ()                                                       as total_count
-  from matched m cross join viewer v
+    count(*) over ()                              as total_count
+  from matched m
   order by m.years_experience desc, m.created_at desc, m.id
   limit greatest(1, least(p_limit, 60)) offset greatest(0, least(p_offset, 5000));
 $$;
 
-revoke execute on function public.search_agents(job_track[], int[], agent_availability, int, int, int)
-  from public, anon;
-grant  execute on function public.search_agents(job_track[], int[], agent_availability, int, int, int)
-  to authenticated, service_role;
+-- The public API, as migration 68 left it: the directory is read by signed-out
+-- visitors, and what it returns is what the page shows them.
+revoke execute on function public.search_agents(job_track[], int[], agent_availability, int, int, int, text)
+  from public;
+grant  execute on function public.search_agents(job_track[], int[], agent_availability, int, int, int, text)
+  to anon, authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- The reveal
