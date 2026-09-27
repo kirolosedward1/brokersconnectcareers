@@ -40,12 +40,20 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
   return (
     <HeaderShell hasHomeHero={!viewer?.profile}>
       {/* Three cells below `md` — search, the mark, menu and account — with the
-          two outer cells the same width, so the mark sits at the true centre
-          of the bar. `minmax(0, 1fr)` rather than `1fr`: the bare form has an
-          `auto` minimum, so the heavier end cell widened itself and dragged
-          the mark off centre. From `md` it is the ordinary row: mark at the
-          start, nav beside it, controls pushed to the end. */}
-      <div className="shell grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:h-16 md:flex">
+          two outer cells the same width whenever they can be, so the mark sits
+          at the true centre of the bar. From `md` it is the ordinary row: mark
+          at the start, nav beside it, controls pushed to the end.
+
+          `minmax(max-content, 1fr)`, not `minmax(0, 1fr)`. The zero minimum
+          kept the mark centred by letting the end cell shrink below its
+          contents, which was fine while those were one button. Signed in they
+          are three — the bell, the account and the menu, 144px — and a 106px
+          cell on a 375px phone spilled them 22px off the page, on every public
+          page, for everybody signed in. Now each outer cell is at least what
+          it holds and they share what is left: equal, and the mark centred,
+          wherever that fits; off centre by the difference where it does not,
+          which beats a page that scrolls sideways. */}
+      <div className="shell grid h-14 grid-cols-[minmax(max-content,1fr)_auto_minmax(max-content,1fr)] items-center gap-2 sm:h-16 md:flex">
         <Link
           href="/jobs"
           aria-label={t('jobs')}
@@ -55,7 +63,14 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
         </Link>
 
         <Link href="/" className="flex min-h-11 shrink-0 items-center justify-self-center">
-          <Logo name={tMeta('siteName')} />
+          {/* Below 360px the three controls and the wordmark do not fit
+              together, so a signed-in reader — who knows where they are —
+              keeps the mark and hears the name. A visitor keeps both at every
+              width; theirs is the one-button row. */}
+          <Logo
+            name={tMeta('siteName')}
+            nameClassName={viewer?.profile ? 'max-[359px]:sr-only' : undefined}
+          />
         </Link>
 
         {/* Full nav from md up. Below that it moves into the disclosure at the

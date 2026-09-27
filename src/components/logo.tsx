@@ -24,20 +24,23 @@ export function Logo({
   name,
   className,
   markClassName,
+  nameClassName,
 }: {
   name: string;
   className?: string;
   markClassName?: string;
+  nameClassName?: string;
 }) {
   return (
     <span className={cn('flex items-center gap-2 font-semibold', className)}>
       <LogoMark className={markClassName} />
       {/* The wordmark stays at every width. It used to drop below sm, which
           left phones — most of this market — looking at two blue squares and
-          no name. It fits: at 360px the row is the mark, the wordmark, a
-          search icon and the menu button, and nothing else competes for the
-          space until sm, where the auth buttons appear. */}
-      <span className="text-[0.95rem] sm:text-base">{name}</span>
+          no name. It fits: at 360px a visitor's row is the mark, the
+          wordmark, a search icon and the menu button. The one exception is
+          the site header for somebody signed in, below 360px, where the bell
+          and the account take the room — see nameClassName there. */}
+      <span className={cn('text-[0.95rem] sm:text-base', nameClassName)}>{name}</span>
     </span>
   );
 }
