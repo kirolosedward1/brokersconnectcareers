@@ -95,8 +95,15 @@ URL Configuration, set Site URL to your production URL and add
 `https://your-domain/auth/callback` to the redirect allow-list. Until you do,
 confirmation emails and Google sign-in will send people to `localhost:3000`.
 
+**Email** needs `RESEND_API_KEY`, `RESEND_FROM` and `RESEND_WEBHOOK_SECRET`
+too, plus Supabase Auth's SMTP settings. Everything about it — architecture,
+events, DNS status, and the provider steps still outstanding — is in
+[`docs/email.md`](docs/email.md).
+
 The nightly expiry cron is already declared in `vercel.json` and runs at 01:00
-UTC. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
+UTC. Expiry and retention also run hourly inside the database through pg_cron,
+which needs no application secret; `/api/cron/lifecycle` deletes released files
+through the Storage API. See `docs/data-lifecycle.md`. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
 variable is set; the route returns 401 to anything else.
 
 **Functions run next to the database, not next to the reader.** `vercel.json`
@@ -115,11 +122,16 @@ region, move this with it.
 | `pnpm dev` | Dev server |
 | `pnpm build` | Production build |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test:db` | Runs the schema and RLS suites against an in-process Postgres |
+| `pnpm test:db` | Runs the schema, RLS, security, notifications and lifecycle suites against an in-process Postgres |
+| `pnpm test:security` | The hardening round's rules alone (audit trail, reveal, limits, MFA, storage) |
+| `pnpm test:security-libs` | Byte recognition, text sanitising, href and secret checks |
+| `pnpm test:notifications` | Notification idempotency, read state, paging, role-safe links and channel isolation (see `docs/notifications.md`) |
 | `pnpm db:push:url` | Applies migrations + taxonomies over `DATABASE_URL` (no CLI, no Docker) |
 | `pnpm db:seed:demo` | Creates demo accounts via the Auth admin API + sample listings |
 | `pnpm doctor` | Preflight: env, REST, schema, storage, auth |
 | `pnpm db:rehearse` | Runs the setup scripts against a throwaway wire-protocol Postgres |
+| `pnpm test:lifecycle` | Expiry, deletion, file replacement, retention and cleanup, including a two-worker race against a real Postgres when one is installed |
+| `pnpm lifecycle:audit` | Read-only integrity/orphan report over `DATABASE_URL` (`--repair` dry run, `--apply` safe repairs) |
 | `pnpm bench:search` | Query plans for board, company and agent search on a 20k-listing synthetic board |
 | `pnpm db:types` | Regenerates `src/lib/supabase/database.types.ts` from a linked project |
 
@@ -137,6 +149,21 @@ Supabase's `auth` and `storage` schemas are stubbed in `tests/setup.mjs`, but
 pgcrypto and unaccent are loaded for real, so the `create extension` lines and the
 seed's `crypt()`/`gen_salt()` calls are genuinely exercised. Everything below that
 line is the production SQL, verbatim.
+
+## Security
+
+The hardening round of September 2026 is documented under `docs/security/`:
+
+- `THREAT_MODEL.md` — data classification, trust boundaries, adversaries and the control that answers each.
+- `SECURITY_REPORT.md` — what was found, what was fixed, what remains, and the production-readiness verdict.
+- `SUPABASE_SETTINGS.md` — the dashboard settings the code depends on (Turnstile CAPTCHA, MFA, rate limits, PITR).
+- `EDGE_WAF.md` + `vercel-firewall.json` — the Vercel Firewall rules, applied with `scripts/vercel-firewall.mjs`.
+- `RUNBOOKS.md` — incident response, backups and restore, change control, alerting.
+- `../load/` — k6 load, spike and abuse scripts (staging only).
+
+The rules themselves live in the database (migrations 303–313) and are exercised by `pnpm test:security`; the pure helpers (byte recognition, sanitising, URL and secret checks) by `pnpm test:security-libs`. Both run as part of `pnpm check`.
+
+Three environment variables were added — `SECURITY_SALT`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` — and one switch, `ADMIN_MFA_REQUIRED`. All are described in `.env.example`; `/api/health` reports which are set.
 
 ## Layout
 

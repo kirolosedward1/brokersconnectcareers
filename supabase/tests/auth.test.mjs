@@ -328,7 +328,14 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
   const form = read(j(ROOT, 'src/components/auth/auth-form.tsx'), 'utf8');
   report.ok(/setUnconfirmed\(signInError\.code === 'email_not_confirmed'/.test(form), 'sign-in detects the unconfirmed-email refusal');
   report.ok(/error && unconfirmed && mode === 'sign-in'/.test(form), 'and offers the confirmation mail again right there');
-  report.ok(/confirmed=1/.test(form) && (form.match(/confirmationRedirect\(\)/g) || []).length >= 3, 'every confirmation link the app requests lands with the confirmed flag');
+  // Sign-up asks GoTrue from the browser; both resends go through the
+  // rate-limited server action, which also carries the Turnstile token when one was issued. All three are built from confirmationPath().
+  report.ok(
+    /confirmed=1/.test(form) &&
+      /confirmationRedirect = \(\) => `\$\{window\.location\.origin\}\$\{confirmationPath\(\)\}`/.test(form) &&
+      (form.match(/resendConfirmation\(pendingEmail, confirmationPath\(\), captchaToken\)/g) || []).length === 2,
+    'every confirmation link the app requests lands with the confirmed flag',
+  );
   const rescue = read(j(ROOT, 'src/components/auth/fragment-session.tsx'), 'utf8');
   report.ok(/confirmed: '1'/.test(rescue), 'the fragment rescue carries the flag for a sign-up too');
   const onboarding = read(j(ROOT, 'src/app/[locale]/onboarding/page.tsx'), 'utf8');
@@ -345,7 +352,11 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
 {
   const form = read(j(ROOT, 'src/components/auth/auth-form.tsx'), 'utf8');
   report.ok(/data: \{ role: audience \}/.test(form), 'sign-up stores the door\'s role in user metadata');
-  report.ok((form.match(/emailRedirectTo: confirmationRedirect\(\)/g) || []).length === 3, 'sign-up and both resends use the same confirmation landing, role included');
+  report.ok(
+    (form.match(/emailRedirectTo: confirmationRedirect\(\)/g) || []).length === 1 &&
+      (form.match(/resendConfirmation\(pendingEmail, confirmationPath\(\), captchaToken\)/g) || []).length === 2,
+    'sign-up and both resends use the same confirmation landing, role included',
+  );
   const viewer = read(j(ROOT, 'src/lib/auth.ts'), 'utf8');
   report.ok(/suggestedRole/.test(viewer), 'getViewer exposes the stored role as a suggestion');
   const onboarding = read(j(ROOT, 'src/components/auth/onboarding-form.tsx'), 'utf8');

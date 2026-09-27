@@ -1,9 +1,16 @@
 -- =============================================================================
--- 300 — is_admin() asked once per query, and the home page's counts in one read
+-- 314 — is_admin() asked once per query, and the home page's counts in one read
 --
--- Numbered 300 so it sorts after every migration in flight on other branches:
--- the first half rewrites whatever policies exist when it runs, so running last
--- is the point, and nothing below depends on anything newer than 068.
+-- The first half rewrites whatever policies exist when it runs, so sorting
+-- after main's newest (313) is the point: it also wraps the policies the
+-- hardening migrations (303-313) created. Nothing below depends on anything
+-- newer than 068.
+--
+-- Compatibility: both halves are safe in either order against the code. The
+-- policy rewrite changes how often a helper is asked, not what any policy
+-- allows, so code on either side of it behaves identically. The code that
+-- calls browse_counts() falls back to its old row-by-row read on PGRST202 /
+-- 42883, so it can reach production before this migration does.
 --
 -- ONE. Migration 57 wrapped `auth.uid()` as `(select auth.uid())` so Postgres
 -- computes it once instead of once per row, and stopped there. Thirty-odd
@@ -36,6 +43,11 @@
 -- runs, and running it twice changes nothing: an already-wrapped call reads
 -- `( SELECT is_admin() AS is_admin)` and is not matched again.
 -- =============================================================================
+
+-- rollback: drop function if exists public.browse_counts(); — the policy rewrite needs no undo: wrapped and bare calls allow exactly the same rows, so reverting the code leaves it working on the wrapped policies
+-- safety: rls — alter policy rewrites only the expression text around argument-less, STABLE helpers (is_admin() -> (select public.is_admin())); who may read or write each row is unchanged, verified by diffing every rewritten policy on a copy of production's schema
+-- safety: grant, revoke-anon — browse_counts() is invoker-rights, so anon executing it can see nothing a direct read of jobs does not already show; anon is granted by name because the signed-out home page calls it, and the revoke only drops PUBLIC's implicit grant
+-- safety: ships-with-code — either order is safe: getBrowseCounts() falls back to the row-by-row read when browse_counts() is missing, and the policy rewrite changes no result any code sees
 
 do $$
 declare

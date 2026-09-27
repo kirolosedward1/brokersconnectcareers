@@ -54,7 +54,23 @@ export async function POST(request: NextRequest) {
   const order = transaction.order as { id?: number; merchant_order_id?: string } | undefined;
   const merchantOrderId = order?.merchant_order_id;
   const paymobOrderId = order?.id != null ? String(order.id) : null;
-  const success = transaction.success === true;
+
+  /*
+    The signed facts, all of them. `merchant_order_id` is the one field here
+    Paymob's HMAC does not cover, so it is treated as a lookup key and nothing
+    more: settle_order() (migration 312) refuses unless the signed Paymob order
+    id, amount and currency describe the order it names. A refunded or voided
+    transaction is not a success whatever `success` says.
+  */
+  const success =
+    transaction.success === true &&
+    transaction.is_refunded !== true &&
+    transaction.is_voided !== true;
+  const amountCents =
+    typeof transaction.amount_cents === 'number' && Number.isFinite(transaction.amount_cents)
+      ? Math.round(transaction.amount_cents)
+      : null;
+  const currency = typeof transaction.currency === 'string' ? transaction.currency : null;
 
   if (!merchantOrderId) {
     // Signed, so it is genuinely Paymob — but not about an order of ours.
@@ -71,10 +87,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'not_configured' }, { status: 503 });
   }
 
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(merchantOrderId)) {
+    return NextResponse.json({ ok: true, outcome: 'no_merchant_order' });
+  }
+
   const { data, error } = await admin.rpc('settle_order', {
     p_order_id: merchantOrderId,
     p_paymob_order_id: paymobOrderId,
     p_success: success,
+    p_amount_cents: amountCents,
+    p_currency: currency,
   });
 
   if (error) {

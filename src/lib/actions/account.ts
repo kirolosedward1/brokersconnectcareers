@@ -4,10 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { allow } from '@/lib/rate-limit';
 import { AVATAR_BUCKET } from '@/lib/buckets';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
-import { notifyPasswordChanged } from '@/lib/email/notify';
+import { isOwnedPath } from '@/lib/security/files';
+import { publish } from '@/lib/notifications/events';
 
 /**
  * Deleting your own account.
@@ -58,27 +60,38 @@ export async function deleteMyAccount(): Promise<ActionResult> {
     return { ok: false, error: 'unavailable' };
   }
 
-  // Uploaded files first. Storage objects are not reached by the database
-  // cascade, and a CV outliving the account it belonged to is the exact
-  // failure this feature exists to prevent.
+  /*
+    The account first, the files second.
+
+    This used to run the other way round, and a failure in between left the
+    worse of the two half-states: files gone, account still alive, with a
+    profile and applications pointing at CVs that no longer existed. In this
+    order a failure leaves the opposite — no account, a file behind it — and
+    that is the state the storage sweep exists to finish (migration 204): the
+    cascade has already queued every CV and photo this account referenced.
+
+    Removed here as well, immediately, rather than left to the sweep's grace
+    period. The grace period protects a public URL somebody may still be
+    looking at; a person asking to be deleted is owed the prompt removal of
+    their CV, which nobody else is looking at.
+  */
+  const { error } = await admin.auth.admin.deleteUser(user.id);
+  if (error) return { ok: false, error: error.message };
+
   for (const bucket of ['cvs', 'avatars'] as const) {
     try {
       const { data: files } = await admin.storage.from(bucket).list(user.id);
       const paths = (files ?? []).map((file) => `${user.id}/${file.name}`);
       if (paths.length) await admin.storage.from(bucket).remove(paths);
     } catch (error) {
-      // A missing bucket must not block the deletion. Losing the account is
-      // the part the person asked for; an orphaned file is a smaller wrong
-      // than an account that would not die.
+      // The account is already gone; a file left behind is queued for the
+      // sweep and will not outlive its grace period.
       console.warn(
         `[account] could not clear ${bucket} for ${user.id}:`,
         error instanceof Error ? error.message : error,
       );
     }
   }
-
-  const { error } = await admin.auth.admin.deleteUser(user.id);
-  if (error) return { ok: false, error: error.message };
 
   await supabase.auth.signOut();
   return { ok: true };
@@ -95,7 +108,7 @@ export async function deleteMyAccount(): Promise<ActionResult> {
  * nothing to point somewhere else. It mails the session's own account or it
  * does nothing.
  *
- * The claim is checked rather than believed. notifyPasswordChanged requires
+ * The claim is checked rather than believed. Both channels require
  * auth.users.updated_at to have moved in the last few minutes, so calling this
  * without changing anything sends nothing.
  */
@@ -106,7 +119,12 @@ export async function announcePasswordChange(): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  after(() => notifyPasswordChanged(user.id));
+  // The evidence check already stops a call that changed nothing; this stops a
+  // loop of real changes from becoming a loop of mail. Answered ok either way —
+  // the password change itself succeeded, which is what the caller cares about.
+  if (!(await allow(`password_notice:${user.id}`, 5, 3600))) return { ok: true };
+
+  after(() => publish({ type: 'SECURITY_EVENT', userId: user.id, kind: 'password_changed' }));
   return { ok: true };
 }
 
@@ -178,7 +196,7 @@ export async function saveAvatar(input: unknown): Promise<ActionResult> {
 
   // The path is not taken on trust: it must be inside this account's own
   // folder, whatever the caller sent.
-  if (parsed.data.storagePath && !parsed.data.storagePath.startsWith(`${user.id}/`)) {
+  if (parsed.data.storagePath && !isOwnedPath(parsed.data.storagePath, user.id)) {
     return { ok: false, error: 'forbidden' };
   }
 
@@ -192,7 +210,7 @@ export async function saveAvatar(input: unknown): Promise<ActionResult> {
     .eq('id', user.id)
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'failed' };
   if (!updated?.length) return { ok: false, error: 'not_found' };
 
   revalidatePath('/dashboard/account');

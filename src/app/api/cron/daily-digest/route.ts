@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { env } from '@/lib/env';
+import { bearerToken, secretsMatch } from '@/lib/security/secrets';
 import { localized } from '@/i18n/routing';
 import { notifyProfileIncomplete, sendApplicantDigest } from '@/lib/email/notify';
 import { logFailure } from '@/lib/observe';
@@ -28,7 +29,7 @@ export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   const secret = env.cronSecret;
-  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!secretsMatch(bearerToken(request.headers.get('authorization')), secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

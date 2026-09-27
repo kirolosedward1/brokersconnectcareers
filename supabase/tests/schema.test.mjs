@@ -301,7 +301,7 @@ report.section('a policy asks who you are once, not once per row');
   );
 
   /*
-    The same for the argument-less helpers (migration 300). These cost more
+    The same for the argument-less helpers (migration 314). These cost more
     than auth.uid() when repeated: each is a SECURITY DEFINER lookup, and a
     bare `is_admin()` OR'd into a policy ran once per row of every scan a
     non-admin made — a million buffer reads for the notification bell at a
@@ -326,11 +326,7 @@ report.section('who may call a definer function, on purpose');
     the API, and this schema has thirty-eight of them. Left as a wall of
     warnings the list means nothing; pinned, it means somebody decided.
 
-    Two reasons a function is anon-callable here and no third:
-
-      the public API   search_agents, get_agent_card and increment_job_view
-                       are what the directory, the card and the view counter
-                       are made of, and none of them needs a session.
+    One reason a function is anon-callable here and no second:
 
       RLS calls it     Postgres evaluates a policy as the *calling* role, so a
                        policy invoking a function anon cannot execute does not
@@ -340,14 +336,27 @@ report.section('who may call a definer function, on purpose');
                        these answers about the caller and returns false or
                        null to a stranger.
 
+    The directory functions are the other reason. search_agents and
+    get_agent_card are what the public directory and a public card are made
+    of, and neither needs a session. Since migration 304 neither returns a
+    phone number, a CV path or a locked card's slug, so what a script can page
+    is what the page already shows. increment_job_view() left the list there:
+    the server counts views, and a visitor's own call was never bounded.
+
     A new name in this list is a decision, so it should cost a line in this
     file rather than arriving with a migration nobody re-read.
   */
   const EXPECTED = new Set([
-    // Public API.
+    // Public API: the directory and the card, without contact details.
     'search_agents',
     'get_agent_card',
-    'increment_job_view',
+    // Support (migration 201). The failures that most need a reference happen
+    // to people who are not signed in — sign-up, sign-in, a confirmation link
+    // — and production has no service-role key to write for them. Both take
+    // the caller's identity from the session rather than an argument, and
+    // both are capped per account, per address and across the signed-out side.
+    'record_support_event',
+    'submit_support_request',
     // Predicates that row-level security itself calls.
     'applied_to_job',
     'applied_to_my_job',

@@ -19,8 +19,9 @@ import { salaryReference } from '@/lib/queries/jobs';
 import type { ActionResult } from '@/lib/actions/jobs';
 import type { SalaryReferenceRow } from '@/lib/supabase/database.types';
 import { after } from 'next/server';
-import { notifyJobSubmitted } from '@/lib/email/notify';
+import { publish } from '@/lib/notifications/events';
 import { logFailure } from '@/lib/observe';
+import { clean, cleanText } from '@/lib/security/sanitize';
 import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { jobIsPublic } from '@/lib/job-state';
 
@@ -105,6 +106,23 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
   const value = parsed.data;
 
   /*
+    Untrusted text, made plain.
+
+    Markup, invisible direction-changing characters and control characters
+    come out; a description is allowed a handful of links and no more —
+    an advert that is mostly URLs is not an advert. React would escape a
+    stored `<script>` on render; the point is not to store one, because the
+    next place this text is drawn may not be React.
+  */
+  const description = cleanText(value.descriptionAr, { multiline: true, maxLinks: 5 });
+  const descriptionEn = cleanText(value.descriptionEn, { multiline: true, maxLinks: 5 });
+  const requirements = cleanText(value.requirementsAr, { multiline: true, maxLinks: 3 });
+  if (!description.ok) return { ok: false, error: 'invalid', fieldErrors: { descriptionAr: 'tooManyLinks' } };
+  if (!descriptionEn.ok) return { ok: false, error: 'invalid', fieldErrors: { descriptionEn: 'tooManyLinks' } };
+  if (!requirements.ok) return { ok: false, error: 'invalid', fieldErrors: { requirementsAr: 'tooManyLinks' } };
+  if (description.value.length < 20) return { ok: false, error: 'invalid', fieldErrors: { descriptionAr: 'required' } };
+
+  /*
     What editing a live listing does to its status, which is: nothing here.
 
     This wrote `pending_review` or `draft` on every save, including a save of a
@@ -132,8 +150,8 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
   const status = value.submit ? 'pending_review' : 'draft';
 
   const payload = {
-    title_ar: value.titleAr,
-    title_en: value.titleEn || null,
+    title_ar: clean(value.titleAr),
+    title_en: clean(value.titleEn) || null,
     track: value.track,
     employment_type: value.employmentType,
     experience_band: value.experienceBand,
@@ -145,12 +163,12 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     // The database rejects a value on any type other than percentage, so drop
     // whatever a stale form field left behind.
     commission_value: value.commissionType === 'percentage' ? (value.commissionValue ?? null) : null,
-    commission_note_ar: value.commissionNoteAr || null,
+    commission_note_ar: clean(value.commissionNoteAr) || null,
     leads_source: value.leadsSource,
     benefits: value.benefits,
-    description_ar: value.descriptionAr,
-    description_en: value.descriptionEn || null,
-    requirements_ar: value.requirementsAr || null,
+    description_ar: description.value,
+    description_en: descriptionEn.value || null,
+    requirements_ar: requirements.value || null,
   } as const;
 
   let jobId = value.id;
@@ -272,14 +290,14 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
       .delete()
       .eq('job_id', jobId!)
       .in('developer_id', dropped);
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: 'failed' };
   }
 
   if (added.length) {
     const { error } = await supabase
       .from('job_developers')
       .insert(added.map((developerId) => ({ job_id: jobId!, developer_id: developerId })));
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: 'failed' };
   }
 
   /*
@@ -300,7 +318,8 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
 
   if (settled?.status === 'pending_review' && current?.status !== 'pending_review') {
     const submitted = jobId!;
-    after(() => notifyJobSubmitted(submitted));
+    const submittedBy = user.id;
+    after(() => publish({ type: 'JOB_SUBMITTED', jobId: submitted, submittedBy }));
   }
 
   /*
@@ -379,11 +398,19 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
   return { ok: true };
 }
 
-/** Turns database-level rule violations into something the UI can explain. */
+/**
+ * Turns database-level rule violations into something the UI can explain.
+ *
+ * Anything unrecognised is 'failed' rather than the database's own sentence:
+ * that sentence names constraints, triggers and columns, and the person on
+ * the other end of a refused write is not always the employer.
+ */
 function mapJobError(message: string): string {
   if (message.includes('unverified_company_post_cap')) return 'post_cap';
   if (message.includes('job status cannot go from')) return 'invalid_transition';
-  return message;
+  if (message.includes('job_post_rate_limit')) return 'post_rate_limit';
+  if (message.includes('duplicate_listing')) return 'duplicate_listing';
+  return 'failed';
 }
 
 

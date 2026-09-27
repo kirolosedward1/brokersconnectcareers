@@ -6,11 +6,8 @@ import { useRouter } from 'next/navigation';
 import { ImageUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
-import { createClient } from '@/lib/supabase/client';
-import { AVATAR_BUCKET } from '@/lib/buckets';
 import { saveAvatar } from '@/lib/actions/account';
-import { uuid } from '@/lib/utils';
-import { downscalePhoto } from '@/lib/downscale-image';
+import { uploadImage } from '@/lib/actions/uploads';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -24,33 +21,22 @@ import { useSessionRecovery } from '@/lib/session-expired';
  * email address had no photo and no way to acquire one, and every profile on
  * the platform showed the monogram — permanently.
  *
- * Everything about the upload is the logo's shape, because the rules are the
- * same: straight from the browser into a public bucket, into a folder named
- * for the account, where a storage policy checks the folder is theirs. The
- * server action only turns the path into a URL and writes it down.
+ * The bytes go to the server, which decodes the picture and writes a fresh
+ * WebP with nothing else in it — no EXIF, no trailing payload — into a folder
+ * named for the account. The checks below are a courtesy to the person, so a
+ * wrong file is refused before it is sent; the server makes them again from
+ * the bytes rather than from the browser's guess.
  */
-/**
- * What may be picked, and what may be stored.
- *
- * The bucket holds 2 MB (migration 35) and that is still the rule for what is
- * stored — but what is stored is now the photo shrunk to the size it is shown
- * at (see downscale-image.ts), a few tens of KB. So a phone photo of 4 MB,
- * which the old check turned away, is fine to pick; only a photo the browser
- * cannot shrink is held to the bucket's own limit.
- */
-const MAX_PICK_BYTES = 10 * 1024 * 1024;
-const MAX_STORED_BYTES = 2 * 1024 * 1024;
+const MAX_BYTES = 2 * 1024 * 1024;
 
 /** No SVG, for the reason spelled out on the logo uploader: it is a document
  *  that can carry script, and anybody who signs up can send one. */
 const TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 export function AvatarUpload({
-  userId,
   name,
   avatarUrl,
 }: {
-  userId: string;
   name: string;
   avatarUrl: string | null;
 }) {
@@ -67,7 +53,7 @@ export function AvatarUpload({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > MAX_PICK_BYTES) {
+    if (file.size > MAX_BYTES) {
       setError(tValidation('fileTooLarge'));
       event.target.value = '';
       return;
@@ -79,37 +65,20 @@ export function AvatarUpload({
     }
 
     startTransition(async () => {
-      const small = await downscalePhoto(file);
-      if (!small && file.size > MAX_STORED_BYTES) {
-        setError(tValidation('fileTooLarge'));
-        event.target.value = '';
-        return;
-      }
-      const body = small ?? file;
-      const extension = small ? 'jpg' : (file.name.split('.').pop()?.toLowerCase() ?? 'png');
-      // A fresh name every time rather than a fixed one: the URL is public and
-      // cached, and overwriting in place would leave the old photo showing.
-      const path = `${userId}/${uuid()}.${extension}`;
+      const form = new FormData();
+      form.set('kind', 'avatar');
+      form.set('file', file);
 
-      const { error: uploadError } = await createClient()
-        .storage.from(AVATAR_BUCKET)
-        .upload(path, body, {
-          contentType: small ? 'image/jpeg' : file.type,
-          // The name is never reused, so the file can be cached for good: a
-          // returning reader's browser and Supabase's CDN keep it instead of
-          // fetching it again every hour, the storage default.
-          cacheControl: '31536000',
-        });
-
-      if (uploadError) {
-        setError(tCommon('errorBody'));
-        return;
-      }
-
-      const result = await saveAvatar({ storagePath: path });
+      const result = await uploadImage(form);
       if (recoverSession(result)) return;
       if (!result.ok) {
-        setError(tCommon('errorBody'));
+        setError(
+          result.error === 'file_type'
+            ? tValidation('fileType')
+            : result.error === 'too_large'
+              ? tValidation('fileTooLarge')
+              : tCommon('errorBody'),
+        );
         return;
       }
 
@@ -121,9 +90,10 @@ export function AvatarUpload({
 
   function remove() {
     startTransition(async () => {
-      // The column is cleared; the file stays in the bucket. Deleting it would
-      // break any page still holding the old URL, and a 2 MB image is not
-      // worth that.
+      // The column is cleared and the file is left where it is for now:
+      // deleting it here would break any page or email still holding the old
+      // URL. The database queues it on the way out and the lifecycle sweep
+      // removes it once its grace period has passed (migration 204).
       const result = await saveAvatar({ storagePath: null });
       if (recoverSession(result)) return;
       if (!result.ok) setError(tCommon('errorBody'));

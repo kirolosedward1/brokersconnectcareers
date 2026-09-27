@@ -10,8 +10,11 @@ import { markNotificationsRead } from '@/lib/actions/notifications';
  * Only rendered when something is unread, so it never sits there doing
  * nothing. The action revalidates the console layout, which is where the badge
  * lives — otherwise the list would clear and the bell would keep its count.
+ *
+ * `upTo` is the newest notification this screen showed, so a stale tab
+ * cannot mark read something that arrived after it rendered.
  */
-export function MarkAllReadButton({ label }: { label: string }) {
+export function MarkAllReadButton({ label, upTo }: { label: string; upTo: string | null }) {
   const tCommon = useTranslations('common');
   const [failed, setFailed] = useState(false);
   const [pending, start] = useTransition();
@@ -26,7 +29,7 @@ export function MarkAllReadButton({ label }: { label: string }) {
         onClick={() =>
           start(async () => {
             setFailed(false);
-            const result = await markNotificationsRead();
+            const result = await markNotificationsRead(upTo);
             if (!result.ok) setFailed(true);
           })
         }

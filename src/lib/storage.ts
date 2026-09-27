@@ -1,5 +1,6 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logFailure } from '@/lib/observe';
 
 // Re-exported so server-side callers keep one import for "storage things",
 // while the names themselves stay reachable from the browser.
@@ -18,9 +19,26 @@ export async function signedUrl(
   path: string,
   expiresInSeconds = 300,
 ): Promise<string | null> {
-  const { data, error } = await createAdminClient()
-    .storage.from(bucket)
-    .createSignedUrl(path, expiresInSeconds);
+  /*
+    Null, never a throw. createAdminClient() throws while
+    SUPABASE_SERVICE_ROLE_KEY is unset — production's state as of 27 Sep 2026
+    — and every caller already treats null as "no link". Thrown, it took the
+    whole consultant profile down for the one reader entitled to its CV, and
+    turned the employer's "open CV" into an unhandled 500. The file stays
+    unavailable until the key is set; the page around it does not have to.
+  */
+  let admin: ReturnType<typeof createAdminClient>;
+  try {
+    admin = createAdminClient();
+  } catch (error) {
+    logFailure('storage', 'cannot sign a file URL without the service role', {
+      bucket,
+      detail: error instanceof Error ? error.message : 'unknown',
+    });
+    return null;
+  }
+
+  const { data, error } = await admin.storage.from(bucket).createSignedUrl(path, expiresInSeconds);
 
   if (error) return null;
   return data.signedUrl;

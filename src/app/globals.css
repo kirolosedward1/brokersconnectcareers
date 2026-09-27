@@ -20,6 +20,13 @@
      white on primary          5.92:1  (AA body)
      primary on background     5.77:1  (AA body)
      foreground on accent     11.68:1
+
+   Every text colour below is held to 4.5:1 on each surface it is set on, in
+   both themes, and a form control's edge to 3:1 (WCAG 1.4.11) — the edge is
+   the only thing that says "type here" on a white field on a white page.
+   Three tokens used to miss that, measured on 2026-09-27: success text 3.55:1
+   on its own tint, warning text 2.23:1, and the field border 1.35:1. Their
+   values now carry the ratios in the comments beside them.
 --------------------------------------------------------------------------- */
 
 :root {
@@ -73,11 +80,17 @@
   --accent: oklch(0.93 0.055 199);
   --accent-foreground: oklch(0.36 0.075 210);
 
-  --success: oklch(0.58 0.12 155);
+  /* 4.55:1 on success-muted, 5.2:1 on white, and white on it 5.07:1 — the
+     badge, the plain text and the button. It was 0.58, which read as green
+     and failed all three. */
+  --success: oklch(0.52 0.12 155);
   --success-foreground: oklch(0.99 0.01 155);
   --success-muted: oklch(0.95 0.04 155);
 
-  --warning: oklch(0.72 0.14 75);
+  /* Amber is the one hue that cannot be light and legible at once. This is
+     the text colour — 4.59:1 on warning-muted, 5.2:1 on white — so the badge
+     that says a listing is about to expire can actually be read. */
+  --warning: oklch(0.54 0.115 65);
   --warning-muted: oklch(0.96 0.05 80);
 
   --destructive: oklch(0.55 0.19 27);
@@ -85,7 +98,10 @@
   --destructive-muted: oklch(0.96 0.03 27);
 
   --border: oklch(0.9 0.012 265);
-  --input: oklch(0.9 0.012 265);
+  /* A field's edge, not a panel's: 3.37:1 on white. Borders between surfaces
+     stay light — they separate things the eye already groups — but this one
+     is the whole affordance of an input. */
+  --input: oklch(0.64 0.02 265);
   --ring: var(--brand-blue);
 }
 
@@ -130,12 +146,15 @@
   --warning: oklch(0.78 0.13 80);
   --warning-muted: oklch(0.3 0.05 80);
 
-  --destructive: oklch(0.66 0.17 25);
+  /* 4.95:1 on its own tint; it was 4.15, so an error badge in dark mode was
+     the one red thing on the page that did not quite read. */
+  --destructive: oklch(0.68 0.17 25);
   --destructive-foreground: oklch(0.16 0.03 25);
-  --destructive-muted: oklch(0.3 0.06 25);
+  --destructive-muted: oklch(0.27 0.06 25);
 
   --border: oklch(0.3 0.025 265);
-  --input: oklch(0.33 0.025 265);
+  /* 3.5:1 on a card, for the same reason as the light value. */
+  --input: oklch(0.54 0.025 265);
   --ring: var(--brand-blue);
 }
 
@@ -255,6 +274,49 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
     border-radius: var(--radius-sm);
+  }
+
+  /*
+    Keep what has focus out from under the sticky header.
+
+    Both headers stick to the top of the viewport (56px, 64px from sm), and
+    the browser scrolls a newly focused element only as far as the edge of the
+    viewport — so tabbing up a page, or into the filter rail, parked the
+    focused control underneath the bar where nobody could see it (WCAG 2.4.11).
+    Scroll padding makes the browser treat the band under the header as off
+    screen. It also governs in-page anchors, so the skip link and `#section`
+    links land below the bar instead of behind it.
+  */
+  html {
+    scroll-padding-top: 5rem;
+  }
+
+  /* The listing page's apply bar is fixed to the bottom edge below lg; the
+     same reasoning, at the other end. */
+  @media (width < 64rem) {
+    html:has([data-apply-bar]) {
+      scroll-padding-bottom: 6rem;
+    }
+  }
+
+  /*
+    Motion, for people who have asked their system for less of it.
+
+    Individual components already opt in with motion-safe:, but the drawers,
+    menus and dialogs come from tw-animate-css and several transitions are
+    written without a variant. This is the backstop: anything that still moves
+    finishes at once. Durations rather than `animation: none`, so an element
+    whose resting state is the end of its animation still arrives there.
+  */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   /* Headings want tighter tracking than body text at display sizes. Arabic is

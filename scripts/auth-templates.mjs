@@ -116,7 +116,7 @@ const TEMPLATES = {
       { kind: 'button', label: 'تأكيد البريد الإلكتروني', href: CONFIRMATION_URL },
       {
         kind: 'text',
-        value: 'اللينك ده صالح لمدة 24 ساعة، وبيشتغل مرة واحدة بس.',
+        value: 'اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.',
       },
       {
         kind: 'security',

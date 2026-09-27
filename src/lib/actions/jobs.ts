@@ -3,13 +3,22 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { REPORT_REASONS } from '@/lib/taxonomy';
+import { clean } from '@/lib/security/sanitize';
+import { logFailure } from '@/lib/observe';
 
 export type ActionResult<T = undefined> =
   | { ok: true; data?: T }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
-export async function toggleSavedJob(jobId: string): Promise<ActionResult<{ saved: boolean }>> {
+const jobIdSchema = z.string().uuid();
+
+export async function toggleSavedJob(input: string): Promise<ActionResult<{ saved: boolean }>> {
+  const id = jobIdSchema.safeParse(input);
+  if (!id.success) return { ok: false, error: 'invalid' };
+  const jobId = id.data;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -30,7 +39,7 @@ export async function toggleSavedJob(jobId: string): Promise<ActionResult<{ save
       .delete()
       .eq('job_id', jobId)
       .eq('candidate_id', user.id);
-    if (error) return { ok: false, error: error.message };
+    if (error) return failed('save', 'could not unsave a listing', error, { job: jobId });
     revalidatePath('/dashboard/saved');
     return { ok: true, data: { saved: false } };
   }
@@ -38,7 +47,9 @@ export async function toggleSavedJob(jobId: string): Promise<ActionResult<{ save
   const { error } = await supabase
     .from('saved_jobs')
     .insert({ job_id: jobId, candidate_id: user.id });
-  if (error) return { ok: false, error: error.message };
+  // A listing that cannot be saved — a draft somebody guessed the id of, a
+  // policy that said no — is answered the same way whatever the reason.
+  if (error) return failed('save', 'could not save a listing', error, { job: jobId });
 
   revalidatePath('/dashboard/saved');
   return { ok: true, data: { saved: true } };
@@ -77,24 +88,54 @@ export async function reportJob(input: unknown): Promise<ActionResult> {
     job_id: parsed.data.jobId,
     reporter_id: user.id,
     reason: parsed.data.reason,
-    detail: parsed.data.detail || null,
+    detail: clean(parsed.data.detail, true) || null,
   });
 
   if (error) {
     if (error.message.includes('report_rate_limit')) return { ok: false, error: 'rate_limit' };
     // The unique index on (job_id, reporter_id).
     if (error.code === '23505') return { ok: false, error: 'already_reported' };
-    return { ok: false, error: error.message };
+    return failed('report', 'report refused', error, { job: parsed.data.jobId });
   }
 
   return { ok: true };
 }
 
 /**
- * Bumps the view counter through a SECURITY DEFINER function, so anonymous
- * visitors can be counted without being granted UPDATE on jobs.
+ * Bumps the view counter.
+ *
+ * With the service role, on purpose. The function is closed to anon and
+ * authenticated since migration 304 — a visitor could call it without limit,
+ * and as it turned out could not call it at all, because guard_job_update
+ * refuses a view_count change from anyone not acting as admin and every call
+ * from a visitor's session had been raising into a discarded promise. The
+ * page calls this after the response is on its way, so a slow count never
+ * slows a reader.
  */
 export async function recordJobView(slug: string): Promise<void> {
-  const supabase = await createClient();
-  await supabase.rpc('increment_job_view', { job_slug: slug });
+  if (!/^[a-z0-9-]{1,200}$/.test(slug)) return;
+  try {
+    const { error } = await createAdminClient().rpc('increment_job_view', { job_slug: slug });
+    if (error) logFailure('jobs', 'view not counted', { slug, code: error.code });
+  } catch {
+    // No service role configured: the count is the one thing this page can do
+    // without.
+  }
+}
+
+/**
+ * A database refusal, answered without the database's words.
+ *
+ * `error.message` carries constraint names, trigger names and hints — a map
+ * of the schema, handed to whoever sent the request. The message goes to the
+ * log with the identifiers that find the row; the caller gets a code.
+ */
+function failed(
+  area: string,
+  event: string,
+  error: { code?: string | null; message: string },
+  detail: Record<string, string | undefined>,
+): { ok: false; error: string } {
+  logFailure(area, event, { ...detail, code: error.code ?? undefined });
+  return { ok: false, error: 'failed' };
 }

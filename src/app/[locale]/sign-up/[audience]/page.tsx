@@ -6,6 +6,8 @@ import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { AuthForm } from '@/components/auth/auth-form';
 import { AudienceSwitch } from '@/components/auth/audience-switch';
+import { ReturnIntent } from '@/components/auth/return-intent';
+import { safeNext } from '@/lib/safe-next';
 import { AuthShell, type Audience } from '../../auth-shell';
 import { enabledProviders } from '@/lib/auth-providers';
 
@@ -64,13 +66,18 @@ export async function generateMetadata({
  */
 export default async function AudienceSignUpPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; audience: string }>;
+  searchParams: Promise<{ next?: string }>;
 }) {
   const { locale: rawLocale, audience: rawAudience } = await params;
   const locale = asLocale(rawLocale);
   const audience = parse(rawAudience);
   setRequestLocale(locale);
+
+  // Carried in from sign-in; see the plain /sign-up page.
+  const next = safeNext((await searchParams).next) ?? undefined;
 
   const { google: googleEnabled } = await enabledProviders();
 
@@ -84,13 +91,18 @@ export default async function AudienceSignUpPage({
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {t('haveAccount')}{' '}
-          <Link href={`/sign-in/${audience}`} className="font-medium text-primary hover:underline">
+          <Link
+            href={{ pathname: `/sign-in/${audience}`, query: next ? { next } : {} }}
+            className="font-medium text-primary hover:underline"
+          >
             {t('signIn')}
           </Link>
         </p>
 
+        <ReturnIntent next={next} locale={locale} mode="sign-up" />
+
         <div className="mt-8">
-          <AudienceSwitch mode="sign-up" active={audience} />
+          <AudienceSwitch mode="sign-up" active={audience} next={next} />
         </div>
 
         <div className="mt-6">

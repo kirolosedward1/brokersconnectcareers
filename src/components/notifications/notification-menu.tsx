@@ -3,6 +3,8 @@ import { Link } from '@/i18n/navigation';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { NotificationItem } from '@/components/notifications/notification-item';
 import { createClient } from '@/lib/supabase/server';
+import { getViewer } from '@/lib/auth';
+import { syncMyJobNotifications } from '@/lib/actions/notifications';
 import type { NotificationRow } from '@/lib/supabase/database.types';
 
 /**
@@ -23,6 +25,16 @@ export async function NotificationMenu({ locale, userId }: { locale: string; use
   const t = await getTranslations('notifications');
 
   /*
+    An employer's bell catches up on listings that ended or are about to,
+    first — those notices have no row change to trigger on (see
+    syncMyJobNotifications). Idempotent, and cheap: one statement over one
+    company's listings. A candidate has none to catch up on.
+  */
+  const viewer = await getViewer();
+  const role = viewer?.profile?.role;
+  if (role === 'employer' || role === 'admin') await syncMyJobNotifications();
+
+  /*
     Read under the viewer's own session, and scoped to them explicitly as well.
     Six is what fits in the panel without it becoming a page of its own.
 
@@ -39,19 +51,24 @@ export async function NotificationMenu({ locale, userId }: { locale: string; use
     bell with no badge is the same bell.
   */
   const supabase = await createClient();
-  const [{ data: recent }, { count: unread }] = await Promise.all([
-    supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(6),
+  const latest = (hideFolded: boolean) => {
+    let query = supabase.from('notifications').select('*').eq('user_id', userId);
+    // Applicants folded into a "N new applicants" row are counted by that
+    // row, not shown beside it (migration 302).
+    if (hideFolded) query = query.is('folded_into', null);
+    return query.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(6);
+  };
+  let [{ data: recent, error: recentError }, { count: unread }] = await Promise.all([
+    latest(true),
     supabase
       .from('notifications')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .is('read_at', null),
   ]);
+  // 42703: no such column — this code has reached a database migration 302
+  // has not. Nothing is folded there yet, so the unfiltered list is the list.
+  if (recentError?.code === '42703') ({ data: recent } = await latest(false));
   const notifications = (recent ?? []) as NotificationRow[];
 
   return (

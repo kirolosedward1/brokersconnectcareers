@@ -68,7 +68,7 @@ export const getBrowseCounts = cache(async function getBrowseCounts(): Promise<B
     The database groups them: one row per track x district x company type with
     a live listing — a few hundred at most, however large the board grows —
     under the same anonymous row-level security as before, since
-    browse_counts() is invoker-rights (migration 300).
+    browse_counts() is invoker-rights (migration 314).
 
     This used to read every live listing and count in here: a thousand rows a
     round trip, three trips and 235 KB out of the database per home-page visit
@@ -87,7 +87,7 @@ export const getBrowseCounts = cache(async function getBrowseCounts(): Promise<B
   }
 
   /*
-    Before migration 300 reaches a database the function does not exist yet
+    Before migration 314 reaches a database the function does not exist yet
     (PGRST202 from the API, 42883 from Postgres), and code reaches production
     before a migration as often as after. The row-by-row read below still
     answers correctly there, just expensively. Any other failure is a real one.

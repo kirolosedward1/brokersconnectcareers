@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 const SUPABASE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const PRELUDE = `
+export const PRELUDE = `
 -- Roles Supabase provisions for the API.
 do $do$ begin
   if not exists (select 1 from pg_roles where rolname='anon') then create role anon nologin; end if;
@@ -31,16 +31,38 @@ create schema if not exists auth;
 create schema if not exists storage;
 create schema if not exists extensions;
 
+-- The four timestamps at the end are what support reads to answer "I never got
+-- the email" and "I can't sign in" (admin_support_facts, migration 201). Same
+-- names and types as GoTrue's own table, checked against production.
 create table auth.users (
   id uuid primary key, instance_id uuid, aud text, role text, email text,
   encrypted_password text, email_confirmed_at timestamptz,
   raw_app_meta_data jsonb, raw_user_meta_data jsonb,
-  created_at timestamptz, updated_at timestamptz
+  created_at timestamptz, updated_at timestamptz,
+  confirmation_sent_at timestamptz, recovery_sent_at timestamptz,
+  -- Present on the real table; support reads it (migration 201) and the
+  -- lifecycle report uses it to identify abandoned signups (migration 204).
+  last_sign_in_at timestamptz, banned_until timestamptz
 );
 
 create or replace function auth.uid() returns uuid language sql stable as $fn$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $fn$;
+
+-- The whole claim set, the way Supabase exposes it. is_admin() reads the
+-- \`aal\` claim from here (migration 311).
+create or replace function auth.jwt() returns jsonb language sql stable as $fn$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
+$fn$;
+
+-- Enrolled second factors. Only the columns is_admin() consults.
+create table auth.mfa_factors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  factor_type text not null default 'totp',
+  status text not null default 'unverified',
+  created_at timestamptz not null default now()
+);
 
 create table storage.buckets (
   id text primary key, name text, public boolean,
@@ -48,7 +70,9 @@ create table storage.buckets (
 );
 create table storage.objects (
   id uuid primary key default gen_random_uuid(),
-  bucket_id text, name text, owner uuid
+  bucket_id text, name text, owner uuid,
+  -- The real table carries it; the storage sweep ages objects by it.
+  created_at timestamptz default now()
 );
 alter table storage.objects enable row level security;
 
@@ -70,7 +94,7 @@ alter default privileges in schema public
   grant execute on functions to anon, authenticated, service_role;
 `;
 
-const GRANTS = `
+export const GRANTS = `
 grant usage on schema public to anon, authenticated, service_role;
 -- Supabase grants this; without it a trigger function that is not SECURITY
 -- DEFINER cannot call auth.uid(), and the harness refuses a statement
@@ -145,16 +169,19 @@ export async function createTestDb({ seed = true } = {}) {
  * probe destructive statements without ordering constraints between them.
  */
 export function runner(db) {
-  return async function as(userId, sql, role = 'authenticated') {
+  /**
+   * `claims` adds to the JWT the request carries — `{ aal: 'aal2' }` is how a
+   * test says the caller answered a second-factor challenge.
+   */
+  return async function as(userId, sql, role = 'authenticated', claims = {}) {
     await db.exec('begin');
     try {
       await db.exec(`set local role ${role};`);
+      const jwt = JSON.stringify({ role, ...(userId ? { sub: userId } : {}), ...claims });
       if (userId) {
         await db.exec(`set local request.jwt.claim.sub = '${userId}';`);
-        await db.exec(`set local request.jwt.claims = '{"role":"${role}","sub":"${userId}"}';`);
-      } else {
-        await db.exec(`set local request.jwt.claims = '{"role":"${role}"}';`);
       }
+      await db.exec(`set local request.jwt.claims = '${jwt}';`);
       const result = await db.query(sql);
       await db.exec('rollback');
       return { ok: true, rows: result.rows };
