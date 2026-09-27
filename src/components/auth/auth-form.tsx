@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { localeHref, type Locale } from '@/i18n/routing';
 import { createClient } from '@/lib/supabase/client';
+import { resendConfirmation } from '@/lib/actions/auth-email';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
@@ -158,8 +159,8 @@ export function AuthForm({
     the fragment rescue with no query string to carry it.
   */
   const confirmedHref = `${onboardingHref}${audience ? '&' : '?'}confirmed=1`;
-  const confirmationRedirect = () =>
-    `${window.location.origin}/auth/callback?next=${encodeURIComponent(confirmedHref)}`;
+  const confirmationPath = () => `/auth/callback?next=${encodeURIComponent(confirmedHref)}`;
+  const confirmationRedirect = () => `${window.location.origin}${confirmationPath()}`;
 
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
@@ -351,12 +352,8 @@ export function AuthForm({
           onClick={() => {
             setResent(null);
             startTransition(async () => {
-              const { error: resendError } = await createClient().auth.resend({
-                type: 'signup',
-                email: pendingEmail,
-                options: { emailRedirectTo: confirmationRedirect() },
-              });
-              setResent(resendError ? 'wait' : 'sent');
+              const result = await resendConfirmation(pendingEmail, confirmationPath());
+              setResent(result.ok ? 'sent' : 'wait');
             });
           }}
         >
@@ -470,12 +467,8 @@ export function AuthForm({
               onClick={() => {
                 setResent(null);
                 startTransition(async () => {
-                  const { error: resendError } = await createClient().auth.resend({
-                    type: 'signup',
-                    email: pendingEmail,
-                    options: { emailRedirectTo: confirmationRedirect() },
-                  });
-                  setResent(resendError ? 'wait' : 'sent');
+                  const result = await resendConfirmation(pendingEmail, confirmationPath());
+              setResent(result.ok ? 'sent' : 'wait');
                 });
               }}
             >

@@ -9,14 +9,12 @@ import { FollowCompanyButton } from '@/components/companies/follow-company-butto
 import { ReportDialog } from '@/components/jobs/report-job-dialog';
 import { JobCard } from '@/components/jobs/job-card';
 import { JsonLd } from '@/components/json-ld';
-import { getCompanyBySlug } from '@/lib/queries/companies';
+import { getCompanyBySlug, getCompanyOpenJobs } from '@/lib/queries/companies';
 import { createClient } from '@/lib/supabase/server';
-import { raise } from '@/lib/queries/error';
 import { getViewer } from '@/lib/auth';
 import { followQuery } from '@/lib/saved-search';
 import { env } from '@/lib/env';
 import { truncate, toPlainText } from '@/lib/utils';
-import type { JobListItem } from '@/lib/queries/jobs';
 
 type Params = { locale: string; slug: string };
 
@@ -47,10 +45,26 @@ export async function generateMetadata({
   const about = localized(locale, company.about_ar, company.about_en);
   const path = `/companies/${slug}`;
 
+  /*
+    Indexable while the company is hiring, and only then.
+
+    Every company row is publicly readable — that is how a listing names its
+    employer — but a row is not a page worth a search result. An account
+    that signed up and never had a listing approved, a brokerage whose last
+    role closed in the spring, a company whose roles came down with a
+    suspension: each renders a name and "no open roles". The directory
+    already hides them (it lists only companies with a live listing) and the
+    sitemap now does the same, so the page agrees. It stays reachable for
+    anybody following a link, and returns to the index the day it hires.
+  */
+  const hiring = (await getCompanyOpenJobs(company.id)).length > 0;
+
   return {
     title: name,
     description: about ? truncate(toPlainText(about), 160) : undefined,
-    alternates: alternatesFor(path, locale),
+    ...(hiring
+      ? { alternates: alternatesFor(path, locale) }
+      : { robots: { index: false, follow: true } }),
   };
 }
 
@@ -62,33 +76,8 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
   const company = await getCompanyBySlug(slug);
   if (!company) notFound();
 
+  const jobs = await getCompanyOpenJobs(company.id);
   const supabase = await createClient();
-  /*
-    The error is read, not dropped.
-
-    "لا توجد وظائف مفتوحة" on a brokerage with three live adverts is a claim
-    about a company, shown to the public, on the page that company will send
-    people to. The (site) group has its own error boundary, so raising here
-    costs a page that says something went wrong rather than a page that says
-    something false.
-  */
-  const { data, error } = await supabase
-    .from('jobs')
-    .select(
-      `
-      *,
-      company:companies!inner (id, name_ar, name_en, slug, logo_url, verification_status),
-      district:districts!inner (id, governorate_id, name_ar, name_en, slug)
-    `,
-    )
-    .eq('company_id', company.id)
-    .eq('status', 'active')
-    .gt('expires_at', new Date().toISOString())
-    .order('published_at', { ascending: false });
-
-  if (error) raise(error, "loading a company's open roles");
-
-  const jobs = (data ?? []) as unknown as JobListItem[];
 
   const viewer = await getViewer();
 

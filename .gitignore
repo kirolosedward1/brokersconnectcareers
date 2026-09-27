@@ -12,6 +12,12 @@ next-env.d.ts
 supabase/.temp
 supabase/.branches
 
+# Disaster-recovery output holds personal data. The scripts require an output
+# directory outside the repository; this is the net under that rule.
+backups/
+*.dump
+*.age
+
 # iCloud's copies of files it thinks it lost a race with.
 #
 # This project lives under ~/Documents, which iCloud Drive syncs, and on a

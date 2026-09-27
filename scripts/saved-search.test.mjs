@@ -30,7 +30,7 @@ function is(label, got, want) {
   }
 }
 
-const { followQuery, followedCompany, toCanonicalQuery, hasFilters } = await import(
+const { followQuery, followedCompany, toCanonicalQuery, hasFilters, queryParams } = await import(
   '../src/lib/saved-search.ts'
 );
 const { companySlugOrNull } = await import('../src/lib/search/company-slug.ts');
@@ -53,6 +53,9 @@ const NONE = {
   districtSlugs: [],
   governorateSlug: null,
   hasBasicSalary: null,
+  minSalary: null,
+  commissionTypes: [],
+  postedWithin: null,
   companySlug: null,
   companyTypes: [],
   sort: 'newest',
@@ -103,6 +106,42 @@ is('an empty string', companySlugOrNull(''), null);
 is('a repeated parameter', companySlugOrNull(['a-1', 'b-2']), null);
 is('nothing at all', companySlugOrNull(undefined), null);
 is('something longer than any slug this app mints', companySlugOrNull('a'.repeat(81)), null);
+
+console.log('\n— the pay, commission and date filters are part of what is saved');
+is(
+  'two orders of the same commission types are one search',
+  toCanonicalQuery({ ...NONE, commissionTypes: ['split', 'percentage'] }),
+  toCanonicalQuery({ ...NONE, commissionTypes: ['percentage', 'split'] }),
+);
+is(
+  'each is written under the key the board reads',
+  toCanonicalQuery({ ...NONE, minSalary: 10000, commissionTypes: ['percentage'], postedWithin: 7 }),
+  'comm=percentage&pay=10000&posted=7',
+);
+is('a minimum salary alone is worth saving', hasFilters({ ...NONE, minSalary: 5000 }), true);
+
+console.log('\n— a saved query keeps every value of a multi-select');
+/*
+  The save action and the weekly digest both turn the stored string back into
+  the parser's input. They used Object.fromEntries, which keeps the last value
+  of a repeated key, so a search for two tracks was saved — and mailed — as a
+  search for one.
+*/
+is(
+  'two tracks and two districts survive the trip',
+  queryParams('district=maadi&district=new-cairo&track=primary&track=resale'),
+  { district: ['maadi', 'new-cairo'], track: ['primary', 'resale'] },
+);
+is('a key that appears once stays a string', queryParams('q=مبيعات&salary=yes'), { q: 'مبيعات', salary: 'yes' });
+is('an empty query is no parameters', queryParams(''), {});
+is(
+  'and the canonical form reads back to itself',
+  toCanonicalQuery({ ...NONE, tracks: ['primary', 'resale'], commissionTypes: ['split', 'none'] }),
+  new URLSearchParams(
+    Object.entries(queryParams('comm=none&comm=split&track=primary&track=resale'))
+      .flatMap(([key, value]) => (Array.isArray(value) ? value : [value]).map((v) => [key, v])),
+  ).toString(),
+);
 
 console.log('\n— the stand-in filter set still matches the real one');
 {

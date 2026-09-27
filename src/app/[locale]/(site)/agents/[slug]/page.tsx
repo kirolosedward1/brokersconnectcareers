@@ -15,6 +15,7 @@ import { recordAgentView } from '@/lib/agent-views';
 import { getDistrictMap, getDevelopers } from '@/lib/queries/taxonomy';
 import { getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import { CV_BUCKET, signedUrl } from '@/lib/storage';
 import { whatsappLink } from '@/lib/utils';
 import { employerToAgentOpener } from '@/lib/whatsapp';
@@ -49,14 +50,44 @@ export async function generateMetadata({
   const name = agent.is_unlocked && agent.full_name ? agent.full_name : t('anonymous');
   const path = `/agents/${slug}`;
 
+  /*
+    Indexable only when the owner chose `public` — asked of the database as an
+    anonymous visitor would ask it, not read off this viewer's card.
+
+    `is_unlocked` answers "may *this reader* see who it is", and it is true
+    for a verified employer, an admin, the owner and anybody the consultant
+    applied to. Deciding robots from it meant the directive depended on who
+    was looking. A crawler is anonymous today, so the answer happened to be
+    right, but a privacy rule that holds because of who happens to request
+    the page is not a rule. The public client carries no session, so only
+    the `visibility = 'public'` policy can let the row through.
+  */
+  const isPublic = await isPublicProfile(slug);
+
   return {
     title: name,
     description: localized(locale, agent.headline_ar, agent.headline_en) || t('subtitle'),
-    alternates: alternatesFor(path, locale),
-    // A gated profile has nothing worth indexing and should not be cached by
-    // search engines in its anonymised form.
-    robots: agent.is_unlocked ? undefined : { index: false, follow: true },
+    ...(isPublic
+      ? { alternates: alternatesFor(path, locale) }
+      : { robots: { index: false, follow: false, noarchive: true, nosnippet: true } }),
   };
+}
+
+async function isPublicProfile(slug: string): Promise<boolean> {
+  try {
+    // Allowed to fail quietly, and closed: an unanswered question keeps the
+    // profile out of the index rather than in it.
+    const { data } = await createPublicClient()
+      .from('agent_profiles')
+      .select('id')
+      .eq('slug', slug)
+      .eq('visibility', 'public')
+      .maybeSingle();
+    return Boolean(data);
+  } catch {
+    // Unreachable or unconfigured: fail closed.
+    return false;
+  }
 }
 
 export default async function AgentPage({ params }: { params: Promise<Params> }) {

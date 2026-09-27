@@ -25,12 +25,35 @@ export function toCanonicalQuery(filters: JobFilters): string {
   if (filters.governorateSlug) params.set('gov', filters.governorateSlug);
   if (filters.hasBasicSalary === true) params.set('salary', 'yes');
   if (filters.hasBasicSalary === false) params.set('salary', 'no');
+  if (filters.minSalary) params.set('pay', String(filters.minSalary));
+  add('comm', filters.commissionTypes);
+  if (filters.postedWithin) params.set('posted', String(filters.postedWithin));
   if (filters.companySlug) params.set('company', filters.companySlug);
   add('ctype', filters.companyTypes);
 
   // Sort the whole thing so key order cannot vary either.
   const sorted = [...params.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
   return new URLSearchParams(sorted).toString();
+}
+
+/**
+ * A stored or submitted query string, in the shape parseJobFilters reads.
+ *
+ * `Object.fromEntries(new URLSearchParams(query))` was the obvious spelling and
+ * it keeps only the last value of a repeated key — and the canonical form
+ * above writes every multi-select as a repeated key. So "primary and resale,
+ * in New Cairo or Maadi" was saved as "resale in Maadi", and the weekly
+ * digest replayed that. A key that appears once stays a string, because the
+ * single-valued filters (q, gov, salary, sort) ignore anything else.
+ */
+export function queryParams(query: string): Record<string, string | string[]> {
+  const out: Record<string, string | string[]> = {};
+  for (const [key, value] of new URLSearchParams(query)) {
+    const existing = out[key];
+    if (existing === undefined) out[key] = value;
+    else out[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
+  }
+  return out;
 }
 
 /** Whether there is anything here worth saving. */

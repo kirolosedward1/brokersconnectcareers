@@ -4,6 +4,7 @@ import { env } from '@/lib/env';
 import { createPublicClient } from '@/lib/supabase/public';
 import { ENGLISH_ENABLED } from '@/i18n/routing';
 import { buildLandingSlug, JOB_TRACKS } from '@/lib/taxonomy';
+import type { JobTrack } from '@/lib/supabase/database.types';
 import { getAllPosts } from '@/lib/blog';
 
 export const revalidate = 3600;
@@ -33,25 +34,54 @@ function entry(
 
 type DbRows = {
   jobs: { slug: string; published_at: string | null }[];
-  companies: { slug: string; created_at: string }[];
+  /** Companies with at least one live listing, and the newest one's date. */
+  companies: { slug: string; lastModified: string | undefined }[];
   agents: { slug: string; created_at: string }[];
-  districts: { slug: string }[];
-  /** `track:districtSlug` for every pair that actually has an open listing. */
-  liveLandings: Set<string>;
+  districts: { id: number; slug: string }[];
+  /** `track:districtId` → newest live listing there, for every pair that has one. */
+  liveLandings: Map<string, string | undefined>;
 };
+
+/**
+ * Supabase's API answers at most 1,000 rows however many are asked for, so a
+ * `.limit(5000)` was quietly a limit of 1,000 — the 1,001st listing would
+ * never have been advertised. Paged instead, in the API's own step, ordered
+ * by a unique key so a row published mid-read cannot shift a page. Capped at
+ * the sitemap protocol's 50,000 URLs per file.
+ */
+const PAGE = 1000;
+const MAX_URLS = 50_000;
+
+async function readAll<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; from < MAX_URLS; from += PAGE) {
+    const { data, error } = await page(from, from + PAGE - 1);
+    if (error) throw error instanceof Error ? error : new Error(JSON.stringify(error));
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
+  return rows;
+}
 
 /**
  * Database-backed rows, allowed to come back empty.
  *
  * This route is prerendered at build time, so an unreachable database here
- * fails the whole deployment. It should not: the static pages, the blog and the
- * track x district landing pages are all derivable without it, and a sitemap
- * missing some URLs for one revalidation window is a far smaller problem than a
- * deploy that will not ship.
+ * fails the whole deployment. It should not: the static pages and the blog
+ * are derivable without it, and a sitemap missing some URLs for one
+ * revalidation window is a far smaller problem than a deploy that will not
+ * ship.
  *
  * The try covers constructing the client too, not just the queries — reading a
  * missing NEXT_PUBLIC_SUPABASE_URL throws before a query is ever issued, which
  * is exactly what a fresh clone or a misconfigured deployment hits.
+ *
+ * Read through the anonymous client, so nothing reaches the sitemap that an
+ * anonymous visitor could not open: drafts, listings in review, a suspended
+ * company's roles and every gated consultant profile are invisible to it
+ * under row-level security before any filter here is applied.
  */
 async function fromDatabase(): Promise<DbRows> {
   const empty: DbRows = {
@@ -59,62 +89,83 @@ async function fromDatabase(): Promise<DbRows> {
     companies: [],
     agents: [],
     districts: [],
-    liveLandings: new Set(),
+    liveLandings: new Map(),
   };
 
   try {
     const supabase = createPublicClient();
+    const now = new Date().toISOString();
 
-    const [jobs, companies, agents, districts, landings] = await Promise.all([
-      supabase
-        .from('jobs')
-        .select('slug, published_at')
-        .eq('status', 'active')
-        // `.gt()` alone drops rows where expires_at is null, because NULL > x
-        // is NULL in SQL — a listing with no expiry would never be advertised.
-        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-        .order('published_at', { ascending: false })
-        .limit(5000),
-      // `*` rather than naming suspended_at, so a database without migration 69
-      // still returns every company instead of failing the whole sitemap.
-      supabase.from('companies').select('*').limit(5000),
-      // Only profiles the owner has made public belong in a sitemap. A gated
-      // profile must not be advertised to a crawler.
-      supabase.from('agent_profiles').select('slug, created_at').eq('visibility', 'public').limit(5000),
-      supabase.from('districts').select('slug'),
-      /**
-       * Which track x district pages have anything on them.
-       *
-       * The cross product is 126 pages and twelve of them had a job. The other
-       * 114 were being submitted to Google as a sitemap of empty result pages —
-       * the definition of thin content, and volunteered rather than crawled.
-       * Only the ones with a live listing go in now; the rest stay reachable
-       * and internally linked, they are simply not advertised.
-       */
-      supabase
-        .from('jobs')
-        .select('track, district:districts (slug)')
-        .eq('status', 'active')
-        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-        .limit(5000),
+    const [jobs, agents, districts] = await Promise.all([
+      /*
+        Every live listing — live by the date, not only the label, because
+        the nightly cron that writes `expired` can be a day late. The same
+        predicate the board and jobIsLive() use, so the sitemap never lists a
+        page that answers with a closed banner and noindex.
+      */
+      readAll<{
+        slug: string;
+        published_at: string | null;
+        track: JobTrack;
+        district_id: number;
+        company: { slug: string } | null;
+      }>((from, to) =>
+        supabase
+          .from('jobs')
+          .select('slug, published_at, track, district_id, company:companies!inner (slug)')
+          .eq('status', 'active')
+          .gt('expires_at', now)
+          .order('id')
+          .range(from, to) as unknown as PromiseLike<{
+          data: {
+            slug: string;
+            published_at: string | null;
+            track: JobTrack;
+            district_id: number;
+            company: { slug: string } | null;
+          }[] | null;
+          error: unknown;
+        }>,
+      ),
+      // Only profiles the owner has made public. A gated profile must not be
+      // advertised to a crawler; RLS would hide it anyway, this says so.
+      readAll<{ slug: string; created_at: string }>((from, to) =>
+        supabase
+          .from('agent_profiles')
+          .select('slug, created_at')
+          .eq('visibility', 'public')
+          .order('id')
+          .range(from, to),
+      ),
+      supabase.from('districts').select('id, slug'),
     ]);
 
-    const liveLandings = new Set<string>();
-    for (const row of (landings.data ?? []) as unknown as {
-      track: string;
-      district: { slug: string } | null;
-    }[]) {
-      if (row.district?.slug) liveLandings.add(`${row.track}:${row.district.slug}`);
+    const newest = (a: string | undefined, b: string | null) =>
+      b && (!a || b > a) ? b : a;
+
+    /*
+      Companies and landing pages both come from the live listings.
+
+      A company is advertised while it is hiring — the directory lists only
+      those, and the company page is noindex otherwise — so every company row
+      is no longer submitted just for existing. A track x district page is
+      advertised while it has a listing on it; the other hundred-odd stay
+      reachable and linked, but an empty result page is thin content.
+    */
+    const companies = new Map<string, string | undefined>();
+    const liveLandings = new Map<string, string | undefined>();
+    for (const job of jobs) {
+      if (job.company?.slug) {
+        companies.set(job.company.slug, newest(companies.get(job.company.slug), job.published_at));
+      }
+      const key = `${job.track}:${job.district_id}`;
+      liveLandings.set(key, newest(liveLandings.get(key), job.published_at));
     }
 
     return {
-      jobs: jobs.data ?? [],
-      // A suspended company's page is a 404 (getCompanyBySlug), so it is not
-      // advertised either.
-      companies: (companies.data ?? [])
-        .filter((row: { suspended_at?: string | null }) => !row.suspended_at)
-        .map((row: { slug: string; created_at: string }) => ({ slug: row.slug, created_at: row.created_at })),
-      agents: agents.data ?? [],
+      jobs: [...jobs].sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? '')),
+      companies: [...companies.entries()].map(([slug, lastModified]) => ({ slug, lastModified })),
+      agents,
       districts: districts.data ?? [],
       liveLandings,
     };
@@ -151,8 +202,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // The track x district pages that have something on them. See liveLandings.
   const landingPages: MetadataRoute.Sitemap = districts.flatMap((district) =>
-    JOB_TRACKS.filter((track) => liveLandings.has(`${track}:${district.slug}`)).map((track) =>
+    JOB_TRACKS.filter((track) => liveLandings.has(`${track}:${district.id}`)).map((track) =>
       entry(`/jobs/${buildLandingSlug(track, district.slug)}`, {
+        lastModified: liveLandings.get(`${track}:${district.id}`),
         changeFrequency: 'daily',
         priority: 0.7,
       }),
@@ -169,7 +221,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const companyPages: MetadataRoute.Sitemap = companies.map((company) =>
     entry(`/companies/${company.slug}`, {
-      lastModified: company.created_at,
+      lastModified: company.lastModified,
       changeFrequency: 'weekly',
       priority: 0.5,
     }),

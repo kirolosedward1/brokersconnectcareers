@@ -1,5 +1,6 @@
 'use server';
 
+import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { after } from 'next/server';
 import { z } from 'zod';
@@ -56,6 +57,47 @@ function refreshConsole() {
   revalidatePath('/admin', 'layout');
 }
 
+type ConsoleClient = NonNullable<Awaited<ReturnType<typeof assertAdmin>>>;
+type Listing = { id: string; slug: string };
+
+/**
+ * The live listings a lever could take down, read before it is pulled, so
+ * that afterwards Google is told about exactly the ones that went — a company
+ * with somebody else still in good standing keeps trading, and its listings
+ * must not be announced as gone. Allowed to fail quietly: this only decides
+ * what Google is told, and an unanswered question means it is told nothing.
+ */
+async function liveListings(
+  supabase: ConsoleClient,
+  scope: { companyIds?: string[]; userId?: string },
+): Promise<Listing[]> {
+  let companyIds = scope.companyIds ?? [];
+  if (scope.userId) {
+    const { data: memberships } = await supabase
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', scope.userId);
+    companyIds = (memberships ?? []).map((row) => row.company_id);
+  }
+  if (!companyIds.length) return [];
+  const { data } = await supabase
+    .from('jobs')
+    .select('id, slug')
+    .in('company_id', companyIds)
+    .eq('status', 'active');
+  return data ?? [];
+}
+
+/** Taken down means gone from the public site: its URL now answers 404. */
+function announceTakedowns(supabase: ConsoleClient, before: Listing[]) {
+  if (!before.length) return;
+  const ids = before.map((row) => row.id);
+  after(async () => {
+    const { data: takenDown } = await supabase.from('jobs').select('slug').in('id', ids).eq('status', 'rejected');
+    for (const row of takenDown ?? []) await notifyJobChanged(row.slug, 'URL_DELETED');
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Listings
 // ---------------------------------------------------------------------------
@@ -92,6 +134,16 @@ export async function moderateJob(input: unknown): Promise<AdminResult> {
     after(() => notifyEmployerOfModeration(jobId, true));
   } else if (action !== 'close') {
     after(() => notifyEmployerOfModeration(jobId, false, note));
+  }
+
+  // Approved or restored, it is a job page for Google to read now rather than
+  // on its next crawl; closed, the page stays and says so (as expiry does);
+  // rejected or taken down, it is off the public site and answers 404.
+  const { data: moderated } = await supabase.from('jobs').select('slug').eq('id', jobId).maybeSingle();
+  if (moderated?.slug) {
+    const slug = moderated.slug;
+    const gone = action === 'reject' || action === 'request_changes' || action === 'unpublish';
+    after(() => notifyJobChanged(slug, gone ? 'URL_DELETED' : 'URL_UPDATED'));
   }
 
   refreshConsole();
@@ -173,6 +225,8 @@ export async function setCompanySuspension(input: unknown): Promise<AdminResult<
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
+  const exposed = parsed.data.suspend ? await liveListings(supabase, { companyIds: [parsed.data.companyId] }) : [];
+
   const { data, error } = await supabase.rpc('admin_set_company_suspension', {
     p_company: parsed.data.companyId,
     p_suspend: parsed.data.suspend,
@@ -180,6 +234,7 @@ export async function setCompanySuspension(input: unknown): Promise<AdminResult<
   });
   if (error) return { ok: false, error: adminErrorCode(error) };
 
+  announceTakedowns(supabase, exposed);
   refreshConsole();
   revalidatePath('/jobs');
   revalidatePath('/companies');
@@ -228,12 +283,16 @@ export async function setAccountApproval(input: unknown): Promise<AdminResult> {
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
+  const exposed = parsed.data.status === 'rejected' ? await liveListings(supabase, { userId: parsed.data.userId }) : [];
+
   const { error } = await supabase.rpc('set_account_approval', {
     p_user: parsed.data.userId,
     p_status: parsed.data.status,
     p_note: parsed.data.note || null,
   });
   if (error) return { ok: false, error: adminErrorCode(error) };
+
+  announceTakedowns(supabase, exposed);
 
   if (parsed.data.status !== 'pending') {
     after(() =>
@@ -337,6 +396,15 @@ export async function moderateReports(input: unknown): Promise<AdminResult<{ mov
   const { targetType, targetId, status, takeAction } = parsed.data;
   const note = parsed.data.note || null;
 
+  // A takedown on a listing or a company can take public pages with it.
+  let exposed: Listing[] = [];
+  if (takeAction && targetType === 'company') {
+    exposed = await liveListings(supabase, { companyIds: [targetId] });
+  } else if (takeAction && targetType === 'job') {
+    const { data: job } = await supabase.from('jobs').select('id, slug').eq('id', targetId).eq('status', 'active').maybeSingle();
+    exposed = job ? [job] : [];
+  }
+
   const { data, error } = await supabase.rpc('admin_moderate_reports', {
     p_target_type: targetType,
     p_target_id: targetId,
@@ -350,6 +418,7 @@ export async function moderateReports(input: unknown): Promise<AdminResult<{ mov
   if (outcome?.took_action && targetType === 'job') {
     after(() => notifyEmployerOfModeration(targetId, false, note));
   }
+  if (outcome?.took_action) announceTakedowns(supabase, exposed);
 
   refreshConsole();
   if (outcome?.took_action) {

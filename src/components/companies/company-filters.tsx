@@ -49,7 +49,7 @@ export function CompanyFilters({
     next.delete('page');
     const query = next.toString();
     startTransition(() =>
-      router.replace(query ? `/companies?${query}` : '/companies', { scroll: false }),
+      router.push(query ? `/companies?${query}` : '/companies', { scroll: false }),
     );
   }
 
@@ -72,7 +72,10 @@ export function CompanyFilters({
           className="pointer-events-none absolute inset-y-0 start-3.5 my-auto size-4 text-muted-foreground"
           aria-hidden
         />
+        {/* Keyed to the URL so Back shows the words of the search on screen,
+            not the last thing typed — an uncontrolled input keeps its own. */}
         <input
+          key={q}
           type="search"
           name="q"
           defaultValue={q}
