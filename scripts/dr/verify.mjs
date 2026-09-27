@@ -167,19 +167,22 @@ console.log('\n— access (rolled back)');
         mine.error,
       );
 
-      // Zero rows or a permission error are both a pass.
+      // Zero rows passes, and so does a refusal on privilege (42501): both mean
+      // an anonymous visitor cannot read applications. Any other error means
+      // the probe never ran, and an untested rule is not a passed one.
       // Claims set with set_config(..., true) outlive a released savepoint, so
       // clear the previous probe's identity explicitly.
       await client.query('savepoint anon');
       await client.query(`select set_config('request.jwt.claims', '{"role":"anon"}', true),
                                  set_config('request.jwt.claim.sub', '', true)`);
       await client.query('set local role anon');
-      const anon = await client
-        .query('select count(*)::int n from applications')
-        .then((r) => r.rows[0].n === 0, () => true);
+      const anon = await client.query('select count(*)::int n from applications').then(
+        (r) => ({ ok: r.rows[0].n === 0, detail: `${r.rows[0].n} visible` }),
+        (e) => ({ ok: e.code === '42501', detail: `${e.code}: ${e.message}` }),
+      );
       await client.query('rollback to savepoint anon');
       await client.query('reset role');
-      check('an anonymous visitor sees no applications', anon);
+      check('an anonymous visitor sees no applications', anon.ok, anon.detail);
 
       const escalate = await as(p.candidate_id, `update profiles set role = 'admin' where id = $1`, [
         p.candidate_id,

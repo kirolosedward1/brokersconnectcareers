@@ -5,11 +5,11 @@
  *   TARGET_SUPABASE_URL=... TARGET_SUPABASE_SERVICE_ROLE_KEY=... \
  *     node scripts/dr/storage-restore.mjs <backup-dir> [--only <bucket>/<prefix>]
  *
- * Never overwrites. An object that already exists in the target is left alone
- * and reported if its bytes differ from the backup, so this is safe to point at
- * production to bring back files that were deleted: it only fills gaps. Doing
- * that is still refused unless DR_ALLOW_PRODUCTION is set to the production
- * project ref.
+ * Never overwrites. An object that already exists in the target is left alone;
+ * if its bytes differ from the backup it is reported and the run fails. That
+ * makes it safe to point at production to bring back files that were deleted:
+ * it only fills gaps. Doing that is still refused unless DR_ALLOW_PRODUCTION is
+ * set to the production project ref.
  *
  * Buckets must already exist (the migrations create them). A restored object
  * gets a new id and no owner; nothing in this schema depends on either — every
@@ -83,4 +83,6 @@ for (const o of objects) {
 console.log(`${objects.length} object(s): ${restored} restored, ${alreadyThere} already present`);
 if (conflicts.length) console.log(`\nDIFFERENT from backup (left as is, review by hand):\n  ${conflicts.join('\n  ')}`);
 if (failed.length) console.log(`\nFAILED:\n  ${failed.join('\n  ')}`);
-process.exit(failed.length ? 1 : 0);
+// A conflict is an object this run could not put back: it stays as the target
+// has it. That is not a successful restore, whatever the upload count says.
+process.exit(failed.length || conflicts.length ? 1 : 0);

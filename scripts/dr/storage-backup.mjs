@@ -15,7 +15,8 @@
  * Writes <output-dir>/<bucket>/<path> for every object, and manifest.json
  * listing bucket, path, size, content type and sha256 for each. Existing files
  * with a matching hash are skipped, so re-running into the same directory is an
- * incremental copy.
+ * incremental copy. Files for objects that no longer exist in the project are
+ * removed, so a deleted CV does not outlive its deletion in the copy.
  *
  * CVs and verification documents are personal data. Encrypt the directory
  * before it leaves the machine, e.g.
@@ -24,8 +25,8 @@
  * Read-only against the project.
  */
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -96,5 +97,25 @@ for (const bucket of buckets) {
   }
 }
 
+// Prune what the project no longer has. Anything else in the directory would
+// be a copy of a file its owner deleted, which the manifest no longer admits to.
+const keep = new Set(manifest.objects.map((o) => join(o.bucket, o.path)));
+let pruned = 0;
+function prune(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      prune(full);
+      if (readdirSync(full).length === 0) rmSync(full, { recursive: true });
+    } else if (!(dir === out && entry.name === 'manifest.json') && !keep.has(relative(out, full))) {
+      rmSync(full);
+      pruned += 1;
+    }
+  }
+}
+prune(out);
+
 writeFileSync(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2), { mode: 0o600 });
-console.log(`\n${manifest.objects.length} object(s): ${copied} copied, ${skipped} unchanged → ${out}`);
+console.log(
+  `\n${manifest.objects.length} object(s): ${copied} copied, ${skipped} unchanged, ${pruned} pruned → ${out}`,
+);
