@@ -245,6 +245,10 @@ export function JobForm({
           setStep(3);
           return;
         }
+        if (result.error === 'standing' || result.error === 'company_suspended') {
+          setErrors({ form: tEmployer(result.error === 'standing' ? 'standingBlocked' : 'companySuspendedBlocked') });
+          return;
+        }
         setErrors(result.fieldErrors ?? { form: tCommon('errorBody') });
         // Send the reader back to the step that actually holds the problem.
         const keys = Object.keys(result.fieldErrors ?? {});
@@ -514,6 +518,7 @@ export function JobForm({
             <Field
               label={t('descriptionAr')}
               htmlFor="descriptionAr"
+              hint={t('descriptionRules')}
               error={errors.descriptionAr ? tValidation('required') : undefined}
             >
               <Textarea

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyDashboard, StatStrip } from '@/components/dashboard/stat-tile';
 import { NextAction } from '@/components/dashboard/next-action';
 import { JobCard } from '@/components/jobs/job-card';
+import { StandingNotice } from '@/components/moderation/standing-notice';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
@@ -181,6 +182,11 @@ export default async function DashboardOverviewPage({
         </h1>
         <p className="mt-0.5 text-sm text-muted-foreground">{t('candidateLede')}</p>
       </header>
+
+      {/* A suspended or restricted account is told so here, with the reason
+          and a way to ask for a second look — not left to discover it when
+          the apply button refuses. */}
+      <StandingNotice profile={viewer.profile} company={null} />
 
       {/*
         The candidate's one next action, same rule as the employer's: an

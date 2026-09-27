@@ -53,7 +53,6 @@
     "saved": "Saved",
     "share": "Share",
     "report": "Report this listing",
-    "reportReasonLabel": "Reason",
     "postedOn": "Posted {date}",
     "expiresOn": "Closes {date}",
     "views": "{count} views",
@@ -74,8 +73,6 @@
     "seatsLabel": "{count, plural, one {open seat} other {open seats}}",
     "featured": "Featured",
     "closedShort": "Closed",
-    "alreadyReported": "You have already reported this listing.",
-    "reportRateLimit": "You have reported a lot of listings today. Try again tomorrow.",
     "removeSaved": "Remove from saved",
     "closedCtaBody": "It is no longer accepting applications.",
     "verifiedMeaning": "This company uploaded its commercial register and tax card, and our team reviewed them.",
@@ -86,7 +83,8 @@
     "allCompanies": "All companies",
     "relaxHeading": "There are listings if you drop one filter:",
     "withoutFilter": "Without {name} · {count, plural, one {# job} other {# jobs}}",
-    "emptySaveHint": "Save this search and we'll email you when a matching listing is posted."
+    "emptySaveHint": "Save this search and we'll email you when a matching listing is posted.",
+    "safetyNote": "Brokers Connect never asks you to pay to apply. If a listing asks you for money, or for your ID or bank details, report it."
   },
   "compensation": {
     "title": "Pay and commission",
@@ -583,7 +581,9 @@
     "shortlistSavedBy": "Added by {name} on {date}",
     "shortlistSavedOn": "Added on {date}",
     "reopenHint": "It goes back for review first; the 30 days start again once it is published.",
-    "applicantsCapped": "Showing the newest <v>{count}</v> applicants only. Narrow with the filters or the search to reach the rest."
+    "applicantsCapped": "Showing the newest <v>{count}</v> applicants only. Narrow with the filters or the search to reach the rest.",
+    "standingBlocked": "Your account is restricted or suspended, so nothing can be sent for review right now. The notice on your dashboard says why and how to ask for a review.",
+    "companySuspendedBlocked": "Your company is suspended, so its listings can’t be submitted or published. The notice on your dashboard says why and how to ask for a review."
   },
   "jobForm": {
     "basics": "Basics",
@@ -617,7 +617,8 @@
     "next": "Next",
     "back": "Back",
     "reviewNote": "We review listings before they go live — usually within one working day.",
-    "liveEditNote": "This listing is live. Changing the title, description, salary, commission, seats or leads sends it back for review before it shows again. Anything else saves straight away."
+    "liveEditNote": "This listing is live. Changing any of its text — title, description, requirements, commission note — or its salary, commission, employment type, seats or leads sends it back for review before it shows again. Anything else saves straight away.",
+    "descriptionRules": "Listings that ask candidates for money, or for ID or bank details before an interview, are taken down."
   },
   "admin": {
     "title": "Admin",
@@ -993,16 +994,16 @@
   },
   "reportReason": {
     "fake_listing": "Fake listing",
-    "misleading_pay": "Misleading pay",
+    "misleading_pay": "Misleading pay or details",
     "duplicate": "Duplicate",
-    "spam": "Spam",
+    "spam": "Spam or duplicate",
     "discriminatory": "Discriminatory terms",
     "other": "Something else",
     "scam": "Scam or request for money",
     "impersonation": "Impersonation",
     "harassment": "Harassment or abuse",
     "suspicious_company": "Fake or suspicious company",
-    "inappropriate": "Inappropriate content"
+    "inappropriate": "Offensive or discriminatory"
   },
   "billing": {
     "title": "Billing and credits",
@@ -1034,7 +1035,6 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
-    "submit": "Submit",
     "back": "Back",
     "optional": "optional",
     "all": "All",
@@ -1273,7 +1273,8 @@
     "photo": "Your photo",
     "photoHint": "Shown to employers with your application, and on your directory profile. PNG or JPG, up to 2 MB.",
     "photoUpload": "Upload a photo",
-    "photoReplace": "Replace photo"
+    "photoReplace": "Replace photo",
+    "deleteBlockedSuspended": "Your account is suspended, so it can’t be deleted from here while the decision stands. You can ask for the suspension to be reviewed from your dashboard, or contact us and we’ll close the account once the case is done."
   },
   "savedSearch": {
     "cta": "Alert me",
@@ -1370,7 +1371,19 @@
     "account_rejected": "Your account is suspended",
     "emptyHint": "We will tell you here the moment something happens on your applications or listings.",
     "emptyCtaCandidate": "Browse jobs",
-    "emptyCtaEmployer": "See applicants"
+    "emptyCtaEmployer": "See applicants",
+    "report_reviewed": "We reviewed your report about {subject}",
+    "reportActioned": "We reviewed your report about “{subject}” and acted on it. Thank you.",
+    "reportNoBreach": "We reviewed your report about “{subject}” and did not find a breach of our rules. Thank you for telling us.",
+    "company_suspended": "{subject} is suspended",
+    "company_restored": "{subject} is no longer suspended",
+    "profile_restricted": "Your consultant profile is hidden while we review it",
+    "profile_restored": "The restriction on your consultant profile is lifted",
+    "account_held": "Your account is restricted while we review it",
+    "appeal_decided": "We answered your appeal about {subject}",
+    "appealOverturned": "We reviewed your appeal about “{subject}” and reversed the decision",
+    "appealUpheld": "We reviewed your appeal about “{subject}”; the decision stands",
+    "somethingChanged": "There is an update on your account"
   },
   "emailStatus": {
     "queued": "Queued",
@@ -1385,5 +1398,63 @@
     "ar": "Arabic",
     "en": "English",
     "fr": "French"
+  },
+  "report": {
+    "question": "What’s wrong?",
+    "chooseReason": "Choose what’s wrong first.",
+    "detailLabel": "Anything else we should know? (optional)",
+    "detailHint": "One line is enough.",
+    "detailPlaceholder": "e.g. they asked me for a registration fee",
+    "privacy": "Whoever you report will not see that it was you.",
+    "send": "Send report",
+    "thanks": "Thanks — our team will review it, and we’ll let you know when we have.",
+    "alreadyReported": "You’ve already reported this — it’s with our team.",
+    "rateLimit": "You’ve sent a lot of reports today. Please try again tomorrow.",
+    "burstLimit": "You’ve sent several reports in a few minutes. Wait a little and try again.",
+    "newAccountLimit": "A new account can send a few reports on its first day. Please try again tomorrow.",
+    "companyLimit": "You’ve already reported several of this company’s listings — our team reviews them together.",
+    "restricted": "Reporting isn’t available on your account. If you think that’s a mistake, contact us.",
+    "ownTarget": "You can’t report your own listing, company or profile.",
+    "network": "We couldn’t send your report. Check your connection and try again."
+  },
+  "reportHint": {
+    "scam": "Asks you to pay, or for your ID, bank details or a code sent to your phone",
+    "fake_listing": "The job doesn’t exist, or isn’t what the advert says",
+    "impersonation": "Uses the name or logo of a company or person it isn’t",
+    "misleading_pay": "The pay, commission or conditions aren’t what was advertised",
+    "inappropriate": "Offensive, discriminatory or sexual content",
+    "spam": "The same advert again and again, or not a real job",
+    "other": "Something else — say what in a line below",
+    "suspicious_company": "The company doesn’t seem to exist, or isn’t who it says it is",
+    "harassment": "Threats, insults or unwanted contact"
+  },
+  "standing": {
+    "suspendedTitle": "Your account is suspended",
+    "suspendedBodyEmployer": "You can sign in and see everything, but you can’t post listings or send them for review while it is suspended. Nothing has been deleted.",
+    "suspendedBodyCandidate": "You can sign in and see your applications, but you can’t apply or report while it is suspended. Nothing has been deleted.",
+    "heldTitle": "Your account is restricted while we review it",
+    "heldBodyEmployer": "Your live listings stay up. Until the review ends you can’t post new listings or send changes for review.",
+    "heldBodyCandidate": "Your applications stay as they are. Until the review ends you can’t apply to new jobs.",
+    "reason": "Our team’s note: {reason}",
+    "companySuspendedTitle": "Your company is suspended",
+    "companySuspendedBody": "Its listings are off the board, and nothing new can be submitted until the suspension is lifted. Applications you already received are kept."
+  },
+  "appeals": {
+    "ask": "Ask for a review",
+    "label": "Why is this a mistake?",
+    "hint": "A sentence or two is enough: what we got wrong, and anything that shows it.",
+    "send": "Send",
+    "sent": "Sent. We’ll tell you the answer here and in your notifications.",
+    "waiting": "You asked for a review on {date}. We’ll tell you the answer here and in your notifications.",
+    "stands": "We reviewed this on {date}, and the decision stands.",
+    "messageRequired": "Say in at least a sentence why the decision was wrong.",
+    "notAppealable": "There’s nothing here to appeal right now.",
+    "alreadyOpen": "You’ve already asked for a review of this — we’ll answer that one first.",
+    "limit": "This decision has been reviewed three times, so it can’t be appealed again. Contact us if something new has come up.",
+    "tooSoon": "We answered an appeal about this in the last week. You can ask again once a week has passed.",
+    "rateLimit": "You’ve sent several appeals today. Please try again tomorrow.",
+    "companySuspended": "Your company is suspended, so ask for a review of the company’s suspension instead.",
+    "unavailable": "Appeals aren’t available yet. Please contact us.",
+    "network": "We couldn’t send it. Check your connection and try again."
   }
 }

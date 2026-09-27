@@ -769,6 +769,11 @@ report.section('appeals: one message about one decision, and one answer');
   const notDecided = await as(employerVerified, `select submit_appeal('job', '${live}', 'لماذا هذا الإعلان منشور؟')`);
   report.check('there has to be a decision to appeal', !notDecided.ok && /not_appealable/.test(notDecided.error ?? ''), notDecided.error);
 
+  const before = await as(employerVerified, `select my_appeal_state('job', '${job}') as s`);
+  report.check('the page is told an appeal is open to this company', before.rows[0]?.s?.appealable === true, JSON.stringify(before.rows[0] ?? before.error));
+  const strangerState = await as(employerUnverified, `select my_appeal_state('job', '${job}') as s`);
+  report.check('and not to anybody else', strangerState.rows[0]?.s?.appealable === false, JSON.stringify(strangerState.rows[0]));
+
   const filed = await persist(employerVerified,
     `select submit_appeal('job', '${job}', 'الإعلان مختلف عن السابق: المنطقة والمرتب مختلفين') as id`);
   const appealId = filed.rows[0]?.id;
@@ -776,6 +781,10 @@ report.section('appeals: one message about one decision, and one answer');
 
   const snapshot = await one(`select decision_snapshot, status from moderation_appeals where id = '${appealId}'`);
   report.check('the appeal keeps the decision it is about', snapshot?.decision_snapshot?.note === 'إعلان مكرر' && snapshot.status === 'open');
+
+  const during = await as(employerVerified, `select my_appeal_state('job', '${job}') as s`);
+  report.check('while one waits, the page shows it instead of offering another',
+    during.rows[0]?.s?.appealable === false && during.rows[0]?.s?.open?.id === appealId, JSON.stringify(during.rows[0]));
 
   const twice = await as(employerVerified, `select submit_appeal('job', '${job}', 'نرجو المراجعة مرة أخرى بسرعة')`);
   report.check('one open appeal per decision', !twice.ok && /appeal_open/.test(twice.error ?? ''), twice.error);
@@ -871,6 +880,16 @@ report.section('appeals: one message about one decision, and one answer');
     try { await q(`select submit_appeal('account', '${id}', 'نريد الموافقة على الحساب بسرعة')`); return 'allowed'; } catch (e) { return e.message; }
   }, 'postgres');
   report.check('waiting for a first review is not a decision to appeal', /not_appealable/.test(newcomer.value ?? ''), JSON.stringify(newcomer));
+  const newcomerState = await session(null, async (q) => {
+    const id = '99999999-9999-9999-9999-000000000004';
+    await q(`insert into auth.users (id, email) values ('${id}', 'newcomer2@example.test')`);
+    await q(`insert into profiles (id, role, full_name, whatsapp_phone) values ('${id}', 'employer', 'جديد', '+201234500004')`);
+    await q(`set local role authenticated`);
+    await q(`set local request.jwt.claim.sub = '${id}'`);
+    await q(`set local request.jwt.claims = '{"role":"authenticated","sub":"${id}"}'`);
+    return (await q(`select my_appeal_state('account', '${id}') as s`))[0].s;
+  }, 'postgres');
+  report.check('and the page does not offer one', newcomerState.value?.appealable === false, JSON.stringify(newcomerState));
 
   const held = await session(admin, async (q) => {
     await q(`select set_account_approval('${candidate7}', 'pending', 'مراجعة')`);
@@ -918,6 +937,7 @@ report.section('nobody but an admin reaches a moderation lever or reader');
     `select company_safety_flags('${rowad}')`,
     `select job_safety_flags((select id from jobs limit 1))`,
     `select company_name_resemblance(null, 'x', 'y')`,
+    `select appeal_decision_snapshot('${candidate}', 'account', '${candidate}')`,
   ];
 
   for (const [label, id] of [['a candidate', candidate], ['an employer', employerVerified]]) {
@@ -930,7 +950,9 @@ report.section('nobody but an admin reaches a moderation lever or reader');
   }
 
   const anonAllowed = [];
-  for (const sql of [...levers, ...internal, `select submit_appeal('job', '${rowad}', 'اعتراض من زائر مجهول')`]) {
+  for (const sql of [...levers, ...internal,
+    `select submit_appeal('job', '${rowad}', 'اعتراض من زائر مجهول')`,
+    `select my_appeal_state('job', '${rowad}')`]) {
     const r = await as(null, sql, 'anon');
     if (r.ok) anonAllowed.push(sql.slice(7, 45));
   }

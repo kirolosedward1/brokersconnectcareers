@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { JobStatusActions } from '@/components/employer/job-status-actions';
 import { requireEmployer } from '@/lib/auth';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
+import { AppealPanel } from '@/components/moderation/appeal-panel';
+import { getAppealState } from '@/lib/moderation/appeal-state';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from '@/lib/queries/error';
 import { formatDate, formatNumber, isoDate } from '@/lib/utils';
@@ -87,6 +89,16 @@ export default async function EmployerJobsPage({
     applications: { count: number }[];
   })[];
 
+
+  // A rejected listing can be appealed — "we think this was a mistake" — as
+  // well as edited and resubmitted. Asked only for the rejected ones.
+  const appeals = new Map(
+    await Promise.all(
+      jobs
+        .filter((job) => job.status === 'rejected')
+        .map(async (job) => [job.id, await getAppealState(supabase, 'job', job.id)] as const),
+    ),
+  );
   return (
     <div className="space-y-6">
       {/* Stacked on a phone rather than wrapped: justify-between put the
@@ -193,6 +205,9 @@ export default async function EmployerJobsPage({
                       <p className="mt-2 rounded-md bg-destructive-muted p-2 text-xs text-destructive">
                         {job.rejection_note}
                       </p>
+                    ) : null}
+                    {job.status === 'rejected' ? (
+                      <AppealPanel subjectType="job" subjectId={job.id} state={appeals.get(job.id) ?? null} />
                     ) : null}
                   </div>
                 </div>

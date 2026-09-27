@@ -383,6 +383,10 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
 function mapJobError(message: string): string {
   if (message.includes('unverified_company_post_cap')) return 'post_cap';
   if (message.includes('job status cannot go from')) return 'invalid_transition';
+  // Restricted or suspended: nothing new goes in front of a moderator
+  // (migration 209). And a suspended company submits nothing at all (204).
+  if (message.includes('account_not_in_good_standing')) return 'standing';
+  if (message.includes('company_suspended')) return 'company_suspended';
   return message;
 }
 

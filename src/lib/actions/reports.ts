@@ -9,8 +9,8 @@ export type ReportTarget = 'job' | 'company' | 'agent';
 
 /**
  * Each target accepts its own reasons, so a listing cannot be reported for
- * "impersonation" through a hand-built request any more than through the
- * form. The database's check admits the union; this is the finer rule.
+ * "harassment" through a hand-built request any more than through the form.
+ * The database's check admits the union; this is the finer rule.
  */
 const reportSchema = z.discriminatedUnion('target', [
   z.object({ target: z.literal('job'), targetId: z.string().uuid(), reason: z.enum(REPORT_REASONS) }),
@@ -21,6 +21,29 @@ const reportSchema = z.discriminatedUnion('target', [
 const detailSchema = z.string().trim().max(1000).optional();
 
 /**
+ * The refusals the database names (migrations 19 and 208), each mapped to a
+ * word the dialog turns into its own sentence. "Try tomorrow", "wait a few
+ * minutes" and "we already have it" ask the reader for different things.
+ */
+const REFUSALS: [needle: string, code: ReportRefusal][] = [
+  ['report_rate_limit', 'rate_limit'],
+  ['report_burst_limit', 'burst_limit'],
+  ['report_new_account_limit', 'new_account_limit'],
+  ['report_company_limit', 'company_limit'],
+  ['reporting_restricted', 'restricted'],
+  ['report_own_target', 'own_target'],
+];
+
+export type ReportRefusal =
+  | 'rate_limit'
+  | 'burst_limit'
+  | 'new_account_limit'
+  | 'company_limit'
+  | 'restricted'
+  | 'own_target'
+  | 'already_reported';
+
+/**
  * Reporting is something an account does.
  *
  * It used to accept `reporter_id: null`, which read as friendlier and was
@@ -28,13 +51,11 @@ const detailSchema = z.string().trim().max(1000).optional();
  * nobody who can be wrong twice. The queue those rows land in is read by a
  * person, which is exactly what makes it worth flooding.
  *
- * The same door now serves companies and consultant profiles. The rules are
- * the database's (migration 69): one report per person per target, ten a day,
- * none from a suspended account, none about your own company or profile.
- *
- * The distinct outcomes are named rather than collapsed into one failure,
- * because "you already reported this" and "something went wrong" ask the
- * reader for completely different next steps.
+ * The rules are the database's, so a hand-built request meets the same ones:
+ * one report per person per target, ten a day, three in ten minutes, three on
+ * an account's first day, three a week about any one company, none about your
+ * own company or profile, none while suspended or under a reporting ban. And
+ * none of them hides or removes anything: a report asks a person to look.
  */
 export async function reportTarget(input: unknown): Promise<ActionResult> {
   const parsed = reportSchema.safeParse(input);
@@ -59,10 +80,15 @@ export async function reportTarget(input: unknown): Promise<ActionResult> {
   });
 
   if (error) {
-    if (error.message.includes('report_rate_limit')) return { ok: false, error: 'rate_limit' };
+    for (const [needle, code] of REFUSALS) {
+      if (error.message.includes(needle)) return { ok: false, error: code };
+    }
     // The unique indexes on (target, reporter_id).
     if (error.code === '23505') return { ok: false, error: 'already_reported' };
-    return { ok: false, error: error.message };
+    // Row-level security: a suspended account files no reports.
+    if (error.code === '42501') return { ok: false, error: 'restricted' };
+    console.warn('[reports] could not file a report:', error.message);
+    return { ok: false, error: 'failed' };
   }
 
   return { ok: true };

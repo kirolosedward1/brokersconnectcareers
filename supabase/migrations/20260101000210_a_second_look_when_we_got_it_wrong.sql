@@ -78,6 +78,84 @@ revoke all on moderation_appeals from anon;
 revoke insert, update, delete, truncate on moderation_appeals from authenticated;
 
 -- ---------------------------------------------------------------------------
+-- Who may appeal what
+--
+-- One function answers it, for the form that offers an appeal and for the
+-- submission alike, so the button and the rule cannot disagree. Returns the
+-- decision as it stands (what the appeal will be read against), or null when
+-- this account has nothing here it can appeal.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.appeal_decision_snapshot(
+  p_user         uuid,
+  p_subject_type text,
+  p_subject_id   uuid
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_snapshot jsonb;
+begin
+  if p_user is null then
+    return null;
+  end if;
+
+  if p_subject_type = 'job' then
+    select jsonb_build_object('status', j.status, 'note', j.rejection_note,
+                              'label_ar', j.title_ar, 'label_en', j.title_en, 'company_id', j.company_id)
+      into v_snapshot
+      from jobs j
+     where j.id = p_subject_id
+       and j.status = 'rejected'
+       and exists (select 1 from company_members m where m.company_id = j.company_id and m.user_id = p_user);
+
+  elsif p_subject_type = 'company' then
+    select jsonb_build_object('suspended_at', c.suspended_at, 'note', cm.suspension_reason,
+                              'label_ar', c.name_ar, 'label_en', c.name_en)
+      into v_snapshot
+      from companies c
+      left join company_moderation cm on cm.company_id = c.id
+     where c.id = p_subject_id
+       and c.suspended_at is not null
+       and exists (select 1 from company_members m where m.company_id = c.id and m.user_id = p_user);
+
+  elsif p_subject_type = 'account' then
+    -- Suspended, or held by a moderator — not the first review every new
+    -- employer waits for, which is also "pending" but was never a decision.
+    select jsonb_build_object('status', p.approval_status, 'label_ar', p.full_name, 'label_en', p.full_name)
+      into v_snapshot
+      from profiles p
+     where p.id = p_subject_id
+       and p.id = p_user
+       and (p.approval_status = 'rejected'
+            or (p.approval_status = 'pending'
+                and (select a.action from admin_audit_log a
+                      where a.target_type = 'user' and a.target_id = p.id::text
+                        and a.action in ('user.approved', 'user.held', 'user.suspended', 'user.restored')
+                      order by a.created_at desc, a.id desc
+                      limit 1) = 'user.held'));
+
+  elsif p_subject_type = 'agent' then
+    select jsonb_build_object('restricted_at', a.restricted_at, 'note', a.restriction_reason,
+                              'label_ar', a.slug, 'label_en', a.slug)
+      into v_snapshot
+      from agent_profiles a
+     where a.id = p_subject_id
+       and a.user_id = p_user
+       and a.restricted_at is not null;
+  end if;
+
+  return v_snapshot;
+end;
+$$;
+
+revoke execute on function public.appeal_decision_snapshot(uuid, text, uuid) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
 -- Asking
 -- ---------------------------------------------------------------------------
 
@@ -115,58 +193,17 @@ begin
   -- Two colleagues appealing the same decision at once meet here in turn.
   perform pg_advisory_xact_lock(hashtextextended('appeal:' || p_subject_type || ':' || p_subject_id::text, 0));
 
-  if p_subject_type = 'job' then
-    if exists (select 1 from jobs j join companies c on c.id = j.company_id
-                where j.id = p_subject_id and c.suspended_at is not null
-                  and exists (select 1 from company_members m
-                               where m.company_id = j.company_id and m.user_id = v_user)) then
-      raise exception 'company_suspended' using hint = 'Appeal the company''s suspension instead.';
-    end if;
-
-    select jsonb_build_object('status', j.status, 'note', j.rejection_note,
-                              'label_ar', j.title_ar, 'label_en', j.title_en, 'company_id', j.company_id)
-      into v_snapshot
-      from jobs j
-     where j.id = p_subject_id
-       and j.status = 'rejected'
-       and exists (select 1 from company_members m where m.company_id = j.company_id and m.user_id = v_user);
-
-  elsif p_subject_type = 'company' then
-    select jsonb_build_object('suspended_at', c.suspended_at, 'note', cm.suspension_reason,
-                              'label_ar', c.name_ar, 'label_en', c.name_en)
-      into v_snapshot
-      from companies c
-      left join company_moderation cm on cm.company_id = c.id
-     where c.id = p_subject_id
-       and c.suspended_at is not null
-       and exists (select 1 from company_members m where m.company_id = c.id and m.user_id = v_user);
-
-  elsif p_subject_type = 'account' then
-    -- Suspended, or held by a moderator — not the first review every new
-    -- employer waits for, which is also "pending" but was never a decision.
-    select jsonb_build_object('status', p.approval_status, 'label_ar', p.full_name, 'label_en', p.full_name)
-      into v_snapshot
-      from profiles p
-     where p.id = p_subject_id
-       and p.id = v_user
-       and (p.approval_status = 'rejected'
-            or (p.approval_status = 'pending'
-                and (select a.action from admin_audit_log a
-                      where a.target_type = 'user' and a.target_id = p.id::text
-                        and a.action in ('user.approved', 'user.held', 'user.suspended', 'user.restored')
-                      order by a.created_at desc, a.id desc
-                      limit 1) = 'user.held'));
-
-  else
-    select jsonb_build_object('restricted_at', a.restricted_at, 'note', a.restriction_reason,
-                              'label_ar', a.slug, 'label_en', a.slug)
-      into v_snapshot
-      from agent_profiles a
-     where a.id = p_subject_id
-       and a.user_id = v_user
-       and a.restricted_at is not null;
+  -- A listing of a suspended company could not be restored anyway; the
+  -- company's suspension is the decision to appeal.
+  if p_subject_type = 'job'
+     and exists (select 1 from jobs j join companies c on c.id = j.company_id
+                  where j.id = p_subject_id and c.suspended_at is not null
+                    and exists (select 1 from company_members m
+                                 where m.company_id = j.company_id and m.user_id = v_user)) then
+    raise exception 'company_suspended' using hint = 'Appeal the company''s suspension instead.';
   end if;
 
+  v_snapshot := public.appeal_decision_snapshot(v_user, p_subject_type, p_subject_id);
   if v_snapshot is null then
     raise exception 'not_appealable'
       using hint = 'There is no standing decision here that this account can appeal.';
@@ -199,6 +236,52 @@ begin
   return v_id;
 end;
 $$;
+
+-- What the page offers: whether this account can appeal the decision, the
+-- appeal already waiting if there is one, and the last answer. Never another
+-- person's appeal — the answer is about the caller's own standing.
+create or replace function public.my_appeal_state(p_subject_type text, p_subject_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_open jsonb;
+  v_last jsonb;
+  v_count int;
+begin
+  if v_user is null then
+    raise exception 'forbidden' using errcode = '42501';
+  end if;
+
+  select jsonb_build_object('id', a.id, 'created_at', a.created_at)
+    into v_open
+    from moderation_appeals a
+   where a.subject_type = p_subject_type and a.subject_id = p_subject_id and a.status = 'open';
+
+  select jsonb_build_object('status', a.status, 'decided_at', a.decided_at, 'note', a.decision_note),
+         count(*) over ()
+    into v_last, v_count
+    from moderation_appeals a
+   where a.subject_type = p_subject_type and a.subject_id = p_subject_id and a.status <> 'open'
+   order by a.decided_at desc
+   limit 1;
+
+  return jsonb_build_object(
+    'appealable', public.appeal_decision_snapshot(v_user, p_subject_type, p_subject_id) is not null
+                  and v_open is null
+                  and coalesce(v_count, 0) < 3
+                  and coalesce((v_last ->> 'decided_at')::timestamptz, '-infinity') <= now() - interval '7 days',
+    'open', v_open,
+    'last', v_last);
+end;
+$$;
+
+revoke execute on function public.my_appeal_state(text, uuid) from public, anon;
+grant  execute on function public.my_appeal_state(text, uuid) to authenticated;
 
 revoke execute on function public.submit_appeal(text, uuid, text) from public, anon;
 grant  execute on function public.submit_appeal(text, uuid, text) to authenticated;
@@ -354,7 +437,9 @@ grant  execute on function public.admin_summary() to authenticated;
 -- Rollback, by hand, before 209 and 208:
 --
 --   drop function if exists public.admin_decide_appeal(uuid, boolean, text);
+--   drop function if exists public.my_appeal_state(text, uuid);
 --   drop function if exists public.submit_appeal(text, uuid, text);
+--   drop function if exists public.appeal_decision_snapshot(uuid, text, uuid);
 --   drop table if exists moderation_appeals;
 --   -- restate admin_summary() exactly as migration 206 wrote it
 -- ---------------------------------------------------------------------------

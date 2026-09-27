@@ -120,12 +120,21 @@ export const COMPANY_TYPES = ['brokerage', 'developer'] as const satisfies reado
 
 export const HEADCOUNT_BANDS = ['1_10', '11_50', '51_200', '201_500', '500_plus'] as const;
 
+/**
+ * Why somebody reports a listing, most serious first — the order a candidate
+ * who has just been asked for money reads them in, and the order severity is
+ * ranked in the queue (migration 208). `duplicate` and `discriminatory` are no
+ * longer offered: "spam or duplicate" and "offensive or discriminatory" cover
+ * them in fewer choices, and the database still accepts both for the reports
+ * already filed with them.
+ */
 export const REPORT_REASONS = [
+  'scam',
   'fake_listing',
+  'impersonation',
   'misleading_pay',
-  'duplicate',
+  'inappropriate',
   'spam',
-  'discriminatory',
   'other',
 ] as const;
 

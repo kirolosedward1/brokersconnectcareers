@@ -45,6 +45,9 @@ export const PUBLIC_MESSAGES = [
   'landingPage.tabs',
   'leadsSource',
   'onboarding',
+  // The report dialog on listings, companies and consultant profiles.
+  'report',
+  'reportHint',
   'reportReason',
   'savedSearch',
   'theme',
@@ -56,6 +59,8 @@ export const PUBLIC_MESSAGES = [
 export const CONSOLE_MESSAGES = [
   'account',
   'admin',
+  // The appeal panel under a decision, in the employer and candidate consoles.
+  'appeals',
   'applicationStatus',
   'benefits',
   'commissionType',

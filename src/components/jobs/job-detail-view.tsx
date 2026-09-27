@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, Users } from 'lucide-react';
+import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, ShieldCheck, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -280,6 +280,16 @@ export async function JobDetailView({
               signedIn={Boolean(viewer?.profile)}
             />
           </div>
+
+          {/* One line, next to the report button: the thing a scam asks for
+              is the thing this platform never does, said where somebody
+              deciding whether to trust an advert will read it. */}
+          {open ? (
+            <p className="mt-3 flex max-w-3xl items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+              <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              {t('safetyNote')}
+            </p>
+          ) : null}
 
           <section className="mt-7 max-w-3xl border-t border-border pt-6" aria-labelledby="description-heading">
             <h2 id="description-heading" className="text-base font-semibold">

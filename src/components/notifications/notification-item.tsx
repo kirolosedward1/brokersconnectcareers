@@ -1,10 +1,17 @@
 import { getTranslations } from 'next-intl/server';
 import {
   BadgeCheck,
+  Ban,
+  Bell,
+  CirclePause,
   CircleSlash,
+  Eye,
+  EyeOff,
   FileCheck2,
   FileX2,
+  Scale,
   Send,
+  ShieldCheck,
   UserCheck,
   UserMinus,
   UserRound,
@@ -33,6 +40,13 @@ const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }
   company_verified: BadgeCheck,
   account_approved: UserCheck,
   account_rejected: CircleSlash,
+  report_reviewed: ShieldCheck,
+  company_suspended: Ban,
+  company_restored: BadgeCheck,
+  profile_restricted: EyeOff,
+  profile_restored: Eye,
+  account_held: CirclePause,
+  appeal_decided: Scale,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -45,7 +59,22 @@ const TONES: Record<NotificationKind, string> = {
   company_verified: 'bg-success-muted text-success',
   account_approved: 'bg-success-muted text-success',
   account_rejected: 'bg-destructive-muted text-destructive',
+  report_reviewed: 'bg-primary/10 text-primary',
+  company_suspended: 'bg-destructive-muted text-destructive',
+  company_restored: 'bg-success-muted text-success',
+  profile_restricted: 'bg-destructive-muted text-destructive',
+  profile_restored: 'bg-success-muted text-success',
+  account_held: 'bg-warning-muted text-warning',
+  appeal_decided: 'bg-primary/10 text-primary',
 };
+
+/**
+ * A kind this build has no row for — one a newer migration writes before the
+ * code that draws it has deployed — gets a plain bell and a plain sentence
+ * rather than taking the whole feed down with it. That ordering is exactly
+ * what a migration applied ahead of its code produces.
+ */
+const KNOWN = new Set(Object.keys(ICONS));
 
 export async function NotificationItem({
   notification,
@@ -61,26 +90,33 @@ export async function NotificationItem({
   const tStatus = await getTranslations('applicationStatus');
 
   const { kind, payload } = notification;
-  const Icon = ICONS[kind];
+  const known = KNOWN.has(kind);
+  const Icon = known ? ICONS[kind] : Bell;
 
   const subject =
     localized(locale, payload.title_ar, payload.title_en) ||
     localized(locale, payload.name_ar, payload.name_en);
 
-  const title =
-    kind === 'application_moved'
+  const title = !known
+    ? t('somethingChanged')
+    : kind === 'application_moved'
       ? t('applicationMoved', {
           title: subject,
           status: payload.status ? tStatus(payload.status as never) : '',
         })
-      : t(kind, { subject });
+      : kind === 'report_reviewed'
+        ? // Whether it led to action, and never what the action was.
+          t(payload.outcome === 'actioned' ? 'reportActioned' : 'reportNoBreach', { subject })
+        : kind === 'appeal_decided'
+          ? t(payload.outcome === 'overturned' ? 'appealOverturned' : 'appealUpheld', { subject })
+          : t(kind, { subject });
 
   const body = payload.note || null;
   const unread = !notification.read_at;
 
   const inner = (
     <>
-      <span aria-hidden className={cn('grid size-9 shrink-0 place-items-center rounded-lg', TONES[kind])}>
+      <span aria-hidden className={cn('grid size-9 shrink-0 place-items-center rounded-lg', known ? TONES[kind] : 'bg-muted text-muted-foreground')}>
         <Icon className="size-4" />
       </span>
 
