@@ -1,0 +1,22 @@
+-- =============================================================================
+-- 314 — An email with nothing left to say
+--
+-- safety: ships-with-code — an enum value nothing writes until migration 315 and the new sweeper do; the code on main never reads or writes it, so either order is safe
+-- rollback: none needed and none possible in place — Postgres cannot drop an enum value; an unused 'cancelled' is inert. Rows written with it would be relabelled 'failed' before any type rebuild.
+--
+-- One statement, alone in its file, because Postgres will not let a
+-- transaction use an enum value it added, and db-push and the test harness
+-- run each migration file as its own transaction. Migration 315 uses it.
+-- Migrations 21 and 51 split a pair for the same reason.
+--
+-- `cancelled` is for an outbox row the retry sweeper closed because, by the
+-- time it came round again, there was nothing left to send: the recipient
+-- turned the notice off, the application was withdrawn, the listing was
+-- deleted, or a newer row carried the message. It is not a failure and must
+-- not sit among the dead letters, and `suppressed` already means something
+-- narrower (an address the provider or the platform refuses).
+--
+-- Renumbered from 68 when main moved to 313.
+-- =============================================================================
+
+alter type email_status add value if not exists 'cancelled';

@@ -4,6 +4,7 @@ import { logFailure } from '@/lib/observe';
 import { retryDbResult } from '@/lib/jobs/db';
 import { currentRetryContext } from '@/lib/jobs/retry-context';
 import { sendEmail, type SendOutcome } from './send';
+import { TEMPLATES, isEssential, type TemplateName } from './templates';
 
 /**
  * The one funnel every message goes through.
@@ -50,7 +51,7 @@ export type Envelope = {
 
 export type DeliverySpec = {
   /** Registry name, e.g. 'application_receipt'. Also what the sweeper rebuilds by. */
-  template: string;
+  template: TemplateName;
   to: string;
   userId?: string | null;
   entity?: { type: string; id: string } | null;
@@ -64,6 +65,20 @@ export type DeliverySpec = {
 };
 
 export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
+  /*
+    The category and the envelope must agree. A preference stream without an
+    unsubscribe is mail the recipient cannot stop, which is what gets a domain
+    filtered; a security notice with one invites somebody to switch off the
+    message that tells them their password changed. Either is a template bug,
+    and refusing here makes it a loud one rather than a quiet deliverability
+    or safety problem.
+  */
+  const optional = TEMPLATES[spec.template] === 'preference';
+  if (optional !== Boolean(spec.envelope.unsubscribeUrl)) {
+    console.warn(`[email] "${spec.template}" has the wrong unsubscribe for its category; not sending`);
+    return 'failed';
+  }
+
   let admin: ReturnType<typeof createAdminClient>;
   try {
     admin = createAdminClient();
@@ -91,6 +106,7 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
       p_user_id: spec.userId ?? null,
       p_entity_type: spec.entity?.type ?? null,
       p_entity_id: spec.entity?.id ?? null,
+      p_essential: isEssential(spec.template),
       p_lock_token: retry?.leaseToken ?? null,
     }),
   );
@@ -101,9 +117,10 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
     return 'failed';
   }
 
-  // Null means somebody already holds this key, or the address is suppressed.
-  // Both are "do not send", and neither is an error. (Under a retry, a
-  // suppressed address also closes the leased row, inside claim_email.)
+  // Null means somebody already holds this key, the address is suppressed, or
+  // it has reached its hourly ceiling. All are "do not send", none an error.
+  // (Under a retry, a suppressed address also closes the leased row, inside
+  // claim_email.)
   if (!claimed) return 'skipped';
   const logId = claimed as string;
 
@@ -165,30 +182,4 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
   }
 
   return result.outcome;
-}
-
-/**
- * Address-level suppression, checked in the database at claim time. Exposed
- * here for the webhook, which is the only thing that adds to it.
- *
- * Returns whether the write landed, because the webhook must answer 500 when
- * it did not: a bounce the provider believes was recorded is never sent
- * again, and the next message to that dead address costs the whole domain's
- * reputation. supabase-js resolves an error rather than throwing it, so the
- * error is read, not caught — the catch is for a missing service-role key.
- */
-export async function suppress(email: string, reason: 'hard_bounce' | 'complaint'): Promise<boolean> {
-  try {
-    const { error } = await createAdminClient()
-      .from('email_suppressions')
-      .upsert({ email: email.toLowerCase(), reason }, { onConflict: 'email' });
-    if (error) {
-      logFailure('email', 'could not suppress', { reason, code: error.code });
-      return false;
-    }
-    return true;
-  } catch {
-    logFailure('email', 'could not suppress', { reason, code: 'no_client' });
-    return false;
-  }
 }

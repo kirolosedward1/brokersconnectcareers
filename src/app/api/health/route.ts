@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createPublicClient } from '@/lib/supabase/public';
 import { isPlaceholder } from '@/lib/env';
+import { senderProblem } from '@/lib/email/sender';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
@@ -37,9 +38,19 @@ export async function GET() {
     supabase: set(process.env.NEXT_PUBLIC_SUPABASE_URL) && set(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     serviceRole: set(process.env.SUPABASE_SERVICE_ROLE_KEY),
     siteUrl: set(process.env.NEXT_PUBLIC_SITE_URL),
-    email: set(process.env.RESEND_API_KEY) && set(process.env.RESEND_FROM),
+    email:
+      set(process.env.RESEND_API_KEY) &&
+      set(process.env.RESEND_FROM) &&
+      // A test sender such as onboarding@resend.dev is set, and not usable.
+      senderProblem(process.env.RESEND_FROM) === null,
     emailWebhook: set(process.env.RESEND_WEBHOOK_SECRET),
     cron: set(process.env.CRON_SECRET),
+    // Informational: neither takes the site down, both are expected in
+    // production. The salt keeps the security log's hashes from being
+    // comparable across environments; the two Turnstile keys are what stand
+    // between the sign-in form and a script.
+    securitySalt: set(process.env.SECURITY_SALT),
+    turnstile: set(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) && set(process.env.TURNSTILE_SECRET_KEY),
   };
 
   /*
@@ -71,10 +82,17 @@ export async function GET() {
     'RESEND_FROM',
     'RESEND_WEBHOOK_SECRET',
     'CRON_SECRET',
+    'SECURITY_SALT',
+    'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+    'TURNSTILE_SECRET_KEY',
   ]) {
     const value = process.env[name];
     if (!value) attention[name] = 'absent';
     else if (isPlaceholder(value)) attention[name] = 'placeholder';
+  }
+  // Present and filled in, but a development sender — named, never shown.
+  if (!attention.RESEND_FROM && senderProblem(process.env.RESEND_FROM)) {
+    attention.RESEND_FROM = 'rejected';
   }
 
   // One real round trip, against a table every page depends on, through the
@@ -100,7 +118,7 @@ export async function GET() {
     finished successfully and compares that with how often it is meant to.
 
     The allowance is the schedule plus slack for one late or failed run:
-    email-retry fires every ten minutes, maintenance hourly, the two nightly
+    email-retry fires every ten minutes, the two nightly
     jobs daily, job-alerts on Monday mornings.
 
     Booleans only, same rule as the rest of this endpoint: no timestamps, no
@@ -111,7 +129,6 @@ export async function GET() {
   const FRESH_WITHIN_MS: Record<string, number> = {
     'expire-jobs': 26 * 60 * 60 * 1000,
     'email-retry': 30 * 60 * 1000,
-    maintenance: 2 * 60 * 60 * 1000,
     'daily-digest': 26 * 60 * 60 * 1000,
     'job-alerts': 8 * 24 * 60 * 60 * 1000,
   };

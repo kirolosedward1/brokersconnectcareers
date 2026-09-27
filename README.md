@@ -95,10 +95,16 @@ URL Configuration, set Site URL to your production URL and add
 `https://your-domain/auth/callback` to the redirect allow-list. Until you do,
 confirmation emails and Google sign-in will send people to `localhost:3000`.
 
-The scheduled jobs are already declared in `vercel.json` (see
-[Background work](#background-work)). Vercel sends
-`Authorization: Bearer $CRON_SECRET` automatically once that variable is set;
-every cron route returns 401 to anything else.
+**Email** needs `RESEND_API_KEY`, `RESEND_FROM` and `RESEND_WEBHOOK_SECRET`
+too, plus Supabase Auth's SMTP settings. Everything about it — architecture,
+events, DNS status, and the provider steps still outstanding — is in
+[`docs/email.md`](docs/email.md).
+
+The nightly expiry cron is already declared in `vercel.json` and runs at 01:00
+UTC. Expiry and retention also run hourly inside the database through pg_cron,
+which needs no application secret; `/api/cron/lifecycle` deletes released files
+through the Storage API. See `docs/data-lifecycle.md`. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
+variable is set; the route returns 401 to anything else.
 
 ## Background work
 
@@ -113,18 +119,18 @@ waiting on that answer. The email it causes is sent in an `after()` on the same
 request: it is claimed in `email_log` first, so if the send fails or the
 function is frozen mid-send the row is still there for the sweeper. New rows
 are not eligible for a retry for five minutes, which protects one that is
-mid-send. The job-view counter is also an `after()`, through the anon client,
+mid-send. The job-view counter is also an `after()`, through the service role,
 because cookies are gone by then.
 
-**Scheduled jobs.** Each route goes through `runScheduledJob`
+**Scheduled jobs.** Each route except `lifecycle` goes through `runScheduledJob`
 (`src/lib/jobs/run.ts`): bearer-secret check, a per-job lease, a time budget of
 `maxDuration` minus ten seconds, and a row in `job_runs` with start, finish,
 duration, counts and a sanitised error.
 
 | Job | Schedule (UTC) | What it does |
 |---|---|---|
-| `email-retry` | every 10 min | Leases due outbox rows and retries them in place |
-| `maintenance` | hourly at :41 | Relabels expired listings, dead-letters stale outbox rows, prunes `job_runs` older than 90 days, removes up to 100 orphaned uploads (replaced avatars/logos/CVs older than 7 days; `company-documents` is never touched) |
+| `email-retry` | every 10 min | Dead-letters outbox rows past their window, prunes `job_runs` older than 90 days, then leases due outbox rows and retries them in place |
+| `lifecycle` | 02:23 daily, and hourly in pg_cron | Expiry, retention and storage cleanup — see `docs/data-lifecycle.md`; it keeps its own run log, `maintenance_runs` |
 | `expire-jobs` | 01:00 daily | Expires listings; sends "expiring in 3 days" and "has expired (last 7 days)" notices |
 | `daily-digest` | 06:00 daily | Applicant digests (window starts at each employer's last digest, capped at 7 days) and reminders |
 | `job-alerts` | 06:00–11:00 Mondays, hourly | Saved-search alerts, oldest-checked first, resuming where the last run stopped |
@@ -160,7 +166,7 @@ same row, and every write back is checked against the token.
 failures in 7 days and a job that has never run; the outbox's due, in-flight,
 waiting and dead counts; and the last 50 runs. `/api/health` adds
 `jobs: { "email-retry": true, … }` — fresh means a success within 30 min
-(email-retry), 2 h (maintenance), 26 h (expire-jobs, daily-digest) or 8 days
+(email-retry), 26 h (expire-jobs, daily-digest) or 8 days
 (job-alerts) — and reports `degraded` if any is stale. Logs carry job names,
 ids and counts only, never addresses or content.
 
@@ -178,11 +184,17 @@ arguments and have no runtime imports, so their tests run under plain
 | `pnpm dev` | Dev server |
 | `pnpm build` | Production build |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test:db` | Runs the schema and RLS suites against an in-process Postgres |
+| `pnpm test:db` | Runs the schema, RLS, security, notifications and lifecycle suites against an in-process Postgres |
+| `pnpm test:security` | The hardening round's rules alone (audit trail, reveal, limits, MFA, storage) |
+| `pnpm test:security-libs` | Byte recognition, text sanitising, href and secret checks |
+| `pnpm test:notifications` | Notification idempotency, read state, paging, role-safe links and channel isolation (see `docs/notifications.md`) |
 | `pnpm db:push:url` | Applies migrations + taxonomies over `DATABASE_URL` (no CLI, no Docker) |
 | `pnpm db:seed:demo` | Creates demo accounts via the Auth admin API + sample listings |
 | `pnpm doctor` | Preflight: env, REST, schema, storage, auth |
 | `pnpm db:rehearse` | Runs the setup scripts against a throwaway wire-protocol Postgres |
+| `pnpm test:lifecycle` | Expiry, deletion, file replacement, retention and cleanup, including a two-worker race against a real Postgres when one is installed |
+| `pnpm lifecycle:audit` | Read-only integrity/orphan report over `DATABASE_URL` (`--repair` dry run, `--apply` safe repairs) |
+| `pnpm bench:search` | Query plans for board, company and agent search on a 20k-listing synthetic board |
 | `pnpm db:types` | Regenerates `src/lib/supabase/database.types.ts` from a linked project |
 
 ### `pnpm test:db`
@@ -199,6 +211,21 @@ Supabase's `auth` and `storage` schemas are stubbed in `tests/setup.mjs`, but
 pgcrypto and unaccent are loaded for real, so the `create extension` lines and the
 seed's `crypt()`/`gen_salt()` calls are genuinely exercised. Everything below that
 line is the production SQL, verbatim.
+
+## Security
+
+The hardening round of September 2026 is documented under `docs/security/`:
+
+- `THREAT_MODEL.md` — data classification, trust boundaries, adversaries and the control that answers each.
+- `SECURITY_REPORT.md` — what was found, what was fixed, what remains, and the production-readiness verdict.
+- `SUPABASE_SETTINGS.md` — the dashboard settings the code depends on (Turnstile CAPTCHA, MFA, rate limits, PITR).
+- `EDGE_WAF.md` + `vercel-firewall.json` — the Vercel Firewall rules, applied with `scripts/vercel-firewall.mjs`.
+- `RUNBOOKS.md` — incident response, backups and restore, change control, alerting.
+- `../load/` — k6 load, spike and abuse scripts (staging only).
+
+The rules themselves live in the database (migrations 303–313) and are exercised by `pnpm test:security`; the pure helpers (byte recognition, sanitising, URL and secret checks) by `pnpm test:security-libs`. Both run as part of `pnpm check`.
+
+Three environment variables were added — `SECURITY_SALT`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` — and one switch, `ADMIN_MFA_REQUIRED`. All are described in `.env.example`; `/api/health` reports which are set.
 
 ## Layout
 
@@ -238,6 +265,18 @@ outright, which is right for the profile page and useless for a directory that m
 show anonymised cards to everyone. `search_agents()` and `get_agent_card()` are
 `SECURITY DEFINER` and strip identity themselves, so the gate cannot be bypassed by
 crafting a query.
+
+**Search is Postgres full-text search, on purpose.** Each public listing has a
+row in `job_search_documents` — title, specialisation, district and governorate
+(names and aliases, both languages), company, developers and description,
+weighted so a prefix matches the short fields and only whole words match the
+prose. Triggers keep it current; a draft or a rejected listing has none. Arabic
+is folded identically in SQL (`ar_normalise`, `ar_strip_al`) and TypeScript
+(`src/lib/search/arabic.ts`), and `pnpm test:search` asserts the two agree.
+Extra place and specialisation names («القاهرة الجديدة», «ريسيل») are rows in
+`search_aliases`, seeded in `seed.sql` — add one with an insert, not a deploy.
+`pnpm bench:search` has the measured plans behind not reaching for a search
+engine.
 
 **CVs are never linked directly.** `/api/cv/[applicationId]` checks entitlement
 through RLS, mints a five-minute signed URL, and redirects. A URL rendered into the

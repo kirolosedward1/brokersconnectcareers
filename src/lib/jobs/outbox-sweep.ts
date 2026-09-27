@@ -61,7 +61,8 @@ export type RebuildOutcome = 'sent' | 'skipped' | 'failed';
 export type OutboxSweepDeps = {
   lease(limit: number): Promise<LeasedEmailRow[]>;
   settle(id: string, token: string, outcome: SettleLeasedOutcome, detail: string): Promise<boolean>;
-  rebuilders: Record<string, (entityId: string) => Promise<RebuildOutcome>>;
+  /** Rebuilt from the entity, and the recipient the row recorded (see rebuild.ts). */
+  rebuilders: Record<string, (entityId: string, userId: string | null) => Promise<RebuildOutcome>>;
   runInRetryContext<T>(ctx: RetryContext, fn: () => Promise<T>): Promise<T>;
   deadline: Deadline;
 };
@@ -164,7 +165,7 @@ async function sweepOne(deps: OutboxSweepDeps, row: LeasedEmailRow, stats: Outbo
   let outcome: RebuildOutcome;
   try {
     const entityId = row.entity_id;
-    outcome = await deps.runInRetryContext(ctx, () => rebuild(entityId));
+    outcome = await deps.runInRetryContext(ctx, () => rebuild(entityId, row.user_id ?? null));
   } catch {
     // The notify functions do not throw, so this is a bug or an outage in the
     // rebuild itself. Counted as an attempt so it cannot loop forever.

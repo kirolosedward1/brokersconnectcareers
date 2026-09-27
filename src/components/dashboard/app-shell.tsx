@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   Search,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   UserCog,
   UserRound,
@@ -54,6 +55,7 @@ const ICONS = {
   queue: FileCheck2,
   reports: Flag,
   admin: ShieldCheck,
+  security: ShieldAlert,
   users: UserCog,
   email: Mail,
   // The scheduled jobs and the outbox: a pulse, not a letter.

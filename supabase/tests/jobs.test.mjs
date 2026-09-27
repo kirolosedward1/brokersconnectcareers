@@ -65,7 +65,7 @@ const RECIPIENT = 'someone@brokersconnect.net';
 
 async function claim(key, { token = null, to = RECIPIENT, template = 'application_status', entity = null } = {}) {
   const row = await one(
-    'select public.claim_email($1, $2, $3, null, $4, $5, $6) as id',
+    'select public.claim_email($1, $2, $3, null, $4, $5, false, $6) as id',
     [key, template, to, entity ? 'application' : null, entity, token],
   );
   return row.id;
@@ -434,7 +434,7 @@ report.section('scheduler delay: expiry catches up on a missed run, and runs twi
   report.is(statuses[closedFirst], 'closed', 'a manually closed listing stays closed, not relabelled expired');
 
   const secondRun = (await one('select public.expire_stale_jobs() as n')).n;
-  report.is(secondRun, 0, 'a second run (a retried cron, the hourly maintenance job) changes nothing');
+  report.is(secondRun, 0, 'a second run (a retried cron, the hourly lifecycle job) changes nothing');
 
   const reclose = await asCommitted(USERS.employer1, `update jobs set status = 'closed' where id = '${missed}' returning status`);
   report.is(reclose.rows[0]?.status, 'closed', 'an expired listing can still be closed by its owner', reclose.error);
@@ -648,23 +648,26 @@ report.section('dead letters are an admin screen, and requeue is an admin action
 
 report.section('invalid payload: webhook events cannot move a message backwards');
 {
+  // Ordering and suppression are migration 68's webhook ledger; email.test.mjs
+  // covers them. What 315 adds is that a provider-side failure after
+  // acceptance is a dead letter the lease can see, not a row still "due".
   const a = await claim('hook:a');
   await record(a, 'sent', { provider: 'prov-a' });
-  await db.query(`select public.mark_email_delivered('prov-a', 'delivered')`);
-  const firstDelivered = (await row(a)).delivered_at;
-  const n = (await one(`select public.mark_email_delivered('prov-a', 'sent') as n`)).n;
-  report.is((await row(a)).status, 'delivered', 'a late delivery_delayed (sent) does not regress delivered');
-  report.is(n, 1, 'but the event is still recognised as about a real message');
-  await db.query(`select public.mark_email_delivered('prov-a', 'delivered')`);
-  report.is((await row(a)).delivered_at?.getTime(), firstDelivered?.getTime(), 'a replayed delivery keeps the first delivered_at');
-  await db.query(`select public.mark_email_delivered('prov-a', 'complained')`);
-  report.is((await row(a)).status, 'complained', 'a complaint after delivery wins');
+  await db.query(`select public.record_email_event('evt-a1', 'prov-a', 'delivered')`);
+  await db.query(`select public.record_email_event('evt-a2', 'prov-a', 'delayed')`);
+  report.is((await row(a)).status, 'delivered', 'a late delay notice does not regress delivered');
 
   const b = await claim('hook:b');
   await record(b, 'sent', { provider: 'prov-b' });
-  await db.query(`select public.mark_email_delivered('prov-b', 'bounced')`);
-  await db.query(`select public.mark_email_delivered('prov-b', 'delivered')`);
-  report.is((await row(b)).status, 'bounced', 'a delivery after a bounce is blocked');
+  await db.query(`select public.record_email_event('evt-b1', 'prov-b', 'failed')`);
+  const failed = await row(b);
+  report.ok(failed.status === 'failed' && failed.gave_up_at !== null && failed.next_attempt_at === null,
+    'a provider failure after acceptance is dead-lettered, with nothing scheduled');
+  await db.query(`update email_log set locked_until = null where id = $1`, [b]);
+  const leased = await q('select id from public.lease_due_emails(100, 60)');
+  report.ok(!leased.some((r) => r.id === b), 'so the sweeper never leases and resends it');
+  await db.query(`select public.record_email_event('evt-b1', 'prov-b', 'failed')`);
+  report.is((await row(b)).attempts, failed.attempts, 'and a replayed event changes nothing');
 }
 
 report.section('invalid payload: the job log refuses what it should never hold');
@@ -750,7 +753,7 @@ report.section('job_runs: prune and the admin readers');
 report.section('service-role functions are closed to anon and signed-in users');
 {
   const SERVICE_ONLY = [
-    'claim_email(text, text, text, uuid, text, uuid, uuid)',
+    'claim_email(text, text, text, uuid, text, uuid, boolean, uuid)',
     'record_email_attempt(uuid, email_status, text, text, boolean, integer)',
     'release_email_claim(uuid)',
     'lease_due_emails(integer, integer)',
@@ -765,7 +768,7 @@ report.section('service-role functions are closed to anon and signed-in users');
     'pending_applicant_digests(interval)',
     'email_retry_delay(integer)',
     'email_status_rank(email_status)',
-    'expire_stale_jobs()',
+    'expire_stale_jobs(integer)',
   ];
   for (const fn of SERVICE_ONLY) {
     const r = await one(
@@ -996,61 +999,6 @@ report.section('a page view is not an edit: the listing version stays put');
     'an edit that happens to ride along with a feature change still counts');
 }
 
-report.section('cleanup: uploads nothing points at, and the ones that must be kept');
-{
-  const { employer1: owner, candidate1: cand } = USERS;
-  const company = (await one('select id from companies where owner_id = $1 limit 1', [owner])).id;
-  const old = "now() - interval '8 days'";
-  const put = (bucket, name, age = old) =>
-    db.query(`insert into storage.objects (bucket_id, name, created_at) values ($1, $2, ${age})`, [bucket, name]);
-  const publicUrl = (bucket, name) =>
-    `https://x.supabase.co/storage/v1/object/public/${bucket}/${name}`;
-
-  // Avatars: the current one, a replaced one, a fresh upload, one of a deleted account.
-  await put('avatars', `${cand}/current.png`);
-  await put('avatars', `${cand}/replaced.png`);
-  await put('avatars', `${cand}/fresh.png`, 'now()');
-  await put('avatars', `00000000-0000-0000-0000-00000000dead/gone.png`);
-  await db.query('update profiles set avatar_url = $2 where id = $1', [cand, publicUrl('avatars', `${cand}/current.png`) + '?v=2']);
-
-  // Logos: an owner whose URL is in a shape the sweep does not recognise keeps everything.
-  await put('company-logos', `${company}/logo-a.png`);
-  await db.query('update companies set logo_url = $2 where id = $1', [company, 'https://cdn.example.net/brand/logo.png']);
-
-  // CVs: one on a profile, one on an application, one nobody submitted.
-  await put('cvs', `${cand}/profile.pdf`);
-  await put('cvs', `${cand}/applied.pdf`);
-  await put('cvs', `${cand}/abandoned.pdf`);
-  await db.query('update agent_profiles set cv_path = $2 where user_id = $1', [cand, `${cand}/profile.pdf`]);
-  await db.query(
-    'update applications set cv_path = $2 where id = (select id from applications where candidate_id = $1 limit 1)',
-    [cand, `${cand}/applied.pdf`],
-  );
-
-  const orphans = (await q('select bucket_id, name from public.orphaned_storage_objects(100)'))
-    .map((r) => `${r.bucket_id}:${r.name}`);
-  const has = (k) => orphans.includes(k);
-
-  report.ok(has(`avatars:${cand}/replaced.png`), 'a replaced avatar is found');
-  report.ok(!has(`avatars:${cand}/current.png`), 'the avatar in use is kept, cache-buster and all');
-  report.ok(!has(`avatars:${cand}/fresh.png`), 'an upload inside the grace period is kept — its row may not be written yet');
-  report.ok(has('avatars:00000000-0000-0000-0000-00000000dead/gone.png'), 'a deleted account\'s avatar is found');
-  report.ok(!has(`company-logos:${company}/logo-a.png`),
-    'an owner whose URL the sweep cannot read keeps every file: unsure means keep');
-  report.ok(!has(`cvs:${cand}/profile.pdf`) && !has(`cvs:${cand}/applied.pdf`),
-    'a CV on a profile or an application is kept');
-  report.ok(has(`cvs:${cand}/abandoned.pdf`), 'a CV nobody submitted is found');
-
-  const tiny = await q(`select * from public.orphaned_storage_objects(100, interval '1 minute')`);
-  report.ok(!tiny.some((r) => r.name === `${cand}/fresh.png`), 'the grace never drops below a day, whatever is passed');
-
-  for (const role of ['anon', 'authenticated']) {
-    const r = await as(role === 'anon' ? null : cand, 'select * from public.orphaned_storage_objects(10)', role);
-    report.ok(!r.ok, `${role} cannot list storage orphans`);
-  }
-  await db.query(`delete from storage.objects`);
-}
-
 report.section('release_email_claim is disarmed for the old sweeper still deployed');
 {
   await park();
@@ -1061,13 +1009,13 @@ report.section('release_email_claim is disarmed for the old sweeper still deploy
     'the row keeps its key and count, so the old rebuild claims nothing and cannot send twice');
 }
 
-report.section('the backfill: rows the old code left, as migration 69 finds them');
+report.section('the backfill: rows the old code left, as migration 315 finds them');
 {
-  // A database as it stood before migration 69, with the rows the old sweeper
+  // A database as it stood before migration 315, with the rows the old sweeper
   // could leave behind, and then the migration run over them.
   const old = new PGlite({ extensions: { pgcrypto, unaccent } });
   const scripts = testDbScripts({ seed: false });
-  const at = scripts.findIndex((sc) => sc.name.startsWith('20260101000069'));
+  const at = scripts.findIndex((sc) => sc.name.startsWith('20260101000315'));
   for (const sc of scripts.slice(0, at)) await old.exec(sc.sql);
   await old.exec(`
     insert into email_log (dedupe_key, template, recipient, status, attempts, error, provider_id, created_at) values

@@ -18,8 +18,8 @@
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/cron/maintenance",
-      "schedule": "41 * * * *"
+      "path": "/api/cron/lifecycle",
+      "schedule": "23 2 * * *"
     }
   ]
 }

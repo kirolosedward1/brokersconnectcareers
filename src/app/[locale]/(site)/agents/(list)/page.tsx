@@ -20,16 +20,31 @@ import { getViewer } from '@/lib/auth';
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   const t = await getTranslations({ locale, namespace: 'agents' });
+
+  // The directory itself is one page. Filtered, paged or sorted it is a view
+  // of that page — followed for its links, not indexed. Same rule as /jobs.
+  const filters = parseAgentFilters(await searchParams);
+  const isView =
+    filters.tracks.length > 0 ||
+    filters.districtSlugs.length > 0 ||
+    Boolean(filters.availability) ||
+    Boolean(filters.minYears) ||
+    filters.page > 1;
+
   return {
     title: t('title'),
     description: t('subtitle'),
-    alternates: alternatesFor('/agents', locale),
+    ...(isView
+      ? { robots: { index: false, follow: true } }
+      : { alternates: alternatesFor('/agents', locale) }),
   };
 }
 
@@ -68,6 +83,7 @@ export default async function AgentsPage({
   const tJobs = await getTranslations('jobs');
 
   const activeCount =
+    (filters.q ? 1 : 0) +
     filters.tracks.length +
     filters.districtSlugs.length +
     (filters.availability ? 1 : 0) +
@@ -128,6 +144,12 @@ export default async function AgentsPage({
             <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
               <EmptyIllustration name="choose" />
               <p className="font-medium">{t('empty')}</p>
+              {/* Not a dead end: the way out is one tap, the same as the rail's. */}
+              {activeCount > 0 ? (
+                <Button asChild variant="outline" className="mt-5">
+                  <Link href="/agents">{tJobs('clearFilters')}</Link>
+                </Button>
+              ) : null}
             </div>
           ) : (
             <>

@@ -1,9 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySvix } from '@/lib/email/svix';
-import { suppress } from '@/lib/email/service';
-import { logFailure } from '@/lib/observe';
-import type { EmailStatus } from '@/lib/supabase/database.types';
+import { eventKind } from '@/lib/email/events';
+import { configuredValue } from '@/lib/env';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,24 +23,19 @@ export const dynamic = 'force-dynamic';
  * address on the platform, which is a denial-of-service against password
  * resets.
  *
+ * A 503 is not free, though: Resend disables a webhook that keeps failing.
+ * Production ran without the secret, answered 503 for a week, and the webhook
+ * was switched off — so after setting RESEND_WEBHOOK_SECRET it has to be
+ * re-enabled in the Resend dashboard as well. /api/health names the variable
+ * when it is missing.
+ *
  * Answer 200 to anything genuine, including events about messages this system
  * never sent. A provider that receives an error resends, and there is nothing
  * to fix by resending an event we have no row for.
  */
 
-/** Only the events that change what we know. Opens and clicks are not tracked. */
-const STATUS_FOR: Record<string, EmailStatus> = {
-  'email.delivered': 'delivered',
-  'email.bounced': 'bounced',
-  'email.complained': 'complained',
-  // A delay is still `sent`. mark_email_delivered ranks statuses and never
-  // moves one backwards, so a delay notice that arrives after the delivery
-  // (they do: the provider sends them from different queues) cannot undo it.
-  'email.delivery_delayed': 'sent',
-};
-
 export async function POST(request: NextRequest) {
-  const secret = process.env.RESEND_WEBHOOK_SECRET;
+  const secret = configuredValue(process.env.RESEND_WEBHOOK_SECRET);
 
   // The raw bytes, because the signature is over what was sent — parsing and
   // re-serialising changes key order and whitespace.
@@ -65,65 +59,46 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'bad_signature' }, { status: 401 });
   }
 
-  let event: { type?: string; data?: { email_id?: string; to?: string[] | string } };
+  let event: unknown;
   try {
     event = JSON.parse(raw);
   } catch {
     return NextResponse.json({ error: 'malformed' }, { status: 400 });
   }
 
-  const status = event.type ? STATUS_FOR[event.type] : undefined;
-  const providerId = event.data?.email_id;
+  const parsed = eventKind(event);
 
-  // Signed, so genuinely Resend — just not an event worth recording.
-  if (!status || !providerId) return NextResponse.json({ ok: true, ignored: true });
+  // Signed, so genuinely Resend — just not an event worth recording (opens,
+  // clicks, contacts, domains, or `email.sent`, which the send path already
+  // knows from the API response).
+  if (!parsed) return NextResponse.json({ ok: true, ignored: true });
 
-  let matched = 0;
+  // Verified above, so present.
+  const eventId = request.headers.get('svix-id') as string;
+
   try {
     const admin = createAdminClient();
     /*
-      Read, because `matched = data ?? 0` turned a failed write into a
-      successful webhook: the provider gets a 200, stops retrying, and the
-      delivery status is never recorded. The catch below already knows a 500
-      is the right answer when the failure is ours — it just never saw this
-      one, because the RPC returns its error rather than throwing it.
+      One statement does all of it: the replay check on the event id, the
+      forward-only status change, and any suppression — which follows only
+      from an event that matched our own outbox, using the recipient we
+      recorded rather than the one in the payload. This Resend account is
+      shared with another site, and its complaints must not silence mail this
+      platform sends.
     */
-    const { data, error } = await admin.rpc('mark_email_delivered', {
-      p_provider_id: providerId,
-      p_status: status,
+    const { data, error } = await admin.rpc('record_email_event', {
+      p_event_id: eventId,
+      p_provider_id: parsed.providerId,
+      p_kind: parsed.kind,
     });
-    if (error) throw new Error(`mark_email_delivered: ${error.message}`, { cause: error });
+    if (error) throw new Error(`record_email_event: ${error.message}`, { cause: error });
 
-    matched = data ?? 0;
+    return NextResponse.json({ ok: true, ...(data ?? {}) });
   } catch (error) {
-    // Ours, not theirs — worth a 500 so the provider retries.
-    logFailure('email', 'webhook could not record', {
-      code: (error as { cause?: { code?: string } } | null)?.cause?.code || 'unknown',
-    });
+    // Ours, not theirs — worth a 500 so the provider retries. The event-id
+    // ledger is in the same transaction, so the retry is not mistaken for a
+    // duplicate.
+    console.warn('[email] webhook could not record:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'unavailable' }, { status: 500 });
   }
-
-  // A hard bounce means the address does not exist, and continuing to send to
-  // it damages a reputation shared by every message this domain sends — one
-  // dead address in a digest can push password resets into spam for everybody.
-  // A complaint means they asked, in the strongest way the medium allows.
-  //
-  // Delivery delays are deliberately not suppressed: those are temporary, and
-  // the outbox's attempt limit already bounds them.
-  //
-  // A failed suppression write is ours and answers 500, like the mark above:
-  // swallowing it told the provider the bounce was handled, it never resent,
-  // and the dead address stayed live. The resend is safe — the mark is
-  // idempotent (it only moves a status forward) and the suppression is an
-  // upsert.
-  if (status === 'bounced' || status === 'complained') {
-    const to = event.data?.to;
-    const address = Array.isArray(to) ? to[0] : to;
-    if (address) {
-      const suppressed = await suppress(address, status === 'bounced' ? 'hard_bounce' : 'complaint');
-      if (!suppressed) return NextResponse.json({ error: 'unavailable' }, { status: 500 });
-    }
-  }
-
-  return NextResponse.json({ ok: true, matched });
 }

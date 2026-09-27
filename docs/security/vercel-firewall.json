@@ -1,0 +1,98 @@
+{
+  "$comment": "Vercel Firewall configuration for brokersconnectcareers. Apply with scripts/vercel-firewall.mjs. Rate-limit thresholds mirror docs/security/EDGE_WAF.md.",
+  "firewallEnabled": true,
+  "rules": [
+    {
+      "name": "auth pages",
+      "description": "Sign-in, sign-up and onboarding page fetches.",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "path", "op": "pre", "value": "/sign-in" }] },
+                         { "conditions": [{ "type": "path", "op": "pre", "value": "/sign-up" }] },
+                         { "conditions": [{ "type": "path", "op": "pre", "value": "/onboarding" }] }],
+      "action": { "mitigate": { "action": "challenge", "rateLimit": { "algo": "fixed_window", "window": 60, "limit": 60, "keys": ["ip"], "action": "challenge" } } }
+    },
+    {
+      "name": "directory pages",
+      "description": "The consultant directory. Cards only; contacts are behind an authenticated reveal.",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "path", "op": "pre", "value": "/agents" }] }],
+      "action": { "mitigate": { "action": "challenge", "rateLimit": { "algo": "fixed_window", "window": 60, "limit": 120, "keys": ["ip"], "action": "challenge" } } }
+    },
+    {
+      "name": "directory pages sustained",
+      "description": "Ten-minute ceiling on the directory.",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "path", "op": "pre", "value": "/agents" }] }],
+      "action": { "mitigate": { "action": "deny", "rateLimit": { "algo": "fixed_window", "window": 600, "limit": 600, "keys": ["ip"], "action": "deny" } } }
+    },
+    {
+      "name": "job pages",
+      "description": "Public listings. Loose: SEO surface.",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "path", "op": "pre", "value": "/jobs" }] }],
+      "action": { "mitigate": { "action": "challenge", "rateLimit": { "algo": "fixed_window", "window": 60, "limit": 300, "keys": ["ip"], "action": "challenge" } } }
+    },
+    {
+      "name": "cv and export routes",
+      "description": "Signed-URL redirects and the personal data export.",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "path", "op": "pre", "value": "/api/cv/" }] },
+                         { "conditions": [{ "type": "path", "op": "pre", "value": "/api/agent-cv/" }] },
+                         { "conditions": [{ "type": "path", "op": "pre", "value": "/api/account/export" }] }],
+      "action": { "mitigate": { "action": "deny", "rateLimit": { "algo": "fixed_window", "window": 60, "limit": 30, "keys": ["ip"], "action": "deny" } } }
+    },
+    {
+      "name": "unsubscribe",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "path", "op": "pre", "value": "/api/unsubscribe" }] }],
+      "action": { "mitigate": { "action": "deny", "rateLimit": { "algo": "fixed_window", "window": 60, "limit": 20, "keys": ["ip"], "action": "deny" } } }
+    },
+    {
+      "name": "webhooks",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "path", "op": "pre", "value": "/api/email/webhook" }] },
+                         { "conditions": [{ "type": "path", "op": "pre", "value": "/api/paymob/webhook" }] }],
+      "action": { "mitigate": { "action": "deny", "rateLimit": { "algo": "fixed_window", "window": 60, "limit": 120, "keys": ["ip"], "action": "deny" } } }
+    },
+    {
+      "name": "server actions",
+      "description": "Every form post on the site.",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "method", "op": "eq", "value": "POST" }, { "type": "header", "key": "next-action", "op": "ex" }] }],
+      "action": { "mitigate": { "action": "challenge", "rateLimit": { "algo": "fixed_window", "window": 60, "limit": 90, "keys": ["ip"], "action": "challenge" } } }
+    },
+    {
+      "name": "health",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "path", "op": "eq", "value": "/api/health" }] }],
+      "action": { "mitigate": { "action": "deny", "rateLimit": { "algo": "fixed_window", "window": 60, "limit": 30, "keys": ["ip"], "action": "deny" } } }
+    },
+    {
+      "name": "block empty user agent on api",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "path", "op": "pre", "value": "/api/" }, { "type": "user_agent", "op": "nex" }] }],
+      "action": { "mitigate": { "action": "deny" } }
+    },
+    {
+      "name": "geo review on sign-up",
+      "description": "A challenge, never a block: the audience is Egyptian, the diaspora is real.",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "path", "op": "pre", "value": "/sign-up" }, { "type": "geo_country", "op": "ninc", "value": ["EG", "AE", "SA", "KW", "QA", "BH", "OM", "JO", "GB", "US", "DE", "FR", "CA"] }] }],
+      "action": { "mitigate": { "action": "challenge" } }
+    }
+  ],
+  "ips": [],
+  "crs": {
+    "sd": { "active": true, "action": "log" },
+    "ma": { "active": true, "action": "log" },
+    "lfi": { "active": true, "action": "deny" },
+    "rfi": { "active": true, "action": "deny" },
+    "rce": { "active": true, "action": "deny" },
+    "php": { "active": true, "action": "deny" },
+    "gen": { "active": true, "action": "log" },
+    "xss": { "active": true, "action": "deny" },
+    "sqli": { "active": true, "action": "deny" },
+    "sf": { "active": true, "action": "log" },
+    "java": { "active": true, "action": "deny" }
+  }
+}

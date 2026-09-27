@@ -9,7 +9,8 @@ import { JsonLd } from '@/components/json-ld';
 import { jobPostingJsonLd } from '@/lib/seo/job-posting';
 import { jobIsLive } from '@/lib/job-state';
 import { EMPTY_FILTERS, getJobBySlug, queryJobs } from '@/lib/queries/jobs';
-import { parseLandingSlug } from '@/lib/taxonomy';
+import { buildLandingSlug, parseLandingSlug } from '@/lib/taxonomy';
+import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { getDistrictBySlug, getGovernorates } from '@/lib/queries/taxonomy';
 import { recordJobView } from '@/lib/actions/jobs';
 import { formatEgp, truncate, toPlainText } from '@/lib/utils';
@@ -88,8 +89,9 @@ export async function generateMetadata({
     return {
       title: t('title', { track, district }),
       description: t('subtitle', { track, district }),
-      alternates: alternatesFor(`/jobs/${slug}`, locale),
-      ...(total === 0 ? { robots: { index: false, follow: true } } : {}),
+      ...(total === 0
+        ? { robots: { index: false, follow: true } }
+        : { alternates: alternatesFor(`/jobs/${slug}`, locale) }),
     };
   }
 
@@ -137,7 +139,20 @@ export async function generateMetadata({
       // fuller test and dropped the JobPosting markup, while this one let the
       // page stay indexable — so the window produced exactly the page Google
       // penalises, an indexed listing whose own banner says it has closed.
-      robots: isOpen(job) ? undefined : { index: false, follow: true },
+      //
+      // While it is open, `unavailable_after` carries the expiry to the web
+      // index the way validThrough carries it to the job panel. If the cron
+      // is late, or the page is not recrawled on the day, Google still drops
+      // it on time instead of showing a closed role until its next visit.
+      robots: isOpen(job)
+        ? {
+            index: true,
+            follow: true,
+            ...(job.expires_at
+              ? { unavailable_after: new Date(job.expires_at).toUTCString() }
+              : {}),
+          }
+        : { index: false, follow: true },
     };
   }
 
@@ -184,8 +199,8 @@ export default async function JobOrLandingPage({ params }: { params: Promise<Par
       serverless host the count quietly depended on how fast the rest of the
       page was. `after()` is the sanctioned way to keep work alive past the
       response. A failed increment must still never break the page, hence
-      the catch; recordJobView uses the anon client, since cookies are gone
-      by the time this runs.
+      the catch; recordJobView uses the service role, never cookies, which
+      are gone by the time this runs.
     */
     after(() => recordJobView(slug).catch(() => {}));
   }
@@ -199,10 +214,36 @@ export default async function JobOrLandingPage({ params }: { params: Promise<Par
     ? localized(locale, governorate.name_ar, governorate.name_en)
     : null;
 
+  const tJobs = await getTranslations('jobs');
+  const tTrack = await getTranslations('track');
+  const tLanding = await getTranslations('landing');
+  const districtName = localized(locale, job.district.name_ar, job.district.name_en);
+
+  /*
+    Structured data only for listings that are genuinely open, and only when
+    every required field is really there — the builder returns null rather
+    than emit a payload with a gap or a date that has already passed.
+  */
+  const posting = open
+    ? jobPostingJsonLd(job, locale, governorateName, tJobs('requirements'))
+    : null;
+
   return (
     <>
-      {/* Structured data only for listings that are genuinely open. */}
-      {open ? <JsonLd data={jobPostingJsonLd(job, locale, governorateName)} /> : null}
+      {posting ? <JsonLd data={posting} /> : null}
+      <JsonLd
+        data={breadcrumbJsonLd(
+          [
+            { name: tJobs('title'), path: '/jobs' },
+            {
+              name: tLanding('title', { track: tTrack(job.track), district: districtName }),
+              path: `/jobs/${buildLandingSlug(job.track, job.district.slug)}`,
+            },
+            { name: localized(locale, job.title_ar, job.title_en) },
+          ],
+          locale,
+        )}
+      />
       {open ? null : <ClosedNotice />}
       <JobDetailView job={job} locale={locale} open={open} />
     </>

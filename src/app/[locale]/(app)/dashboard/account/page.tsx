@@ -4,6 +4,7 @@ import { asLocale } from '@/i18n/routing';
 import { AccountSettings } from '@/components/dashboard/account-settings';
 import { CredentialsSettings } from '@/components/dashboard/credentials-settings';
 import { AvatarUpload } from '@/components/dashboard/avatar-upload';
+import { MfaSettings } from '@/components/dashboard/mfa-settings';
 import { requireProfile } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
@@ -22,9 +23,16 @@ export async function generateMetadata({
  * over their own data as anyone else, and this is where the privacy policy
  * says those rights are exercised.
  */
-export default async function AccountPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function AccountPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ mfa?: string }>;
+}) {
   const locale = asLocale((await params).locale);
   setRequestLocale(locale);
+  const { mfa } = await searchParams;
 
   const viewer = await requireProfile(locale);
   const t = await getTranslations('account');
@@ -38,6 +46,17 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
   } = await supabase.auth.getUser();
   const hasPassword = (user?.identities ?? []).some((identity) => identity.provider === 'email');
 
+  /*
+    The second factor's state, read from the session. Allowed to fail quietly:
+    an unreadable answer renders the section as "not set up", which offers
+    enrolment — the safe direction — rather than hiding the section.
+  */
+  const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  const mfaLevel = assurance?.currentLevel === 'aal2' ? 'aal2' : 'aal1';
+  const mfaEnrolled = assurance?.nextLevel === 'aal2';
+  const mfaMode = mfa === 'required' ? 'required' : mfa === 'challenge' ? 'challenge' : null;
+  const isAdmin = viewer.profile.role === 'admin';
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="text-xl font-bold">{t('title')}</h1>
@@ -46,13 +65,17 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
       <div className="mt-8 space-y-8">
         {/* First, because it is the one thing on this page that other people
             see. Everything below it is private. */}
-        <AvatarUpload
-          userId={viewer.profile.id}
-          name={viewer.profile.full_name}
-          avatarUrl={viewer.profile.avatar_url}
-        />
+        <AvatarUpload name={viewer.profile.full_name} avatarUrl={viewer.profile.avatar_url} />
 
         <CredentialsSettings email={viewer.email ?? ''} hasPassword={hasPassword} />
+
+        <MfaSettings
+          locale={locale}
+          enrolled={mfaEnrolled}
+          level={mfaLevel}
+          mode={mfaMode}
+          afterVerify={isAdmin ? '/admin' : '/dashboard/account'}
+        />
 
         <AccountSettings
           locale={locale}

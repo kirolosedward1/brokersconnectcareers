@@ -3,7 +3,9 @@ import { runScheduledJob } from '@/lib/jobs/run';
 import { retryDb } from '@/lib/jobs/db';
 import type { Deadline } from '@/lib/jobs/policy';
 import type { createAdminClient } from '@/lib/supabase/admin';
-import { EXPIRY_WARN_DAYS, jobExpiryKey, notifyJobExpiry } from '@/lib/email/notify';
+import { EXPIRY_WARN_DAYS, jobExpiryKeyPrefix } from '@/lib/email/notify';
+import { publish } from '@/lib/notifications/events';
+import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { logFailure } from '@/lib/observe';
 
 export const dynamic = 'force-dynamic';
@@ -32,9 +34,14 @@ export const maxDuration = 60;
  * message however many runs see it, and a renewed listing that expires again
  * is a new message.
  *
- * The relabelling also runs hourly from /api/cron/maintenance, so a listing's
- * status lags its expiry by at most an hour; this run's call is what makes
- * the notices below see tonight's expiries even if that one has not run.
+ * The relabelling also runs hourly inside the database (pg_cron,
+ * run_lifecycle_maintenance, migration 204), so a listing's status lags its
+ * expiry by at most an hour; this run's call is what makes the notices below
+ * see tonight's expiries even if that one has not run.
+ *
+ * Notices go through publish() — the bell first, then email — like every
+ * other business event. The bell's own sweep (emit_job_expiry_notifications)
+ * and the notification prune run here too, each logged and never fatal.
  *
  * Vercel Cron sends `Authorization: Bearer $CRON_SECRET`; runScheduledJob
  * checks it, takes the job's lease and records the run.
@@ -52,7 +59,7 @@ const CAP = 200;
  * not crowd out the ones that are not.
  */
 const SCAN = 1000;
-/** Dedupe keys per lookup, so the query string stays well inside URL limits. */
+/** Listings per outbox lookup, so the query string stays well inside URL limits. */
 const KEY_CHUNK = 50;
 
 const DAY_MS = 86_400_000;
@@ -68,6 +75,20 @@ export async function GET(request: NextRequest) {
       // run — recorded, logged, and visible on /admin/operations — rather than
       // sending notices about a state that was not reached.
       const expired = (await retryDb(() => admin.rpc('expire_stale_jobs'))) ?? 0;
+
+      /*
+        The bell, for everybody at once. One idempotent statement: its keys
+        carry each listing's expires_at, so this run, tomorrow's and every
+        employer console load in between write each notice once. A failure is
+        logged and does not stop the emails.
+      */
+      const inApp = await admin.rpc('emit_job_expiry_notifications', { p_warn_days: WARN_DAYS });
+      if (inApp.error) logFailure('cron', 'expiry notifications failed', { code: inApp.error.code });
+
+      // Read notifications past their retention, for people who never mark
+      // their feed read. Same rule: logged, never fatal.
+      const pruned = await admin.rpc('prune_notifications', { p_limit: 5000 });
+      if (pruned.error) logFailure('cron', 'notification prune failed', { code: pruned.error.code });
 
       const now = Date.now();
 
@@ -102,7 +123,7 @@ export async function GET(request: NextRequest) {
       const recentlyExpired = await retryDb(() =>
         admin
           .from('jobs')
-          .select('id, expires_at')
+          .select('id, slug, expires_at')
           .eq('status', 'expired')
           .gte('expires_at', new Date(now - CATCH_UP_DAYS * DAY_MS).toISOString())
           .lte('expires_at', new Date(now).toISOString())
@@ -116,7 +137,27 @@ export async function GET(request: NextRequest) {
       await notifyAll(admin, deadline, owedWarning, 'expiring', stats);
       await notifyAll(admin, deadline, owedClosing, 'expired', stats);
 
-      return { expired, ...stats };
+      /*
+        The pages stay up — closed banner, noindex, no JobPosting — so each
+        one that expired since yesterday is an update for Google to recrawl.
+        Inert unless the Indexing API is configured. Last, and only while time
+        is left: nothing above depends on it.
+      */
+      let indexed = 0;
+      const since = now - DAY_MS;
+      for (const job of recentlyExpired ?? []) {
+        if (deadline.expired()) break;
+        if (!job.expires_at || Date.parse(job.expires_at) < since) continue;
+        if ((await notifyJobChanged(job.slug, 'URL_UPDATED')) === 'sent') indexed += 1;
+      }
+
+      return {
+        expired,
+        in_app: typeof inApp.data === 'number' ? inApp.data : 0,
+        pruned: typeof pruned.data === 'number' ? pruned.data : 0,
+        indexed,
+        ...stats,
+      };
     },
   });
 }
@@ -125,28 +166,37 @@ export async function GET(request: NextRequest) {
  * The listings in `jobs` whose notice for this stage has no outbox row yet,
  * in the same order, at most CAP of them.
  *
- * Any row at all counts as "told": sent, retrying, dead-lettered or refused
- * — claim_email would hand back nothing for every one of them, so sending
- * would be skipped anyway, only later and at more cost. A lookup that fails is
- * not a reason to skip anybody: that chunk is kept, and the claim decides.
+ * Each member of the company gets their own copy, keyed
+ * `<prefix><memberId>` (notify.ts, jobExpiryKeyPrefix). Any row under the
+ * listing's prefix counts as "told": the company was reached, and
+ * claim_email would hand back nothing for a member who already has one — so
+ * sending would be skipped anyway, only later and at more cost. A member who
+ * joined since is told tomorrow, when the listing is still in the window.
+ * A lookup that fails is not a reason to skip anybody: that chunk is kept,
+ * and the claim decides.
  */
 async function stillOwed(
   admin: Admin,
   jobs: { id: string; expires_at: string | null }[],
   stage: 'expiring' | 'expired',
 ): Promise<{ id: string }[]> {
+  const template = stage === 'expiring' ? 'job_expiring' : 'job_expired';
   const owed: { id: string }[] = [];
   for (let i = 0; i < jobs.length && owed.length < CAP; i += KEY_CHUNK) {
     const chunk = jobs.slice(i, i + KEY_CHUNK);
-    const keys = chunk.map((job) => jobExpiryKey(stage, job.id, job.expires_at));
-    const { data, error } = await admin.from('email_log').select('dedupe_key').in('dedupe_key', keys);
+    const { data, error } = await admin
+      .from('email_log')
+      .select('dedupe_key')
+      .eq('template', template)
+      .in('entity_id', chunk.map((job) => job.id));
     if (error) {
       logFailure('cron', 'could not check which expiry notices went', { stage, code: error.code });
     }
-    const held = new Set((data ?? []).map((row) => row.dedupe_key));
-    for (const [index, job] of chunk.entries()) {
+    const keys = (data ?? []).map((row) => row.dedupe_key ?? '');
+    for (const job of chunk) {
       if (owed.length >= CAP) break;
-      if (!held.has(keys[index])) owed.push({ id: job.id });
+      const prefix = jobExpiryKeyPrefix(stage, job.id, job.expires_at);
+      if (!keys.some((key) => key.startsWith(prefix))) owed.push({ id: job.id });
     }
   }
   return owed;
@@ -188,8 +238,12 @@ async function notifyAll(
       continue;
     }
 
-    const outcome = await notifyJobExpiry(job.id, stage, count);
-    if (outcome === 'sent') {
+    const report = await publish(
+      stage === 'expiring'
+        ? { type: 'JOB_EXPIRING', jobId: job.id, applicantCount: count }
+        : { type: 'JOB_EXPIRED', jobId: job.id, applicantCount: count },
+    );
+    if (report.email.includes('sent')) {
       if (stage === 'expiring') stats.warned += 1;
       else stats.closed += 1;
     }

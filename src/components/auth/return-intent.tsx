@@ -24,7 +24,20 @@ import { safeNext } from '@/lib/safe-next';
  * and the redirect, the database unreachable — nothing renders at all rather
  * than a promise about a job that may not exist.
  */
-export async function ReturnIntent({ next, locale }: { next?: string; locale: string }) {
+export async function ReturnIntent({
+  next,
+  locale,
+  mode = 'sign-in',
+}: {
+  next?: string;
+  locale: string;
+  /**
+   * Which screen it sits on. Most people who tap Apply have no account yet, so
+   * the sign-up screen needs the same reassurance — worded for creating an
+   * account rather than for signing in.
+   */
+  mode?: 'sign-in' | 'sign-up';
+}) {
   const target = safeNext(next);
   if (!target) return null;
 
@@ -45,7 +58,9 @@ export async function ReturnIntent({ next, locale }: { next?: string; locale: st
       <Briefcase className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
       <div className="min-w-0">
         <p className="text-sm font-semibold">{t('applyingTo', { job: title })}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{t('applyingToCompany', { company })}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t(mode === 'sign-up' ? 'applyingToCompanySignUp' : 'applyingToCompany', { company })}
+        </p>
       </div>
     </div>
   );

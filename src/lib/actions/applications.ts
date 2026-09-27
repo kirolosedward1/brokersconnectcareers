@@ -7,12 +7,11 @@ import { createClient } from '@/lib/supabase/server';
 import { normalisePhone, isValidPhone } from '@/lib/phone';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
-import {
-  notifyApplicationWithdrawn,
-  notifyCandidateOfApplication,
-  notifyCandidateOfStatus,
-  notifyEmployerOfApplication,
-} from '@/lib/email/notify';
+import { CV_BUCKET } from '@/lib/buckets';
+import { CV_KINDS, MAX_BYTES, isOwnedPath, verifyStoredObject } from '@/lib/security/files';
+import { recordSecurityEvent } from '@/lib/security/events';
+import { clean } from '@/lib/security/sanitize';
+import { publish } from '@/lib/notifications/events';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -64,10 +63,26 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // A CV path must sit under the applicant's own folder. Without this check a
-  // crafted request could attach someone else's file to an application.
-  if (parsed.data.cvPath && !parsed.data.cvPath.startsWith(`${user.id}/`)) {
-    return { ok: false, error: 'invalid_cv_path' };
+  /*
+    A CV path is the applicant's own folder and one file name — not a prefix
+    match, which `<me>/../<someone>/cv.pdf` satisfies and the storage client
+    sends without encoding. And the object behind it is looked at: the bucket
+    trusts the type the browser declared, this reads the first bytes and
+    accepts a PDF or a Word document and nothing wearing their extension. A
+    refusal removes the object so it does not sit in the bucket under a name
+    the platform once accepted.
+  */
+  if (parsed.data.cvPath) {
+    if (!isOwnedPath(parsed.data.cvPath, user.id)) return { ok: false, error: 'invalid_cv_path' };
+
+    const verdict = await verifyStoredObject(CV_BUCKET, parsed.data.cvPath, CV_KINDS, MAX_BYTES.cv);
+    if (!verdict.ok && verdict.reason !== 'unavailable') {
+      void recordSecurityEvent('upload.rejected', {
+        actorId: user.id,
+        metadata: { kind: 'cv', reason: verdict.reason, sniffed: verdict.kind ?? null },
+      });
+      return { ok: false, error: 'invalid', fieldErrors: { cv: 'fileType' } };
+    }
   }
 
   const { data: created, error } = await supabase
@@ -77,7 +92,7 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
       candidate_id: user.id,
       experience_band: parsed.data.experienceBand as ExperienceBand,
       cv_path: parsed.data.cvPath || null,
-      note: parsed.data.note || null,
+      note: clean(parsed.data.note, true) || null,
     })
     .select('id')
     .single();
@@ -118,18 +133,18 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
   */
   await supabase
     .from('profiles')
-    .update({ full_name: parsed.data.fullName, whatsapp_phone: phone })
+    .update({ full_name: clean(parsed.data.fullName), whatsapp_phone: phone })
     .eq('id', user.id);
 
   // after() runs once the response is on its way, so the applicant is not kept
   // waiting on an SMTP round trip — and a mail failure cannot turn a recorded
   // application into an error on their screen.
   if (created) {
-    after(() => notifyEmployerOfApplication(created.id));
-    // The applicant hears back too. Until now the next thing they heard was
-    // whatever an employer eventually did, which on a listing nobody opens is
-    // nothing at all.
-    after(() => notifyCandidateOfApplication(created.id));
+    // One event, two audiences: the company (NEW_APPLICANT) and the applicant's
+    // own receipt. Which channels carry each is the notification service's
+    // decision, not this action's.
+    const applicationId = created.id;
+    after(() => publish({ type: 'APPLICATION_CREATED', applicationId }));
   }
 
   revalidatePath('/dashboard/applications');
@@ -181,8 +196,9 @@ export async function withdrawApplication(applicationId: string): Promise<Action
     const titleAr = job.title_ar;
     const titleEn = job.title_en;
     after(() =>
-      notifyApplicationWithdrawn({
-        userId: user.id,
+      publish({
+        type: 'APPLICATION_WITHDRAWN',
+        candidateId: user.id,
         applicationId,
         jobTitleAr: titleAr,
         jobTitleEn: titleEn,
@@ -298,7 +314,7 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     .update({
       status: parsed.data.status as ApplicationStatus,
       employer_viewed_at: new Date().toISOString(),
-      decision_note: parsed.data.decisionNote?.trim() || null,
+      decision_note: clean(parsed.data.decisionNote, true) || null,
     })
     .eq('id', parsed.data.applicationId);
 
@@ -333,7 +349,7 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     return { ok: false, error: current ? 'moved_already' : 'forbidden' };
   }
 
-  after(() => notifyCandidateOfStatus(parsed.data.applicationId));
+  after(() => publish({ type: 'APPLICATION_STATUS_CHANGED', applicationId: parsed.data.applicationId }));
 
   revalidatePath('/employer/jobs');
   revalidatePath('/dashboard/applications');
@@ -385,7 +401,7 @@ export async function addApplicationNote(
     .insert({
       application_id: parsed.data.applicationId,
       author_id: user.id,
-      body: parsed.data.body,
+      body: clean(parsed.data.body, true),
     })
     .select('*')
     .single();

@@ -4,6 +4,7 @@ import { retryDb } from '@/lib/jobs/db';
 import { sweepOutbox } from '@/lib/jobs/outbox-sweep';
 import { runInRetryContext } from '@/lib/jobs/retry-context';
 import { REBUILDERS } from '@/lib/email/rebuild';
+import { logFailure } from '@/lib/observe';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -43,19 +44,43 @@ export const maxDuration = 60;
  *
  * Every ten minutes, so the first backoff step is honoured to within ten
  * minutes rather than an hour. An empty run is one indexed query.
+ *
+ * Two housekeeping statements go first, each idempotent and each cheap enough
+ * to repeat every ten minutes: reap_email_outbox() dead-letters rows past the
+ * retry window or leased too often — without it they would sit `queued`
+ * forever, invisible, because nothing is due to look at them — and
+ * prune_job_runs() keeps the run log to ninety days. They live here rather
+ * than in a cron of their own because this is the job that owns the outbox;
+ * listing expiry and file cleanup belong to the lifecycle job (migration 204).
+ * A failure in either is logged and does not stop the sweep.
  */
 
 /** How long a leased row is ours. Longer than one batch takes; shorter than the gap between runs. */
 const LEASE_SECONDS = 90;
 /** Sent one after another — the provider has a rate limit, and a burst earns 429s. */
 const BATCH = 10;
+/** How long job_runs rows are kept. The table is for "is it working", not an archive. */
+const KEEP_RUNS = '90 days';
 
 export async function GET(request: NextRequest) {
   return runScheduledJob(request, {
     job: 'email-retry',
     maxDurationSeconds: maxDuration,
-    work: async ({ admin, deadline }) =>
-      sweepOutbox(
+    work: async ({ admin, deadline }) => {
+      const housekeeping = async (name: string, fn: () => Promise<number | null>) => {
+        try {
+          return (await fn()) ?? 0;
+        } catch (error) {
+          logFailure('email-retry', `${name} failed`, { code: (error as { code?: string } | null)?.code });
+          return 0;
+        }
+      };
+      const reaped = await housekeeping('reap', () => retryDb(() => admin.rpc('reap_email_outbox')));
+      const pruned = await housekeeping('prune', () =>
+        retryDb(() => admin.rpc('prune_job_runs', { p_keep: KEEP_RUNS })),
+      );
+
+      const swept = await sweepOutbox(
         {
           lease: async (limit) =>
             (await retryDb(() =>
@@ -77,6 +102,8 @@ export async function GET(request: NextRequest) {
           deadline,
         },
         { batch: BATCH },
-      ),
+      );
+      return { reaped, pruned_runs: pruned, ...swept };
+    },
   });
 }

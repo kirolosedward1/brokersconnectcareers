@@ -71,13 +71,22 @@ export async function POST(request: NextRequest) {
   let ok = false;
   try {
     const admin = createAdminClient();
-    const { data, error } = await admin
-      .from('profiles')
-      .update(patchFor(kindParam))
-      .eq('unsubscribe_token', token)
-      .select('id');
 
-    ok = !error && (data?.length ?? 0) > 0;
+    // The token is a uuid on profile_private (migration 305). Anything else
+    // shaped differently is not worth a query.
+    const owner = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+      ? await admin.from('profile_private').select('user_id').eq('unsubscribe_token', token).maybeSingle()
+      : { data: null, error: null };
+
+    if (owner.data) {
+      const { data, error } = await admin
+        .from('profiles')
+        .update(patchFor(kindParam))
+        .eq('id', owner.data.user_id)
+        .select('id');
+
+      ok = !error && (data?.length ?? 0) > 0;
+    }
   } catch (error) {
     // Unconfigured service role, or an unreachable database. Nothing here is
     // worth a 500 to a mail client that will simply retry.

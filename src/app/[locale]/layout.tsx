@@ -9,7 +9,6 @@ import {
 } from "next-intl/server";
 import { IBM_Plex_Sans_Arabic } from 'next/font/google';
 import {
-  alternatesFor,
   activeLocales,
   dirOf,
   type Locale,
@@ -74,7 +73,16 @@ export async function generateMetadata({
       template: `%s | ${t("siteName")}`,
     },
     description: t("defaultDescription"),
-    alternates: alternatesFor("/", locale),
+    /*
+      No canonical here.
+
+      This layout wraps every page, and a canonical set at this level is
+      inherited by any page that does not set its own — which was every
+      private page, the sign-in screens, the 404, and the home page's own
+      filtered siblings, all declaring themselves duplicates of "/". Each
+      indexable page names its own canonical; the home page does it in
+      (site)/page.tsx.
+    */
     openGraph: {
       type: "website",
       siteName: t("siteName"),
@@ -104,7 +112,12 @@ export async function generateMetadata({
       description: t("defaultDescription"),
       images: ["/brand/og.jpg"],
     },
-    robots: { index: true, follow: true },
+    /*
+      No site-wide robots directive either. Indexable is the default without
+      one, and an explicit `index, follow` here was emitted beside the
+      `noindex` that notFound() adds — two robots tags on every soft 404.
+      Pages that must stay out say so themselves.
+    */
   };
 }
 

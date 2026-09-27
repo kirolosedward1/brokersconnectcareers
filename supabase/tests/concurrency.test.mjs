@@ -270,15 +270,17 @@ async function main() {
     const stampede = live.slice(4, 8).map((j) => j.id);
 
     await setup.query(`update jobs set expires_at = now() - interval '1 hour' where id = any($1)`, [forced]);
+    // Since migration 204 expiry takes its rows FOR UPDATE SKIP LOCKED: a
+    // second run does not wait behind the first, it passes over the rows the
+    // first holds — and so can never flip one of them a second time.
     await a.query('begin');
     const { rows: [{ n: nA }] } = await a.query('select public.expire_stale_jobs() as n');
-    const { rows: [{ pid }] } = await b.query('select pg_backend_pid() as pid');
-    const pending = b.query('select public.expire_stale_jobs() as n');
-    await waitUntilBlocked(observer, pid, 'expire_stale_jobs');
+    const { rows: [{ n: nB }] } = await b.query('select public.expire_stale_jobs() as n');
     await a.query('commit');
-    const { rows: [{ n: nB }] } = await pending;
     report.check('the first run expires the four', nA === 4, `got ${nA}`);
-    report.check('the second, re-checking after the lock wait, flips none again', nB === 0, `got ${nB}`);
+    report.check('the second, running while the first holds them, skips all four rather than waiting', nB === 0, `got ${nB}`);
+    const { rows: [{ n: nC }] } = await b.query('select public.expire_stale_jobs() as n');
+    report.check('and a run after the first commits finds nothing left to flip', nC === 0, `got ${nC}`);
 
     await setup.query(`update jobs set expires_at = now() - interval '1 hour' where id = any($1)`, [stampede]);
     const counts = await Promise.all(everyone.slice(0, 4).map((c) => c.query('select public.expire_stale_jobs() as n')));
@@ -307,19 +309,18 @@ async function main() {
       await client.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ role: 'authenticated', sub: ownerId })]);
     };
 
-    // The owner's close holds the row; expiry waits, re-checks, and finds it
-    // is no longer active.
+    // The owner's close holds the row; expiry skips it (SKIP LOCKED) rather
+    // than overwrite or wait, and after the commit it is no longer active.
     await a.query('begin');
     await asOwner(a, closeFirst.owner_id);
     const { rowCount: closed } = await a.query(`update jobs set status = 'closed' where id = $1`, [closeFirst.id]);
     const { rows: [{ pid }] } = await b.query('select pg_backend_pid() as pid');
-    const pending = b.query('select public.expire_stale_jobs() as n');
-    await waitUntilBlocked(observer, pid, 'expiry behind a close');
+    await b.query('select public.expire_stale_jobs() as n');
     await a.query('commit');
-    await pending;
+    await b.query('select public.expire_stale_jobs() as n');
     report.check('the owner\'s close went through', closed === 1);
     const { rows: [one] } = await setup.query('select status from jobs where id = $1', [closeFirst.id]);
-    report.check('close first, expiry waiting: the listing ends closed, not expired', one.status === 'closed', one.status);
+    report.check('close first, expiry running meanwhile: the listing ends closed, not expired', one.status === 'closed', one.status);
 
     // The other way round: expiry holds the row; the owner's close waits and
     // then closes an expired listing, which the guard allows.
@@ -359,7 +360,7 @@ async function main() {
       [ids[0]],
     );
     const [withToken, without] = await Promise.all([
-      a.query(`select public.claim_email('race:claim:1', 'application_status', 'someone@brokersconnect.net', null, null, null, $1) as id`, [leased?.lock_token]),
+      a.query(`select public.claim_email('race:claim:1', 'application_status', 'someone@brokersconnect.net', null, null, null, false, $1) as id`, [leased?.lock_token]),
       b.query(`select public.claim_email('race:claim:1', 'application_status', 'someone@brokersconnect.net') as id`),
     ]);
     report.check('the lease holder gets the same row back', withToken.rows[0].id === ids[0]);

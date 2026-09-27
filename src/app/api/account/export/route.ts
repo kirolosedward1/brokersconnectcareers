@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { policyFor, rateLimit } from '@/lib/security/rate-limit';
+import { retryAfter } from '@/lib/security/request';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +25,19 @@ export async function GET() {
 
   if (!user) {
     return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+  }
+
+  // Five reads of everything in one day is a person; fifty is a loop, and
+  // this is the most expensive read a single account can ask for.
+  const limit = await rateLimit(
+    `export:user:${user.id}`,
+    await policyFor('export:user:day', { windowSeconds: 86400, max: 5 }),
+  );
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'rate_limited', retryAfterSeconds: limit.retryAfterSeconds },
+      { status: 429, headers: { 'retry-after': retryAfter(limit.retryAfterSeconds), 'cache-control': 'no-store' } },
+    );
   }
 
   const [profile, agentProfile, applications, savedJobs, company] = await Promise.all([

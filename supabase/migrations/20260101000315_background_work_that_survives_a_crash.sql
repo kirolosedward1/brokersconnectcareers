@@ -1,5 +1,16 @@
 -- =============================================================================
--- 69 — Background work that survives a crash
+-- 315 — Background work that survives a crash
+--
+-- rollback: the outbox — drop function public.lease_due_emails, settle_leased_email, reap_email_outbox, requeue_email, email_dead_letters, outbox_overview, email_retry_delay; restate claim_email (migration 68's seven-argument body, after dropping the eight-argument one), record_email_attempt, pending_emails and release_email_claim (migrations 27 and 302), record_email_event and email_status_rank (migration 68); alter table email_log drop column next_attempt_at, locked_until, lock_token, last_attempt_at, gave_up_at, leases, requeued_at. The runs — drop function public.begin_job_run, finish_job_run, prune_job_runs, scheduled_job_overview, recent_job_runs, job_freshness; drop table job_runs. The rest — restate pending_applicant_digests (51), guard_saved_search_update (09/38) and bump_version (50); alter table saved_searches drop column last_checked_at. The backfill below is not reversed: it only labels rows the old sweeper had already abandoned.
+-- safety: rewrite — the backfill updates email_log rows by status with explicit where clauses; next_attempt_at is added without a default and given one afterwards, so no existing row is rewritten by the default
+-- safety: ships-with-code — every changed function keeps its callers working: claim_email gains a trailing optional p_lock_token, record_email_attempt a trailing optional p_expected_attempts, pending_emails keeps its shape, and release_email_claim becomes a no-op so the sweeper still deployed on main, if this migration lands first, rebuilds into keys that are still held and sends nothing twice. The new cron code needs this migration first; deploy it before merging.
+--
+-- Renumbered from 69 when main moved to 313; rebuilt on main's own versions
+-- of claim_email (p_essential and the hourly ceiling, migration 68),
+-- record_email_event (the webhook ledger, migration 68) and pending_emails
+-- (migration 302). What main already does is not repeated here: the webhook's
+-- ordering and suppression are migration 68's, and file cleanup and expiry
+-- are migration 204's lifecycle job.
 --
 -- Two pieces of machinery run without anyone watching: the outbox sweeper,
 -- which retries email that did not go, and the scheduled jobs that expire
@@ -61,10 +72,12 @@
 --   at its time limit and never said so — is closed as failed by the next
 --   one, rather than holding the lock forever.
 --
--- And three smaller things that were wrong in the same way, correct only if
--- every run happens on time: the applicant digest's fixed 24-hour window,
--- saved-search alerts that re-checked the same 200 searches every week, and a
--- webhook that let a late "delayed" notice overwrite "delivered".
+-- And two smaller things that were wrong in the same way, correct only if
+-- every run happens on time: the applicant digest's fixed 24-hour window, and
+-- saved-search alerts that re-checked the same 200 searches every week.
+-- Plus one found on the way: a featured flag switching off counted as an
+-- edit, which moved the moderation emails' dedupe keys between a failure and
+-- its retry.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -237,24 +250,26 @@ $$;
 
 revoke all on function public.email_retry_delay(integer) from public, anon, authenticated;
 
--- The webhook's precedence. A message's provider-side life only moves one
--- way — accepted, then delivered, then possibly bounced or complained about —
--- but the events announcing it arrive in any order, and a retried webhook can
--- deliver an old one late. Everything not yet accepted ranks equally at the
--- bottom.
+-- The webhook's precedence (migration 68), restated only to rank the new
+-- `cancelled` status: a row the sweeper closed with nothing left to send was
+-- never accepted by the provider, so it ranks with `queued`. Without it the
+-- function answers null for that status and every comparison is unknown.
 create or replace function public.email_status_rank(p_status email_status)
-returns integer
+returns smallint
 language sql
 immutable
 set search_path = public
 as $$
   select case p_status
-           when 'sent'       then 1
-           when 'delivered'  then 2
-           when 'bounced'    then 3
-           when 'complained' then 4
-           else 0
-         end;
+    when 'queued'     then 0
+    when 'cancelled'  then 0
+    when 'sent'       then 1
+    when 'failed'     then 2
+    when 'delivered'  then 2
+    when 'bounced'    then 3
+    when 'suppressed' then 3
+    when 'complained' then 4
+  end::smallint;
 $$;
 
 revoke all on function public.email_status_rank(email_status) from public, anon, authenticated;
@@ -262,7 +277,8 @@ revoke all on function public.email_status_rank(email_status) from public, anon,
 -- ---------------------------------------------------------------------------
 -- claim_email, now able to hand back a leased row
 --
--- The body is migration 29's — reserved domains, then suppressions, then the
+-- The body is migration 68's — reserved domains, suppressions (a complaint
+-- does not stop an essential notice), the hourly ceiling per address, then the
 -- insert that is the whole idempotency mechanism — with two additions, both
 -- only when a sweeper passes its lease token:
 --
@@ -273,17 +289,18 @@ revoke all on function public.email_status_rank(email_status) from public, anon,
 --         again and an address can change in three days; nothing else is,
 --         because nothing else about "the same message" can.
 --
---   the address has become suppressed since the first attempt
+--   the address has become suppressed, or hit its ceiling, since the first
+--   attempt
 --       → the leased row itself is marked suppressed. Without this the
 --         insert below does nothing (the key is taken) and the row would be
 --         settled as cancelled, which is true but hides the reason.
 --
--- Dropped and recreated rather than replaced, because a seventh argument is a
+-- Dropped and recreated rather than replaced, because an eighth argument is a
 -- different function to Postgres and `create or replace` would leave the
--- six-argument one behind — callable, and ignorant of leases.
+-- seven-argument one behind — callable, and ignorant of leases.
 -- ---------------------------------------------------------------------------
 
-drop function if exists public.claim_email(text, text, text, uuid, text, uuid);
+drop function if exists public.claim_email(text, text, text, uuid, text, uuid, boolean);
 
 create or replace function public.claim_email(
   p_dedupe_key  text,
@@ -292,6 +309,9 @@ create or replace function public.claim_email(
   p_user_id     uuid default null,
   p_entity_type text default null,
   p_entity_id   uuid default null,
+  -- Security notices: a password change, an account decision. Exempt from the
+  -- complaint suppression and the recipient ceiling, never from a dead address.
+  p_essential   boolean default false,
   p_lock_token  uuid default null
 )
 returns uuid
@@ -300,15 +320,29 @@ security definer
 set search_path = public
 as $$
 declare
-  v_id uuid;
+  v_id     uuid;
   v_reason text;
+  v_block  text;
+  v_recent integer;
 begin
-  -- Two ways an address is off-limits, recorded the same way: one the provider
-  -- told us about, one that could never have worked.
+  select reason into v_block from email_suppressions where email = lower(p_recipient);
+
   if public.is_undeliverable_domain(p_recipient) then
     v_reason := 'reserved domain, cannot receive mail';
-  elsif exists (select 1 from email_suppressions where email = lower(p_recipient)) then
-    v_reason := 'address is suppressed';
+  elsif v_block is not null and not (v_block = 'complaint' and p_essential) then
+    v_reason := 'address is suppressed (' || v_block || ')';
+  elsif not p_essential then
+    -- Thirty an hour to one address is far past anything this product sends a
+    -- person on purpose — the per-applicant notices have a digest mode for
+    -- exactly that volume — and well short of what a loop would do.
+    select count(*) into v_recent
+      from email_log
+     where lower(recipient) = lower(p_recipient)
+       and created_at > now() - interval '1 hour'
+       and status <> 'suppressed';
+    if v_recent >= 30 then
+      v_reason := 'recipient hourly ceiling reached';
+    end if;
   end if;
 
   if v_reason is not null then
@@ -359,7 +393,7 @@ begin
 end;
 $$;
 
-revoke all on function public.claim_email(text, text, text, uuid, text, uuid, uuid)
+revoke all on function public.claim_email(text, text, text, uuid, text, uuid, boolean, uuid)
   from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -497,7 +531,7 @@ create or replace function public.lease_due_emails(
   p_limit         integer default 25,
   p_lease_seconds integer default 120
 )
-returns table (id uuid, template text, entity_id uuid, attempts smallint, lock_token uuid)
+returns table (id uuid, template text, entity_id uuid, user_id uuid, attempts smallint, lock_token uuid)
 language sql
 security definer
 set search_path = public
@@ -524,7 +558,7 @@ as $$
          leases       = e.leases + 1
     from due, lease
    where e.id = due.id
-  returning e.id, e.template, e.entity_id, e.attempts, e.lock_token;
+  returning e.id, e.template, e.entity_id, e.user_id, e.attempts, e.lock_token;
 $$;
 
 revoke all on function public.lease_due_emails(integer, integer) from public, anon, authenticated;
@@ -819,12 +853,12 @@ grant execute on function public.outbox_overview() to authenticated;
 -- ---------------------------------------------------------------------------
 
 create or replace function public.pending_emails(p_limit integer default 25)
-returns table (id uuid, template text, entity_id uuid, attempts smallint)
+returns table (id uuid, template text, entity_id uuid, user_id uuid, attempts smallint)
 language sql
 security definer
 set search_path = public
 as $$
-  select e.id, e.template, e.entity_id, e.attempts
+  select e.id, e.template, e.entity_id, e.user_id, e.attempts
     from email_log e
    where e.status in ('queued', 'failed')
      and e.gave_up_at is null
@@ -837,52 +871,132 @@ as $$
 $$;
 
 revoke all on function public.pending_emails(integer) from public, anon, authenticated;
+grant execute on function public.pending_emails(integer) to service_role;
 
 -- ---------------------------------------------------------------------------
--- The webhook, in order
+-- The webhook ledger (migration 68), restated for one clause
 --
--- Migration 27 guarded one pair — a late `delivered` could not overwrite a
--- bounce — and left the rest to arrival order. `email.delivery_delayed` maps
--- to `sent`, so a delay notice retried after the delivery landed turned a
--- delivered message back into one merely accepted. Ranked now: an event only
--- applies if it is at least as far along as what the row already says. A
--- complaint after delivery still wins, because it is further along.
---
--- The count returned is the rows the provider id matched, whether or not the
--- status moved. The webhook uses it to tell a message this system sent from
--- one it did not, and an out-of-order event about a real message is still
--- about a real message.
---
--- delivered_at keeps the first delivery's time if the event is replayed.
+-- A provider-side failure after acceptance sets attempts to 99 so the old
+-- sweeper, which read attempts, would never resend it. The lease reads
+-- next_attempt_at and gave_up_at instead, so those are set too — the row is a
+-- dead letter, which is what it is. Migration 68's body otherwise, whole.
 -- ---------------------------------------------------------------------------
 
-create or replace function public.mark_email_delivered(
+create or replace function public.record_email_event(
+  p_event_id    text,
   p_provider_id text,
-  p_status      email_status
+  p_kind        text
 )
-returns integer
+returns jsonb
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_count integer;
+  v_status    email_status;
+  v_recipient text;
+  v_matched   integer := 0;
+  v_inserted  integer;
+  v_soft      integer;
 begin
-  update email_log
-     set status       = p_status,
-         delivered_at = case when p_status = 'delivered' then coalesce(delivered_at, now()) else delivered_at end
-   where provider_id = p_provider_id
-     and public.email_status_rank(p_status) >= public.email_status_rank(status);
+  -- The ledger first: a replay stops here, before anything is counted twice.
+  insert into email_webhook_events (event_id, kind, provider_id)
+  values (p_event_id, p_kind, p_provider_id)
+  on conflict (event_id) do nothing;
 
-  select count(*)::int into v_count
+  get diagnostics v_inserted = row_count;
+  if v_inserted = 0 then
+    return jsonb_build_object('duplicate', true, 'matched', 0);
+  end if;
+
+  v_status := case p_kind
+    when 'delivered'    then 'delivered'
+    when 'bounced_hard' then 'bounced'
+    when 'bounced_soft' then 'bounced'
+    when 'complained'   then 'complained'
+    when 'failed'       then 'failed'
+    when 'suppressed'   then 'suppressed'
+    when 'delayed'      then 'sent'
+  end::email_status;
+
+  -- Is this ours at all? One provider id is one message.
+  select lower(recipient) into v_recipient
     from email_log
-   where provider_id = p_provider_id;
+   where provider_id = p_provider_id
+   limit 1;
 
-  return v_count;
+  if v_recipient is null then
+    -- Another site's mail on a shared account, or a message older than the
+    -- outbox. Recorded as seen, acted on not at all.
+    return jsonb_build_object('duplicate', false, 'matched', 0);
+  end if;
+
+  update email_webhook_events set recipient = v_recipient where event_id = p_event_id;
+
+  -- Forward only. An equal or lower rank is an event that arrived late.
+  update email_log
+     set status       = v_status,
+         delivered_at = case when v_status = 'delivered' then now() else delivered_at end,
+         -- A provider-side failure after acceptance is final for this message:
+         -- the sweeper must not resend something the provider already gave up
+         -- on, and cannot tell it apart from one that never went.
+         attempts     = case when v_status = 'failed' then 99 else attempts end,
+         -- Final for this message, so a dead letter: listed, requeueable by
+         -- an admin, and never leased again. Without these two the row sat
+         -- `failed` with a next_attempt_at from its claim — due, leased,
+         -- rebuilt and resent, which is what 99 was meant to prevent.
+         gave_up_at      = case when v_status = 'failed' then now() else gave_up_at end,
+         next_attempt_at = case when v_status = 'failed' then null else next_attempt_at end,
+         error        = case p_kind
+                          when 'bounced_soft' then 'soft bounce (temporary)'
+                          when 'bounced_hard' then 'hard bounce'
+                          when 'failed'       then 'provider reported failure after accepting'
+                          when 'suppressed'   then 'provider suppression list'
+                          when 'complained'   then 'recipient marked as spam'
+                          else error
+                        end
+   where provider_id = p_provider_id
+     and public.email_status_rank(v_status) > public.email_status_rank(status);
+
+  v_matched := 1;
+
+  if p_kind = 'bounced_hard' then
+    insert into email_suppressions (email, reason) values (v_recipient, 'hard_bounce')
+    on conflict (email) do update set reason = 'hard_bounce';
+  elsif p_kind = 'suppressed' then
+    insert into email_suppressions (email, reason) values (v_recipient, 'provider')
+    on conflict (email) do update
+      set reason = case when email_suppressions.reason = 'complaint' then 'provider'
+                        else email_suppressions.reason end;
+  elsif p_kind = 'complained' then
+    -- Never downgrade a stronger reason to the weaker complaint.
+    insert into email_suppressions (email, reason) values (v_recipient, 'complaint')
+    on conflict (email) do nothing;
+  elsif p_kind = 'bounced_soft' then
+    select count(*) into v_soft
+      from email_webhook_events
+     where kind = 'bounced_soft'
+       and recipient = v_recipient
+       and received_at > now() - interval '30 days';
+
+    if v_soft >= 3 then
+      insert into email_suppressions (email, reason) values (v_recipient, 'repeated_soft_bounce')
+      on conflict (email) do update
+        set reason = case when email_suppressions.reason = 'complaint' then 'repeated_soft_bounce'
+                          else email_suppressions.reason end;
+    end if;
+  end if;
+
+  -- Housekeeping, bounded by an index and done where the rows are written, so
+  -- the ledger needs no cron of its own.
+  delete from email_webhook_events where received_at < now() - interval '90 days';
+
+  return jsonb_build_object('duplicate', false, 'matched', v_matched);
 end;
 $$;
 
-revoke all on function public.mark_email_delivered(text, email_status) from public, anon, authenticated;
+
+revoke all on function public.record_email_event(text, text, text) from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- job_runs: the record of every scheduled run, and the lock between them
@@ -1264,10 +1378,15 @@ revoke all on function public.guard_saved_search_update() from public, anon, aut
 --   the edit form's optimistic lock, which refused an employer's save as a
 --   conflict with a "colleague" who was in fact a visitor reading the ad.
 --
--- So an update that changes view_count and nothing else leaves the version
--- where it was. Anything else — including a no-op write, which migration 50
+-- Featuring a listing, and the lifecycle job un-featuring it when the period
+-- runs out, are the same kind of write: nobody's edit, and the employer's
+-- form never writes those columns, so no edit can be lost by not counting
+-- them. Counting them moved the moderation keys the same way.
+--
+-- So an update that changes only view_count, is_featured or featured_until
+-- leaves the version where it was. Anything else — including a no-op write, which migration 50
 -- counts on purpose — still moves it. The comparison drops the columns this
--- kind of write touches (view_count, and updated_at in case a trigger stamps
+-- kind of write touches (those three, and updated_at in case a trigger stamps
 -- it), version itself, and search_vector: a stored generated column reads as
 -- null in a BEFORE trigger's NEW, so it always looks changed there, and it is
 -- derived from columns the comparison already covers. On companies, which
@@ -1280,10 +1399,23 @@ returns trigger
 language plpgsql
 set search_path = public
 as $$
+declare
+  -- Columns the platform writes on its own. A change confined to these is not
+  -- an edit: it must not raise an edit conflict or move a dedupe key.
+  v_system constant text[] := array[
+    'view_count', 'is_featured', 'featured_until', 'updated_at', 'version', 'search_vector'
+  ];
 begin
-  if (to_jsonb(new) ->> 'view_count') is distinct from (to_jsonb(old) ->> 'view_count')
-     and (to_jsonb(new) - 'view_count' - 'updated_at' - 'version' - 'search_vector')
-       = (to_jsonb(old) - 'view_count' - 'updated_at' - 'version' - 'search_vector')
+  -- Something the platform owns changed, and nothing else did. Asked of the
+  -- three columns by name rather than as "the rows differ": search_vector
+  -- reads as null in a BEFORE trigger's NEW, so whole rows always differ, and
+  -- a true no-op write — which migration 50 counts on purpose — would slip
+  -- through as a system write. On companies none of the three exist, the
+  -- first condition is never true, and every write still counts.
+  if (   (to_jsonb(new) ->> 'view_count')     is distinct from (to_jsonb(old) ->> 'view_count')
+      or (to_jsonb(new) ->> 'is_featured')    is distinct from (to_jsonb(old) ->> 'is_featured')
+      or (to_jsonb(new) ->> 'featured_until') is distinct from (to_jsonb(old) ->> 'featured_until'))
+     and (to_jsonb(new) - v_system) = (to_jsonb(old) - v_system)
   then
     new.version := old.version;
     return new;

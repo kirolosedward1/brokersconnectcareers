@@ -147,6 +147,7 @@ export default async function AppLayout({
       },
       { href: '/admin/email', label: tAdmin('emailActivity'), icon: 'email' },
       { href: '/admin/operations', label: tAdmin('operations'), icon: 'operations' },
+      { href: '/admin/security', label: tAdmin('security'), icon: 'security' },
     ],
   };
 

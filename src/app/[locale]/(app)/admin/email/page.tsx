@@ -230,7 +230,7 @@ export default async function AdminEmailPage({
                     {row.attempts > 1 ? (
                       <span className="numeral block pt-1 text-xs text-muted-foreground">
                         {/* Capped at the outbox's MAX_EMAIL_ATTEMPTS. Rows from before
-                            migration 69 recorded a released retry as 99. */}
+                            the old sweeper recorded a released retry as 99. */}
                         ×{formatNumber(Math.min(row.attempts, 5), locale)}
                       </span>
                     ) : null}
