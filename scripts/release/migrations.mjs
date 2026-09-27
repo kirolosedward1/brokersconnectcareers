@@ -813,6 +813,16 @@ const LEGACY = {
   repost_a_listing_whose_label_lags: '20260101000046_reposting_a_listing_that_never_returns',
 };
 
+/**
+ * Files production ran without leaving a ledger entry — through the SQL editor
+ * or a bare execute — each verified by hand against the database itself.
+ * Counted as applied only when the ledger carries the historical names above,
+ * which only production's does; any other database has to record them.
+ *
+ *   026  verified 2026-09-27: company-logos allows png, jpeg and webp only.
+ */
+const UNRECORDED = ['20260101000026_no_svg_logos'];
+
 async function loadLedger(options) {
   if (options.fromFile) {
     const parsed = JSON.parse(readFileSync(options.fromFile, 'utf8'));
@@ -862,8 +872,18 @@ export function reconcile(rows, repoFiles) {
     else matched.add(stem);
   }
 
+  const unrecorded = [];
+  if (rows.some((row) => Object.hasOwn(LEGACY, String(row.name ?? '')))) {
+    for (const stem of UNRECORDED) {
+      if (stems.includes(stem) && !matched.has(stem)) {
+        matched.add(stem);
+        unrecorded.push(stem);
+      }
+    }
+  }
+
   const pending = stems.filter((stem) => !matched.has(stem));
-  return { matched, drift, pending, known };
+  return { matched, drift, pending, known, unrecorded };
 }
 
 async function ledger(options) {
@@ -881,11 +901,12 @@ async function ledger(options) {
   let files = localFiles().filter((file) => NAME.test(file));
   if (options.base) files = [...filesAt(options.base)].filter((file) => NAME.test(file)).sort();
 
-  const { matched, drift, pending, known } = reconcile(loaded.rows, files);
+  const { matched, drift, pending, known, unrecorded } = reconcile(loaded.rows, files);
   const md = ['## Migration ledger', '', `Compared \`${loaded.source}\` with ${options.base ? `\`${options.base}\`` : 'this checkout'}.`, ''];
 
   console.log(`ledger: ${loaded.source} — ${loaded.rows.length} applied, ${files.length} in ${options.base ?? 'this checkout'}`);
   console.log(`  ${matched.size} migration file(s) applied${known.length ? `, ${known.length} historical entr${known.length === 1 ? 'y' : 'ies'} with no file (expected)` : ''}`);
+  if (unrecorded.length) console.log(`  (${unrecorded.join(', ')} applied without a ledger entry, verified by hand)`);
   md.push(`- ${matched.size} migration file(s) applied`);
 
   if (pending.length) {
@@ -898,7 +919,7 @@ async function ledger(options) {
     console.log(`\n  DRIFT — applied, but no migration in git says so (${drift.length}):`);
     for (const row of drift) console.log(`    ${row.version}  ${row.name}`);
     console.log('\n  The database runs a schema no commit here can rebuild. Merge the');
-    console.log('  migrations that did this, or write one that undoes it — see docs/release.md.');
+    console.log('  migrations that did this, or write one that undoes it.');
     md.push(`- **⛔ ${drift.length} drifted** (applied, not in git): ${drift.map((row) => `\`${row.name}\` (${row.version})`).join(', ')}`);
   } else {
     console.log('\n  no drift: everything applied is in git');
