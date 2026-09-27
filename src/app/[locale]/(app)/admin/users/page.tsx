@@ -65,7 +65,7 @@ export default async function AdminUsersPage({
   const { role, status } = await searchParams;
   const supabase = await createClient();
 
-  // The reviewer's note lives on profile_private (migration 204), readable by
+  // The reviewer's note lives on profile_private (migration 305), readable by
   // admins alone; embedded here so the list still costs one read.
   let query = supabase
     .from('profiles')

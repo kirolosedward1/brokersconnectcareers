@@ -246,7 +246,7 @@ export function JobForm({
           return;
         }
         if (result.error === 'duplicate_listing') {
-          // The third copy of one title in one district (migration 205). The
+          // The third copy of one title in one district (migration 306). The
           // wizard warned about the second; this one the database refuses.
           setErrors({ form: tEmployer('duplicateListingBlocked') });
           setStep(0);

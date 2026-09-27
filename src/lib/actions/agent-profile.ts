@@ -109,7 +109,7 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
     if (!updated?.length) return { ok: false, error: 'not_found' };
   } else {
     const { data, error } = await withUniqueSlug<{ id: string }>(
-      () => buildAgentSlug(parsed.data.fullName),
+      () => buildAgentSlug(),
       (slug) =>
         supabase.from('agent_profiles').insert({ user_id: user.id, slug, ...payload }).select('id').single(),
     );

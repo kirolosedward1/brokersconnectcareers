@@ -1,5 +1,5 @@
 -- =============================================================================
--- 206 — A row says what the server said
+-- 307 — A row says what the server said
 --
 -- Row-level security decides whether a row may be written. It says almost
 -- nothing about which columns the writer chose the values of, and on an INSERT

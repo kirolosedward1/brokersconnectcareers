@@ -12,7 +12,7 @@ import { logFailure } from '@/lib/observe';
  * an email lookup — actions that go through a route or a server action and
  * nowhere else.
  *
- * Backed by rate_limit_hit() (migration 205), a sliding window over the same
+ * Backed by rate_limit_hit() (migration 306), a sliding window over the same
  * rate_limit_hits table that hit_rate_limit() (migration 68) writes, under the
  * same lock, so the two callers count as one and there is one table to watch.
  * Each call prunes its own bucket, so nothing needs sweeping. Postgres because
@@ -69,7 +69,7 @@ export async function rateLimit(key: string, policy: RateLimitPolicy): Promise<R
 /**
  * The configured threshold for a server-side limit, or the default beside it.
  *
- * abuse_limits (migration 203) holds every threshold the database enforces;
+ * abuse_limits (migration 304) holds every threshold the database enforces;
  * the server's own limits read the same table so an admin tunes both in one
  * place. Cached per process for a minute — a limit is not a thing that needs
  * to change within the second.

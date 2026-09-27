@@ -156,9 +156,13 @@ section('a job listing carries valid Google Jobs markup');
         data.jobLocation?.address?.addressRegion !== data.jobLocation?.address?.addressLocality,
         `${data.jobLocation?.address?.addressRegion}`,
       );
+      // A fresh-graduate listing has no floor, and Google's documented way to
+      // say so is the literal "no requirements" (job-posting-core.ts, and the
+      // unit test that pins it). Anything else must be a number of months.
       check(
-        'experience is a number Google can filter on',
-        typeof data.experienceRequirements?.monthsOfExperience === 'number',
+        'experience is a number Google can filter on, or "no requirements"',
+        typeof data.experienceRequirements?.monthsOfExperience === 'number' ||
+          data.experienceRequirements === 'no requirements',
         JSON.stringify(data.experienceRequirements),
       );
       check('the description is HTML', /^<p>/.test(data.description ?? ''), data.description?.slice(0, 40));

@@ -320,7 +320,7 @@ report.section('who may call a definer function, on purpose');
 
     The directory functions are the other reason. search_agents and
     get_agent_card are what the public directory and a public card are made
-    of, and neither needs a session. Since migration 203 neither returns a
+    of, and neither needs a session. Since migration 304 neither returns a
     phone number, a CV path or a locked card's slug, so what a script can page
     is what the page already shows. increment_job_view() left the list there:
     the server counts views, and a visitor's own call was never bounded.

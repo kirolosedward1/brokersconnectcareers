@@ -3,7 +3,7 @@
  * and functions. Run with: pnpm test:security
  *
  * Everything here was a hole or a gap found in the audit that preceded
- * migrations 202–110. Each section names the migration that closed it, so a
+ * migrations 303–313. Each section names the migration that closed it, so a
  * failure points at the file to reread.
  */
 import { createTestDb, runner, reporter, FIXTURES } from './setup.mjs';
@@ -21,7 +21,7 @@ const liveJob = (await one(`select id from jobs where company_id = '${verifiedCo
 const district = (await one(`select id from districts order by id limit 1`)).id;
 
 // ---------------------------------------------------------------------------
-report.section('202 — decisions leave a trail');
+report.section('303 — decisions leave a trail');
 {
   const before = Number((await one(`select count(*)::int as n from audit_log`)).n);
 
@@ -64,7 +64,7 @@ report.section('202 — decisions leave a trail');
 }
 
 // ---------------------------------------------------------------------------
-report.section('204 — the token and the note are not on the profile');
+report.section('305 — the token and the note are not on the profile');
 {
   const cols = (await db.query(`
     select column_name from information_schema.columns
@@ -98,7 +98,7 @@ report.section('204 — the token and the note are not on the profile');
 }
 
 // ---------------------------------------------------------------------------
-report.section('203 — a contact is asked for, counted and written down');
+report.section('304 — a contact is asked for, counted and written down');
 {
   const agents = (await db.query(`
     select a.slug from agent_profiles a join profiles p on p.id = a.user_id
@@ -153,7 +153,7 @@ report.section('203 — a contact is asked for, counted and written down');
 }
 
 // ---------------------------------------------------------------------------
-report.section('207 — a suspended account keeps nothing');
+report.section('308 — a suspended account keeps nothing');
 {
   const before = await as(employerVerified, `select id from applications where job_id = '${liveJob}'`);
   report.check('an approved employer reads their applicants', before.ok && before.rows.length >= 1, before.error);
@@ -190,7 +190,7 @@ report.section('207 — a suspended account keeps nothing');
 }
 
 // ---------------------------------------------------------------------------
-report.section('206 — a row says what the server said');
+report.section('307 — a row says what the server said');
 {
   await db.exec(`update jobs set created_at = created_at - interval '2 days' where company_id = '${verifiedCompany}'`);
 
@@ -247,7 +247,7 @@ report.section('206 — a row says what the server said');
 }
 
 // ---------------------------------------------------------------------------
-report.section('205 — how fast is too fast');
+report.section('306 — how fast is too fast');
 {
   await db.exec(`update abuse_limits set max_hits = 2 where key = 'jobs:company:day'`);
   await db.exec(`update jobs set created_at = created_at - interval '2 days' where company_id = '${verifiedCompany}'`);
@@ -319,7 +319,7 @@ report.section('205 — how fast is too fast');
 }
 
 // ---------------------------------------------------------------------------
-report.section('208 — a bucket is not a drive');
+report.section('309 — a bucket is not a drive');
 {
   // Supabase grants the API roles usage on the storage schema; the harness
   // stubs the schema and has to grant it here.
@@ -344,7 +344,7 @@ report.section('208 — a bucket is not a drive');
 }
 
 // ---------------------------------------------------------------------------
-report.section('210 — an admin who proved it twice');
+report.section('311 — an admin who proved it twice');
 {
   const plain = await as(admin, `select is_admin() as yes`);
   report.check('with no factor enrolled, an admin session at aal1 is an admin', plain.rows[0]?.yes === true);
@@ -365,7 +365,7 @@ report.section('210 — an admin who proved it twice');
 }
 
 // ---------------------------------------------------------------------------
-report.section('211 — a payment is settled against itself');
+report.section('312 — a payment is settled against itself');
 {
   await db.exec(`insert into orders (id, company_id, pack_key, credits, amount_egp, paymob_order_id)
                  values ('99999999-9999-4999-8999-999999999999', '${verifiedCompany}', 'single', 1, 500, 'pm-1')`);
@@ -383,7 +383,7 @@ report.section('211 — a payment is settled against itself');
 }
 
 // ---------------------------------------------------------------------------
-report.section('209 — a query that knows when to stop');
+report.section('310 — a query that knows when to stop');
 {
   const timeouts = (await db.query(`
     select r.rolname, s.setconfig from pg_db_role_setting s join pg_roles r on r.oid = s.setrole
@@ -395,7 +395,7 @@ report.section('209 — a query that knows when to stop');
 }
 
 // ---------------------------------------------------------------------------
-report.section('203 — a hidden card is not viewed and the counter is the server\'s');
+report.section('304 — a hidden card is not viewed and the counter is the server\'s');
 {
   const hidden = (await one(`select slug from agent_profiles where visibility = 'hidden' limit 1`))?.slug;
   if (hidden) {

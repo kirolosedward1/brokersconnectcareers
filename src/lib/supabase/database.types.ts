@@ -484,7 +484,7 @@ export type OrderRow = Timestamped & {
 /**
  * Row shape returned by the get_agent_card() RPC.
  *
- * No phone number and no CV path, since migration 203: the card says whether a
+ * No phone number and no CV path, since migration 304: the card says whether a
  * CV exists and whether this viewer may ask for the contact, and the contact
  * itself comes from reveal_agent_contact(), which counts what it hands over.
  * `slug` is the card's public handle — the real slug when the name is
@@ -579,7 +579,7 @@ export type SavedAgentCardRow = {
 };
 
 /**
- * The half of a profile nobody but the platform reads (migration 204). The
+ * The half of a profile nobody but the platform reads (migration 305). The
  * unsubscribe token is a credential; the approval note is a reviewer's remark.
  * Neither has a policy that lets a user read it, and only the service role and
  * set_account_approval() write here.
@@ -591,7 +591,7 @@ export type ProfilePrivateRow = {
   updated_at: string;
 };
 
-/** A threshold the database enforces, as a row an admin can tune (migration 203). */
+/** A threshold the database enforces, as a row an admin can tune (migration 304). */
 export type AbuseLimitRow = {
   key: string;
   window_seconds: number;
@@ -600,7 +600,7 @@ export type AbuseLimitRow = {
   updated_at: string;
 };
 
-/** One consultant contact handed to one viewer (migration 203). */
+/** One consultant contact handed to one viewer (migration 304). */
 export type AgentContactRevealRow = {
   id: number;
   agent_id: string;
@@ -609,7 +609,7 @@ export type AgentContactRevealRow = {
   created_at: string;
 };
 
-/** A decision somebody made, recorded by the table it changed (migration 202). */
+/** A decision somebody made, recorded by the table it changed (migration 303). */
 export type AuditLogRow = {
   id: number;
   actor_id: string | null;
@@ -623,7 +623,7 @@ export type AuditLogRow = {
 
 export type SecuritySeverity = 'info' | 'warning' | 'critical';
 
-/** Something the platform noticed rather than decided (migration 202). */
+/** Something the platform noticed rather than decided (migration 303). */
 export type SecurityEventRow = {
   id: number;
   kind: string;
@@ -634,7 +634,7 @@ export type SecurityEventRow = {
   created_at: string;
 };
 
-/** What the security page draws (migration 212). */
+/** What the security page draws (migration 313). */
 export type SecuritySummary = {
   window_hours: number;
   events_by_kind: { kind: string; count: number }[];
@@ -804,7 +804,7 @@ export type Database = {
        * limit — is not rolled back with it.
        */
       reveal_agent_contact: { Args: { p_handle: string }; Returns: ContactRevealRow[] };
-      /** Service role only: the server's own counter (migration 205). */
+      /** Service role only: the server's own counter (migration 306). */
       rate_limit_hit: {
         Args: { p_key: string; p_window_seconds: number; p_max: number };
         Returns: { allowed: boolean; remaining: number; retry_after_seconds: number }[];
@@ -861,7 +861,40 @@ export type Database = {
        * user to ask. Used to find the colleague an employer is inviting.
        */
       user_id_by_email: { Args: { p_email: string }; Returns: string | null };
-      expire_stale_jobs: { Args: Empty; Returns: number };
+      /** Bounded since migration 204; the limit defaults to 500 per call. */
+      expire_stale_jobs: { Args: { p_limit?: number }; Returns: number };
+
+      /*
+        The data lifecycle (migration 204). Service role only, except the two
+        readers, which answer admins and refuse everybody else.
+      */
+      run_lifecycle_maintenance: { Args: Empty; Returns: Record<string, unknown> };
+      claim_storage_gc: {
+        Args: { p_limit?: number };
+        Returns: { bucket: string; path: string }[];
+      };
+      finish_storage_gc: {
+        Args: { p_bucket: string; p_removed: string[]; p_failed?: string[]; p_error?: string | null };
+        Returns: undefined;
+      };
+      abandoned_signups: {
+        Args: { p_limit?: number };
+        Returns: { user_id: string; created_at: string }[];
+      };
+      lifecycle_integrity_report: {
+        Args: Empty;
+        Returns: {
+          check_name: string;
+          severity: 'error' | 'warn' | 'info';
+          repairable: boolean;
+          found: number;
+          sample: string[];
+        }[];
+      };
+      repair_lifecycle_integrity: {
+        Args: { p_apply?: boolean };
+        Returns: { repair: string; affected: number; applied: boolean }[];
+      };
       profile_completeness: { Args: { p_agent_id: string }; Returns: number };
 
       /**

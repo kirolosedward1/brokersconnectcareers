@@ -1,5 +1,5 @@
 -- =============================================================================
--- 212 — What the security page reads
+-- 313 — What the security page reads
 --
 -- One round trip for the admin's security overview, the way admin_summary()
 -- draws the moderation one. Counts only, over the last day: what the

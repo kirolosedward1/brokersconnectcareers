@@ -101,7 +101,9 @@ events, DNS status, and the provider steps still outstanding — is in
 [`docs/email.md`](docs/email.md).
 
 The nightly expiry cron is already declared in `vercel.json` and runs at 01:00
-UTC. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
+UTC. Expiry and retention also run hourly inside the database through pg_cron,
+which needs no application secret; `/api/cron/lifecycle` deletes released files
+through the Storage API. See `docs/data-lifecycle.md`. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
 variable is set; the route returns 401 to anything else.
 
 ## Commands
@@ -118,6 +120,8 @@ variable is set; the route returns 401 to anything else.
 | `pnpm db:seed:demo` | Creates demo accounts via the Auth admin API + sample listings |
 | `pnpm doctor` | Preflight: env, REST, schema, storage, auth |
 | `pnpm db:rehearse` | Runs the setup scripts against a throwaway wire-protocol Postgres |
+| `pnpm test:lifecycle` | Expiry, deletion, file replacement, retention and cleanup, including a two-worker race against a real Postgres when one is installed |
+| `pnpm lifecycle:audit` | Read-only integrity/orphan report over `DATABASE_URL` (`--repair` dry run, `--apply` safe repairs) |
 | `pnpm bench:search` | Query plans for board, company and agent search on a 20k-listing synthetic board |
 | `pnpm db:types` | Regenerates `src/lib/supabase/database.types.ts` from a linked project |
 
@@ -147,7 +151,7 @@ The hardening round of September 2026 is documented under `docs/security/`:
 - `RUNBOOKS.md` — incident response, backups and restore, change control, alerting.
 - `../load/` — k6 load, spike and abuse scripts (staging only).
 
-The rules themselves live in the database (migrations 202–110) and are exercised by `pnpm test:security`; the pure helpers (byte recognition, sanitising, URL and secret checks) by `pnpm test:security-libs`. Both run as part of `pnpm check`.
+The rules themselves live in the database (migrations 303–313) and are exercised by `pnpm test:security`; the pure helpers (byte recognition, sanitising, URL and secret checks) by `pnpm test:security-libs`. Both run as part of `pnpm check`.
 
 Three environment variables were added — `SECURITY_SALT`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` — and one switch, `ADMIN_MFA_REQUIRED`. All are described in `.env.example`; `/api/health` reports which are set.
 

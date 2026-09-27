@@ -1,5 +1,5 @@
 -- =============================================================================
--- 203 — A number you ask for, not one you are handed
+-- 304 — A number you ask for, not one you are handed
 --
 -- The consultant directory is the most valuable thing on this platform to the
 -- wrong reader. Every card is a person with a phone number, and get_agent_card()
@@ -203,8 +203,10 @@ as $$
     where p.role = 'candidate'
       and (
         a.slug = p_handle
-        or (p_handle ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-            and a.id = p_handle::uuid)
+        or a.id = case
+          when p_handle ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+          then p_handle::uuid
+        end
       )
       -- A suspended consultant is off the directory entirely; the owner may
       -- still open their own page and read the state it is in.

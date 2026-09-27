@@ -1,5 +1,5 @@
 -- =============================================================================
--- 202 — Who did what, and when
+-- 303 — Who did what, and when
 --
 -- Every privileged action on this platform changed a row and left nothing
 -- else behind. An account approved, a company verified, a listing taken down,
@@ -29,7 +29,7 @@
 -- the only writers are the SECURITY DEFINER helpers below.
 -- =============================================================================
 
--- rollback: drop trigger if exists profiles_90_audit on profiles; drop trigger if exists companies_90_audit on companies; drop trigger if exists jobs_90_audit on jobs; drop trigger if exists company_members_90_audit on company_members; drop trigger if exists agent_profiles_90_audit on agent_profiles; drop trigger if exists reports_90_audit on reports; drop function if exists public.audit_profile_changes, public.audit_company_changes, public.audit_job_changes, public.audit_membership_changes, public.audit_agent_visibility, public.audit_report_resolution, public.audit, public.record_security_event, public.request_role; drop table if exists audit_log, security_events;
+-- rollback: drop trigger if exists profiles_95_security_audit on profiles; drop trigger if exists companies_95_security_audit on companies; drop trigger if exists jobs_95_security_audit on jobs; drop trigger if exists company_members_95_security_audit on company_members; drop trigger if exists agent_profiles_95_security_audit on agent_profiles; drop trigger if exists reports_95_security_audit on reports; drop function if exists public.audit_profile_changes, public.audit_company_changes, public.audit_job_changes, public.audit_membership_changes, public.audit_agent_visibility, public.audit_report_resolution, public.audit, public.record_security_event, public.request_role; drop table if exists audit_log, security_events;
 -- safety: ships-with-code — the triggers only insert into two new tables and never
 --   refuse a write, and the one page that reads them (/admin/security) is admin-only
 --   and shows an empty page until this has run, so either order is safe.
@@ -164,6 +164,8 @@ revoke execute on function public.record_security_event(text, text, text, jsonb,
 -- The decisions, recorded where they are made
 -- ---------------------------------------------------------------------------
 
+-- Main's migration 203 owns the *_90_audit triggers for audit_events. Keep
+-- those intact and use later names for this separate security audit ledger.
 create or replace function public.audit_profile_changes()
 returns trigger
 language plpgsql
@@ -185,7 +187,7 @@ begin
 end;
 $$;
 
-create trigger profiles_90_audit
+create trigger profiles_95_security_audit
   after update on profiles
   for each row execute function public.audit_profile_changes();
 
@@ -210,7 +212,7 @@ begin
 end;
 $$;
 
-create trigger companies_90_audit
+create trigger companies_95_security_audit
   after update on companies
   for each row execute function public.audit_company_changes();
 
@@ -237,7 +239,7 @@ begin
 end;
 $$;
 
-create trigger jobs_90_audit
+create trigger jobs_95_security_audit
   after update on jobs
   for each row execute function public.audit_job_changes();
 
@@ -264,7 +266,7 @@ begin
 end;
 $$;
 
-create trigger company_members_90_audit
+create trigger company_members_95_security_audit
   after insert or update or delete on company_members
   for each row execute function public.audit_membership_changes();
 
@@ -283,7 +285,7 @@ begin
 end;
 $$;
 
-create trigger agent_profiles_90_audit
+create trigger agent_profiles_95_security_audit
   after update on agent_profiles
   for each row execute function public.audit_agent_visibility();
 
@@ -302,7 +304,7 @@ begin
 end;
 $$;
 
-create trigger reports_90_audit
+create trigger reports_95_security_audit
   after update on reports
   for each row execute function public.audit_report_resolution();
 

@@ -153,7 +153,7 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
 
     if (!alreadyThere) {
       await withUniqueSlug<{ id: string }>(
-        () => buildAgentSlug(parsed.data.fullName),
+        () => buildAgentSlug(),
         (slug) =>
           supabase.from('agent_profiles').insert({ user_id: user.id, slug }).select('id').single(),
       );

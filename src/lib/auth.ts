@@ -163,7 +163,7 @@ export async function requireCandidate(locale: Locale) {
  * On by default in production, off in development, and settable either way:
  * ADMIN_MFA_REQUIRED=false is the escape hatch for a locked-out team, and it
  * is an escape hatch rather than the setting because the database enforces
- * the stronger half regardless (migration 210 — an admin who *has* enrolled is
+ * the stronger half regardless (migration 311 — an admin who *has* enrolled is
  * refused at aal1 by every policy, whatever this says).
  */
 function adminMfaRequired(): boolean {

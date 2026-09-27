@@ -10,7 +10,7 @@ Where to look, in order: `/admin/security` (events, audit trail, reveal counts),
 
 ### A1. A user account is compromised
 
-1. **Contain**: Supabase → Authentication → Users → the account → *Ban user* (banned accounts cannot refresh a session). Or SQL: `select set_account_approval('<user>', 'rejected', 'compromise <date>')` as an admin — suspension revokes every company read/write and every reveal (migration 207) and takes the company's listings down if nobody else approved remains.
+1. **Contain**: Supabase → Authentication → Users → the account → *Ban user* (banned accounts cannot refresh a session). Or SQL: `select set_account_approval('<user>', 'rejected', 'compromise <date>')` as an admin — suspension revokes every company read/write and every reveal (migration 308) and takes the company's listings down if nobody else approved remains.
 2. **Revoke**: Authentication → Users → *Sign out user* (kills refresh tokens).
 3. **Investigate**: `select * from audit_log where actor_id = '<user>' order by id desc;` and `select * from agent_contact_reveals where viewer_id = '<user>' and created_at > now() - interval '30 days';` — the second is the list of consultants whose numbers were taken.
 4. **Recover**: reset the password with the person over a verified channel; un-ban; `set_account_approval(..., 'approved')`.
@@ -80,7 +80,7 @@ Every outbound mail goes through `claim_email()` with a dedupe key and the suppr
 3. If the data is right, either promote the restored project (update the three variables on Production, redeploy, re-point Auth Site URL) or copy the specific rows back with `pg_dump --data-only -t <table>` from the restored project into production.
 4. Storage: objects are not in the backup. A deleted CV is gone unless Storage versioning is enabled (Storage → Settings); enable it for `cvs` and `company-documents` — the cost is small and it turns "deleted" into "recoverable for 30 days".
 
-**Restore rehearsal**: the schema and seed path is rehearsed on every `pnpm test:db` run (PGlite applies all 78 migrations from scratch) and can be rehearsed against a real Postgres with `pnpm db:rehearse`. A full data restore rehearsal against a Supabase branch should be done once per quarter; record the date and the time it took in this file.
+**Restore rehearsal**: the schema and seed path is rehearsed on every `pnpm test:db` run (PGlite applies the migration set from scratch) and can be rehearsed against a real Postgres with `pnpm db:rehearse`. A full data restore rehearsal against a Supabase branch should be done once per quarter; record the date and the time it took in this file.
 
 | Date | Restored from | Time to usable preview | By |
 |---|---|---|---|
@@ -92,9 +92,9 @@ Every outbound mail goes through `claim_email()` with a dedupe key and the suppr
 2. **Migration review**: every file under `supabase/migrations/` is numbered, prose-commented, and applied by `pnpm test:db` from an empty database on every run; a migration that breaks the harness cannot pass CI. Destructive steps (this round drops two columns in 70) copy the data first and say so.
 3. **Tests**: `pnpm check` (typecheck, catalogue, reads, security libs, schema, policies, **security**, hmac, search, email, auth, support).
 4. **Staging**: apply migrations to a Supabase branch or the staging project with `DATABASE_URL=… pnpm db:push:url`; deploy the branch to a Vercel preview; run `pnpm smoke <preview-url>`.
-5. **Production**: apply migrations (`pnpm db:push:url` against production `DATABASE_URL` from a trusted machine — the pooler port rejects multi-statement DDL, use the direct connection), then deploy. Order matters for this round: migration 204 drops `profiles.unsubscribe_token`, and the new code reads `profile_private`; deploy the code in the same window.
+5. **Production**: apply migrations (`pnpm db:push:url` against production `DATABASE_URL` from a trusted machine — the pooler port rejects multi-statement DDL, use the direct connection), then deploy. Order matters for this round: migration 305 drops `profiles.unsubscribe_token`, and the new code reads `profile_private`; deploy the code in the same window.
 6. **Smoke**: `pnpm smoke https://www.brokersconnect.net`; open `/api/health`; sign in as an admin and open `/admin/security`.
-7. **Rollback**: Vercel → *Instant rollback* for the code. For the database: migrations 202–110 are additive except 204 (columns) and 203 (function signature). Rolling back code to before this round against a database after it breaks the unsubscribe path and the directory page; roll forward instead, or restore from backup per section B.
+7. **Rollback**: Vercel → *Instant rollback* for the code. For the database: this round's security migrations are 303–313; 305 moves sensitive columns and 304 changes the directory function's return shape. Rolling back code to before this round against a database after it breaks the unsubscribe path and the directory page; roll forward instead, or restore from backup per section B.
 
 ## D. Alerting — what to page on, what to look at weekly
 

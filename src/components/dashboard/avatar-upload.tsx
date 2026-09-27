@@ -90,9 +90,10 @@ export function AvatarUpload({
 
   function remove() {
     startTransition(async () => {
-      // The column is cleared; the file stays in the bucket. Deleting it would
-      // break any page still holding the old URL, and a 2 MB image is not
-      // worth that.
+      // The column is cleared and the file is left where it is for now:
+      // deleting it here would break any page or email still holding the old
+      // URL. The database queues it on the way out and the lifecycle sweep
+      // removes it once its grace period has passed (migration 204).
       const result = await saveAvatar({ storagePath: null });
       if (recoverSession(result)) return;
       if (!result.ok) setError(tCommon('errorBody'));

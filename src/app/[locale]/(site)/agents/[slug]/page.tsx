@@ -125,7 +125,7 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
   /*
     No number on this page, and no CV link, until somebody asks.
 
-    get_agent_card() stopped returning either (migration 203). `can_reveal` says
+    get_agent_card() stopped returning either (migration 304). `can_reveal` says
     whether this viewer — an employer in good standing with a company, or an
     admin — may ask, and the button below asks: one call, one recorded
     reveal, and the number arrives in the response to a press rather than in

@@ -1,5 +1,5 @@
 -- =============================================================================
--- 211 — A payment is settled against itself
+-- 312 — A payment is settled against itself
 --
 -- settle_order() trusted the callback's merchant_order_id, and that is the
 -- one field in Paymob's callback its HMAC does not cover. A buyer holds a
