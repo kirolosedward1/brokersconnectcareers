@@ -13,6 +13,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { unaccent } from '@electric-sql/pglite/contrib/unaccent';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,7 +34,7 @@ create schema if not exists extensions;
 
 create table auth.users (
   id uuid primary key, instance_id uuid, aud text, role text, email text,
-  encrypted_password text, email_confirmed_at timestamptz,
+  encrypted_password text, email_confirmed_at timestamptz, last_sign_in_at timestamptz,
   raw_app_meta_data jsonb, raw_user_meta_data jsonb,
   created_at timestamptz, updated_at timestamptz
 );
@@ -119,7 +120,7 @@ select set_config('demo.users', '${JSON.stringify(
 `;
 
 export async function createTestDb({ seed = true } = {}) {
-  const db = new PGlite({ extensions: { pgcrypto, unaccent } });
+  const db = new PGlite({ extensions: { pgcrypto, unaccent, pg_trgm } });
   await db.exec(PRELUDE);
 
   const migrations = join(SUPABASE_DIR, 'migrations');
