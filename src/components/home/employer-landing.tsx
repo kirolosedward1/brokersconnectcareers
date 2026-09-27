@@ -212,7 +212,7 @@ export async function EmployerLanding({
       {/* The closing ask, as a line. It was a gradient poster with a grid
           masked into it; by this point the reader has had the hero's button
           and the header's the whole way down. */}
-      <section className="border-t border-border bg-muted/40">
+      <section data-band className="border-t border-border bg-muted/40">
         <div className="shell flex flex-col gap-5 py-8 sm:flex-row sm:items-center sm:justify-between sm:gap-10">
           <div className="max-w-2xl">
             <h2 className="text-lg font-bold text-balance">{t('employerBand.title')}</h2>

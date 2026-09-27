@@ -442,6 +442,17 @@
     }
   }
 
+  /* A page that ends in a full-bleed band has already drawn the foot of the
+     document: the band carries the footer's own tint and a rule above it. The
+     footer's top margin then lands between two tinted areas as a 48px stripe
+     of bare page — which reads as something that failed to render rather than
+     as breathing room, because both sides of it are the same colour. The
+     closing band says so with data-band; the footer closes up behind it and
+     the band's own padding is the space above the rule. */
+  main:has(> [data-band]:last-child) + footer {
+    margin-top: 0;
+  }
+
   /* Flip a glyph that encodes direction (arrows, chevrons) when the document
      is RTL. Icons that do not encode direction must not use this. */
   [dir='rtl'] .rtl-flip {

@@ -326,7 +326,7 @@ export async function Landing({
          that scrolled this far needs to see that the door exists and where it
          goes; it does not need to be sold to on the candidates' page, and the
          header has carried "post a job" the whole way down. */
-      <section className="border-t border-border bg-muted/40">
+      <section data-band className="border-t border-border bg-muted/40">
         <div className="shell flex flex-col gap-5 py-8 sm:flex-row sm:items-center sm:justify-between sm:gap-10">
           <div className="max-w-2xl">
             <h2 className="text-lg font-bold text-balance">{t('employerBand.title')}</h2>
