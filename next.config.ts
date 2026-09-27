@@ -93,10 +93,19 @@ const nextConfig: NextConfig = {
     */
     const dev = process.env.NODE_ENV === 'development';
 
+    /*
+      Cloudflare Turnstile, when a site key is configured: its script, the
+      frame it draws its challenge in, and the calls it makes. Derived from the
+      key's presence so a deployment without it carries no Cloudflare origin.
+    */
+    const turnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+      ? 'https://challenges.cloudflare.com'
+      : '';
+
     const csp = [
       `default-src 'self'`,
       // Next inlines its bootstrap; see the note above about nonces.
-      `script-src 'self' 'unsafe-inline' ${dev ? `'unsafe-eval'` : ''} ${analytics}`.replace(/\s+/g, ' ').trim(),
+      `script-src 'self' 'unsafe-inline' ${dev ? `'unsafe-eval'` : ''} ${analytics} ${turnstile}`.replace(/\s+/g, ' ').trim(),
       // Tailwind ships as a stylesheet, but Next also inlines critical CSS.
       `style-src 'self' 'unsafe-inline'`,
       // Company logos come from Supabase storage; avatars come from whichever
@@ -108,9 +117,11 @@ const nextConfig: NextConfig = {
       // The websocket origin as well as the https one: supabase-js opens a
       // realtime socket even where the application does not subscribe to
       // anything, and a blocked socket is a console error on every page.
-      `connect-src 'self' ${supabase} ${supabase.replace(/^https:/, 'wss:')} ${analytics} ${dev ? 'ws://localhost:* http://localhost:*' : ''}`
+      `connect-src 'self' ${supabase} ${supabase.replace(/^https:/, 'wss:')} ${analytics} ${turnstile} ${dev ? 'ws://localhost:* http://localhost:*' : ''}`
         .replace(/\s+/g, ' ')
         .trim(),
+      // Nothing is framed here except the challenge widget.
+      `frame-src ${turnstile || "'none'"}`,
       `object-src 'none'`,
       `base-uri 'self'`,
       `form-action 'self'`,
@@ -133,6 +144,12 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         headers: [
           { key: 'Content-Security-Policy', value: csp },
+          /*
+            Vercel sets this on its own domains; stated here so a deployment
+            behind any other edge is not silently without it. Two years, and
+            subdomains with it — every host under this domain is TLS.
+          */
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           // Referrers leak paths, and a path here can name a job, a company or
           // a candidate's profile slug.
@@ -146,6 +163,14 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
+  },
+
+  experimental: {
+    serverActions: {
+      // Photos and logos are re-encoded on the server (uploadImage). Two
+      // megabytes is the most a picture may be; the form itself is small.
+      bodySizeLimit: '3mb',
+    },
   },
 
   images: {

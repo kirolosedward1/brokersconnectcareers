@@ -282,43 +282,43 @@ begin
   -- ---------------------------------------------------------------------------
   insert into agent_profiles (user_id, slug, headline_ar, headline_en, years_experience,
                               tracks, district_ids, languages, availability, visibility) values
-    ((u->>'candidate1')::uuid, 'ahmed-mahmoud-818804',
+    ((u->>'candidate1')::uuid, 'consultant-81880411',
      'استشاري عقاري - بيع أول في التجمع والعاصمة الإدارية',
      'Primary sales consultant — New Cairo & New Capital', 4,
      array['primary','resale']::job_track[], array[d_new_cairo, d_capital],
      array['ar','en'], 'employed_not_looking', 'verified_employers_only'),
 
-    ((u->>'candidate2')::uuid, 'menna-sherif-909521',
+    ((u->>'candidate2')::uuid, 'consultant-90952122',
      'أخصائية إيجارات سكنية للأجانب والشركات في المعادي',
      'Residential lettings specialist — Maadi', 6,
      array['rental','property_management']::job_track[], array[d_maadi, d_heliopolis],
      array['ar','en','fr'], 'open_to_offers', 'public'),
 
-    ((u->>'candidate3')::uuid, 'youssef-adel-432606',
+    ((u->>'candidate3')::uuid, 'consultant-43260633',
      'مسوّق عقاري بالعمولة - غرب القاهرة',
      'Commission-only agent — West Cairo', 2,
      array['resale']::job_track[], array[d_zayed, d_october],
      array['ar'], 'actively_searching', 'public'),
 
-    ((u->>'candidate4')::uuid, 'heba-ramadan-625784',
+    ((u->>'candidate4')::uuid, 'consultant-62578444',
      'مديرة فريق بيع أول - العاصمة الإدارية',
      'Primary sales team leader — New Capital', 9,
      array['primary']::job_track[], array[d_capital, d_new_cairo],
      array['ar','en'], 'open_to_offers', 'verified_employers_only'),
 
-    ((u->>'candidate5')::uuid, 'mostafa-elgendy-339125',
+    ((u->>'candidate5')::uuid, 'consultant-33912555',
      'استشاري عقارات تجارية وإدارية',
      'Commercial and office space consultant', 7,
      array['commercial']::job_track[], array[d_nasr, d_heliopolis, d_mohandessin],
      array['ar','en'], 'employed_not_looking', 'hidden'),
 
-    ((u->>'candidate6')::uuid, 'rana-hossam-897283',
+    ((u->>'candidate6')::uuid, 'consultant-89728366',
      'خريجة جديدة - مهتمة بالبيع الأول',
      'Fresh graduate — interested in primary sales', 0,
      array['primary']::job_track[], array[d_october, d_zayed],
      array['ar','en'], 'actively_searching', 'public'),
 
-    ((u->>'candidate7')::uuid, 'amr-salah-541004',
+    ((u->>'candidate7')::uuid, 'consultant-54100477',
      'أخصائي إدارة أملاك ومحافظ إيجارية',
      'Property management and rental portfolio specialist', 5,
      array['property_management','rental']::job_track[], array[d_maadi, d_madinaty],
@@ -326,10 +326,10 @@ begin
 
   insert into agent_developers (agent_id, developer_id)
   select a.id, d.id from agent_profiles a, developers d
-  where (a.slug = 'ahmed-mahmoud-818804'   and d.slug in ('sodic','palm-hills'))
-     or (a.slug = 'heba-ramadan-625784'    and d.slug in ('city-edge','talaat-moustafa-group','misr-italia'))
-     or (a.slug = 'youssef-adel-432606'    and d.slug in ('mountain-view'))
-     or (a.slug = 'amr-salah-541004'       and d.slug in ('mnhd','madinet-masr'));
+  where (a.slug = 'consultant-81880411'   and d.slug in ('sodic','palm-hills'))
+     or (a.slug = 'consultant-62578444'    and d.slug in ('city-edge','talaat-moustafa-group','misr-italia'))
+     or (a.slug = 'consultant-43260633'    and d.slug in ('mountain-view'))
+     or (a.slug = 'consultant-54100477'       and d.slug in ('mnhd','madinet-masr'));
 
   -- A little pipeline, so the employer applicant view is not empty either.
   insert into applications (job_id, candidate_id, status, experience_band, note)

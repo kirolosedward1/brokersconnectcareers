@@ -6,7 +6,7 @@
  *   pnpm lifecycle:audit --apply    report, then apply the safe repairs
  *
  * Reads over DATABASE_URL (the direct connection, as db:push uses). The
- * report is lifecycle_integrity_report() from migration 69 and never writes.
+ * report is lifecycle_integrity_report() from migration 204 and never writes.
  * --apply runs repair_lifecycle_integrity(true), which only fixes what needs
  * no judgement about a person — a missing owner membership, a stale expiry
  * label, a missing history row — and only *queues* unreferenced files, which

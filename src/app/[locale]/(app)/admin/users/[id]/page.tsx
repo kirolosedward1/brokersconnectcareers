@@ -43,7 +43,7 @@ type Profile = {
   locale: 'ar' | 'en';
   created_at: string;
   approval_status: ApprovalStatus;
-  approval_note: string | null;
+  private: { approval_note: string | null } | null;
   approved_at: string | null;
 };
 
@@ -89,10 +89,10 @@ export default async function AdminUserPage({
   const supabase = await createClient();
   const profileRead = await supabase
     .from('profiles')
-    .select('id, role, full_name, avatar_url, locale, created_at, approval_status, approval_note, approved_at')
+    .select('id, role, full_name, avatar_url, locale, created_at, approval_status, approved_at, private:profile_private (approval_note)')
     .eq('id', id)
     .maybeSingle();
-  const profile = must(profileRead, 'loading an account').data as Profile | null;
+  const profile = must(profileRead, 'loading an account').data as unknown as Profile | null;
   if (!profile) notFound();
 
   const [facts, memberships, agent, applications, reportsFiled, audit, notes, reportingBan] = await Promise.all([
@@ -172,7 +172,7 @@ export default async function AdminUserPage({
                 items={[
                   { label: t('colRole'), value: roleLabel },
                   { label: t('colStatus'), value: <ApprovalBadge status={profile.approval_status} /> },
-                  { label: t('approvalNote'), value: profile.approval_note },
+                  { label: t('approvalNote'), value: profile.private?.approval_note ?? null },
                   { label: t('emailConfirmed'), value: auth.email_confirmed ? t('yes') : t('no') },
                   {
                     label: t('lastSignIn'),

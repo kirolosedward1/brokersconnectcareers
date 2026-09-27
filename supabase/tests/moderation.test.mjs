@@ -546,13 +546,20 @@ report.section('a restricted or suspended employer keeps what is live and adds n
     reportRefusal = await q.probe(`insert into reports (company_id, reporter_id, reason) values ('${rowad}', '${employer3}', 'scam')`);
     let submit = null;
     submit = await q.probe(`update jobs set status = 'pending_review' where id = '${draft}'`);
-    return { liveNow, reportRefusal, submit };
+    // Since #13, owns_job() also asks in_good_standing(), so the row is simply
+    // not theirs to update any more: no error, nothing changed. Either way the
+    // listing must still be a draft afterwards.
+    await q(`reset role`);
+    const draftNow = (await q(`select status from jobs where id = '${draft}'`))[0]?.status;
+    return { liveNow, reportRefusal, submit, draftNow };
   });
   const s = suspended.value ?? {};
   report.check('suspending a one-person company\'s owner takes its listings down',
     s.liveNow?.status === 'rejected', JSON.stringify(s.liveNow ?? suspended.error));
   report.check('a suspended employer cannot report anybody', Boolean(s.reportRefusal), s.reportRefusal);
-  report.check('or submit anything for review', /account_not_in_good_standing/.test(s.submit ?? ''), s.submit);
+  report.check('or submit anything for review',
+    (s.submit === null || /account_not_in_good_standing/.test(s.submit)) && s.draftNow === 'draft',
+    `${s.submit} → ${s.draftNow}`);
 
   const FRESH = '99999999-9999-9999-9999-000000000001';
   await db.exec(`insert into auth.users (id, email) values ('${FRESH}', 'fresh-employer@example.test')`);

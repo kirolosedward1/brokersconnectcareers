@@ -2,7 +2,7 @@
  * The data lifecycle: what happens to a row, and to the file behind it, when
  * the thing it describes ends.
  *
- * Migrations 68 and 69 against the real schema, in PGlite. Every fixture is
+ * Migrations 203 and 204 against the real schema, in PGlite. Every fixture is
  * made here rather than borrowed from the seed, so each section says exactly
  * what state it starts from — the seed changes, and a lifecycle assertion that
  * passes because of a seed row nobody meant is worse than no assertion.
@@ -524,6 +524,34 @@ for (const fn of [
 for (const table of ['audit_events', 'maintenance_runs', 'storage_gc_queue', 'retention_policies']) {
   const r = await as(CAND2, `select count(*)::int as n from ${table}`);
   report.check(`${table} reads as empty to a non-admin`, r.ok && r.rows[0].n === 0, r.error);
+}
+
+// The integrity report and its repair are for a person at the console, so a
+// signed-in session reaches them and the guard inside decides. Owning a
+// company makes nobody a platform admin. Anon is stopped by the grant, before
+// the guard is ever asked.
+{
+  const REPORT = 'select * from public.lifecycle_integrity_report()';
+  const REPAIR = (apply) => `select * from public.repair_lifecycle_integrity(${apply})`;
+  const refused = (r) => !r.ok && /forbidden/.test(r.error);
+
+  for (const [who, id] of [['a candidate', CAND2], ['an employer who owns a company', EMP]]) {
+    report.check(`${who} is refused the integrity report`, refused(await as(id, REPORT)));
+    report.check(`${who} is refused a repair, dry run or not`,
+      refused(await as(id, REPAIR(false))) && refused(await as(id, REPAIR(true))));
+  }
+
+  for (const [what, sql] of [['report', REPORT], ['repair', REPAIR(false)]]) {
+    const anon = await as(null, sql, 'anon');
+    report.check(`anon cannot execute the ${what} at all`, !anon.ok && /permission denied/.test(anon.error), anon.error);
+  }
+
+  const admin = await as(USERS.admin, REPORT);
+  report.check('a signed-in admin runs the report through the API role', admin.ok && admin.rows.length > 0, admin.error);
+
+  const dry = await as(USERS.admin, REPAIR(false));
+  report.check('and a repair dry run, which applies nothing',
+    dry.ok && dry.rows.length > 0 && dry.rows.every((r) => r.applied === false), dry.error);
 }
 
 process.exit(report.finish() ? 0 : 1);

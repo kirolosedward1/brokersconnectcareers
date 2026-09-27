@@ -32,7 +32,7 @@ type Result = { ok: true } | { ok: false; error: 'wait' | 'invalid' };
  * tell anybody which addresses are registered. The only thing a refusal says
  * is "you have asked a lot", which was true of the asker, not the address.
  */
-export async function requestPasswordReset(email: unknown): Promise<Result> {
+export async function requestPasswordReset(email: unknown, captchaToken?: unknown): Promise<Result> {
   const parsed = emailSchema.safeParse(email);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
@@ -48,6 +48,7 @@ export async function requestPasswordReset(email: unknown): Promise<Result> {
     const supabase = await createClient();
     await supabase.auth.resetPasswordForEmail(parsed.data, {
       redirectTo: `${env.siteUrl}/auth/callback?next=/sign-in/new-password`,
+      ...captchaOption(captchaToken),
     });
   } catch {
     // Deliberately silent; see above.
@@ -61,7 +62,11 @@ export async function requestPasswordReset(email: unknown): Promise<Result> {
  * The person already knows the address has an account — they created it on
  * the previous screen — so an error here can be reported as "wait".
  */
-export async function resendConfirmation(email: unknown, redirectTo: string): Promise<Result> {
+export async function resendConfirmation(
+  email: unknown,
+  redirectTo: string,
+  captchaToken?: unknown,
+): Promise<Result> {
   const parsed = emailSchema.safeParse(email);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
@@ -85,7 +90,21 @@ export async function resendConfirmation(email: unknown, redirectTo: string): Pr
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email: parsed.data,
-    options: { emailRedirectTo: target.toString() },
+    options: { emailRedirectTo: target.toString(), ...captchaOption(captchaToken) },
   });
   return error ? { ok: false, error: 'wait' } : { ok: true };
+}
+
+/**
+ * The Turnstile token the form was handed, if any, passed through to GoTrue.
+ *
+ * GoTrue verifies it against the project's CAPTCHA secret when that protection
+ * is switched on and ignores it when it is not, so the forms behave the same
+ * on a project that has never heard of Turnstile. Bounded, because the value
+ * comes from the browser and is otherwise an open field.
+ */
+function captchaOption(token: unknown): { captchaToken?: string } {
+  return typeof token === 'string' && token.length > 0 && token.length <= 4096
+    ? { captchaToken: token }
+    : {};
 }

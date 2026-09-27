@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { adminErrorCode } from '@/lib/admin/errors';
-import { notifyEmployerOfModeration } from '@/lib/email/notify';
+import { publish } from '@/lib/notifications/events';
 import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { jobIsLive } from '@/lib/job-state';
 
@@ -102,8 +102,8 @@ const appealSchema = z.object({
  * Answer an appeal. Overturning reverses the decision through the lever a
  * moderator would use by hand, in the same transaction as the answer; the
  * appellant is told either way, in the bell (by the database). A listing
- * brought back is also announced to Google and its company emailed, as any
- * restoration is.
+ * brought back is also published as approved — the company's email — and
+ * announced to Google, as any restoration is.
  */
 export async function decideAppeal(input: unknown): Promise<ActionResult> {
   const parsed = appealSchema.safeParse(input);
@@ -133,7 +133,7 @@ export async function decideAppeal(input: unknown): Promise<ActionResult> {
     // for Google to read.
     if (job && jobIsLive(job)) {
       const slug = job.slug;
-      after(() => notifyEmployerOfModeration(jobId, true));
+      after(() => publish({ type: 'JOB_APPROVED', jobId }));
       after(() => notifyJobChanged(slug, 'URL_UPDATED'));
     }
   }

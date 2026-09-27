@@ -1,5 +1,5 @@
 -- =============================================================================
--- 68 — What a delete is allowed to take with it
+-- 203 — What a delete is allowed to take with it
 --
 -- The schema was built to cascade, and for most of it that is right: a saved
 -- job, a saved search, a notification or a CV section belongs to one person
@@ -42,10 +42,6 @@
 -- Everything here was checked against production before it was written: no
 -- row violates any constraint below, so nothing is backfilled.
 -- =============================================================================
-
--- rollback: forward-fix only — applied to production on 2026-09-27 (17:07–17:10 UTC), before any branch carrying it merged; undoing it is a new migration, never an edit to this one
--- safety: ships-with-code — already applied to production on 2026-09-27 (17:07–17:10 UTC); the code on main has run against it since, and this branch's code that reads it can land at any time
--- safety: constraint — applied to production on 2026-09-27 (17:07–17:10 UTC), where Postgres validated every existing row as each foreign key and check was added; nothing has violated them since
 
 alter table companies
   drop constraint if exists companies_owner_id_fkey,
@@ -212,7 +208,7 @@ alter table jobs
 -- An audit trail that is not the notification feed
 --
 -- The bell is a person's inbox: they may delete from it, and it will be pruned
--- (migration 69). It was also, until now, the only durable trace of the
+-- (migration 204). It was also, until now, the only durable trace of the
 -- decisions that matter afterwards — an account suspended, a company
 -- verified, a listing taken down. Those are facts about the platform's own
 -- conduct, and they have to survive the feed being tidied.
@@ -249,6 +245,9 @@ drop policy if exists audit_events_admin_read on audit_events;
 create policy audit_events_admin_read on audit_events
   for select using (public.is_admin());
 
+-- "migration 69" below is this pair's number when production ran it, and
+-- production's table comment still says so. It is left as run rather than
+-- made to disagree with production; the retention migration is now 204.
 comment on table audit_events is
   'Durable record of moderation and account-lifecycle decisions. Written only '
   'by triggers; readable by admins; never pruned by the maintenance job (see '
@@ -454,7 +453,7 @@ create trigger company_documents_90_audit
 -- BEFORE DELETE, because by AFTER the user_id that finds the rows has been
 -- nulled by the foreign key. Rows written to an address with no account behind
 -- them are not reachable from here and are covered by email_log retention
--- instead (migration 69). email_suppressions is deliberately left alone: a
+-- instead (migration 204). email_suppressions is deliberately left alone: a
 -- hard bounce is about the address, not the account, and forgetting it would
 -- mean mailing a dead address again the day somebody re-registers it.
 -- ---------------------------------------------------------------------------

@@ -6,11 +6,7 @@ import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
-import {
-  notifyAccountDecision,
-  notifyCompanyVerification,
-  notifyEmployerOfModeration,
-} from '@/lib/email/notify';
+import { publish } from '@/lib/notifications/events';
 import { adminErrorCode } from '@/lib/admin/errors';
 
 /**
@@ -131,9 +127,9 @@ export async function moderateJob(input: unknown): Promise<AdminResult> {
   // The employer has been waiting on this decision. Closing on their behalf
   // is not a verdict on the listing, so it sends nothing.
   if (action === 'approve' || action === 'restore') {
-    after(() => notifyEmployerOfModeration(jobId, true));
+    after(() => publish({ type: 'JOB_APPROVED', jobId }));
   } else if (action !== 'close') {
-    after(() => notifyEmployerOfModeration(jobId, false, note));
+    after(() => publish({ type: 'JOB_REJECTED', jobId, note }));
   }
 
   // Approved or restored, it is a job page for Google to read now rather than
@@ -202,9 +198,9 @@ export async function reviewCompany(input: unknown): Promise<AdminResult> {
   // request for changes is told the same way as a rejection — with the note,
   // which is the part they act on.
   if (decision === 'verify') {
-    after(() => notifyCompanyVerification(companyId, true, note));
+    after(() => publish({ type: 'COMPANY_VERIFIED', companyId }));
   } else if (decision !== 'revoke') {
-    after(() => notifyCompanyVerification(companyId, false, note));
+    after(() => publish({ type: 'COMPANY_VERIFICATION_REJECTED', companyId, note }));
   }
 
   refreshConsole();
@@ -296,7 +292,11 @@ export async function setAccountApproval(input: unknown): Promise<AdminResult> {
 
   if (parsed.data.status !== 'pending') {
     after(() =>
-      notifyAccountDecision(parsed.data.userId, parsed.data.status === 'approved', parsed.data.note),
+      publish(
+        parsed.data.status === 'approved'
+          ? { type: 'ACCOUNT_APPROVED', userId: parsed.data.userId }
+          : { type: 'ACCOUNT_SUSPENDED', userId: parsed.data.userId, note: parsed.data.note },
+      ),
     );
   }
 
@@ -416,7 +416,7 @@ export async function moderateReports(input: unknown): Promise<AdminResult<{ mov
 
   const outcome = data as { reports: number; took_action: boolean } | null;
   if (outcome?.took_action && targetType === 'job') {
-    after(() => notifyEmployerOfModeration(targetId, false, note));
+    after(() => publish({ type: 'JOB_REJECTED', jobId: targetId, note }));
   }
   if (outcome?.took_action) announceTakedowns(supabase, exposed);
 

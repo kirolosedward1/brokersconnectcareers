@@ -68,8 +68,14 @@ export async function StandingNotice({
   const panels: React.ReactNode[] = [];
 
   let account: AppealState | null = null;
+  let note: string | null = null;
   if (status !== 'approved') {
-    account = await getAppealState(supabase, 'account', profile.id);
+    const [state, own] = await Promise.all([
+      getAppealState(supabase, 'account', profile.id),
+      supabase.rpc('my_account_note'),
+    ]);
+    account = state;
+    note = own.error ? null : (own.data ?? null);
   }
 
   // A hold is a moderator's decision; a new employer's first review is not.
@@ -81,7 +87,7 @@ export async function StandingNotice({
     panels.push(
       <Panel key="account" tone="destructive" icon={<CircleSlash className="size-4" aria-hidden />} title={t('suspendedTitle')}>
         <p>{employer ? t('suspendedBodyEmployer') : t('suspendedBodyCandidate')}</p>
-        {profile.approval_note ? <p className="mt-1">{t('reason', { reason: profile.approval_note })}</p> : null}
+        {note ? <p className="mt-1">{t('reason', { reason: note })}</p> : null}
         <AppealPanel subjectType="account" subjectId={profile.id} state={account} />
       </Panel>,
     );
@@ -89,7 +95,7 @@ export async function StandingNotice({
     panels.push(
       <Panel key="account" tone="warning" icon={<CirclePause className="size-4" aria-hidden />} title={t('heldTitle')}>
         <p>{employer ? t('heldBodyEmployer') : t('heldBodyCandidate')}</p>
-        {profile.approval_note ? <p className="mt-1">{t('reason', { reason: profile.approval_note })}</p> : null}
+        {note ? <p className="mt-1">{t('reason', { reason: note })}</p> : null}
         <AppealPanel subjectType="account" subjectId={profile.id} state={account} />
       </Panel>,
     );

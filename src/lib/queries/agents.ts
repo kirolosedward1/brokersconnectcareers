@@ -145,9 +145,11 @@ export async function queryAgents(filters: AgentFilters): Promise<{
   };
 }
 
-export async function getAgentCard(slug: string): Promise<AgentCardDetail | null> {
+/** By slug, or by id for a card whose name the reader may not see. */
+export async function getAgentCard(handle: string): Promise<AgentCardDetail | null> {
+  if (!/^(?:[a-z0-9][a-z0-9-]{0,118}|[0-9a-f-]{36})$/.test(handle)) return null;
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc('get_agent_card', { p_slug: slug });
+  const { data, error } = await supabase.rpc('get_agent_card', { p_handle: handle });
   if (error) raise(error, 'loading an agent profile');
   return (data as AgentCardDetail[])?.[0] ?? null;
 }

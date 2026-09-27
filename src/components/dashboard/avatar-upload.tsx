@@ -6,10 +6,8 @@ import { useRouter } from 'next/navigation';
 import { ImageUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
-import { createClient } from '@/lib/supabase/client';
-import { AVATAR_BUCKET } from '@/lib/buckets';
 import { saveAvatar } from '@/lib/actions/account';
-import { uuid } from '@/lib/utils';
+import { uploadImage } from '@/lib/actions/uploads';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -23,10 +21,11 @@ import { useSessionRecovery } from '@/lib/session-expired';
  * email address had no photo and no way to acquire one, and every profile on
  * the platform showed the monogram — permanently.
  *
- * Everything about the upload is the logo's shape, because the rules are the
- * same: straight from the browser into a public bucket, into a folder named
- * for the account, where a storage policy checks the folder is theirs. The
- * server action only turns the path into a URL and writes it down.
+ * The bytes go to the server, which decodes the picture and writes a fresh
+ * WebP with nothing else in it — no EXIF, no trailing payload — into a folder
+ * named for the account. The checks below are a courtesy to the person, so a
+ * wrong file is refused before it is sent; the server makes them again from
+ * the bytes rather than from the browser's guess.
  */
 const MAX_BYTES = 2 * 1024 * 1024;
 
@@ -35,11 +34,9 @@ const MAX_BYTES = 2 * 1024 * 1024;
 const TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 export function AvatarUpload({
-  userId,
   name,
   avatarUrl,
 }: {
-  userId: string;
   name: string;
   avatarUrl: string | null;
 }) {
@@ -68,24 +65,20 @@ export function AvatarUpload({
     }
 
     startTransition(async () => {
-      const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png';
-      // A fresh name every time rather than a fixed one: the URL is public and
-      // cached, and overwriting in place would leave the old photo showing.
-      const path = `${userId}/${uuid()}.${extension}`;
+      const form = new FormData();
+      form.set('kind', 'avatar');
+      form.set('file', file);
 
-      const { error: uploadError } = await createClient()
-        .storage.from(AVATAR_BUCKET)
-        .upload(path, file, { contentType: file.type });
-
-      if (uploadError) {
-        setError(tCommon('errorBody'));
-        return;
-      }
-
-      const result = await saveAvatar({ storagePath: path });
+      const result = await uploadImage(form);
       if (recoverSession(result)) return;
       if (!result.ok) {
-        setError(tCommon('errorBody'));
+        setError(
+          result.error === 'file_type'
+            ? tValidation('fileType')
+            : result.error === 'too_large'
+              ? tValidation('fileTooLarge')
+              : tCommon('errorBody'),
+        );
         return;
       }
 
@@ -100,7 +93,7 @@ export function AvatarUpload({
       // The column is cleared and the file is left where it is for now:
       // deleting it here would break any page or email still holding the old
       // URL. The database queues it on the way out and the lifecycle sweep
-      // removes it once its grace period has passed (migration 69).
+      // removes it once its grace period has passed (migration 204).
       const result = await saveAvatar({ storagePath: null });
       if (recoverSession(result)) return;
       if (!result.ok) setError(tCommon('errorBody'));

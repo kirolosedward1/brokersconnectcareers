@@ -249,6 +249,18 @@ export function JobForm({
           setErrors({ form: tEmployer(result.error === 'standing' ? 'standingBlocked' : 'companySuspendedBlocked') });
           return;
         }
+        if (result.error === 'duplicate_listing') {
+          // The third copy of one title in one district (migration 306). The
+          // wizard warned about the second; this one the database refuses.
+          setErrors({ form: tEmployer('duplicateListingBlocked') });
+          setStep(0);
+          return;
+        }
+        if (result.error === 'post_rate_limit') {
+          setErrors({ form: tEmployer('postRateLimited') });
+          setStep(3);
+          return;
+        }
         setErrors(result.fieldErrors ?? { form: tCommon('errorBody') });
         // Send the reader back to the step that actually holds the problem.
         const keys = Object.keys(result.fieldErrors ?? {});

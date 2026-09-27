@@ -11,7 +11,7 @@ export const maxDuration = 60;
  *
  * run_lifecycle_maintenance() does everything a SQL statement can — expiry,
  * retention, finding files nothing points at — and pg_cron already runs it
- * hourly inside the database (migration 69). Calling it here too is
+ * hourly inside the database (migration 204). Calling it here too is
  * deliberate: it takes a non-blocking lock, so when both land together one of
  * them records "skipped" and returns, and if either scheduler is down the
  * other still runs it.

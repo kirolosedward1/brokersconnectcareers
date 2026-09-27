@@ -66,8 +66,6 @@ export type ProfileRow = Timestamped & {
   notify_digest: boolean;
   /** Employer: batch applicant notices into one daily email. Gated by notify_applications. */
   notify_applicant_digest: boolean;
-  /** Credential for the unsubscribe link, which has no session to rely on. */
-  unsubscribe_token: string;
   /**
    * Whether this account may act. Candidates arrive approved; companies wait
    * for an admin, because the side that collects CVs and phone numbers is the
@@ -75,7 +73,6 @@ export type ProfileRow = Timestamped & {
    * asks whether the papers are real rather than whether the account may post.
    */
   approval_status: ApprovalStatus;
-  approval_note: string | null;
   approved_at: string | null;
   /** full_name folded for search (migration 68). Generated, never written. */
   search_name?: string;
@@ -315,7 +312,15 @@ export type NotificationKind =
   | 'company_verified'
   | 'account_approved'
   | 'account_rejected'
-  // Moderation (migration 207): the decision's subject is told, and so is
+  // Migration 300.
+  | 'job_expiring'
+  | 'job_expired'
+  | 'company_verification_needed'
+  | 'profile_visibility_changed'
+  | 'password_changed'
+  // Migration 200: support answered a request (written by 201's answer function).
+  | 'support_replied'
+  // Moderation (migration 318): the decision's subject is told, and so is
   // whoever reported or appealed.
   | 'report_reviewed'
   | 'company_suspended'
@@ -344,6 +349,17 @@ export type NotificationRow = {
     name_en?: string | null;
     status?: string;
     note?: string | null;
+    company_ar?: string;
+    company_en?: string | null;
+    visibility?: string;
+    expires_at?: string;
+    /** password_changed: when the change happened. */
+    at?: string;
+    /** application_received: applicants folded into this row since it was last read. */
+    count?: number;
+    /** support_replied: the request's quotable reference and topic. */
+    reference?: string;
+    topic?: string;
     /** report_reviewed: what the report was about, and whether it led to action. */
     target_type?: ReportTargetType;
     outcome?: 'actioned' | 'reviewed' | 'upheld' | 'overturned';
@@ -353,6 +369,10 @@ export type NotificationRow = {
   href: string | null;
   read_at: string | null;
   created_at: string;
+  /** Platform-written; what makes two notifications the same one (migration 300). */
+  dedupe_key: string | null;
+  /** Absorbed into this unread applicant row; hidden from the feed (migration 302). */
+  folded_into: string | null;
 };
 
 export type AgentExperienceRow = Timestamped & {
@@ -802,23 +822,31 @@ export type OrderRow = Timestamped & {
   status: 'pending' | 'paid' | 'failed' | 'refunded';
 };
 
-/** Row shape returned by the get_agent_card() RPC. */
+/**
+ * Row shape returned by the get_agent_card() RPC.
+ *
+ * No phone number and no CV path, since migration 304: the card says whether a
+ * CV exists and whether this viewer may ask for the contact, and the contact
+ * itself comes from reveal_agent_contact(), which counts what it hands over.
+ * `slug` is the card's public handle — the real slug when the name is
+ * visible, the row's id when it is not.
+ */
 export type AgentCardDetail = {
   id: string;
   slug: string;
   is_unlocked: boolean;
   full_name: string | null;
   avatar_url: string | null;
-  whatsapp_phone: string | null;
   headline_ar: string | null;
   headline_en: string | null;
   years_experience: number;
   tracks: JobTrack[];
   district_ids: number[];
   languages: string[];
-  cv_path: string | null;
   availability: AgentAvailability;
   developer_ids: number[];
+  has_cv: boolean;
+  can_reveal: boolean;
 };
 
 /** Row shape returned by the search_agents() RPC. */
@@ -889,6 +917,91 @@ export type SavedAgentCardRow = {
   saved_at: string;
   saved_by_name: string | null;
   total_count: number;
+};
+
+/**
+ * The half of a profile nobody but the platform reads (migration 305). The
+ * unsubscribe token is a credential; the approval note is a reviewer's remark.
+ * Neither has a policy that lets a user read it, and only the service role and
+ * set_account_approval() write here.
+ */
+export type ProfilePrivateRow = {
+  user_id: string;
+  unsubscribe_token: string;
+  approval_note: string | null;
+  updated_at: string;
+};
+
+/** A threshold the database enforces, as a row an admin can tune (migration 304). */
+export type AbuseLimitRow = {
+  key: string;
+  window_seconds: number;
+  max_hits: number;
+  note: string | null;
+  updated_at: string;
+};
+
+/** One consultant contact handed to one viewer (migration 304). */
+export type AgentContactRevealRow = {
+  id: number;
+  agent_id: string;
+  viewer_id: string;
+  company_id: string | null;
+  created_at: string;
+};
+
+/** A decision somebody made, recorded by the table it changed (migration 303). */
+export type AuditLogRow = {
+  id: number;
+  actor_id: string | null;
+  actor_role: string;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export type SecuritySeverity = 'info' | 'warning' | 'critical';
+
+/** Something the platform noticed rather than decided (migration 303). */
+export type SecurityEventRow = {
+  id: number;
+  kind: string;
+  severity: SecuritySeverity;
+  actor_id: string | null;
+  subject_hash: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+/** What the security page draws (migration 313). */
+export type SecuritySummary = {
+  window_hours: number;
+  events_by_kind: { kind: string; count: number }[];
+  events_total: number;
+  events_warning: number;
+  events_critical: number;
+  reveals_24h: number;
+  reveals_top_viewers: { viewer_id: string; count: number }[];
+  rate_limited_24h: number;
+  uploads_rejected_24h: number;
+  auth_failures_24h: number;
+  accounts_suspended: number;
+  accounts_pending: number;
+  reports_open: number;
+  jobs_pending: number;
+  signups_24h: number;
+  applications_24h: number;
+};
+
+/** What reveal_agent_contact() answers with — one row, always. */
+export type ContactRevealRow = {
+  status: 'ok' | 'unauthenticated' | 'forbidden' | 'locked' | 'not_found' | 'rate_limited';
+  retry_after_seconds: number | null;
+  full_name: string | null;
+  whatsapp_phone: string | null;
+  cv_path: string | null;
 };
 
 /**
@@ -1013,6 +1126,15 @@ export type Database = {
         EmailSuppressionRow,
         { email: string; reason: SuppressionReason; created_at?: string }
       >;
+      /** Service role and set_account_approval() only; admins may read. */
+      profile_private: Table<ProfilePrivateRow, never>;
+      abuse_limits: Table<AbuseLimitRow, Insertable<AbuseLimitRow, 'key' | 'window_seconds' | 'max_hits'>>;
+      /** Written by reveal_agent_contact() alone. */
+      agent_contact_reveals: Table<AgentContactRevealRow, never>;
+      /** Written by triggers and audit() alone. */
+      audit_log: Table<AuditLogRow, never>;
+      /** Written by record_security_event() alone. */
+      security_events: Table<SecurityEventRow, never>;
     };
     Views: Empty;
     Functions: {
@@ -1029,7 +1151,32 @@ export type Database = {
         };
         Returns: AgentCardRow[];
       };
-      get_agent_card: { Args: { p_slug: string }; Returns: AgentCardDetail[] };
+      /** By slug or by id: a locked card is linked by its id. */
+      get_agent_card: { Args: { p_handle: string }; Returns: AgentCardDetail[] };
+      /**
+       * The contact behind a card. Authenticated only; refuses in a status
+       * column rather than an exception so a refusal it records — the rate
+       * limit — is not rolled back with it.
+       */
+      reveal_agent_contact: { Args: { p_handle: string }; Returns: ContactRevealRow[] };
+      /** Service role only: the server's own counter (migration 306). */
+      rate_limit_hit: {
+        Args: { p_key: string; p_window_seconds: number; p_max: number };
+        Returns: { allowed: boolean; remaining: number; retry_after_seconds: number }[];
+      };
+      /** Service role only. Subjects arrive hashed. */
+      record_security_event: {
+        Args: {
+          p_kind: string;
+          p_severity?: SecuritySeverity;
+          p_subject_hash?: string | null;
+          p_metadata?: Record<string, string | number | boolean | null>;
+          p_actor?: string | null;
+        };
+        Returns: undefined;
+      };
+      /** Admin only; raises `forbidden` otherwise. */
+      security_summary: { Args: Empty; Returns: SecuritySummary };
       /**
        * One row per consultant per company per day, and nothing comes back.
        * Every refusal — no company, the owner's own preview, an unknown slug —
@@ -1069,11 +1216,11 @@ export type Database = {
        * user to ask. Used to find the colleague an employer is inviting.
        */
       user_id_by_email: { Args: { p_email: string }; Returns: string | null };
-      /** Bounded since migration 69; the limit defaults to 500 per call. */
+      /** Bounded since migration 204; the limit defaults to 500 per call. */
       expire_stale_jobs: { Args: { p_limit?: number }; Returns: number };
 
       /*
-        The data lifecycle (migration 69). Service role only, except the two
+        The data lifecycle (migration 204). Service role only, except the two
         readers, which answer admins and refuse everybody else.
       */
       run_lifecycle_maintenance: { Args: Empty; Returns: Record<string, unknown> };
@@ -1223,6 +1370,7 @@ export type Database = {
         Args: { p_subject_type: AppealSubjectType; p_subject_id: string };
         Returns: AppealState;
       };
+      my_account_note: { Args: Empty; Returns: string | null };
       admin_reveal_contact: {
         Args: { p_user: string; p_reason: string };
         Returns: { email: string | null; whatsapp_phone: string }[];
@@ -1263,7 +1411,32 @@ export type Database = {
         Returns: undefined;
       };
       /** Returns how many rows it marked, so the caller can say nothing changed. */
-      mark_notifications_read: { Args: Empty; Returns: number };
+      mark_notifications_read: { Args: { p_up_to?: string | null }; Returns: number };
+      /** Marks one of the caller's own read and returns where it points; empty for anyone else's. */
+      open_notification: {
+        Args: { p_id: string };
+        Returns: { kind: NotificationKind; href: string | null; payload: NotificationRow['payload'] }[];
+      };
+      /** The expiry sweep for the caller's own company. Idempotent; returns rows written. */
+      sync_my_job_notifications: { Args: Empty; Returns: number };
+      /** Service role only: the expiry sweep, for one company or all of them. */
+      /** Service role only: delete read notifications older than 180 days. */
+      prune_notifications: { Args: { p_limit?: number }; Returns: number };
+      emit_job_expiry_notifications: {
+        Args: { p_company?: string | null; p_warn_days?: number };
+        Returns: number;
+      };
+      /** Service role only: one notification under a dedupe key. */
+      notify: {
+        Args: {
+          p_user: string;
+          p_kind: NotificationKind;
+          p_payload: Record<string, unknown>;
+          p_href: string | null;
+          p_key: string;
+        };
+        Returns: undefined;
+      };
       /**
        * Claims the right to send one message. Returns the outbox row id, or
        * null when somebody already holds this dedupe key or the address is
@@ -1324,7 +1497,13 @@ export type Database = {
       };
       pending_emails: {
         Args: { p_limit?: number };
-        Returns: { id: string; template: string; entity_id: string | null; attempts: number }[];
+        Returns: {
+          id: string;
+          template: string;
+          entity_id: string | null;
+          user_id: string | null;
+          attempts: number;
+        }[];
       };
       mark_email_delivered: {
         Args: { p_provider_id: string; p_status: EmailStatus };
@@ -1343,14 +1522,24 @@ export type Database = {
        * first delivery from a retry, and every outcome here is a 200.
        */
       settle_order: {
-        Args: { p_order_id: string; p_paymob_order_id: string | null; p_success: boolean };
+        Args: {
+          p_order_id: string;
+          p_paymob_order_id: string | null;
+          p_success: boolean;
+          /** Signed by Paymob; the settlement refuses an order they do not describe. */
+          p_amount_cents?: number | null;
+          p_currency?: string | null;
+        };
         Returns:
           | 'paid'
           | 'failed'
           | 'unknown_order'
           | 'already_paid'
           | 'already_failed'
-          | 'already_refunded';
+          | 'already_refunded'
+          | 'order_mismatch'
+          | 'amount_mismatch'
+          | 'currency_mismatch';
       };
     };
     Enums: {

@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { AGENT_REPORT_REASONS, COMPANY_REPORT_REASONS, REPORT_REASONS } from '@/lib/taxonomy';
+import { clean } from '@/lib/security/sanitize';
+import { logFailure } from '@/lib/observe';
 
 export type ReportTarget = 'job' | 'company' | 'agent';
 
@@ -76,7 +78,9 @@ export async function reportTarget(input: unknown): Promise<ActionResult> {
     agent_id: target === 'agent' ? targetId : null,
     reporter_id: user.id,
     reason: parsed.data.reason,
-    detail: detail.data || null,
+    // The detail is read by a moderator in the console: tags, invisible and
+    // control characters and bidi overrides are stripped first (#13).
+    detail: clean(detail.data, true) || null,
   });
 
   if (error) {
@@ -87,7 +91,7 @@ export async function reportTarget(input: unknown): Promise<ActionResult> {
     if (error.code === '23505') return { ok: false, error: 'already_reported' };
     // Row-level security: a suspended account files no reports.
     if (error.code === '42501') return { ok: false, error: 'restricted' };
-    console.warn('[reports] could not file a report:', error.message);
+    logFailure('report', 'report refused', { target, code: error.code ?? undefined });
     return { ok: false, error: 'failed' };
   }
 

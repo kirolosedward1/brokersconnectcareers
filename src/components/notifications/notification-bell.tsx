@@ -2,7 +2,12 @@
 
 import { useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
-import { usePathname } from '@/i18n/navigation';
+import { usePathname, useRouter } from '@/i18n/navigation';
+
+/** Tabs of one browser tell each other when the unread count moved. */
+const CHANNEL = 'bc-notifications';
+/** Coming back to a tab re-reads the bell at most this often. */
+const STALE_AFTER_MS = 60_000;
 
 /**
  * The bell's disclosure behaviour.
@@ -29,11 +34,57 @@ export function NotificationBell({
   const ref = useRef<HTMLDetailsElement>(null);
   const summaryRef = useRef<HTMLElement>(null);
   const pathname = usePathname();
+  const router = useRouter();
+  const renderedAt = useRef(Date.now());
 
   useEffect(() => {
     const el = ref.current;
     if (el) el.open = false;
   }, [pathname]);
+
+  /*
+    Two tabs.
+
+    The count is server-rendered, so a tab only learns it changed when it next
+    renders. Reading a notification in one tab left the other showing the old
+    badge indefinitely — and showing rows as unread that were not. Two cheap
+    signals close that without polling:
+
+      a BroadcastChannel, on which every tab announces the count it just
+      rendered; a tab holding a different count refreshes. The tab that did
+      the reading re-renders from its own action, announces, and the others
+      follow. A tab that already agrees does nothing, so it settles in one
+      round rather than bouncing.
+
+      returning to a tab that has sat in the background for a minute, which
+      also catches notifications that arrived from somewhere else entirely.
+
+    router.refresh() re-renders the server components in place and keeps
+    client state — a half-typed form in the page below is not lost.
+  */
+  useEffect(() => {
+    renderedAt.current = Date.now();
+    if (typeof BroadcastChannel === 'undefined') return;
+    const channel = new BroadcastChannel(CHANNEL);
+    channel.postMessage({ unread });
+    channel.onmessage = (event: MessageEvent<{ unread?: number }>) => {
+      if (typeof event.data?.unread === 'number' && event.data.unread !== unread) {
+        router.refresh();
+      }
+    };
+    return () => channel.close();
+  }, [unread, router]);
+
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - renderedAt.current < STALE_AFTER_MS) return;
+      renderedAt.current = Date.now();
+      router.refresh();
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [router]);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {

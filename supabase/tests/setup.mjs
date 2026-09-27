@@ -42,13 +42,29 @@ create table auth.users (
   encrypted_password text, email_confirmed_at timestamptz, last_sign_in_at timestamptz,
   raw_app_meta_data jsonb, raw_user_meta_data jsonb,
   created_at timestamptz, updated_at timestamptz,
-  -- The support console reads these three (migration 201).
+  -- The support console reads these three (migration 201); the lifecycle
+  -- report reads last_sign_in_at, above, to find abandoned signups (204).
   confirmation_sent_at timestamptz, recovery_sent_at timestamptz, banned_until timestamptz
 );
 
 create or replace function auth.uid() returns uuid language sql stable as $fn$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $fn$;
+
+-- The whole claim set, the way Supabase exposes it. is_admin() reads the
+-- \`aal\` claim from here (migration 311).
+create or replace function auth.jwt() returns jsonb language sql stable as $fn$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
+$fn$;
+
+-- Enrolled second factors. Only the columns is_admin() consults.
+create table auth.mfa_factors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  factor_type text not null default 'totp',
+  status text not null default 'unverified',
+  created_at timestamptz not null default now()
+);
 
 create table storage.buckets (
   id text primary key, name text, public boolean,
@@ -155,16 +171,19 @@ export async function createTestDb({ seed = true } = {}) {
  * probe destructive statements without ordering constraints between them.
  */
 export function runner(db) {
-  return async function as(userId, sql, role = 'authenticated') {
+  /**
+   * `claims` adds to the JWT the request carries — `{ aal: 'aal2' }` is how a
+   * test says the caller answered a second-factor challenge.
+   */
+  return async function as(userId, sql, role = 'authenticated', claims = {}) {
     await db.exec('begin');
     try {
       await db.exec(`set local role ${role};`);
+      const jwt = JSON.stringify({ role, ...(userId ? { sub: userId } : {}), ...claims });
       if (userId) {
         await db.exec(`set local request.jwt.claim.sub = '${userId}';`);
-        await db.exec(`set local request.jwt.claims = '{"role":"${role}","sub":"${userId}"}';`);
-      } else {
-        await db.exec(`set local request.jwt.claims = '{"role":"${role}"}';`);
       }
+      await db.exec(`set local request.jwt.claims = '${jwt}';`);
       const result = await db.query(sql);
       await db.exec('rollback');
       return { ok: true, rows: result.rows };

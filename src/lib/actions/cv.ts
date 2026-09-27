@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
+import { clean } from '@/lib/security/sanitize';
 
 /**
  * The CV sections: work history, education, certifications.
@@ -50,13 +51,13 @@ export async function saveExperience(input: unknown): Promise<ActionResult<{ id:
   const supabase = await createClient();
   const row = {
     agent_id: agentId,
-    company_name: companyName,
-    title,
+    company_name: clean(companyName),
+    title: clean(title),
     track: track ?? null,
     district_id: districtId ?? null,
     started,
     ended: ended || null,
-    highlights: highlights?.trim() || null,
+    highlights: clean(highlights, true) || null,
   };
 
   const query = id
@@ -88,9 +89,9 @@ export async function saveEducation(input: unknown): Promise<ActionResult<{ id: 
   const supabase = await createClient();
   const row = {
     agent_id: agentId,
-    institution,
-    degree: degree?.trim() || null,
-    field: field?.trim() || null,
+    institution: clean(institution),
+    degree: clean(degree) || null,
+    field: clean(field) || null,
     graduated: graduated ?? null,
   };
 
@@ -128,8 +129,8 @@ export async function saveCertification(input: unknown): Promise<ActionResult<{ 
   const supabase = await createClient();
   const row = {
     agent_id: agentId,
-    name,
-    issuer: issuer?.trim() || null,
+    name: clean(name),
+    issuer: clean(issuer) || null,
     issued: issued || null,
     expires: expires || null,
   };
@@ -155,7 +156,9 @@ export async function deleteCvEntry(
   section: keyof typeof SECTIONS,
   id: string,
 ): Promise<ActionResult> {
-  if (!(section in SECTIONS)) return { ok: false, error: 'invalid' };
+  if (!Object.prototype.hasOwnProperty.call(SECTIONS, section) || !/^[0-9a-f-]{36}$/.test(id)) {
+    return { ok: false, error: 'invalid' };
+  }
 
   const supabase = await createClient();
   /*
@@ -171,7 +174,7 @@ export async function deleteCvEntry(
     .eq('id', id)
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'failed' };
   if (!removed?.length) return { ok: false, error: 'not_found' };
 
   revalidatePath('/dashboard/profile');
@@ -198,14 +201,14 @@ export async function saveProfileRecord(input: unknown): Promise<ActionResult> {
   const { data: saved, error } = await supabase
     .from('agent_profiles')
     .update({
-      summary_ar: parsed.data.summaryAr?.trim() || null,
+      summary_ar: clean(parsed.data.summaryAr, true) || null,
       units_closed: parsed.data.unitsClosed ?? null,
       volume_egp: parsed.data.volumeEgp ?? null,
     })
     .eq('user_id', user.id)
     .select('user_id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'failed' };
   // No directory profile to hang the record on — which happens when the row
   // onboarding creates failed to be created. Saying so sends them to the form
   // above that makes one, instead of reporting a saved sales record that was
@@ -218,7 +221,7 @@ export async function saveProfileRecord(input: unknown): Promise<ActionResult> {
 
 /** The cap is a database rule; say so in words the editor can show. */
 function capMessage(message: string): string {
-  return message.includes('cv_section_cap') ? 'cap' : message;
+  return message.includes('cv_section_cap') ? 'cap' : 'failed';
 }
 
 function flatten(error: z.ZodError): Record<string, string> {

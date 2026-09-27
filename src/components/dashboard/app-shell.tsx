@@ -20,6 +20,7 @@ import {
   ScrollText,
   Search,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   Tags,
   UserCog,
@@ -60,6 +61,7 @@ const ICONS = {
   // An appeal is a decision weighed again.
   appeals: Scale,
   admin: ShieldCheck,
+  security: ShieldAlert,
   users: UserCog,
   email: Mail,
   // The console's investigation pages: applications as an inbox of cases,
