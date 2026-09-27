@@ -5,9 +5,9 @@ Status as inspected on **2026-09-27**, against the live project
 The step-by-step procedures are in [recovery-runbook.md](recovery-runbook.md).
 
 **Bottom line:** recovery is possible. It is not yet ready. The recovery path
-has been built and rehearsed end to end on a throwaway Postgres, and it
-reproduces production's schema exactly. But **no backup of production exists
-today.** The Supabase plan keeps none, and nobody has run the new scripts
+has been built and rehearsed end to end on a throwaway Postgres. The schema
+half has also been rebuilt on a real Supabase project, where it matches
+production exactly. But **no backup of production exists today.** The Supabase plan keeps none, and nobody has run the new scripts
 against production yet. If the database were lost this afternoon, the schema
 could be rebuilt from git and all data would be gone.
 
@@ -30,18 +30,24 @@ could be rebuilt from git and all data would be gone.
 | Not in any migration | The `ensure_rls` event trigger (`rls_auto_enable`), created by Supabase's "enable RLS automatically" setting | SQL |
 | Vault | Empty | SQL |
 | Auth providers in use | email, google | SQL |
-| Deployment | Vercel, per the README and `vercel.json` (4 crons). **Not verified.** The Vercel connector in this session reaches only a team with no projects, and the live site could not be fetched from here. | Vercel API |
+| Deployment | Vercel, per the README and `vercel.json` (4 crons); the repo's homepage is `brokersconnectcareers-five.vercel.app`. **Not verified.** The Vercel connector in this session reaches only a team with no projects, and the live site could not be fetched from here. | Vercel API, GitHub |
+| Domain | `brokersconnect.net` is **not** in the connected Hostinger account, which holds about 200 other domains. Registrar unknown; registrar lock and DNS backups unverified. | Hostinger API |
+| Repository | **Public** on GitHub. Anything in it, the README included, is readable by anyone. | GitHub API |
 
 ## 2. Gaps
 
 Ordered by what would hurt first.
 
-1. **The production admin account's password is published.** The only
-   `admin` in production is `admin@demo.test`, and 13 other approved demo
-   accounts sit next to it. The README gives all of them the password
-   `password123`. This session could not check whether that password was
-   ever changed, and deliberately did not try to log in. See runbook §5, and
-   decision D6.
+1. **The production admin account's password is published, and it works.**
+   The only `admin` in production is `admin@demo.test`. A read-only bcrypt
+   comparison inside the database (not a login) confirmed on 2026-09-27 that
+   all 15 `@demo.test` accounts, admin included, still have the password
+   `password123`. The README publishes that password, and the repository is
+   public. The admin account had 10 active sessions. A real candidate's
+   application sits on a listing owned by `employer2@demo.test`, so anyone
+   can read it. Fix before anything else: runbook §5, last row, and decision
+   D6. An attempt to rotate the passwords from this session was blocked by
+   its permission policy, so nothing has changed yet.
 2. **No database backup exists.** Anything deleted, corrupted or migrated
    away is lost. Closing this needs one run of `pnpm dr:backup`, then a
    schedule (D2, D3).
@@ -133,6 +139,21 @@ All scripts are under `scripts/dr/` and exposed as `pnpm dr:*`.
 | `pnpm dr:verify <dir>` | Schema, data hashes, every FK and CHECK re-proved, RLS and triggers exercised as real users in a rolled-back transaction | Read-only (rolled back) |
 | `pnpm dr:drift` | Compares a database with what the migrations build | Read-only |
 | `pnpm dr:rehearse` | The whole cycle on a throwaway Postgres, plus an accidental-delete recovery | Never; refuses a Supabase URL |
+| `.github/workflows/dr-backup.yml` | Nightly database + Storage backup, `age`-encrypted, uploaded to an S3-compatible bucket. Skips cleanly until its secrets exist. Never uploads GitHub artifacts, because the repo is public | Read-only |
+
+**Turning on the nightly backup** (decisions D2, D3, D5):
+
+1. Generate a key pair offline with `age-keygen -o bc-backup.key`. Keep the
+   file in two safe places, never in the repo or CI. Its public line
+   (`age1…`) is `DR_AGE_RECIPIENT`.
+2. Create a bucket at a provider other than Supabase, with versioning or
+   object lock, a lifecycle rule for retention (D4), and a **write-only** key.
+3. Add the repository secrets listed at the top of the workflow.
+   `DR_DATABASE_URL` must be the **session pooler** URI from Supabase →
+   Connect. The direct host is IPv6-only on the Free plan, and GitHub's
+   runners are IPv4.
+4. Actions → DR backup → Run workflow. Check the bucket, then do the restore
+   drill in §8 from that backup.
 
 `pnpm db:reset:url` (`scripts/db-push.mjs --reset`, which drops the public
 schema) now refuses the production ref unless `DR_ALLOW_PRODUCTION` is set.
@@ -258,15 +279,42 @@ The rehearsals found five problems before they could cost anything:
    runbook now generates an all-columns update and runs it with triggers
    off.
 
+**Test 5: rebuild on a real Supabase project** (2026-09-27, throwaway
+project `brokersconnect-dr-drill` / `sujhcegllzfyqdggbowh`, same region,
+Postgres 17). All 67 migrations were applied in eight transaction-safe
+batches, with comments stripped. The fingerprint then matched production on
+**all 691 objects**, every per-kind hash identical. Synthetic users were then
+written straight into the real `auth.users`, with a profile, a company, a job
+and an application. The triggers fired as in production: owner membership,
+publication window, notifications, application event. Access checks, run as
+each role:
+
+| Check on real Supabase | Result |
+|---|---|
+| Candidate sees own application | 1 (pass) |
+| Another candidate sees it | 0 (pass) |
+| Anonymous visitor sees applications | 0 (pass) |
+| Employer sees their applicant | 1 (pass) |
+| Another candidate sees the applicant's phone | 0 (pass) |
+| Employer sees the applicant's profile | 1 (pass) |
+| Anonymous visitor sees the active job | 1 (pass) |
+| Candidate promotes self to admin | refused by guard trigger (pass) |
+| Anonymous visitor reads the email outbox | 0 (pass) |
+
+The project is **paused, not deleted**. The session's tools cannot delete a
+project. Delete it in the dashboard (Settings → General → Delete project)
+once you have read this.
+
 **Not yet tested:**
 
 - **A restore of real production data into a real Supabase project.** It
-  needs the database password and a second project, which this session did
-  not have. Specifically unproven: loading `auth.*` rows into a newer
-  auth-server version, Google sign-in after the move, and the timed RTO.
-  **This is the first drill to run** once D2/D5 are settled. Run
-  `pnpm dr:backup`, create a scratch Free project, run `pnpm dr:restore`, then
-  `pnpm dr:verify`, and delete the scratch project afterwards.
+  needs the database password, which this session did not have.
+  Specifically unproven: loading real `auth.*` rows, including
+  `auth.identities`, into a newer auth-server version; email and Google
+  sign-in after the move; and the timed RTO. **This is the first drill to
+  run** once the nightly backup is configured. Unpause the drill project (or
+  make a new one), run `pnpm dr:restore` with that night's backup, then
+  `pnpm dr:verify`, and delete the project afterwards.
 - `dr:storage:backup` / `dr:storage:restore` against live Storage. They need
   the service-role key. Run them in the same drill.
 - Vercel rollback. The project was not visible to this session.
@@ -274,7 +322,10 @@ The rehearsals found five problems before they could cost anything:
 ## 9. Remaining risks
 
 - Until the first scheduled backup runs, **any data loss is permanent**.
-- The published demo admin password (§2 item 1).
+- The published demo admin password (§2 item 1), confirmed working, on a
+  public repository.
+- The domain's registrar is unknown, so DNS hijack and expiry recovery are
+  unplanned.
 - The first real Supabase-to-Supabase restore has not been performed, so its
   RTO is an estimate.
 - Restoring `auth` data across auth-server versions is supported by Supabase

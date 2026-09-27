@@ -66,7 +66,10 @@ echo "backing up to $OUT (server $server_major, pg_dump $client_major)"
 pg_dump "$DATABASE_URL" --format=custom --no-owner \
   --schema=public --schema=auth --schema=storage --schema=supabase_migrations \
   --file="$OUT/full.dump"
-echo "  full.dump ok"
+# A dump pg_restore cannot read is not a backup. Listing its table of contents
+# catches a truncated or corrupt archive now rather than on the day it is needed.
+pg_restore --list "$OUT/full.dump" > /dev/null
+echo "  full.dump ok ($(pg_restore --list "$OUT/full.dump" | grep -c 'TABLE DATA') tables of data)"
 
 # auth.schema_migrations belongs to the auth server's own version, not to this
 # project, and a new project already has its own rows there.

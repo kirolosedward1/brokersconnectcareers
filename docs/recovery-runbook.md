@@ -299,7 +299,7 @@ requests the app did not make).
 | Google OAuth client secret | Supabase Auth provider | Google Cloud Console → reset secret → Supabase → Providers → Google |
 | Backup key (`age` private key) | Offline, with the owners (D5) | Generate a new pair, switch `AGE_RECIPIENT`, and treat every backup encrypted to the old key as exposed |
 | Vercel / GitHub / domain registrar accounts | People | Password + MFA reset; review deploy hooks, collaborators, DNS records and registrar lock |
-| Demo accounts' shared password (`password123`) | README | Delete or ban the `@demo.test` accounts in production, or at minimum reset the admin's password and create a real admin with MFA |
+| Demo accounts' shared password (`password123`) | README of a **public** repo; confirmed still valid on all 15 production demo accounts, admin included (2026-09-27) | 1. Create your real admin: sign up and finish onboarding with an address you control (not the candidate account you test with), then in the SQL editor `update profiles set role = 'admin' where id = (select id from auth.users where email = '<you>')`. Turn on MFA for that account. 2. Authentication → Users → each `@demo.test` user → Ban, or Delete if you no longer need the demo listings (deleting cascades their companies, jobs and the applications to them). 3. Revoke their sessions: `delete from auth.sessions where user_id in (select id from auth.users where email like '%@demo.test')`. 4. Remove the password from the README's production-facing text. Never seed demo accounts into production again |
 
 **Recover.** Work out what the key could reach and for how long. Read
 Supabase API, Storage and Auth logs for the exposure window: exports, bulk
