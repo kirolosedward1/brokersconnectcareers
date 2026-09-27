@@ -711,11 +711,11 @@ export type Database = {
        * user to ask. Used to find the colleague an employer is inviting.
        */
       user_id_by_email: { Args: { p_email: string }; Returns: string | null };
-      /** Bounded since migration 69; the limit defaults to 500 per call. */
+      /** Bounded since migration 204; the limit defaults to 500 per call. */
       expire_stale_jobs: { Args: { p_limit?: number }; Returns: number };
 
       /*
-        The data lifecycle (migration 69). Service role only, except the two
+        The data lifecycle (migration 204). Service role only, except the two
         readers, which answer admins and refuse everybody else.
       */
       run_lifecycle_maintenance: { Args: Empty; Returns: Record<string, unknown> };

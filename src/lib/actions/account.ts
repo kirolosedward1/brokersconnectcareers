@@ -65,7 +65,7 @@ export async function deleteMyAccount(): Promise<ActionResult> {
     worse of the two half-states: files gone, account still alive, with a
     profile and applications pointing at CVs that no longer existed. In this
     order a failure leaves the opposite — no account, a file behind it — and
-    that is the state the storage sweep exists to finish (migration 69): the
+    that is the state the storage sweep exists to finish (migration 204): the
     cascade has already queued every CV and photo this account referenced.
 
     Removed here as well, immediately, rather than left to the sweep's grace

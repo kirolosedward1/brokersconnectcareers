@@ -4,8 +4,8 @@ What happens to every kind of record on Brokers Connect when the thing it
 describes changes or ends, what cleans up after it, and which periods are still
 waiting on a decision.
 
-Implemented in migrations **68** (`what_a_delete_is_allowed_to_take`) and **69**
-(`housekeeping_that_runs_itself`), `/api/cron/lifecycle`, and
+Implemented in migrations **203** (`what_a_delete_is_allowed_to_take`) and
+**204** (`housekeeping_that_runs_itself`), `/api/cron/lifecycle`, and
 `deleteMyAccount()`. Tested in `supabase/tests/lifecycle.test.mjs` (PGlite) and
 `supabase/tests/lifecycle-concurrency.test.mjs` (real Postgres, two
 connections).

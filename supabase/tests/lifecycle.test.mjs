@@ -2,7 +2,7 @@
  * The data lifecycle: what happens to a row, and to the file behind it, when
  * the thing it describes ends.
  *
- * Migrations 68 and 69 against the real schema, in PGlite. Every fixture is
+ * Migrations 203 and 204 against the real schema, in PGlite. Every fixture is
  * made here rather than borrowed from the seed, so each section says exactly
  * what state it starts from — the seed changes, and a lifecycle assertion that
  * passes because of a seed row nobody meant is worse than no assertion.

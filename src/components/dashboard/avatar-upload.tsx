@@ -100,7 +100,7 @@ export function AvatarUpload({
       // The column is cleared and the file is left where it is for now:
       // deleting it here would break any page or email still holding the old
       // URL. The database queues it on the way out and the lifecycle sweep
-      // removes it once its grace period has passed (migration 69).
+      // removes it once its grace period has passed (migration 204).
       const result = await saveAvatar({ storagePath: null });
       if (recoverSession(result)) return;
       if (!result.ok) setError(tCommon('errorBody'));

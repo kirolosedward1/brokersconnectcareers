@@ -45,7 +45,7 @@ create table auth.users (
   encrypted_password text, email_confirmed_at timestamptz,
   raw_app_meta_data jsonb, raw_user_meta_data jsonb,
   created_at timestamptz, updated_at timestamptz,
-  -- Present on the real table; the lifecycle report reads it (migration 69).
+  -- Present on the real table; the lifecycle report reads it (migration 204).
   last_sign_in_at timestamptz
 );
 create or replace function auth.uid() returns uuid language sql stable as $fn$
