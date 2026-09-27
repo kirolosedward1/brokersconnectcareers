@@ -77,7 +77,10 @@ export default async function NotificationsPage({
     .select('*')
     // Scoped explicitly so the (user_id, created_at, id) index serves this;
     // notifications_select_own is still the thing that decides.
-    .eq('user_id', viewer.userId);
+    .eq('user_id', viewer.userId)
+    // Applicants folded into a "N new applicants" row are counted by that
+    // row, not listed beside it (migration 70).
+    .is('folded_into', null);
   if (cursor) feed = feed.or(afterCursorFilter(cursor));
 
   const [{ data, error }, { count: unreadCount }] = await Promise.all([

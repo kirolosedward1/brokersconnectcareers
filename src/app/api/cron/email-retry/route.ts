@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     await admin.rpc('release_email_claim', { p_id: row.id });
 
     retried += 1;
-    if ((await rebuild(row.entity_id)) === 'sent') sent += 1;
+    if ((await rebuild(row.entity_id, row.user_id)) === 'sent') sent += 1;
   }
 
   return NextResponse.json({ retried, sent, abandoned, at: new Date().toISOString() });

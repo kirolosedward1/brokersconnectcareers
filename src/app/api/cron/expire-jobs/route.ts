@@ -95,12 +95,20 @@ export async function GET(request: NextRequest) {
   const inApp = await admin.rpc('emit_job_expiry_notifications', { p_warn_days: WARN_DAYS });
   if (inApp.error) console.warn('[cron] expiry notifications failed:', inApp.error.message);
 
+  // Read notifications older than 180 days, for everybody. Each reader's own
+  // are also pruned whenever they mark their feed read, so this is the sweep
+  // for people who never do — not the only thing standing between the table
+  // and unbounded growth.
+  const pruned = await admin.rpc('prune_notifications', { p_limit: 5000 });
+  if (pruned.error) console.warn('[cron] notification prune failed:', pruned.error.message);
+
   const warned = await notifyAll(admin, expiringSoon.data ?? [], 'expiring');
   const closed = await notifyAll(admin, justExpired.data ?? [], 'expired');
 
   return NextResponse.json({
     expired: data ?? 0,
     in_app: inApp.data ?? 0,
+    pruned: pruned.data ?? 0,
     warned,
     closed,
     at: new Date().toISOString(),

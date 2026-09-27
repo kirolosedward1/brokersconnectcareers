@@ -1,7 +1,7 @@
 # Notification architecture
 
 How BrokersConnect tells people that something happened: the in-app bell,
-email, and the log behind them. Written against migrations 17–69 and
+email, and the log behind them. Written against migrations 17–70 and
 `src/lib/notifications/`.
 
 ## 1. Event architecture
@@ -31,7 +31,7 @@ that forgot to publish, and it can never announce something that rolled back.
 | `APPLICATION_CREATED` (incl. NEW_APPLICANT) | `on_application_created` | `notifyEmployerOfApplication`, `notifyCandidateOfApplication` | every company member; the applicant |
 | `APPLICATION_STATUS_CHANGED` | `on_application_moved` | `notifyCandidateOfStatus` | the candidate |
 | `APPLICATION_WITHDRAWN` | `on_application_withdrawn` (only if shortlisted) | `notifyApplicationWithdrawn` | company members; the candidate (email receipt) |
-| `JOB_SUBMITTED` | — (on-screen receipt) | `notifyJobSubmitted` | the owner |
+| `JOB_SUBMITTED` | — (on-screen receipt) | `notifyJobSubmitted` | the member who submitted (owner if they've left) |
 | `JOB_APPROVED` / `JOB_REJECTED` | `on_job_moderated` | `notifyEmployerOfModeration` | every company member |
 | `JOB_EXPIRING` / `JOB_EXPIRED` | `emit_job_expiry_notifications` sweep | `notifyJobExpiry` | every company member |
 | `COMPANY_VERIFIED` / `COMPANY_VERIFICATION_REJECTED` | `on_company_verified` | `notifyCompanyVerification` | every company member |
@@ -68,6 +68,7 @@ Two events have no row change to trigger on:
 | `read_at` | null = unread; the only user-writable column |
 | `created_at` | timestamp |
 | `dedupe_key` | what makes two notifications the same one, per recipient (§3) |
+| `folded_into` | set on an applicant notice absorbed into an unread "N new applicants" row (§4); hidden from the feed, kept for its key |
 
 Indexes: `notifications_feed_page_idx (user_id, created_at desc, id desc)` for
 the keyset-paged feed; `notifications_unread_idx (user_id) where read_at is
@@ -123,6 +124,12 @@ vocabulary, with `:{member}` appended where one event goes to several inboxes.
 - **Deleted targets:** when the link is to the listing itself, the action checks
   it still exists *for this reader* (their own session/RLS) and otherwise lands
   on `/notifications?link=gone` with an explanation instead of a 404.
+- **Applicant grouping:** while a member has an unread "new applicant for X",
+  later applicants to X fold into it (`payload.count`, bumped to the top) rather
+  than each adding a row. Each applicant still gets their own keyed row
+  underneath (already read, `folded_into` the head), so the no-repeat rules
+  hold. Reading the row ends the group; the next applicant starts a new one, so
+  "3 new" always means "since you last looked". Members fold independently.
 - **Pagination:** 20 per page, keyset on `(created_at, id)` via `?before=`
   cursor, one extra row fetched to know if there is a next page. The bell shows
   the latest 6. Nothing ever loads the whole feed.
@@ -167,8 +174,12 @@ per-profile token (migration 8), with RFC 8058 one-click headers.
 - **An email failure never erases the in-app row.** They are separate writes;
   the in-app one committed before the email was attempted. `dispatch()`
   isolates every channel (tested).
+- **Retention:** read notifications older than 180 days are deleted — for the
+  reader whenever they mark their feed read, and for everybody by the nightly
+  cron (`prune_notifications`, 5,000 per run). Unread rows are never pruned.
 - **Retries:** the outbox row is written before sending; `/api/cron/email-retry`
-  (hourly) re-derives and re-sends failed rows, max 3 attempts, 3-day window;
+  (hourly) re-derives and re-sends failed rows (the outbox now hands it the
+  recipient too, so a submission receipt retries to the submitter), max 3 attempts, 3-day window;
   4xx errors other than 408/429 exhaust immediately; hard bounces and
   complaints are suppressed.
 
@@ -176,7 +187,7 @@ per-profile token (migration 8), with RFC 8058 one-click headers.
 
 | suite | covers |
 |---|---|
-| `supabase/tests/notifications.test.mjs` (47) | duplicates (apply/withdraw/reapply, double-click, flapping, back-to-new, two concurrent writers), retries/replays, key tampering, writer not callable by users, failure isolation (application commits with a broken bell), expiring/expired sweep incl. label-lies-date case + idempotent reruns + renewal, sweep scoping (own company / candidate / anon / other companies), verification refusal, visibility dedupe, open-one/read-state/others' ids, two-tab bounded mark-all, keyset pagination over 50 tied timestamps + index use, deleted targets, wrong-role rows and stored links |
+| `supabase/tests/notifications.test.mjs` (65) | duplicates (apply/withdraw/reapply, double-click, flapping, back-to-new, two concurrent writers), retries/replays, key tampering, writer not callable by users, failure isolation (application commits with a broken bell), expiring/expired sweep incl. label-lies-date case + idempotent reruns + renewal, sweep scoping (own company / candidate / anon / other companies), verification refusal, visibility dedupe, open-one/read-state/others' ids, two-tab bounded mark-all, keyset pagination over 50 tied timestamps + index use, deleted targets, wrong-role rows and stored links, applicant folding (fold, no double count on reapply/replay, fresh group after reading, tamper-proof count, cascade, per-member state), 180-day retention (own/unread/recent/others, cron sweep, not user-callable), retry sweeper receives the recipient |
 | `scripts/notification-links.test.mjs` (29) | role-aware deep links, off-site/injection refusals, cursor round-trip and hostile cursors |
 | `scripts/notification-dispatch.test.mjs` (8) | email down → bell intact; bell down → email sent; one email throwing doesn't stop the next; failures logged |
 | existing `policies`, `schema`, `email` suites | unchanged and green: RLS, no forged inserts, definer-function exposure pinned |
@@ -195,14 +206,8 @@ Run `pnpm test:notifications`, or everything with `pnpm check`.
   expiry notices still appear via the console-side sweep.
 - **Realtime.** The bell updates on navigation, cross-tab broadcast and tab
   refocus, not by push. Supabase Realtime on `notifications` would make it live.
-- **Retention.** Notifications are kept forever; a 180-day cleanup of read rows
-  would bound the table.
-- **In-app preferences / grouping.** No per-kind mute for the bell, and a busy
-  listing produces one bell row per applicant (email already batches via the
-  daily digest). A collapsed "5 new applicants for X" row is the natural next
-  step if employers find the bell noisy.
-- **`JOB_SUBMITTED` goes to the owner only,** not the member who submitted;
-  moving it to "the actor" needs the actor id threaded through `saveJob`.
+- **In-app preferences.** No per-kind mute for the bell. Nothing in it is
+  high-volume any more (applicants fold), so this is deferred until asked for.
 - **Digests** (`job-alerts`, `daily-digest`) still call their send functions
   directly: they are scheduled batch deliveries rather than business events,
   and already dedupe per run.

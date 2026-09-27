@@ -311,12 +311,16 @@ export type NotificationRow = {
     expires_at?: string;
     /** password_changed: when the change happened. */
     at?: string;
+    /** application_received: applicants folded into this row since it was last read. */
+    count?: number;
   };
   href: string | null;
   read_at: string | null;
   created_at: string;
   /** Platform-written; what makes two notifications the same one (migration 68). */
   dedupe_key: string | null;
+  /** Absorbed into this unread applicant row; hidden from the feed (migration 70). */
+  folded_into: string | null;
 };
 
 export type AgentExperienceRow = Timestamped & {
@@ -752,6 +756,8 @@ export type Database = {
       /** The expiry sweep for the caller's own company. Idempotent; returns rows written. */
       sync_my_job_notifications: { Args: Empty; Returns: number };
       /** Service role only: the expiry sweep, for one company or all of them. */
+      /** Service role only: delete read notifications older than 180 days. */
+      prune_notifications: { Args: { p_limit?: number }; Returns: number };
       emit_job_expiry_notifications: {
         Args: { p_company?: string | null; p_warn_days?: number };
         Returns: number;
@@ -804,7 +810,13 @@ export type Database = {
       };
       pending_emails: {
         Args: { p_limit?: number };
-        Returns: { id: string; template: string; entity_id: string | null; attempts: number }[];
+        Returns: {
+          id: string;
+          template: string;
+          entity_id: string | null;
+          user_id: string | null;
+          attempts: number;
+        }[];
       };
       mark_email_delivered: {
         Args: { p_provider_id: string; p_status: EmailStatus };

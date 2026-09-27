@@ -342,6 +342,117 @@ report.section('wrong role: rows reach only the people they are about');
     hrefs.rows.length === 0, JSON.stringify(hrefs.rows.slice(0, 3)));
 }
 
+report.section('twenty applicants are one row until somebody reads it');
+{
+  const C = [1, 2, 3, 4].map((n) => `88888888-0000-4000-8000-00000000000${n}`);
+  await db.exec(`
+    insert into auth.users (id, email) values ${C.map((id, i) => `('${id}', 'fold${i}@demo.test')`).join(', ')};
+    insert into profiles (id, role, full_name, whatsapp_phone) values
+      ${C.map((id, i) => `('${id}', 'candidate', 'متقدم ${i}', '+20100000080${i}')`).join(', ')};
+  `);
+  const target = (
+    await db.query(`select id from jobs where company_id = '${company}' and status = 'active'
+                      and expires_at > now() order by id desc limit 1`)
+  ).rows[0].id;
+
+  // Whatever earlier sections and the seed left on this listing is history:
+  // read it, and leave it out of what is counted below.
+  await db.exec(`update notifications set read_at = now()
+                  where read_at is null and user_id in ('${MATE}', '${employerVerified}')`);
+  const t0 = (await db.query(`select now() as t`)).rows[0].t;
+  const since = `and created_at >= '${new Date(t0).toISOString()}'`;
+
+  const apply = (who) =>
+    db.exec(`insert into applications (job_id, candidate_id, status) values ('${target}', '${who}', 'new')`);
+  const heads = () =>
+    db.query(`select id, payload->>'count' as n, read_at from notifications
+               where user_id = '${MATE}' and kind = 'application_received'
+                 and payload->>'job_id' = '${target}' and folded_into is null ${since}
+               order by created_at desc`);
+  const all = `user_id = '${MATE}' and kind = 'application_received' and payload->>'job_id' = '${target}' ${since}`;
+
+  await apply(C[0]);
+  let h = (await heads()).rows;
+  report.check('the first applicant is a row of its own', h.length === 1 && h[0].n === '1', JSON.stringify(h));
+
+  await apply(C[1]);
+  await apply(C[2]);
+  h = (await heads()).rows;
+  report.check('the next two fold into it: one row, "3 new"', h.length === 1 && h[0].n === '3', JSON.stringify(h));
+  report.check('each person still has their own keyed row underneath', (await count(all)) === 3);
+  report.check('and the badge counts the listing once, not three times',
+    (await count(`${all} and read_at is null`)) === 1);
+
+  await db.exec(`delete from applications where job_id = '${target}' and candidate_id = '${C[1]}'`);
+  await apply(C[1]);
+  h = (await heads()).rows;
+  report.check('withdrawing and reapplying does not count the same person twice', h[0].n === '3', JSON.stringify(h));
+
+  await db.exec(`select public.notify_company_applicant('${company}', '${target}', '{}'::jsonb, '/x',
+                   'application_received:${target}:${C[0]}')`);
+  report.check('nor does a replay', (await heads()).rows[0].n === '3');
+
+  await asCommit(MATE, `select * from public.open_notification('${h[0].id}')`);
+  await apply(C[3]);
+  h = (await heads()).rows;
+  report.check('once read, the next applicant starts a fresh row: "new since you looked"',
+    h.length === 2 && h[0].n === '1' && h[0].read_at === null && h[1].n === '3', JSON.stringify(h));
+
+  const smuggle = await as(MATE, `update notifications set folded_into = null where user_id = '${MATE}' and folded_into is not null`);
+  report.check('a reader cannot unfold rows to inflate their feed',
+    !smuggle.ok && /only read_at is user-writable/.test(smuggle.error ?? ''), smuggle.error);
+
+  const bump = await as(MATE, `update notifications set payload = payload || '{"count": 99}' where id = '${h[0].id}'`);
+  report.check('nor rewrite the count', !bump.ok, bump.ok ? 'allowed' : bump.error);
+
+  const gone = await asCommit(MATE, `delete from notifications where id = '${h[1].id}' returning id`);
+  report.check('deleting a folded row takes the rows it absorbed with it',
+    gone.ok && (await count(`folded_into = '${h[1].id}'`)) === 0, gone.error);
+
+  // The owner folds independently: their read state is theirs.
+  const ownerHeads = await db.query(`select payload->>'count' as n from notifications
+    where user_id = '${employerVerified}' and kind = 'application_received'
+      and payload->>'job_id' = '${target}' and folded_into is null and read_at is null ${since}`);
+  report.check("another member's row is untouched by this member reading theirs",
+    ownerHeads.rows.length === 1 && ownerHeads.rows[0].n === '4', JSON.stringify(ownerHeads.rows));
+
+  await db.exec(`delete from auth.users where id in (${C.map((id) => `'${id}'`).join(', ')})`);
+}
+
+report.section('retention: read history older than 180 days is pruned');
+{
+  await db.exec(`
+    insert into notifications (user_id, kind, payload, created_at, read_at, dedupe_key) values
+      ('${MATE}', 'job_published', '{}'::jsonb, now() - interval '200 days', now() - interval '199 days', 'old-read'),
+      ('${MATE}', 'job_published', '{}'::jsonb, now() - interval '200 days', null,                        'old-unread'),
+      ('${MATE}', 'job_published', '{}'::jsonb, now() - interval '10 days',  now() - interval '9 days',   'young-read'),
+      ('${APPLICANT}', 'application_moved', '{}'::jsonb, now() - interval '400 days', now() - interval '399 days', 'ancient');
+  `);
+
+  await asCommit(MATE, `select public.mark_notifications_read() as n`);
+  report.check("clearing your feed prunes your own old read history",
+    (await count(`dedupe_key = 'old-read'`)) === 0);
+  report.check('but never something you had not read yet', (await count(`dedupe_key = 'old-unread'`)) === 1);
+  report.check('nor anything recent', (await count(`dedupe_key = 'young-read'`)) === 1);
+  report.check("nor anybody else's", (await count(`dedupe_key = 'ancient'`)) === 1);
+
+  const pruned = (await db.query(`select public.prune_notifications() as n`)).rows[0].n;
+  report.check('the cron sweep prunes everybody else', pruned >= 1 && (await count(`dedupe_key = 'ancient'`)) === 0,
+    String(pruned));
+
+  const byUser = await as(MATE, `select public.prune_notifications()`);
+  report.check('and is not callable by a signed-in user', !byUser.ok, byUser.ok ? 'allowed' : byUser.error);
+}
+
+report.section('a retried email knows who it was for');
+{
+  await db.exec(`insert into email_log (template, recipient, user_id, entity_type, entity_id, status, created_at)
+                 values ('job_submitted', 'mate2@demo.test', '${MATE}', 'job', '${job.id}', 'failed', now() - interval '10 minutes')`);
+  const pending = await db.query(`select * from public.pending_emails(100) where template = 'job_submitted'`);
+  report.check('the sweeper is handed the recipient as well as the entity',
+    pending.rows.some((row) => row.user_id === MATE && row.entity_id === job.id), JSON.stringify(pending.rows));
+}
+
 await db.exec(`delete from auth.users where id in ('${APPLICANT}', '${MATE}')`);
 void admin;
 

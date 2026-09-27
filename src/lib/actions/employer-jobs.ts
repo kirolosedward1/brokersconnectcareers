@@ -298,7 +298,8 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
 
   if (settled?.status === 'pending_review' && current?.status !== 'pending_review') {
     const submitted = jobId!;
-    after(() => publish({ type: 'JOB_SUBMITTED', jobId: submitted }));
+    const submittedBy = user.id;
+    after(() => publish({ type: 'JOB_SUBMITTED', jobId: submitted, submittedBy }));
   }
 
   revalidatePath('/employer/jobs');

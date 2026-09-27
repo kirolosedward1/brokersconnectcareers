@@ -75,7 +75,7 @@ export type BusinessEvent =
       jobTitleAr: string;
       jobTitleEn: string | null;
     }
-  | { type: 'JOB_SUBMITTED'; jobId: string }
+  | { type: 'JOB_SUBMITTED'; jobId: string; submittedBy: string }
   | { type: 'JOB_APPROVED'; jobId: string }
   | { type: 'JOB_REJECTED'; jobId: string; note?: string | null }
   | { type: 'JOB_EXPIRING'; jobId: string; applicantCount: number }
@@ -132,7 +132,7 @@ export const ROUTES: Routes = {
   JOB_SUBMITTED: {
     // A receipt for the submitter's own action, shown on screen as they do it.
     inApp: 'none',
-    email: [(e) => notifyJobSubmitted(e.jobId)],
+    email: [(e) => notifyJobSubmitted(e.jobId, e.submittedBy)],
   },
   JOB_APPROVED: {
     inApp: 'trigger:on_job_moderated',

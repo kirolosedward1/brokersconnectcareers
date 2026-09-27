@@ -735,13 +735,36 @@ export async function notifyApplicationWithdrawn(args: {
 // Listings
 // ---------------------------------------------------------------------------
 
-/** Employer: their listing entered the review queue. */
-export async function notifyJobSubmitted(jobId: string): Promise<SendOutcome> {
+/**
+ * Employer: their listing entered the review queue.
+ *
+ * To whoever submitted it, which on a company with recruiters is not
+ * necessarily the owner — the receipt is for the person who pressed the
+ * button. Falls back to the owner when the submitter is unknown (an old outbox
+ * row) or is no longer a member of the company.
+ */
+export async function notifyJobSubmitted(
+  jobId: string,
+  submittedBy?: string | null,
+): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
     const job = await ownedJob(admin, jobId);
-    const ownerId = job?.company?.owner_id;
-    if (!job || !ownerId) return 'skipped';
+    const companyId = job?.company?.id;
+    if (!job || !companyId) return 'skipped';
+
+    let recipientId = job.company?.owner_id ?? null;
+    if (submittedBy) {
+      const { data: member } = await admin
+        .from('company_members')
+        .select('user_id')
+        .eq('company_id', companyId)
+        .eq('user_id', submittedBy)
+        .maybeSingle();
+      if (member) recipientId = submittedBy;
+    }
+    if (!recipientId) return 'skipped';
+    const ownerId = recipientId;
 
     const to = await recipient(admin, ownerId, null);
     if (!to) return 'skipped';

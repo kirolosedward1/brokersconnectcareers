@@ -85,15 +85,23 @@ export async function NotificationItem({
     localized(locale, payload.title_ar, payload.title_en) ||
     localized(locale, payload.name_ar, payload.name_en);
 
-  const title =
-    kind === 'application_moved'
-      ? t('applicationMoved', {
-          title: subject,
-          status: payload.status ? tStatus(payload.status as never) : '',
-        })
-      : kind === 'profile_visibility_changed' && payload.visibility
-        ? t('profileVisibilityChanged', { visibility: tVisibility(payload.visibility as never) })
-        : t(kind, { subject });
+  // Most kinds are one sentence with the subject in it; these three carry a
+  // second fact the sentence has to say.
+  const title = (() => {
+    if (kind === 'application_moved') {
+      return t('applicationMoved', {
+        title: subject,
+        status: payload.status ? tStatus(payload.status as never) : '',
+      });
+    }
+    if (kind === 'application_received' && (payload.count ?? 1) > 1) {
+      return t('applicationReceivedMany', { subject, count: payload.count ?? 1 });
+    }
+    if (kind === 'profile_visibility_changed' && payload.visibility) {
+      return t('profileVisibilityChanged', { visibility: tVisibility(payload.visibility as never) });
+    }
+    return t(kind, { subject });
+  })();
 
   const body = payload.note || null;
   const unread = !notification.read_at;
