@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import { REPORT_REASONS } from '@/lib/taxonomy';
 
 export type ActionResult<T = undefined> =
@@ -93,8 +94,17 @@ export async function reportJob(input: unknown): Promise<ActionResult> {
 /**
  * Bumps the view counter through a SECURITY DEFINER function, so anonymous
  * visitors can be counted without being granted UPDATE on jobs.
+ *
+ * Through the public client, not the cookie-bound one. The listing page
+ * schedules this with `after()`, which runs once the response has gone — and
+ * by then there is no request to read cookies from. It never needed them:
+ * a view is a view whoever is looking, and anon holds EXECUTE on
+ * increment_job_view (migration 03) for exactly this call.
+ *
+ * The result is not inspected, on purpose. A counter that misses one bump is
+ * worth less than a log line per page view on a bad afternoon, and nothing a
+ * visitor sees depends on it.
  */
 export async function recordJobView(slug: string): Promise<void> {
-  const supabase = await createClient();
-  await supabase.rpc('increment_job_view', { job_slug: slug });
+  await createPublicClient().rpc('increment_job_view', { job_slug: slug });
 }

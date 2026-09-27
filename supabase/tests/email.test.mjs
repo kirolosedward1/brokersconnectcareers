@@ -268,23 +268,38 @@ for (const address of ['ahmed@brokersconnect.net', 'a@gmail.com', 'b@testing.co.
 
 report.section('retry budget');
 
+// Five real attempts, counted on the one row (migration 69). Each failure
+// schedules the next try with backoff, so the row is pulled due again by hand
+// before each one — waiting ten minutes, then forty, is not a unit test. The
+// full lease/backoff story is in jobs.test.mjs; this is the budget alone.
 const target = await claim('status:app-9');
-for (let attempt = 0; attempt < 3; attempt += 1) {
+for (let attempt = 0; attempt < 5; attempt += 1) {
+  await db.query(`update email_log set next_attempt_at = now() - interval '1 second' where id = $1`, [target]);
   await db.query(`select public.record_email_attempt($1, 'failed', null, 'boom', false)`, [target]);
 }
 
-const { rows: exhausted } = await db.query('select public.pending_emails(50) as row');
-report.is(exhausted.filter((r) => r.row?.includes?.(target)).length,
+const { rows: spent } = await db.query(
+  'select attempts, gave_up_at, next_attempt_at from email_log where id = $1',
+  [target],
+);
+report.is(spent[0].attempts, 5, 'attempts counts every real attempt');
+report.ok(spent[0].gave_up_at !== null, 'a message that failed five times is given up on');
+report.is(spent[0].next_attempt_at, null, 'and nothing more is scheduled');
+
+await db.query(`update email_log set next_attempt_at = now() - interval '1 second' where id = $1`, [target]);
+const { rows: exhausted } = await db.query('select id from public.pending_emails(100)');
+report.is(exhausted.filter((r) => r.id === target).length,
   0,
-  'a message that failed three times stops being retried',
+  'it stops being retried, however due it looks',
 );
 
 const permanent = await claim('status:app-10');
 await db.query(`select public.record_email_attempt($1, 'failed', null, '422 bad address', true)`, [
   permanent,
 ]);
-const { rows: perm } = await db.query('select attempts from email_log where id = $1', [permanent]);
-report.ok(perm[0].attempts >= 3, 'a permanent failure exhausts its budget on the first attempt');
+const { rows: perm } = await db.query('select attempts, gave_up_at from email_log where id = $1', [permanent]);
+report.ok(perm[0].gave_up_at !== null, 'a permanent failure exhausts its budget on the first attempt');
+report.is(perm[0].attempts, 1, 'and says it was tried once, not 99 times');
 
 report.section('delivered is only ever written by the webhook');
 

@@ -28,6 +28,7 @@ const FILTERS: (EmailStatus | 'all')[] = [
   'bounced',
   'failed',
   'suppressed',
+  'cancelled',
 ];
 
 const VARIANT: Record<EmailStatus, 'default' | 'primary' | 'success' | 'destructive' | 'outline'> = {
@@ -38,6 +39,9 @@ const VARIANT: Record<EmailStatus, 'default' | 'primary' | 'success' | 'destruct
   complained: 'destructive',
   failed: 'destructive',
   suppressed: 'default',
+  // Not a failure: by retry time there was nothing left to send — the
+  // recipient opted out, the listing is gone, or a newer row superseded it.
+  cancelled: 'default',
 };
 
 /**
@@ -225,7 +229,9 @@ export default async function AdminEmailPage({
                     <Badge variant={VARIANT[row.status]}>{tStatus(row.status)}</Badge>
                     {row.attempts > 1 ? (
                       <span className="numeral block pt-1 text-xs text-muted-foreground">
-                        ×{formatNumber(Math.min(row.attempts, 3), locale)}
+                        {/* Capped at the outbox's MAX_EMAIL_ATTEMPTS. Rows from before
+                            migration 69 recorded a released retry as 99. */}
+                        ×{formatNumber(Math.min(row.attempts, 5), locale)}
                       </span>
                     ) : null}
                   </td>

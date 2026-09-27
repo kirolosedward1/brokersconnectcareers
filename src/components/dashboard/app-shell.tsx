@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  Activity,
   Bell,
   Bookmark,
   Briefcase,
@@ -55,6 +56,8 @@ const ICONS = {
   admin: ShieldCheck,
   users: UserCog,
   email: Mail,
+  // The scheduled jobs and the outbox: a pulse, not a letter.
+  operations: Activity,
   notifications: Bell,
   settings: Settings,
 } as const;

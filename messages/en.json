@@ -662,7 +662,40 @@
     "emailOffSending": "Messages are recorded but never sent — the Resend credentials are missing. Set these in Vercel and redeploy.",
     "mailOffTitle": "The platform cannot send email",
     "mailOffBody": "Every email — application receipts, new applicants, digests — is being dropped silently. These variables are missing in Vercel:",
-    "usersCapped": "Showing the newest <v>{count}</v> accounts only. Filter by role or status to reach the rest."
+    "usersCapped": "Showing the newest <v>{count}</v> accounts only. Filter by role or status to reach the rest.",
+    "operations": "Background work",
+    "operationsLede": "Scheduled tasks, the email retry queue, and the messages the system stopped trying to send.",
+    "opsJobsTitle": "Scheduled tasks",
+    "opsJob": "Task",
+    "opsLastRun": "Last run",
+    "opsDuration": "Duration",
+    "opsLastSuccess": "Last success",
+    "opsFailures": "Failures, 7 days",
+    "opsRunningNow": "Running now",
+    "opsNeverRun": "Never run",
+    "opsSeconds": "{value}s",
+    "opsStatus": {
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "opsOutboxTitle": "Email retry queue",
+    "opsDue": "Due now",
+    "opsInFlight": "Being sent",
+    "opsWaiting": "Waiting to retry",
+    "opsDead": "Given up, 30 days",
+    "opsOldestDue": "Oldest message due since {when}.",
+    "opsDeadTitle": "Given up on",
+    "opsDeadLede": "Messages that failed every attempt or ran out of time. Retry gives one more attempt on the next sweep.",
+    "opsDeadEmpty": "Nothing given up on.",
+    "opsAttempts": "Attempts",
+    "opsGaveUpAt": "Gave up",
+    "opsRetry": "Retry",
+    "opsRunsTitle": "Recent runs",
+    "opsRunsEmpty": "No runs recorded yet.",
+    "opsStarted": "Started",
+    "opsStats": "Result"
   },
   "reportReason": {
     "fake_listing": "Fake listing",
@@ -1041,7 +1074,8 @@
     "bounced": "Bounced",
     "complained": "Complaint",
     "failed": "Failed",
-    "suppressed": "Suppressed"
+    "suppressed": "Suppressed",
+    "cancelled": "Cancelled"
   },
   "language": {
     "ar": "Arabic",

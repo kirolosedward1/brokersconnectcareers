@@ -38,10 +38,28 @@ export function withoutAddresses(text: string): string {
  * rest is identifiers.
  */
 export function logFailure(area: string, event: string, detail: Detail = {}): void {
+  console.warn(formatLine(area, event, detail));
+}
+
+/**
+ * The same line for things that went right and are worth a timestamp.
+ *
+ * Background work is the reason this exists: a scheduled run that started,
+ * finished and moved forty rows leaves nothing behind otherwise, and "did the
+ * sweeper run at three o'clock" is a question the platform log should answer
+ * without a database query. Same rule as failures — counts and identifiers,
+ * never content — and `info` rather than `warn`, so filtering the log for
+ * warnings still finds only the things that went wrong.
+ */
+export function logEvent(area: string, event: string, detail: Detail = {}): void {
+  console.info(formatLine(area, event, detail));
+}
+
+function formatLine(area: string, event: string, detail: Detail): string {
   const pairs = Object.entries(detail)
     .filter(([, value]) => value !== undefined && value !== null && value !== '')
     .map(([key, value]) => `${key}=${value}`)
     .join(' ');
 
-  console.warn(`[${area}] ${event}${pairs ? ` ${pairs}` : ''}`);
+  return `[${area}] ${event}${pairs ? ` ${pairs}` : ''}`;
 }

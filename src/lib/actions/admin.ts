@@ -321,3 +321,37 @@ export async function setAccountApproval(input: unknown): Promise<ActionResult> 
   }
   return { ok: true };
 }
+
+const requeueSchema = z.object({ emailId: z.string().uuid() });
+
+/**
+ * Give a dead-lettered email one more try.
+ *
+ * Goes through requeue_email rather than an UPDATE for the same reason as
+ * set_account_approval: email_log has no admin write policy, and the rules —
+ * admin only, only a row that was actually given up on, one more attempt and
+ * not a fresh five — live in that function. It restarts the retry window from
+ * now, so the next sweep (every ten minutes) picks the row up; nothing is sent
+ * from this request.
+ *
+ * `false` from the function means the row was not a dead letter by the time
+ * the click arrived — requeued by somebody else, or never dead. That is
+ * reported as not_found rather than as a success for work that did not happen.
+ */
+export async function requeueEmail(input: unknown): Promise<ActionResult> {
+  const parsed = requeueSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { data: requeued, error } = await supabase.rpc('requeue_email', {
+    p_id: parsed.data.emailId,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!requeued) return { ok: false, error: 'not_found' };
+
+  revalidatePath('/admin/operations');
+  revalidatePath('/admin/email');
+  return { ok: true };
+}

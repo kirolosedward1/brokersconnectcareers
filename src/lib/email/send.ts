@@ -1,6 +1,7 @@
 import 'server-only';
 import { withoutAddresses } from '@/lib/observe';
 import { configuredValue } from '@/lib/env';
+import { classifyHttpStatus } from '@/lib/jobs/policy';
 
 /**
  * The provider transport. One POST, and nothing above this layer knows the
@@ -20,6 +21,26 @@ import { configuredValue } from '@/lib/env';
  */
 
 const ENDPOINT = 'https://api.resend.com/emails';
+
+/**
+ * How long one send may take before it is abandoned as a failure.
+ *
+ * Without a limit a provider that accepts the connection and never answers
+ * held the caller until the platform killed it: fetch's own ceiling is five
+ * minutes, the retry sweeper's is sixty seconds. Killed, the sweeper recorded
+ * nothing — no attempt, no backoff — and every row in its batch came back
+ * leased again ten minutes later, until the lease counter dead-lettered them
+ * all as "a worker crashed on it" after an hour and a half of a provider
+ * merely being slow. Timed out here, the same hang is an ordinary retryable
+ * failure: an attempt spent, backoff, and the dead letters only if it lasts.
+ *
+ * Five seconds is many times what an accepted send takes, and small enough
+ * that the sweeper's batch of ten fits inside its run even when every one of
+ * them hangs. A timeout is ambiguous — the provider may have accepted the
+ * message just as the wait ran out — so a retry after one can, rarely,
+ * deliver twice; that is the better failure than one that loses the batch.
+ */
+const SEND_TIMEOUT_MS = 5_000;
 
 export type EmailMessage = {
   to: string;
@@ -86,6 +107,7 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
   try {
     const response = await fetch(ENDPOINT, {
       method: 'POST',
+      signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
       headers: {
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json',
@@ -119,16 +141,18 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
       return {
         outcome: 'failed',
         error: `${response.status}: ${detail}`.slice(0, 500),
-        // 4xx is the request being wrong and will stay wrong — except 408 and
-        // 429, which are about timing. Everything else is worth another go.
-        retryable: response.status === 408 || response.status === 429 || response.status >= 500,
+        // 4xx is the request being wrong and will stay wrong — except 408,
+        // 425 and 429, which are about timing. Everything else is worth
+        // another go. The rule lives in policy.ts, where it is tested.
+        retryable: classifyHttpStatus(response.status) === 'transient',
       };
     }
 
     const body = (await response.json().catch(() => null)) as { id?: string } | null;
     return { outcome: 'sent', providerId: body?.id };
   } catch (error) {
-    // A network failure, not a refusal.
+    // A network failure or the timeout above, not a refusal — both are worth
+    // another go.
     const message_ = error instanceof Error ? error.message : String(error);
     console.warn(`[email] send threw for "${message.subject}":`, message_);
     return { outcome: 'failed', error: message_.slice(0, 500), retryable: true };

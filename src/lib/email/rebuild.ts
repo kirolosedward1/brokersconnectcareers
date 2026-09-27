@@ -9,6 +9,7 @@ import {
   notifyJobSubmitted,
   notifyProfileIncomplete,
   notifyWelcome,
+  rebuildJobExpiry,
 } from './notify';
 import type { SendOutcome } from './send';
 
@@ -24,8 +25,9 @@ import type { SendOutcome } from './send';
  *
  * Only messages that can be re-derived appear here. A digest is a point-in-time
  * list of what was new that week; re-sending one three days later would be
- * worse than not sending it, so digests are deliberately absent and simply
- * expire out of the sweeper's window.
+ * worse than not sending it, so digests are deliberately absent — and the
+ * sweeper dead-letters a row it has no rebuilder for on first sight
+ * (outbox-sweep.ts), rather than letting it age out of the window.
  */
 
 type Rebuild = (entityId: string) => Promise<SendOutcome>;
@@ -43,6 +45,11 @@ export const REBUILDERS: Record<string, Rebuild> = {
   welcome_candidate: (id) => notifyWelcome(id),
   welcome_employer: (id) => notifyWelcome(id),
   profile_incomplete: (id) => notifyProfileIncomplete(id),
+  // Recounted and re-checked on retry (notify.ts rebuildJobExpiry). Without
+  // these a failed expiry notice was dead-lettered holding its key, and every
+  // later night's catch-up found the key taken and sent nothing.
+  job_expiring: (id) => rebuildJobExpiry(id, 'expiring'),
+  job_expired: (id) => rebuildJobExpiry(id, 'expired'),
 };
 
 /**
@@ -71,7 +78,15 @@ export const NOT_RETRYABLE = [
   'password_changed',
 ] as const;
 
-/** Unused export kept honest: every template is either rebuilt or listed above. */
+/**
+ * Whether the sweeper can do anything with a row of this template — and so
+ * whether an admin's "retry" on its dead letter can do anything either. The
+ * operations page reads it: a requeue of a template listed above only comes
+ * back as a dead letter at the next sweep, having sent nothing, which a button
+ * that reported success would have hidden.
+ *
+ * Every template notify.ts sends is either rebuilt or listed above.
+ */
 export function isRetryable(template: string): boolean {
-  return template in REBUILDERS;
+  return Object.prototype.hasOwnProperty.call(REBUILDERS, template);
 }

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySvix } from '@/lib/email/svix';
 import { suppress } from '@/lib/email/service';
+import { logFailure } from '@/lib/observe';
 import type { EmailStatus } from '@/lib/supabase/database.types';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,9 @@ const STATUS_FOR: Record<string, EmailStatus> = {
   'email.delivered': 'delivered',
   'email.bounced': 'bounced',
   'email.complained': 'complained',
+  // A delay is still `sent`. mark_email_delivered ranks statuses and never
+  // moves one backwards, so a delay notice that arrives after the delivery
+  // (they do: the provider sends them from different queues) cannot undo it.
   'email.delivery_delayed': 'sent',
 };
 
@@ -93,7 +97,9 @@ export async function POST(request: NextRequest) {
     matched = data ?? 0;
   } catch (error) {
     // Ours, not theirs — worth a 500 so the provider retries.
-    console.warn('[email] webhook could not record:', error instanceof Error ? error.message : error);
+    logFailure('email', 'webhook could not record', {
+      code: (error as { cause?: { code?: string } } | null)?.cause?.code || 'unknown',
+    });
     return NextResponse.json({ error: 'unavailable' }, { status: 500 });
   }
 
@@ -104,10 +110,19 @@ export async function POST(request: NextRequest) {
   //
   // Delivery delays are deliberately not suppressed: those are temporary, and
   // the outbox's attempt limit already bounds them.
+  //
+  // A failed suppression write is ours and answers 500, like the mark above:
+  // swallowing it told the provider the bounce was handled, it never resent,
+  // and the dead address stayed live. The resend is safe — the mark is
+  // idempotent (it only moves a status forward) and the suppression is an
+  // upsert.
   if (status === 'bounced' || status === 'complained') {
     const to = event.data?.to;
     const address = Array.isArray(to) ? to[0] : to;
-    if (address) await suppress(address, status === 'bounced' ? 'hard_bounce' : 'complaint');
+    if (address) {
+      const suppressed = await suppress(address, status === 'bounced' ? 'hard_bounce' : 'complaint');
+      if (!suppressed) return NextResponse.json({ error: 'unavailable' }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ ok: true, matched });

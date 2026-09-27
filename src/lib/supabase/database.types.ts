@@ -384,6 +384,13 @@ export type SavedSearchRow = Timestamped & {
   alerts: boolean;
   /** Written by the alert job only; the guard rejects an owner touching it. */
   last_sent_at: string | null;
+  /**
+   * When the alert job last looked at this search, whether or not it found
+   * anything. The job's cursor: it orders by this, so a search with nothing
+   * new moves to the back of the line instead of starving the ones behind it.
+   * Job-written only, same guard as last_sent_at.
+   */
+  last_checked_at: string | null;
 };
 
 export type EmailStatus =
@@ -393,7 +400,9 @@ export type EmailStatus =
   | 'bounced'
   | 'complained'
   | 'failed'
-  | 'suppressed';
+  | 'suppressed'
+  /** Not attempted again: by retry time there was nothing left to send (recipient opted out, entity gone, superseded). */
+  | 'cancelled';
 
 /**
  * The outbox. Metadata only — no message body is stored, because the question
@@ -414,6 +423,18 @@ export type EmailLogRow = {
   created_at: string;
   sent_at: string | null;
   delivered_at: string | null;
+  /** When the sweeper may next try. Null once the row is finished or given up on. */
+  next_attempt_at: string | null;
+  /** A sweeper's lease on the row; past it, the worker is presumed dead. */
+  locked_until: string | null;
+  lock_token: string | null;
+  last_attempt_at: string | null;
+  /** Dead-lettered: set when retries are exhausted, the failure is permanent, or the window elapsed. */
+  gave_up_at: string | null;
+  /** How many times a sweeper has leased this row. Bounds a row that crashes its worker. */
+  leases: number;
+  /** An admin put a dead-lettered row back in the queue; restarts the retry window. */
+  requeued_at: string | null;
 };
 
 export type EmailSuppressionRow = {
@@ -436,6 +457,71 @@ export type EmailActivityRow = {
   sent_at: string | null;
   delivered_at: string | null;
 };
+
+/** A row email_dead_letters() returns: a message the system stopped trying to send. */
+export type EmailDeadLetterRow = {
+  id: string;
+  template: string;
+  recipient: string;
+  attempts: number;
+  entity_type: string | null;
+  entity_id: string | null;
+  error: string | null;
+  created_at: string;
+  last_attempt_at: string | null;
+  gave_up_at: string;
+};
+
+/** What lease_due_emails() hands a sweeper: the row and the token that proves it holds it. */
+export type LeasedEmailRow = {
+  id: string;
+  template: string;
+  entity_id: string | null;
+  attempts: number;
+  lock_token: string;
+};
+
+export type OutboxOverview = {
+  /** Eligible for a retry right now. */
+  due: number;
+  /** Leased by a sweeper whose lease has not run out. */
+  in_flight: number;
+  /** Retryable later (failed, waiting out its backoff). */
+  waiting: number;
+  /** Given up on in the last 30 days. */
+  dead: number;
+  oldest_due_at: string | null;
+};
+
+export type JobRunStatus = 'running' | 'succeeded' | 'failed' | 'skipped';
+
+/** One execution of a scheduled job. Stats are counts only — never a payload. */
+export type JobRunRow = {
+  id: string;
+  job: string;
+  status: JobRunStatus;
+  started_at: string;
+  finished_at: string | null;
+  lease_until: string | null;
+  duration_ms: number | null;
+  stats: Record<string, number | boolean>;
+  error: string | null;
+};
+
+/** One row per scheduled job, for the operations screen. */
+export type ScheduledJobOverviewRow = {
+  job: string;
+  last_started_at: string | null;
+  last_status: JobRunStatus | null;
+  last_duration_ms: number | null;
+  last_error: string | null;
+  last_stats: Record<string, number | boolean> | null;
+  last_success_at: string | null;
+  failures_7d: number;
+  running: boolean;
+};
+
+export type SettleLeasedOutcome = 'cancelled' | 'dead' | 'defer' | 'failed';
 
 export type SavedJobRow = Timestamped & {
   candidate_id: string;
@@ -653,6 +739,8 @@ export type Database = {
        * admins going through email_activity().
        */
       email_log: Table<EmailLogRow, never>;
+      /** Scheduled-job runs. RLS on, no policies: service role and admin functions only. */
+      job_runs: Table<JobRunRow, never>;
       email_suppressions: Table<
         EmailSuppressionRow,
         { email: string; reason: 'hard_bounce' | 'complaint'; created_at?: string }
@@ -743,6 +831,12 @@ export type Database = {
           p_user_id?: string | null;
           p_entity_type?: string | null;
           p_entity_id?: string | null;
+          /**
+           * A sweeper's lease token. When the dedupe key is already held by a
+           * row this token has leased, that row is handed back — the retry
+           * happens in place, carrying its attempt count — instead of null.
+           */
+          p_lock_token?: string | null;
         };
         Returns: string | null;
       };
@@ -753,6 +847,12 @@ export type Database = {
           p_provider_id?: string | null;
           p_error?: string | null;
           p_exhaust?: boolean;
+          /**
+           * The row's attempt count before this attempt. When given, a replay
+           * of the same record (a retried RPC whose first call committed)
+           * matches nothing instead of counting the attempt twice.
+           */
+          p_expected_attempts?: number | null;
         };
         Returns: undefined;
       };
@@ -768,6 +868,65 @@ export type Database = {
       pending_emails: {
         Args: { p_limit?: number };
         Returns: { id: string; template: string; entity_id: string | null; attempts: number }[];
+      };
+      /**
+       * Leases up to p_limit due rows with FOR UPDATE SKIP LOCKED, so two
+       * sweepers never hold the same row. Service role only.
+       */
+      lease_due_emails: {
+        Args: { p_limit?: number; p_lease_seconds?: number };
+        Returns: LeasedEmailRow[];
+      };
+      /**
+       * Finishes a leased row the retry did not record itself. Only the lease
+       * holder can: returns false when the token no longer matches.
+       */
+      settle_leased_email: {
+        Args: {
+          p_id: string;
+          p_lock_token: string;
+          p_outcome: SettleLeasedOutcome;
+          p_detail?: string | null;
+        };
+        Returns: boolean;
+      };
+      /** Dead-letters rows past the retry window or leased too often. Returns how many. */
+      reap_email_outbox: { Args: Empty; Returns: number };
+      /** Admin only. Puts one dead-lettered row back in the queue for one more attempt. */
+      requeue_email: { Args: { p_id: string }; Returns: boolean };
+      /** Admin only. */
+      email_dead_letters: { Args: { p_limit?: number }; Returns: EmailDeadLetterRow[] };
+      /** Admin only. One row. */
+      outbox_overview: { Args: Empty; Returns: OutboxOverview[] };
+      /**
+       * Takes the per-job lease and opens a run row. Null when another live
+       * run holds it (a 'skipped' row is written instead). A run whose lease
+       * has lapsed is closed as failed first. Service role only.
+       */
+      begin_job_run: {
+        Args: { p_job: string; p_lease_seconds: number };
+        Returns: string | null;
+      };
+      /** Closes a running run. False when it was no longer running. Service role only. */
+      finish_job_run: {
+        Args: {
+          p_id: string;
+          p_status: 'succeeded' | 'failed';
+          p_stats?: Record<string, number | boolean>;
+          p_error?: string | null;
+        };
+        Returns: boolean;
+      };
+      /** Deletes run rows older than p_keep. Returns how many. Service role only. */
+      prune_job_runs: { Args: { p_keep?: string }; Returns: number };
+      /** Admin only. */
+      scheduled_job_overview: { Args: Empty; Returns: ScheduledJobOverviewRow[] };
+      /** Admin only. Newest first. */
+      recent_job_runs: { Args: { p_limit?: number; p_job?: string | null }; Returns: JobRunRow[] };
+      /** Service role only; for /api/health. Last successful finish per job. */
+      job_freshness: {
+        Args: Empty;
+        Returns: { job: string; last_success_at: string | null }[];
       };
       mark_email_delivered: {
         Args: { p_provider_id: string; p_status: EmailStatus };

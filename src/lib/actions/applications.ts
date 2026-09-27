@@ -148,7 +148,7 @@ export async function withdrawApplication(applicationId: string): Promise<Action
   // show them.
   const { data: before } = await supabase
     .from('applications')
-    .select('id, job:jobs (title_ar, title_en)')
+    .select('id, cv_path, job:jobs (title_ar, title_en)')
     .eq('id', applicationId)
     .maybeSingle();
 
@@ -171,7 +171,12 @@ export async function withdrawApplication(applicationId: string): Promise<Action
     return { ok: false, error: 'forbidden' };
   }
 
-  const job = (before as unknown as WithdrawnJob | null)?.job;
+  const withdrawn = before as unknown as WithdrawnJob | null;
+  if (user && withdrawn?.cv_path) {
+    await removeOrphanedCv(supabase, user.id, withdrawn.cv_path, applicationId);
+  }
+
+  const job = withdrawn?.job;
   if (user && job) {
     const titleAr = job.title_ar;
     const titleEn = job.title_en;
@@ -195,7 +200,71 @@ export async function withdrawApplication(applicationId: string): Promise<Action
 }
 
 /** The embed above, which the generated types resolve as an array. */
-type WithdrawnJob = { id: string; job: { title_ar: string; title_en: string | null } | null };
+type WithdrawnJob = {
+  id: string;
+  cv_path: string | null;
+  job: { title_ar: string; title_en: string | null } | null;
+};
+
+/**
+ * The CV a withdrawn application carried, deleted once nothing points at it.
+ *
+ * Every application can upload its own CV, to a fresh name in the candidate's
+ * private folder, and withdrawing deleted the row but never the file — so a
+ * personal document stayed in storage with no row referring to it, no screen
+ * showing it and no job ever cleaning it up, until the account itself went.
+ *
+ * Only when no other application of theirs and not their directory profile
+ * still uses the same file: reusing the profile CV to apply is the common
+ * case, and that file is not the application's to delete. Through the
+ * caller's session, as the rest of this action is — the `cvs` policy lets a
+ * candidate manage exactly their own folder, and the prefix check keeps this
+ * to it. Done before responding rather than in after(), because the session
+ * client reads cookies and after() must not; it is two reads and a delete.
+ *
+ * Never fails the withdrawal. A file left behind is the old behaviour, and it
+ * is logged by id so it can be found.
+ */
+async function removeOrphanedCv(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  cvPath: string,
+  applicationId: string,
+) {
+  if (!cvPath.startsWith(`${userId}/`)) return;
+  try {
+    const [others, profile] = await Promise.all([
+      supabase
+        .from('applications')
+        .select('id')
+        .eq('candidate_id', userId)
+        .eq('cv_path', cvPath)
+        .limit(1),
+      supabase
+        .from('agent_profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('cv_path', cvPath)
+        .limit(1),
+    ]);
+    // Unknown is not "unused": a failed read keeps the file.
+    if (others.error || profile.error) {
+      logFailure('apply', 'could not check a withdrawn cv', {
+        application: applicationId,
+        code: others.error?.code ?? profile.error?.code,
+      });
+      return;
+    }
+    if (others.data.length || profile.data.length) return;
+
+    const { error } = await supabase.storage.from('cvs').remove([cvPath]);
+    if (error) {
+      logFailure('apply', 'could not remove a withdrawn cv', { application: applicationId });
+    }
+  } catch {
+    logFailure('apply', 'could not remove a withdrawn cv', { application: applicationId });
+  }
+}
 
 const statusSchema = z.object({
   applicationId: z.string().uuid(),
