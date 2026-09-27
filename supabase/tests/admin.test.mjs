@@ -427,7 +427,7 @@ report.section('reports reach companies and consultants, and cannot be forged');
     JSON.stringify(handled.value?.rows));
 
   const late = await session(admin, async (q) => {
-    // The reason lives in company_moderation since migration 132; the column
+    // The reason lives in company_moderation since migration 209; the column
     // on companies is public, so it stays empty.
     await q(`update companies set suspended_at = now() where id = '${hub}'`);
     const [{ r }] = await q(`select admin_moderate_reports('company', '${hub}', 'resolved', 'متأخر', true) as r`);

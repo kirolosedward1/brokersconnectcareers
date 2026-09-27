@@ -1,5 +1,5 @@
 -- =============================================================================
--- 132 — What a moderator should see first
+-- 209 — What a moderator should see first
 --
 -- Every listing already passes a person before it goes live. What that person
 -- was not shown is the part that takes experience to spot: that an advert asks
@@ -47,6 +47,10 @@
 --   company" was readable by every visitor through the API. It moves to
 --   company_moderation, which the company's members and admins read.
 -- =============================================================================
+
+-- rollback: by hand, after 210 and before 208 — the statements are listed at the end of this file
+-- safety: constraint — no company on production is suspended or carries a suspension reason (checked 2026-09-27), and this file moves any reason into company_moderation before the check is added
+-- safety: ships-with-code — apply after the deploy that carries this branch's src/ changes. The new code works without it (the console says the migration is missing, the report and appeal forms refuse cleanly), but the bell on main has no icon for the notification kinds this writes (company_suspended, company_restored, profile_restricted, profile_restored, account_held); main's admin company page would also stop showing a suspension reason, which the new page reads from company_moderation.
 
 -- ---------------------------------------------------------------------------
 -- Where a link goes
@@ -825,10 +829,10 @@ alter table companies add constraint companies_suspension_reason_is_private
   check (suspension_reason is null);
 
 comment on column companies.suspension_reason is
-  'Always null since migration 132: the reason lives in company_moderation, '
+  'Always null since migration 209: the reason lives in company_moderation, '
   'which only the company''s members and admins can read.';
 
--- Restated from migration 70 with one change: the reason is written to
+-- Restated from migration 206 with one change: the reason is written to
 -- company_moderation, before the company row, so the notification trigger
 -- below can read it.
 create or replace function public.admin_set_company_suspension(
@@ -989,3 +993,28 @@ drop trigger if exists profiles_93_tell_about_hold on profiles;
 create trigger profiles_93_tell_about_hold
   after update on profiles
   for each row execute function public.tell_account_about_hold();
+
+-- ---------------------------------------------------------------------------
+-- Rollback, by hand, after 210 and before 208:
+--
+--   drop trigger if exists profiles_93_tell_about_hold on profiles;
+--   drop trigger if exists agent_profiles_93_tell_about_restriction on agent_profiles;
+--   drop trigger if exists companies_93_tell_about_suspension on companies;
+--   drop trigger if exists companies_92_flag_text on companies;
+--   drop trigger if exists jobs_16_submitter_in_good_standing on jobs;
+--   drop trigger if exists jobs_12_text_edits_are_reviewed on jobs;
+--   drop function if exists public.tell_account_about_hold(), public.tell_consultant_about_restriction(),
+--     public.tell_company_about_suspension(), public.flag_company_text(), public.require_standing_to_submit(),
+--     public.review_live_text_edits(), public.admin_flagged_pending_jobs(int),
+--     public.admin_company_signals(uuid[]), public.admin_job_signals(uuid[]),
+--     public.company_review_signals(uuid), public.company_safety_flags(uuid), public.job_safety_flags(uuid),
+--     public.company_name_resemblance(uuid, text, text), public.safety_text_flags(text, text),
+--     public.safety_site_key(text), public.safety_host(text);
+--   alter table companies drop constraint if exists companies_suspension_reason_is_private;
+--   update companies c set suspension_reason = m.suspension_reason
+--     from company_moderation m where m.company_id = c.id and c.suspended_at is not null;
+--   -- restate admin_set_company_suspension() exactly as migration 206 wrote it
+--   drop table if exists company_moderation;
+--   drop index if exists jobs_text_fingerprint_idx, profiles_whatsapp_phone_idx;
+--   alter table jobs drop column if exists text_fingerprint;
+-- ---------------------------------------------------------------------------

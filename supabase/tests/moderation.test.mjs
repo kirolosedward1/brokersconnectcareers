@@ -1,7 +1,7 @@
 /**
  * Moderation and user safety, exercised as each kind of user.
  *
- * Migrations 130–133: reports that are evidence and cannot be used as a
+ * Migrations 207–210: reports that are evidence and cannot be used as a
  * weapon, signals that tell a moderator what to look at without deciding
  * anything, a live listing whose text cannot change unseen, and an appeal for
  * every decision somebody can be on the wrong end of.

@@ -1,5 +1,5 @@
 -- =============================================================================
--- 133 — A second look when we got it wrong
+-- 210 — A second look when we got it wrong
 --
 -- Every lever in the console can be pulled on the wrong thing. A listing taken
 -- down on a competitor's report, a company suspended for another company's
@@ -29,6 +29,9 @@
 -- Two moderators answering the same appeal: the row is locked and must still
 -- be open, so the second is told it has already been decided.
 -- =============================================================================
+
+-- rollback: by hand, first of 208–210 — the statements are listed at the end of this file
+-- safety: ships-with-code — apply after the deploy that carries this branch's src/ changes. The new code works without it (the console says the migration is missing, the report and appeal forms refuse cleanly), but the bell on main has no icon for the notification kinds this writes (appeal_decided).
 
 create table if not exists moderation_appeals (
   id                uuid primary key default gen_random_uuid(),
@@ -306,7 +309,7 @@ revoke execute on function public.admin_decide_appeal(uuid, boolean, text) from 
 grant  execute on function public.admin_decide_appeal(uuid, boolean, text) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- The rail badges, restated whole (migration 70) with two changes:
+-- The rail badges, restated whole (migration 206) with two changes:
 -- reports_open counts every reported target by its record, so reports about a
 -- deleted listing still count; and appeals_open is new.
 -- ---------------------------------------------------------------------------
@@ -346,3 +349,12 @@ $$;
 
 revoke execute on function public.admin_summary() from public, anon;
 grant  execute on function public.admin_summary() to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Rollback, by hand, before 209 and 208:
+--
+--   drop function if exists public.admin_decide_appeal(uuid, boolean, text);
+--   drop function if exists public.submit_appeal(text, uuid, text);
+--   drop table if exists moderation_appeals;
+--   -- restate admin_summary() exactly as migration 206 wrote it
+-- ---------------------------------------------------------------------------

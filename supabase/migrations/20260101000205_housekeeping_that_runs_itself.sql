@@ -48,6 +48,9 @@
 -- run — see docs/data-lifecycle.md for the list of decisions outstanding.
 -- =============================================================================
 
+-- rollback: forward-fix only — applied to production on 2026-09-27 (17:07–17:10 UTC), before any branch carrying it merged; undoing it is a new migration, never an edit to this one
+-- safety: ships-with-code — already applied to production on 2026-09-27 (17:07–17:10 UTC); the code on main has run against it since, and this branch's code that reads it can land at any time
+
 -- ---------------------------------------------------------------------------
 -- Retention periods, as data
 -- ---------------------------------------------------------------------------

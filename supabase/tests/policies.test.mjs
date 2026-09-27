@@ -95,7 +95,7 @@ report.section('editing a live listing is possible, and says so');
   /*
     The requirements used to be the example of a cosmetic edit. They are free
     text a candidate reads, and "requirements: a 500 EGP registration fee" is
-    precisely the edit a scam makes after approval, so since migration 132 all
+    precisely the edit a scam makes after approval, so since migration 209 all
     of a live listing's text goes back to review. The benefits checklist,
     which can only name items from a fixed list, is the cosmetic edit now.
   */
@@ -595,7 +595,7 @@ report.section('a company waits for a person; a consultant does not');
 
   // The gate that matters. A pending company can still build its profile and
   // upload documents — it just cannot put a listing in front of anyone.
-  // Refused by the standing check (migration 132) before row-level security
+  // Refused by the standing check (migration 209) before row-level security
   // gets to it; either word is the same refusal.
   const post = await as(PENDING, draft('pending-job-1'));
   report.check('a pending company cannot create a listing',

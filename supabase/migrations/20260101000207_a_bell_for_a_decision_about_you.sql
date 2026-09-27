@@ -1,5 +1,5 @@
 -- =============================================================================
--- 130 — A bell for a decision about you
+-- 207 — A bell for a decision about you
 --
 -- The console can suspend a company, restrict a consultant's profile, put an
 -- account on hold and close somebody's report — and the person each decision
@@ -8,15 +8,17 @@
 -- directory; the candidate who reported a fake advert never learned whether
 -- anybody read it.
 --
--- These are the kinds the moderation migrations write (131–133). They are
+-- These are the kinds the moderation migrations write (208–210). They are
 -- added on their own because Postgres cannot use an enum value in the same
 -- transaction that created it — the pattern migrations 20 and 21 set.
 --
--- Numbered 130+: parallel branches hold 068–072 (the console and the data
--- lifecycle, already applied to production), 073 (taxonomy, stacked on this
--- branch), 100–110 (security hardening), 120 (observability) and 200+
--- (support). Moderation takes 130–139.
+-- Numbered after everything on main (201) and after the two branches this
+-- one carries — the data lifecycle and the operations console, 202–206, in
+-- the order production applied them on 2026-09-27.
 -- =============================================================================
+
+-- rollback: forward-fix only — Postgres cannot remove a value from an enum; an unused value is harmless, and nothing writes these until 208–210
+-- safety: ships-with-code — safe in either order on its own: a new notification kind changes nothing until 208–210 write one
 
 alter type notification_kind add value if not exists 'report_reviewed';     -- reporter: we looked at it
 alter type notification_kind add value if not exists 'company_suspended';   -- company members

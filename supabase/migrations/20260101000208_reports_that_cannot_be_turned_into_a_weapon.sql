@@ -1,7 +1,7 @@
 -- =============================================================================
--- 131 — Reports that cannot be turned into a weapon, and cannot be erased
+-- 208 — Reports that cannot be turned into a weapon, and cannot be erased
 --
--- Migration 69 gave reports three targets and a status. What it left:
+-- Migration 204 gave reports three targets and a status. What it left:
 --
 --   A report vanished with the thing it was about. The target columns cascade,
 --   so an admin deleting a reported listing — or a reported consultant deleting
@@ -46,6 +46,10 @@
 --   No report does anything by itself. There is no count of reports at which a
 --   listing comes down; a person decides, every time.
 -- =============================================================================
+
+-- rollback: by hand, 210 then 209 then this — the statements are listed at the end of this file
+-- safety: constraint — reports has no rows on production (checked 2026-09-27), so the not-nulls, checks, rebuilt foreign keys and unique index validate nothing; on a database with reports the backfill above satisfies them first
+-- safety: ships-with-code — apply after the deploy that carries this branch's src/ changes. The new code works without it (the console says the migration is missing, the report and appeal forms refuse cleanly), but the bell on main has no icon for the notification kinds this writes (report_reviewed).
 
 -- ---------------------------------------------------------------------------
 -- One writer for the moderation bells
@@ -190,7 +194,7 @@ comment on column reports.severity is
 -- ---------------------------------------------------------------------------
 -- Before a report is stored: its target, its snapshot, its source
 --
--- Named 01 so it runs before migration 69's status sync (05), the date stamp
+-- Named 01 so it runs before migration 204's status sync (05), the date stamp
 -- (05) and the daily cap (10). Nothing a client sends for the snapshot, the
 -- source or the bad-faith flag is kept: a caller could otherwise file a
 -- "system" report, or a snapshot of an advert that never said it.
@@ -428,7 +432,7 @@ create trigger reports_12_guard_abuse
 -- ---------------------------------------------------------------------------
 -- A platform flag, raised for a person to look at
 --
--- Used by migration 132 when a company's own text carries the marks of a scam
+-- Used by migration 209 when a company's own text carries the marks of a scam
 -- or of somebody else's name. Raised once per target until it is closed, and
 -- not raised again for text a moderator already dismissed.
 -- ---------------------------------------------------------------------------
@@ -512,7 +516,7 @@ create trigger reports_91_tell_reporter
 -- ---------------------------------------------------------------------------
 
 -- Acts on reports by id: the ones whose target has been deleted (which the
--- per-target lever of migration 70 can no longer find), and single reports
+-- per-target lever of migration 206 can no longer find), and single reports
 -- marked as filed in bad faith.
 create or replace function public.admin_close_reports(
   p_reports uuid[],
@@ -897,3 +901,45 @@ grant execute on function public.admin_close_reports(uuid[], text, text, boolean
 grant execute on function public.admin_set_reporting_restriction(uuid, boolean, text)       to authenticated;
 grant execute on function public.admin_report_cases(text, text, text, int, timestamptz, timestamptz, int, uuid, int, int) to authenticated;
 grant execute on function public.admin_report_rows(uuid[], text, text, text, int, timestamptz, timestamptz, int, int) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Rollback, by hand, after 210 and 209. Reports whose target was deleted have
+-- no live link and would fail the old one-target check: delete or relink them
+-- first.
+--
+--   drop trigger if exists reports_91_tell_reporter on reports;
+--   drop trigger if exists reports_12_guard_abuse on reports;
+--   drop trigger if exists reports_02_keep_evidence on reports;
+--   drop trigger if exists reports_01_prepare on reports;
+--   drop function if exists public.admin_report_rows(uuid[], text, text, text, int, timestamptz, timestamptz, int, int);
+--   drop function if exists public.admin_report_cases(text, text, text, int, timestamptz, timestamptz, int, uuid, int, int);
+--   drop function if exists public.admin_set_reporting_restriction(uuid, boolean, text);
+--   drop function if exists public.admin_close_reports(uuid[], text, text, boolean);
+--   drop function if exists public.tell_reporter_outcome();
+--   drop function if exists public.raise_system_report(text, uuid, text, text);
+--   drop function if exists public.guard_report_abuse();
+--   drop function if exists public.keep_report_evidence();
+--   drop function if exists public.prepare_report();
+--   drop function if exists public.moderation_notify_company(uuid, notification_kind, jsonb, text);
+--   drop function if exists public.moderation_notify(uuid, notification_kind, jsonb, text);
+--   drop table if exists reporting_restrictions;
+--   drop index if exists reports_one_open_system_flag, reports_open_severity_idx, reports_target_idx;
+--   alter table reports
+--     drop constraint if exists reports_target_agrees,
+--     drop constraint if exists reports_target_type_check,
+--     drop constraint if exists reports_source_check,
+--     drop constraint if exists reports_abusive_is_dismissed,
+--     drop constraint if exists reports_snapshot_shape,
+--     drop constraint if exists reports_one_target,
+--     add constraint reports_one_target check (num_nonnulls(job_id, company_id, agent_id) = 1);
+--   alter table reports
+--     drop constraint reports_job_id_fkey,
+--     add constraint reports_job_id_fkey foreign key (job_id) references jobs (id) on delete cascade,
+--     drop constraint reports_company_id_fkey,
+--     add constraint reports_company_id_fkey foreign key (company_id) references companies (id) on delete cascade,
+--     drop constraint reports_agent_id_fkey,
+--     add constraint reports_agent_id_fkey foreign key (agent_id) references agent_profiles (id) on delete cascade;
+--   alter table reports
+--     drop column severity, drop column abusive, drop column source,
+--     drop column target_snapshot, drop column target_id, drop column target_type;
+-- ---------------------------------------------------------------------------
