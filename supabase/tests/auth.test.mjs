@@ -185,9 +185,13 @@ report.section('no form can submit itself before the page is ready');
     The keyword search is the exception, and a real one: its field is named `q`
     and the page reads `q`, so the native GET this rule exists to prevent is
     exactly the right fallback there. Disabling that button would remove a
-    search that works without JavaScript.
+    search that works without JavaScript. The agent directory's keyword box is
+    the same form for the same page shape — `q` in, `q` read.
   */
-  const PROGRESSIVE = new Set(['components/jobs/job-filters.tsx']);
+  const PROGRESSIVE = new Set([
+    'components/jobs/job-filters.tsx',
+    'components/agents/agent-filters.tsx',
+  ]);
 
   const offenders = [];
   let checked = 0;

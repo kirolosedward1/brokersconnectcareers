@@ -25,6 +25,7 @@
     "test:messages": "node --experimental-strip-types scripts/messages.mjs",
     "check": "pnpm typecheck && pnpm test:messages && pnpm test:compat && pnpm test:match && pnpm test:earnings && pnpm test:share && pnpm test:saved && pnpm test:nextaction && pnpm test:reads && pnpm test:db",
     "test:search": "node --experimental-strip-types supabase/tests/search.test.mjs",
+    "bench:search": "node --experimental-strip-types supabase/tests/search-bench.mjs",
     "test:email": "node --experimental-strip-types supabase/tests/email.test.mjs",
     "auth:templates": "node --experimental-strip-types scripts/auth-templates.mjs",
     "test:auth": "node --experimental-strip-types supabase/tests/auth.test.mjs",

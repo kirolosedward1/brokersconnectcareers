@@ -53,6 +53,9 @@ const NONE = {
   districtSlugs: [],
   governorateSlug: null,
   hasBasicSalary: null,
+  minSalary: null,
+  commissionTypes: [],
+  postedWithin: null,
   companySlug: null,
   companyTypes: [],
   sort: 'newest',
@@ -103,6 +106,19 @@ is('an empty string', companySlugOrNull(''), null);
 is('a repeated parameter', companySlugOrNull(['a-1', 'b-2']), null);
 is('nothing at all', companySlugOrNull(undefined), null);
 is('something longer than any slug this app mints', companySlugOrNull('a'.repeat(81)), null);
+
+console.log('\n— the pay, commission and date filters are part of what is saved');
+is(
+  'two orders of the same commission types are one search',
+  toCanonicalQuery({ ...NONE, commissionTypes: ['split', 'percentage'] }),
+  toCanonicalQuery({ ...NONE, commissionTypes: ['percentage', 'split'] }),
+);
+is(
+  'each is written under the key the board reads',
+  toCanonicalQuery({ ...NONE, minSalary: 10000, commissionTypes: ['percentage'], postedWithin: 7 }),
+  'comm=percentage&pay=10000&posted=7',
+);
+is('a minimum salary alone is worth saving', hasFilters({ ...NONE, minSalary: 5000 }), true);
 
 console.log('\n— the stand-in filter set still matches the real one');
 {

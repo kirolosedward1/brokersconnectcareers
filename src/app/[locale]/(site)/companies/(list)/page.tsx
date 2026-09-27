@@ -7,6 +7,7 @@ import { VerifiedBadge } from '@/components/verified-badge';
 import { Pagination } from '@/components/pagination';
 import { CompanyFilters } from '@/components/companies/company-filters';
 import { CompanyLogo } from '@/components/companies/company-logo';
+import { Button } from '@/components/ui/button';
 import { queryCompanies } from '@/lib/queries/companies';
 import { getDistricts } from '@/lib/queries/taxonomy';
 
@@ -53,6 +54,7 @@ export default async function CompaniesPage({
   });
 
   const t = await getTranslations('companies');
+  const tJobs = await getTranslations('jobs');
 
   return (
     <div className="shell py-6">
@@ -66,9 +68,14 @@ export default async function CompaniesPage({
       />
 
       {companies.length === 0 ? (
-        <p className="mt-8 rounded-xl border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
-          {t('empty')}
-        </p>
+        <div className="mt-8 rounded-xl border border-dashed border-border px-6 py-10 text-center">
+          <p className="text-muted-foreground">{t('empty')}</p>
+          {q || district || verified ? (
+            <Button asChild variant="outline" className="mt-5">
+              <Link href="/companies">{tJobs('clearFilters')}</Link>
+            </Button>
+          ) : null}
+        </div>
       ) : (
         /* Columns, because a company row is short: a mark, a name, a district
            and one figure. One to a line, each stretched the width of the page

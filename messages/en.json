@@ -83,7 +83,10 @@
     "browseOpen": "Browse open roles",
     "atCompany": "Roles at {company}",
     "companyPage": "Company page",
-    "allCompanies": "All companies"
+    "allCompanies": "All companies",
+    "relaxHeading": "There are listings if you drop one filter:",
+    "withoutFilter": "Without {name} · {count, plural, one {# job} other {# jobs}}",
+    "emptySaveHint": "Save this search and we'll email you when a matching listing is posted."
   },
   "compensation": {
     "title": "Pay and commission",
@@ -124,7 +127,12 @@
     "any": "Any",
     "showResults": "Show results",
     "companyType": "Company type",
-    "verifiedOnly": "Verified only"
+    "verifiedOnly": "Verified only",
+    "minSalary": "Basic salary from",
+    "minSalaryAtLeast": "EGP {amount}+",
+    "commissionType": "Commission",
+    "posted": "Date posted",
+    "postedWithin": "{days, plural, =1 {Last 24 hours} other {Last # days}}"
   },
   "track": {
     "primary": "Primary sales",
@@ -230,7 +238,8 @@
     "ownerHidden": "Your visibility is “hidden”: nobody but you can open this page. Companies you applied to still see your application.",
     "ownerEdit": "Edit your profile",
     "shortlistAdd": "Add to shortlist",
-    "shortlistRemove": "Remove from shortlist"
+    "shortlistRemove": "Remove from shortlist",
+    "searchPlaceholder": "e.g. sales manager, resale"
   },
   "availability": {
     "open_to_offers": "Open to offers",

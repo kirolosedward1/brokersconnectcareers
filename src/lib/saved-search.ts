@@ -25,6 +25,9 @@ export function toCanonicalQuery(filters: JobFilters): string {
   if (filters.governorateSlug) params.set('gov', filters.governorateSlug);
   if (filters.hasBasicSalary === true) params.set('salary', 'yes');
   if (filters.hasBasicSalary === false) params.set('salary', 'no');
+  if (filters.minSalary) params.set('pay', String(filters.minSalary));
+  add('comm', filters.commissionTypes);
+  if (filters.postedWithin) params.set('posted', String(filters.postedWithin));
   if (filters.companySlug) params.set('company', filters.companySlug);
   add('ctype', filters.companyTypes);
 
