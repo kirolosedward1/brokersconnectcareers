@@ -322,7 +322,7 @@ report.section('who may call a definer function, on purpose');
     get_agent_card and increment_job_view were what the directory, the card
     and the view counter were made of, and none needed a session — which also
     meant a script could page the whole directory through PostgREST without
-    ever touching the site. Migration 69 closed them to anon: the server calls
+    ever touching the site. Migration 101 closed them to anon: the server calls
     them for a signed-out visitor, where the edge can see who is asking.
 
     A new name in this list is a decision, so it should cost a line in this

@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // The server-side rate counters (migration 71) keep a day of windows;
+  // The server-side rate counters (migration 103) keep a day of windows;
   // anything older is swept here rather than by a fifth cron.
   // Allowed to fail quietly: a missed sweep leaves stale rows for tomorrow's.
   const { data: swept } = await admin.rpc('rate_limit_sweep');

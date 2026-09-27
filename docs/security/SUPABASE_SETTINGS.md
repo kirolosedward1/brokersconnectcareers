@@ -21,7 +21,7 @@ Confirm: `curl -s -X POST "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=pa
 | **TOTP** | Enabled |
 | **Phone** | Disabled (no SMS provider) |
 
-Then, as each admin: `/dashboard/account` → *Two-step verification* → set up. From that moment the database refuses that admin's session at AAL1 (migration 76), and the console routes them to the code prompt. `ADMIN_MFA_REQUIRED=false` on Vercel is the escape hatch **only** for an admin who has not enrolled yet; it does nothing for one who has.
+Then, as each admin: `/dashboard/account` → *Two-step verification* → set up. From that moment the database refuses that admin's session at AAL1 (migration 108), and the console routes them to the code prompt. `ADMIN_MFA_REQUIRED=false` on Vercel is the escape hatch **only** for an admin who has not enrolled yet; it does nothing for one who has.
 
 ## Authentication → Sessions
 
@@ -41,16 +41,16 @@ Site URL = production origin. Redirect allow-list = `https://www.brokersconnect.
 | Setting | Value |
 |---|---|
 | **Connection pooling** | Transaction mode on port 6543 for the app (the Supabase JS client uses PostgREST, so this only matters for `DATABASE_URL` consumers, which are the scripts) |
-| **Statement timeout** | Set per role by migration 75 (`anon` 5 s, `authenticated` 10 s). Confirm with `select rolname, rolconfig from pg_roles where rolname in ('anon','authenticated')`. PostgREST picks it up on its next connection; `notify pgrst, 'reload config'` is issued by the migration. |
+| **Statement timeout** | Set per role by migration 107 (`anon` 5 s, `authenticated` 10 s). Confirm with `select rolname, rolconfig from pg_roles where rolname in ('anon','authenticated')`. PostgREST picks it up on its next connection; `notify pgrst, 'reload config'` is issued by the migration. |
 | **Point-in-time recovery** | Enable (Pro add-on). Daily backups alone give a 24-hour RPO; PITR gives minutes. See RUNBOOKS.md → Backups. |
 
 ## Storage
 
-Buckets are created by migration 06/35 with size limits and MIME allow-lists. Nothing to change in the dashboard, but confirm after deploy that `avatars` and `company-logos` still serve objects publicly (they do: public buckets do not consult the SELECT policy that migration 74 removed — only listing needs it).
+Buckets are created by migration 06/35 with size limits and MIME allow-lists. Nothing to change in the dashboard, but confirm after deploy that `avatars` and `company-logos` still serve objects publicly (they do: public buckets do not consult the SELECT policy that migration 106 removed — only listing needs it).
 
 ## Logs & advisors
 
-After applying migrations 68–78 run **Database → Advisors → Security**. Expected: zero errors. The remaining warnings will be the `SECURITY DEFINER` functions this schema uses on purpose (pinned by `schema.test.mjs`), and — if it appears — "auth users exposed" is a false positive for `user_id_by_email`, which is service-role only.
+After applying migrations 100–110 run **Database → Advisors → Security**. Expected: zero errors. The remaining warnings will be the `SECURITY DEFINER` functions this schema uses on purpose (pinned by `schema.test.mjs`), and — if it appears — "auth users exposed" is a false positive for `user_id_by_email`, which is service-role only.
 
 ## Alerts (Supabase → Project Settings → Integrations, or the Log Drains add-on)
 

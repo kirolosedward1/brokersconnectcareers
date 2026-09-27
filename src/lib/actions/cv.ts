@@ -156,7 +156,7 @@ export async function deleteCvEntry(
   section: keyof typeof SECTIONS,
   id: string,
 ): Promise<ActionResult> {
-  if (!Object.hasOwn(SECTIONS, section) || !/^[0-9a-f-]{36}$/.test(id)) {
+  if (!Object.prototype.hasOwnProperty.call(SECTIONS, section) || !/^[0-9a-f-]{36}$/.test(id)) {
     return { ok: false, error: 'invalid' };
   }
 

@@ -1,5 +1,5 @@
 -- =============================================================================
--- 70 — What an employer may read about an applicant
+-- 102 — What an employer may read about an applicant
 --
 -- profiles_select_applicants lets a company read the profile of anyone who
 -- applied to one of its listings, which is the point: the name and the

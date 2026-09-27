@@ -1,5 +1,5 @@
 -- =============================================================================
--- 73 — What a suspended account may still touch
+-- 105 — What a suspended account may still touch
 --
 -- Migration 33 made suspension take a company's listings down. It did not take
 -- the company's data away from the suspended person: every policy that grants

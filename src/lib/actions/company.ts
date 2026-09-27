@@ -23,7 +23,7 @@ const schema = z.object({
   /*
     http(s) only. zod's `.url()` accepts any scheme a parser recognises, and a
     `javascript:` one was rendered as the company page's website link. The
-    same rule is a CHECK on the column (migration 72) and is applied again
+    same rule is a CHECK on the column (migration 104) and is applied again
     where the link is drawn.
   */
   website: z
@@ -388,7 +388,7 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_member' };
     if (error.message.includes('company_member_role')) return { ok: false, error: 'not_employer' };
-    // One company per account (migration 72): somebody already on another
+    // One company per account (migration 104): somebody already on another
     // team is answered the same way as somebody who may not be added.
     return { ok: false, error: 'forbidden' };
   }

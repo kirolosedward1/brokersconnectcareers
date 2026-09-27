@@ -1,5 +1,5 @@
 -- =============================================================================
--- 76 — An admin who proved it twice
+-- 108 — An admin who proved it twice
 --
 -- Every admin policy, every guard's bypass and every moderation function
 -- asks is_admin(), and is_admin() asked one thing: does this account's profile

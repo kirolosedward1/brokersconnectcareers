@@ -11,7 +11,7 @@ import { logFailure } from '@/lib/observe';
 /**
  * Asking for a consultant's number.
  *
- * The card never carries it (migration 69). This is the one door: the
+ * The card never carries it (migration 101). This is the one door: the
  * database function behind it checks that the caller is signed in, acts for a
  * company in good standing, may open this card at all, and has not opened
  * more cards this hour or this day than a person does — and it writes down

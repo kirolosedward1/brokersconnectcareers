@@ -463,7 +463,7 @@ export type OrderRow = Timestamped & {
 /**
  * Row shape returned by the get_agent_card() RPC.
  *
- * No phone number and no CV path, since migration 69: the card says whether a
+ * No phone number and no CV path, since migration 101: the card says whether a
  * CV exists and whether this viewer may ask for the contact, and the contact
  * itself comes from reveal_agent_contact(), which counts what it hands over.
  * `slug` is the card's public handle — the real slug when the name is
@@ -558,7 +558,7 @@ export type SavedAgentCardRow = {
 };
 
 /**
- * The half of a profile nobody but the platform reads (migration 70). The
+ * The half of a profile nobody but the platform reads (migration 102). The
  * unsubscribe token is a credential; the approval note is a reviewer's remark.
  * Neither has a policy that lets a user read it, and only the service role and
  * set_account_approval() write here.
@@ -570,7 +570,7 @@ export type ProfilePrivateRow = {
   updated_at: string;
 };
 
-/** A threshold the database enforces, as a row an admin can tune (migration 69). */
+/** A threshold the database enforces, as a row an admin can tune (migration 101). */
 export type AbuseLimitRow = {
   key: string;
   window_seconds: number;
@@ -579,7 +579,7 @@ export type AbuseLimitRow = {
   updated_at: string;
 };
 
-/** One consultant contact handed to one viewer (migration 69). */
+/** One consultant contact handed to one viewer (migration 101). */
 export type AgentContactRevealRow = {
   id: number;
   agent_id: string;
@@ -588,7 +588,7 @@ export type AgentContactRevealRow = {
   created_at: string;
 };
 
-/** A decision somebody made, recorded by the table it changed (migration 68). */
+/** A decision somebody made, recorded by the table it changed (migration 100). */
 export type AuditLogRow = {
   id: number;
   actor_id: string | null;
@@ -602,7 +602,7 @@ export type AuditLogRow = {
 
 export type SecuritySeverity = 'info' | 'warning' | 'critical';
 
-/** Something the platform noticed rather than decided (migration 68). */
+/** Something the platform noticed rather than decided (migration 100). */
 export type SecurityEventRow = {
   id: number;
   kind: string;
@@ -613,7 +613,7 @@ export type SecurityEventRow = {
   created_at: string;
 };
 
-/** What the security page draws (migration 78). */
+/** What the security page draws (migration 110). */
 export type SecuritySummary = {
   window_hours: number;
   events_by_kind: { kind: string; count: number }[];
@@ -778,7 +778,7 @@ export type Database = {
        * limit — is not rolled back with it.
        */
       reveal_agent_contact: { Args: { p_handle: string }; Returns: ContactRevealRow[] };
-      /** Service role only: the server's own counter (migration 71). */
+      /** Service role only: the server's own counter (migration 103). */
       rate_limit_hit: {
         Args: { p_key: string; p_window_seconds: number; p_max: number };
         Returns: { allowed: boolean; remaining: number; retry_after_seconds: number }[];

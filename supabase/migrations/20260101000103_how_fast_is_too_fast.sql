@@ -1,5 +1,5 @@
 -- =============================================================================
--- 71 — How fast is too fast
+-- 103 — How fast is too fast
 --
 -- Migration 19 put the first two caps in: thirty applications a day, ten
 -- reports a day. Both were written as constants inside their triggers, both
@@ -11,7 +11,7 @@
 --
 -- What changes here.
 --
--- Every threshold is a row in abuse_limits (migration 69), so the number can
+-- Every threshold is a row in abuse_limits (migration 101), so the number can
 -- move without a deploy when it turns out to be wrong in either direction. The
 -- defaults are deliberately loose: an honest person should never meet them,
 -- and a script should find them long before it has done any damage.

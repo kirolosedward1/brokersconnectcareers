@@ -65,7 +65,7 @@ async function recipient(
   if (!profile) return null;
   if (preference && (profile as Record<string, unknown>)[preference] === false) return null;
 
-  // The token lives on profile_private (migration 70), where no company that
+  // The token lives on profile_private (migration 102), where no company that
   // reads an applicant's profile can reach it. Service role, as before.
   const { data: secret } = await admin
     .from('profile_private')

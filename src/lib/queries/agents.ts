@@ -69,7 +69,7 @@ export function serializeAgentFilters(filters: AgentFilters): URLSearchParams {
  * Who reads the directory functions.
  *
  * search_agents() and get_agent_card() are closed to the anon role since
- * migration 69, so a script cannot page the directory through PostgREST while
+ * migration 101, so a script cannot page the directory through PostgREST while
  * the site never sees it. A signed-in reader still calls them as themselves —
  * the visibility gate needs to know who is asking. A visitor is served by the
  * server with the service role, which the functions treat as a stranger: no
@@ -77,7 +77,7 @@ export function serializeAgentFilters(filters: AgentFilters): URLSearchParams {
  * did for anon before.
  *
  * Falls back to the public client when no service key is configured, which
- * on a database past migration 69 answers "permission denied" and renders the
+ * on a database past migration 101 answers "permission denied" and renders the
  * directory's error state — /api/health names the missing key.
  */
 async function directoryClient() {

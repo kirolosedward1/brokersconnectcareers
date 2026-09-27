@@ -43,7 +43,7 @@ create or replace function auth.uid() returns uuid language sql stable as $fn$
 $fn$;
 
 -- The whole claim set, the way Supabase exposes it. is_admin() reads the
--- \`aal\` claim from here (migration 76).
+-- \`aal\` claim from here (migration 108).
 create or replace function auth.jwt() returns jsonb language sql stable as $fn$
   select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
 $fn$;

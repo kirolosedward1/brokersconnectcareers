@@ -903,7 +903,7 @@ report.section('the agent directory gate');
   /*
     A visitor with no session reaches the directory through the server, which
     reads it with the service role — never through PostgREST, where a script
-    could page the whole thing without the site ever seeing it (migration 69).
+    could page the whole thing without the site ever seeing it (migration 101).
   */
   const direct = await as(null, 'select id from search_agents(null,null,null,null,60,0)', 'anon');
   report.check('anonymous cannot call the directory function directly',
@@ -1895,7 +1895,7 @@ report.section('applications are capped per day too');
   const needed = 30 - held;
 
   /*
-    Two windows since migration 71. Eight applications in ten minutes is the
+    Two windows since migration 103. Eight applications in ten minutes is the
     first wall — a person filing that fast is a script — so the rows are
     written eight at a time and aged past the short window between batches,
     which is what a day of honest applying looks like to the counter.
@@ -2218,7 +2218,7 @@ report.section('the same request twice converges on one answer');
   const KEY = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 
   // The seed wrote this company's listings a moment ago, which to the daily
-  // cap (migration 71) is a busy day already. Age them: this section is about
+  // cap (migration 103) is a busy day already. Age them: this section is about
   // the retry, and the cap has a section of its own.
   await db.exec(`update jobs set created_at = created_at - interval '2 days' where company_id = '${company}'`);
 

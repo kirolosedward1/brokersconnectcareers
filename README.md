@@ -141,7 +141,7 @@ The hardening round of September 2026 is documented under `docs/security/`:
 - `RUNBOOKS.md` — incident response, backups and restore, change control, alerting.
 - `../load/` — k6 load, spike and abuse scripts (staging only).
 
-The rules themselves live in the database (migrations 68–78) and are exercised by `pnpm test:security`; the pure helpers (byte recognition, sanitising, URL and secret checks) by `pnpm test:security-libs`. Both run as part of `pnpm check`.
+The rules themselves live in the database (migrations 100–110) and are exercised by `pnpm test:security`; the pure helpers (byte recognition, sanitising, URL and secret checks) by `pnpm test:security-libs`. Both run as part of `pnpm check`.
 
 Three environment variables were added — `SECURITY_SALT`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` — and one switch, `ADMIN_MFA_REQUIRED`. All are described in `.env.example`; `/api/health` reports which are set.
 

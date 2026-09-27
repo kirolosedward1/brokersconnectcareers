@@ -136,7 +136,7 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
 
     Drawn as a link only when it parses as http(s). The column is checked the
 
-    same way on the way in now (migration 72), but a row written before that
+    same way on the way in now (migration 104), but a row written before that
 
     could still hold a `javascript:` URL, and an href is where it would run.
 
