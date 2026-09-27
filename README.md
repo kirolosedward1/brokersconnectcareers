@@ -106,6 +106,15 @@ which needs no application secret; `/api/cron/lifecycle` deletes released files
 through the Storage API. See `docs/data-lifecycle.md`. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
 variable is set; the route returns 401 to anything else.
 
+**Functions run next to the database, not next to the reader.** `vercel.json`
+pins them to `bom1` (Mumbai), the same city as the Supabase project
+(`ap-south-1`). Left to Vercel's default they ran in `iad1` (Washington), and
+every query from a page crossed from the US to India and back — 200–650 ms
+each, measured from production's own `/api/health` — and a signed-in page asks
+four to six in a row. A reader in Egypt now pays one hop to Mumbai instead, and
+the queries behind it cost a millisecond each. If the database ever moves
+region, move this with it.
+
 ## Commands
 
 | Command | What it does |
@@ -227,7 +236,7 @@ the audit log, internal notes, global search and taxonomy management sit beside
 them.
 
 **Every lever is a database function, and every decision is recorded.**
-Migration 316's `admin_*` functions check `is_admin()`, lock the row, refuse a
+Migration 318's `admin_*` functions check `is_admin()`, lock the row, refuse a
 transition the product does not have, require a reason where somebody is owed
 one, and write to `admin_audit_log` in the same transaction as the change. The
 log is append-only for everyone, the service role included. An admin writing
@@ -239,7 +248,7 @@ reason, and the request is recorded. Opening a company's verification document
 is recorded the same way.
 
 **Deploy the migrations before the code.** The console reads functions and
-columns from migrations 314–317; against a database without them, console pages
+columns from migrations 316–319; against a database without them, console pages
 show an error naming the missing migrations. The public site tolerates either
 order.
 

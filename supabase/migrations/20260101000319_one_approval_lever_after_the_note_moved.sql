@@ -1,32 +1,32 @@
 -- =============================================================================
--- 317 — One approval lever after the note moved
+-- 319 — One approval lever after the note moved
 --
 -- Two migrations restate set_account_approval, and neither knew the other.
 --
 --   305 moved the reviewer's note off profiles into profile_private, where only
 --       an admin can read it, and dropped the column.
---   316 (the operations console, live on production since 2026-09-27) made the
+--   318 (the operations console, live on production since 2026-09-27) made the
 --       function the console's lever: a row lock, a refusal to repeat a
 --       decision, a validated reason, and an audit record in the same
 --       transaction as the change.
 --
 -- Whichever runs second throws away the other's half. 305 last, and the
--- console's suspensions stop being recorded. 316 last, and the function writes
+-- console's suspensions stop being recorded. 318 last, and the function writes
 -- a column that no longer exists, so every approval fails. admin_search_users
--- (316) has the same problem in a smaller form: it still reads the dropped
+-- (318) has the same problem in a smaller form: it still reads the dropped
 -- column.
 --
--- This migration keeps both halves. set_account_approval is 316's lever, and it
+-- This migration keeps both halves. set_account_approval is 318's lever, and it
 -- writes the note to profile_private before the profile row changes, because
 -- the approval notification trigger reads it there (305).
 -- admin_search_users reads the note from the same place. Signatures and grants
 -- are unchanged, so the console calls them exactly as before.
 --
--- Order: production ran 316 before any of 300–313, so there this must be applied
+-- Order: production ran 318 before any of 300–314, so there this must be applied
 -- after 305. On a fresh database it sorts after both.
 -- =============================================================================
 
--- rollback: forward-fix only — the bodies this replaces are 305's and 316's, and each of them alone is broken against the other's schema.
+-- rollback: forward-fix only — the bodies this replaces are 305's and 318's, and each of them alone is broken against the other's schema.
 -- safety: ships-with-code — the console calls both functions with the same arguments and reads the same columns before and after this, so the code and this migration can reach production in either order.
 
 create or replace function public.set_account_approval(
@@ -201,7 +201,7 @@ end;
 $$;
 
 -- Stated outright rather than inherited, so the result does not depend on
--- which of 305 and 316 ran last. Supabase grants anon EXECUTE at creation;
+-- which of 305 and 318 ran last. Supabase grants anon EXECUTE at creation;
 -- `from public` alone would leave that grant in place.
 revoke execute on function public.set_account_approval(uuid, approval_status, text) from public, anon;
 grant execute on function public.set_account_approval(uuid, approval_status, text) to authenticated, service_role;

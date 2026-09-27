@@ -7,6 +7,7 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
 import { announcePasswordChange } from '@/lib/actions/account';
+import { reach } from '@/lib/reach';
 
 /**
  * Change your password, change your email.
@@ -87,7 +88,7 @@ export function CredentialsSettings({
       // the password is already changed at this point, and a mail failure must
       // not make a successful change look like a failed one. The action mails
       // this session's own account and nothing else.
-      void announcePasswordChange();
+      void reach(announcePasswordChange());
     });
   }
 

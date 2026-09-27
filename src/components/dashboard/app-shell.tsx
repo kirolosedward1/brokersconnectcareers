@@ -33,7 +33,6 @@ import { Link, usePathname } from '@/i18n/navigation';
 import { Avatar } from '@/components/ui/avatar';
 import { dirOf, localeHref, type Locale } from '@/i18n/routing';
 import { LogoMark } from '@/components/logo';
-import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
 /**
@@ -191,6 +190,8 @@ export function AppShell({
   }, [open]);
 
   async function signOut() {
+    // Loaded when it is used, as the public header's menu does.
+    const { createClient } = await import('@/lib/supabase/client');
     await createClient().auth.signOut();
     /*
       A document navigation, not a router push. Signing out changes who the

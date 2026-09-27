@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { toggleSavedJob } from '@/lib/actions/jobs';
+import { reach } from '@/lib/reach';
 import { cn } from '@/lib/utils';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { ICON_HIT_AREA } from '@/components/ui/button';
@@ -47,7 +48,7 @@ export function SaveJobToggle({
     setSaved(next);
 
     startTransition(async () => {
-      const result = await toggleSavedJob(jobId);
+      const result = await reach(toggleSavedJob(jobId));
       if (recoverSession(result)) return;
       if (!result.ok) setSaved(!next);
       else setSaved(result.data!.saved);

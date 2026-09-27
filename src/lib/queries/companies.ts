@@ -4,7 +4,7 @@ import { raise } from './error';
 import { queryWords } from '@/lib/search/arabic';
 import { logFailure } from '@/lib/observe';
 import type { CompanyRow, DistrictRow, VerificationStatus } from '@/lib/supabase/database.types';
-import type { JobListItem } from './jobs';
+import { LIST_SELECT, type JobListItem } from './jobs';
 
 export const COMPANIES_PER_PAGE = 24;
 
@@ -177,7 +177,7 @@ export const getCompanyBySlug = cache(async function getCompanyBySlug(
   if (error) raise(error, 'loading a company');
 
   /*
-    A suspended company is not on the public site at all (migration 315): its
+    A suspended company is not on the public site at all (migration 317): its
     listings were taken down with it, and a profile page left standing would
     keep vouching for it. Read off the row rather than filtered in the query,
     so a database that has not had the migration yet — no such column — still
@@ -205,22 +205,30 @@ export function isVerified(status: VerificationStatus): boolean {
  */
 export const getCompanyOpenJobs = cache(async function getCompanyOpenJobs(
   companyId: string,
-): Promise<JobListItem[]> {
+): Promise<{ jobs: JobListItem[]; total: number }> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  /*
+    The newest COMPANY_PAGE_JOBS, and the exact total beside them.
+
+    This read had no bound. A brokerage with 122 live listings — the biggest in
+    the load-test dataset, and a shape a single large developer reaches in a
+    month — was a 1.4 MB page carrying 600 KB out of the database, rendered for
+    every visitor. The board already lists a company's roles in full, paged
+    (`/jobs?company=<slug>`), so the profile shows the newest and links there.
+  */
+  const { data, error, count } = await supabase
     .from('jobs')
-    .select(
-      `
-      *,
-      company:companies!inner (id, name_ar, name_en, slug, logo_url, verification_status),
-      district:districts!inner (id, governorate_id, name_ar, name_en, slug)
-    `,
-    )
+    .select(LIST_SELECT, { count: 'exact' })
     .eq('company_id', companyId)
     .eq('status', 'active')
     .gt('expires_at', new Date().toISOString())
-    .order('published_at', { ascending: false });
+    .order('published_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(COMPANY_PAGE_JOBS);
 
   if (error) raise(error, "loading a company's open roles");
-  return (data ?? []) as unknown as JobListItem[];
+  return { jobs: (data ?? []) as unknown as JobListItem[], total: count ?? data?.length ?? 0 };
 });
+
+/** How many of a company's roles its profile lists before linking to the board. */
+export const COMPANY_PAGE_JOBS = 20;

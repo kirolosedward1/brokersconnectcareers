@@ -38,7 +38,7 @@ export type ReportReason =
   | 'spam'
   | 'discriminatory'
   | 'other'
-  // Migration 315: what a report about a company or a person needs.
+  // Migration 317: what a report about a company or a person needs.
   | 'scam'
   | 'impersonation'
   | 'harassment'
@@ -130,7 +130,7 @@ export type CompanyRow = Timestamped & {
   /** Bumped on every update; the edit form sends back the one it loaded. */
   version: number;
   /**
-   * An admin's firm-level switch (migration 315). A suspended company has
+   * An admin's firm-level switch (migration 317). A suspended company has
    * nothing on the board and can submit nothing. Optional because code
    * reaches production before the migration as often as after.
    */
@@ -427,7 +427,7 @@ export type AgentProfileRow = Timestamped & {
   units_closed: number | null;
   /** Self-reported closed value in EGP. The platform does not verify it. */
   volume_egp: number | null;
-  /** Set by an admin (migration 315); pins visibility to hidden until lifted. */
+  /** Set by an admin (migration 317); pins visibility to hidden until lifted. */
   restricted_at?: string | null;
   restriction_reason?: string | null;
   /** Both headlines folded for search (migration 68). Generated, never written. */
@@ -530,7 +530,7 @@ export type ApplicationEventRow = {
 
 export type AuditTargetType = 'user' | 'company' | 'job' | 'agent' | 'application' | 'report' | 'taxonomy';
 
-/** Append-only (migration 314). Readable by admins, written only by admin_audit(). */
+/** Append-only (migration 316). Readable by admins, written only by admin_audit(). */
 export type AdminAuditRow = {
   id: number;
   actor_id: string | null;
@@ -1007,6 +1007,20 @@ export type Database = {
         Returns: SalaryReferenceRow[];
       };
       /**
+       * Live listings grouped by track x district x company type, under the
+       * caller's own row-level security (migration 314). What the home page's
+       * browse module counts, without shipping every listing to count it.
+       */
+      browse_counts: {
+        Args: Record<string, never>;
+        Returns: {
+          track: JobTrack;
+          district_id: number;
+          company_type: string | null;
+          listings: number;
+        }[];
+      };
+      /**
        * The caller's company shortlist. No argument saying whose — it resolves
        * `my_company_id()` itself, so there is nothing to forge, and it
        * re-derives each consultant's visibility rather than trusting what was
@@ -1073,7 +1087,7 @@ export type Database = {
       employer_trend: { Args: Empty; Returns: EmployerTrend };
       admin_trend: { Args: Empty; Returns: AdminTrend };
       /**
-       * The console's levers (migration 316). Each checks is_admin(), locks the
+       * The console's levers (migration 318). Each checks is_admin(), locks the
        * row, refuses a transition that makes no sense, and writes the audit
        * record in the same transaction.
        */

@@ -9,6 +9,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { AGENT_REPORT_REASONS, COMPANY_REPORT_REASONS, REPORT_REASONS } from '@/lib/taxonomy';
 import { reportTarget, type ReportTarget } from '@/lib/actions/reports';
+import { reach } from '@/lib/reach';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -51,7 +52,7 @@ const REASONS_FOR: Record<ReportTarget, readonly string[]> = {
 /**
  * The same dialog for a listing, a company or a consultant's profile.
  *
- * Reports about companies and people arrived with migration 315, because the
+ * Reports about companies and people arrived with migration 317, because the
  * two things a moderator most needs to hear about — a company that is not what
  * it says, somebody wearing another consultant's name — had no door at all. It
  * is one dialog rather than three so the rules are one set: an account is
@@ -88,12 +89,12 @@ export function ReportDialog({
     const form = new FormData(event.currentTarget);
 
     startTransition(async () => {
-      const result = await reportTarget({
+      const result = await reach(reportTarget({
         target,
         targetId,
         reason: form.get("reason"),
         detail: String(form.get("detail") ?? ""),
-      });
+      }));
       if (recoverSession(result)) return;
       if (result.ok) {
         setSent(true);

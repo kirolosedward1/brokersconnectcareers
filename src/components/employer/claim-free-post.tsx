@@ -6,6 +6,7 @@ import { Gift } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { claimMonthlyFreePost } from '@/lib/actions/company';
+import { reach } from '@/lib/reach';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -32,7 +33,7 @@ export function ClaimFreePostButton({ claimed }: { claimed: boolean }) {
         onClick={() =>
           startTransition(async () => {
             setRefused(false);
-            const result = await claimMonthlyFreePost();
+            const result = await reach(claimMonthlyFreePost());
             if (recoverSession(result)) return;
 
             /*

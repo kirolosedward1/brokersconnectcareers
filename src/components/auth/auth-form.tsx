@@ -14,6 +14,7 @@ import { Field, Input } from '@/components/ui/field';
 import { safeNext } from '@/lib/safe-next';
 import { Turnstile, turnstileEnabled } from '@/components/security/turnstile';
 import { reportAuthOutcome, type AuthFriction } from '@/lib/actions/security';
+import { reach } from '@/lib/reach';
 
 /**
  * Google's mark, inline.
@@ -254,7 +255,7 @@ export function AuthForm({
         if (signUpError) {
           setError(readable(signUpError));
           setCaptchaReset((n) => n + 1);
-          void reportAuthOutcome({ kind: 'sign_up_failed', email });
+          void reach(reportAuthOutcome({ kind: 'sign_up_failed', email }));
           return;
         }
         // With email confirmation enabled there is no session yet.
@@ -277,9 +278,13 @@ export function AuthForm({
           setCaptchaReset((n) => n + 1);
           setCaptchaToken(null);
           // Tell the server, and take its advice on how much to slow down.
-          const next = await reportAuthOutcome({ kind: 'sign_in_failed', email });
-          setFriction(next);
-          if (next.pause > 0) setPausedUntil(Date.now() + next.pause * 1000);
+          // Advice, not a gate: with no connection there is none to take, and
+          // the refusal above is already on screen.
+          const next = await reportAuthOutcome({ kind: 'sign_in_failed', email }).catch(() => null);
+          if (next) {
+            setFriction(next);
+            if (next.pause > 0) setPausedUntil(Date.now() + next.pause * 1000);
+          }
           return;
         }
       }
@@ -411,7 +416,7 @@ export function AuthForm({
           onClick={() => {
             setResent(null);
             startTransition(async () => {
-              const result = await resendConfirmation(pendingEmail, confirmationPath(), captchaToken);
+              const result = await reach(resendConfirmation(pendingEmail, confirmationPath(), captchaToken));
               setCaptchaReset((n) => n + 1);
               setResent(result.ok ? 'sent' : 'wait');
             });
@@ -529,7 +534,7 @@ export function AuthForm({
               onClick={() => {
                 setResent(null);
                 startTransition(async () => {
-                  const result = await resendConfirmation(pendingEmail, confirmationPath(), captchaToken);
+                  const result = await reach(resendConfirmation(pendingEmail, confirmationPath(), captchaToken));
                   setCaptchaReset((n) => n + 1);
                   setResent(result.ok ? 'sent' : 'wait');
                 });

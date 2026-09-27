@@ -31,7 +31,7 @@ const detailSchema = z.string().trim().max(1000).optional();
  * person, which is exactly what makes it worth flooding.
  *
  * The same door now serves companies and consultant profiles. The rules are
- * the database's (migration 315): one report per person per target, ten a day,
+ * the database's (migration 317): one report per person per target, ten a day,
  * none from a suspended account, none about your own company or profile.
  *
  * The distinct outcomes are named rather than collapsed into one failure,
