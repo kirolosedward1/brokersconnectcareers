@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 const SUPABASE_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const PRELUDE = `
+export const PRELUDE = `
 -- Roles Supabase provisions for the API.
 do $do$ begin
   if not exists (select 1 from pg_roles where rolname='anon') then create role anon nologin; end if;
@@ -40,6 +40,8 @@ create table auth.users (
   raw_app_meta_data jsonb, raw_user_meta_data jsonb,
   created_at timestamptz, updated_at timestamptz,
   confirmation_sent_at timestamptz, recovery_sent_at timestamptz,
+  -- Present on the real table; support reads it (migration 201) and the
+  -- lifecycle report uses it to identify abandoned signups (migration 204).
   last_sign_in_at timestamptz, banned_until timestamptz
 );
 
@@ -53,7 +55,9 @@ create table storage.buckets (
 );
 create table storage.objects (
   id uuid primary key default gen_random_uuid(),
-  bucket_id text, name text, owner uuid
+  bucket_id text, name text, owner uuid,
+  -- The real table carries it; the storage sweep ages objects by it.
+  created_at timestamptz default now()
 );
 alter table storage.objects enable row level security;
 
@@ -75,7 +79,7 @@ alter default privileges in schema public
   grant execute on functions to anon, authenticated, service_role;
 `;
 
-const GRANTS = `
+export const GRANTS = `
 grant usage on schema public to anon, authenticated, service_role;
 -- Supabase grants this; without it a trigger function that is not SECURITY
 -- DEFINER cannot call auth.uid(), and the harness refuses a statement
