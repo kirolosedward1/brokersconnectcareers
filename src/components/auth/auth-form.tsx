@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { localeHref, type Locale } from '@/i18n/routing';
 import { createClient } from '@/lib/supabase/client';
+import { resendConfirmation } from '@/lib/actions/auth-email';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
@@ -157,9 +158,21 @@ export function AuthForm({
     Supabase mints on its own (dashboard "send magic link") comes back through
     the fragment rescue with no query string to carry it.
   */
-  const confirmedHref = `${onboardingHref}${audience ? '&' : '?'}confirmed=1`;
-  const confirmationRedirect = () =>
-    `${window.location.origin}/auth/callback?next=${encodeURIComponent(confirmedHref)}`;
+  /*
+    And the page they were on their way to, carried through onboarding.
+
+    Somebody who tapped Apply, had no account and signed up used to confirm
+    their address, finish onboarding and land on an empty dashboard: the
+    listing they had started on was nowhere in the link. Onboarding already
+    honours `next`, so it only has to arrive there. Nested rather than handed
+    to the callback directly, because a new account has to pass through
+    onboarding before it can apply to anything.
+  */
+  const carryingNext = (href: string) =>
+    next ? `${href}${href.includes('?') ? '&' : '?'}next=${encodeURIComponent(next)}` : href;
+  const confirmedHref = carryingNext(`${onboardingHref}${audience ? '&' : '?'}confirmed=1`);
+  const confirmationPath = () => `/auth/callback?next=${encodeURIComponent(confirmedHref)}`;
+  const confirmationRedirect = () => `${window.location.origin}${confirmationPath()}`;
 
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
@@ -253,7 +266,10 @@ export function AuthForm({
    */
   function landAfterSignIn() {
     // Onboarding decides for itself whether there is anything left to ask.
-    const path = next ?? onboardingHref;
+    // A brand-new account always has something left, so a sign-up that got a
+    // session straight away goes there first, with the destination in tow —
+    // sent straight to `next`, it met a page that needs a profile.
+    const path = mode === 'sign-up' ? carryingNext(onboardingHref) : (next ?? onboardingHref);
     window.location.assign(localeHref(locale, path));
   }
 
@@ -351,12 +367,8 @@ export function AuthForm({
           onClick={() => {
             setResent(null);
             startTransition(async () => {
-              const { error: resendError } = await createClient().auth.resend({
-                type: 'signup',
-                email: pendingEmail,
-                options: { emailRedirectTo: confirmationRedirect() },
-              });
-              setResent(resendError ? 'wait' : 'sent');
+              const result = await resendConfirmation(pendingEmail, confirmationPath());
+              setResent(result.ok ? 'sent' : 'wait');
             });
           }}
         >
@@ -470,12 +482,8 @@ export function AuthForm({
               onClick={() => {
                 setResent(null);
                 startTransition(async () => {
-                  const { error: resendError } = await createClient().auth.resend({
-                    type: 'signup',
-                    email: pendingEmail,
-                    options: { emailRedirectTo: confirmationRedirect() },
-                  });
-                  setResent(resendError ? 'wait' : 'sent');
+                  const result = await resendConfirmation(pendingEmail, confirmationPath());
+              setResent(result.ok ? 'sent' : 'wait');
                 });
               }}
             >

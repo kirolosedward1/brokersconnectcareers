@@ -56,6 +56,7 @@
     "reportReasonLabel": "السبب",
     "postedOn": "نُشرت في {date}",
     "expiresOn": "تنتهي في {date}",
+    "endedOn": "انتهت في {date}",
     "views": "{count} مشاهدة",
     "aboutCompany": "عن الشركة",
     "description": "وصف الوظيفة",
@@ -83,7 +84,10 @@
     "browseOpen": "شوف الوظايف المفتوحة",
     "atCompany": "وظائف {company}",
     "companyPage": "صفحة الشركة",
-    "allCompanies": "شوف كل الشركات"
+    "allCompanies": "شوف كل الشركات",
+    "relaxHeading": "في وظايف لو شيلت فلتر واحد بس:",
+    "withoutFilter": "من غير {name} · {count, plural, one {وظيفة واحدة} two {وظيفتين} few {# وظائف} other {# وظيفة}}",
+    "emptySaveHint": "احفظ البحث ده وهنبعتلك أول ما تنزل وظيفة مطابقة."
   },
   "compensation": {
     "title": "الراتب والعمولة",
@@ -124,7 +128,12 @@
     "any": "الكل",
     "showResults": "شوف النتايج",
     "companyType": "نوع الشركة",
-    "verifiedOnly": "الموثّقة بس"
+    "verifiedOnly": "الموثّقة بس",
+    "minSalary": "راتب أساسي من",
+    "minSalaryAtLeast": "{amount} ج.م أو أكتر",
+    "commissionType": "نوع العمولة",
+    "posted": "تاريخ النشر",
+    "postedWithin": "{days, plural, =1 {آخر 24 ساعة} few {آخر # أيام} other {آخر # يوم}}"
   },
   "track": {
     "primary": "بيع أول",
@@ -225,12 +234,13 @@
     "headlineAr": "العنوان المهني (بالعربي)",
     "headlineEn": "العنوان المهني (بالإنجليزي)",
     "ownerBanner": "ده ملفك. انت شايف كل حاجة لأنه ملفك — الزوار والشركات بيشوفوا حسب إعداد الظهور.",
-    "ownerPublic": "ظهورك «ظاهر للجميع»: أي زائر بيشوف اسمك وصورتك ورقمك زي ما انت شايفهم دلوقتي.",
+    "ownerPublic": "ظهورك «ظاهر للجميع»: أي زائر بيشوف اسمك وصورتك. رقمك وسيرتك الذاتية بيظهروا لحسابات الشركات بس.",
     "ownerVerified": "ظهورك «لأصحاب العمل الموثّقين فقط»: الزوار بيشوفوا البطاقة من غير اسم ولا رقم، والشركات الموثّقة بس اللي بتشوفها كاملة.",
     "ownerHidden": "ظهورك «مخفي تماماً»: ماحدش غيرك يقدر يفتح الصفحة دي. الشركات اللي قدّمت عندها بتشوف طلبك عادي.",
     "ownerEdit": "عدّل ملفك",
     "shortlistAdd": "ضيفه لقايمة المرشحين",
-    "shortlistRemove": "شيله من قايمة المرشحين"
+    "shortlistRemove": "شيله من قايمة المرشحين",
+    "searchPlaceholder": "مثال: مدير مبيعات، ريسيل"
   },
   "availability": {
     "open_to_offers": "مستعد يسمع عروض",
@@ -300,7 +310,8 @@
     "resendSent": "بعتناه تاني. لو لسه مجاش، جرّب كمان شوية.",
     "resendWait": "استنّى شوية قبل ما تطلبه تاني.",
     "applyingTo": "بتقدّم على «{job}»",
-    "applyingToCompany": "في {company} — سجّل دخولك وكمّل التقديم، مش هتبدأ من الأول."
+    "applyingToCompany": "في {company} — سجّل دخولك وكمّل التقديم، مش هتبدأ من الأول.",
+    "applyingToCompanySignUp": "في {company} — اعمل حسابك وهنرجّعك لنفس الوظيفة تكمّل التقديم."
   },
   "onboarding": {
     "title": "كمّل بياناتك",
@@ -530,6 +541,7 @@
     "teamOnlyAdmins": "مديري الشركة بس اللي يقدروا يغيّروا الفريق.",
     "teamNoAccount": "مفيش حساب بالإيميل ده. خلّي زميلك يسجّل الأول، وبعدين ضيفه من هنا.",
     "teamAlreadyMember": "الشخص ده في الفريق بالفعل.",
+    "teamRateLimited": "حاولت تضيف ناس كتير في وقت قصير. استنّى ساعة وجرّب تاني.",
     "teamNotEmployer": "الإيميل ده لحساب استشاري، مش لحساب شركة.",
     "teamCannotRemoveOwner": "مينفعش تشيل صاحب الحساب من شركته.",
     "stageFilter": "تصفية حسب المرحلة",
@@ -721,7 +733,13 @@
     "title": "وظائف {track} في {district}",
     "subtitle": "كل وظائف {track} المتاحة دلوقتي في {district} — بالراتب الأساسي ونسبة العمولة ومصدر العملاء.",
     "otherDistricts": "{track} في مناطق أخرى",
-    "otherTracks": "تخصصات أخرى في {district}"
+    "otherTracks": "تخصصات أخرى في {district}",
+    "companiesHiring": "{count, plural, one {شركة واحدة بتعيّن} two {شركتين بيعيّنوا} few {# شركات بتعيّن} many {# شركة بتعيّن} other {# شركة بتعيّن}}",
+    "withSalary": "{count} من {total} بمرتب أساسي",
+    "factSalaryRange": "المرتب الأساسي من {min} لـ {max} جنيه شهرياً",
+    "factSalaryFrom": "المرتب الأساسي من {min} جنيه شهرياً",
+    "factsLabel": "ملخص الوظائف المتاحة",
+    "popularTitle": "وظائف مطلوبة حسب التخصص والمنطقة"
   },
   "footer": {
     "product": "المنصة",

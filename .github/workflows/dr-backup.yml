@@ -1,0 +1,138 @@
+# Nightly encrypted backup of the production database and Storage, to a bucket
+# outside GitHub and outside Supabase.
+#
+# Inert until configured: with any required secret missing, the job logs what
+# is missing and exits successfully, so a fresh fork or an unconfigured repo
+# never fails red and never uploads anything.
+#
+# This repository is public. Backups are therefore NEVER uploaded as workflow
+# artifacts, which any signed-in GitHub user could download. They go only to the
+# bucket named in DR_S3_URI, encrypted to an age public key whose private half
+# lives offline with the owners (docs/disaster-recovery.md, D5). This workflow
+# can write backups but can never read one back.
+#
+# Repository secrets (Settings → Secrets and variables → Actions):
+#   DR_DATABASE_URL           Supabase → Connect → Session pooler URI (port 5432).
+#                             Not the direct connection: that host is IPv6-only
+#                             on the Free plan and GitHub runners are IPv4.
+#                             Not the transaction pooler (6543): pg_dump needs a
+#                             session.
+#   DR_SUPABASE_URL           https://<ref>.supabase.co
+#   DR_SUPABASE_SERVICE_ROLE_KEY  the sb_secret_… key, for Storage
+#   DR_AGE_RECIPIENT          age1… public key
+#   DR_S3_URI                 s3://bucket/prefix
+#   DR_S3_ENDPOINT            e.g. https://s3.eu-central-003.backblazeb2.com (omit for AWS)
+#   DR_S3_ACCESS_KEY_ID       write-only key for that bucket
+#   DR_S3_SECRET_ACCESS_KEY
+#
+# Give the bucket versioning or object lock and a lifecycle rule for retention
+# (D4). Give the key write permission only, so a leaked key cannot delete
+# history.
+name: DR backup
+
+on:
+  schedule:
+    - cron: '23 0 * * *' # 00:23 UTC, early morning in Cairo, before the 01:00 expiry cron
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dr-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DR_DATABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.DR_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DR_SUPABASE_SERVICE_ROLE_KEY }}
+      AGE_RECIPIENT: ${{ secrets.DR_AGE_RECIPIENT }}
+      DR_S3_URI: ${{ secrets.DR_S3_URI }}
+      DR_S3_ENDPOINT: ${{ secrets.DR_S3_ENDPOINT }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.DR_S3_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.DR_S3_SECRET_ACCESS_KEY }}
+      DR_OPERATOR: github-actions/${{ github.workflow }}#${{ github.run_number }}
+    steps:
+      - name: Configured?
+        id: gate
+        run: |
+          missing=()
+          for v in DATABASE_URL NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY \
+                   AGE_RECIPIENT DR_S3_URI AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+            [ -n "${!v}" ] || missing+=("$v")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::notice::DR backup not configured (missing: ${missing[*]}). Skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+
+      - name: Tools (Postgres 17 client, age)
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17 age
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          version: 10 # lockfileVersion 9.0; package.json pins no packageManager
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        if: steps.gate.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Database
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          stamp=$(date -u +%Y%m%dT%H%M%SZ)
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+          bash scripts/dr/db-backup.sh "$RUNNER_TEMP/dr/db-$stamp"
+
+      - name: Storage
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          node scripts/dr/storage-backup.mjs "$RUNNER_TEMP/dr/storage-plain"
+          tar -C "$RUNNER_TEMP/dr/storage-plain" -c . \
+            | age -r "$AGE_RECIPIENT" > "$RUNNER_TEMP/dr/db-$STAMP/storage.tar.age"
+          rm -rf "$RUNNER_TEMP/dr/storage-plain"
+
+      - name: Refuse to upload plaintext
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          cd "$RUNNER_TEMP/dr/db-$STAMP"
+          if ls full.dump data.sql 2>/dev/null; then
+            echo "::error::Unencrypted dump present; not uploading."; exit 1
+          fi
+          ls -la
+
+      - name: Upload
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          endpoint=()
+          [ -n "$DR_S3_ENDPOINT" ] && endpoint=(--endpoint-url "$DR_S3_ENDPOINT")
+          aws s3 cp --recursive --only-show-errors "${endpoint[@]}" \
+            "$RUNNER_TEMP/dr/db-$STAMP" "${DR_S3_URI%/}/$STAMP/"
+          echo "uploaded to ${DR_S3_URI%/}/$STAMP/"
+
+      - name: Clean up
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/dr"

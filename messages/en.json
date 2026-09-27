@@ -56,6 +56,7 @@
     "reportReasonLabel": "Reason",
     "postedOn": "Posted {date}",
     "expiresOn": "Closes {date}",
+    "endedOn": "Closed {date}",
     "views": "{count} views",
     "aboutCompany": "About the company",
     "description": "Job description",
@@ -83,7 +84,10 @@
     "browseOpen": "Browse open roles",
     "atCompany": "Roles at {company}",
     "companyPage": "Company page",
-    "allCompanies": "All companies"
+    "allCompanies": "All companies",
+    "relaxHeading": "There are listings if you drop one filter:",
+    "withoutFilter": "Without {name} · {count, plural, one {# job} other {# jobs}}",
+    "emptySaveHint": "Save this search and we'll email you when a matching listing is posted."
   },
   "compensation": {
     "title": "Pay and commission",
@@ -124,7 +128,12 @@
     "any": "Any",
     "showResults": "Show results",
     "companyType": "Company type",
-    "verifiedOnly": "Verified only"
+    "verifiedOnly": "Verified only",
+    "minSalary": "Basic salary from",
+    "minSalaryAtLeast": "EGP {amount}+",
+    "commissionType": "Commission",
+    "posted": "Date posted",
+    "postedWithin": "{days, plural, =1 {Last 24 hours} other {Last # days}}"
   },
   "track": {
     "primary": "Primary sales",
@@ -225,12 +234,13 @@
     "headlineAr": "Professional headline (Arabic)",
     "headlineEn": "Professional headline (English)",
     "ownerBanner": "This is your profile. You see everything because it is yours — visitors and companies see it according to your visibility setting.",
-    "ownerPublic": "Your visibility is “public”: any visitor sees your name, photo and number exactly as you see them now.",
+    "ownerPublic": "Your visibility is “public”: any visitor sees your name and photo. Your number and CV are shown to company accounts only.",
     "ownerVerified": "Your visibility is “verified employers only”: visitors see the card without a name or number; only verified companies see it in full.",
     "ownerHidden": "Your visibility is “hidden”: nobody but you can open this page. Companies you applied to still see your application.",
     "ownerEdit": "Edit your profile",
     "shortlistAdd": "Add to shortlist",
-    "shortlistRemove": "Remove from shortlist"
+    "shortlistRemove": "Remove from shortlist",
+    "searchPlaceholder": "e.g. sales manager, resale"
   },
   "availability": {
     "open_to_offers": "Open to offers",
@@ -300,7 +310,8 @@
     "resendSent": "Sent again. If it still has not arrived, try again shortly.",
     "resendWait": "Wait a moment before asking for another.",
     "applyingTo": "You are applying to \"{job}\"",
-    "applyingToCompany": "at {company} — sign in and finish; you will not start over."
+    "applyingToCompany": "at {company} — sign in and finish; you will not start over.",
+    "applyingToCompanySignUp": "at {company} — create your account and we will bring you back to this job to finish."
   },
   "onboarding": {
     "title": "Finish your profile",
@@ -530,6 +541,7 @@
     "teamOnlyAdmins": "Only company admins can change the team.",
     "teamNoAccount": "No account with that email. Ask them to sign up first, then add them here.",
     "teamAlreadyMember": "They are already on the team.",
+    "teamRateLimited": "Too many additions in a short time. Try again in an hour.",
     "teamNotEmployer": "That email belongs to a consultant account, not a company one.",
     "teamCannotRemoveOwner": "The account owner cannot be removed from their own company.",
     "stageFilter": "Filter by stage",
@@ -721,7 +733,13 @@
     "title": "{track} jobs in {district}",
     "subtitle": "Every {track} role open right now in {district} — with the basic salary, the commission, and who supplies the leads.",
     "otherDistricts": "{track} in other districts",
-    "otherTracks": "Other tracks in {district}"
+    "otherTracks": "Other tracks in {district}",
+    "companiesHiring": "{count, plural, one {One company hiring} other {# companies hiring}}",
+    "withSalary": "{count} of {total} with a basic salary",
+    "factSalaryRange": "Basic salary from {min} to {max} EGP a month",
+    "factSalaryFrom": "Basic salary from {min} EGP a month",
+    "factsLabel": "Summary of open roles",
+    "popularTitle": "Open roles by specialisation and area"
   },
   "footer": {
     "product": "Platform",

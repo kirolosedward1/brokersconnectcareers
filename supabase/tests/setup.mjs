@@ -31,13 +31,18 @@ create schema if not exists auth;
 create schema if not exists storage;
 create schema if not exists extensions;
 
+-- The four timestamps at the end are what support reads to answer "I never got
+-- the email" and "I can't sign in" (admin_support_facts, migration 201). Same
+-- names and types as GoTrue's own table, checked against production.
 create table auth.users (
   id uuid primary key, instance_id uuid, aud text, role text, email text,
   encrypted_password text, email_confirmed_at timestamptz,
   raw_app_meta_data jsonb, raw_user_meta_data jsonb,
   created_at timestamptz, updated_at timestamptz,
-  -- Present on the real table; the lifecycle report reads it (migration 204).
-  last_sign_in_at timestamptz
+  confirmation_sent_at timestamptz, recovery_sent_at timestamptz,
+  -- Present on the real table; support reads it (migration 201) and the
+  -- lifecycle report uses it to identify abandoned signups (migration 204).
+  last_sign_in_at timestamptz, banned_until timestamptz
 );
 
 create or replace function auth.uid() returns uuid language sql stable as $fn$

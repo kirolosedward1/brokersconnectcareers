@@ -85,7 +85,20 @@ export function buildCompanySlug(name: string): string {
   return `${base}-${slugId()}`;
 }
 
-export function buildAgentSlug(fullName: string): string {
-  const base = slugify(fullName) || 'agent';
-  return `${base}-${slugId()}`;
+/**
+ * `consultant-48291736` — never the person's name.
+ *
+ * It used to be `<name>-<id>`, and a consultant who chose "verified employers
+ * only" is shown to everybody else as an anonymous card whose link spelled out
+ * who they were: `/agents/heba-ramadan-625784` sat in every directory href and
+ * in the public search_agents answer. The card promised a visitor would not
+ * learn their name; the URL told them. Visibility can change after the slug is
+ * minted, so no slug carries a name, whatever the visibility is today.
+ *
+ * Eight digits rather than six: without a name in front, every consultant
+ * shares one prefix, so the id alone has to keep them apart. A collision is
+ * still retried by withUniqueSlug.
+ */
+export function buildAgentSlug(): string {
+  return `consultant-${slugId(8)}`;
 }
