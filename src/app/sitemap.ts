@@ -75,7 +75,9 @@ async function fromDatabase(): Promise<DbRows> {
         .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order('published_at', { ascending: false })
         .limit(5000),
-      supabase.from('companies').select('slug, created_at').limit(5000),
+      // `*` rather than naming suspended_at, so a database without migration 69
+      // still returns every company instead of failing the whole sitemap.
+      supabase.from('companies').select('*').limit(5000),
       // Only profiles the owner has made public belong in a sitemap. A gated
       // profile must not be advertised to a crawler.
       supabase.from('agent_profiles').select('slug, created_at').eq('visibility', 'public').limit(5000),
@@ -107,7 +109,11 @@ async function fromDatabase(): Promise<DbRows> {
 
     return {
       jobs: jobs.data ?? [],
-      companies: companies.data ?? [],
+      // A suspended company's page is a 404 (getCompanyBySlug), so it is not
+      // advertised either.
+      companies: (companies.data ?? [])
+        .filter((row: { suspended_at?: string | null }) => !row.suspended_at)
+        .map((row: { slug: string; created_at: string }) => ({ slug: row.slug, created_at: row.created_at })),
       agents: agents.data ?? [],
       districts: districts.data ?? [],
       liveLandings,
