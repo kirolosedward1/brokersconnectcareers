@@ -31,7 +31,7 @@ import { dispatch, type DispatchReport, type Route } from './dispatch';
  * In-app, and where it is written
  * -------------------------------
  * Almost every in-app notification is written by a database trigger on the
- * row that changed (migrations 17, 51, 52, 69). That is deliberate and it is
+ * row that changed (migrations 17, 51, 52, 70, 71). That is deliberate and it is
  * the stronger half of this design: the bell is written in the same
  * transaction as the fact it reports, so it cannot be skipped by a code path
  * that forgot to publish, and it cannot claim something that rolled back. Each
@@ -51,7 +51,7 @@ import { dispatch, type DispatchReport, type Route } from './dispatch';
  * deterministic dedupe key before sending, so a retried request, a
  * double-submitted form, a re-run cron and the retry sweeper all collapse into
  * one message; `sent` and `delivered` are recorded as separate facts. The
- * in-app row and the outbox row share the key vocabulary (see migration 69's
+ * in-app row and the outbox row share the key vocabulary (see migration 70's
  * header), so "once" means the same thing in both.
  *
  * Failure

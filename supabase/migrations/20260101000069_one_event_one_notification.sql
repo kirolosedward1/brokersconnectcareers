@@ -1,5 +1,5 @@
 -- =============================================================================
--- 68 — One event, one notification (the vocabulary half)
+-- 69 — One event, one notification (the vocabulary half)
 --
 -- Every in-app notification so far was a bare insert from a trigger. That is
 -- idempotent against the obvious duplicate (a double-click that saves the same
@@ -26,7 +26,7 @@
 --
 -- This file only adds the vocabulary. Postgres will not let a transaction use
 -- an enum value the same transaction added, and db-push wraps each migration
--- in its own, so the functions that write these kinds live in migration 69 —
+-- in its own, so the functions that write these kinds live in migration 70 —
 -- the same split migrations 20/21 and 51/52 made.
 -- =============================================================================
 
@@ -42,7 +42,7 @@ alter type notification_kind add value if not exists 'password_changed';        
 alter table notifications add column if not exists dedupe_key text;
 
 comment on column notifications.dedupe_key is
-  'What makes two notifications the same notification, per recipient. Written by the platform only; see migration 68.';
+  'What makes two notifications the same notification, per recipient. Written by the platform only; see migration 69.';
 
 -- The lock. Partial so rows written before this migration (all null) need no
 -- backfill and cannot collide.

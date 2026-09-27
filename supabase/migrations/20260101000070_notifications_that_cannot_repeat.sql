@@ -1,7 +1,7 @@
 -- =============================================================================
--- 69 — Notifications that cannot repeat, and cannot break what caused them
+-- 70 — Notifications that cannot repeat, and cannot break what caused them
 --
--- The functions half of migration 68. Three changes to how the bell is written,
+-- The functions half of migration 69. Three changes to how the bell is written,
 -- and the events it was missing:
 --
 -- 1. Every notification carries a deterministic key.
@@ -91,6 +91,11 @@ $$;
 -- server, after the evidence check that only the server can make.
 revoke execute on function public.notify(uuid, notification_kind, jsonb, text, text)
   from public, anon, authenticated;
+-- Said rather than inherited. Supabase's default privileges already give the
+-- service role its own grant on every new function, which the revoke above
+-- does not touch — but that depends on which role ran the migration, and the
+-- server's password notice and the crons must not.
+grant execute on function public.notify(uuid, notification_kind, jsonb, text, text) to service_role;
 
 create or replace function public.notify_company(
   p_company uuid,
@@ -519,6 +524,7 @@ $$;
 -- somebody else's bell — harmless in content, but not theirs to do.
 revoke execute on function public.emit_job_expiry_notifications(uuid, integer)
   from public, anon, authenticated;
+grant execute on function public.emit_job_expiry_notifications(uuid, integer) to service_role;
 
 -- The same sweep, for the caller's own company and nothing else.
 create or replace function public.sync_my_job_notifications()

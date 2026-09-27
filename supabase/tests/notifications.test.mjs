@@ -453,6 +453,44 @@ report.section('a retried email knows who it was for');
     pending.rows.some((row) => row.user_id === MATE && row.entity_id === job.id), JSON.stringify(pending.rows));
 }
 
+report.section('the server can reach what only the server may call');
+{
+  /*
+    notify() for the password notice, the expiry sweep and the prune for the
+    crons, pending_emails() for the retry sweeper: each is revoked from every
+    API role and must still be callable by the service role — explicitly
+    granted, not inherited from default privileges that depend on who ran the
+    migration.
+  */
+  const SERVER_ONLY = [
+    'notify(uuid, notification_kind, jsonb, text, text)',
+    'emit_job_expiry_notifications(uuid, integer)',
+    'prune_notifications(integer)',
+    'pending_emails(integer)',
+  ];
+  for (const sig of SERVER_ONLY) {
+    const { rows } = await db.query(`
+      select has_function_privilege('service_role', 'public.${sig}', 'EXECUTE') as sr,
+             has_function_privilege('authenticated', 'public.${sig}', 'EXECUTE') as au,
+             has_function_privilege('anon', 'public.${sig}', 'EXECUTE') as an,
+             exists (
+               select 1 from pg_proc p, aclexplode(p.proacl) a
+                where p.oid = 'public.${sig}'::regprocedure
+                  and a.grantee = 'service_role'::regrole and a.privilege_type = 'EXECUTE'
+             ) as explicit`);
+    const r = rows[0];
+    report.check(`${sig.split('(')[0]}: service role yes (explicitly), signed-in and anonymous no`,
+      r.sr && r.explicit && !r.au && !r.an, JSON.stringify(r));
+  }
+
+  // And actually calling them as the service role works end to end.
+  const asServer = await as(null, `
+    select public.prune_notifications(1) as pruned,
+           public.emit_job_expiry_notifications(null, 3) as swept,
+           (select count(*) from public.pending_emails(1)) as pending`, 'service_role');
+  report.check('called as the service role, each one runs', asServer.ok, asServer.error);
+}
+
 await db.exec(`delete from auth.users where id in ('${APPLICANT}', '${MATE}')`);
 void admin;
 

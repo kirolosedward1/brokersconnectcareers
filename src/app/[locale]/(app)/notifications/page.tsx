@@ -79,7 +79,7 @@ export default async function NotificationsPage({
     // notifications_select_own is still the thing that decides.
     .eq('user_id', viewer.userId)
     // Applicants folded into a "N new applicants" row are counted by that
-    // row, not listed beside it (migration 70).
+    // row, not listed beside it (migration 71).
     .is('folded_into', null);
   if (cursor) feed = feed.or(afterCursorFilter(cursor));
 

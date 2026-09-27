@@ -1,7 +1,7 @@
 # Notification architecture
 
 How BrokersConnect tells people that something happened: the in-app bell,
-email, and the log behind them. Written against migrations 17–70 and
+email, and the log behind them. Written against migrations 17–71 (the notification ones are 69–71) and
 `src/lib/notifications/`.
 
 ## 1. Event architecture
@@ -56,7 +56,7 @@ Two events have no row change to trigger on:
 
 ## 2. Notification schema
 
-`notifications` (migration 17, extended by 68):
+`notifications` (migration 17, extended by 69 and 71):
 
 | column | meaning |
 |---|---|

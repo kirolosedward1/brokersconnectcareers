@@ -49,7 +49,7 @@ export async function NotificationMenu({ locale }: { locale: string }) {
       .from('notifications')
       .select('*')
       // Applicants folded into a "N new applicants" row are counted by that
-      // row, not shown beside it (migration 70).
+      // row, not shown beside it (migration 71).
       .is('folded_into', null)
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })

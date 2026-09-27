@@ -1,15 +1,19 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from './error';
-import { getDistricts, getGovernorates } from './taxonomy';
+import { getDistricts, getGovernorates, getSearchPhrases } from './taxonomy';
 import {
+  COMMISSION_TYPES,
   COMPANY_TYPES,
   EMPLOYMENT_TYPES,
   EXPERIENCE_BANDS,
   JOB_TRACKS,
   LEADS_SOURCES,
+  MIN_SALARY_STEPS,
+  POSTED_WITHIN_DAYS,
 } from '@/lib/taxonomy';
 import type {
+  CommissionType,
   CompanyRow,
   CompanyType,
   DistrictRow,
@@ -20,7 +24,7 @@ import type {
   LeadsSource,
   SalaryReferenceRow,
 } from '@/lib/supabase/database.types';
-import { searchText } from '@/lib/search/arabic';
+import { buildJobQuery, searchText } from '@/lib/search/arabic';
 import { companySlugOrNull } from '@/lib/search/company-slug';
 import { logFailure } from '@/lib/observe';
 
@@ -40,6 +44,12 @@ export type JobFilters = {
   districtSlugs: string[];
   governorateSlug: string | null;
   hasBasicSalary: boolean | null;
+  /** EGP a month the basic reaches at least; one of MIN_SALARY_STEPS. */
+  minSalary: number | null;
+  /** How the commission is structured. Several values mean "either". */
+  commissionTypes: CommissionType[];
+  /** Published within this many days; one of POSTED_WITHIN_DAYS. */
+  postedWithin: number | null;
   /**
    * One company's listings, by slug.
    *
@@ -68,6 +78,9 @@ export const EMPTY_FILTERS: JobFilters = {
   districtSlugs: [],
   governorateSlug: null,
   hasBasicSalary: null,
+  minSalary: null,
+  commissionTypes: [],
+  postedWithin: null,
   companySlug: null,
   companyTypes: [],
   sort: 'newest',
@@ -83,6 +96,12 @@ function many(value: string | string[] | undefined): string[] {
 
 function only<T extends string>(values: string[], allowed: readonly T[]): T[] {
   return values.filter((v): v is T => (allowed as readonly string[]).includes(v));
+}
+
+/** A number from the URL, kept only if it is one of the offered steps. */
+function step(value: string | string[] | undefined, allowed: readonly number[]): number | null {
+  const n = typeof value === 'string' ? Number.parseInt(value, 10) : Number.NaN;
+  return allowed.includes(n) ? n : null;
 }
 
 /**
@@ -103,6 +122,9 @@ export function parseJobFilters(searchParams: SearchParams): JobFilters {
     districtSlugs: many(searchParams.district).slice(0, 12),
     governorateSlug: typeof searchParams.gov === 'string' ? searchParams.gov : null,
     hasBasicSalary: salary === 'yes' ? true : salary === 'no' ? false : null,
+    minSalary: step(searchParams.pay, MIN_SALARY_STEPS),
+    commissionTypes: only(many(searchParams.comm), COMMISSION_TYPES),
+    postedWithin: step(searchParams.posted, POSTED_WITHIN_DAYS),
     companySlug: companySlugOrNull(searchParams.company),
     companyTypes: only(many(searchParams.ctype), COMPANY_TYPES),
     sort: sort === 'salary' || sort === 'seats' ? sort : 'newest',
@@ -122,6 +144,9 @@ export function serializeJobFilters(filters: JobFilters): URLSearchParams {
   if (filters.governorateSlug) params.set('gov', filters.governorateSlug);
   if (filters.hasBasicSalary === true) params.set('salary', 'yes');
   if (filters.hasBasicSalary === false) params.set('salary', 'no');
+  if (filters.minSalary) params.set('pay', String(filters.minSalary));
+  for (const type of filters.commissionTypes) params.append('comm', type);
+  if (filters.postedWithin) params.set('posted', String(filters.postedWithin));
   if (filters.companySlug) params.set('company', filters.companySlug);
   for (const type of filters.companyTypes) params.append('ctype', type);
   if (filters.sort !== 'newest') params.set('sort', filters.sort);
@@ -139,6 +164,9 @@ export function countActiveFilters(filters: JobFilters): number {
     filters.districtSlugs.length +
     (filters.governorateSlug ? 1 : 0) +
     (filters.hasBasicSalary === null ? 0 : 1) +
+    (filters.minSalary ? 1 : 0) +
+    filters.commissionTypes.length +
+    (filters.postedWithin ? 1 : 0) +
     (filters.companySlug ? 1 : 0) +
     filters.companyTypes.length
   );
@@ -159,22 +187,25 @@ const LIST_SELECT = `
 `;
 
 /**
- * `client` lets a caller with no request context — the weekly alert job — run
- * exactly this query rather than a second copy of it. Passing the public
- * client there is deliberate: an alert email must never contain a listing the
- * recipient could not see for themselves.
+ * The same, joined to the listing's search document — a filter, not data.
+ *
+ * An empty embed returns nothing, and `!inner` narrows the listings (and the
+ * exact count) to those whose document matches. The document's own policy
+ * inherits the listing's, so this cannot reach a draft.
  */
-export const queryJobs = cache(async function queryJobs(
-  filters: JobFilters,
-  client?: SupabaseLikeClient,
-): Promise<{
-  jobs: JobListItem[];
-  total: number;
-  pageCount: number;
-  /** The page actually returned, which is not always the one asked for. */
-  page: number;
-}> {
-  const supabase = client ?? (await createClient());
+const SEARCH_SELECT = `${LIST_SELECT}, search:job_search_documents!inner ()`;
+
+/**
+ * Everything needed to run the board query that is not the filters: which
+ * districts they name, and how the keyword reads as a query.
+ */
+type Resolved = {
+  districtIds: number[] | null;
+  /** to_tsquery syntax, or null for no keyword search. */
+  tsquery: string | null;
+};
+
+async function resolveFilters(filters: JobFilters): Promise<Resolved | null> {
   const districts = await getDistricts();
 
   // Resolve district and governorate slugs to ids up front — the taxonomy is
@@ -199,28 +230,40 @@ export const queryJobs = cache(async function queryJobs(
   }
 
   // An empty id set after intersection means nothing can match.
-  if (districtIds && districtIds.length === 0) {
-    return { jobs: [], total: 0, pageCount: 0, page: 1 };
-  }
+  if (districtIds && districtIds.length === 0) return null;
 
-  /*
-    Built fresh each time rather than held in one variable.
+  // A keyword with nothing searchable in it — punctuation, a lone quote — is
+  // no keyword, rather than a query that matches nothing.
+  const tsquery = filters.q ? buildJobQuery(filters.q, await getSearchPhrases()) : null;
 
-    PostgREST refuses an offset past the end of the result set outright —
-    PGRST103, "Requested range not satisfiable" — so `?page=400` on a board of
-    fifteen listings did not return an empty page, it threw, and the board
-    answered with a 500 carrying the database's own message. The recovery below
-    has to issue a second query with a different range, and a builder that has
-    already been awaited is not something to lean on for that.
-  */
-  const build = () => {
+  return { districtIds, tsquery };
+}
+
+/**
+ * The board query, with the filters applied and nothing else.
+ *
+ * `legacy` searches jobs.search_vector instead of the search document. That
+ * column is what the board searched before migration 68, and it is kept for
+ * exactly one case: this code reaching a database the migration has not. The
+ * embed then fails with PGRST200 and the caller asks again this way.
+ */
+function applyFilters(
+  supabase: SupabaseLikeClient,
+  filters: JobFilters,
+  resolved: Resolved,
+  { head = false, legacy = false }: { head?: boolean; legacy?: boolean } = {},
+) {
+  const searching = Boolean(resolved.tsquery) && !legacy;
+
   let query = supabase
     .from('jobs')
-    .select(LIST_SELECT, { count: 'exact' })
+    .select(searching ? SEARCH_SELECT : LIST_SELECT, { count: 'exact', head })
     .eq('status', 'active')
     .gt('expires_at', new Date().toISOString());
 
-  if (filters.q) {
+  if (searching && resolved.tsquery) {
+    query = query.textSearch('search.document', resolved.tsquery, { config: 'simple' });
+  } else if (legacy && filters.q) {
     // Folded the same way the index was. Without this the query keeps its
     // harakat, its hamza and its ال while the index has none of them, and an
     // exact match on the screen is a miss in the database.
@@ -233,10 +276,30 @@ export const queryJobs = cache(async function queryJobs(
   if (filters.leadsSources.length) query = query.in('leads_source', filters.leadsSources);
   if (filters.experienceBands.length) query = query.in('experience_band', filters.experienceBands);
   if (filters.employmentTypes.length) query = query.in('employment_type', filters.employmentTypes);
-  if (districtIds) query = query.in('district_id', districtIds);
+  if (filters.commissionTypes.length) query = query.in('commission_type', filters.commissionTypes);
+  if (resolved.districtIds) query = query.in('district_id', resolved.districtIds);
 
   if (filters.hasBasicSalary === true) query = query.not('basic_salary_min', 'is', null);
   if (filters.hasBasicSalary === false) query = query.is('basic_salary_min', null);
+
+  /*
+    "At least" means the range reaches it: a listing paying 8,000–12,000 is
+    one a person asking for 10,000 wants to see. A listing that gave only a
+    minimum is judged on that. The value is one of MIN_SALARY_STEPS — the
+    parser drops anything else — so interpolating it here is interpolating a
+    constant, not the URL.
+  */
+  if (filters.minSalary) {
+    const floor = filters.minSalary;
+    query = query.or(
+      `basic_salary_max.gte.${floor},and(basic_salary_max.is.null,basic_salary_min.gte.${floor})`,
+    );
+  }
+
+  if (filters.postedWithin) {
+    const since = new Date(Date.now() - filters.postedWithin * 24 * 60 * 60 * 1000);
+    query = query.gte('published_at', since.toISOString());
+  }
 
   /*
     Through the embedded company rather than a resolved id.
@@ -256,29 +319,72 @@ export const queryJobs = cache(async function queryJobs(
     query = query.in('company.company_type', filters.companyTypes);
   }
 
-  // Featured listings pin to the top of every sort; the paid placement is
-  // worthless if a sort change buries it.
-  query = query.order('is_featured', { ascending: false });
-
-  if (filters.sort === 'salary') {
-    query = query.order('basic_salary_max', { ascending: false, nullsFirst: false });
-  } else if (filters.sort === 'seats') {
-    query = query.order('seats', { ascending: false });
-  }
-  query = query.order('published_at', { ascending: false });
-  /*
-    The last key, so the order is total.
-
-    Every key above it can tie — `seats` on almost every listing, salary
-    wherever two companies pay the same, and `published_at` the moment a
-    moderator approves two in the same second. An order with ties is not an
-    order: Postgres is free to return the tied rows differently between the
-    query for page one and the query for page two, which shows one listing
-    twice and hides another entirely. It costs nothing and it cannot tie.
-  */
-  query = query.order('id', { ascending: false });
-
   return query;
+}
+
+/** PostgREST could not find the search document's relationship: pre-68. */
+const isMissingSearchDocuments = (error: { code?: string } | null) =>
+  error?.code === 'PGRST200' || error?.code === '42P01';
+
+/**
+ * `client` lets a caller with no request context — the weekly alert job — run
+ * exactly this query rather than a second copy of it. Passing the public
+ * client there is deliberate: an alert email must never contain a listing the
+ * recipient could not see for themselves.
+ */
+export const queryJobs = cache(async function queryJobs(
+  filters: JobFilters,
+  client?: SupabaseLikeClient,
+): Promise<{
+  jobs: JobListItem[];
+  total: number;
+  pageCount: number;
+  /** The page actually returned, which is not always the one asked for. */
+  page: number;
+}> {
+  const supabase = client ?? (await createClient());
+  const resolved = await resolveFilters(filters);
+
+  if (!resolved) return { jobs: [], total: 0, pageCount: 0, page: 1 };
+
+  let legacy = false;
+
+  /*
+    Built fresh each time rather than held in one variable.
+
+    PostgREST refuses an offset past the end of the result set outright —
+    PGRST103, "Requested range not satisfiable" — so `?page=400` on a board of
+    fifteen listings did not return an empty page, it threw, and the board
+    answered with a 500 carrying the database's own message. The recovery below
+    has to issue a second query with a different range, and a builder that has
+    already been awaited is not something to lean on for that.
+  */
+  const build = () => {
+    let query = applyFilters(supabase, filters, resolved, { legacy });
+
+    // Featured listings pin to the top of every sort; the paid placement is
+    // worthless if a sort change buries it.
+    query = query.order('is_featured', { ascending: false });
+
+    if (filters.sort === 'salary') {
+      query = query.order('basic_salary_max', { ascending: false, nullsFirst: false });
+    } else if (filters.sort === 'seats') {
+      query = query.order('seats', { ascending: false });
+    }
+    query = query.order('published_at', { ascending: false });
+    /*
+      The last key, so the order is total.
+
+      Every key above it can tie — `seats` on almost every listing, salary
+      wherever two companies pay the same, and `published_at` the moment a
+      moderator approves two in the same second. An order with ties is not an
+      order: Postgres is free to return the tied rows differently between the
+      query for page one and the query for page two, which shows one listing
+      twice and hides another entirely. It costs nothing and it cannot tie.
+    */
+    query = query.order('id', { ascending: false });
+
+    return query;
   };
 
   const pageOf = (page: number) => {
@@ -286,7 +392,15 @@ export const queryJobs = cache(async function queryJobs(
     return build().range(from, from + JOBS_PER_PAGE - 1);
   };
 
-  const { data, error, count } = await pageOf(filters.page);
+  let { data, error, count } = await pageOf(filters.page);
+
+  if (resolved.tsquery && isMissingSearchDocuments(error)) {
+    logFailure('jobs', 'search documents missing; searching the legacy column', {
+      code: error?.code,
+    });
+    legacy = true;
+    ({ data, error, count } = await pageOf(filters.page));
+  }
 
   /*
     A page past the end is answered with the end, not with a 500 and not with
@@ -345,6 +459,34 @@ export const queryJobs = cache(async function queryJobs(
     page: filters.page,
   };
 });
+
+/**
+ * How many listings a set of filters matches, and nothing else — a HEAD
+ * request, so no rows travel.
+ *
+ * For the no-results panel, which asks it once per filter the reader could
+ * drop. Null rather than a throw on any failure: a suggestion that could not
+ * be counted is a suggestion not shown, never a broken page.
+ */
+export async function countJobs(filters: JobFilters): Promise<number | null> {
+  const supabase = await createClient();
+  const resolved = await resolveFilters(filters);
+  if (!resolved) return 0;
+
+  let { count, error } = await applyFilters(supabase, filters, resolved, { head: true });
+  if (resolved.tsquery && isMissingSearchDocuments(error)) {
+    ({ count, error } = await applyFilters(supabase, filters, resolved, {
+      head: true,
+      legacy: true,
+    }));
+  }
+
+  if (error) {
+    logFailure('jobs', 'could not count a relaxed search', { code: error.code });
+    return null;
+  }
+  return count ?? 0;
+}
 
 export type JobDetail = JobRow & {
   company: CompanyRow & { district: DistrictRow | null };

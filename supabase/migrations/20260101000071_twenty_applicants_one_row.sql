@@ -1,8 +1,8 @@
 -- =============================================================================
--- 70 — Twenty applicants, one row; a feed that forgets; a receipt for the
+-- 71 — Twenty applicants, one row; a feed that forgets; a receipt for the
 --      person who pressed submit
 --
--- Three follow-ups to migrations 68/69.
+-- Three follow-ups to migrations 69/70.
 --
 -- 1. The applicant flood
 --    Every applicant was one row in every member's bell. For the listing that
@@ -40,7 +40,7 @@ alter table notifications
   add column if not exists folded_into uuid references notifications (id) on delete cascade;
 
 comment on column notifications.folded_into is
-  'Set on an applicant notice absorbed into an unread "N new applicants" row for the same listing. Hidden from the feed; kept for its dedupe key. See migration 70.';
+  'Set on an applicant notice absorbed into an unread "N new applicants" row for the same listing. Hidden from the feed; kept for its dedupe key. See migration 71.';
 
 -- The fold's lookup: this member's unread applicant heads.
 create index if not exists notifications_applicant_head_idx
@@ -154,7 +154,7 @@ $$;
 revoke execute on function public.notify_company_applicant(uuid, uuid, jsonb, text, text)
   from public, anon, authenticated;
 
--- Restated whole: migration 69's body, with the company half folding.
+-- Restated whole: migration 70's body, with the company half folding.
 create or replace function public.on_application_created()
 returns trigger
 language plpgsql
@@ -235,6 +235,9 @@ end;
 $$;
 
 revoke execute on function public.prune_notifications(integer) from public, anon, authenticated;
+-- Explicit, for the reason given on notify() in migration 70: the cron must
+-- not depend on which role ran this file.
+grant  execute on function public.prune_notifications(integer) to service_role;
 
 -- The caller's own, whenever they clear their feed. Restated whole from 69.
 create or replace function public.mark_notifications_read(p_up_to timestamptz default null)
@@ -286,3 +289,4 @@ as $$
 $$;
 
 revoke all on function public.pending_emails(integer) from public, anon, authenticated;
+grant execute on function public.pending_emails(integer) to service_role;
