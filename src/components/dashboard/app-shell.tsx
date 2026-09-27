@@ -16,6 +16,7 @@ import {
   LogOut,
   Menu,
   PanelLeftClose,
+  Scale,
   ScrollText,
   Search,
   Settings,
@@ -56,6 +57,8 @@ const ICONS = {
   billing: CreditCard,
   queue: FileCheck2,
   reports: Flag,
+  // An appeal is a decision weighed again.
+  appeals: Scale,
   admin: ShieldCheck,
   users: UserCog,
   email: Mail,

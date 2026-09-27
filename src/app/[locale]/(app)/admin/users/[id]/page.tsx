@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Check, RotateCcw, Ban } from 'lucide-react';
+import { Check, CirclePause, Flag, RotateCcw, Ban } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized } from '@/i18n/routing';
 import { Avatar } from '@/components/ui/avatar';
@@ -95,7 +95,7 @@ export default async function AdminUserPage({
   const profile = must(profileRead, 'loading an account').data as Profile | null;
   if (!profile) notFound();
 
-  const [facts, memberships, agent, applications, reportsFiled, audit, notes] = await Promise.all([
+  const [facts, memberships, agent, applications, reportsFiled, audit, notes, reportingBan] = await Promise.all([
     supabase.rpc('admin_user_facts', { p_user: id }),
     supabase
       .from('company_members')
@@ -108,7 +108,7 @@ export default async function AdminUserPage({
       .eq('candidate_id', id)
       .order('created_at', { ascending: false })
       .limit(10),
-    supabase.from('reports').select('status').eq('reporter_id', id),
+    supabase.from('reports').select('status, abusive').eq('reporter_id', id),
     supabase
       .from('admin_audit_log')
       .select('*')
@@ -123,6 +123,8 @@ export default async function AdminUserPage({
       .eq('target_id', id)
       .order('created_at', { ascending: false })
       .limit(50),
+    // A ban on reporting is its own admin-only record (migration 208).
+    supabase.from('reporting_restrictions').select('reason, created_at').eq('user_id', id).maybeSingle(),
   ]);
 
   const auth = must(facts, 'loading sign-in facts').data as AdminUserFacts;
@@ -135,7 +137,9 @@ export default async function AdminUserPage({
   } | null;
   const apps = must(applications, 'loading applications');
   const recent = apps.data as unknown as RecentApplication[];
-  const filed = must(reportsFiled, 'loading reports filed').data as { status: string }[];
+  const filed = must(reportsFiled, 'loading reports filed').data as { status: string; abusive?: boolean }[];
+  const badFaith = filed.filter((row) => row.abusive).length;
+  const ban = reportingBan.data as { reason: string; created_at: string } | null;
   const trail = must(audit, 'loading the record').data as AdminAuditRow[];
   const noteRows = must(notes, 'loading notes').data as ModerationNoteRow[];
 
@@ -271,6 +275,22 @@ export default async function AdminUserPage({
                     icon={profile.approval_status === 'rejected' ? <RotateCcw /> : <Check />}
                   />
                 ) : null}
+                {/* Restrict: a hold while something is looked into. Live
+                    listings and applications stay; nothing new is posted,
+                    submitted or applied for. The person is told, and can
+                    ask for a review. */}
+                {profile.approval_status === 'approved' ? (
+                  <ConfirmAction
+                    lever={{ do: 'approval', userId: profile.id, status: 'pending' }}
+                    label={t('restrictAccount')}
+                    title={t('restrictAccount')}
+                    body={profile.role === 'employer' ? t('restrictAccountBodyEmployer') : t('restrictAccountBodyCandidate')}
+                    reason="required"
+                    reasonLabel={t('reasonToUser')}
+                    variant="outline"
+                    icon={<CirclePause />}
+                  />
+                ) : null}
                 {profile.approval_status !== 'rejected' ? (
                   <ConfirmAction
                     lever={{ do: 'approval', userId: profile.id, status: 'rejected' }}
@@ -295,8 +315,29 @@ export default async function AdminUserPage({
             <p className="text-sm">
               {t('reportsFiledSummary', { count: n(filed.length), dismissed: n(dismissed) })}
             </p>
-            {filed.length >= 3 && dismissed / filed.length >= 0.5 ? (
+            {badFaith ? <p className="mt-1 text-sm text-warning">{t('reportsBadFaith', { count: n(badFaith) })}</p> : null}
+            {badFaith || (filed.length >= 3 && dismissed / filed.length >= 0.5) ? (
               <p className="mt-2 rounded-lg bg-warning-muted px-3 py-2 text-xs text-warning">{t('reporterPattern')}</p>
+            ) : null}
+            {ban ? (
+              <p className="mt-2 text-sm">
+                {t('reportingBanned', { date: formatDate(ban.created_at, locale) })}
+                <span className="block text-muted-foreground">«{ban.reason}»</span>
+              </p>
+            ) : null}
+            {profile.role !== 'admin' && !self ? (
+              <div className="mt-3">
+                <ConfirmAction
+                  lever={{ do: 'reporting', userId: profile.id, restrict: !ban }}
+                  label={ban ? t('reportingUnban') : t('reportingBan')}
+                  title={ban ? t('reportingUnban') : t('reportingBan')}
+                  body={ban ? t('reportingUnbanBody') : t('reportingBanBody')}
+                  reason="required"
+                  reasonLabel={t('reportingBanReason')}
+                  variant={ban ? 'outline' : 'ghost'}
+                  icon={<Flag />}
+                />
+              </div>
             ) : null}
           </Section>
         </aside>

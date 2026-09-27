@@ -8,7 +8,7 @@ type Result<T> = { data: T | null; error: { message?: string; code?: string | nu
  * Console reads never degrade to an empty list: "nothing is waiting" is the
  * answer a moderator acts on by going away, so a read that failed must not be
  * able to say it. And when the failure is that the database has not been
- * migrated yet — the code reaches production before migrations 68–70 as often
+ * migrated yet — the code reaches production before its migrations as often
  * as after — the message says so, rather than a column name nobody can act on.
  */
 export function must<T>(result: Result<T>, context: string): { data: T; count: number } {
@@ -16,8 +16,8 @@ export function must<T>(result: Result<T>, context: string): { data: T; count: n
     const code = result.error.code ?? '';
     if (code === 'PGRST202' || code === '42883' || code === '42703' || code === '42P01' || code === 'PGRST200') {
       throw new Error(
-        `${context}: the database is missing the operations console schema. ` +
-          'Apply supabase/migrations 68–70 (pnpm db:push:url) and reload.',
+        `${context}: the database is missing the operations console or moderation schema. ` +
+          'Apply supabase/migrations 202–210 (pnpm db:push:url) and reload.',
         { cause: result.error },
       );
     }

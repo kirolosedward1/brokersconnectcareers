@@ -55,3 +55,30 @@ export function hrefWith(
 }
 
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A calendar day from the query string (YYYY-MM-DD), or undefined. */
+export function dayOf(value: string | undefined): string | undefined {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  // A day that exists: 2026-02-30 parses, as 2 March, so it must round-trip.
+  const parsed = new Date(`${value}T12:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value ? value : undefined;
+}
+
+/**
+ * The instant a calendar day begins in Cairo — the day a moderator means when
+ * they filter by date — with `plusDays` for the exclusive end of a range.
+ * Egypt keeps summer time, so the offset is asked of the time zone database
+ * for that day rather than assumed.
+ */
+export function cairoDayStart(day: string, plusDays = 0): string {
+  const noon = new Date(`${day}T12:00:00Z`);
+  noon.setUTCDate(noon.getUTCDate() + plusDays);
+  const date = noon.toISOString().slice(0, 10);
+  const name =
+    new Intl.DateTimeFormat('en-US', { timeZone: 'Africa/Cairo', timeZoneName: 'longOffset' })
+      .formatToParts(noon)
+      .find((part) => part.type === 'timeZoneName')?.value ?? 'GMT+02:00';
+  const match = /GMT([+-]\d{2}):?(\d{2})?/.exec(name);
+  const offset = match ? `${match[1]}:${match[2] ?? '00'}` : '+02:00';
+  return new Date(`${date}T00:00:00${offset}`).toISOString();
+}

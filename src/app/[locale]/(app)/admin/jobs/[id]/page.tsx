@@ -8,6 +8,7 @@ import { ConfirmAction } from '@/components/admin/confirm-action';
 import { NoteForm } from '@/components/admin/note-form';
 import { JobStatusBadge, ReportStatusBadge, VerificationBadge } from '@/components/admin/badges';
 import { Facts, PageHeader, Section, Trail } from '@/components/admin/kit';
+import { CompanySignalList, SafetyFlags } from '@/components/admin/safety';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { must } from '@/lib/admin/read';
@@ -88,7 +89,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
     supabase.from('applications').select('id', { count: 'exact', head: true }).eq('job_id', id).eq('status', stage),
   );
 
-  const [reports, audit, notes, ...stages] = await Promise.all([
+  const [reports, audit, notes, signals, ...stages] = await Promise.all([
     supabase
       .from('reports')
       .select('id, reason, detail, status, created_at, reporter:profiles!reports_reporter_id_fkey (id, full_name)')
@@ -97,12 +98,14 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
       .limit(50),
     supabase.from('admin_audit_log').select('*').eq('target_type', 'job').eq('target_id', id).order('created_at', { ascending: false }).limit(50),
     supabase.from('moderation_notes').select('*').eq('target_type', 'job').eq('target_id', id).order('created_at', { ascending: false }).limit(50),
+    supabase.rpc('admin_job_signals', { p_jobs: [id] }),
     ...stageCounts,
   ]);
 
   const complaints = must(reports, 'loading reports').data as unknown as JobReport[];
   const trail = must(audit, 'loading the record').data as AdminAuditRow[];
   const noteRows = must(notes, 'loading notes').data as ModerationNoteRow[];
+  const review = (must(signals, 'loading review signals').data ?? [])[0];
   const counts = stages.map((result, index) => ({ stage: STAGES[index], count: must(result, 'counting applications').count }));
   const totalApplications = counts.reduce((sum, c) => sum + c.count, 0);
 
@@ -339,6 +342,15 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                   {job.status === 'draft' ? t('draftNoLever') : t('closedNoLever')}
                 </p>
               ) : null}
+            </div>
+          </Section>
+
+          {/* What the listing says, and what its company has been doing, that a
+              moderator should weigh before deciding. Facts, not verdicts. */}
+          <Section title={t('safetyHeading')}>
+            <div className="space-y-3">
+              <SafetyFlags flags={review?.flags ?? []} empty />
+              <CompanySignalList signals={review?.company_signals ?? null} locale={locale} empty />
             </div>
           </Section>
 
