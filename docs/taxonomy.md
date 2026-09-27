@@ -29,6 +29,11 @@ sit on top of both rather than beside them:
   `agent_profiles.district_ids` array names.
   Its migration numbers collide with `main`'s 068, so it must be rebased and
   renumbered before anything here is built on it.
+- **`main` — the data-quality plan (`docs/data-quality-audit.md`).** It
+  already plans unique normalised-name indexes on the taxonomy (`name_key`,
+  per governorate for districts), a review queue for duplicates, and
+  `merge_developers(keep, drop)` for the MNHD / Madinet Masr pair. This work
+  uses those and does not add its own.
 
 ## Audit — where each vocabulary lives
 
@@ -56,8 +61,10 @@ Findings:
   new listings" can only be done by deleting, and deleting is refused once the
   value is used.
 - Seed data holds both «مدينة مصر» (Madinet Masr) and «مدينة نصر للإسكان»
-  (MNHD), probably one company after a rebrand. The owner should confirm. The
-  fix is an alias plus deactivating one, not a delete.
+  (MNHD), probably one company after a rebrand. The data-quality plan tracks
+  this as a review item for the owner. If it is confirmed, the fix is a merge
+  (`merge_developers`) or an alias plus deactivating one, never a plain
+  delete.
 - Analytics already sends keys and slugs only, never labels.
 
 ## Decision — three tiers
@@ -118,8 +125,8 @@ Built on `job_search_documents`, with no new mechanism:
 - `sort_order`, `is_active` and `updated_at` on the three tables. The initial
   order is today's id order, spaced by 10.
 - `job_tracks`, seeded; readable by everyone, writable only through RPCs.
-- Unique indexes on normalised names: per governorate for districts, global
-  for the others.
+- Name uniqueness comes from the data-quality plan's `name_key` indexes. The
+  alias checks in the RPCs compare against the same normalised key.
 - A restated `guard_taxonomy_change()` that also counts saved searches
   (`(^|&)district=<slug>(&|$)`, `gov=`, `track=`), and a
   `guard_job_track_change()` (key permanent, no delete).
