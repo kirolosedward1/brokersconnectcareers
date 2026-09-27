@@ -153,6 +153,15 @@ export const getCompanyBySlug = cache(async function getCompanyBySlug(
     .maybeSingle();
 
   if (error) raise(error, 'loading a company');
+
+  /*
+    A suspended company is not on the public site at all (migration 69): its
+    listings were taken down with it, and a profile page left standing would
+    keep vouching for it. Read off the row rather than filtered in the query,
+    so a database that has not had the migration yet — no such column — still
+    serves every company page instead of erroring on all of them.
+  */
+  if ((data as { suspended_at?: string | null } | null)?.suspended_at) return null;
   return (data as unknown as CompanyProfile) ?? null;
 });
 

@@ -1,225 +1,240 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Clock } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
-import { asLocale, localized, type Locale } from '@/i18n/routing';
+import { Clock, Flag, Star } from 'lucide-react';
+import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
-import { ModerateJobActions } from '@/components/admin/moderate-job-actions';
+import { AdminTable, FilterTabs, PageHeader, Pager, SearchForm, type Column } from '@/components/admin/kit';
+import { JobStatusBadge } from '@/components/admin/badges';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { raise } from '@/lib/queries/error';
-import { formatDate, formatEgp } from '@/lib/utils';
-import type { JobRow } from '@/lib/supabase/database.types';
+import { mustPage } from '@/lib/admin/read';
+import { PAGE_SIZE, UUID_RE, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
+import { likeNeedle } from '@/lib/search/needle';
+import { formatDate, formatNumber } from '@/lib/utils';
+import type { JobStatus } from '@/lib/supabase/database.types';
 
-type QueueRow = JobRow & {
-  company: { name_ar: string; name_en: string | null; slug: string; verification_status: string };
-  district: { name_ar: string; name_en: string };
-};
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = asLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: 'admin' });
   return { title: t('jobsQueue'), robots: { index: false, follow: false } };
 }
+
+/**
+ * The lifecycle, as tabs. `live`, `expiring` and `quiet` are read off the date
+ * rather than the label — the nightly relabelling is housekeeping, not what
+ * makes a listing live — and `expired` catches both a relabelled row and an
+ * `active` one whose window has passed.
+ */
+const VIEWS = [
+  'pending',
+  'live',
+  'expiring',
+  'quiet',
+  'reported',
+  'expired',
+  'closed',
+  'rejected',
+  'draft',
+  'all',
+] as const;
+type View = (typeof VIEWS)[number];
+
+type JobListRow = {
+  id: string;
+  title_ar: string;
+  title_en: string | null;
+  status: JobStatus;
+  is_featured: boolean;
+  expires_at: string | null;
+  published_at: string | null;
+  created_at: string;
+  company: { id: string; name_ar: string; name_en: string | null; verification_status: string; suspended_at?: string | null };
+  applications?: { count: number }[];
+  open_reports?: { id: string }[];
+};
 
 export default async function AdminJobsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
-  const { locale: rawLocale } = await params;
-  const locale = asLocale(rawLocale);
+  const locale = asLocale((await params).locale);
   setRequestLocale(locale);
   await requireAdmin(locale);
 
-  const { status } = await searchParams;
-  const filter = status === 'active' ? 'active' : 'pending_review';
+  const sp = await searchParams;
+  const q = param(sp, 'q');
+  const view: View = oneOf(param(sp, 'status'), VIEWS, 'pending');
+  const companyId = param(sp, 'company');
+  const page = pageOf(sp);
+  const [from, to] = rangeOf(page);
+  const now = new Date().toISOString();
+  const week = new Date(Date.now() + 7 * 86_400_000).toISOString();
+  const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();
+
+  const embeds = [
+    'company:companies!inner (id, name_ar, name_en, verification_status, suspended_at)',
+    // The quiet view is an anti-join on applications, so it selects the rows
+    // it is asking to be absent; every other view counts them.
+    view === 'quiet' ? 'applications (id)' : 'applications (count)',
+    view === 'reported' ? 'open_reports:reports!inner (id)' : null,
+  ].filter(Boolean);
 
   const supabase = await createClient();
-  /*
-    The error is read, not dropped.
-
-    A moderation queue that renders empty when the read failed is the worst
-    place in the product for this: the answer "nothing is waiting" is exactly
-    what a reviewer acts on, and acting on it means going away. There is no
-    honest partial version of a queue, so this raises to the console's error
-    boundary, which offers Retry.
-  */
-  const { data, error } = await supabase
+  let query = supabase
     .from('jobs')
-    .select(
-      `
-      *,
-      company:companies!inner (name_ar, name_en, slug, verification_status),
-      district:districts!inner (name_ar, name_en)
-    `,
-    )
-    .eq('status', filter)
-    .order('created_at', { ascending: true });
+    .select(`id, title_ar, title_en, status, is_featured, expires_at, published_at, created_at, ${embeds.join(', ')}`, {
+      count: 'exact',
+    });
 
-  if (error) raise(error, 'loading the listing queue');
+  switch (view) {
+    case 'pending':
+      query = query.eq('status', 'pending_review').order('created_at', { ascending: true });
+      break;
+    case 'live':
+      query = query.eq('status', 'active').gt('expires_at', now).order('published_at', { ascending: false });
+      break;
+    case 'expiring':
+      query = query.eq('status', 'active').gt('expires_at', now).lte('expires_at', week).order('expires_at');
+      break;
+    case 'quiet':
+      query = query
+        .eq('status', 'active')
+        .gt('expires_at', now)
+        .lt('published_at', threeDaysAgo)
+        .is('applications', null)
+        .order('published_at');
+      break;
+    case 'reported':
+      query = query.in('open_reports.status', ['open', 'investigating']).order('created_at', { ascending: false });
+      break;
+    case 'expired':
+      query = query
+        .or(`status.eq.expired,and(status.eq.active,expires_at.lte.${now})`)
+        .order('expires_at', { ascending: false });
+      break;
+    case 'all':
+      query = query.order('created_at', { ascending: false });
+      break;
+    default:
+      query = query.eq('status', view).order('created_at', { ascending: false });
+  }
+  query = query.order('id').range(from, to);
 
-  const jobs = (data ?? []) as unknown as QueueRow[];
+  if (companyId && UUID_RE.test(companyId)) query = query.eq('company_id', companyId);
+  if (q && UUID_RE.test(q)) {
+    query = query.eq('id', q);
+  } else if (q) {
+    const needle = likeNeedle(q);
+    if (needle) query = query.or(`title_ar.ilike.*${needle}*,title_en.ilike.*${needle}*,slug.ilike.*${needle}*`);
+  }
+
+  const current = { q, status: view === 'pending' ? undefined : view, company: companyId };
+  const read = await mustPage(await query, 'loading listings', locale, hrefWith('/admin/jobs', current, {}));
+  const rows = read.data as unknown as JobListRow[];
 
   const t = await getTranslations('admin');
-  const tJobs = await getTranslations('jobs');
-  const tTrack = await getTranslations('track');
-  const tLeads = await getTranslations('leadsSource');
-  const tCompanies = await getTranslations('companies');
-  const tCompensation = await getTranslations('compensation');
-  const tCommission = await getTranslations('commissionType');
-  const tCommon = await getTranslations('common');
+  const waitingDays = (since: string) => Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000));
 
-  /** Whole days a listing has been sitting in the queue. */
-  const waitingDays = (since: string) =>
-    Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000));
+  const columns: Column<JobListRow>[] = [
+    { key: 'title', header: t('colListing'), cell: (row) => localized(locale, row.title_ar, row.title_en), mobile: 'title' },
+    {
+      key: 'company',
+      header: t('colCompany'),
+      cell: (row) => (
+        <span className="inline-flex flex-wrap items-center gap-1">
+          {localized(locale, row.company.name_ar, row.company.name_en)}
+          {row.company.suspended_at ? <Badge variant="destructive">{t('suspended')}</Badge> : null}
+        </span>
+      ),
+      mobile: 'meta',
+    },
+    {
+      key: 'when',
+      header: view === 'pending' ? t('colWaiting') : view === 'expiring' ? t('colExpires') : t('colDate'),
+      cell: (row) =>
+        view === 'pending' ? (
+          <span className={waitingDays(row.created_at) >= 1 ? 'inline-flex items-center gap-1 text-destructive' : 'inline-flex items-center gap-1'}>
+            <Clock className="size-3.5" aria-hidden />
+            {t('waiting', { days: waitingDays(row.created_at) })}
+          </span>
+        ) : view === 'expiring' && row.expires_at ? (
+          formatDate(row.expires_at, locale)
+        ) : (
+          formatDate(row.published_at ?? row.created_at, locale)
+        ),
+      mobile: 'meta',
+    },
+    {
+      key: 'applicants',
+      header: t('colApplicants'),
+      cell: (row) => (
+        <span className="numeral">{formatNumber(view === 'quiet' ? 0 : (row.applications?.[0]?.count ?? 0), locale)}</span>
+      ),
+      mobile: 'meta',
+    },
+    {
+      key: 'status',
+      header: t('colStatus'),
+      cell: (row) => (
+        <span className="inline-flex flex-wrap items-center justify-end gap-1">
+          <JobStatusBadge status={row.status} expiresAt={row.expires_at} />
+          {row.is_featured ? <Star className="size-3.5 text-warning" aria-label={t('featured')} /> : null}
+          {row.open_reports?.length ? (
+            <Badge variant="destructive">
+              <Flag aria-hidden />
+              <span className="numeral">{row.open_reports.length}</span>
+            </Badge>
+          ) : null}
+        </span>
+      ),
+      mobile: 'aside',
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-xl font-bold">{t('jobsQueue')}</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">{t('jobsQueueLede')}</p>
-      </header>
+    <div className="space-y-5">
+      <PageHeader title={t('jobsQueue')} lede={t('jobsQueueLede')} />
 
-      <nav className="flex flex-wrap gap-2" aria-label={t('jobsQueue')}>
-        <Link
-          href={{ pathname: '/admin/jobs', query: {} }}
-          aria-current={filter === 'pending_review' ? 'page' : undefined}
-          className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm ${filter === 'pending_review' ? 'bg-primary text-primary-foreground' : 'border border-border hover:bg-muted'}`}
-        >
-          {t('jobsQueue')}
-        </Link>
-        <Link
-          href={{ pathname: '/admin/jobs', query: { status: 'active' } }}
-          aria-current={filter === 'active' ? 'page' : undefined}
-          className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm ${filter === 'active' ? 'bg-primary text-primary-foreground' : 'border border-border hover:bg-muted'}`}
-        >
-          {tJobs('title')}
-        </Link>
-      </nav>
+      <SearchForm
+        locale={locale}
+        path="/admin/jobs"
+        q={q}
+        keep={{ status: current.status, company: current.company }}
+        placeholder={t('jobsSearchPlaceholder')}
+        label={t('search')}
+      />
 
-      {jobs.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
-          {t('emptyQueue')}
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {jobs.map((job) => (
-            <li key={job.id} className="rounded-xl border border-border bg-card p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="font-semibold">
-                    {localized(locale, job.title_ar, job.title_en)}
-                  </h2>
-                  <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                    <Link href={`/companies/${job.company.slug}`} className="hover:underline">
-                      {localized(locale, job.company.name_ar, job.company.name_en)}
-                    </Link>
-                    {job.company.verification_status === 'verified' ? (
-                      <Badge variant="success">{tCompanies('verified')}</Badge>
-                    ) : null}
-                    <span>·</span>
-                    <span>{localized(locale, job.district.name_ar, job.district.name_en)}</span>
-                    <span>· {formatDate(job.created_at, locale)}</span>
+      <FilterTabs
+        label={t('colStatus')}
+        items={VIEWS.map((value) => ({
+          key: value,
+          label: t(`jobView.${value}`),
+          href: hrefWith('/admin/jobs', current, { status: value === 'pending' ? undefined : value }),
+          active: view === value,
+        }))}
+      />
 
-                    {/* How long this has been waiting. admin_summary counts
-                        the queue over 24 hours because a backlog that is not
-                        moving is the thing worth knowing, and until now the
-                        queue itself made a reviewer work it out from a date. */}
-                    {filter === 'pending_review' ? (
-                      <Badge variant={waitingDays(job.created_at) >= 1 ? 'destructive' : 'default'}>
-                        <Clock aria-hidden />
-                        {t('waiting', { days: waitingDays(job.created_at) })}
-                      </Badge>
-                    ) : null}
-                  </p>
-                </div>
+      {view === 'quiet' ? <p className="text-sm text-muted-foreground">{t('quietHint')}</p> : null}
 
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge variant="outline">{tTrack(job.track)}</Badge>
-                  <Badge variant="primary">{tLeads(`${job.leads_source}_short`)}</Badge>
-                  <Badge variant="accent" className="numeral">
-                    {job.seats}
-                  </Badge>
-                </div>
-              </div>
+      <AdminTable
+        caption={t('jobsQueue')}
+        rows={rows}
+        columns={columns}
+        rowKey={(row) => row.id}
+        rowHref={(row) => `/admin/jobs/${row.id}`}
+        empty={q ? t('searchNothing') : t('emptyQueue')}
+      />
 
-              <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                {/* An open-ended range is stated as open-ended. `?? 0` printed
-                    "0 – 15,000" for a role with no floor, which is a number
-                    the employer never entered and a reviewer might act on. */}
-                <div>
-                  <dt className="sr-only">{tCompensation('basicSalary')}</dt>
-                  {/* Only the digits are isolated, never the phrase.
-                      The first version of this line put the whole string in
-                      `.numeral`, which forces left-to-right — the same bug
-                      fixed on the job card earlier today, rewritten from
-                      scratch here within the hour. An Arabic reader met the
-                      currency word first and the range high to low. */}
-                  <dd>
-                    {job.basic_salary_min != null && job.basic_salary_max != null ? (
-                      <>
-                        <span className="numeral">{formatEgp(job.basic_salary_min, locale)}</span>
-                        {' – '}
-                        <span className="numeral">{formatEgp(job.basic_salary_max, locale)}</span>{' '}
-                        {tCommon('egp')}
-                      </>
-                    ) : job.basic_salary_min != null ? (
-                      <>
-                        <span className="numeral">{formatEgp(job.basic_salary_min, locale)}+</span>{' '}
-                        {tCommon('egp')}
-                      </>
-                    ) : job.basic_salary_max != null ? (
-                      <>
-                        {'≤ '}
-                        <span className="numeral">{formatEgp(job.basic_salary_max, locale)}</span>{' '}
-                        {tCommon('egp')}
-                      </>
-                    ) : (
-                      tCompensation('noBasicSalary')
-                    )}
-                  </dd>
-                </div>
-
-                {/* This printed the raw column for anything but a percentage,
-                    so a reviewer read "split" and "none" in English on an
-                    otherwise Arabic screen. Seven of eighteen demo listings. */}
-                <div>
-                  <dt className="sr-only">{tCompensation('commission')}</dt>
-                  <dd>
-                    {job.commission_type === 'percentage' && job.commission_value != null ? (
-                      tCompensation.rich('commissionPercent', {
-                        value: String(job.commission_value),
-                        v: (chunks) => <span className="numeral">{chunks}</span>,
-                      })
-                    ) : (
-                      tCommission(job.commission_type)
-                    )}
-                  </dd>
-                </div>
-              </dl>
-
-              <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-                {job.description_ar}
-              </p>
-
-              <div className="mt-4">
-                <ModerateJobActions
-                  jobId={job.id}
-                  isFeatured={job.is_featured}
-                  showFeature={filter === 'active'}
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      <Pager
+        page={page}
+        total={read.count}
+        size={PAGE_SIZE}
+        locale={locale}
+        buildHref={(next) => hrefWith('/admin/jobs', current, { page: next })}
+      />
     </div>
   );
 }

@@ -460,6 +460,20 @@ report.section('contact details are revealed one at a time, with a reason, on re
   report.check('and the looking-up is itself recorded, with the reason',
     reveal.value?.audit?.reason === 'شكوى من شركة', JSON.stringify(reveal.value?.audit));
 
+  const doc = await session(admin, async (q) => {
+    const [{ id }] = await q(`insert into company_documents (company_id, doc_type, storage_path)
+                              values ('${hub}', 'commercial_register', '${hub}/cr.pdf') returning id`);
+    const [{ path }] = await q(`select admin_open_document('${id}') as path`);
+    const [{ n }] = await q(`select count(*)::int as n from admin_audit_log where action = 'company.document_viewed'`);
+    return { path, n };
+  });
+  report.check('opening a verification document is recorded too',
+    doc.ok && doc.value.path === `${hub}/cr.pdf` && doc.value.n === 1, JSON.stringify(doc.value ?? doc.error));
+
+  const docByEmployer = await as(employerVerified,
+    `select admin_open_document((select id from company_documents limit 1))`);
+  report.check('and nobody else can ask for a document path that way', !docByEmployer.ok);
+
   const facts = await as(admin, `select admin_user_facts('${candidate}') as f`);
   const f = facts.rows[0]?.f ?? {};
   report.check('sign-in facts carry no credential and no address',

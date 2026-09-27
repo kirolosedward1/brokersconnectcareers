@@ -630,6 +630,33 @@ begin
 end;
 $$;
 
+-- The same rule for a company's private papers. The console mints a
+-- five-minute signed URL for a commercial register or a tax card; which admin
+-- opened which document, and when, is recorded as the path is handed over.
+create or replace function public.admin_open_document(p_document uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_doc company_documents%rowtype;
+begin
+  perform public.admin_begin();
+
+  select * into v_doc from company_documents where id = p_document;
+  if not found then
+    raise exception 'not_found';
+  end if;
+
+  perform public.admin_audit('company.document_viewed', 'company', v_doc.company_id::text,
+    (select name_ar from companies where id = v_doc.company_id), null,
+    jsonb_build_object('document_id', v_doc.id, 'doc_type', v_doc.doc_type));
+
+  return v_doc.storage_path;
+end;
+$$;
+
 -- Facts about the sign-in, never the credential: whether the address was
 -- confirmed, when they last signed in, how. Read-only, so not audited.
 create or replace function public.admin_user_facts(p_user uuid)
@@ -1133,6 +1160,7 @@ revoke execute on function public.admin_moderate_reports(text, uuid, text, text,
 revoke execute on function public.admin_add_note(text, text, text)                     from public, anon;
 revoke execute on function public.admin_reveal_contact(uuid, text)                     from public, anon;
 revoke execute on function public.admin_user_facts(uuid)                               from public, anon;
+revoke execute on function public.admin_open_document(uuid)                            from public, anon;
 revoke execute on function public.admin_search_users(text, user_role, approval_status, int, int) from public, anon;
 revoke execute on function public.admin_search(text)                                   from public, anon;
 revoke execute on function public.admin_overview()                                     from public, anon;
@@ -1151,6 +1179,7 @@ grant execute on function public.admin_moderate_reports(text, uuid, text, text, 
 grant execute on function public.admin_add_note(text, text, text)                     to authenticated;
 grant execute on function public.admin_reveal_contact(uuid, text)                     to authenticated;
 grant execute on function public.admin_user_facts(uuid)                               to authenticated;
+grant execute on function public.admin_open_document(uuid)                            to authenticated;
 grant execute on function public.admin_search_users(text, user_role, approval_status, int, int) to authenticated;
 grant execute on function public.admin_search(text)                                   to authenticated;
 grant execute on function public.admin_overview()                                     to authenticated;

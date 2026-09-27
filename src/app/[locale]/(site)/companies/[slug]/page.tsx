@@ -6,6 +6,7 @@ import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { FollowCompanyButton } from '@/components/companies/follow-company-button';
+import { ReportDialog } from '@/components/jobs/report-job-dialog';
 import { JobCard } from '@/components/jobs/job-card';
 import { JsonLd } from '@/components/json-ld';
 import { getCompanyBySlug } from '@/lib/queries/companies';
@@ -263,6 +264,20 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
             </p>
           )}
         </section>
+
+        {/* Somebody who thinks this company is not what it says has
+            somewhere to say so. Not offered to its own members. */}
+        {viewer?.company?.id === company.id ? null : (
+          <div className="mt-10 flex justify-end border-t border-border pt-4">
+            <ReportDialog
+              target="company"
+              targetId={company.id}
+              signedIn={Boolean(viewer)}
+              returnPath={`/companies/${company.slug}`}
+              label={t('report')}
+            />
+          </div>
+        )}
       </div>
     </>
   );

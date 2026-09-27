@@ -116,6 +116,29 @@ export const REPORT_REASONS = [
 ] as const;
 
 /**
+ * Why somebody reports a company rather than a listing (migration 69).
+ * `other` last, as on listings, so the specific reasons are read first.
+ */
+export const COMPANY_REPORT_REASONS = [
+  'suspicious_company',
+  'scam',
+  'impersonation',
+  'harassment',
+  'inappropriate',
+  'other',
+] as const;
+
+/** And a consultant's profile, where the usual problem is who it claims to be. */
+export const AGENT_REPORT_REASONS = [
+  'impersonation',
+  'inappropriate',
+  'harassment',
+  'scam',
+  'spam',
+  'other',
+] as const;
+
+/**
  * Seat-tiered packs. Prices are the starting hypothesis from the spec and are
  * charged only when BILLING_ENABLED is true.
  */

@@ -10,6 +10,7 @@ import { AgentCv } from '@/components/agents/agent-cv';
 import { ShortlistButton } from '@/components/agents/shortlist-toggle';
 import { Button } from '@/components/ui/button';
 import { getAgentCard, shortlistedAgentIds } from '@/lib/queries/agents';
+import { ReportDialog } from '@/components/jobs/report-job-dialog';
 import { recordAgentView } from '@/lib/agent-views';
 import { getDistrictMap, getDevelopers } from '@/lib/queries/taxonomy';
 import { getViewer } from '@/lib/auth';
@@ -298,6 +299,20 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
         certifications={certifications.data ?? []}
         districts={districts}
       />
+
+      {/* Impersonation is the report a directory of people most needs to
+          hear, and the profile is where somebody notices it. */}
+      {isOwner ? null : (
+        <div className="mt-10 flex justify-end border-t border-border pt-4">
+          <ReportDialog
+            target="agent"
+            targetId={agent.id}
+            signedIn={Boolean(viewer)}
+            returnPath={`/agents/${agent.slug}`}
+            label={t('report')}
+          />
+        </div>
+      )}
     </div>
   );
 }
