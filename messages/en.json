@@ -56,6 +56,7 @@
     "reportReasonLabel": "Reason",
     "postedOn": "Posted {date}",
     "expiresOn": "Closes {date}",
+    "endedOn": "Closed {date}",
     "views": "{count} views",
     "aboutCompany": "About the company",
     "description": "Job description",
@@ -233,7 +234,7 @@
     "headlineAr": "Professional headline (Arabic)",
     "headlineEn": "Professional headline (English)",
     "ownerBanner": "This is your profile. You see everything because it is yours — visitors and companies see it according to your visibility setting.",
-    "ownerPublic": "Your visibility is “public”: any visitor sees your name, photo and number exactly as you see them now.",
+    "ownerPublic": "Your visibility is “public”: any visitor sees your name and photo. Your number and CV are shown to company accounts only.",
     "ownerVerified": "Your visibility is “verified employers only”: visitors see the card without a name or number; only verified companies see it in full.",
     "ownerHidden": "Your visibility is “hidden”: nobody but you can open this page. Companies you applied to still see your application.",
     "ownerEdit": "Edit your profile",
@@ -309,7 +310,8 @@
     "resendSent": "Sent again. If it still has not arrived, try again shortly.",
     "resendWait": "Wait a moment before asking for another.",
     "applyingTo": "You are applying to \"{job}\"",
-    "applyingToCompany": "at {company} — sign in and finish; you will not start over."
+    "applyingToCompany": "at {company} — sign in and finish; you will not start over.",
+    "applyingToCompanySignUp": "at {company} — create your account and we will bring you back to this job to finish."
   },
   "onboarding": {
     "title": "Finish your profile",
