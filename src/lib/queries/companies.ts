@@ -1,8 +1,10 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from './error';
-import { likeNeedle } from '@/lib/search/needle';
+import { queryWords } from '@/lib/search/arabic';
+import { logFailure } from '@/lib/observe';
 import type { CompanyRow, DistrictRow, VerificationStatus } from '@/lib/supabase/database.types';
+import type { JobListItem } from './jobs';
 
 export const COMPANIES_PER_PAGE = 24;
 
@@ -29,6 +31,14 @@ export async function queryCompanies({
   page: number;
 }> {
   const supabase = await createClient();
+
+  // Each word of the search, folded the way companies.search_name is, and
+  // made of letters and digits only — so nothing in it is PostgREST syntax or
+  // an ilike wildcard. At most five: a company name is not a paragraph.
+  const words = q ? queryWords(q).slice(0, 5) : [];
+
+  // Set when the database predates migration 68 and has no search_name.
+  let legacy = false;
 
   /*
     Built fresh each time rather than held in one variable.
@@ -67,17 +77,21 @@ export async function queryCompanies({
     .gt('jobs.expires_at', new Date().toISOString());
 
   /*
-    Matched on the words, not pasted into the filter language.
+    Every word somewhere in either name, however it was typed.
 
-    `.or()` takes a PostgREST expression, and this interpolated the raw query
-    into it — so a search containing a comma became extra OR terms, one
-    containing `)` became a syntax error, and `%` or `_` became ilike wildcards
-    nobody typed. A company called "الرواد، للتطوير" could not be searched for
-    by its own name.
+    search_name holds both names folded and with the article off (migration
+    68), so الاهرام finds الأهرام and «رواد تطوير» finds «الرواد للتطوير» —
+    neither did when this matched the raw query as one substring. Each word is
+    its own `.ilike`, which PostgREST ANDs, and each operand is encoded by the
+    client rather than spliced into an `or()` expression — the route by which
+    a comma in a name once became extra filter terms.
   */
-  if (q) {
-    const needle = likeNeedle(q);
-    if (needle) query = query.or(`name_ar.ilike.%${needle}%,name_en.ilike.%${needle}%`);
+  for (const word of words) {
+    if (legacy) {
+      query = query.or(`name_ar.ilike.%${word}%,name_en.ilike.%${word}%`);
+    } else {
+      query = query.ilike('search_name', `%${word}%`);
+    }
   }
   if (verifiedOnly) query = query.eq('verification_status', 'verified');
   if (districtId) query = query.eq('district_id', districtId);
@@ -96,7 +110,15 @@ export async function queryCompanies({
     return build().range(from, from + COMPANIES_PER_PAGE - 1);
   };
 
-  const { data, error, count } = await pageOf(page);
+  let { data, error, count } = await pageOf(page);
+
+  // 42703: no such column — code that has reached a database migration 68
+  // has not. The raw names, as before, rather than a directory that errors.
+  if (error?.code === '42703' && words.length) {
+    logFailure('companies', 'search_name missing; matching raw names', { code: error.code });
+    legacy = true;
+    ({ data, error, count } = await pageOf(page));
+  }
 
   /*
     A page past the end is answered with the end.
@@ -159,3 +181,37 @@ export const getCompanyBySlug = cache(async function getCompanyBySlug(
 export function isVerified(status: VerificationStatus): boolean {
   return status === 'verified';
 }
+
+/**
+ * A company's live listings, newest first.
+ *
+ * Cached per request because two callers need the same answer: the page body
+ * lists them, and generateMetadata decides from their count whether the page
+ * is worth indexing at all. Live means the date as well as the label — the
+ * nightly cron is what flips `active` to `expired`.
+ *
+ * The error is raised, not dropped. "No open roles" on a brokerage with three
+ * live adverts is a false public claim about a company; the (site) error
+ * boundary is the better outcome.
+ */
+export const getCompanyOpenJobs = cache(async function getCompanyOpenJobs(
+  companyId: string,
+): Promise<JobListItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('jobs')
+    .select(
+      `
+      *,
+      company:companies!inner (id, name_ar, name_en, slug, logo_url, verification_status),
+      district:districts!inner (id, governorate_id, name_ar, name_en, slug)
+    `,
+    )
+    .eq('company_id', companyId)
+    .eq('status', 'active')
+    .gt('expires_at', new Date().toISOString())
+    .order('published_at', { ascending: false });
+
+  if (error) raise(error, "loading a company's open roles");
+  return (data ?? []) as unknown as JobListItem[];
+});

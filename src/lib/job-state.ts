@@ -29,3 +29,14 @@ export function jobIsLive(job: {
 export function displayJobStatus(job: { status: JobStatus; expires_at: string | null }): JobStatus {
   return job.status === 'active' && !jobIsLive(job) ? 'expired' : job.status;
 }
+
+/**
+ * Whether an anonymous visitor can open the listing's page at all — the
+ * labels `jobs_select_active` lets through: live, run out, or closed by its
+ * owner. Drafts, listings in review and rejected ones are the company's own
+ * business and answer 404 to everybody else. This is the question a search
+ * engine's copy of the page depends on, not whether it takes applications.
+ */
+export function jobIsPublic(job: { status: JobStatus }): boolean {
+  return job.status === 'active' || job.status === 'expired' || job.status === 'closed';
+}

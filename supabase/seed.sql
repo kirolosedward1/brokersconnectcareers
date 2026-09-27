@@ -74,3 +74,55 @@ insert into developers (name_ar, name_en, slug) values
   ('إيوان',             'IWAN',                  'iwan'),
   ('أوراسكوم',          'Orascom',               'orascom')
 on conflict (slug) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Search aliases — what a place or a specialisation is also called.
+--
+-- The rule for a row here: a name people in this market genuinely use for
+-- exactly this district or track, that the taxonomy's own Arabic and English
+-- names do not already contain. Not a spelling variant the normaliser already
+-- folds (أ/ا, ة/ه, ى/ي), not a word that is merely related, and never a
+-- neighbouring area — «الرحاب» is not «التجمع», however close it is.
+--
+-- The track rows restate the labels in messages/*.json, because those labels
+-- are what a reader sees on every card and so the first thing they type.
+-- Change a label there and change it here.
+-- ---------------------------------------------------------------------------
+
+insert into search_aliases (district_id, alias)
+select d.id, a.alias
+from (values
+  ('new-cairo',      'القاهرة الجديدة'),
+  ('new-cairo',      'Fifth Settlement'),
+  ('new-cairo',      '5th Settlement'),
+  ('new-cairo',      'Tagamoa'),
+  ('new-capital',    'العاصمة الإدارية الجديدة'),
+  ('new-capital',    'New Administrative Capital'),
+  ('6th-of-october', 'السادس من أكتوبر'),
+  ('6th-of-october', '6 October'),
+  ('north-coast',    'Sahel'),
+  ('mohandessin',    'Mohandeseen'),
+  ('mokattam',       'Moqattam')
+) as a(slug, alias)
+join districts d on d.slug = a.slug
+on conflict on constraint search_aliases_unique do nothing;
+
+insert into search_aliases (track, alias)
+select a.track::job_track, a.alias
+from (values
+  ('primary',             'بيع أول'),
+  ('primary',             'Primary sales'),
+  ('primary',             'برايمري'),
+  ('resale',              'إعادة بيع'),
+  ('resale',              'Resale'),
+  ('resale',              'ريسيل'),
+  ('rental',              'إيجارات'),
+  ('rental',              'Rentals'),
+  ('commercial',          'عقارات تجارية'),
+  ('commercial',          'Commercial'),
+  ('property_management', 'إدارة أملاك'),
+  ('property_management', 'Property management'),
+  ('back_office',         'دعم ومساندة'),
+  ('back_office',         'Back office')
+) as a(track, alias)
+on conflict on constraint search_aliases_unique do nothing;

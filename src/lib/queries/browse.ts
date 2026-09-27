@@ -38,6 +38,12 @@ export type BrowseCounts = {
    * instead of three, rather than failing or guessing a type from a name.
    */
   companyTypes: { type: CompanyType; count: number }[] | null;
+  /**
+   * Live listings per track x district pair, most first. These are exactly
+   * the landing pages that have something on them — what the sitemap
+   * advertises and what the internal links between landings prefer.
+   */
+  pairs: { track: JobTrack; districtId: number; count: number }[];
 };
 
 /**
@@ -117,10 +123,15 @@ export const getBrowseCounts = cache(async function getBrowseCounts(): Promise<B
   const byTrack = new Map<JobTrack, number>();
   const byDistrict = new Map<number, number>();
   const byType = new Map<CompanyType, number>();
+  const byPair = new Map<string, { track: JobTrack; districtId: number; count: number }>();
 
   for (const row of rows) {
     byTrack.set(row.track, (byTrack.get(row.track) ?? 0) + 1);
     byDistrict.set(row.district_id, (byDistrict.get(row.district_id) ?? 0) + 1);
+    const key = `${row.track}:${row.district_id}`;
+    const pair = byPair.get(key) ?? { track: row.track, districtId: row.district_id, count: 0 };
+    pair.count += 1;
+    byPair.set(key, pair);
     const type = row.company?.company_type;
     if (type) byType.set(type, (byType.get(type) ?? 0) + 1);
   }
@@ -148,5 +159,62 @@ export const getBrowseCounts = cache(async function getBrowseCounts(): Promise<B
           count: byType.get(type)!,
         }))
       : null,
+    pairs: [...byPair.values()].sort(
+      (a, b) =>
+        b.count - a.count ||
+        JOB_TRACKS.indexOf(a.track) - JOB_TRACKS.indexOf(b.track) ||
+        a.districtId - b.districtId,
+    ),
+  };
+});
+
+/**
+ * What the live listings on one track-in-district page have in common, read
+ * from the listings themselves.
+ *
+ * This is what makes the page more than a filtered board with a heading: a
+ * reader searching "primary sales jobs in New Cairo" learns how many
+ * companies are hiring there, how many of the roles pay a basic salary and
+ * what range those salaries span — each a count or a bound over rows that
+ * are on the page, never an estimate. A figure with nothing under it is left
+ * out by the caller rather than shown as zero.
+ */
+export type LandingFacts = {
+  listings: number;
+  companies: number;
+  withBasicSalary: number;
+  salaryFloor: number | null;
+  salaryCeiling: number | null;
+};
+
+export const getLandingFacts = cache(async function getLandingFacts(
+  track: JobTrack,
+  districtId: number,
+): Promise<LandingFacts> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('company_id, basic_salary_min, basic_salary_max')
+    .eq('status', 'active')
+    .gt('expires_at', new Date().toISOString())
+    .eq('track', track)
+    .eq('district_id', districtId)
+    .limit(PAGE);
+
+  if (error) raise(error, 'summarising a landing page');
+
+  const rows = data ?? [];
+  const salaried = rows.filter(
+    (row) => (row.basic_salary_min ?? 0) > 0 || (row.basic_salary_max ?? 0) > 0,
+  );
+  const floors = salaried.map((row) => row.basic_salary_min ?? row.basic_salary_max!).filter((n) => n > 0);
+  const ceilings = salaried.map((row) => row.basic_salary_max ?? row.basic_salary_min!).filter((n) => n > 0);
+
+  return {
+    listings: rows.length,
+    companies: new Set(rows.map((row) => row.company_id)).size,
+    withBasicSalary: salaried.length,
+    salaryFloor: floors.length ? Math.min(...floors) : null,
+    salaryCeiling: ceilings.length ? Math.max(...ceilings) : null,
   };
 });

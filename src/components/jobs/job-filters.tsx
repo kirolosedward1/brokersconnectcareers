@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Search, X } from 'lucide-react';
@@ -10,12 +10,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/field';
 import { cn } from '@/lib/utils';
 import {
+  COMMISSION_TYPES,
   COMPANY_TYPES,
   EMPLOYMENT_TYPES,
   EXPERIENCE_BANDS,
   JOB_TRACKS,
   LEADS_SOURCES,
+  MIN_SALARY_STEPS,
+  POSTED_WITHIN_DAYS,
 } from '@/lib/taxonomy';
+import { formatNumber } from '@/lib/utils';
 import type { DistrictRow, GovernorateRow } from '@/lib/supabase/database.types';
 
 type Props = {
@@ -38,11 +42,18 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
   const tExp = useTranslations('experienceBand');
   const tType = useTranslations('employmentType');
   const tCompanyType = useTranslations('companyType');
+  const tCommission = useTranslations('commissionType');
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
-  const [keyword, setKeyword] = useState(searchParams.get('q') ?? '');
+  const urlKeyword = searchParams.get('q') ?? '';
+  const [keyword, setKeyword] = useState(urlKeyword);
+
+  // The box follows the URL, not only the other way round: after Back, or a
+  // removed «keyword» chip, it would otherwise still show the words of a
+  // search that is no longer the one on screen.
+  useEffect(() => setKeyword(urlKeyword), [urlKeyword]);
 
   const districtsByGovernorate = useMemo(() => {
     const groups = new Map<number, DistrictRow[]>();
@@ -58,8 +69,14 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
     // Any filter change resets to page 1 — page 4 of the old result set is
     // meaningless against a new one.
     next.delete('page');
+    /*
+      Pushed, not replaced, so Back undoes the last filter — which is what the
+      removable chips above the results already did, being links. With replace
+      the two disagreed: a chip removed could be put back with Back, a box
+      ticked could not, and Back from a narrowed board left the board.
+    */
     startTransition(() => {
-      router.replace(`/jobs?${next.toString()}`, { scroll: false });
+      router.push(`/jobs?${next.toString()}`, { scroll: false });
     });
   }
 
@@ -88,11 +105,13 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
 
   function clearAll() {
     setKeyword('');
-    startTransition(() => router.replace('/jobs', { scroll: false }));
+    startTransition(() => router.push('/jobs', { scroll: false }));
   }
 
   const isOn = (key: string, value: string) => searchParams.getAll(key).includes(value);
   const salary = searchParams.get('salary');
+  const pay = searchParams.get('pay');
+  const posted = searchParams.get('posted');
 
   return (
     <div className={cn('space-y-6', pending && 'opacity-70')}>
@@ -162,6 +181,58 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
           onChange={() => setSingle('salary', 'no')}
           label={t('hasBasicSalaryNo')}
         />
+      </FilterGroup>
+
+      <FilterGroup title={t('minSalary')}>
+        <Choice
+          type="radio"
+          name="pay"
+          checked={pay === null}
+          onChange={() => setSingle('pay', null)}
+          label={t('any')}
+        />
+        {MIN_SALARY_STEPS.map((value) => (
+          <Choice
+            key={value}
+            type="radio"
+            name="pay"
+            checked={pay === String(value)}
+            onChange={() => setSingle('pay', String(value))}
+            label={t('minSalaryAtLeast', { amount: formatNumber(value, locale) })}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title={t('commissionType')}>
+        {COMMISSION_TYPES.map((value) => (
+          <Choice
+            key={value}
+            type="checkbox"
+            checked={isOn('comm', value)}
+            onChange={() => toggle('comm', value)}
+            label={tCommission(value)}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title={t('posted')}>
+        <Choice
+          type="radio"
+          name="posted"
+          checked={posted === null}
+          onChange={() => setSingle('posted', null)}
+          label={t('any')}
+        />
+        {POSTED_WITHIN_DAYS.map((days) => (
+          <Choice
+            key={days}
+            type="radio"
+            name="posted"
+            checked={posted === String(days)}
+            onChange={() => setSingle('posted', String(days))}
+            label={t('postedWithin', { days })}
+          />
+        ))}
       </FilterGroup>
 
       <FilterGroup title={t('track')}>
