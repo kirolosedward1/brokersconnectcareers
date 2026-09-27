@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { cn, formatDate, isoDate } from '@/lib/utils';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { addApplicationNote, deleteApplicationNote } from '@/lib/actions/applications';
+import { reach } from '@/lib/reach';
 import type { ApplicationNoteRow } from '@/lib/supabase/database.types';
 
 /**
@@ -88,7 +89,7 @@ export function ApplicantNotes({
 
     startTransition(async () => {
       setError(null);
-      const result = await addApplicationNote({ applicationId, body });
+      const result = await reach(addApplicationNote({ applicationId, body }));
       if (recoverSession(result)) return;
 
       if (!result.ok) {
@@ -107,7 +108,7 @@ export function ApplicantNotes({
   function remove(id: number) {
     startTransition(async () => {
       setError(null);
-      const result = await deleteApplicationNote(id);
+      const result = await reach(deleteApplicationNote(id));
       if (recoverSession(result)) return;
       if (!result.ok) {
         setError(tCommon('errorBody'));

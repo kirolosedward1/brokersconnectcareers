@@ -6,6 +6,7 @@ import { Download, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WhatsAppMark } from '@/components/brand-marks';
 import { revealAgentContact, type ContactRevealResult } from '@/lib/actions/agent-contact';
+import { reach } from '@/lib/reach';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { asLocale } from '@/i18n/routing';
 
@@ -39,7 +40,7 @@ export function ContactReveal({
   function reveal() {
     setMessage(null);
     startTransition(async () => {
-      const result = await revealAgentContact({ handle, locale });
+      const result = await reach(revealAgentContact({ handle, locale }));
       if (recoverSession(result)) return;
 
       if (!result.ok) {

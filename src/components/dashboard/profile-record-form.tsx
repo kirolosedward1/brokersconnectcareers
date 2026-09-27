@@ -7,6 +7,7 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Field } from '@/components/ui/field';
 import { NumberInput } from '@/components/ui/number-input';
 import { saveProfileRecord } from '@/lib/actions/cv';
+import { reach } from '@/lib/reach';
 import type { AgentProfileRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 
@@ -45,11 +46,11 @@ export function ProfileRecordForm({
     const volume = String(form.get('volumeEgp') ?? '');
 
     startTransition(async () => {
-      const result = await saveProfileRecord({
+      const result = await reach(saveProfileRecord({
         summaryAr: String(form.get('summaryAr') ?? ''),
         unitsClosed: units ? Number(units) : null,
         volumeEgp: volume ? Number(volume) : null,
-      });
+      }));
       if (recoverSession(result)) return;
       // A failure used to do nothing at all — no message, no change to the
       // button, nothing. The record simply did not save and the page said the

@@ -12,6 +12,7 @@ import { safeNext } from '@/lib/safe-next';
 import { cn } from '@/lib/utils';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { completeOnboarding } from '@/lib/actions/onboarding';
+import { reach } from '@/lib/reach';
 import type { DistrictRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 
@@ -51,7 +52,7 @@ export function OnboardingForm({
     const form = new FormData(event.currentTarget);
 
     startTransition(async () => {
-      const result = await completeOnboarding({
+      const result = await reach(completeOnboarding({
         role,
         fullName: String(form.get('fullName') ?? ''),
         whatsapp: String(form.get('whatsapp') ?? ''),
@@ -65,7 +66,7 @@ export function OnboardingForm({
                 districtId: String(form.get('companyDistrict') ?? '') || null,
               }
             : undefined,
-      });
+      }));
 
       if (recoverSession(result)) return;
       if (!result.ok) {

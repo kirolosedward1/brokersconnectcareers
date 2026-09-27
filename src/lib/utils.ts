@@ -20,13 +20,33 @@ export function formatEgp(value: number, locale: string): string {
   return new Intl.NumberFormat(NUMBER_LOCALE(locale), { maximumFractionDigits: 0 }).format(value);
 }
 
+/**
+ * "14 أغسطس 2026" — day, month, year — the same string in every browser.
+ *
+ * Assembled from its parts rather than taken whole, because the whole is not
+ * the same everywhere. Safari's ICU writes the Arabic pattern with a comma
+ * after the month, "14 أغسطس، 2026", where Node, Chrome and Firefox write
+ * none. A client component formats once on the server and again in the
+ * browser, so on Safari — every iPhone — the two disagreed, React threw away
+ * the server's HTML, and the employer's applicant list was rebuilt on every
+ * load. The parts (the digits, the month's name) agree in every engine; only
+ * the pattern did not.
+ *
+ * And in Cairo's calendar, like formatRelativeDay below: the server renders in
+ * UTC, so an application sent at 1am in Cairo was dated the day before on the
+ * server and the day itself in the browser.
+ */
 export function formatDate(value: string | Date, locale: string): string {
   const date = typeof value === 'string' ? new Date(value) : value;
-  return new Intl.DateTimeFormat(NUMBER_LOCALE(locale), {
+  const parts = new Intl.DateTimeFormat(NUMBER_LOCALE(locale), {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
-  }).format(date);
+    timeZone: 'Africa/Cairo',
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? '';
+  return `${part('day')} ${part('month')} ${part('year')}`;
 }
 
 /**
@@ -77,6 +97,8 @@ export function formatDayMonth(value: string | Date, locale: string): string {
   return new Intl.DateTimeFormat(NUMBER_LOCALE(locale), {
     day: 'numeric',
     month: 'short',
+    // Cairo's calendar, for the reason given on formatDate.
+    timeZone: 'Africa/Cairo',
   }).format(date);
 }
 

@@ -1,3 +1,5 @@
+import { westernDigits } from '@/lib/search/arabic';
+
 /**
  * WhatsApp numbers are stored in E.164. People type them every other way, so
  * normalise the common Egyptian forms before validating rather than rejecting
@@ -9,10 +11,9 @@
  *   +20 100 123 4567 -> +201001234567
  */
 export function normalisePhone(input: string): string {
-  // Arabic-Indic digits paste in from Arabic keyboards constantly.
-  const western = input.replace(/[٠-٩]/g, (d) =>
-    String(d.charCodeAt(0) - 0x0660),
-  );
+  // Arabic-Indic digits paste in from Arabic keyboards constantly, and a
+  // Persian or Urdu layout types the Extended Arabic-Indic ones (۰–۹).
+  const western = westernDigits(input);
 
   let digits = western.replace(/[^\d+]/g, '');
 

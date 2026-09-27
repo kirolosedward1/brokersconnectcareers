@@ -7,6 +7,7 @@ import { BellPlus, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { saveSearch } from '@/lib/actions/saved-searches';
+import { reach } from '@/lib/reach';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -64,7 +65,7 @@ export function SaveSearch({ signedIn, defaultLabel }: { signedIn: boolean; defa
     event.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await saveSearch({ label, query });
+      const result = await reach(saveSearch({ label, query }));
       if (recoverSession(result)) return;
       if (result.ok) {
         setDone(true);
