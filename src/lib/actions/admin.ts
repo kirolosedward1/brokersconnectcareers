@@ -1,5 +1,6 @@
 'use server';
 
+import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
 import { z } from 'zod';
@@ -62,7 +63,7 @@ export async function moderateJob(input: unknown): Promise<ActionResult> {
     // An id that matches nothing is not a successful moderation. Without this
     // the reviewer was told it worked and the employer was emailed about a
     // decision on a listing that does not exist.
-    .select('id');
+    .select('id, slug');
 
   if (error) {
     // The unverified-company post cap is enforced in the database, so approving
@@ -87,6 +88,11 @@ export async function moderateJob(input: unknown): Promise<ActionResult> {
   // The employer has been waiting on this decision; it is the one moderation
   // outcome they actually need pushed to them rather than discovered.
   after(() => notifyEmployerOfModeration(parsed.data.jobId, parsed.data.approve, parsed.data.note));
+
+  // Approved, it is a new job page for Google to read now rather than on its
+  // next crawl; rejected, it is off the public site (and may have been live).
+  const moderatedSlug = moderated[0].slug;
+  after(() => notifyJobChanged(moderatedSlug, parsed.data.approve ? 'URL_UPDATED' : 'URL_DELETED'));
 
   revalidatePath('/admin/jobs');
   revalidatePath('/jobs');
@@ -316,6 +322,33 @@ export async function setAccountApproval(input: unknown): Promise<ActionResult> 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
+  /*
+    The listings a suspension could take down, read before it happens: the
+    live and in-review listings of every company this person belongs to.
+    Compared afterwards, so only the ones that actually went to `rejected`
+    are reported to Google — a company with somebody else still in good
+    standing keeps trading, and its listings must not be announced as gone.
+
+    Allowed to fail quietly: this only decides what Google is told, and an
+    unanswered question means it is told nothing.
+  */
+  let exposed: { id: string; slug: string }[] = [];
+  if (parsed.data.status === 'rejected') {
+    const { data: memberships } = await supabase
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', parsed.data.userId);
+    const companyIds = (memberships ?? []).map((row) => row.company_id);
+    if (companyIds.length) {
+      const { data: listings } = await supabase
+        .from('jobs')
+        .select('id, slug')
+        .in('company_id', companyIds)
+        .eq('status', 'active');
+      exposed = listings ?? [];
+    }
+  }
+
   const { error } = await supabase.rpc('set_account_approval', {
     p_user: parsed.data.userId,
     p_status: parsed.data.status,
@@ -344,6 +377,16 @@ export async function setAccountApproval(input: unknown): Promise<ActionResult> 
   if (parsed.data.status === 'rejected') {
     revalidatePath('/jobs');
     revalidatePath('/admin/jobs');
+  }
+
+  // Taken down means gone from the public site: row-level security hides a
+  // rejected listing and its URL now answers 404, which is what Google is told.
+  if (exposed.length) {
+    const ids = exposed.map((row) => row.id);
+    after(async () => {
+      const { data: takenDown } = await supabase.from('jobs').select('slug').in('id', ids).eq('status', 'rejected');
+      for (const row of takenDown ?? []) await notifyJobChanged(row.slug, 'URL_DELETED');
+    });
   }
   return { ok: true };
 }

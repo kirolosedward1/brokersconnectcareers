@@ -14,11 +14,13 @@ import { createClient } from '@/lib/supabase/server';
 import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import { SortSelect } from '@/components/jobs/sort-select';
+import { PopularLandings } from '@/components/jobs/popular-landings';
 import { getDistricts, getGovernorates } from '@/lib/queries/taxonomy';
 import { getCompanyBySlug } from '@/lib/queries/companies';
 import {
   EMPTY_FILTERS,
   countActiveFilters,
+  countJobs,
   parseJobFilters,
   queryJobs,
   serializeJobFilters,
@@ -54,11 +56,22 @@ export async function generateMetadata({
   const isView =
     countActiveFilters(filters) > 0 || filters.sort !== 'newest' || filters.page > 1;
 
+  /*
+    And a view carries no canonical. A canonical pointing at /jobs beside a
+    noindex is two contradictory instructions — "this is a copy of /jobs" and
+    "drop this page" — and Google's advice is to give it one. Only the base
+    board declares itself canonical.
+
+    The params that make a view are also disallowed in robots.txt where they
+    are not needed for discovery (sort, free text, the narrower filters), so
+    the combinations are not crawled at all; see app/robots.ts.
+  */
   return {
     title: t('title'),
     description: tMeta('defaultDescription'),
-    alternates: alternatesFor('/jobs', locale),
-    ...(isView ? { robots: { index: false, follow: true } } : {}),
+    ...(isView
+      ? { robots: { index: false, follow: true } }
+      : { alternates: alternatesFor('/jobs', locale) }),
   };
 }
 
@@ -141,6 +154,7 @@ export default async function JobsPage({
   const tType = await getTranslations('employmentType');
   const tFilters = await getTranslations('filters');
   const tCompanyType = await getTranslations('companyType');
+  const tCommission = await getTranslations('commissionType');
 
   // A name the reader would recognise in a list a month from now. Their own
   // search words if they typed any, otherwise the filters that narrowed it.
@@ -181,63 +195,107 @@ export default async function JobsPage({
   };
   const governorate = governorates.find((item) => item.slug === filters.governorateSlug);
 
-  const activeFilters: { key: string; label: string; href: string }[] = [
-    ...(filters.q ? [{ key: 'q', label: `«${filters.q}»`, href: buildHref(1, { q: '' }) }] : []),
-    ...filters.tracks.map((value) => ({
-      key: `track-${value}`,
-      label: tTrack(value),
-      href: buildHref(1, { tracks: filters.tracks.filter((item) => item !== value) }),
-    })),
-    ...filters.districtSlugs.map((value) => ({
-      key: `district-${value}`,
-      label: districtLabel(value),
-      href: buildHref(1, { districtSlugs: filters.districtSlugs.filter((item) => item !== value) }),
-    })),
+  type ActiveFilter = { key: string; label: string; href: string; without: Partial<typeof filters> };
+  const chip = (key: string, label: string, without: Partial<typeof filters>): ActiveFilter => ({
+    key,
+    label,
+    without,
+    href: buildHref(1, without),
+  });
+
+  const activeFilters: ActiveFilter[] = [
+    ...(filters.q ? [chip('q', `«${filters.q}»`, { q: '' })] : []),
+    ...filters.tracks.map((value) =>
+      chip(`track-${value}`, tTrack(value), {
+        tracks: filters.tracks.filter((item) => item !== value),
+      }),
+    ),
+    ...filters.districtSlugs.map((value) =>
+      chip(`district-${value}`, districtLabel(value), {
+        districtSlugs: filters.districtSlugs.filter((item) => item !== value),
+      }),
+    ),
     ...(filters.governorateSlug
       ? [
-          {
-            key: 'gov',
-            label: governorate
+          chip(
+            'gov',
+            governorate
               ? localized(locale, governorate.name_ar, governorate.name_en)
               : filters.governorateSlug,
-            href: buildHref(1, { governorateSlug: null }),
-          },
+            { governorateSlug: null },
+          ),
         ]
       : []),
-    ...filters.companyTypes.map((value) => ({
-      key: `ctype-${value}`,
-      label: tCompanyType(value),
-      href: buildHref(1, { companyTypes: filters.companyTypes.filter((item) => item !== value) }),
-    })),
-    ...filters.leadsSources.map((value) => ({
-      key: `leads-${value}`,
-      label: tLeads(`${value}_short`),
-      href: buildHref(1, { leadsSources: filters.leadsSources.filter((item) => item !== value) }),
-    })),
+    ...filters.companyTypes.map((value) =>
+      chip(`ctype-${value}`, tCompanyType(value), {
+        companyTypes: filters.companyTypes.filter((item) => item !== value),
+      }),
+    ),
+    ...filters.leadsSources.map((value) =>
+      chip(`leads-${value}`, tLeads(`${value}_short`), {
+        leadsSources: filters.leadsSources.filter((item) => item !== value),
+      }),
+    ),
     ...(filters.hasBasicSalary === null
       ? []
       : [
-          {
-            key: 'salary',
-            label: tFilters(filters.hasBasicSalary ? 'hasBasicSalaryYes' : 'hasBasicSalaryNo'),
-            href: buildHref(1, { hasBasicSalary: null }),
-          },
+          chip(
+            'salary',
+            tFilters(filters.hasBasicSalary ? 'hasBasicSalaryYes' : 'hasBasicSalaryNo'),
+            { hasBasicSalary: null },
+          ),
         ]),
-    ...filters.experienceBands.map((value) => ({
-      key: `exp-${value}`,
-      label: tExp(value),
-      href: buildHref(1, {
+    ...(filters.minSalary
+      ? [
+          chip(
+            'pay',
+            tFilters('minSalaryAtLeast', { amount: formatNumber(filters.minSalary, locale) }),
+            { minSalary: null },
+          ),
+        ]
+      : []),
+    ...filters.commissionTypes.map((value) =>
+      chip(`comm-${value}`, tCommission(value), {
+        commissionTypes: filters.commissionTypes.filter((item) => item !== value),
+      }),
+    ),
+    ...(filters.postedWithin
+      ? [chip('posted', tFilters('postedWithin', { days: filters.postedWithin }), { postedWithin: null })]
+      : []),
+    ...filters.experienceBands.map((value) =>
+      chip(`exp-${value}`, tExp(value), {
         experienceBands: filters.experienceBands.filter((item) => item !== value),
       }),
-    })),
-    ...filters.employmentTypes.map((value) => ({
-      key: `type-${value}`,
-      label: tType(value),
-      href: buildHref(1, {
+    ),
+    ...filters.employmentTypes.map((value) =>
+      chip(`type-${value}`, tType(value), {
         employmentTypes: filters.employmentTypes.filter((item) => item !== value),
       }),
-    })),
+    ),
   ];
+
+  /*
+    Nothing matched: which single filter is in the way.
+
+    Each suggestion is a real count of real listings — the same query with one
+    filter dropped — so nothing here is invented, and anything that would also
+    come back empty is not offered. Only on an empty board, at most six HEAD
+    requests with no rows in them, run side by side; the pinned company is not
+    one of them, because the banner already offers its own way out.
+  */
+  const relaxations =
+    jobs.length === 0 && activeFilters.length > 1
+      ? (
+          await Promise.all(
+            activeFilters.slice(0, 6).map(async (filter) => ({
+              ...filter,
+              count: await countJobs({ ...filters, ...filter.without, page: 1 }),
+            })),
+          )
+        )
+          .filter((filter): filter is ActiveFilter & { count: number } => Boolean(filter.count))
+          .sort((a, b) => b.count - a.count)
+      : [];
 
   const filterPanel = (
     <JobFilters
@@ -273,7 +331,7 @@ export default async function JobsPage({
             the bookmark on each card below already applies. An employer who
             pressed this got a row that no page of theirs lists and a weekly
             email they had no switch for. */}
-        {activeCount > 0 && offerSavedSearch ? (
+        {activeCount > 0 && offerSavedSearch && jobs.length > 0 ? (
           <SaveSearch signedIn={Boolean(viewer)} defaultLabel={defaultSearchLabel} />
         ) : null}
 
@@ -376,10 +434,42 @@ export default async function JobsPage({
               <EmptyIllustration name="search" />
               <p className="font-medium">{t('empty')}</p>
               <p className="mt-1 text-sm text-muted-foreground">{t('emptyHint')}</p>
-              {activeCount > 0 ? (
-                <Button asChild variant="outline" className="mt-5">
-                  <Link href="/jobs">{t('clearFilters')}</Link>
-                </Button>
+
+              {relaxations.length ? (
+                <div className="mt-5">
+                  <p className="text-sm text-muted-foreground">{t('relaxHeading')}</p>
+                  <ul className="mt-2 flex flex-wrap justify-center gap-1.5">
+                    {relaxations.map((filter) => (
+                      <li key={filter.key}>
+                        <Link
+                          href={filter.href}
+                          scroll={false}
+                          className="inline-flex min-h-9 items-center rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:border-primary/50 hover:text-primary"
+                        >
+                          <bdi>
+                            {t('withoutFilter', { name: filter.label, count: filter.count })}
+                          </bdi>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                {activeCount > 0 ? (
+                  <Button asChild variant="outline">
+                    <Link href="/jobs">{t('clearFilters')}</Link>
+                  </Button>
+                ) : null}
+                {/* The honest answer to "there is nothing yet": tell me when
+                    there is. Offered to the same readers as in the header. */}
+                {activeCount > 0 && offerSavedSearch ? (
+                  <SaveSearch signedIn={Boolean(viewer)} defaultLabel={defaultSearchLabel} />
+                ) : null}
+              </div>
+              {activeCount > 0 && offerSavedSearch ? (
+                <p className="mt-2 text-xs text-muted-foreground">{t('emptySaveHint')}</p>
               ) : null}
             </div>
           ) : (
@@ -415,6 +505,10 @@ export default async function JobsPage({
               ) : null}
             </>
           )}
+
+          {/* On the unfiltered board only: the one indexable version of this
+              page is where the links into the landing pages belong. */}
+          {activeCount === 0 && page === 1 ? <PopularLandings locale={locale} /> : null}
         </div>
       </div>
     </div>

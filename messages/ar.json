@@ -83,7 +83,10 @@
     "browseOpen": "شوف الوظايف المفتوحة",
     "atCompany": "وظائف {company}",
     "companyPage": "صفحة الشركة",
-    "allCompanies": "شوف كل الشركات"
+    "allCompanies": "شوف كل الشركات",
+    "relaxHeading": "في وظايف لو شيلت فلتر واحد بس:",
+    "withoutFilter": "من غير {name} · {count, plural, one {وظيفة واحدة} two {وظيفتين} few {# وظائف} other {# وظيفة}}",
+    "emptySaveHint": "احفظ البحث ده وهنبعتلك أول ما تنزل وظيفة مطابقة."
   },
   "compensation": {
     "title": "الراتب والعمولة",
@@ -125,7 +128,12 @@
     "showResults": "شوف النتايج",
     "companyType": "نوع الشركة",
     "verifiedOnly": "الموثّقة بس",
-    "minYears": "خبرة {count} سنين أو أكتر"
+    "minYears": "خبرة {count} سنين أو أكتر",
+    "minSalary": "راتب أساسي من",
+    "minSalaryAtLeast": "{amount} ج.م أو أكتر",
+    "commissionType": "نوع العمولة",
+    "posted": "تاريخ النشر",
+    "postedWithin": "{days, plural, =1 {آخر 24 ساعة} few {آخر # أيام} other {آخر # يوم}}"
   },
   "track": {
     "primary": "بيع أول",
@@ -247,7 +255,8 @@
     "cvReplace": "غيّر السيرة الذاتية",
     "cvNone": "مفيش سيرة ذاتية مرفوعة.",
     "backToDirectory": "رجوع للدليل",
-    "previewOnly": "معاينة"
+    "previewOnly": "معاينة",
+    "searchPlaceholder": "مثال: مدير مبيعات، ريسيل"
   },
   "availability": {
     "open_to_offers": "مستعد يسمع عروض",
@@ -549,6 +558,7 @@
     "teamOnlyAdmins": "مديري الشركة بس اللي يقدروا يغيّروا الفريق.",
     "teamNoAccount": "مفيش حساب بالإيميل ده. خلّي زميلك يسجّل الأول، وبعدين ضيفه من هنا.",
     "teamAlreadyMember": "الشخص ده في الفريق بالفعل.",
+    "teamRateLimited": "حاولت تضيف ناس كتير في وقت قصير. استنّى ساعة وجرّب تاني.",
     "teamNotEmployer": "الإيميل ده لحساب استشاري، مش لحساب شركة.",
     "teamCannotRemoveOwner": "مينفعش تشيل صاحب الحساب من شركته.",
     "stageFilter": "تصفية حسب المرحلة",
@@ -742,7 +752,13 @@
     "title": "وظائف {track} في {district}",
     "subtitle": "كل وظائف {track} المتاحة دلوقتي في {district} — بالراتب الأساسي ونسبة العمولة ومصدر العملاء.",
     "otherDistricts": "{track} في مناطق أخرى",
-    "otherTracks": "تخصصات أخرى في {district}"
+    "otherTracks": "تخصصات أخرى في {district}",
+    "companiesHiring": "{count, plural, one {شركة واحدة بتعيّن} two {شركتين بيعيّنوا} few {# شركات بتعيّن} many {# شركة بتعيّن} other {# شركة بتعيّن}}",
+    "withSalary": "{count} من {total} بمرتب أساسي",
+    "factSalaryRange": "المرتب الأساسي من {min} لـ {max} جنيه شهرياً",
+    "factSalaryFrom": "المرتب الأساسي من {min} جنيه شهرياً",
+    "factsLabel": "ملخص الوظائف المتاحة",
+    "popularTitle": "وظائف مطلوبة حسب التخصص والمنطقة"
   },
   "footer": {
     "product": "المنصة",

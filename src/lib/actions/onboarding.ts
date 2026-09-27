@@ -70,7 +70,7 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
 
   /*
     The picture the identity provider handed over, if it is one the database
-    accepts. profiles_10_guard_avatar (migration 68) refuses any avatar URL
+    accepts. profiles_10_guard_avatar (migration 202) refuses any avatar URL
     that is not a file in the account's own folder or a Google picture, so
     anything else is left null here rather than failing the whole onboarding
     over a photo nobody asked for.

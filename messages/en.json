@@ -83,7 +83,10 @@
     "browseOpen": "Browse open roles",
     "atCompany": "Roles at {company}",
     "companyPage": "Company page",
-    "allCompanies": "All companies"
+    "allCompanies": "All companies",
+    "relaxHeading": "There are listings if you drop one filter:",
+    "withoutFilter": "Without {name} · {count, plural, one {# job} other {# jobs}}",
+    "emptySaveHint": "Save this search and we'll email you when a matching listing is posted."
   },
   "compensation": {
     "title": "Pay and commission",
@@ -125,7 +128,12 @@
     "showResults": "Show results",
     "companyType": "Company type",
     "verifiedOnly": "Verified only",
-    "minYears": "{count}+ years of experience"
+    "minYears": "{count}+ years of experience",
+    "minSalary": "Basic salary from",
+    "minSalaryAtLeast": "EGP {amount}+",
+    "commissionType": "Commission",
+    "posted": "Date posted",
+    "postedWithin": "{days, plural, =1 {Last 24 hours} other {Last # days}}"
   },
   "track": {
     "primary": "Primary sales",
@@ -247,7 +255,8 @@
     "cvReplace": "Replace CV",
     "cvNone": "No CV uploaded.",
     "backToDirectory": "Back to directory",
-    "previewOnly": "Preview"
+    "previewOnly": "Preview",
+    "searchPlaceholder": "e.g. sales manager, resale"
   },
   "availability": {
     "open_to_offers": "Open to offers",
@@ -549,6 +558,7 @@
     "teamOnlyAdmins": "Only company admins can change the team.",
     "teamNoAccount": "No account with that email. Ask them to sign up first, then add them here.",
     "teamAlreadyMember": "They are already on the team.",
+    "teamRateLimited": "Too many additions in a short time. Try again in an hour.",
     "teamNotEmployer": "That email belongs to a consultant account, not a company one.",
     "teamCannotRemoveOwner": "The account owner cannot be removed from their own company.",
     "stageFilter": "Filter by stage",
@@ -742,7 +752,13 @@
     "title": "{track} jobs in {district}",
     "subtitle": "Every {track} role open right now in {district} — with the basic salary, the commission, and who supplies the leads.",
     "otherDistricts": "{track} in other districts",
-    "otherTracks": "Other tracks in {district}"
+    "otherTracks": "Other tracks in {district}",
+    "companiesHiring": "{count, plural, one {One company hiring} other {# companies hiring}}",
+    "withSalary": "{count} of {total} with a basic salary",
+    "factSalaryRange": "Basic salary from {min} to {max} EGP a month",
+    "factSalaryFrom": "Basic salary from {min} EGP a month",
+    "factsLabel": "Summary of open roles",
+    "popularTitle": "Open roles by specialisation and area"
   },
   "footer": {
     "product": "Platform",

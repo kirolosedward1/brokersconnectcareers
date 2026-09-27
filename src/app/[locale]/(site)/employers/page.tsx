@@ -42,7 +42,7 @@ export default async function EmployersPage({
     rather than failing the page — the argument stands without it.
 
     Counted with the service role, deliberately: this page is read by
-    visitors, and since migration 68 the viewer's own session reads no
+    visitors, and since migration 202 the viewer's own session reads no
     consultant rows at all unless they are an approved employer — so the
     count under RLS was "how many can *you* see", which for a visitor is
     zero. The number is a fact about the directory, not about the reader,

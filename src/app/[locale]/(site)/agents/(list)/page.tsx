@@ -22,18 +22,23 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   const t = await getTranslations({ locale, namespace: 'agents' });
+
+  // A directory of people, for the companies that hire them, behind a sign-in
+  // since migration 202. Never indexed and never followed, filtered or not —
+  // the view/page distinction the board makes has nothing to distinguish here,
+  // because a crawler is turned away at the door.
   return {
     title: t('title'),
     description: t('subtitle'),
     alternates: alternatesFor('/agents', locale),
-    // A directory of people, for the companies that hire them. Not for a
-    // crawler, whatever a crawler is told elsewhere.
     robots: { index: false, follow: false },
   };
 }
@@ -44,7 +49,7 @@ export async function generateMetadata({
  * Approved employers and admins. requireDirectoryViewer turns everybody else
  * away before a single row is asked for — and the database would have
  * answered them with nothing anyway, which is the arrangement that makes the
- * page a courtesy rather than a control (see migration 68).
+ * page a courtesy rather than a control (see migration 202).
  */
 export default async function AgentsPage({
   params,
@@ -102,6 +107,7 @@ export default async function AgentsPage({
   const tJobs = await getTranslations('jobs');
 
   const activeCount =
+    (filters.q ? 1 : 0) +
     filters.tracks.length +
     filters.districtSlugs.length +
     (filters.availability ? 1 : 0) +
@@ -166,6 +172,7 @@ export default async function AgentsPage({
               <EmptyIllustration name="choose" />
               <p className="font-medium">{t('empty')}</p>
               <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{t('emptyHint')}</p>
+              {/* Not a dead end: the way out is one tap, the same as the rail's. */}
               {activeCount > 0 ? (
                 <Button asChild variant="outline" className="mt-5">
                   <Link href="/agents">{tJobs('clearFilters')}</Link>

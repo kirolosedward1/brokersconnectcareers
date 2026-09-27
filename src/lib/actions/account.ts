@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { allow } from '@/lib/rate-limit';
 import { AVATAR_BUCKET, CV_BUCKET } from '@/lib/buckets';
 import { isOwnStoragePath } from '@/lib/storage-path';
 import type { ActionResult } from '@/lib/actions/jobs';
@@ -124,6 +125,11 @@ export async function announcePasswordChange(): Promise<ActionResult> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
+
+  // The evidence check already stops a call that changed nothing; this stops a
+  // loop of real changes from becoming a loop of mail. Answered ok either way —
+  // the password change itself succeeded, which is what the caller cares about.
+  if (!(await allow(`password_notice:${user.id}`, 5, 3600))) return { ok: true };
 
   after(() => notifyPasswordChanged(user.id));
   return { ok: true };

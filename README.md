@@ -95,6 +95,11 @@ URL Configuration, set Site URL to your production URL and add
 `https://your-domain/auth/callback` to the redirect allow-list. Until you do,
 confirmation emails and Google sign-in will send people to `localhost:3000`.
 
+**Email** needs `RESEND_API_KEY`, `RESEND_FROM` and `RESEND_WEBHOOK_SECRET`
+too, plus Supabase Auth's SMTP settings. Everything about it — architecture,
+events, DNS status, and the provider steps still outstanding — is in
+[`docs/email.md`](docs/email.md).
+
 The nightly expiry cron is already declared in `vercel.json` and runs at 01:00
 UTC. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
 variable is set; the route returns 401 to anything else.
@@ -111,6 +116,7 @@ variable is set; the route returns 401 to anything else.
 | `pnpm db:seed:demo` | Creates demo accounts via the Auth admin API + sample listings |
 | `pnpm doctor` | Preflight: env, REST, schema, storage, auth |
 | `pnpm db:rehearse` | Runs the setup scripts against a throwaway wire-protocol Postgres |
+| `pnpm bench:search` | Query plans for board, company and agent search on a 20k-listing synthetic board |
 | `pnpm db:types` | Regenerates `src/lib/supabase/database.types.ts` from a linked project |
 
 ### `pnpm test:db`
@@ -166,6 +172,18 @@ outright, which is right for the profile page and useless for a directory that m
 show anonymised cards to everyone. `search_agents()` and `get_agent_card()` are
 `SECURITY DEFINER` and strip identity themselves, so the gate cannot be bypassed by
 crafting a query.
+
+**Search is Postgres full-text search, on purpose.** Each public listing has a
+row in `job_search_documents` — title, specialisation, district and governorate
+(names and aliases, both languages), company, developers and description,
+weighted so a prefix matches the short fields and only whole words match the
+prose. Triggers keep it current; a draft or a rejected listing has none. Arabic
+is folded identically in SQL (`ar_normalise`, `ar_strip_al`) and TypeScript
+(`src/lib/search/arabic.ts`), and `pnpm test:search` asserts the two agree.
+Extra place and specialisation names («القاهرة الجديدة», «ريسيل») are rows in
+`search_aliases`, seeded in `seed.sql` — add one with an insert, not a deploy.
+`pnpm bench:search` has the measured plans behind not reaching for a search
+engine.
 
 **CVs are never linked directly.** `/api/cv/[applicationId]` checks entitlement
 through RLS, mints a five-minute signed URL, and redirects. A URL rendered into the

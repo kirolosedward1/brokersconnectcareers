@@ -48,14 +48,16 @@ export async function generateMetadata({
 
   /*
     No name in the title, whoever is asking. A directory page is never
-    indexed — it is behind a sign-in — and the metadata streams before the
-    page's own guard has run, so it must not carry anything the guard exists
-    to withhold. The heading on the page is where the name is.
+    indexed — it is behind a sign-in since migration 202, so there is no
+    "public profile" for a crawler to be told about — and the metadata
+    streams before the page's own guard has run, so it must not carry
+    anything the guard exists to withhold. The heading on the page is where
+    the name is.
   */
   return {
     title: t('title'),
     description: t('subtitle'),
-    robots: { index: false, follow: false },
+    robots: { index: false, follow: false, noarchive: true, nosnippet: true },
     alternates: { canonical: `/agents/${slug}` },
   };
 }

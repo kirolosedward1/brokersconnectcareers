@@ -77,7 +77,7 @@ export function hasVerifiedCompany(actor: Actor): boolean {
 /**
  * Who the directory answers: an admin, or an approved employer.
  *
- * Restates `can_browse_agent_directory()` from migration 68, which is what
+ * Restates `can_browse_agent_directory()` from migration 202, which is what
  * `search_agents()`, `get_agent_card()` and the row policies actually check.
  * A candidate is never a directory reader, whatever they type into the
  * address bar; nor is a stranger, nor an employer still waiting for approval

@@ -67,7 +67,7 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
 
   // A CV path is exactly the applicant's own folder and one file in it.
   // `startsWith` let `<uid>/../<somebody else>/cv.pdf` through; the database
-  // now refuses that shape too (migration 68), and this is the earlier no.
+  // now refuses that shape too (migration 202), and this is the earlier no.
   if (parsed.data.cvPath && !isOwnStoragePath(user.id, parsed.data.cvPath)) {
     return { ok: false, error: 'invalid_cv_path' };
   }

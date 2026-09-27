@@ -21,6 +21,8 @@ import type { SalaryReferenceRow } from '@/lib/supabase/database.types';
 import { after } from 'next/server';
 import { notifyJobSubmitted } from '@/lib/email/notify';
 import { logFailure } from '@/lib/observe';
+import { notifyJobChanged } from '@/lib/seo/indexing-api';
+import { jobIsPublic } from '@/lib/job-state';
 
 const jobSchema = z
   .object({
@@ -296,13 +298,24 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
   */
   const { data: settled } = await supabase
     .from('jobs')
-    .select('status')
+    .select('status, slug, expires_at')
     .eq('id', jobId!)
     .maybeSingle();
 
   if (settled?.status === 'pending_review' && current?.status !== 'pending_review') {
     const submitted = jobId!;
     after(() => notifyJobSubmitted(submitted));
+  }
+
+  /*
+    A live listing edited is a page Google has already read. A cosmetic edit
+    leaves it on the board with new content; a material one sends it back to
+    review, which takes it off the public site until it is approved again.
+  */
+  if (live && settled?.slug) {
+    const slug = settled.slug;
+    const type = jobIsPublic(settled) ? 'URL_UPDATED' : 'URL_DELETED';
+    after(() => notifyJobChanged(slug, type));
   }
 
   revalidatePath('/employer/jobs');
@@ -333,12 +346,21 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
   const { data: companyId } = await supabase.rpc('my_company_id');
   if (!companyId) return { ok: false, error: 'forbidden' };
 
+  // Allowed to fail quietly: it only decides whether Google is told, and a
+  // missing answer means it is not.
+  const { data: before } = await supabase
+    .from('jobs')
+    .select('status')
+    .eq('id', parsed.data.jobId)
+    .eq('company_id', companyId)
+    .maybeSingle();
+
   const { data: moved, error } = await supabase
     .from('jobs')
     .update({ status: parsed.data.status })
     .eq('id', parsed.data.jobId)
     .eq('company_id', companyId)
-    .select('id');
+    .select('id, slug');
 
   if (error) {
     logFailure('listing', 'transition refused', {
@@ -356,6 +378,17 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
       to: parsed.data.status,
     });
     return { ok: false, error: 'forbidden' };
+  }
+
+  /*
+    Only a listing that was public has anything to tell Google. Closed stays
+    a page (200, noindex, no JobPosting) so it is an update; moved back to a
+    draft or into review it disappears from the public site entirely.
+  */
+  if (before && jobIsPublic(before)) {
+    const slug = moved[0].slug;
+    const type = jobIsPublic(parsed.data) ? 'URL_UPDATED' : 'URL_DELETED';
+    after(() => notifyJobChanged(slug, type));
   }
 
   revalidatePath('/employer/jobs');

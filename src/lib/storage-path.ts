@@ -6,7 +6,7 @@
  * `startsWith(`${id}/`)`, which is true of `<id>/../<somebody else>/cv.pdf`;
  * storage resolves the path as a URL and a URL collapses `..`, so the check
  * passed and the signed URL pointed at another person's file. The database
- * says the same thing as this since migration 68 (`applications_cv_is_the_applicants`,
+ * says the same thing as this since migration 202 (`applications_cv_is_the_applicants`,
  * `agent_profiles_cv_is_the_owners`); this is the same rule where the request
  * is first read.
  *

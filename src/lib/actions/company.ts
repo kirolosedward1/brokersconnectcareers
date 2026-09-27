@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { allow } from '@/lib/rate-limit';
 import { COMPANY_LOGOS_BUCKET } from '@/lib/storage';
 import { isOwnStoragePath } from '@/lib/storage-path';
 import { buildCompanySlug } from '@/lib/slug';
@@ -299,9 +300,9 @@ const memberSchema = z.object({
  * Add a colleague to the company by email address.
  *
  * Adding an *existing* account only. Creating one for somebody who has never
- * signed up needs an invitation email, and no mail leaves this platform until
- * a sending domain is verified — so an invite flow built today would be a
- * button that silently does nothing. When the address is unknown the answer
+ * signed up needs an invitation email carrying a sign-up token, which does not
+ * exist yet (the sending domain is verified now, so it can be built; it has
+ * not been). When the address is unknown the answer
  * says so and says what to do instead, which is a complete feature rather than
  * a broken half of a better one.
  *
@@ -350,6 +351,16 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
     and authorisation is unchanged: the membership row below still goes in
     through the caller's own session, so company_members_manage decides.
   */
+  /*
+    Counted before the lookup, because the lookup is the sensitive part: its
+    answer is whether an address has an account here. Any employer could walk
+    a list through this form and learn which addresses belong to consultants
+    on the platform. Twenty an hour is a whole team onboarded in one sitting
+    and far short of a list.
+  */
+  if (!(await allow(`team_add:${user.id}`, 20, 3600))) return { ok: false, error: 'rate_limited' };
+
+  // A missing service-role key is an answer the form can show, not a stack.
   let admin;
   try {
     admin = createAdminClient();

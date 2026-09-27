@@ -1,4 +1,47 @@
 -- =============================================================================
+-- 20260101000202 — The directory is for employers
+--
+-- Renumbered from 068 on merge: three branches carried a 068. Nothing here
+-- depends on the number, and the search migration this one restates
+-- search_agents() from sorts before it either way.
+--
+-- rollback: forward-fix only — the change is who may read the directory, its
+--   cards and the storage buckets, plus two CHECK constraints on cv_path and a
+--   trigger on profiles.avatar_url. Undoing it means re-granting search_agents
+--   and get_agent_card to anon and restoring the pre-202 policies, which is
+--   exactly the exposure this migration exists to close; a fault in it is
+--   fixed forward, and the policy suite (supabase/tests/policies.test.mjs,
+--   "the agent directory gate") is the check that it did what it says.
+-- safety: rls — every rewritten policy narrows, never widens: agent_profiles
+--   reads gain the directory gate (approved employer or admin, owner keeps
+--   their own row), the two "world readable" storage listing policies are
+--   dropped (public buckets still serve files by URL without a policy),
+--   saved_jobs is split so only a candidate may insert, jobs_update_owner adds
+--   the approved-employer test owns_job() already makes; verified by the
+--   policy suite as anon, candidate, pending/suspended/unverified/verified
+--   employer and admin.
+-- safety: grant — can_browse_agent_directory() is a predicate returning a
+--   boolean about the caller and reads nothing; anon must be able to call it
+--   because the agent_profiles policies call it (an ungranted function in a
+--   policy errors rather than fails closed, migration 43).
+-- safety: revoke-anon — the revoke from public on can_browse_agent_directory()
+--   is followed by an explicit grant to anon on the next line, on purpose,
+--   for the reason above; search_agents and get_agent_card are revoked from
+--   public AND anon explicitly.
+-- safety: constraint — the cv_path CHECKs (<owner uuid>/<file>) describe the
+--   only shape the app has ever written (isOwnStoragePath, apply-form and
+--   profile-form uploads); a row that fails them could only have come from a
+--   crafted request, and the constraint is what refuses the next one. Both
+--   tables are small; the check runs in the same transaction as the drop.
+-- safety: ships-with-code — the app guards /agents with requireDirectoryViewer
+--   and queryAgents() omits p_q when empty, so new code on the old schema is
+--   guarded by the app while the database is still open, and old code on the
+--   new schema shows the anonymous directory page a database error on a page
+--   the release removes from anonymous reach; neither order loses or exposes
+--   data.
+-- =============================================================================
+
+-- =============================================================================
 -- 68 — The consultant directory is for the people who hire
 --
 -- The directory was public. Anybody — a signed-out visitor, another
@@ -92,8 +135,14 @@ create policy agent_profiles_select_gated on agent_profiles
 -- here has to restate them.
 
 -- ---------------------------------------------------------------------------
--- The listing. Migration 53's body, with the gate on the caller added.
+-- The listing. The keyword-search body of the search migration that sorts
+-- just before this one (same version prefix, `search_that_reads…`), with the
+-- gate on the caller added. The same seven-argument signature, so there is
+-- one search_agents and not two: the six-argument one that migration dropped
+-- is dropped here too, in case this file is ever applied on its own.
 -- ---------------------------------------------------------------------------
+
+drop function if exists public.search_agents(job_track[], int[], agent_availability, int, int, int);
 
 create or replace function public.search_agents(
   p_tracks       job_track[] default null,
@@ -101,7 +150,8 @@ create or replace function public.search_agents(
   p_availability agent_availability default null,
   p_min_years    int         default null,
   p_limit        int         default 24,
-  p_offset       int         default 0
+  p_offset       int         default 0,
+  p_q            text        default null
 )
 returns table (
   id               uuid,
@@ -127,11 +177,23 @@ as $$
     select public.can_browse_agent_directory()                            as may_browse,
            (public.viewer_has_verified_company() or public.is_admin())    as unlocked
   ),
+  needles as (
+    -- At most eight words, each folded the way the text is.
+    select array(
+      select w
+        from unnest(string_to_array(
+               public.ar_strip_al(public.ar_normalise(left(coalesce(p_q, ''), 120))), ' ')) as w
+       where w <> ''
+       limit 8
+    ) as words
+  ),
   matched as (
-    select a.*, p.full_name, p.avatar_url
+    select a.*, p.full_name, p.avatar_url,
+           (a.visibility = 'public' or v.unlocked) as shows_name
       from agent_profiles a
       join profiles p on p.id = a.user_id
       cross join viewer v
+      cross join needles n
      where v.may_browse
        and a.visibility <> 'hidden'
        and p.role = 'candidate'
@@ -139,6 +201,20 @@ as $$
        and (p_district_ids is null or a.district_ids && p_district_ids)
        and (p_availability is null or a.availability = p_availability)
        and (p_min_years    is null or a.years_experience >= p_min_years)
+       -- The keyword matches only what this card shows this viewer: the
+       -- headline always, the name only where the card carries it.
+       and (
+         cardinality(n.words) = 0
+         or not exists (
+           select 1
+             from unnest(n.words) as w
+            where strpos(
+                    concat_ws(' ',
+                      a.search_headline,
+                      case when a.visibility = 'public' or v.unlocked then p.search_name end),
+                    w) = 0
+         )
+       )
   )
   select
     m.id,
@@ -148,10 +224,10 @@ as $$
       not in the link under it. Withheld with the name; the card links by id
       instead, and get_agent_card() below answers to either.
     */
-    case when m.visibility = 'public' or v.unlocked then m.slug       end  as slug,
-    (m.visibility = 'public' or v.unlocked)                                as is_unlocked,
-    case when m.visibility = 'public' or v.unlocked then m.full_name  end  as full_name,
-    case when m.visibility = 'public' or v.unlocked then m.avatar_url end  as avatar_url,
+    case when m.shows_name then m.slug       end  as slug,
+    m.shows_name                                  as is_unlocked,
+    case when m.shows_name then m.full_name  end  as full_name,
+    case when m.shows_name then m.avatar_url end  as avatar_url,
     m.headline_ar,
     m.headline_en,
     m.years_experience,
@@ -159,8 +235,8 @@ as $$
     m.district_ids,
     m.languages,
     m.availability,
-    count(*) over ()                                                       as total_count
-  from matched m cross join viewer v
+    count(*) over ()                              as total_count
+  from matched m
   order by m.years_experience desc, m.created_at desc, m.id
   limit greatest(1, least(p_limit, 60)) offset greatest(0, p_offset);
 $$;
@@ -168,9 +244,9 @@ $$;
 -- No longer a public API. `from public, anon` for the reason migration 60
 -- spells out: Supabase's default privileges grant anon explicitly, and a
 -- revoke from PUBLIC alone leaves that grant standing.
-revoke execute on function public.search_agents(job_track[], int[], agent_availability, int, int, int)
+revoke execute on function public.search_agents(job_track[], int[], agent_availability, int, int, int, text)
   from public, anon;
-grant  execute on function public.search_agents(job_track[], int[], agent_availability, int, int, int)
+grant  execute on function public.search_agents(job_track[], int[], agent_availability, int, int, int, text)
   to authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
@@ -422,7 +498,7 @@ $$;
 
 comment on policy agent_profiles_select_public on agent_profiles is
   'A public profile is public to the directory''s readers — approved employers '
-  'and admins — not to the internet and not to other candidates. See migration 68.';
+  'and admins — not to the internet and not to other candidates. See migration 202.';
 
 -- =============================================================================
 -- Four more doors on the same corridor, found while closing the first.

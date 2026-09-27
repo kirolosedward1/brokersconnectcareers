@@ -79,7 +79,7 @@ export default async function ApplyPage({
   const profile = viewer!.profile!;
 
   // An employer or an admin landing here is a mis-click; send them back to
-  // the listing rather than to a form the database will refuse (migration 68
+  // the listing rather than to a form the database will refuse (migration 202
   // refuses any applicant who is not a candidate, admins included).
   if (!isCandidate(actorOf(viewer))) {
     redirect({ href: `/jobs/${slug}`, locale });

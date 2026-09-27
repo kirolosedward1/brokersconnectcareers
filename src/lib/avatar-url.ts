@@ -3,7 +3,7 @@
  *
  * `profiles.avatar_url` is drawn as an <img> in every employer's browser: the
  * applicant card, the shortlist, the directory card, the profile page. The
- * database trigger (migration 68) pins the *shape* of the value — the
+ * database trigger (migration 202) pins the *shape* of the value — the
  * account's own folder in the avatars bucket, or a Google account picture —
  * but it cannot know this deployment's storage host, so a URL with the right
  * path on somebody else's host still passes it. Rendered as it stands, that

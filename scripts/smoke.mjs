@@ -81,7 +81,7 @@ for (const path of [
   '/employer/applicants',
   '/notifications',
   '/onboarding',
-  // The consultant directory, since migration 68: a directory of people, for
+  // The consultant directory, since migration 202: a directory of people, for
   // the companies that hire them.
   '/agents',
   '/agents/menna-sherif-909521',
@@ -568,7 +568,7 @@ section('the public API refuses what the pages refuse');
 section('the directory is closed to strangers');
 {
   /*
-    A directory of people, for the companies that hire them (migration 68).
+    A directory of people, for the companies that hire them (migration 202).
     A visitor with no session gets sent to sign in from the listing and from
     any profile URL, and nothing about anybody — no card, no name, no
     wa.me link — is in the response that sends them.

@@ -77,6 +77,8 @@ export function TeamSettings({
                 ? t('teamNotEmployer')
                 : result.error === 'elsewhere'
                   ? t('teamElsewhere')
+                : result.error === 'rate_limited'
+                  ? t('teamRateLimited')
                   : tCommon('errorBody'),
         );
         return;

@@ -671,7 +671,7 @@ report.section('only candidates apply');
   const r = await as(employerVerified,
     `insert into applications (job_id, candidate_id, experience_band)
      values ('${liveOther}', '${employerVerified}', 'mid_3_5') returning id`);
-  // Either refusal is the right one: the trigger migration 68 added speaks
+  // Either refusal is the right one: the trigger migration 202 added speaks
   // first, and the insert policy says the same thing behind it.
   report.check('an employer cannot apply to a listing',
     !r.ok && /row-level security|applicant_role/.test(r.error ?? ''), r.ok ? 'insert was allowed' : r.error);
@@ -1252,7 +1252,7 @@ report.section('a CV section never outlives the gate on its profile');
     values ('${hiddenId}', 'شهادة وسيط عقاري');
   `);
 
-  // A stranger here is a candidate, and since migration 68 a candidate is not
+  // A stranger here is a candidate, and since migration 202 a candidate is not
   // a directory reader at all — so they see neither row. The employer half
   // below is what distinguishes "gated" from "hidden".
   const r = await as(OUTSIDER, `select company_name from agent_experience`);
@@ -1773,7 +1773,7 @@ report.section('a company is a team, not a login');
       values ('${COLLEAGUE}', 'employer', 'زميلة', '+201666666666');
   `);
   // In good standing, stated after the insert: a new employer account is
-  // forced to 'pending' on the way in, and since migration 68 an account that
+  // forced to 'pending' on the way in, and since migration 202 an account that
   // is not approved reaches no applicant however many companies it joins.
   await db.exec(`update profiles set approval_status = 'approved' where id = '${COLLEAGUE}'`);
 
