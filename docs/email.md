@@ -175,7 +175,7 @@ cannot be used as a relay.
 | DKIM `resend._domainkey` TXT | **verified** | Resend API |
 | SPF `send` TXT `v=spf1 include:amazonses.com ~all` | **verified** | Resend API |
 | Return-path MX `send` → `feedback-smtp.ap-northeast-1.amazonses.com` | **verified** | Resend API |
-| DMARC `_dmarc` TXT | **unverified** | public DNS was unreachable from the audit environment; the zone is not hosted at Hostinger (empty zone) and the Vercel team was not accessible |
+| DMARC `_dmarc` TXT | **unverified** | public DNS was unreachable from the audit environment; the domain is not registered or hosted at Hostinger (404 / empty zone), and the Vercel connector is not authorized for the team that owns the project |
 
 Recommended DMARC, starting in monitoring mode:
 
@@ -192,10 +192,10 @@ The `rua` mailbox must exist. Check with `dig TXT _dmarc.brokersconnect.net`.
    the webhook last fired: the delivery attempts inspected (2026-09-13 → 09-16) were all answered
    `503 not_configured`, and Resend has **disabled** the webhook. Copy the signing secret from
    Resend → Webhooks, set it, redeploy, then re-enable the webhook.
-2. **Trim the webhook's events** to `email.delivered`, `email.bounced`,
-   `email.complained`, `email.failed`, `email.suppressed`,
-   `email.delivery_delayed`. It currently subscribes to everything, including
-   opens/clicks/contacts, which the handler ignores.
+2. ~~Trim the webhook's events~~ — **done 2026-09-27**: now subscribed only to
+   `email.delivered`, `email.delivery_delayed`, `email.bounced`,
+   `email.complained`, `email.failed`, `email.suppressed`. Still disabled until
+   step 1.
 3. **Another site on this Resend account sends from `onboarding@resend.dev`**
    (the "استفسار جديد" lead-form mail, verified 2026-09-26). That is Resend's
    test sender: it only reaches the account owner and fails DMARC. It is not
