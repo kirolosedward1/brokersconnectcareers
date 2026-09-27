@@ -6,16 +6,10 @@ import { asLocale } from '@/i18n/routing';
 import { CONSOLE_MESSAGES, PUBLIC_MESSAGES, pick } from '@/i18n/client-messages';
 import { AppShell, type AppNavGroup } from '@/components/dashboard/app-shell';
 import { MailOffBanner } from '@/components/admin/mail-off-banner';
-import { NotificationBell } from '@/components/notifications/notification-bell';
-import { NotificationItem } from '@/components/notifications/notification-item';
-import { Link } from '@/i18n/navigation';
+import { NotificationMenu } from '@/components/notifications/notification-menu';
 import { createClient } from '@/lib/supabase/server';
 import { optional } from '@/lib/queries/error';
-import type {
-  AdminSummary,
-  EmployerSummary,
-  NotificationRow,
-} from '@/lib/supabase/database.types';
+import type { AdminSummary, EmployerSummary } from '@/lib/supabase/database.types';
 import { getViewer } from '@/lib/auth';
 import {
   canAccessAdminArea,
@@ -69,22 +63,7 @@ export default async function AppLayout({
   const role = profile.role;
   const actor = viewer!;
 
-  // The feed and its count, read under the viewer's own session — RLS is what
-  // scopes them, not a filter written here. Six is what fits in the panel
-  // without it becoming a page of its own.
   const supabase = await createClient();
-  const [{ data: recent }, { count: unread }] = await Promise.all([
-    supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(6),
-    supabase
-      .from('notifications')
-      .select('id', { count: 'exact', head: true })
-      .is('read_at', null),
-  ]);
-  const notifications = (recent ?? []) as NotificationRow[];
 
   const showEmployer = canAccessEmployerArea(actor);
   const showAdmin = canAccessAdminArea(actor);
@@ -244,36 +223,7 @@ export default async function AppLayout({
     >
     <AppShell
       groups={suspended ? [accountGroup] : groups}
-      bell={
-        <NotificationBell label={tNotifications('title')} unread={unread ?? 0}>
-          <div className="flex items-center justify-between gap-2 border-b border-border ps-3 pe-1.5 py-1">
-            <p className="text-sm font-semibold">{tNotifications('title')}</p>
-            <Link
-              href="/notifications"
-              className="inline-flex min-h-11 items-center rounded-lg px-2.5 text-xs font-medium text-primary hover:underline"
-            >
-              {tNotifications('seeAll')}
-            </Link>
-          </div>
-
-          {/* The list caps at 24rem, or at whatever is left below the header —
-              the panel is pinned under a 64px bar on a phone, and a landscape
-              screen is shorter than this list wants to be. */}
-          {notifications.length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-              {tNotifications('empty')}
-            </p>
-          ) : (
-            <ul className="max-h-[min(24rem,calc(100vh-9rem))] overflow-y-auto p-1">
-              {notifications.map((notification) => (
-                <li key={notification.id}>
-                  <NotificationItem notification={notification} locale={locale} compact />
-                </li>
-              ))}
-            </ul>
-          )}
-        </NotificationBell>
-      }
+      bell={<NotificationMenu locale={locale} />}
       name={profile.full_name}
       avatarUrl={profile.avatar_url}
       roleLabel={role === 'employer' ? tOnboarding('roleEmployer') : role === 'admin' ? tAdmin('title') : tOnboarding('roleCandidate')}
