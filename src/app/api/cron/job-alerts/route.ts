@@ -74,10 +74,14 @@ export async function GET(request: NextRequest) {
       /*
         Searches still due that this run has already tried and will not try
         again: the ones that threw, and any whose cursor write failed. A
-        checked search leaves the due set, so the next batch starts after
-        exactly these — they sort ahead of everything not yet looked at,
-        because every batch is taken from the front. `seen` is the guard for
-        the rare row that slips in ahead of them (a search created mid-run).
+        checked search leaves the due set; these stay in it.
+
+        Every batch is read from the front of the due set, widened by exactly
+        that many rows, and filtered through `seen`. Not an offset: the set
+        changes while the run walks it, and a search created mid-run sorts
+        ahead of the stuck rows (null last_checked_at first), so skipping
+        `stuck` rows would skip *it* instead of them. Reading from the front
+        costs `stuck` extra rows per batch and cannot jump anything.
       */
       let stuck = 0;
       const seen = new Set<string>();
@@ -97,7 +101,7 @@ export async function GET(request: NextRequest) {
               .or(`last_checked_at.is.null,last_checked_at.lt."${dueBefore}"`)
               .order('last_checked_at', { ascending: true, nullsFirst: true })
               .order('id', { ascending: true })
-              .range(stuck, stuck + BATCH - 1),
+              .range(0, stuck + BATCH - 1),
           )) ?? [];
 
         const fresh = searches.filter((search) => !seen.has(search.id));

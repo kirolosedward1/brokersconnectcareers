@@ -353,15 +353,18 @@ export async function requeueEmail(input: unknown): Promise<ActionResult> {
     later — with its original error overwritten by "not retryable".
 
     Read through the admin-gated list rather than the service role, keeping
-    this file's rule. A row not in the list (already requeued, or past the
-    list's cap) falls through to requeue_email, which decides for itself.
+    this file's rule. Fails closed: a row not in the list — already requeued,
+    never dead, or past the list's cap, where the check could not be made —
+    is refused rather than waved through. The operations page lists far
+    fewer than the cap, so every button it renders is inside it.
   */
   const { data: dead, error: deadError } = await supabase.rpc('email_dead_letters', {
     p_limit: 500,
   });
   if (deadError) return { ok: false, error: deadError.message };
   const target = (dead ?? []).find((row) => row.id === parsed.data.emailId);
-  if (target && (!isRetryable(target.template) || !target.entity_id)) {
+  if (!target) return { ok: false, error: 'not_found' };
+  if (!isRetryable(target.template) || !target.entity_id) {
     return { ok: false, error: 'not_retryable' };
   }
 
