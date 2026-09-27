@@ -296,12 +296,14 @@ export type NotificationKind =
   | 'company_verified'
   | 'account_approved'
   | 'account_rejected'
-  // Migration 69.
+  // Migration 300.
   | 'job_expiring'
   | 'job_expired'
   | 'company_verification_needed'
   | 'profile_visibility_changed'
-  | 'password_changed';
+  | 'password_changed'
+  // Migration 200: support answered a request (written by 201's answer function).
+  | 'support_replied';
 
 /**
  * The payload holds data, never a rendered sentence — the site is read in two
@@ -330,13 +332,16 @@ export type NotificationRow = {
     at?: string;
     /** application_received: applicants folded into this row since it was last read. */
     count?: number;
+    /** support_replied: the request's quotable reference and topic. */
+    reference?: string;
+    topic?: string;
   };
   href: string | null;
   read_at: string | null;
   created_at: string;
-  /** Platform-written; what makes two notifications the same one (migration 69). */
+  /** Platform-written; what makes two notifications the same one (migration 300). */
   dedupe_key: string | null;
-  /** Absorbed into this unread applicant row; hidden from the feed (migration 71). */
+  /** Absorbed into this unread applicant row; hidden from the feed (migration 302). */
   folded_into: string | null;
 };
 
@@ -453,9 +458,11 @@ export type EmailLogRow = {
   delivered_at: string | null;
 };
 
+export type SuppressionReason = 'hard_bounce' | 'complaint' | 'provider' | 'repeated_soft_bounce';
+
 export type EmailSuppressionRow = {
   email: string;
-  reason: 'hard_bounce' | 'complaint';
+  reason: SuppressionReason;
   created_at: string;
 };
 
@@ -695,7 +702,7 @@ export type Database = {
       email_log: Table<EmailLogRow, never>;
       email_suppressions: Table<
         EmailSuppressionRow,
-        { email: string; reason: 'hard_bounce' | 'complaint'; created_at?: string }
+        { email: string; reason: SuppressionReason; created_at?: string }
       >;
     };
     Views: Empty;
@@ -810,8 +817,31 @@ export type Database = {
           p_user_id?: string | null;
           p_entity_type?: string | null;
           p_entity_id?: string | null;
+          /** Security notices: exempt from complaint suppression and the hourly ceiling. */
+          p_essential?: boolean;
         };
         Returns: string | null;
+      };
+      /** The webhook's one write: replay check, forward-only status, suppression. */
+      record_email_event: {
+        Args: {
+          p_event_id: string;
+          p_provider_id: string;
+          p_kind:
+            | 'delivered'
+            | 'bounced_hard'
+            | 'bounced_soft'
+            | 'complained'
+            | 'failed'
+            | 'suppressed'
+            | 'delayed';
+        };
+        Returns: { duplicate: boolean; matched: number } | null;
+      };
+      /** True (and counted) when allowed; false when the bucket is full. Service role only. */
+      hit_rate_limit: {
+        Args: { p_bucket: string; p_limit: number; p_window_seconds: number };
+        Returns: boolean;
       };
       record_email_attempt: {
         Args: {

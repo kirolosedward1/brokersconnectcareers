@@ -28,7 +28,10 @@ export async function markNotificationsRead(
   const bound = upTo && !Number.isNaN(Date.parse(upTo)) ? upTo : null;
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc('mark_notifications_read', { p_up_to: bound });
+  let { data, error } = await supabase.rpc('mark_notifications_read', { p_up_to: bound });
+  // PGRST202: no function with that argument — a database migration 301 has
+  // not reached yet. The unbounded form is what it had, and still marks read.
+  if (error?.code === 'PGRST202') ({ data, error } = await supabase.rpc('mark_notifications_read', {}));
   if (error) return { ok: false, error: error.message };
 
   // The badge is in both headers, so every page is stale.
@@ -75,8 +78,26 @@ export async function openNotification(formData: FormData): Promise<void> {
   const role = viewer!.profile!.role;
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc('open_notification', { p_id: parsed.data!.id });
-  const row = !error ? data?.[0] : undefined;
+  const id = parsed.data!.id;
+  const { data, error } = await supabase.rpc('open_notification', { p_id: id });
+  let row = !error ? data?.[0] : undefined;
+
+  // PGRST202: a database migration 301 has not reached. The same two steps
+  // through the reader's own session — RLS scopes both to their own row, and
+  // the update guard lets read_at and nothing else change.
+  if (error?.code === 'PGRST202') {
+    await supabase
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('id', id)
+      .is('read_at', null);
+    const { data: own } = await supabase
+      .from('notifications')
+      .select('kind, href, payload')
+      .eq('id', id)
+      .maybeSingle();
+    row = own ?? undefined;
+  }
 
   revalidatePath('/', 'layout');
 

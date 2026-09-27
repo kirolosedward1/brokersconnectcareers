@@ -1,5 +1,5 @@
 -- =============================================================================
--- 69 — One event, one notification (the vocabulary half)
+-- 300 — One event, one notification (the vocabulary half)
 --
 -- Every in-app notification so far was a bare insert from a trigger. That is
 -- idempotent against the obvious duplicate (a double-click that saves the same
@@ -26,13 +26,31 @@
 --
 -- This file only adds the vocabulary. Postgres will not let a transaction use
 -- an enum value the same transaction added, and db-push wraps each migration
--- in its own, so the functions that write these kinds live in migration 70 —
+-- in its own, so the functions that write these kinds live in migration 301 —
 -- the same split migrations 20/21 and 51/52 made.
 -- =============================================================================
 
 -- Events the platform already acted on — an email went out for each — but
 -- that never reached the bell. Somebody who does not read that inbox learned
 -- about none of them.
+-- rollback: forward-fix only for the enum values — Postgres cannot drop one,
+--   and an unused value is inert. The rest, once 301 and 302 are rolled back:
+--   drop index notifications_dedupe_idx, notifications_feed_page_idx;
+--   create index notifications_feed_idx on notifications (user_id, created_at desc);
+--   alter table notifications drop column dedupe_key;
+--   and migration 17's guard_notification_update body, re-run verbatim.
+-- safety: constraint — the unique index is partial on a column this file
+--   adds, all null, so no existing row can collide; notifications is small and
+--   the build is brief.
+-- safety: ships-with-code — deploy the code first, then run 300–302. The code
+--   tolerates the old schema: a missing folded_into column (42703) falls back
+--   to the unfiltered feed, a missing open_notification or bounded
+--   mark_notifications_read (PGRST202) falls back to the old path, and the
+--   sweep, prune and keyed notify() calls fail into a logged warning. The
+--   reverse is not safe: the old renderer has no icon for the kinds these
+--   files add, and throws on the first one written. The new renderer shows
+--   any kind it does not know as a plain notice.
+
 alter type notification_kind add value if not exists 'job_expiring';               -- employer: ends in ≤ 3 days
 alter type notification_kind add value if not exists 'job_expired';                -- employer: ended, can be reposted
 alter type notification_kind add value if not exists 'company_verification_needed';-- employer: documents refused
@@ -42,7 +60,7 @@ alter type notification_kind add value if not exists 'password_changed';        
 alter table notifications add column if not exists dedupe_key text;
 
 comment on column notifications.dedupe_key is
-  'What makes two notifications the same notification, per recipient. Written by the platform only; see migration 69.';
+  'What makes two notifications the same notification, per recipient. Written by the platform only; see migration 300.';
 
 -- The lock. Partial so rows written before this migration (all null) need no
 -- backfill and cannot collide.

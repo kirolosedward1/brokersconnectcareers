@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import {
   BadgeCheck,
+  Bell,
   CalendarClock,
   CalendarX2,
   CircleSlash,
@@ -9,6 +10,7 @@ import {
   FileWarning,
   FileX2,
   KeyRound,
+  LifeBuoy,
   Send,
   UserCheck,
   UserMinus,
@@ -43,6 +45,7 @@ const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }
   company_verification_needed: FileWarning,
   profile_visibility_changed: Eye,
   password_changed: KeyRound,
+  support_replied: LifeBuoy,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -62,6 +65,7 @@ const TONES: Record<NotificationKind, string> = {
   // A security notice reads as one: the tone a reader already knows means
   // "look at this".
   password_changed: 'bg-warning-muted text-warning',
+  support_replied: 'bg-primary/10 text-primary',
 };
 
 export async function NotificationItem({
@@ -79,7 +83,16 @@ export async function NotificationItem({
   const tVisibility = await getTranslations('visibility');
 
   const { kind, payload } = notification;
-  const Icon = ICONS[kind];
+  /*
+    A kind this build does not know yet renders as a plain notice rather than
+    taking the bell down. The database gains kinds in migrations that can reach
+    production before the code that names them — migration 200's
+    support_replied did exactly that — and a lookup that returned undefined
+    made every page with a header throw for that reader.
+  */
+  const known = kind in ICONS;
+  const Icon = known ? ICONS[kind] : Bell;
+  const tone = known ? TONES[kind] : 'bg-muted text-muted-foreground';
 
   const subject =
     localized(locale, payload.title_ar, payload.title_en) ||
@@ -100,7 +113,7 @@ export async function NotificationItem({
     if (kind === 'profile_visibility_changed' && payload.visibility) {
       return t('profileVisibilityChanged', { visibility: tVisibility(payload.visibility as never) });
     }
-    return t(kind, { subject });
+    return known ? t(kind, { subject }) : t('generic');
   })();
 
   const body = payload.note || null;
@@ -108,7 +121,7 @@ export async function NotificationItem({
 
   const inner = (
     <>
-      <span aria-hidden className={cn('grid size-9 shrink-0 place-items-center rounded-lg', TONES[kind])}>
+      <span aria-hidden className={cn('grid size-9 shrink-0 place-items-center rounded-lg', tone)}>
         <Icon className="size-4" />
       </span>
 

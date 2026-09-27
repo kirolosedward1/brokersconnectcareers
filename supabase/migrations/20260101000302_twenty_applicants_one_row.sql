@@ -1,8 +1,8 @@
 -- =============================================================================
--- 71 — Twenty applicants, one row; a feed that forgets; a receipt for the
+-- 302 — Twenty applicants, one row; a feed that forgets; a receipt for the
 --      person who pressed submit
 --
--- Three follow-ups to migrations 69/70.
+-- Three follow-ups to migrations 300/301.
 --
 -- 1. The applicant flood
 --    Every applicant was one row in every member's bell. For the listing that
@@ -36,11 +36,26 @@
 --    submission receipt go back to whoever submitted the listing.
 -- =============================================================================
 
+-- rollback: re-run migration 301's on_application_created and
+--   mark_notifications_read, migration 300's guard_notification_update, and
+--   migration 27's pending_emails (drop the five-column one first); drop
+--   function notify_company_applicant, prune_notifications; then
+--   delete from notifications where folded_into is not null;
+--   alter table notifications drop column folded_into;
+-- safety: ships-with-code — deploy the code first, then run 300–302. The code
+--   tolerates the old schema: a missing folded_into column (42703) falls back
+--   to the unfiltered feed, a missing open_notification or bounded
+--   mark_notifications_read (PGRST202) falls back to the old path, and the
+--   sweep, prune and keyed notify() calls fail into a logged warning. The
+--   reverse is not safe: the old renderer has no icon for the kinds these
+--   files add, and throws on the first one written. The new renderer shows
+--   any kind it does not know as a plain notice.
+
 alter table notifications
   add column if not exists folded_into uuid references notifications (id) on delete cascade;
 
 comment on column notifications.folded_into is
-  'Set on an applicant notice absorbed into an unread "N new applicants" row for the same listing. Hidden from the feed; kept for its dedupe key. See migration 71.';
+  'Set on an applicant notice absorbed into an unread "N new applicants" row for the same listing. Hidden from the feed; kept for its dedupe key. See migration 302.';
 
 -- The fold's lookup: this member's unread applicant heads.
 create index if not exists notifications_applicant_head_idx
@@ -154,7 +169,7 @@ $$;
 revoke execute on function public.notify_company_applicant(uuid, uuid, jsonb, text, text)
   from public, anon, authenticated;
 
--- Restated whole: migration 70's body, with the company half folding.
+-- Restated whole: migration 301's body, with the company half folding.
 create or replace function public.on_application_created()
 returns trigger
 language plpgsql
@@ -235,7 +250,7 @@ end;
 $$;
 
 revoke execute on function public.prune_notifications(integer) from public, anon, authenticated;
--- Explicit, for the reason given on notify() in migration 70: the cron must
+-- Explicit, for the reason given on notify() in migration 301: the cron must
 -- not depend on which role ran this file.
 grant  execute on function public.prune_notifications(integer) to service_role;
 

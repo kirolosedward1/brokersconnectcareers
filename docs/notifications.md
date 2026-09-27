@@ -1,7 +1,7 @@
 # Notification architecture
 
 How BrokersConnect tells people that something happened: the in-app bell,
-email, and the log behind them. Written against migrations 17–71 (the notification ones are 69–71) and
+email, and the log behind them. Written against migrations 17–302 (the notification ones are 300–302) and
 `src/lib/notifications/`.
 
 ## 1. Event architecture
@@ -56,7 +56,7 @@ Two events have no row change to trigger on:
 
 ## 2. Notification schema
 
-`notifications` (migration 17, extended by 69 and 71):
+`notifications` (migration 17, extended by 300 and 302):
 
 | column | meaning |
 |---|---|
@@ -182,6 +182,21 @@ per-profile token (migration 8), with RFC 8058 one-click headers.
   recipient too, so a submission receipt retries to the submitter), max 3 attempts, 3-day window;
   4xx errors other than 408/429 exhaust immediately; hard bounces and
   complaints are suppressed.
+
+### Deploying
+
+**Code first, then migrations 300–302.** The new code tolerates the old
+schema — a missing `folded_into` falls back to the unfiltered feed, a missing
+`open_notification` or bounded `mark_notifications_read` falls back to the old
+path, and the sweep, prune and keyed `notify()` fail into a logged warning. The
+reverse order is not safe: the old renderer has no icon for the new kinds and
+throws on the first one. The new renderer shows any kind it does not know as a
+plain notice, so a future kind can never take the bell down.
+
+The old four-argument `notify()` / `notify_company()` stay as shims that
+forward with a key derived from the content (same notice to the same person,
+word for word, is one row). Migration 201's support answer uses that form.
+Prefer the five-argument form, with a key chosen from what the event is.
 
 ## 7. Tests
 

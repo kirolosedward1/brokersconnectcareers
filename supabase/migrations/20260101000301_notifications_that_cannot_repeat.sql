@@ -1,7 +1,7 @@
 -- =============================================================================
--- 70 — Notifications that cannot repeat, and cannot break what caused them
+-- 301 — Notifications that cannot repeat, and cannot break what caused them
 --
--- The functions half of migration 69. Three changes to how the bell is written,
+-- The functions half of migration 300. Three changes to how the bell is written,
 -- and the events it was missing:
 --
 -- 1. Every notification carries a deterministic key.
@@ -57,12 +57,6 @@
 -- receipt, 17 for the candidate and account ones, 52 for withdrawal).
 -- =============================================================================
 
--- The four-argument writers go. A five-argument overload beside them would
--- make every four-argument call ambiguous, and a key that is optional is a key
--- somebody forgets.
-drop function if exists public.notify(uuid, notification_kind, jsonb, text);
-drop function if exists public.notify_company(uuid, notification_kind, jsonb, text);
-
 create or replace function public.notify(
   p_user    uuid,
   p_kind    notification_kind,
@@ -117,6 +111,84 @@ as $$
 $$;
 
 revoke execute on function public.notify_company(uuid, notification_kind, jsonb, text, text)
+  from public, anon, authenticated;
+
+-- rollback: re-run the previous bodies verbatim — notify/notify_company from
+--   migrations 17 and 51, on_application_created from 51, on_application_moved
+--   and on_approval_changed from 17, on_job_moderated and on_company_verified
+--   from 51, on_application_withdrawn from 52, mark_notifications_read from 17
+--   — then drop trigger agent_profiles_notify_visibility on agent_profiles and
+--   drop the functions this file adds (notify/notify_company with five
+--   arguments, on_agent_visibility_changed, emit_job_expiry_notifications,
+--   sync_my_job_notifications, open_notification, mark_notifications_read(timestamptz)).
+-- safety: ships-with-code — deploy the code first, then run 300–302. The code
+--   tolerates the old schema: a missing folded_into column (42703) falls back
+--   to the unfiltered feed, a missing open_notification or bounded
+--   mark_notifications_read (PGRST202) falls back to the old path, and the
+--   sweep, prune and keyed notify() calls fail into a logged warning. The
+--   reverse is not safe: the old renderer has no icon for the kinds these
+--   files add, and throws on the first one written. The new renderer shows
+--   any kind it does not know as a plain notice.
+
+-- ---------------------------------------------------------------------------
+-- The four-argument writers, kept as shims
+--
+-- Every trigger in this file passes a key it chose. Code written against the
+-- old four-argument form still exists — migration 201's support answer calls
+-- notify(user, kind, payload, href), and other branches may too — and
+-- dropping it would turn "support answered you" into a function-not-found
+-- error inside the admin's answer. So the old form stays and forwards, with a
+-- key derived from everything it was given: the same notification to the
+-- same person, word for word, is the same notification. A changed payload is
+-- a new one. Not as good as a key chosen from what the event *is* — prefer
+-- the five-argument form for anything new — but never worse than the bare
+-- insert it replaces.
+--
+-- No overload ambiguity: the five-argument form has no defaults, so a
+-- four-argument call can only mean this one.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.notify(
+  p_user    uuid,
+  p_kind    notification_kind,
+  p_payload jsonb,
+  p_href    text
+)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  select public.notify(
+    p_user, p_kind, p_payload, p_href,
+    p_kind::text || ':' || p_user::text || ':'
+      || md5(coalesce(p_payload, '{}'::jsonb)::text || '|' || coalesce(p_href, ''))
+  );
+$$;
+
+revoke execute on function public.notify(uuid, notification_kind, jsonb, text)
+  from public, anon, authenticated;
+grant execute on function public.notify(uuid, notification_kind, jsonb, text) to service_role;
+
+create or replace function public.notify_company(
+  p_company uuid,
+  p_kind    notification_kind,
+  p_payload jsonb,
+  p_href    text
+)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  select public.notify_company(
+    p_company, p_kind, p_payload, p_href,
+    p_kind::text || ':' || p_company::text || ':'
+      || md5(coalesce(p_payload, '{}'::jsonb)::text || '|' || coalesce(p_href, ''))
+  );
+$$;
+
+revoke execute on function public.notify_company(uuid, notification_kind, jsonb, text)
   from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------

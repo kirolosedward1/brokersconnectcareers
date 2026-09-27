@@ -72,28 +72,35 @@ export default async function NotificationsPage({
     call, so a failure here produced a page saying "no notifications" under a
     badge saying four.
   */
-  let feed = supabase
-    .from('notifications')
-    .select('*')
-    // Scoped explicitly so the (user_id, created_at, id) index serves this;
-    // notifications_select_own is still the thing that decides.
-    .eq('user_id', viewer.userId)
+  const page = (hideFolded: boolean) => {
+    let feed = supabase
+      .from('notifications')
+      .select('*')
+      // Scoped explicitly so the (user_id, created_at, id) index serves this;
+      // notifications_select_own is still the thing that decides.
+      .eq('user_id', viewer.userId);
     // Applicants folded into a "N new applicants" row are counted by that
-    // row, not listed beside it (migration 71).
-    .is('folded_into', null);
-  if (cursor) feed = feed.or(afterCursorFilter(cursor));
-
-  const [{ data, error }, { count: unreadCount }] = await Promise.all([
-    feed
+    // row, not listed beside it (migration 302).
+    if (hideFolded) feed = feed.is('folded_into', null);
+    if (cursor) feed = feed.or(afterCursorFilter(cursor));
+    return feed
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
-      .limit(PAGE_SIZE + 1),
+      .limit(PAGE_SIZE + 1);
+  };
+
+  let [{ data, error }, { count: unreadCount }] = await Promise.all([
+    page(true),
     supabase
       .from('notifications')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', viewer.userId)
       .is('read_at', null),
   ]);
+
+  // 42703: no such column — this code has reached a database migration 302
+  // has not. Nothing is folded there yet, so the unfiltered page is the page.
+  if (error?.code === '42703') ({ data, error } = await page(false));
 
   if (error) raise(error, 'loading your notifications');
 

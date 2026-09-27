@@ -453,6 +453,32 @@ report.section('a retried email knows who it was for');
     pending.rows.some((row) => row.user_id === MATE && row.entity_id === job.id), JSON.stringify(pending.rows));
 }
 
+report.section('code written against the four-argument writers keeps working');
+{
+  // Migration 201's support answer calls notify(user, kind, payload, href).
+  // Dropping that form would make answering a ticket fail; the shim forwards
+  // it with a key derived from the content instead.
+  const where = `user_id = '${APPLICANT}' and kind = 'account_approved' and href = '/shim-check'`;
+  const call = (note) => db.exec(`select public.notify('${APPLICANT}', 'account_approved',
+                                    jsonb_build_object('note', '${note}'), '/shim-check')`);
+  await call('first');
+  report.check('the old form still writes', (await count(where)) === 1);
+  await call('first');
+  report.check('and the same notice replayed word for word is one row', (await count(where)) === 1);
+  await call('second');
+  report.check('while a different one is a new row', (await count(where)) === 2);
+
+  const direct = await as(APPLICANT, `select public.notify('${APPLICANT}', 'account_approved', '{}'::jsonb, null)`);
+  report.check('and it is no more callable by a user than the new one', !direct.ok, direct.ok ? 'allowed' : direct.error);
+
+  const co = `kind = 'company_verified' and href = '/shim-co'`;
+  await db.exec(`select public.notify_company('${company}', 'company_verified', '{}'::jsonb, '/shim-co')`);
+  await db.exec(`select public.notify_company('${company}', 'company_verified', '{}'::jsonb, '/shim-co')`);
+  const members = (await db.query(`select count(*)::int n from company_members where company_id = '${company}'`)).rows[0].n;
+  report.check('the company form too: one per member, replay absorbed', (await count(co)) === members,
+    `${await count(co)} rows for ${members} members`);
+}
+
 report.section('the server can reach what only the server may call');
 {
   /*

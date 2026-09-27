@@ -44,18 +44,20 @@ export async function NotificationMenu({ locale }: { locale: string }) {
   if (role === 'employer' || role === 'admin') await syncMyJobNotifications();
 
   const supabase = await createClient();
-  const [{ data: recent }, { count: unread }] = await Promise.all([
-    supabase
-      .from('notifications')
-      .select('*')
-      // Applicants folded into a "N new applicants" row are counted by that
-      // row, not shown beside it (migration 71).
-      .is('folded_into', null)
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .limit(6),
+  const latest = (hideFolded: boolean) => {
+    let query = supabase.from('notifications').select('*');
+    // Applicants folded into a "N new applicants" row are counted by that
+    // row, not shown beside it (migration 302).
+    if (hideFolded) query = query.is('folded_into', null);
+    return query.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(6);
+  };
+  let [{ data: recent, error: recentError }, { count: unread }] = await Promise.all([
+    latest(true),
     supabase.from('notifications').select('id', { count: 'exact', head: true }).is('read_at', null),
   ]);
+  // 42703: no such column — this code has reached a database migration 302
+  // has not. Nothing is folded there yet, so the unfiltered list is the list.
+  if (recentError?.code === '42703') ({ data: recent } = await latest(false));
   const notifications = (recent ?? []) as NotificationRow[];
 
   return (
