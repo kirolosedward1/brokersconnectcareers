@@ -37,6 +37,12 @@
 -- signed-out side, so a script can fill neither table.
 -- =============================================================================
 
+-- rollback: drop function if exists public.admin_support_facts(text), public.admin_answer_support_request(uuid, text, text), public.submit_support_request(uuid, text, text, text, text, text, text, text, text), public.record_support_event(text, text, text, text, text, text, jsonb, text, text, text, text), public.support_reference(); drop table if exists support_requests, support_events;
+-- safety: ships-with-code — src/lib/support/ is imported by nothing yet and
+--   calls none of these functions, so either may reach production first. The
+--   code that will write here treats every call as best-effort and keeps its
+--   platform log line, so it is safe to deploy before this is applied too.
+
 -- ---------------------------------------------------------------------------
 -- The reference, minted in SQL for rows the database creates itself
 --
@@ -258,6 +264,12 @@ $$;
 -- Said explicitly, both ways. Supabase grants EXECUTE to anon at creation,
 -- so "revoke from public" alone would read as closed and not be; this one is
 -- meant to be open, and schema.test.mjs lists it with the reason.
+-- safety: grant, revoke-anon — open to anon on purpose: sign-up, sign-in and
+--   confirmation-link failures happen signed out, and production has no
+--   service-role key to write for them. The account comes from the session,
+--   never an argument; a caller can only add rows, capped at 30 per account
+--   and 200 across the signed-out side per ten minutes, into a table only
+--   admins can read (supabase/tests/support.test.mjs proves each of these).
 revoke execute on function public.record_support_event(text, text, text, text, text, text, jsonb, text, text, text, text)
   from public;
 grant execute on function public.record_support_event(text, text, text, text, text, text, jsonb, text, text, text, text)
@@ -467,6 +479,11 @@ begin
 end;
 $$;
 
+-- safety: grant, revoke-anon — open to anon on purpose: somebody who cannot
+--   sign in is who this form is for. Signed out, it requires an address and
+--   allows 3 per address per day and 30 across the signed-out side per hour;
+--   signed in, 5 per account per day. The account and role come from the
+--   session, and a request is readable only by its sender and admins.
 revoke execute on function public.submit_support_request(uuid, text, text, text, text, text, text, text, text)
   from public;
 grant execute on function public.submit_support_request(uuid, text, text, text, text, text, text, text, text)

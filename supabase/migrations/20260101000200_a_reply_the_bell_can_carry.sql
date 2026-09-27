@@ -13,4 +13,10 @@
 -- the cheapest way to not be the ninth collision.
 -- =============================================================================
 
+-- rollback: forward-fix only — Postgres cannot drop a value from an enum, and
+--   an unused one is inert: nothing writes it until migration 201's answer
+--   function is called, and no code on any branch reads it yet.
+-- safety: ships-with-code — src/lib/support/ is imported by nothing yet and
+--   never names this value, so either may reach production first.
+
 alter type notification_kind add value if not exists 'support_replied';
