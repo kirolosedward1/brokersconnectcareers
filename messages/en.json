@@ -1032,7 +1032,19 @@
     "account_rejected": "Your account is suspended",
     "emptyHint": "We will tell you here the moment something happens on your applications or listings.",
     "emptyCtaCandidate": "Browse jobs",
-    "emptyCtaEmployer": "See applicants"
+    "emptyCtaEmployer": "See applicants",
+    "job_expiring": "{subject} ends in a few days",
+    "job_expired": "{subject} has ended — repost it to keep hiring",
+    "company_verification_needed": "{subject} needs more documents to be verified",
+    "profile_visibility_changed": "Your profile visibility changed",
+    "profileVisibilityChanged": "Your profile visibility is now: {visibility}",
+    "password_changed": "Your password was changed",
+    "unread": "Unread",
+    "unreadCount": "{count} unread",
+    "newest": "Newest",
+    "older": "Older",
+    "linkGone": "That item no longer exists — it may have been deleted or taken down.",
+    "linkUnavailable": "That link isn't available from your account."
   },
   "emailStatus": {
     "queued": "Queued",

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { env } from '@/lib/env';
-import { notifyJobExpiry } from '@/lib/email/notify';
+import { publish } from '@/lib/notifications/events';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -84,11 +84,23 @@ export async function GET(request: NextRequest) {
     .lte('expires_at', new Date(now + WARN_DAYS * day).toISOString())
     .limit(200);
 
+  /*
+    The bell first, for everybody at once. One idempotent statement: the keys
+    carry each listing's expires_at, so this run, tomorrow's, and every
+    employer console load in between write each notice once. The same sweep
+    runs for a single company when its console loads (sync_my_job_notifications),
+    which is what keeps the bell honest on a deployment where this cron cannot
+    run at all. A failure here is logged and does not stop the emails.
+  */
+  const inApp = await admin.rpc('emit_job_expiry_notifications', { p_warn_days: WARN_DAYS });
+  if (inApp.error) console.warn('[cron] expiry notifications failed:', inApp.error.message);
+
   const warned = await notifyAll(admin, expiringSoon.data ?? [], 'expiring');
   const closed = await notifyAll(admin, justExpired.data ?? [], 'expired');
 
   return NextResponse.json({
     expired: data ?? 0,
+    in_app: inApp.data ?? 0,
     warned,
     closed,
     at: new Date().toISOString(),
@@ -111,8 +123,12 @@ async function notifyAll(
       .select('id', { count: 'exact', head: true })
       .eq('job_id', job.id);
 
-    const outcome = await notifyJobExpiry(job.id, stage, count ?? 0);
-    if (outcome === 'sent') sent += 1;
+    const report = await publish(
+      stage === 'expiring'
+        ? { type: 'JOB_EXPIRING', jobId: job.id, applicantCount: count ?? 0 }
+        : { type: 'JOB_EXPIRED', jobId: job.id, applicantCount: count ?? 0 },
+    );
+    if (report.email.includes('sent')) sent += 1;
   }
 
   return sent;

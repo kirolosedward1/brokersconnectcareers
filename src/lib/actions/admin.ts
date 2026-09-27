@@ -5,11 +5,7 @@ import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
-import {
-  notifyAccountDecision,
-  notifyCompanyVerification,
-  notifyEmployerOfModeration,
-} from '@/lib/email/notify';
+import { publish } from '@/lib/notifications/events';
 
 /**
  * Every action here runs through the caller's own session, not the service
@@ -79,7 +75,13 @@ export async function moderateJob(input: unknown): Promise<ActionResult> {
 
   // The employer has been waiting on this decision; it is the one moderation
   // outcome they actually need pushed to them rather than discovered.
-  after(() => notifyEmployerOfModeration(parsed.data.jobId, parsed.data.approve, parsed.data.note));
+  after(() =>
+    publish(
+      parsed.data.approve
+        ? { type: 'JOB_APPROVED', jobId: parsed.data.jobId }
+        : { type: 'JOB_REJECTED', jobId: parsed.data.jobId, note: parsed.data.note },
+    ),
+  );
 
   revalidatePath('/admin/jobs');
   revalidatePath('/jobs');
@@ -159,7 +161,17 @@ export async function verifyCompany(input: unknown): Promise<ActionResult> {
   // The owner is told what the review decided. Transactional: a company left
   // waiting on verification has no other way to find out, and the bell only
   // helps somebody who is already logged in and looking.
-  after(() => notifyCompanyVerification(parsed.data.companyId, parsed.data.approve, parsed.data.note));
+  after(() =>
+    publish(
+      parsed.data.approve
+        ? { type: 'COMPANY_VERIFIED', companyId: parsed.data.companyId }
+        : {
+            type: 'COMPANY_VERIFICATION_REJECTED',
+            companyId: parsed.data.companyId,
+            note: parsed.data.note,
+          },
+    ),
+  );
 
   revalidatePath('/admin/companies');
   revalidatePath('/companies');
@@ -220,7 +232,7 @@ export async function actOnReportedJob(input: unknown): Promise<ActionResult<{ t
     tookDown = Boolean(rejected?.length);
 
     if (tookDown) {
-      after(() => notifyEmployerOfModeration(parsed.data.jobId, false, parsed.data.note));
+      after(() => publish({ type: 'JOB_REJECTED', jobId: parsed.data.jobId, note: parsed.data.note }));
     }
   }
 
@@ -302,10 +314,10 @@ export async function setAccountApproval(input: unknown): Promise<ActionResult> 
   // are exactly the ones that need pushing to.
   if (parsed.data.status !== 'pending') {
     after(() =>
-      notifyAccountDecision(
-        parsed.data.userId,
-        parsed.data.status === 'approved',
-        parsed.data.note,
+      publish(
+        parsed.data.status === 'approved'
+          ? { type: 'ACCOUNT_APPROVED', userId: parsed.data.userId }
+          : { type: 'ACCOUNT_SUSPENDED', userId: parsed.data.userId, note: parsed.data.note },
       ),
     );
   }

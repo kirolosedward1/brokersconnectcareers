@@ -3,6 +3,8 @@ import { Link } from '@/i18n/navigation';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { NotificationItem } from '@/components/notifications/notification-item';
 import { createClient } from '@/lib/supabase/server';
+import { getViewer } from '@/lib/auth';
+import { syncMyJobNotifications } from '@/lib/actions/notifications';
 import type { NotificationRow } from '@/lib/supabase/database.types';
 
 /**
@@ -31,9 +33,24 @@ export async function NotificationMenu({ locale }: { locale: string }) {
     header that throws is a reader locked out of the page they asked for. A
     bell with no badge is the same bell.
   */
+  /*
+    An employer's bell catches up on listings that ended or are about to,
+    first — those notices have no row change to trigger on (see
+    syncMyJobNotifications). Idempotent, and cheap: one statement over one
+    company's listings. A candidate has none to catch up on.
+  */
+  const viewer = await getViewer();
+  const role = viewer?.profile?.role;
+  if (role === 'employer' || role === 'admin') await syncMyJobNotifications();
+
   const supabase = await createClient();
   const [{ data: recent }, { count: unread }] = await Promise.all([
-    supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(6),
+    supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(6),
     supabase.from('notifications').select('id', { count: 'exact', head: true }).is('read_at', null),
   ]);
   const notifications = (recent ?? []) as NotificationRow[];

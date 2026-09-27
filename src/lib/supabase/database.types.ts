@@ -278,7 +278,13 @@ export type NotificationKind =
   | 'job_rejected'
   | 'company_verified'
   | 'account_approved'
-  | 'account_rejected';
+  | 'account_rejected'
+  // Migration 68.
+  | 'job_expiring'
+  | 'job_expired'
+  | 'company_verification_needed'
+  | 'profile_visibility_changed'
+  | 'password_changed';
 
 /**
  * The payload holds data, never a rendered sentence — the site is read in two
@@ -299,10 +305,18 @@ export type NotificationRow = {
     name_en?: string | null;
     status?: string;
     note?: string | null;
+    company_ar?: string;
+    company_en?: string | null;
+    visibility?: string;
+    expires_at?: string;
+    /** password_changed: when the change happened. */
+    at?: string;
   };
   href: string | null;
   read_at: string | null;
   created_at: string;
+  /** Platform-written; what makes two notifications the same one (migration 68). */
+  dedupe_key: string | null;
 };
 
 export type AgentExperienceRow = Timestamped & {
@@ -729,7 +743,30 @@ export type Database = {
         Returns: undefined;
       };
       /** Returns how many rows it marked, so the caller can say nothing changed. */
-      mark_notifications_read: { Args: Empty; Returns: number };
+      mark_notifications_read: { Args: { p_up_to?: string | null }; Returns: number };
+      /** Marks one of the caller's own read and returns where it points; empty for anyone else's. */
+      open_notification: {
+        Args: { p_id: string };
+        Returns: { kind: NotificationKind; href: string | null; payload: NotificationRow['payload'] }[];
+      };
+      /** The expiry sweep for the caller's own company. Idempotent; returns rows written. */
+      sync_my_job_notifications: { Args: Empty; Returns: number };
+      /** Service role only: the expiry sweep, for one company or all of them. */
+      emit_job_expiry_notifications: {
+        Args: { p_company?: string | null; p_warn_days?: number };
+        Returns: number;
+      };
+      /** Service role only: one notification under a dedupe key. */
+      notify: {
+        Args: {
+          p_user: string;
+          p_kind: NotificationKind;
+          p_payload: Record<string, unknown>;
+          p_href: string | null;
+          p_key: string;
+        };
+        Returns: undefined;
+      };
       /**
        * Claims the right to send one message. Returns the outbox row id, or
        * null when somebody already holds this dedupe key or the address is

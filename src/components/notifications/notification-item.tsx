@@ -1,15 +1,20 @@
 import { getTranslations } from 'next-intl/server';
 import {
   BadgeCheck,
+  CalendarClock,
+  CalendarX2,
   CircleSlash,
+  Eye,
   FileCheck2,
+  FileWarning,
   FileX2,
+  KeyRound,
   Send,
   UserCheck,
   UserMinus,
   UserRound,
 } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
+import { openNotification } from '@/lib/actions/notifications';
 import { localized } from '@/i18n/routing';
 import { formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -33,6 +38,11 @@ const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }
   company_verified: BadgeCheck,
   account_approved: UserCheck,
   account_rejected: CircleSlash,
+  job_expiring: CalendarClock,
+  job_expired: CalendarX2,
+  company_verification_needed: FileWarning,
+  profile_visibility_changed: Eye,
+  password_changed: KeyRound,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -45,6 +55,13 @@ const TONES: Record<NotificationKind, string> = {
   company_verified: 'bg-success-muted text-success',
   account_approved: 'bg-success-muted text-success',
   account_rejected: 'bg-destructive-muted text-destructive',
+  job_expiring: 'bg-warning-muted text-warning',
+  job_expired: 'bg-muted text-muted-foreground',
+  company_verification_needed: 'bg-destructive-muted text-destructive',
+  profile_visibility_changed: 'bg-primary/10 text-primary',
+  // A security notice reads as one: the tone a reader already knows means
+  // "look at this".
+  password_changed: 'bg-warning-muted text-warning',
 };
 
 export async function NotificationItem({
@@ -59,6 +76,7 @@ export async function NotificationItem({
 }) {
   const t = await getTranslations('notifications');
   const tStatus = await getTranslations('applicationStatus');
+  const tVisibility = await getTranslations('visibility');
 
   const { kind, payload } = notification;
   const Icon = ICONS[kind];
@@ -73,7 +91,9 @@ export async function NotificationItem({
           title: subject,
           status: payload.status ? tStatus(payload.status as never) : '',
         })
-      : t(kind, { subject });
+      : kind === 'profile_visibility_changed' && payload.visibility
+        ? t('profileVisibilityChanged', { visibility: tVisibility(payload.visibility as never) })
+        : t(kind, { subject });
 
   const body = payload.note || null;
   const unread = !notification.read_at;
@@ -85,7 +105,9 @@ export async function NotificationItem({
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className={cn('block text-sm leading-snug', unread && 'font-medium')}>{title}</span>
+        <span className={cn('block text-sm leading-snug [overflow-wrap:anywhere]', unread && 'font-medium')}>
+          {title}
+        </span>
 
         {!compact && body ? (
           <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{body}</span>
@@ -106,16 +128,26 @@ export async function NotificationItem({
     </>
   );
 
-  const className = cn(
-    'flex items-start gap-3 rounded-xl p-3 transition-colors',
-    notification.href && 'hover:bg-muted',
-  );
+  /*
+    A form, not a link: following a notification marks it read, which is a
+    write, and the server decides at that moment whether the stored href is
+    still one this reader may follow and still points at something (see
+    openNotification). Posts without JavaScript too.
 
-  return notification.href ? (
-    <Link href={notification.href} className={className}>
-      {inner}
-    </Link>
-  ) : (
-    <div className={className}>{inner}</div>
+    Every row is followable, including one with no href — opening it marks it
+    read and lands on the full feed, where its body is shown.
+  */
+  return (
+    <form action={openNotification}>
+      <input type="hidden" name="id" value={notification.id} />
+      <input type="hidden" name="locale" value={locale} />
+      <button
+        type="submit"
+        className="flex w-full items-start gap-3 rounded-xl p-3 text-start transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        {inner}
+        {unread ? <span className="sr-only">{t('unread')}</span> : null}
+      </button>
+    </form>
   );
 }

@@ -1032,7 +1032,19 @@
     "account_rejected": "حسابك اتوقف مؤقتاً",
     "emptyHint": "هنبلّغك هنا أول ما يحصل جديد على طلباتك أو إعلاناتك.",
     "emptyCtaCandidate": "دوّر على وظايف",
-    "emptyCtaEmployer": "شوف المتقدمين"
+    "emptyCtaEmployer": "شوف المتقدمين",
+    "job_expiring": "إعلان {subject} هيخلص خلال أيام",
+    "job_expired": "إعلان {subject} خلص — انشره تاني عشان تكمّل تعيين",
+    "company_verification_needed": "{subject} محتاجة مستندات إضافية للتوثيق",
+    "profile_visibility_changed": "إعدادات ظهور ملفك اتغيّرت",
+    "profileVisibilityChanged": "ظهور ملفك دلوقتي: {visibility}",
+    "password_changed": "كلمة السر بتاعتك اتغيّرت",
+    "unread": "غير مقروء",
+    "unreadCount": "{count} غير مقروء",
+    "newest": "الأحدث",
+    "older": "الأقدم",
+    "linkGone": "العنصر ده مبقاش موجود — ممكن يكون اتمسح أو اتشال.",
+    "linkUnavailable": "اللينك ده مش متاح من حسابك."
   },
   "emailStatus": {
     "queued": "في الطابور",
