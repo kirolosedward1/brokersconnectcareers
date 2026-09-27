@@ -140,7 +140,13 @@ export function AgentProfileForm({
           characters apiece. */}
       <section className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
         <Field label={tOnboarding('fullName')} htmlFor="fullName">
-          <Input id="fullName" name="fullName" required defaultValue={profile.full_name} />
+          <Input
+            id="fullName"
+            name="fullName"
+            required
+            autoComplete="name"
+            defaultValue={profile.full_name}
+          />
         </Field>
 
         <Field
@@ -154,6 +160,8 @@ export function AgentProfileForm({
             type="tel"
             required
             dir="ltr"
+            inputMode="tel"
+            autoComplete="tel"
             className="numeral-field"
             defaultValue={profile.whatsapp_phone}
           />
@@ -226,6 +234,9 @@ export function AgentProfileForm({
               id="yearsExperience"
               name="yearsExperience"
               type="number"
+              // A whole number: the digit pad, where a bare type="number"
+              // gets iOS's punctuation keyboard with the digits along its top.
+              inputMode="numeric"
               min={0}
               max={60}
               className="numeral-field sm:w-28"

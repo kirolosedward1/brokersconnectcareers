@@ -404,6 +404,11 @@ export function JobForm({
               <Input
                 id="seats"
                 type="number"
+                // A count: the digit pad rather than iOS's punctuation keyboard.
+                // commissionValue below stays without one — a decimal pad types
+                // the locale's separator, and Arabic's is one a number input
+                // rejects, which empties the field.
+                inputMode="numeric"
                 min={1}
                 max={999}
                 className="numeral-field w-28"

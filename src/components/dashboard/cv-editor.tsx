@@ -337,6 +337,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
                 id="graduated"
                 name="graduated"
                 type="number"
+                inputMode="numeric"
                 min={1950}
                 max={2100}
                 className="numeral-field"
