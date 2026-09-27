@@ -1,5 +1,6 @@
 'use server';
 
+import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
 import { z } from 'zod';
@@ -57,7 +58,7 @@ export async function moderateJob(input: unknown): Promise<ActionResult> {
     // An id that matches nothing is not a successful moderation. Without this
     // the reviewer was told it worked and the employer was emailed about a
     // decision on a listing that does not exist.
-    .select('id');
+    .select('id, slug');
 
   if (error) {
     // The unverified-company post cap is enforced in the database, so approving
@@ -80,6 +81,11 @@ export async function moderateJob(input: unknown): Promise<ActionResult> {
   // The employer has been waiting on this decision; it is the one moderation
   // outcome they actually need pushed to them rather than discovered.
   after(() => notifyEmployerOfModeration(parsed.data.jobId, parsed.data.approve, parsed.data.note));
+
+  // Approved, it is a new job page for Google to read now rather than on its
+  // next crawl; rejected, it is off the public site (and may have been live).
+  const moderatedSlug = moderated[0].slug;
+  after(() => notifyJobChanged(moderatedSlug, parsed.data.approve ? 'URL_UPDATED' : 'URL_DELETED'));
 
   revalidatePath('/admin/jobs');
   revalidatePath('/jobs');

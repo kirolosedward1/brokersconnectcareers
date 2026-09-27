@@ -12,15 +12,26 @@ import { getDistricts } from '@/lib/queries/taxonomy';
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ q?: string; district?: string; verified?: string; page?: string }>;
 }): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   const t = await getTranslations({ locale, namespace: 'companies' });
+
+  // A search, a district, the verified toggle or a later page is a view of
+  // the directory, not a page of its own. Same rule as /jobs and /agents.
+  const { q, district, verified, page } = await searchParams;
+  const isView = Boolean(q || district || verified) || (Number.parseInt(page ?? '1', 10) || 1) > 1;
+
   return {
     title: t('title'),
-    alternates: alternatesFor('/companies', locale),
+    description: t('lede'),
+    ...(isView
+      ? { robots: { index: false, follow: true } }
+      : { alternates: alternatesFor('/companies', locale) }),
   };
 }
 

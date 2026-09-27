@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { env } from '@/lib/env';
 import { notifyJobExpiry } from '@/lib/email/notify';
+import { notifyJobChanged } from '@/lib/seo/indexing-api';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
   // expire_stale_jobs()'s return value, which is a count and names no ids.
   const justExpired = await admin
     .from('jobs')
-    .select('id')
+    .select('id, slug')
     .eq('status', 'expired')
     .gte('expires_at', new Date(now - day).toISOString())
     .lte('expires_at', new Date(now).toISOString())
@@ -87,10 +88,18 @@ export async function GET(request: NextRequest) {
   const warned = await notifyAll(admin, expiringSoon.data ?? [], 'expiring');
   const closed = await notifyAll(admin, justExpired.data ?? [], 'expired');
 
+  // The pages stay up — closed banner, noindex, no JobPosting — so each is an
+  // update for Google to recrawl. Inert unless the Indexing API is configured.
+  let indexed = 0;
+  for (const job of justExpired.data ?? []) {
+    if ((await notifyJobChanged(job.slug, 'URL_UPDATED')) === 'sent') indexed += 1;
+  }
+
   return NextResponse.json({
     expired: data ?? 0,
     warned,
     closed,
+    indexed,
     at: new Date().toISOString(),
   });
 }

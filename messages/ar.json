@@ -721,7 +721,13 @@
     "title": "وظائف {track} في {district}",
     "subtitle": "كل وظائف {track} المتاحة دلوقتي في {district} — بالراتب الأساسي ونسبة العمولة ومصدر العملاء.",
     "otherDistricts": "{track} في مناطق أخرى",
-    "otherTracks": "تخصصات أخرى في {district}"
+    "otherTracks": "تخصصات أخرى في {district}",
+    "companiesHiring": "{count, plural, one {شركة واحدة بتعيّن} two {شركتين بيعيّنوا} few {# شركات بتعيّن} many {# شركة بتعيّن} other {# شركة بتعيّن}}",
+    "withSalary": "{count} من {total} بمرتب أساسي",
+    "factSalaryRange": "المرتب الأساسي من {min} لـ {max} جنيه شهرياً",
+    "factSalaryFrom": "المرتب الأساسي من {min} جنيه شهرياً",
+    "factsLabel": "ملخص الوظائف المتاحة",
+    "popularTitle": "وظائف مطلوبة حسب التخصص والمنطقة"
   },
   "footer": {
     "product": "المنصة",
