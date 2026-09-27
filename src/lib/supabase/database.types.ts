@@ -716,6 +716,20 @@ export type Database = {
         Returns: SalaryReferenceRow[];
       };
       /**
+       * Live listings grouped by track x district x company type, under the
+       * caller's own row-level security (migration 300). What the home page's
+       * browse module counts, without shipping every listing to count it.
+       */
+      browse_counts: {
+        Args: Record<string, never>;
+        Returns: {
+          track: JobTrack;
+          district_id: number;
+          company_type: string | null;
+          listings: number;
+        }[];
+      };
+      /**
        * The caller's company shortlist. No argument saying whose — it resolves
        * `my_company_id()` itself, so there is nothing to forge, and it
        * re-derives each consultant's visibility rather than trusting what was

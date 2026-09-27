@@ -299,6 +299,24 @@ report.section('a policy asks who you are once, not once per row');
     bare.length === 0,
     bare.map((row) => `${row.tbl}.${row.polname}`).join(', ') || 'none',
   );
+
+  /*
+    The same for the argument-less helpers (migration 300). These cost more
+    than auth.uid() when repeated: each is a SECURITY DEFINER lookup, and a
+    bare `is_admin()` OR'd into a policy ran once per row of every scan a
+    non-admin made — a million buffer reads for the notification bell at a
+    year's worth of rows. Wrapped, Postgres asks once per statement.
+  */
+  const HELPERS = /\b(is_admin|viewer_has_verified_company|is_candidate|is_approved_employer|acting_as_admin|current_role_of_user)\(\)/;
+  const bareHelper = rows.filter((row) =>
+    HELPERS.test(row.expr.replace(/\(\s*SELECT\s+(public\.)?(\w+)\(\)\s+AS\s+\w+\s*\)/gi, '')),
+  );
+
+  report.check(
+    'no policy re-evaluates an argument-less helper per row',
+    bareHelper.length === 0,
+    bareHelper.map((row) => `${row.tbl}.${row.polname}`).join(', ') || 'none',
+  );
 }
 
 report.section('who may call a definer function, on purpose');

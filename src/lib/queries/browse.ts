@@ -57,10 +57,45 @@ type Row = {
   track: JobTrack;
   district_id: number;
   company?: { company_type: CompanyType | null } | null;
+  /** How many listings the row stands for: 1 for a listing, n for a group. */
+  listings?: number;
 };
 
 export const getBrowseCounts = cache(async function getBrowseCounts(): Promise<BrowseCounts> {
   const supabase = createPublicClient();
+
+  /*
+    The database groups them: one row per track x district x company type with
+    a live listing — a few hundred at most, however large the board grows —
+    under the same anonymous row-level security as before, since
+    browse_counts() is invoker-rights (migration 300).
+
+    This used to read every live listing and count in here: a thousand rows a
+    round trip, three trips and 235 KB out of the database per home-page visit
+    at 3,000 live listings, and linear in the board after that — on a plan
+    where database egress is a monthly quota.
+  */
+  const grouped = await supabase.rpc('browse_counts');
+  if (!grouped.error) {
+    const rows = (grouped.data ?? []).map((row) => ({
+      track: row.track,
+      district_id: row.district_id,
+      company: { company_type: (row.company_type as CompanyType | null) ?? null },
+      listings: Number(row.listings),
+    }));
+    return tally(rows, true, rows.reduce((sum, row) => sum + row.listings, 0));
+  }
+
+  /*
+    Before migration 300 reaches a database the function does not exist yet
+    (PGRST202 from the API, 42883 from Postgres), and code reaches production
+    before a migration as often as after. The row-by-row read below still
+    answers correctly there, just expensively. Any other failure is a real one.
+  */
+  if (grouped.error.code !== 'PGRST202' && grouped.error.code !== '42883') {
+    raise(grouped.error, 'counting live listings');
+  }
+
   const now = new Date().toISOString();
 
   /*
@@ -119,21 +154,26 @@ export const getBrowseCounts = cache(async function getBrowseCounts(): Promise<B
   if (result.error) raise(result.error, 'counting live listings');
 
   const rows = (result.data ?? []) as unknown as Row[];
+  return tally(rows, typed, result.total ?? rows.length);
+});
 
+/** Listings, or groups of them, folded into the figures the browse module draws. */
+function tally(rows: Row[], typed: boolean, total: number): BrowseCounts {
   const byTrack = new Map<JobTrack, number>();
   const byDistrict = new Map<number, number>();
   const byType = new Map<CompanyType, number>();
   const byPair = new Map<string, { track: JobTrack; districtId: number; count: number }>();
 
   for (const row of rows) {
-    byTrack.set(row.track, (byTrack.get(row.track) ?? 0) + 1);
-    byDistrict.set(row.district_id, (byDistrict.get(row.district_id) ?? 0) + 1);
+    const n = row.listings ?? 1;
+    byTrack.set(row.track, (byTrack.get(row.track) ?? 0) + n);
+    byDistrict.set(row.district_id, (byDistrict.get(row.district_id) ?? 0) + n);
     const key = `${row.track}:${row.district_id}`;
     const pair = byPair.get(key) ?? { track: row.track, districtId: row.district_id, count: 0 };
-    pair.count += 1;
+    pair.count += n;
     byPair.set(key, pair);
     const type = row.company?.company_type;
-    if (type) byType.set(type, (byType.get(type) ?? 0) + 1);
+    if (type) byType.set(type, (byType.get(type) ?? 0) + n);
   }
 
   /*
@@ -146,7 +186,7 @@ export const getBrowseCounts = cache(async function getBrowseCounts(): Promise<B
   */
   return {
     // The database's count, which is what the board will report on arrival.
-    total: result.total ?? rows.length,
+    total,
     tracks: JOB_TRACKS.filter((track) => byTrack.has(track))
       .map((track) => ({ track, count: byTrack.get(track)! }))
       .sort((a, b) => b.count - a.count),
@@ -166,7 +206,7 @@ export const getBrowseCounts = cache(async function getBrowseCounts(): Promise<B
         a.districtId - b.districtId,
     ),
   };
-});
+}
 
 /**
  * What the live listings on one track-in-district page have in common, read
