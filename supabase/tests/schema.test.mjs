@@ -310,9 +310,11 @@ report.section('who may call a definer function, on purpose');
 
     Two reasons a function is anon-callable here and no third:
 
-      the public API   search_agents, get_agent_card and increment_job_view
-                       are what the directory, the card and the view counter
-                       are made of, and none of them needs a session.
+      the public API   increment_job_view is what the view counter is made
+                       of, and it needs no session. search_agents and
+                       get_agent_card used to be here too; migration 68
+                       closed the directory to anybody who is not hiring,
+                       and a signed-out visitor is not.
 
       RLS calls it     Postgres evaluates a policy as the *calling* role, so a
                        policy invoking a function anon cannot execute does not
@@ -327,12 +329,11 @@ report.section('who may call a definer function, on purpose');
   */
   const EXPECTED = new Set([
     // Public API.
-    'search_agents',
-    'get_agent_card',
     'increment_job_view',
     // Predicates that row-level security itself calls.
     'applied_to_job',
     'applied_to_my_job',
+    'can_browse_agent_directory',
     'current_role_of_user',
     'is_admin',
     'is_approved_employer',
