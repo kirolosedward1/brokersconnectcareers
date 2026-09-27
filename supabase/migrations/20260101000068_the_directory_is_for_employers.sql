@@ -626,3 +626,20 @@ create policy saved_jobs_owner_insert on saved_jobs
     candidate_id = (select auth.uid())
     and public.current_role_of_user() = 'candidate'
   );
+
+-- ---------------------------------------------------------------------------
+-- A listing is edited by an employer in good standing.
+--
+-- owns_job() above now requires an approved account, so a suspended employer
+-- lost their applicants and their applicants' numbers. jobs_update_owner did
+-- not say the same thing: membership alone let a suspended account keep
+-- editing and closing the company's adverts through the API while the console
+-- showed them the suspension notice. The read stays — the console has to be
+-- able to say what happened to their listings — and the write goes to the same
+-- rule as everything else an employer does on a listing.
+-- ---------------------------------------------------------------------------
+
+drop policy if exists jobs_update_owner on jobs;
+create policy jobs_update_owner on jobs
+  for update using (public.owns_company(company_id) and public.is_approved_employer())
+  with check (public.owns_company(company_id) and public.is_approved_employer());

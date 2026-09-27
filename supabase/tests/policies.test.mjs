@@ -1084,6 +1084,16 @@ report.section('a suspended employer keeps nothing that was sent to them');
   const ownJobs = await as(employerVerified, `select id from jobs where company_id = (select company_id from company_members where user_id = '${employerVerified}' limit 1)`);
   report.check('while their own listings stay readable', ownJobs.ok && ownJobs.rows.length > 0);
 
+  // Readable, not editable: closing or rewording an advert is an employer's
+  // act, and a suspended account is not acting as one.
+  const editAfter = await as(employerVerified,
+    `update jobs set title_ar = title_ar where company_id = (select company_id from company_members where user_id = '${employerVerified}' limit 1) returning id`);
+  report.check('but not editable', editAfter.ok && editAfter.rows.length === 0, editAfter.error);
+
+  const closeAfter = await as(employerVerified,
+    `update jobs set status = 'closed' where id = '${liveJob}' returning id`);
+  report.check('nor closable', !closeAfter.ok || closeAfter.rows.length === 0, closeAfter.ok ? 'update was allowed' : '');
+
   await db.exec(`update profiles set approval_status = 'approved' where id = '${employerVerified}'`);
 
   const restored = await as(employerVerified, `select id from applications`);

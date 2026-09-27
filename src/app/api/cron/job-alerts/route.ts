@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createPublicClient } from '@/lib/supabase/public';
-import { env } from '@/lib/env';
+import { isCronRequest } from '@/lib/cron-auth';
 import { localized } from '@/i18n/routing';
 import { parseJobFilters, queryJobs } from '@/lib/queries/jobs';
 import { sendSavedSearchDigest } from '@/lib/email/notify';
@@ -33,10 +33,7 @@ const FIRST_RUN_WINDOW_DAYS = 7;
  * no new matches leaves the mark where it was, so nothing is skipped over.
  */
 export async function GET(request: NextRequest) {
-  const secret = env.cronSecret;
-  const authorization = request.headers.get('authorization');
-
-  if (!secret || authorization !== `Bearer ${secret}`) {
+  if (!isCronRequest(request)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

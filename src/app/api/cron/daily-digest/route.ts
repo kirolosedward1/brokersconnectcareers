@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { env } from '@/lib/env';
+import { isCronRequest } from '@/lib/cron-auth';
 import { localized } from '@/i18n/routing';
 import { notifyProfileIncomplete, sendApplicantDigest } from '@/lib/email/notify';
 import { logFailure } from '@/lib/observe';
@@ -27,8 +27,7 @@ export const maxDuration = 60;
  */
 
 export async function GET(request: NextRequest) {
-  const secret = env.cronSecret;
-  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!isCronRequest(request)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

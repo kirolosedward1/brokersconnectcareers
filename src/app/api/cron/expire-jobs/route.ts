@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { env } from '@/lib/env';
+import { isCronRequest } from '@/lib/cron-auth';
 import { notifyJobExpiry } from '@/lib/email/notify';
 
 export const dynamic = 'force-dynamic';
@@ -30,10 +30,7 @@ export const maxDuration = 60;
 const WARN_DAYS = 3;
 
 export async function GET(request: NextRequest) {
-  const secret = env.cronSecret;
-  const authorization = request.headers.get('authorization');
-
-  if (!secret || authorization !== `Bearer ${secret}`) {
+  if (!isCronRequest(request)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

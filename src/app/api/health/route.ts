@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { timingSafeEqual } from 'node:crypto';
+import { isCronRequest } from '@/lib/cron-auth';
 import { createPublicClient } from '@/lib/supabase/public';
 import { isPlaceholder } from '@/lib/env';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -38,9 +38,7 @@ export async function GET(request: Request) {
     not let anyone make at will. The operator sends the cron secret, which
     every cron route already accepts as the same bearer.
   */
-  const secret = process.env.CRON_SECRET;
-  const bearer = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
-  const operator = Boolean(secret) && bearer.length === secret!.length && timingSafeEqual(Buffer.from(bearer), Buffer.from(secret!));
+  const operator = isCronRequest(request);
 
   // Configuration first: an unset variable is the failure that looks like a
   // database outage, and the two need telling apart at a glance.
