@@ -10,6 +10,7 @@ import {
   notifyCompanyVerification,
   notifyEmployerOfModeration,
 } from '@/lib/email/notify';
+import { isRetryable } from '@/lib/email/rebuild';
 
 /**
  * Every action here runs through the caller's own session, not the service
@@ -344,6 +345,25 @@ export async function requeueEmail(input: unknown): Promise<ActionResult> {
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
+
+  /*
+    Only a message the sweeper can rebuild is worth another try. The page
+    already hides the button for the rest, but the action is callable on its
+    own, and requeueing a digest would only dead-letter it again an hour
+    later — with its original error overwritten by "not retryable".
+
+    Read through the admin-gated list rather than the service role, keeping
+    this file's rule. A row not in the list (already requeued, or past the
+    list's cap) falls through to requeue_email, which decides for itself.
+  */
+  const { data: dead, error: deadError } = await supabase.rpc('email_dead_letters', {
+    p_limit: 500,
+  });
+  if (deadError) return { ok: false, error: deadError.message };
+  const target = (dead ?? []).find((row) => row.id === parsed.data.emailId);
+  if (target && (!isRetryable(target.template) || !target.entity_id)) {
+    return { ok: false, error: 'not_retryable' };
+  }
 
   const { data: requeued, error } = await supabase.rpc('requeue_email', {
     p_id: parsed.data.emailId,
