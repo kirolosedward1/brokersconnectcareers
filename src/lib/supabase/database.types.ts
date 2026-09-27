@@ -435,9 +435,11 @@ export type EmailLogRow = {
   delivered_at: string | null;
 };
 
+export type SuppressionReason = 'hard_bounce' | 'complaint' | 'provider' | 'repeated_soft_bounce';
+
 export type EmailSuppressionRow = {
   email: string;
-  reason: 'hard_bounce' | 'complaint';
+  reason: SuppressionReason;
   created_at: string;
 };
 
@@ -677,7 +679,7 @@ export type Database = {
       email_log: Table<EmailLogRow, never>;
       email_suppressions: Table<
         EmailSuppressionRow,
-        { email: string; reason: 'hard_bounce' | 'complaint'; created_at?: string }
+        { email: string; reason: SuppressionReason; created_at?: string }
       >;
     };
     Views: Empty;
@@ -767,8 +769,31 @@ export type Database = {
           p_user_id?: string | null;
           p_entity_type?: string | null;
           p_entity_id?: string | null;
+          /** Security notices: exempt from complaint suppression and the hourly ceiling. */
+          p_essential?: boolean;
         };
         Returns: string | null;
+      };
+      /** The webhook's one write: replay check, forward-only status, suppression. */
+      record_email_event: {
+        Args: {
+          p_event_id: string;
+          p_provider_id: string;
+          p_kind:
+            | 'delivered'
+            | 'bounced_hard'
+            | 'bounced_soft'
+            | 'complained'
+            | 'failed'
+            | 'suppressed'
+            | 'delayed';
+        };
+        Returns: { duplicate: boolean; matched: number } | null;
+      };
+      /** True (and counted) when allowed; false when the bucket is full. Service role only. */
+      hit_rate_limit: {
+        Args: { p_bucket: string; p_limit: number; p_window_seconds: number };
+        Returns: boolean;
       };
       record_email_attempt: {
         Args: {

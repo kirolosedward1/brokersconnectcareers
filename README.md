@@ -95,6 +95,11 @@ URL Configuration, set Site URL to your production URL and add
 `https://your-domain/auth/callback` to the redirect allow-list. Until you do,
 confirmation emails and Google sign-in will send people to `localhost:3000`.
 
+**Email** needs `RESEND_API_KEY`, `RESEND_FROM` and `RESEND_WEBHOOK_SECRET`
+too, plus Supabase Auth's SMTP settings. Everything about it — architecture,
+events, DNS status, and the provider steps still outstanding — is in
+[`docs/email.md`](docs/email.md).
+
 The nightly expiry cron is already declared in `vercel.json` and runs at 01:00
 UTC. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
 variable is set; the route returns 401 to anything else.
