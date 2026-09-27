@@ -695,4 +695,34 @@ report.section('a phone number is normalised the way people type it');
   report.ok(isValidPhone('+971501234567'), 'a foreign number in full international form still passes');
 }
 
+report.section('an avatar is fetched from this site\'s storage or from Google, nowhere else');
+{
+  const { trustedAvatarUrl } = await import('../../src/lib/avatar-url.ts');
+  const origin = 'https://abcdefghijklmnopqrst.supabase.co';
+  const uid = '33333333-3333-3333-3333-333333333333';
+  const own = `${origin}/storage/v1/object/public/avatars/${uid}/photo.webp`;
+
+  report.is(trustedAvatarUrl(own, origin), own, 'the account\'s own upload is fetched');
+  report.is(
+    trustedAvatarUrl('https://lh3.googleusercontent.com/a/ACg8ocK=s96-c', origin),
+    'https://lh3.googleusercontent.com/a/ACg8ocK=s96-c',
+    'and a Google account picture',
+  );
+  report.is(
+    trustedAvatarUrl(`https://attacker.example/storage/v1/object/public/avatars/${uid}/photo.webp`, origin),
+    null,
+    'the same path on another host is not — that is the tracking pixel',
+  );
+  report.is(
+    trustedAvatarUrl(`https://zzzzzzzzzzzzzzzzzzzz.supabase.co/storage/v1/object/public/avatars/${uid}/photo.webp`, origin),
+    null,
+    'nor on somebody else\'s Supabase project',
+  );
+  report.is(trustedAvatarUrl(`${origin}/storage/v1/object/public/cvs/${uid}/cv.pdf`, origin), null, 'nor another bucket on our own host');
+  report.is(trustedAvatarUrl('http://lh3.googleusercontent.com/a/x', origin), null, 'nor Google over plain http');
+  report.is(trustedAvatarUrl(own, undefined), null, 'with no storage origin configured, nothing remote is fetched');
+  report.is(trustedAvatarUrl('not a url', origin), null, 'and garbage is a monogram');
+  report.is(trustedAvatarUrl(null, origin), null, 'as is nothing');
+}
+
 process.exitCode = base.finish() ? 0 : 1;

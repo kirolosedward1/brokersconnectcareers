@@ -2924,6 +2924,33 @@ report.section('who looked at your profile, counted and never named');
   report.check('and two companies', (await companies()) === 2);
 
   /*
+    The directory's gate, on the counter too. A pending employer resolves a
+    company but is not somebody the directory answers, and a hidden card is
+    not a card the directory shows — so neither leaves a row, or a consultant
+    on `hidden` would be told a company had looked when no company can.
+  */
+  await viewAs(employerPending);
+  report.check('an employer still awaiting approval leaves no row', (await views()) === 2);
+
+  const hiddenSlug = await slugOf(hiddenAgent);
+  const hiddenId = (
+    await db.query(`select id from agent_profiles where user_id = '${hiddenAgent}'`)
+  ).rows[0].id;
+  await db.exec(`update agent_profiles set visibility = 'hidden' where user_id = '${hiddenAgent}'`);
+  await db.exec(`
+    set local role authenticated;
+    set local request.jwt.claim.sub = '${employerVerified}';
+    set local request.jwt.claims = '{"role":"authenticated","sub":"${employerVerified}"}';
+    select public.record_agent_view('${hiddenSlug}');
+    select public.record_agent_view('${hiddenId}');
+    reset role;
+  `);
+  const hiddenRows = (
+    await db.query(`select count(*)::int as n from agent_profile_views where agent_id = '${hiddenId}'`)
+  ).rows[0].n;
+  report.check('and a hidden card is never counted, by slug or by id', hiddenRows === 0);
+
+  /*
     The owner's own preview is not a view.
 
     Migration 40 gave them a link to it, so they have a reason to load their

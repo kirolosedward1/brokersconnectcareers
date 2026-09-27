@@ -643,3 +643,49 @@ drop policy if exists jobs_update_owner on jobs;
 create policy jobs_update_owner on jobs
   for update using (public.owns_company(company_id) and public.is_approved_employer())
   with check (public.owns_company(company_id) and public.is_approved_employer());
+
+-- ---------------------------------------------------------------------------
+-- A view is recorded by somebody the directory answers, of a card it shows.
+--
+-- The body above trusted the page: "a company that is not approved never
+-- reaches the page that calls this". The function is callable through the
+-- API by any signed-in account, and an employer whose account is pending or
+-- suspended still resolves a company — so they could stamp views on any
+-- consultant, hidden ones included, and a consultant on `hidden` was told a
+-- company had looked when no company can. Restated with the directory gate
+-- every other reader uses, and without hidden cards.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.record_agent_view(p_slug text)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_agent   uuid;
+  v_owner   uuid;
+  v_company uuid;
+begin
+  v_company := public.my_company_id();
+  if v_company is null then return; end if;
+  if not public.can_browse_agent_directory() then return; end if;
+
+  select a.id, a.user_id into v_agent, v_owner
+    from agent_profiles a
+   where (a.slug = p_slug or a.id::text = p_slug)
+     and a.visibility <> 'hidden';
+
+  if v_agent is null then return; end if;
+
+  if v_owner = (select auth.uid()) then return; end if;
+
+  insert into agent_profile_views (agent_id, company_id, day)
+  values (v_agent, v_company, (now() at time zone 'Africa/Cairo')::date)
+  on conflict do nothing;
+
+  delete from agent_profile_views
+   where agent_id = v_agent
+     and day < (now() at time zone 'Africa/Cairo')::date - 60;
+end;
+$$;
