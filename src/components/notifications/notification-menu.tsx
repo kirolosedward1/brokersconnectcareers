@@ -19,13 +19,20 @@ import type { NotificationRow } from '@/lib/supabase/database.types';
  * in client state. NotificationItem builds its sentence from the row, which is
  * why the panel can be rendered by a server component at all.
  */
-export async function NotificationMenu({ locale }: { locale: string }) {
+export async function NotificationMenu({ locale, userId }: { locale: string; userId: string }) {
   const t = await getTranslations('notifications');
 
   /*
-    Read under the viewer's own session — RLS is what scopes these rows, not a
-    filter written here. Six is what fits in the panel without it becoming a
-    page of its own.
+    Read under the viewer's own session, and scoped to them explicitly as well.
+    Six is what fits in the panel without it becoming a page of its own.
+
+    The explicit user_id is not a second copy of the policy — RLS still decides
+    what may be seen — it is what lets Postgres use an index. Left to the
+    policies alone the filter is `user_id = me OR is_admin()`, an OR no index
+    can serve, so both reads walked the whole table and called is_admin() once
+    per row. This component is on every signed-in page, and at a year's worth
+    of notifications (460,000 rows in the load-test dataset) that was 0.6s and
+    about a million buffer reads per page view; scoped, it is three.
 
     Allowed to fail quietly: this is chrome on every page of the site, and a
     header that throws is a reader locked out of the page they asked for. A
@@ -33,8 +40,17 @@ export async function NotificationMenu({ locale }: { locale: string }) {
   */
   const supabase = await createClient();
   const [{ data: recent }, { count: unread }] = await Promise.all([
-    supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(6),
-    supabase.from('notifications').select('id', { count: 'exact', head: true }).is('read_at', null),
+    supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(6),
+    supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .is('read_at', null),
   ]);
   const notifications = (recent ?? []) as NotificationRow[];
 

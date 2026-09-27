@@ -93,7 +93,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
                   only place that said so was a screen they had navigated away
                   from. It never sits on the hero film: HeaderShell floats only
                   when nobody is signed in, and nobody signed out has a bell. */}
-              <NotificationMenu locale={locale} />
+              <NotificationMenu locale={locale} userId={viewer.userId} />
               <UserMenu
                 name={viewer.profile.full_name}
                 avatarUrl={viewer.profile.avatar_url}
