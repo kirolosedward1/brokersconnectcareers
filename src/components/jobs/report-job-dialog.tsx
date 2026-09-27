@@ -51,7 +51,7 @@ const REASONS_FOR: Record<ReportTarget, readonly string[]> = {
 /**
  * The same dialog for a listing, a company or a consultant's profile.
  *
- * Reports about companies and people arrived with migration 69, because the
+ * Reports about companies and people arrived with migration 206, because the
  * two things a moderator most needs to hear about — a company that is not what
  * it says, somebody wearing another consultant's name — had no door at all. It
  * is one dialog rather than three so the rules are one set: an account is

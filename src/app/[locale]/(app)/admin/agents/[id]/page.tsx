@@ -48,7 +48,7 @@ type AgentReport = {
  *
  * Restricting hides the profile from the directory and from every employer
  * until an admin lifts it, and the consultant's own saves cannot undo it
- * (migration 69). The CV is not linked here: it is the consultant's document,
+ * (migration 206). The CV is not linked here: it is the consultant's document,
  * served by the directory's own rules, and an impersonation case is settled on
  * the profile and the reports, not the file.
  */

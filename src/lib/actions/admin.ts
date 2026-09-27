@@ -15,7 +15,7 @@ import { adminErrorCode } from '@/lib/admin/errors';
 /**
  * The console's levers.
  *
- * Every mutation here is one call to an admin_* function (migration 70), made
+ * Every mutation here is one call to an admin_* function (migration 207), made
  * through the caller's own session — never the service role. That function is
  * where the rules live: it refuses anybody who is not an admin, locks the row,
  * refuses a transition the product does not have, requires a reason where

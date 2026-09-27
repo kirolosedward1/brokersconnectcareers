@@ -1,7 +1,7 @@
 /**
  * The operations console, exercised as each kind of user.
  *
- * Migrations 68–70 put every moderation lever behind one SECURITY DEFINER
+ * Migrations 205–207 put every moderation lever behind one SECURITY DEFINER
  * function and every decision on an append-only record. This suite asks the
  * questions an attacker and a tired moderator would: can anybody but an admin
  * reach a lever, can a lever produce a state the product does not have, does

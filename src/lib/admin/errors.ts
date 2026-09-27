@@ -45,7 +45,7 @@ export function adminErrorCode(error: PostgrestLikeError): AdminErrorCode {
   const message = (error.message ?? '').trim();
 
   // A function the deployed database does not have yet: the code reached
-  // production before migrations 68–70. Said plainly, because "unknown error"
+  // production before migrations 205–207. Said plainly, because "unknown error"
   // on every button would send somebody looking in the wrong place.
   if (error.code === 'PGRST202' || error.code === '42883' || error.code === '42703') {
     return 'not_migrated';

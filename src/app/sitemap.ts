@@ -75,8 +75,8 @@ async function fromDatabase(): Promise<DbRows> {
         .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order('published_at', { ascending: false })
         .limit(5000),
-      // `*` rather than naming suspended_at, so a database without migration 69
-      // still returns every company instead of failing the whole sitemap.
+      // `*` rather than naming suspended_at, so a database without migration
+      // 206 still returns every company instead of failing the whole sitemap.
       supabase.from('companies').select('*').limit(5000),
       // Only profiles the owner has made public belong in a sitemap. A gated
       // profile must not be advertised to a crawler.

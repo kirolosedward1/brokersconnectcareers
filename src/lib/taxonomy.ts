@@ -116,7 +116,7 @@ export const REPORT_REASONS = [
 ] as const;
 
 /**
- * Why somebody reports a company rather than a listing (migration 69).
+ * Why somebody reports a company rather than a listing (migration 206).
  * `other` last, as on listings, so the specific reasons are read first.
  */
 export const COMPANY_REPORT_REASONS = [
