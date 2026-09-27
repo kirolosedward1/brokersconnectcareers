@@ -3035,4 +3035,166 @@ report.section('who looked at your profile, counted and never named');
   await db.exec(`delete from agent_profile_views`);
 }
 
+report.section('a company sees its own pipeline, and no other company\'s');
+{
+  /*
+    Tenant isolation, stated as one block rather than left to be inferred from
+    the sections above. Two companies from the seed, each with an application
+    on one of its listings; the admin of one tries every table the employer
+    console reads or writes, against the other's rows.
+
+    State is pinned rather than assumed: the sections above suspend accounts,
+    expire adverts and move applications, and a test that passed because a
+    fixture happened to be suspended would prove nothing.
+  */
+  const rowadCo = (await db.query("select id from companies where slug='al-rowad-real-estate-309047'")).rows[0].id;
+  const hubCo = unverifiedCo;
+
+  await db.exec(`
+    update profiles set approval_status = 'approved' where id in ('${employerVerified}', '${employerUnverified}');
+  `);
+
+  const application = async (companyId) =>
+    (
+      await db.query(`
+        select a.id, a.job_id, a.candidate_id from applications a
+          join jobs j on j.id = a.job_id
+         where j.company_id = '${companyId}'
+         order by a.created_at
+         limit 1`)
+    ).rows[0];
+
+  const rowadApp = await application(rowadCo);
+  const hubApp = await application(hubCo);
+  report.check('both companies have an applicant to compare', Boolean(rowadApp && hubApp));
+
+  if (rowadApp && hubApp) {
+    // The control: the owning company does see its own.
+    const own = await as(employerVerified, `select id from applications where id = '${rowadApp.id}'`);
+    report.check('the owning company sees its application', own.ok && own.rows.length === 1, own.error);
+
+    const other = await as(employerUnverified, `select id from applications where id = '${rowadApp.id}'`);
+    report.check('the other company does not', other.ok && other.rows.length === 0, other.error);
+
+    const move = await as(employerUnverified,
+      `update applications set status = 'rejected' where id = '${rowadApp.id}' returning id`);
+    report.check('nor can it move it', !move.ok || move.rows.length === 0, move.ok ? 'update was allowed' : '');
+
+    const note = await as(employerUnverified,
+      `insert into application_notes (application_id, author_id, body)
+       values ('${rowadApp.id}', '${employerUnverified}', 'x')`);
+    report.check('nor write a note on it', !note.ok, note.ok ? 'insert was allowed' : '');
+
+    const events = await as(employerUnverified,
+      `select id from application_events where application_id = '${rowadApp.id}'`);
+    report.check('nor read its history', events.ok && events.rows.length === 0, events.error);
+
+    const edit = await as(employerUnverified,
+      `update jobs set title_ar = title_ar where id = '${rowadApp.job_id}' returning id`);
+    report.check('nor edit the listing it was sent to', !edit.ok || edit.rows.length === 0, edit.ok ? 'update was allowed' : '');
+
+    const roster = await as(employerUnverified, `select user_id from company_members where company_id = '${rowadCo}'`);
+    report.check('nor read the other company\'s roster', roster.ok && roster.rows.length === 0, roster.error);
+
+    const shortlist = await as(employerUnverified, `select agent_id from saved_agents where company_id = '${rowadCo}'`);
+    report.check('nor its shortlist', shortlist.ok && shortlist.rows.length === 0, shortlist.error);
+
+    const orders = await as(employerUnverified, `select id from orders where company_id = '${rowadCo}'`);
+    report.check('nor its orders', orders.ok && orders.rows.length === 0, orders.error);
+
+    const papers = await as(employerUnverified, `select id from company_documents where company_id = '${rowadCo}'`);
+    report.check('nor its verification papers', papers.ok && papers.rows.length === 0, papers.error);
+
+    const stats = await as(employerUnverified, `select agent_id from agent_profile_views where company_id = '${rowadCo}'`);
+    report.check('nor who it looked at', stats.ok && stats.rows.length === 0, stats.error);
+
+    // And the same in the other direction, so the seed's asymmetry cannot
+    // carry the result.
+    const reverse = await as(employerVerified, `select id from applications where id = '${hubApp.id}'`);
+    report.check('and the verified company sees nothing of the unverified one\'s',
+      reverse.ok && reverse.rows.length === 0, reverse.error);
+
+    const reverseMove = await as(employerVerified,
+      `update applications set status = 'shortlisted' where id = '${hubApp.id}' returning id`);
+    report.check('nor moves it', !reverseMove.ok || reverseMove.rows.length === 0, reverseMove.ok ? 'update was allowed' : '');
+  }
+}
+
+report.section('a listing that is not live takes no applications');
+{
+  /*
+    The insert policy is the rule the apply page and the server action lean
+    on: `active`, and not past its end date. Each of the other states is tried
+    here by a candidate who is free to apply, and each is refused by the
+    database rather than by a page.
+  */
+  const rowadCo = (await db.query("select id from companies where slug='al-rowad-real-estate-309047'")).rows[0].id;
+  const job = (
+    await db.query(`select id from jobs where company_id = '${rowadCo}' order by created_at limit 1`)
+  ).rows[0].id;
+
+  await db.exec(`
+    update jobs set status = 'active', published_at = now(), expires_at = now() + interval '30 days'
+     where id = '${job}';
+  `);
+
+  // A candidate who has not applied to this listing and is nowhere near the
+  // daily cap — chosen, because the sections above spend applications freely.
+  const who = (
+    await db.query(`
+      select p.id from profiles p
+       where p.role = 'candidate' and p.approval_status = 'approved'
+         and not exists (select 1 from applications a where a.job_id = '${job}' and a.candidate_id = p.id)
+         and (select count(*) from applications a where a.candidate_id = p.id and a.created_at > now() - interval '1 day') < 20
+       order by p.created_at
+       limit 1`)
+  ).rows[0]?.id;
+  report.check('found a candidate free to apply', Boolean(who));
+
+  const apply = `insert into applications (job_id, candidate_id) values ('${job}', '${who}') returning id`;
+
+  const live = await as(who, apply);
+  report.check('a live listing takes the application', live.ok && live.rows.length === 1, live.error);
+
+  // Still labelled active — only the date has passed, which is the state a
+  // listing sits in between its end date and the nightly cron.
+  await db.exec(`update jobs set published_at = now() - interval '31 days', expires_at = now() - interval '1 hour' where id = '${job}'`);
+  const expired = await as(who, apply);
+  report.check('one past its end date refuses it, whatever its label says',
+    !expired.ok && /row-level security/.test(expired.error ?? ''), expired.ok ? 'insert was allowed' : expired.error);
+  await db.exec(`update jobs set published_at = now(), expires_at = now() + interval '30 days' where id = '${job}'`);
+
+  await db.exec(`update jobs set status = 'closed' where id = '${job}'`);
+  const closed = await as(who, apply);
+  report.check('a closed one refuses it',
+    !closed.ok && /row-level security/.test(closed.error ?? ''), closed.ok ? 'insert was allowed' : closed.error);
+
+  await db.exec(`update jobs set status = 'expired' where id = '${job}'`);
+  const stale = await as(who, apply);
+  report.check('an expired one refuses it',
+    !stale.ok && /row-level security/.test(stale.error ?? ''), stale.ok ? 'insert was allowed' : stale.error);
+
+  await db.exec(`update jobs set status = 'active', published_at = now(), expires_at = now() + interval '30 days' where id = '${job}'`);
+
+  const unpublished = (
+    await db.query(`select id from jobs where status in ('draft', 'pending_review') limit 1`)
+  ).rows[0]?.id;
+  if (unpublished) {
+    const draft = await as(who,
+      `insert into applications (job_id, candidate_id) values ('${unpublished}', '${who}') returning id`);
+    report.check('one still in review refuses it',
+      !draft.ok && /row-level security/.test(draft.error ?? ''), draft.ok ? 'insert was allowed' : draft.error);
+  }
+
+  // Twice. The first is kept (the runner rolls its own statements back, so it
+  // is written outside it); the second collides with the unique key the
+  // server action turns into "already applied".
+  await db.exec(`insert into applications (job_id, candidate_id) values ('${job}', '${who}')`);
+  const again = await as(who, apply);
+  report.check('and the same person cannot apply to it twice',
+    !again.ok && /duplicate key|unique/.test(again.error ?? ''), again.ok ? 'insert was allowed' : again.error);
+
+  await db.exec(`delete from applications where job_id = '${job}' and candidate_id = '${who}'`);
+}
+
 process.exit(report.finish() ? 0 : 1);

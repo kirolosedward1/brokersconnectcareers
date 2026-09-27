@@ -175,7 +175,11 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     const query = supabase
       .from('jobs')
       .update(live ? payload : { ...payload, status })
-      .eq('id', jobId);
+      .eq('id', jobId)
+      // The caller's own company's listing, whoever the caller is. RLS
+      // confines an employer to their company already; an admin's row policy
+      // is `is_admin()`, and this console is a company's, not the platform's.
+      .eq('company_id', company.id);
 
     const { data: saved, error } = await (
       value.version ? query.eq('version', value.version) : query
@@ -325,10 +329,15 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
   // The one error every form here knows how to recover from.
   if (!user) return { ok: false, error: 'unauthenticated' };
 
+  // Scoped to the caller's own company for the reason saveJob gives.
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'forbidden' };
+
   const { data: moved, error } = await supabase
     .from('jobs')
     .update({ status: parsed.data.status })
     .eq('id', parsed.data.jobId)
+    .eq('company_id', companyId)
     .select('id');
 
   if (error) {
