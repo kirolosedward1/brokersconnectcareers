@@ -96,7 +96,9 @@ URL Configuration, set Site URL to your production URL and add
 confirmation emails and Google sign-in will send people to `localhost:3000`.
 
 The nightly expiry cron is already declared in `vercel.json` and runs at 01:00
-UTC. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
+UTC. Expiry and retention also run hourly inside the database through pg_cron,
+which needs no application secret; `/api/cron/lifecycle` deletes released files
+through the Storage API. See `docs/data-lifecycle.md`. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
 variable is set; the route returns 401 to anything else.
 
 ## Commands
@@ -111,6 +113,8 @@ variable is set; the route returns 401 to anything else.
 | `pnpm db:seed:demo` | Creates demo accounts via the Auth admin API + sample listings |
 | `pnpm doctor` | Preflight: env, REST, schema, storage, auth |
 | `pnpm db:rehearse` | Runs the setup scripts against a throwaway wire-protocol Postgres |
+| `pnpm test:lifecycle` | Expiry, deletion, file replacement, retention and cleanup, including a two-worker race against a real Postgres when one is installed |
+| `pnpm lifecycle:audit` | Read-only integrity/orphan report over `DATABASE_URL` (`--repair` dry run, `--apply` safe repairs) |
 | `pnpm db:types` | Regenerates `src/lib/supabase/database.types.ts` from a linked project |
 
 ### `pnpm test:db`
