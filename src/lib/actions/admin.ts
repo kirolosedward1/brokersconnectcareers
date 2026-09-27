@@ -346,17 +346,18 @@ export async function moderateReports(input: unknown): Promise<AdminResult<{ mov
   });
   if (error) return { ok: false, error: adminErrorCode(error) };
 
-  if (takeAction && targetType === 'job') {
+  const outcome = data as { reports: number; took_action: boolean } | null;
+  if (outcome?.took_action && targetType === 'job') {
     after(() => notifyEmployerOfModeration(targetId, false, note));
   }
 
   refreshConsole();
-  if (takeAction) {
+  if (outcome?.took_action) {
     revalidatePath('/jobs');
     revalidatePath('/companies');
     revalidatePath('/agents');
   }
-  return { ok: true, data: { moved: Number(data ?? 0) } };
+  return { ok: true, data: { moved: outcome?.reports ?? 0 } };
 }
 
 // ---------------------------------------------------------------------------

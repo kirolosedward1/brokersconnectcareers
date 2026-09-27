@@ -904,7 +904,7 @@ export type Database = {
           p_note?: string | null;
           p_take_action?: boolean;
         };
-        Returns: number;
+        Returns: { reports: number; took_action: boolean };
       };
       admin_add_note: {
         Args: { p_target_type: AuditTargetType; p_target_id: string; p_body: string };

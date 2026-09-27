@@ -411,8 +411,10 @@ report.section('reports reach companies and consultants, and cannot be forged');
       ('${hub}', '${USERS.candidate3}', 'scam');`);
 
   const handled = await session(admin, async (q) => {
-    const [{ n: investigating }] = await q(`select admin_moderate_reports('company', '${hub}', 'investigating') as n`);
-    const [{ n: resolved }] = await q(`select admin_moderate_reports('company', '${hub}', 'resolved', 'شركة وهمية', true) as n`);
+    const [{ r: first }] = await q(`select admin_moderate_reports('company', '${hub}', 'investigating') as r`);
+    const [{ r: second }] = await q(`select admin_moderate_reports('company', '${hub}', 'resolved', 'شركة وهمية', true) as r`);
+    const investigating = first.reports;
+    const resolved = second.took_action ? second.reports : -1;
     const company = (await q(`select suspended_at is not null as suspended from companies where id = '${hub}'`))[0];
     const rows = await q(`select status, resolved, resolved_by from reports where company_id = '${hub}'`);
     return { investigating, resolved, company, rows };
@@ -423,6 +425,14 @@ report.section('reports reach companies and consultants, and cannot be forged');
     handled.value?.resolved === 2 && handled.value.company.suspended &&
       handled.value.rows.every((r) => r.status === 'resolved' && r.resolved && r.resolved_by === admin),
     JSON.stringify(handled.value?.rows));
+
+  const late = await session(admin, async (q) => {
+    await q(`update companies set suspended_at = now(), suspension_reason = 'قبلها' where id = '${hub}'`);
+    const [{ r }] = await q(`select admin_moderate_reports('company', '${hub}', 'resolved', 'متأخر', true) as r`);
+    return r;
+  });
+  report.check('a takedown somebody already did is reported as not done by this call',
+    late.ok && late.value.took_action === false && late.value.reports === 2, JSON.stringify(late.value ?? late.error));
 
   const again = await session(admin, async (q) => {
     await q(`select admin_moderate_reports('company', '${hub}', 'dismissed')`);

@@ -485,7 +485,7 @@ create or replace function public.admin_moderate_reports(
   p_note        text default null,
   p_take_action boolean default false
 )
-returns int
+returns jsonb
 language plpgsql
 security definer
 set search_path = public, pg_temp
@@ -560,7 +560,9 @@ begin
     'report.' || p_status, p_target_type, p_target_id::text, v_label, v_note,
     jsonb_build_object('reports', v_moved, 'took_action', v_acted));
 
-  return v_moved;
+  -- Whether the takedown actually happened, so the caller emails the owner
+  -- only about a decision this call made — not one somebody made a moment ago.
+  return jsonb_build_object('reports', v_moved, 'took_action', v_acted);
 end;
 $$;
 
