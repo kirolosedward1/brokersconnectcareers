@@ -10,6 +10,7 @@ import { Field, Input } from '@/components/ui/field';
 import { requestPasswordReset } from '@/lib/actions/auth-email';
 import { Turnstile } from '@/components/security/turnstile';
 import { reportAuthOutcome } from '@/lib/actions/security';
+import { reach } from '@/lib/reach';
 import { useLocale } from 'next-intl';
 
 /**
@@ -32,9 +33,11 @@ import { useLocale } from 'next-intl';
  */
 export function ForgotPasswordForm() {
   const t = useTranslations('auth');
+  const tCommon = useTranslations('common');
   const locale = useLocale();
   const [sent, setSent] = useState(false);
   const [wait, setWait] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
   // See auth-form.tsx: invisible for nearly everyone, verified by Supabase.
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -45,13 +48,24 @@ export function ForgotPasswordForm() {
     if (!email) return;
 
     setWait(false);
+    setFailed(false);
     startTransition(async () => {
       // The token rides along to GoTrue, which verifies it when CAPTCHA is on.
-      const result = await requestPasswordReset(email, captchaToken);
+      const result = await reach(requestPasswordReset(email, captchaToken));
+      /*
+        The one failure that is said out loud. A request that never left the
+        phone learned nothing about the address, so saying so is no oracle —
+        and answering "check your inbox" for an email nobody sent leaves the
+        person waiting for it.
+      */
+      if (!result.ok && result.error === 'network') {
+        setFailed(true);
+        return;
+      }
       // Recorded as a hashed address and a hashed client, so a run of reset
       // requests against one inbox is visible to whoever is watching — and
       // nothing about whether the address exists is learned or kept.
-      void reportAuthOutcome({ kind: 'reset_requested', email });
+      void reach(reportAuthOutcome({ kind: 'reset_requested', email }));
       if (!result.ok && result.error === 'wait') {
         setWait(true);
         return;
@@ -85,6 +99,10 @@ export function ForgotPasswordForm() {
       {wait ? (
         <p role="alert" className="text-sm text-destructive">
           {t('resendWait')}
+        </p>
+      ) : failed ? (
+        <p role="alert" className="text-sm text-destructive">
+          {tCommon('errorBody')}
         </p>
       ) : null}
 

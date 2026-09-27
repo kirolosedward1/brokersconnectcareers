@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client';
 import { CV_BUCKET } from '@/lib/buckets';
 import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
 import { saveAgentProfile } from '@/lib/actions/agent-profile';
+import { reach } from '@/lib/reach';
 import type {
   AgentProfileRow,
   AgentVisibility,
@@ -95,7 +96,7 @@ export function AgentProfileForm({
         cvPath = path;
       }
 
-      const result = await saveAgentProfile({
+      const result = await reach(saveAgentProfile({
         fullName: String(form.get('fullName') ?? ''),
         whatsapp: String(form.get('whatsapp') ?? ''),
         headlineAr: String(form.get('headlineAr') ?? ''),
@@ -108,7 +109,7 @@ export function AgentProfileForm({
         availability: String(form.get('availability') ?? 'open_to_offers'),
         visibility,
         cvPath,
-      });
+      }));
 
       if (!result.ok) {
         /*

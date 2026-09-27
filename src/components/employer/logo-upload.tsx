@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { saveCompanyLogo } from '@/lib/actions/company';
 import { uploadImage } from '@/lib/actions/uploads';
+import { reach } from '@/lib/reach';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -79,7 +80,7 @@ export function LogoUpload({
       form.set('companyId', companyId);
       form.set('file', file);
 
-      const result = await uploadImage(form);
+      const result = await reach(uploadImage(form));
       if (recoverSession(result)) return;
       if (!result.ok) {
         setError(
@@ -104,7 +105,7 @@ export function LogoUpload({
       // deleting it here would break any page or email still holding the old
       // URL. The database queues it on the way out and the lifecycle sweep
       // removes it once its grace period has passed (migration 204).
-      const result = await saveCompanyLogo({ companyId, storagePath: null });
+      const result = await reach(saveCompanyLogo({ companyId, storagePath: null }));
       if (recoverSession(result)) return;
       if (!result.ok) setError(tCommon('errorBody'));
       else {

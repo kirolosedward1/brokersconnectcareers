@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { withdrawApplication } from '@/lib/actions/applications';
+import { reach } from '@/lib/reach';
 
 /**
  * The action tells the truth about whether the withdrawal happened; this shows
@@ -44,7 +45,7 @@ export function WithdrawButton({
         onClick={() =>
           startTransition(async () => {
             setFailed(false);
-            const result = await withdrawApplication(applicationId);
+            const result = await reach(withdrawApplication(applicationId));
             if (!result.ok) {
               setFailed(true);
               return;

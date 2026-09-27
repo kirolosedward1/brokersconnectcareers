@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import { COMPANY_DOCS_BUCKET } from '@/lib/buckets';
 import { recordCompanyDocument } from '@/lib/actions/company';
+import { reach } from '@/lib/reach';
 import type { CompanyDocumentRow, VerificationStatus } from '@/lib/supabase/database.types';
 import { uuid } from '@/lib/utils';
 import { useSessionRecovery } from '@/lib/session-expired';
@@ -66,7 +67,7 @@ export function VerificationPanel({
           return;
         }
 
-        const result = await recordCompanyDocument({ companyId, docType, storagePath: path });
+        const result = await reach(recordCompanyDocument({ companyId, docType, storagePath: path }));
         if (!result.ok) {
           // The file is already in the private bucket and nothing will ever
           // point at it now — and a tax card is not a thing to leave lying

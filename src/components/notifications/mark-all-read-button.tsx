@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { markNotificationsRead } from '@/lib/actions/notifications';
+import { reach } from '@/lib/reach';
 
 /**
  * Only rendered when something is unread, so it never sits there doing
@@ -29,7 +30,7 @@ export function MarkAllReadButton({ label, upTo }: { label: string; upTo: string
         onClick={() =>
           start(async () => {
             setFailed(false);
-            const result = await markNotificationsRead(upTo);
+            const result = await reach(markNotificationsRead(upTo));
             if (!result.ok) setFailed(true);
           })
         }

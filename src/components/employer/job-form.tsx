@@ -20,6 +20,7 @@ import {
   LEADS_SOURCES,
 } from '@/lib/taxonomy';
 import { findSimilarListing, salaryReferenceFor, saveJob } from '@/lib/actions/employer-jobs';
+import { reach } from '@/lib/reach';
 import { SalaryReferenceLine } from '@/components/jobs/compensation';
 import type {
   Benefit,
@@ -178,16 +179,20 @@ export function JobForm({
     event.preventDefault();
     if (step < STEPS.length - 1) {
       if (step === 0) {
-        void findSimilarListing({
-          titleAr: values.titleAr,
-          districtId: values.districtId,
-          excludeId: job?.id,
-        }).then((result) => setSimilar(result.ok ? result.data?.match ?? null : null));
+        void reach(
+          findSimilarListing({
+            titleAr: values.titleAr,
+            districtId: values.districtId,
+            excludeId: job?.id,
+          }),
+        ).then((result) => setSimilar(result.ok ? result.data?.match ?? null : null));
 
-        void salaryReferenceFor({
-          track: values.track,
-          districtId: values.districtId,
-        }).then((result) => setReference(result.ok ? result.data?.reference ?? null : null));
+        void reach(
+          salaryReferenceFor({
+            track: values.track,
+            districtId: values.districtId,
+          }),
+        ).then((result) => setReference(result.ok ? result.data?.reference ?? null : null));
       }
       setStep((current) => current + 1);
       return;
@@ -197,7 +202,7 @@ export function JobForm({
 
   function submit(publish: boolean) {
     startTransition(async () => {
-      const result = await saveJob({
+      const result = await reach(saveJob({
         id: job?.id,
         // What this form was built from. The action matches on it, so a
         // colleague's save in between is refused rather than overwritten.
@@ -222,7 +227,7 @@ export function JobForm({
         requirementsAr: values.requirementsAr,
         developerIds,
         submit: publish,
-      });
+      }));
 
       if (recoverSession(result)) return;
       if (!result.ok) {

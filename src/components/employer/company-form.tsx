@@ -9,6 +9,7 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { COMPANY_TYPES, HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { saveCompany } from '@/lib/actions/company';
+import { reach } from '@/lib/reach';
 import type { CompanyRow, DistrictRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 
@@ -39,7 +40,7 @@ export function CompanyForm({
     setSaved(false);
 
     startTransition(async () => {
-      const result = await saveCompany({
+      const result = await reach(saveCompany({
         nameAr: String(form.get('nameAr') ?? ''),
         nameEn: String(form.get('nameEn') ?? ''),
         aboutAr: String(form.get('aboutAr') ?? ''),
@@ -51,7 +52,7 @@ export function CompanyForm({
         // What this form was built from. A second admin saving in between is
         // refused rather than overwritten.
         version: company?.version,
-      });
+      }));
 
       if (recoverSession(result)) return;
       if (!result.ok) {

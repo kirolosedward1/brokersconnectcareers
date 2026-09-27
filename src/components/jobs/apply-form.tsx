@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import { CV_BUCKET } from '@/lib/buckets';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { applyToJob } from '@/lib/actions/applications';
+import { reach } from '@/lib/reach';
 import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { track } from '@/lib/analytics';
 import { shareSource } from '@/lib/share-source';
@@ -113,14 +114,14 @@ export function ApplyForm({
         cvPath = path;
       }
 
-      const result = await applyToJob({
+      const result = await reach(applyToJob({
         jobId,
         fullName: String(form.get('fullName') ?? ''),
         whatsapp: String(form.get('whatsapp') ?? ''),
         experienceBand: String(form.get('experienceBand') ?? ''),
         cvPath,
         note: String(form.get('note') ?? ''),
-      });
+      }));
 
       if (recoverSession(result)) {
         // The file goes with it: nothing will ever point at it now.

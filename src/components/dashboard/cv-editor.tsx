@@ -13,6 +13,7 @@ import {
   saveEducation,
   saveExperience,
 } from '@/lib/actions/cv';
+import { reach } from '@/lib/reach';
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import type {
   AgentCertificationRow,
@@ -130,7 +131,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
     if (section === 'certification') setCerts((rows) => rows.filter((r) => r.id !== id));
 
     startTransition(async () => {
-      const result = await deleteCvEntry(section, id);
+      const result = await reach(deleteCvEntry(section, id));
       if (!result.ok) {
         setJobs(before.jobs);
         setSchools(before.schools);
@@ -147,7 +148,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
     const track = String(form.get('track') ?? '');
 
     startTransition(async () => {
-      const result = await saveExperience({
+      const result = await reach(saveExperience({
         agentId,
         companyName: String(form.get('companyName') ?? ''),
         title: String(form.get('title') ?? ''),
@@ -155,7 +156,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
         started: String(form.get('started') ?? ''),
         ended: String(form.get('ended') ?? '') || null,
         highlights: String(form.get('highlights') ?? '') || null,
-      });
+      }));
       if (!result.ok) {
         setError(result.error === 'cap' ? t('capReached') : tCommon('errorBody'));
         return;
@@ -171,13 +172,13 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
     const year = String(form.get('graduated') ?? '');
 
     startTransition(async () => {
-      const result = await saveEducation({
+      const result = await reach(saveEducation({
         agentId,
         institution: String(form.get('institution') ?? ''),
         degree: String(form.get('degree') ?? '') || null,
         field: String(form.get('field') ?? '') || null,
         graduated: year ? Number(year) : null,
-      });
+      }));
       if (!result.ok) {
         setError(result.error === 'cap' ? t('capReached') : tCommon('errorBody'));
         return;
@@ -192,13 +193,13 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
     const form = new FormData(event.currentTarget);
 
     startTransition(async () => {
-      const result = await saveCertification({
+      const result = await reach(saveCertification({
         agentId,
         name: String(form.get('name') ?? ''),
         issuer: String(form.get('issuer') ?? '') || null,
         issued: String(form.get('issued') ?? '') || null,
         expires: String(form.get('expires') ?? '') || null,
-      });
+      }));
       if (!result.ok) {
         setError(result.error === 'cap' ? t('capReached') : tCommon('errorBody'));
         return;
