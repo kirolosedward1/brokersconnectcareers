@@ -92,11 +92,24 @@ report.section('editing a live listing is possible, and says so');
     material.ok && material.rows[0]?.status === 'pending_review',
     JSON.stringify(material.rows[0] ?? material.error));
 
+  /*
+    The requirements used to be the example of a cosmetic edit. They are free
+    text a candidate reads, and "requirements: a 500 EGP registration fee" is
+    precisely the edit a scam makes after approval, so since migration 132 all
+    of a live listing's text goes back to review. The benefits checklist,
+    which can only name items from a fixed list, is the cosmetic edit now.
+  */
   const cosmetic = await as(employerVerified,
-    `update jobs set requirements_ar = 'رخصة قيادة' where id = '${liveJob}' returning status`);
+    `update jobs set benefits = array['medical'] where id = '${liveJob}' returning status`);
   report.check('and a cosmetic one stays on the board',
     cosmetic.ok && cosmetic.rows[0]?.status === 'active',
     JSON.stringify(cosmetic.rows[0] ?? cosmetic.error));
+
+  const requirements = await as(employerVerified,
+    `update jobs set requirements_ar = 'رخصة قيادة' where id = '${liveJob}' returning status`);
+  report.check('but new requirements text is read before candidates see it',
+    requirements.ok && requirements.rows[0]?.status === 'pending_review',
+    JSON.stringify(requirements.rows[0] ?? requirements.error));
 
   // Still somebody else's listing, whatever the status.
   const stranger = await as(employerUnverified,
@@ -582,9 +595,11 @@ report.section('a company waits for a person; a consultant does not');
 
   // The gate that matters. A pending company can still build its profile and
   // upload documents — it just cannot put a listing in front of anyone.
+  // Refused by the standing check (migration 132) before row-level security
+  // gets to it; either word is the same refusal.
   const post = await as(PENDING, draft('pending-job-1'));
   report.check('a pending company cannot create a listing',
-    !post.ok && /row-level security/.test(post.error ?? ''),
+    !post.ok && /row-level security|account_not_in_good_standing/.test(post.error ?? ''),
     post.ok ? 'insert was allowed' : post.error);
 
   const byEmployer = await as(employerVerified, `select public.set_account_approval('${PENDING}','approved')`);
