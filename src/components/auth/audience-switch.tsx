@@ -22,6 +22,7 @@ import type { Audience } from '@/app/[locale]/auth-shell';
 export async function AudienceSwitch({
   mode,
   active = 'candidate',
+  next,
 }: {
   mode: 'sign-in' | 'sign-up';
   /**
@@ -39,6 +40,12 @@ export async function AudienceSwitch({
    * copy was already showing.
    */
   active?: Audience;
+  /**
+   * Where the person was headed, already validated by the page. Carried by
+   * both options, so changing sides of the switch does not drop the listing
+   * somebody was in the middle of applying to.
+   */
+  next?: string;
 }) {
   const t = await getTranslations('onboarding');
 
@@ -58,7 +65,7 @@ export async function AudienceSwitch({
         return (
           <Link
             key={key}
-            href={`/${mode}/${key}`}
+            href={{ pathname: `/${mode}/${key}`, query: next ? { next } : {} }}
             aria-current={current ? 'page' : undefined}
             className={cn(
               'flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors',

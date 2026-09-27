@@ -895,8 +895,8 @@ report.section('applying is consent, and the applicant inbox may read it');
 
 report.section('the agent directory gate');
 {
-  const GATED = 'ahmed-mahmoud-818804'; // verified_employers_only
-  const PUBLIC = 'menna-sherif-909521'; // public
+  const GATED = 'consultant-81880411'; // verified_employers_only
+  const PUBLIC = 'consultant-90952122'; // public
 
   const anon = await as(null, 'select slug, is_unlocked, full_name from search_agents(null,null,null,null,60,0)', 'anon');
   const anonGated = anon.rows.find((row) => row.slug === GATED);
@@ -923,11 +923,79 @@ report.section('the agent directory gate');
   const phoneVerified = await as(employerVerified, `select whatsapp_phone from get_agent_card('${GATED}')`);
   report.check('a verified employer gets contact details', phoneVerified.rows[0]?.whatsapp_phone !== null);
 
+  /*
+    A public card is open, not reachable. Its name is for everyone; the number
+    and the CV are for somebody hiring. Until migration 202 an anonymous call to
+    get_agent_card returned both — no screen ever offered them, but the API
+    did, to anybody holding the publishable key every page ships.
+  */
+  await db.exec(`update agent_profiles set cv_path = user_id::text || '/cv.pdf' where slug = '${PUBLIC}'`);
+  const card = (who, role) =>
+    as(who, `select full_name, whatsapp_phone, cv_path from get_agent_card('${PUBLIC}')`, role);
+
+  const publicAnon = await card(null, 'anon');
+  report.check('anonymous gets a public name but not its number or CV',
+    publicAnon.rows[0]?.full_name !== null &&
+      publicAnon.rows[0]?.whatsapp_phone === null &&
+      publicAnon.rows[0]?.cv_path === null,
+    JSON.stringify(publicAnon.rows));
+
+  const publicStranger = await card(OUTSIDER);
+  report.check('nor does another candidate',
+    publicStranger.rows[0]?.whatsapp_phone === null && publicStranger.rows[0]?.cv_path === null,
+    JSON.stringify(publicStranger.rows));
+
+  const publicHiring = await card(employerUnverified);
+  report.check('any company member does, as the contact button always implied',
+    publicHiring.rows[0]?.whatsapp_phone !== null && publicHiring.rows[0]?.cv_path !== null,
+    JSON.stringify(publicHiring.rows));
+
+  const publicOwner = await card(publicAgent);
+  report.check('and so does the owner previewing their own card',
+    publicOwner.rows[0]?.whatsapp_phone !== null && publicOwner.rows[0]?.cv_path !== null,
+    JSON.stringify(publicOwner.rows));
+  await db.exec(`update agent_profiles set cv_path = null where slug = '${PUBLIC}'`);
+
   const raw = await as(null, `select id from agent_profiles where slug = '${GATED}'`, 'anon');
   report.check('and the gated row is unreadable directly', raw.rows.length === 0);
 
   const rawPublic = await as(null, `select id from agent_profiles where slug = '${PUBLIC}'`, 'anon');
   report.check('while a public row is readable directly', rawPublic.rows.length === 1);
+}
+
+report.section('no consultant is named by their address');
+{
+  /*
+    A gated card hides the name, so its link must not spell it. Migration 202
+    renames every slug that is not already `consultant-<8 digits>`; exercised
+    here by re-running it over a profile in the old `<name>-<id>` shape, which
+    is the state production was in.
+  */
+  const { readFileSync } = await import('node:fs');
+  const migration = readFileSync(
+    new URL('../migrations/20260101000202_what_the_card_said_and_what_the_api_said.sql', import.meta.url),
+    'utf8',
+  );
+  await db.exec(`
+    insert into agent_profiles (user_id, slug, visibility)
+    values ('${OUTSIDER}', 'zaer-el-outsider-123456', 'verified_employers_only');
+  `);
+  await db.exec(migration);
+
+  const renamed = (await db.query(`select slug from agent_profiles where user_id = '${OUTSIDER}'`)).rows[0]?.slug;
+  report.check('a name-shaped slug is renamed', /^consultant-[1-9][0-9]{7}$/.test(renamed ?? ''), renamed);
+
+  const left = (
+    await db.query(`select count(*)::int as n from agent_profiles where slug !~ '^consultant-[1-9][0-9]{7}$'`)
+  ).rows[0].n;
+  report.check('and no profile keeps any other shape', left === 0, String(left));
+
+  const anon = await as(null, 'select slug from search_agents(null,null,null,null,60,0)', 'anon');
+  report.check('so the anonymous directory carries no names in its links',
+    anon.ok && anon.rows.every((row) => /^consultant-[1-9][0-9]{7}$/.test(row.slug)),
+    JSON.stringify(anon.rows.map((row) => row.slug)));
+
+  await db.exec(`delete from agent_profiles where user_id = '${OUTSIDER}';`);
 }
 
 report.section('the directory pages in a total order');
@@ -1026,7 +1094,7 @@ report.section('a CV section never outlives the gate on its profile');
 report.section('an employed agent can hide from their own employer');
 {
   // mostafa-elgendy is seeded `hidden` — this is the demo dataset's own proof.
-  const HIDDEN = 'mostafa-elgendy-339125';
+  const HIDDEN = 'consultant-33912555';
 
   const verified = await as(employerVerified, 'select slug from search_agents(null,null,null,null,60,0)');
   report.check('a hidden profile is absent even for a verified employer',
