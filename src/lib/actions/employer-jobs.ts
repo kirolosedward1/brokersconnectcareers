@@ -19,7 +19,7 @@ import { salaryReference } from '@/lib/queries/jobs';
 import type { ActionResult } from '@/lib/actions/jobs';
 import type { SalaryReferenceRow } from '@/lib/supabase/database.types';
 import { after } from 'next/server';
-import { notifyJobSubmitted } from '@/lib/email/notify';
+import { publish } from '@/lib/notifications/events';
 import { logFailure } from '@/lib/observe';
 import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { jobIsPublic } from '@/lib/job-state';
@@ -300,7 +300,8 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
 
   if (settled?.status === 'pending_review' && current?.status !== 'pending_review') {
     const submitted = jobId!;
-    after(() => notifyJobSubmitted(submitted));
+    const submittedBy = user.id;
+    after(() => publish({ type: 'JOB_SUBMITTED', jobId: submitted, submittedBy }));
   }
 
   /*

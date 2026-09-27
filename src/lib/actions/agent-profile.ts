@@ -9,7 +9,7 @@ import { normalisePhone, isValidPhone } from '@/lib/phone';
 import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
-import { notifyProfileReady, notifyVisibilityChanged } from '@/lib/email/notify';
+import { publish } from '@/lib/notifications/events';
 
 const schema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -159,9 +159,11 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
   // of noise that gets a sender muted.
   if (createdSlug) {
     const slug = createdSlug;
-    after(() => notifyProfileReady(user.id, slug, parsed.data.visibility));
+    after(() => publish({ type: 'PROFILE_CREATED', userId: user.id, slug, visibility: parsed.data.visibility }));
   } else if (existing && existing.visibility !== parsed.data.visibility) {
-    after(() => notifyVisibilityChanged(user.id, parsed.data.visibility));
+    after(() =>
+      publish({ type: 'PROFILE_VISIBILITY_CHANGED', userId: user.id, visibility: parsed.data.visibility }),
+    );
   }
 
   revalidatePath('/dashboard/profile');

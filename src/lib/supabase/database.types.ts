@@ -295,7 +295,15 @@ export type NotificationKind =
   | 'job_rejected'
   | 'company_verified'
   | 'account_approved'
-  | 'account_rejected';
+  | 'account_rejected'
+  // Migration 300.
+  | 'job_expiring'
+  | 'job_expired'
+  | 'company_verification_needed'
+  | 'profile_visibility_changed'
+  | 'password_changed'
+  // Migration 200: support answered a request (written by 201's answer function).
+  | 'support_replied';
 
 /**
  * The payload holds data, never a rendered sentence — the site is read in two
@@ -316,10 +324,25 @@ export type NotificationRow = {
     name_en?: string | null;
     status?: string;
     note?: string | null;
+    company_ar?: string;
+    company_en?: string | null;
+    visibility?: string;
+    expires_at?: string;
+    /** password_changed: when the change happened. */
+    at?: string;
+    /** application_received: applicants folded into this row since it was last read. */
+    count?: number;
+    /** support_replied: the request's quotable reference and topic. */
+    reference?: string;
+    topic?: string;
   };
   href: string | null;
   read_at: string | null;
   created_at: string;
+  /** Platform-written; what makes two notifications the same one (migration 300). */
+  dedupe_key: string | null;
+  /** Absorbed into this unread applicant row; hidden from the feed (migration 302). */
+  folded_into: string | null;
 };
 
 export type AgentExperienceRow = Timestamped & {
@@ -788,7 +811,32 @@ export type Database = {
         Returns: undefined;
       };
       /** Returns how many rows it marked, so the caller can say nothing changed. */
-      mark_notifications_read: { Args: Empty; Returns: number };
+      mark_notifications_read: { Args: { p_up_to?: string | null }; Returns: number };
+      /** Marks one of the caller's own read and returns where it points; empty for anyone else's. */
+      open_notification: {
+        Args: { p_id: string };
+        Returns: { kind: NotificationKind; href: string | null; payload: NotificationRow['payload'] }[];
+      };
+      /** The expiry sweep for the caller's own company. Idempotent; returns rows written. */
+      sync_my_job_notifications: { Args: Empty; Returns: number };
+      /** Service role only: the expiry sweep, for one company or all of them. */
+      /** Service role only: delete read notifications older than 180 days. */
+      prune_notifications: { Args: { p_limit?: number }; Returns: number };
+      emit_job_expiry_notifications: {
+        Args: { p_company?: string | null; p_warn_days?: number };
+        Returns: number;
+      };
+      /** Service role only: one notification under a dedupe key. */
+      notify: {
+        Args: {
+          p_user: string;
+          p_kind: NotificationKind;
+          p_payload: Record<string, unknown>;
+          p_href: string | null;
+          p_key: string;
+        };
+        Returns: undefined;
+      };
       /**
        * Claims the right to send one message. Returns the outbox row id, or
        * null when somebody already holds this dedupe key or the address is
@@ -849,7 +897,13 @@ export type Database = {
       };
       pending_emails: {
         Args: { p_limit?: number };
-        Returns: { id: string; template: string; entity_id: string | null; attempts: number }[];
+        Returns: {
+          id: string;
+          template: string;
+          entity_id: string | null;
+          user_id: string | null;
+          attempts: number;
+        }[];
       };
       mark_email_delivered: {
         Args: { p_provider_id: string; p_status: EmailStatus };

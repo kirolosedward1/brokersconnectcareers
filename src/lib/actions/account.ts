@@ -8,7 +8,7 @@ import { allow } from '@/lib/rate-limit';
 import { AVATAR_BUCKET } from '@/lib/buckets';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
-import { notifyPasswordChanged } from '@/lib/email/notify';
+import { publish } from '@/lib/notifications/events';
 
 /**
  * Deleting your own account.
@@ -107,7 +107,7 @@ export async function deleteMyAccount(): Promise<ActionResult> {
  * nothing to point somewhere else. It mails the session's own account or it
  * does nothing.
  *
- * The claim is checked rather than believed. notifyPasswordChanged requires
+ * The claim is checked rather than believed. Both channels require
  * auth.users.updated_at to have moved in the last few minutes, so calling this
  * without changing anything sends nothing.
  */
@@ -123,7 +123,7 @@ export async function announcePasswordChange(): Promise<ActionResult> {
   // the password change itself succeeded, which is what the caller cares about.
   if (!(await allow(`password_notice:${user.id}`, 5, 3600))) return { ok: true };
 
-  after(() => notifyPasswordChanged(user.id));
+  after(() => publish({ type: 'SECURITY_EVENT', userId: user.id, kind: 'password_changed' }));
   return { ok: true };
 }
 

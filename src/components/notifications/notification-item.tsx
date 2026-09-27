@@ -1,15 +1,22 @@
 import { getTranslations } from 'next-intl/server';
 import {
   BadgeCheck,
+  Bell,
+  CalendarClock,
+  CalendarX2,
   CircleSlash,
+  Eye,
   FileCheck2,
+  FileWarning,
   FileX2,
+  KeyRound,
+  LifeBuoy,
   Send,
   UserCheck,
   UserMinus,
   UserRound,
 } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
+import { openNotification } from '@/lib/actions/notifications';
 import { localized } from '@/i18n/routing';
 import { formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -33,6 +40,12 @@ const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }
   company_verified: BadgeCheck,
   account_approved: UserCheck,
   account_rejected: CircleSlash,
+  job_expiring: CalendarClock,
+  job_expired: CalendarX2,
+  company_verification_needed: FileWarning,
+  profile_visibility_changed: Eye,
+  password_changed: KeyRound,
+  support_replied: LifeBuoy,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -45,6 +58,14 @@ const TONES: Record<NotificationKind, string> = {
   company_verified: 'bg-success-muted text-success',
   account_approved: 'bg-success-muted text-success',
   account_rejected: 'bg-destructive-muted text-destructive',
+  job_expiring: 'bg-warning-muted text-warning',
+  job_expired: 'bg-muted text-muted-foreground',
+  company_verification_needed: 'bg-destructive-muted text-destructive',
+  profile_visibility_changed: 'bg-primary/10 text-primary',
+  // A security notice reads as one: the tone a reader already knows means
+  // "look at this".
+  password_changed: 'bg-warning-muted text-warning',
+  support_replied: 'bg-primary/10 text-primary',
 };
 
 export async function NotificationItem({
@@ -59,33 +80,55 @@ export async function NotificationItem({
 }) {
   const t = await getTranslations('notifications');
   const tStatus = await getTranslations('applicationStatus');
+  const tVisibility = await getTranslations('visibility');
 
   const { kind, payload } = notification;
-  const Icon = ICONS[kind];
+  /*
+    A kind this build does not know yet renders as a plain notice rather than
+    taking the bell down. The database gains kinds in migrations that can reach
+    production before the code that names them — migration 200's
+    support_replied did exactly that — and a lookup that returned undefined
+    made every page with a header throw for that reader.
+  */
+  const known = kind in ICONS;
+  const Icon = known ? ICONS[kind] : Bell;
+  const tone = known ? TONES[kind] : 'bg-muted text-muted-foreground';
 
   const subject =
     localized(locale, payload.title_ar, payload.title_en) ||
     localized(locale, payload.name_ar, payload.name_en);
 
-  const title =
-    kind === 'application_moved'
-      ? t('applicationMoved', {
-          title: subject,
-          status: payload.status ? tStatus(payload.status as never) : '',
-        })
-      : t(kind, { subject });
+  // Most kinds are one sentence with the subject in it; these three carry a
+  // second fact the sentence has to say.
+  const title = (() => {
+    if (kind === 'application_moved') {
+      return t('applicationMoved', {
+        title: subject,
+        status: payload.status ? tStatus(payload.status as never) : '',
+      });
+    }
+    if (kind === 'application_received' && (payload.count ?? 1) > 1) {
+      return t('applicationReceivedMany', { subject, count: payload.count ?? 1 });
+    }
+    if (kind === 'profile_visibility_changed' && payload.visibility) {
+      return t('profileVisibilityChanged', { visibility: tVisibility(payload.visibility as never) });
+    }
+    return known ? t(kind, { subject }) : t('generic');
+  })();
 
   const body = payload.note || null;
   const unread = !notification.read_at;
 
   const inner = (
     <>
-      <span aria-hidden className={cn('grid size-9 shrink-0 place-items-center rounded-lg', TONES[kind])}>
+      <span aria-hidden className={cn('grid size-9 shrink-0 place-items-center rounded-lg', tone)}>
         <Icon className="size-4" />
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className={cn('block text-sm leading-snug', unread && 'font-medium')}>{title}</span>
+        <span className={cn('block text-sm leading-snug [overflow-wrap:anywhere]', unread && 'font-medium')}>
+          {title}
+        </span>
 
         {!compact && body ? (
           <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{body}</span>
@@ -106,16 +149,26 @@ export async function NotificationItem({
     </>
   );
 
-  const className = cn(
-    'flex items-start gap-3 rounded-xl p-3 transition-colors',
-    notification.href && 'hover:bg-muted',
-  );
+  /*
+    A form, not a link: following a notification marks it read, which is a
+    write, and the server decides at that moment whether the stored href is
+    still one this reader may follow and still points at something (see
+    openNotification). Posts without JavaScript too.
 
-  return notification.href ? (
-    <Link href={notification.href} className={className}>
-      {inner}
-    </Link>
-  ) : (
-    <div className={className}>{inner}</div>
+    Every row is followable, including one with no href — opening it marks it
+    read and lands on the full feed, where its body is shown.
+  */
+  return (
+    <form action={openNotification}>
+      <input type="hidden" name="id" value={notification.id} />
+      <input type="hidden" name="locale" value={locale} />
+      <button
+        type="submit"
+        className="flex w-full items-start gap-3 rounded-xl p-3 text-start transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        {inner}
+        {unread ? <span className="sr-only">{t('unread')}</span> : null}
+      </button>
+    </form>
   );
 }
