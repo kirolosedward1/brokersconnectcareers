@@ -36,7 +36,7 @@
     "test:nextaction": "node --experimental-strip-types scripts/next-action.test.mjs",
     "test:reads": "node scripts/reads.test.mjs",
     "crawl": "node scripts/crawl.mjs",
-    "test:seo": "node --experimental-strip-types scripts/job-posting.test.mjs",
+    "test:seo": "node --experimental-strip-types scripts/job-posting.test.mjs && node --experimental-strip-types scripts/record-exists.test.mjs",
     "seo:check": "node --experimental-strip-types scripts/seo-check.mjs"
   },
   "dependencies": {

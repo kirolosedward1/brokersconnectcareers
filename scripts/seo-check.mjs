@@ -16,6 +16,7 @@
  *   a filtered, sorted or paged list is noindex and names no other page as
  *     canonical;
  *   a listing that is not open carries no JobPosting and is noindex;
+ *   a listing, company or profile that does not exist answers 404;
  *   robots.txt names the sitemap and keeps private areas and facets out.
  *
  * Extra URLs to probe as "must not be indexed" can follow the base URL.
@@ -102,7 +103,8 @@ console.log('\n— views and closed pages are kept out of the index');
 const views = ['/jobs?track=primary', '/jobs?page=2', '/jobs?sort=salary', '/companies?q=a', '/agents?track=primary'];
 const closed = [];
 for (const url of extraNoindex) closed.push(new URL(url, BASE).pathname + new URL(url, BASE).search);
-for (const path of [...views, ...closed, '/jobs/this-listing-does-not-exist-000000', '/no-such-page']) {
+const missing = ['/jobs/this-listing-does-not-exist-000000', '/companies/no-such-company', '/agents/no-such-agent', '/no-such-page'];
+for (const path of [...views, ...closed, ...missing]) {
   const page = await get(path);
   const meta = head(page.body);
   const postings = meta.ld.filter((item) => item['@type'] === 'JobPosting');
@@ -112,6 +114,9 @@ for (const path of [...views, ...closed, '/jobs/this-listing-does-not-exist-0000
   // instructions. Naming itself is harmless, which is what a closed listing does.
   if (meta.canonical && !same(meta.canonical, `${origin}${path}`)) problems.push(`canonical ${meta.canonical}`);
   if (postings.length) problems.push('carries JobPosting');
+  // A record that is not there is a real 404 to an anonymous visitor, not
+  // the not-found page under a 200 (see lib/seo/record-exists.ts).
+  if (missing.includes(path) && page.status !== 404) problems.push(`status ${page.status}, want 404`);
   check(`${path} (${page.status})`, problems.length === 0, problems.join('; '));
 }
 

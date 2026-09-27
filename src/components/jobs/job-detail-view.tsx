@@ -143,10 +143,14 @@ export async function JobDetailView({
         <Link href={`/jobs/${buildLandingSlug(job.track, job.district.slug)}`} className="hover:text-foreground">
           {tLanding('title', { track: tTrack(job.track), district: districtName })}
         </Link>
-        <span className="mx-2" aria-hidden>
+        {/* The title is the h1 right below. On a phone repeating it here
+            wrapped the trail onto a second line for nothing. */}
+        <span className="mx-2 max-sm:hidden" aria-hidden>
           /
         </span>
-        <span aria-current="page">{title}</span>
+        <span aria-current="page" className="max-sm:hidden">
+          {title}
+        </span>
       </nav>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] xl:gap-12">
