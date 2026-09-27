@@ -8,6 +8,7 @@ import { localized } from '@/i18n/routing';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { cn, uuid } from '@/lib/utils';
+import { fileExtension, fileType } from '@/lib/file-type';
 import { createClient } from '@/lib/supabase/client';
 import { CV_BUCKET } from '@/lib/buckets';
 import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
@@ -83,11 +84,10 @@ export function AgentProfileForm({
       const file = fileRef.current?.files?.[0];
 
       if (file) {
-        const extension = file.name.split('.').pop()?.toLowerCase() ?? 'pdf';
-        const path = `${profile.id}/${uuid()}.${extension}`;
+        const path = `${profile.id}/${uuid()}.${fileExtension(file, 'pdf')}`;
         const { error } = await createClient()
           .storage.from(CV_BUCKET)
-          .upload(path, file, { contentType: file.type });
+          .upload(path, file, { contentType: fileType(file) });
 
         if (error) {
           setErrors({ cv: tCommon('errorBody') });

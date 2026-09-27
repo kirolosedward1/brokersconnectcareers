@@ -9,6 +9,7 @@ import { CompanyLogo } from '@/components/companies/company-logo';
 import { saveCompanyLogo } from '@/lib/actions/company';
 import { uploadImage } from '@/lib/actions/uploads';
 import { reach } from '@/lib/reach';
+import { fileType } from '@/lib/file-type';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -61,16 +62,20 @@ export function LogoUpload({
 
   function onPick(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
+    // Emptied at once, whatever happens next. A picker only reports a change,
+    // so after a failed upload the same photo was still selected, and choosing
+    // it again — the obvious retry — did nothing at all.
+    event.target.value = '';
     if (!file) return;
 
     if (file.size > MAX_BYTES) {
       setError(tValidation('fileTooLarge'));
-      event.target.value = '';
       return;
     }
-    if (!TYPES.includes(file.type)) {
+    // The browser's guess, with the extension standing in when it has none;
+    // the server checks the bytes either way.
+    if (!TYPES.includes(fileType(file))) {
       setError(tValidation('fileType'));
-      event.target.value = '';
       return;
     }
 
@@ -94,7 +99,6 @@ export function LogoUpload({
       }
 
       setError(null);
-      event.target.value = '';
       router.refresh();
     });
   }

@@ -12,6 +12,7 @@ import { recordCompanyDocument } from '@/lib/actions/company';
 import { reach } from '@/lib/reach';
 import type { CompanyDocumentRow, VerificationStatus } from '@/lib/supabase/database.types';
 import { uuid } from '@/lib/utils';
+import { fileExtension, fileType } from '@/lib/file-type';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -39,28 +40,29 @@ export function VerificationPanel({
   function upload(docType: 'commercial_register' | 'tax_card') {
     return (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
+      // Emptied at once, so that picking the same scan again after a failed
+      // upload is a change the input reports rather than one it ignores.
+      event.target.value = '';
       if (!file) return;
+      const type = fileType(file);
 
       if (file.size > MAX_BYTES) {
         setError(tValidation('fileTooLarge'));
-        event.target.value = '';
         return;
       }
-      if (!TYPES.includes(file.type)) {
+      if (!TYPES.includes(type)) {
         setError(tValidation('fileType'));
-        event.target.value = '';
         return;
       }
 
       startTransition(async () => {
-        const extension = file.name.split('.').pop()?.toLowerCase() ?? 'pdf';
         // Private bucket, keyed by company id. Nothing here is ever served
         // publicly — reviewers read it through a signed URL.
-        const path = `${companyId}/${docType}-${uuid()}.${extension}`;
+        const path = `${companyId}/${docType}-${uuid()}.${fileExtension(file, 'pdf')}`;
 
         const { error: uploadError } = await createClient()
           .storage.from(COMPANY_DOCS_BUCKET)
-          .upload(path, file, { contentType: file.type });
+          .upload(path, file, { contentType: type });
 
         if (uploadError) {
           setError(tCommon('errorBody'));
