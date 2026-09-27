@@ -8,8 +8,8 @@ import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
-import { notifyWelcome } from '@/lib/email/notify';
 import { clean, safeHttpUrl } from '@/lib/security/sanitize';
+import { publish } from '@/lib/notifications/events';
 
 /**
  * A company answers more questions than a consultant does.
@@ -205,8 +205,8 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
   }
 
   // The account exists whether or not this goes out — after() runs once the
-  // response is on its way, and notifyWelcome swallows its own failures.
-  after(() => notifyWelcome(user.id));
+  // response is on its way, and publish() swallows its own failures.
+  after(() => publish({ type: 'ACCOUNT_ONBOARDED', userId: user.id }));
 
   return { ok: true, data: { role } };
 }

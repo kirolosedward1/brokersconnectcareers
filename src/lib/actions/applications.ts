@@ -11,12 +11,7 @@ import { CV_BUCKET } from '@/lib/buckets';
 import { CV_KINDS, MAX_BYTES, isOwnedPath, verifyStoredObject } from '@/lib/security/files';
 import { recordSecurityEvent } from '@/lib/security/events';
 import { clean } from '@/lib/security/sanitize';
-import {
-  notifyApplicationWithdrawn,
-  notifyCandidateOfApplication,
-  notifyCandidateOfStatus,
-  notifyEmployerOfApplication,
-} from '@/lib/email/notify';
+import { publish } from '@/lib/notifications/events';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -145,11 +140,11 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
   // waiting on an SMTP round trip — and a mail failure cannot turn a recorded
   // application into an error on their screen.
   if (created) {
-    after(() => notifyEmployerOfApplication(created.id));
-    // The applicant hears back too. Until now the next thing they heard was
-    // whatever an employer eventually did, which on a listing nobody opens is
-    // nothing at all.
-    after(() => notifyCandidateOfApplication(created.id));
+    // One event, two audiences: the company (NEW_APPLICANT) and the applicant's
+    // own receipt. Which channels carry each is the notification service's
+    // decision, not this action's.
+    const applicationId = created.id;
+    after(() => publish({ type: 'APPLICATION_CREATED', applicationId }));
   }
 
   revalidatePath('/dashboard/applications');
@@ -196,8 +191,9 @@ export async function withdrawApplication(applicationId: string): Promise<Action
     const titleAr = job.title_ar;
     const titleEn = job.title_en;
     after(() =>
-      notifyApplicationWithdrawn({
-        userId: user.id,
+      publish({
+        type: 'APPLICATION_WITHDRAWN',
+        candidateId: user.id,
         applicationId,
         jobTitleAr: titleAr,
         jobTitleEn: titleEn,
@@ -284,7 +280,7 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     return { ok: false, error: current ? 'moved_already' : 'forbidden' };
   }
 
-  after(() => notifyCandidateOfStatus(parsed.data.applicationId));
+  after(() => publish({ type: 'APPLICATION_STATUS_CHANGED', applicationId: parsed.data.applicationId }));
 
   revalidatePath('/employer/jobs');
   revalidatePath('/dashboard/applications');

@@ -113,9 +113,10 @@ variable is set; the route returns 401 to anything else.
 | `pnpm dev` | Dev server |
 | `pnpm build` | Production build |
 | `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test:db` | Runs the schema, RLS and security suites against an in-process Postgres |
+| `pnpm test:db` | Runs the schema, RLS, security, notifications and lifecycle suites against an in-process Postgres |
 | `pnpm test:security` | The hardening round's rules alone (audit trail, reveal, limits, MFA, storage) |
 | `pnpm test:security-libs` | Byte recognition, text sanitising, href and secret checks |
+| `pnpm test:notifications` | Notification idempotency, read state, paging, role-safe links and channel isolation (see `docs/notifications.md`) |
 | `pnpm db:push:url` | Applies migrations + taxonomies over `DATABASE_URL` (no CLI, no Docker) |
 | `pnpm db:seed:demo` | Creates demo accounts via the Auth admin API + sample listings |
 | `pnpm doctor` | Preflight: env, REST, schema, storage, auth |
