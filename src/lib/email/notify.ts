@@ -58,12 +58,21 @@ async function recipient(
 ): Promise<Recipient | null> {
   const { data: profile } = await admin
     .from('profiles')
-    .select(`locale, unsubscribe_token, ${PREFERENCE_COLUMNS}`)
+    .select(`locale, ${PREFERENCE_COLUMNS}`)
     .eq('id', userId)
     .maybeSingle();
 
   if (!profile) return null;
   if (preference && (profile as Record<string, unknown>)[preference] === false) return null;
+
+  // The token lives on profile_private (migration 305), where no company that
+  // reads an applicant's profile can reach it. Service role, as before.
+  const { data: secret } = await admin
+    .from('profile_private')
+    .select('unsubscribe_token')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (!secret) return null;
 
   // The address lives on auth.users, not profiles.
   const { data, error } = await admin.auth.admin.getUserById(userId);
@@ -73,7 +82,7 @@ async function recipient(
     userId,
     email: data.user.email,
     locale: localeOf(profile.locale),
-    unsubscribeToken: profile.unsubscribe_token,
+    unsubscribeToken: secret.unsubscribe_token,
   };
 }
 

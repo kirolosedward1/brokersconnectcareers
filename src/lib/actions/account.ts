@@ -8,6 +8,7 @@ import { allow } from '@/lib/rate-limit';
 import { AVATAR_BUCKET } from '@/lib/buckets';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
+import { isOwnedPath } from '@/lib/security/files';
 import { publish } from '@/lib/notifications/events';
 
 /**
@@ -195,7 +196,7 @@ export async function saveAvatar(input: unknown): Promise<ActionResult> {
 
   // The path is not taken on trust: it must be inside this account's own
   // folder, whatever the caller sent.
-  if (parsed.data.storagePath && !parsed.data.storagePath.startsWith(`${user.id}/`)) {
+  if (parsed.data.storagePath && !isOwnedPath(parsed.data.storagePath, user.id)) {
     return { ok: false, error: 'forbidden' };
   }
 
@@ -209,7 +210,7 @@ export async function saveAvatar(input: unknown): Promise<ActionResult> {
     .eq('id', user.id)
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'failed' };
   if (!updated?.length) return { ok: false, error: 'not_found' };
 
   revalidatePath('/dashboard/account');

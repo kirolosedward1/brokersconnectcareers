@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { env } from '@/lib/env';
+import { bearerToken, secretsMatch } from '@/lib/security/secrets';
 import { publish } from '@/lib/notifications/events';
 import { notifyJobChanged } from '@/lib/seo/indexing-api';
 
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
   const secret = env.cronSecret;
   const authorization = request.headers.get('authorization');
 
-  if (!secret || authorization !== `Bearer ${secret}`) {
+  if (!secretsMatch(bearerToken(authorization), secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

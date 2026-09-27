@@ -6,10 +6,8 @@ import { useRouter } from 'next/navigation';
 import { ImageUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CompanyLogo } from '@/components/companies/company-logo';
-import { createClient } from '@/lib/supabase/client';
-import { COMPANY_LOGOS_BUCKET } from '@/lib/buckets';
 import { saveCompanyLogo } from '@/lib/actions/company';
-import { uuid } from '@/lib/utils';
+import { uploadImage } from '@/lib/actions/uploads';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -20,9 +18,9 @@ import { useSessionRecovery } from '@/lib/session-expired';
  * schema — but nothing ever let an employer put a file in it. Every company
  * showed the monogram fallback, permanently, and would have kept doing so.
  *
- * Uploads go straight from the browser to the public bucket, into a folder
- * named for the company, where a storage policy checks ownership. The server
- * action only records the resulting URL.
+ * The bytes go to the server, which checks that they are a picture, decodes
+ * it and writes a fresh WebP into the company's folder — and records the URL
+ * through the caller's own session, so only a company admin's upload sticks.
  */
 const MAX_BYTES = 2 * 1024 * 1024;
 /**
@@ -76,24 +74,21 @@ export function LogoUpload({
     }
 
     startTransition(async () => {
-      const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png';
-      // A fresh name every time rather than a fixed one: the URL is public and
-      // cached, and overwriting in place would leave the old logo showing.
-      const path = `${companyId}/logo-${uuid()}.${extension}`;
+      const form = new FormData();
+      form.set('kind', 'logo');
+      form.set('companyId', companyId);
+      form.set('file', file);
 
-      const { error: uploadError } = await createClient()
-        .storage.from(COMPANY_LOGOS_BUCKET)
-        .upload(path, file, { contentType: file.type });
-
-      if (uploadError) {
-        setError(tCommon('errorBody'));
-        return;
-      }
-
-      const result = await saveCompanyLogo({ companyId, storagePath: path });
+      const result = await uploadImage(form);
       if (recoverSession(result)) return;
       if (!result.ok) {
-        setError(tCommon('errorBody'));
+        setError(
+          result.error === 'file_type'
+            ? tValidation('fileType')
+            : result.error === 'too_large'
+              ? tValidation('fileTooLarge')
+              : tCommon('errorBody'),
+        );
         return;
       }
 

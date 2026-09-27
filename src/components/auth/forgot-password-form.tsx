@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
 import { requestPasswordReset } from '@/lib/actions/auth-email';
+import { Turnstile } from '@/components/security/turnstile';
+import { reportAuthOutcome } from '@/lib/actions/security';
+import { useLocale } from 'next-intl';
 
 /**
  * Ask for a reset link.
@@ -29,9 +32,12 @@ import { requestPasswordReset } from '@/lib/actions/auth-email';
  */
 export function ForgotPasswordForm() {
   const t = useTranslations('auth');
+  const locale = useLocale();
   const [sent, setSent] = useState(false);
   const [wait, setWait] = useState(false);
   const [pending, startTransition] = useTransition();
+  // See auth-form.tsx: invisible for nearly everyone, verified by Supabase.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,7 +46,12 @@ export function ForgotPasswordForm() {
 
     setWait(false);
     startTransition(async () => {
-      const result = await requestPasswordReset(email);
+      // The token rides along to GoTrue, which verifies it when CAPTCHA is on.
+      const result = await requestPasswordReset(email, captchaToken);
+      // Recorded as a hashed address and a hashed client, so a run of reset
+      // requests against one inbox is visible to whoever is watching — and
+      // nothing about whether the address exists is learned or kept.
+      void reportAuthOutcome({ kind: 'reset_requested', email });
       if (!result.ok && result.error === 'wait') {
         setWait(true);
         return;
@@ -68,6 +79,8 @@ export function ForgotPasswordForm() {
       <Field label={t('email')} htmlFor="email">
         <Input id="email" name="email" type="email" required autoComplete="email" dir="ltr" />
       </Field>
+
+      <Turnstile action="password-reset" locale={locale} onToken={setCaptchaToken} />
 
       {wait ? (
         <p role="alert" className="text-sm text-destructive">

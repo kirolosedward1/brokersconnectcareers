@@ -7,6 +7,8 @@ import { BILLING_ENABLED } from '@/lib/env';
 import { POST_PACKS } from '@/lib/taxonomy';
 import { createCheckout, paymobConfig } from '@/lib/paymob/client';
 import type { ActionResult } from '@/lib/actions/jobs';
+import { policyFor, rateLimit } from '@/lib/security/rate-limit';
+import { recordSecurityEvent } from '@/lib/security/events';
 
 const schema = z.object({
   packKey: z.enum(['single', 'bulk', 'mass_hiring', 'featured_addon']),
@@ -57,6 +59,17 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
   const pack = POST_PACKS.find((item) => item.key === parsed.data.packKey);
   if (!pack) return { ok: false, error: 'invalid' };
 
+  // Every call opens a pending order and three provider round trips. A
+  // handful an hour is a company buying credits; more is a loop.
+  const checkouts = await rateLimit(
+    `checkout:company:${company.id}`,
+    await policyFor('checkout:company:hour', { windowSeconds: 3600, max: 5 }),
+  );
+  if (!checkouts.allowed) {
+    void recordSecurityEvent('billing.checkout_rate_limited', { severity: 'warning', actorId: user.id });
+    return { ok: false, error: 'rate_limit' };
+  }
+
   let admin;
   try {
     admin = createAdminClient();
@@ -75,7 +88,7 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
     .select('id')
     .single();
 
-  if (error || !order) return { ok: false, error: error?.message ?? 'order_failed' };
+  if (error || !order) return { ok: false, error: 'order_failed' };
 
   try {
     const checkout = await createCheckout({

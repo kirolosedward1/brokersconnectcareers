@@ -240,6 +240,9 @@
     "ownerEdit": "عدّل ملفك",
     "shortlistAdd": "ضيفه لقايمة المرشحين",
     "shortlistRemove": "شيله من قايمة المرشحين",
+    "revealContact": "اعرض بيانات التواصل",
+    "revealRateLimited": "فتحت بيانات تواصل كتير النهارده. جرّب تاني بعد {minutes, plural, one {دقيقة} two {دقيقتين} few {# دقايق} other {# دقيقة}}.",
+    "revealLocked": "بيانات التواصل دي متاحة للشركات الموثّقة بس.",
     "searchPlaceholder": "مثال: مدير مبيعات، ريسيل"
   },
   "availability": {
@@ -311,6 +314,8 @@
     "resendWait": "استنّى شوية قبل ما تطلبه تاني.",
     "applyingTo": "بتقدّم على «{job}»",
     "applyingToCompany": "في {company} — سجّل دخولك وكمّل التقديم، مش هتبدأ من الأول.",
+    "slowDown": "استنى {seconds, plural, one {ثانية} two {ثانيتين} few {# ثواني} other {# ثانية}} وحاول تاني.",
+    "challengeHint": "بعد كذا محاولة بنتأكد إنك مش برنامج. أكمل التحقق اللي فوق وحاول تاني.",
     "applyingToCompanySignUp": "في {company} — اعمل حسابك وهنرجّعك لنفس الوظيفة تكمّل التقديم."
   },
   "onboarding": {
@@ -585,7 +590,9 @@
     "shortlistSavedBy": "أضافه {name} في {date}",
     "shortlistSavedOn": "اتضاف في {date}",
     "reopenHint": "بيروح للمراجعة الأول، وبعد النشر تبدأ 30 يوم جديدة.",
-    "applicantsCapped": "بنعرض أحدث <v>{count}</v> متقدم بس. ضيّق بالفلاتر أو بالبحث عشان توصل للباقي."
+    "applicantsCapped": "بنعرض أحدث <v>{count}</v> متقدم بس. ضيّق بالفلاتر أو بالبحث عشان توصل للباقي.",
+    "duplicateListingBlocked": "عندك نفس الإعلان ده في نفس المنطقة أكتر من مرة. زوّد عدد الأماكن في الإعلان الموجود بدل ما تنشره تاني.",
+    "postRateLimited": "الشركة نشرت إعلانات كتير النهارده. جرّب تاني بكرة."
   },
   "jobForm": {
     "basics": "الأساسيات",
@@ -674,7 +681,34 @@
     "emailOffSending": "الرسايل بتتسجّل بس مش بتتبعت — بيانات Resend ناقصة. ظبّط المتغيّرات دي في Vercel وأعد النشر.",
     "mailOffTitle": "المنصة مش قادرة تبعت إيميلات",
     "mailOffBody": "كل الإيميلات — تأكيد التقديم، متقدم جديد، الملخّصات — بتتوقف من غير ما حد يعرف. المتغيرات دي ناقصة في Vercel:",
-    "usersCapped": "بنعرض أحدث <v>{count}</v> حساب بس. فلتر بالنوع أو الحالة عشان توصل للباقي."
+    "usersCapped": "بنعرض أحدث <v>{count}</v> حساب بس. فلتر بالنوع أو الحالة عشان توصل للباقي.",
+    "security": "الأمان",
+    "securityLede": "اللي المنصة لاحظته في آخر 24 ساعة، ومين قرّر إيه.",
+    "securityNoticed": "اللي اتلاحظ",
+    "securityHanded": "الحالة",
+    "secEvents": "أحداث أمنية",
+    "secRateLimited": "طلبات اتوقفت لحد",
+    "secAuthFailures": "محاولات دخول فاشلة",
+    "secUploadsRejected": "ملفات مرفوضة",
+    "secReveals": "بيانات تواصل اتفتحت",
+    "secSuspended": "حسابات موقوفة",
+    "secReportsOpen": "بلاغات مفتوحة",
+    "secJobsPending": "إعلانات في المراجعة",
+    "secSignups": "تسجيلات جديدة",
+    "secEventsTitle": "آخر الأحداث",
+    "secAuditTitle": "سجل القرارات",
+    "secLimitsTitle": "الحدود المطبّقة",
+    "secLimitsHint": "الأرقام دي بتتطبّق جوه قاعدة البيانات نفسها. التعديل بيتم بأمر SQL على جدول abuse_limits مع كتابة السبب.",
+    "secWhen": "وقت",
+    "secKind": "النوع",
+    "secSeverity": "الدرجة",
+    "secSubject": "الطرف",
+    "secActor": "مين",
+    "secAction": "الإجراء",
+    "secTarget": "على إيه",
+    "secLimitKey": "الحد",
+    "secLimitWindow": "الفترة (دقايق)",
+    "secLimitMax": "الأقصى"
   },
   "reportReason": {
     "fake_listing": "إعلان وهمي",
@@ -765,7 +799,9 @@
     "commissionRequired": "اكتب نسبة العمولة",
     "fileTooLarge": "حجم الملف أكبر من المسموح",
     "fileType": "نوع الملف ده مش مدعوم",
-    "passwordMismatch": "كلمتا المرور مش زي بعض."
+    "passwordMismatch": "كلمتا المرور مش زي بعض.",
+    "tooManyLinks": "لينكات كتير أوي في النص. سيب اللي فعلاً محتاجه بس.",
+    "invalidUrl": "اكتب لينك يبدأ بـ http:// أو https://"
   },
   "jobStatus": {
     "draft": "مسودة",
@@ -953,7 +989,20 @@
     "photo": "صورتك",
     "photoHint": "بتظهر لأصحاب العمل مع طلبك، وفي ملفك في الدليل. PNG أو JPG، لحد 2 ميجابايت.",
     "photoUpload": "ارفع صورة",
-    "photoReplace": "غيّر الصورة"
+    "photoReplace": "غيّر الصورة",
+    "mfaTitle": "التحقق بخطوتين",
+    "mfaBody": "كود من تطبيق مصادقة (زي Google Authenticator) بيتطلب مع كلمة السر. اختياري لأي حساب، وإجباري لحسابات الإدارة.",
+    "mfaSetup": "فعّل التحقق بخطوتين",
+    "mfaScan": "امسح الكود ده بتطبيق المصادقة، وبعدين اكتب الرقم اللي ظهر لك.",
+    "mfaSecret": "أو اكتب المفتاح ده يدويًا",
+    "mfaCode": "الكود المكوّن من 6 أرقام",
+    "mfaVerify": "تأكيد",
+    "mfaEnabled": "التحقق بخطوتين مفعّل على حسابك.",
+    "mfaDisable": "إيقاف",
+    "mfaChallengeBody": "اكتب الكود من تطبيق المصادقة عشان تكمّل.",
+    "mfaRequiredBanner": "حسابات الإدارة لازم تفعّل التحقق بخطوتين قبل ما توصل للوحة الإدارة.",
+    "mfaChallengeBanner": "أكّد هويتك بكود من تطبيق المصادقة عشان لوحة الإدارة تفتح في الجلسة دي.",
+    "mfaCodeInvalid": "الكود مش صح. جرّب الرقم الجديد اللي في التطبيق."
   },
   "savedSearch": {
     "cta": "نبّهني بالجديد",

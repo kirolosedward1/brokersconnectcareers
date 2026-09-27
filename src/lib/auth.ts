@@ -157,10 +157,47 @@ export async function requireCandidate(locale: Locale) {
   return viewer;
 }
 
+/**
+ * Whether an admin without a second factor may use the console at all.
+ *
+ * On by default in production, off in development, and settable either way:
+ * ADMIN_MFA_REQUIRED=false is the escape hatch for a locked-out team, and it
+ * is an escape hatch rather than the setting because the database enforces
+ * the stronger half regardless (migration 311 — an admin who *has* enrolled is
+ * refused at aal1 by every policy, whatever this says).
+ */
+function adminMfaRequired(): boolean {
+  const flag = process.env.ADMIN_MFA_REQUIRED;
+  if (flag === 'true') return true;
+  if (flag === 'false') return false;
+  return process.env.NODE_ENV === 'production';
+}
+
 export async function requireAdmin(locale: Locale) {
   const viewer = await requireProfile(locale);
   if (viewer.profile.role !== 'admin') {
     redirect({ href: '/', locale });
   }
+
+  /*
+    The second factor, asked of the session rather than of the profile.
+
+    `currentLevel` is what this session proved; `nextLevel` is what the
+    account could prove. An admin with a factor and an aal1 session is sent
+    to answer the challenge — and would find every admin query returning
+    nothing until they do, because is_admin() reads the same claim. An admin
+    with no factor is sent to enrol, where the deployment says so. The account
+    page is outside this guard, so neither redirect can loop.
+  */
+  const supabase = await createClient();
+  const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (assurance && assurance.currentLevel !== 'aal2') {
+    if (assurance.nextLevel === 'aal2') {
+      redirect({ href: '/dashboard/account?mfa=challenge', locale });
+    } else if (adminMfaRequired()) {
+      redirect({ href: '/dashboard/account?mfa=required', locale });
+    }
+  }
+
   return viewer;
 }
