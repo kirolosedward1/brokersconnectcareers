@@ -925,7 +925,7 @@ report.section('the agent directory gate');
 
   /*
     A public card is open, not reachable. Its name is for everyone; the number
-    and the CV are for somebody hiring. Until migration 73 an anonymous call to
+    and the CV are for somebody hiring. Until migration 202 an anonymous call to
     get_agent_card returned both — no screen ever offered them, but the API
     did, to anybody holding the publishable key every page ships.
   */
@@ -966,14 +966,14 @@ report.section('the agent directory gate');
 report.section('no consultant is named by their address');
 {
   /*
-    A gated card hides the name, so its link must not spell it. Migration 73
+    A gated card hides the name, so its link must not spell it. Migration 202
     renames every slug that is not already `consultant-<8 digits>`; exercised
     here by re-running it over a profile in the old `<name>-<id>` shape, which
     is the state production was in.
   */
   const { readFileSync } = await import('node:fs');
   const migration = readFileSync(
-    new URL('../migrations/20260101000073_what_the_card_said_and_what_the_api_said.sql', import.meta.url),
+    new URL('../migrations/20260101000202_what_the_card_said_and_what_the_api_said.sql', import.meta.url),
     'utf8',
   );
   await db.exec(`

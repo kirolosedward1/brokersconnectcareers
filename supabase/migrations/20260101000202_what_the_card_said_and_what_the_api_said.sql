@@ -1,5 +1,5 @@
 -- =============================================================================
--- 73 — What the directory card said, and what the API said
+-- 202 — What the directory card said, and what the API said
 --
 -- Found in the pre-launch QA pass of 27 Sep 2026, both reproduced from outside
 -- with nothing but the publishable key every page ships in its JavaScript.
@@ -37,10 +37,20 @@
 --    notification carries an /agents/ href — and keeping a redirect from the
 --    old slug would keep the name reachable, which is the thing being removed.
 --
--- Numbered 73 because 68 is taken twice already (search on main, the console
--- on moderation-safety, which runs to 72) and both have reached production or
--- will. Nothing here depends on either.
+-- Compatibility: the running code reads these columns as optional already —
+-- the page shows a contact button only when a number arrives, and a CV link
+-- only when a path does — and it builds every agent link from the slug the
+-- database returns, so it follows the rename without knowing about it.
 -- =============================================================================
+
+-- rollback: forward-fix only for the slugs — the old ones spelled out names,
+--   and restoring them would restore the leak; nothing stored points at them.
+--   The function reverts by re-running get_agent_card from migration 43
+--   (20260101000043_applying_is_consent.sql), which is the body this replaces.
+-- safety: ships-with-code — either order is safe. Code first: new profiles get
+--   neutral slugs and the old function still answers them. Migration first:
+--   the running code already treats number, CV and slug as whatever the
+--   function returns, so fewer fields and new slugs render without change.
 
 create or replace function public.get_agent_card(p_slug text)
 returns table (

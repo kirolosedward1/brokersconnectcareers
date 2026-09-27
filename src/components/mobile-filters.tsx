@@ -84,10 +84,16 @@ export function MobileFilters({
           >
             <div className="flex items-center justify-between gap-2 border-b border-border ps-4 pe-1.5">
               <p className="text-sm font-semibold">{t('filters')}</p>
+              {/* Where focus lands when the sheet opens. The first control in
+                  it is the keyword field, and focusing a text field on a phone
+                  throws the keyboard up over the sheet somebody opened to tick
+                  a box. */}
               <button
                 type="button"
                 onClick={close}
                 aria-label={tCommon('close')}
+                data-autofocus
+                data-layer-close
                 className="grid size-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <X className="size-4" aria-hidden />

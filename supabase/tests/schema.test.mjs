@@ -330,6 +330,13 @@ report.section('who may call a definer function, on purpose');
     'search_agents',
     'get_agent_card',
     'increment_job_view',
+    // Support (migration 201). The failures that most need a reference happen
+    // to people who are not signed in — sign-up, sign-in, a confirmation link
+    // — and production has no service-role key to write for them. Both take
+    // the caller's identity from the session rather than an argument, and
+    // both are capped per account, per address and across the signed-out side.
+    'record_support_event',
+    'submit_support_request',
     // Predicates that row-level security itself calls.
     'applied_to_job',
     'applied_to_my_job',
