@@ -83,7 +83,17 @@ export function LogoUpload({
 
       const { error: uploadError } = await createClient()
         .storage.from(COMPANY_LOGOS_BUCKET)
-        .upload(path, file, { contentType: file.type });
+        .upload(path, file, {
+          contentType: file.type,
+          /*
+            A year, because the name is never reused. The logo is drawn through
+            next/image, and Vercel keeps an optimised copy only as long as the
+            source says it may — the storage default of an hour meant every logo
+            was re-optimised hourly, against a Hobby allowance of 5,000
+            transformations a month.
+          */
+          cacheControl: '31536000',
+        });
 
       if (uploadError) {
         setError(tCommon('errorBody'));

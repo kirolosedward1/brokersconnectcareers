@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { AVATAR_BUCKET } from '@/lib/buckets';
 import { saveAvatar } from '@/lib/actions/account';
 import { uuid } from '@/lib/utils';
+import { downscalePhoto } from '@/lib/downscale-image';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -28,7 +29,17 @@ import { useSessionRecovery } from '@/lib/session-expired';
  * for the account, where a storage policy checks the folder is theirs. The
  * server action only turns the path into a URL and writes it down.
  */
-const MAX_BYTES = 2 * 1024 * 1024;
+/**
+ * What may be picked, and what may be stored.
+ *
+ * The bucket holds 2 MB (migration 35) and that is still the rule for what is
+ * stored — but what is stored is now the photo shrunk to the size it is shown
+ * at (see downscale-image.ts), a few tens of KB. So a phone photo of 4 MB,
+ * which the old check turned away, is fine to pick; only a photo the browser
+ * cannot shrink is held to the bucket's own limit.
+ */
+const MAX_PICK_BYTES = 10 * 1024 * 1024;
+const MAX_STORED_BYTES = 2 * 1024 * 1024;
 
 /** No SVG, for the reason spelled out on the logo uploader: it is a document
  *  that can carry script, and anybody who signs up can send one. */
@@ -56,7 +67,7 @@ export function AvatarUpload({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > MAX_BYTES) {
+    if (file.size > MAX_PICK_BYTES) {
       setError(tValidation('fileTooLarge'));
       event.target.value = '';
       return;
@@ -68,14 +79,27 @@ export function AvatarUpload({
     }
 
     startTransition(async () => {
-      const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png';
+      const small = await downscalePhoto(file);
+      if (!small && file.size > MAX_STORED_BYTES) {
+        setError(tValidation('fileTooLarge'));
+        event.target.value = '';
+        return;
+      }
+      const body = small ?? file;
+      const extension = small ? 'jpg' : (file.name.split('.').pop()?.toLowerCase() ?? 'png');
       // A fresh name every time rather than a fixed one: the URL is public and
       // cached, and overwriting in place would leave the old photo showing.
       const path = `${userId}/${uuid()}.${extension}`;
 
       const { error: uploadError } = await createClient()
         .storage.from(AVATAR_BUCKET)
-        .upload(path, file, { contentType: file.type });
+        .upload(path, body, {
+          contentType: small ? 'image/jpeg' : file.type,
+          // The name is never reused, so the file can be cached for good: a
+          // returning reader's browser and Supabase's CDN keep it instead of
+          // fetching it again every hour, the storage default.
+          cacheControl: '31536000',
+        });
 
       if (uploadError) {
         setError(tCommon('errorBody'));
