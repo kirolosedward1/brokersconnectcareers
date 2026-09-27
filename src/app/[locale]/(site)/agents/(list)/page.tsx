@@ -68,6 +68,7 @@ export default async function AgentsPage({
   const tJobs = await getTranslations('jobs');
 
   const activeCount =
+    (filters.q ? 1 : 0) +
     filters.tracks.length +
     filters.districtSlugs.length +
     (filters.availability ? 1 : 0) +
@@ -128,6 +129,12 @@ export default async function AgentsPage({
             <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
               <EmptyIllustration name="choose" />
               <p className="font-medium">{t('empty')}</p>
+              {/* Not a dead end: the way out is one tap, the same as the rail's. */}
+              {activeCount > 0 ? (
+                <Button asChild variant="outline" className="mt-5">
+                  <Link href="/agents">{tJobs('clearFilters')}</Link>
+                </Button>
+              ) : null}
             </div>
           ) : (
             <>
