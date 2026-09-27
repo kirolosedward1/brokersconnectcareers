@@ -4,6 +4,7 @@ import { raise } from './error';
 import { queryWords } from '@/lib/search/arabic';
 import { logFailure } from '@/lib/observe';
 import type { CompanyRow, DistrictRow, VerificationStatus } from '@/lib/supabase/database.types';
+import type { JobListItem } from './jobs';
 
 export const COMPANIES_PER_PAGE = 24;
 
@@ -180,3 +181,37 @@ export const getCompanyBySlug = cache(async function getCompanyBySlug(
 export function isVerified(status: VerificationStatus): boolean {
   return status === 'verified';
 }
+
+/**
+ * A company's live listings, newest first.
+ *
+ * Cached per request because two callers need the same answer: the page body
+ * lists them, and generateMetadata decides from their count whether the page
+ * is worth indexing at all. Live means the date as well as the label — the
+ * nightly cron is what flips `active` to `expired`.
+ *
+ * The error is raised, not dropped. "No open roles" on a brokerage with three
+ * live adverts is a false public claim about a company; the (site) error
+ * boundary is the better outcome.
+ */
+export const getCompanyOpenJobs = cache(async function getCompanyOpenJobs(
+  companyId: string,
+): Promise<JobListItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('jobs')
+    .select(
+      `
+      *,
+      company:companies!inner (id, name_ar, name_en, slug, logo_url, verification_status),
+      district:districts!inner (id, governorate_id, name_ar, name_en, slug)
+    `,
+    )
+    .eq('company_id', companyId)
+    .eq('status', 'active')
+    .gt('expires_at', new Date().toISOString())
+    .order('published_at', { ascending: false });
+
+  if (error) raise(error, "loading a company's open roles");
+  return (data ?? []) as unknown as JobListItem[];
+});

@@ -730,7 +730,13 @@
     "title": "{track} jobs in {district}",
     "subtitle": "Every {track} role open right now in {district} — with the basic salary, the commission, and who supplies the leads.",
     "otherDistricts": "{track} in other districts",
-    "otherTracks": "Other tracks in {district}"
+    "otherTracks": "Other tracks in {district}",
+    "companiesHiring": "{count, plural, one {One company hiring} other {# companies hiring}}",
+    "withSalary": "{count} of {total} with a basic salary",
+    "factSalaryRange": "Basic salary from {min} to {max} EGP a month",
+    "factSalaryFrom": "Basic salary from {min} EGP a month",
+    "factsLabel": "Summary of open roles",
+    "popularTitle": "Open roles by specialisation and area"
   },
   "footer": {
     "product": "Platform",

@@ -102,7 +102,11 @@ export async function SiteFooter({ locale }: { locale: string }) {
              of every public page — a second call to action under whatever the
              page itself had just asked for. The choice is worth keeping at the
              foot of a long read; it does not need two hundred pixels. */
-          <div className="grid gap-x-10 sm:grid-cols-2">
+          /* grid-cols-1, not the implicit track: an implicit column is as
+             wide as its widest unbreakable content, which is the truncated
+             line at full length — so `truncate` never engaged and the doors
+             pushed every public page 86px wider than a 375px phone. */
+          <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
             <Link
               href="/jobs"
               className="group flex min-h-14 items-center justify-between gap-3 border-b border-border py-3 sm:border-b-0"

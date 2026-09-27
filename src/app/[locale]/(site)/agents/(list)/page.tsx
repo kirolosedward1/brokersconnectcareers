@@ -20,16 +20,31 @@ import { getViewer } from '@/lib/auth';
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   const t = await getTranslations({ locale, namespace: 'agents' });
+
+  // The directory itself is one page. Filtered, paged or sorted it is a view
+  // of that page — followed for its links, not indexed. Same rule as /jobs.
+  const filters = parseAgentFilters(await searchParams);
+  const isView =
+    filters.tracks.length > 0 ||
+    filters.districtSlugs.length > 0 ||
+    Boolean(filters.availability) ||
+    Boolean(filters.minYears) ||
+    filters.page > 1;
+
   return {
     title: t('title'),
     description: t('subtitle'),
-    alternates: alternatesFor('/agents', locale),
+    ...(isView
+      ? { robots: { index: false, follow: true } }
+      : { alternates: alternatesFor('/agents', locale) }),
   };
 }
 

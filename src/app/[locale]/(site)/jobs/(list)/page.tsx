@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import { SortSelect } from '@/components/jobs/sort-select';
+import { PopularLandings } from '@/components/jobs/popular-landings';
 import { getDistricts, getGovernorates } from '@/lib/queries/taxonomy';
 import { getCompanyBySlug } from '@/lib/queries/companies';
 import {
@@ -55,11 +56,22 @@ export async function generateMetadata({
   const isView =
     countActiveFilters(filters) > 0 || filters.sort !== 'newest' || filters.page > 1;
 
+  /*
+    And a view carries no canonical. A canonical pointing at /jobs beside a
+    noindex is two contradictory instructions — "this is a copy of /jobs" and
+    "drop this page" — and Google's advice is to give it one. Only the base
+    board declares itself canonical.
+
+    The params that make a view are also disallowed in robots.txt where they
+    are not needed for discovery (sort, free text, the narrower filters), so
+    the combinations are not crawled at all; see app/robots.ts.
+  */
   return {
     title: t('title'),
     description: tMeta('defaultDescription'),
-    alternates: alternatesFor('/jobs', locale),
-    ...(isView ? { robots: { index: false, follow: true } } : {}),
+    ...(isView
+      ? { robots: { index: false, follow: true } }
+      : { alternates: alternatesFor('/jobs', locale) }),
   };
 }
 
@@ -493,6 +505,10 @@ export default async function JobsPage({
               ) : null}
             </>
           )}
+
+          {/* On the unfiltered board only: the one indexable version of this
+              page is where the links into the landing pages belong. */}
+          {activeCount === 0 && page === 1 ? <PopularLandings locale={locale} /> : null}
         </div>
       </div>
     </div>
