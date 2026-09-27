@@ -177,7 +177,7 @@ export const getCompanyBySlug = cache(async function getCompanyBySlug(
   if (error) raise(error, 'loading a company');
 
   /*
-    A suspended company is not on the public site at all (migration 69): its
+    A suspended company is not on the public site at all (migration 206): its
     listings were taken down with it, and a profile page left standing would
     keep vouching for it. Read off the row rather than filtered in the query,
     so a database that has not had the migration yet — no such column — still

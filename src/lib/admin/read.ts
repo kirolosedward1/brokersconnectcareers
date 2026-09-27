@@ -17,7 +17,7 @@ export function must<T>(result: Result<T>, context: string): { data: T; count: n
     if (code === 'PGRST202' || code === '42883' || code === '42703' || code === '42P01' || code === 'PGRST200') {
       throw new Error(
         `${context}: the database is missing the operations console or moderation schema. ` +
-          'Apply supabase/migrations 202–210 (pnpm db:push:url) and reload.',
+          'Apply supabase/migrations 314–321 (pnpm db:push:url) and reload.',
         { cause: result.error },
       );
     }

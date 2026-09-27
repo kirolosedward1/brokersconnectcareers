@@ -1,5 +1,5 @@
 -- =============================================================================
--- 70 — Every lever through one door
+-- 207 — Every lever through one door
 --
 -- The console's server actions wrote tables directly under the admin's
 -- session: `update jobs set status = 'active'`, then an email. That made the
@@ -15,7 +15,7 @@
 --   4. requires a reason where somebody is owed one ('reason_required')
 --   5. makes the change, through the same triggers every other writer meets
 --      — the post cap, the credit, the suspension check still apply
---   6. writes the audit record                      (admin_audit, migration 68)
+--   6. writes the audit record                      (admin_audit, migration 205)
 --
 -- Because it is one transaction, a decision without a record, or a record of
 -- a decision that failed, cannot exist. And because the row is locked before
@@ -27,9 +27,6 @@
 -- reason_required, …) that the console maps to sentences; the hint carries
 -- detail for a person reading logs.
 -- =============================================================================
-
--- rollback: forward-fix only — applied to production on 2026-09-27 (17:07–17:10 UTC), before any branch carrying it merged; undoing it is a new migration, never an edit to this one
--- safety: ships-with-code — already applied to production on 2026-09-27 (17:07–17:10 UTC); the code on main has run against it since, and this branch's code that reads it can land at any time
 
 -- ---------------------------------------------------------------------------
 -- Shared preamble
@@ -45,7 +42,7 @@ begin
   if not public.is_admin() then
     raise exception 'forbidden' using errcode = '42501';
   end if;
-  -- Tells migration 68's safety net that this write is already being audited.
+  -- Tells migration 205's safety net that this write is already being audited.
   perform set_config('app.admin_console', 'on', true);
   return auth.uid();
 end;
@@ -267,7 +264,7 @@ $$;
 --
 -- Suspending takes every live and waiting listing down (rejected, with the
 -- reason, which is what the employer's screens already explain) and the
--- trigger in migration 69 keeps anything new off the board. Restoring lifts
+-- trigger in migration 206 keeps anything new off the board. Restoring lifts
 -- the switch and deliberately brings nothing back: which listings deserve to
 -- return is a decision per listing, made with the restore action above.
 -- ---------------------------------------------------------------------------
@@ -331,7 +328,7 @@ $$;
 -- Consultant restriction
 --
 -- Restricting hides the profile from the directory and from every employer,
--- and migration 69 keeps it hidden through the consultant's own saves.
+-- and migration 206 keeps it hidden through the consultant's own saves.
 -- Lifting it leaves visibility at hidden: whether to be seen again is the
 -- consultant's choice, not something an admin makes for them.
 -- ---------------------------------------------------------------------------
@@ -1085,7 +1082,7 @@ begin
     return v_id;
   end if;
 
-  -- Renaming. The slug is never touched here, and migration 69's trigger
+  -- Renaming. The slug is never touched here, and migration 206's trigger
   -- refuses it by any other path.
   if p_kind = 'district' then
     select name_ar into v_old from districts where id = p_id for update;
@@ -1126,7 +1123,7 @@ declare
 begin
   perform public.admin_begin();
 
-  -- The in-use check is migration 69's trigger, which every path meets.
+  -- The in-use check is migration 206's trigger, which every path meets.
   if p_kind = 'district' then
     delete from districts where id = p_id returning name_ar into v_old;
   elsif p_kind = 'governorate' then

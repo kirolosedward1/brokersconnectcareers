@@ -53,7 +53,9 @@ export default async function AdminCompaniesPage({
   let query = supabase
     .from('companies')
     .select(
-      'id, name_ar, name_en, slug, logo_url, verification_status, suspended_at, created_at, jobs (count), company_members (count)',
+      `id, name_ar, name_en, slug, logo_url, verification_status, suspended_at, created_at, jobs (count), company_members (count)${
+        status === 'pending' ? ', company_documents!inner (id)' : ''
+      }`,
       { count: 'exact' },
     )
     .order('created_at', { ascending: status === 'pending' })
@@ -61,7 +63,10 @@ export default async function AdminCompaniesPage({
     .range(from, to);
 
   if (status === 'suspended') query = query.not('suspended_at', 'is', null);
-  else if (status !== 'all') query = query.eq('verification_status', status);
+  else if (status !== 'all') {
+    query = query.eq('verification_status', status);
+    if (status === 'pending') query = query.eq('company_documents.status', 'pending');
+  }
 
   const needle = q ? likeNeedle(q) : '';
   if (needle) query = query.or(`name_ar.ilike.*${needle}*,name_en.ilike.*${needle}*,slug.ilike.*${needle}*`);

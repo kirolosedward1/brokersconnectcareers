@@ -1,5 +1,5 @@
 -- =============================================================================
--- 68 — A record of who did what
+-- 205 — A record of who did what
 --
 -- Every moderation lever the console has — approving a listing, verifying a
 -- company, suspending an account — changed a row and left no trace of the
@@ -11,7 +11,7 @@
 -- Two tables, both append-only:
 --
 --   admin_audit_log    what an admin did, to what, when, and the reason they
---                      gave. Written by the admin_* functions in migration 70
+--                      gave. Written by the admin_* functions in migration 207
 --                      inside the same transaction as the change itself, so
 --                      a decision and its record commit or fail together.
 --
@@ -33,9 +33,6 @@
 -- callers pass status transitions and counts, never row dumps. The size check
 -- on metadata is the backstop that makes a careless caller fail loudly.
 -- =============================================================================
-
--- rollback: forward-fix only — applied to production on 2026-09-27 (17:07–17:10 UTC), before any branch carrying it merged; undoing it is a new migration, never an edit to this one
--- safety: ships-with-code — already applied to production on 2026-09-27 (17:07–17:10 UTC); the code on main has run against it since, and this branch's code that reads it can land at any time
 
 create table if not exists admin_audit_log (
   id            bigint generated always as identity primary key,
@@ -134,7 +131,7 @@ create trigger moderation_notes_11_no_truncate
 -- ---------------------------------------------------------------------------
 -- The one writer
 --
--- Not callable by any API role. The admin_* functions in migration 70 call it
+-- Not callable by any API role. The admin_* functions in migration 207 call it
 -- as their definer, after they have checked is_admin() and made the change.
 -- ---------------------------------------------------------------------------
 
@@ -192,7 +189,7 @@ revoke execute on function public.admin_audit(text, text, text, text, text, json
 --
 -- The watched columns are the trigger's arguments, so each table states its
 -- own list where the trigger is created. suspended_at and restricted_at arrive
--- in migration 69; naming them here first is harmless, because a column that
+-- in migration 206; naming them here first is harmless, because a column that
 -- does not exist yet simply never appears among the changed keys.
 -- ---------------------------------------------------------------------------
 

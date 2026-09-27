@@ -155,9 +155,21 @@ export default async function AdminOverviewPage({
             { label: t('statSignups'), value: n(o.accounts.signups_7d), href: '/admin/users' },
             { label: tAdmin('statAgents'), value: n(o.agents.public + o.agents.gated), href: '/admin/agents', hint: tAdmin('statAgentsHint', { hidden: n(o.agents.hidden) }) },
             {
-              label: tAdmin('statRestrictions'),
-              value: n(o.accounts.suspended + o.companies.suspended + o.agents.restricted),
+              label: tAdmin('statSuspendedAccounts'),
+              value: n(o.accounts.suspended),
               href: '/admin/users?status=rejected',
+              tone: 'default',
+            },
+            {
+              label: tAdmin('statSuspendedCompanies'),
+              value: n(o.companies.suspended),
+              href: '/admin/companies?status=suspended',
+              tone: 'default',
+            },
+            {
+              label: tAdmin('statRestrictedConsultants'),
+              value: n(o.agents.restricted),
+              href: '/admin/agents?visibility=restricted',
               tone: 'default',
             },
           ]}

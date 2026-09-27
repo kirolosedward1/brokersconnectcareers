@@ -1,5 +1,5 @@
 -- =============================================================================
--- 69 — Levers the console did not have
+-- 206 — Levers the console did not have
 --
 -- The console could approve or suspend an *account*, and verify or reject a
 -- company's *papers*. Four things an operator needs had no state to write to,
@@ -31,11 +31,6 @@
 -- or defaulted, and historical reports are mapped to the status their boolean
 -- already implied.
 -- =============================================================================
-
--- rollback: forward-fix only — applied to production on 2026-09-27 (17:07–17:10 UTC), before any branch carrying it merged; undoing it is a new migration, never an edit to this one
--- safety: ships-with-code — already applied to production on 2026-09-27 (17:07–17:10 UTC); the code on main has run against it since, and this branch's code that reads it can land at any time
--- safety: constraint — applied to production on 2026-09-27 (17:07–17:10 UTC), where Postgres validated every existing row (reports was empty) as each check and unique index was built
--- safety: rls — applied to production on 2026-09-27 (17:07–17:10 UTC); the rewritten insert policy admits every report the running code files (its own reporter id, status open)
 
 create extension if not exists pg_trgm with schema extensions;
 
@@ -215,7 +210,7 @@ create index if not exists reports_company_idx on reports (company_id) where com
 create index if not exists reports_agent_idx on reports (agent_id) where agent_id is not null;
 
 -- `status` is the truth and `resolved` follows it, because existing readers
--- (and the rail badge until migration 70) ask the boolean. A write that only
+-- (and the rail badge until migration 207) ask the boolean. A write that only
 -- flips the boolean — the old console did exactly that — is translated rather
 -- than ignored.
 create or replace function public.sync_report_status()

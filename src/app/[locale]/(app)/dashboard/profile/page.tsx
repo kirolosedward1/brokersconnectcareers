@@ -125,7 +125,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
       {/*
         Said to the consultant, not only recorded for the admins. A restricted
         profile stays hidden whatever the visibility control below is set to
-        (migration 69), and a form that silently ignored the choice would read
+        (migration 206), and a form that silently ignored the choice would read
         as broken. The reason is the one the admin gave.
       */}
       {typedAgent?.restricted_at ? (

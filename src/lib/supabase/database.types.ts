@@ -38,7 +38,7 @@ export type ReportReason =
   | 'spam'
   | 'discriminatory'
   | 'other'
-  // Migration 69: what a report about a company or a person needs.
+  // Migration 206: what a report about a company or a person needs.
   | 'scam'
   | 'impersonation'
   | 'harassment'
@@ -133,7 +133,7 @@ export type CompanyRow = Timestamped & {
   /** Bumped on every update; the edit form sends back the one it loaded. */
   version: number;
   /**
-   * An admin's firm-level switch (migration 69). A suspended company has
+   * An admin's firm-level switch (migration 206). A suspended company has
    * nothing on the board and can submit nothing. Optional because code
    * reaches production before the migration as often as after.
    */
@@ -423,7 +423,7 @@ export type AgentProfileRow = Timestamped & {
   units_closed: number | null;
   /** Self-reported closed value in EGP. The platform does not verify it. */
   volume_egp: number | null;
-  /** Set by an admin (migration 69); pins visibility to hidden until lifted. */
+  /** Set by an admin (migration 206); pins visibility to hidden until lifted. */
   restricted_at?: string | null;
   restriction_reason?: string | null;
   /** Both headlines folded for search (migration 68). Generated, never written. */
@@ -691,7 +691,7 @@ export type ApplicationEventRow = {
 
 export type AuditTargetType = 'user' | 'company' | 'job' | 'agent' | 'application' | 'report' | 'taxonomy';
 
-/** Append-only (migration 68). Readable by admins, written only by admin_audit(). */
+/** Append-only (migration 205). Readable by admins, written only by admin_audit(). */
 export type AdminAuditRow = {
   id: number;
   actor_id: string | null;
@@ -1116,7 +1116,7 @@ export type Database = {
       employer_trend: { Args: Empty; Returns: EmployerTrend };
       admin_trend: { Args: Empty; Returns: AdminTrend };
       /**
-       * The console's levers (migration 70). Each checks is_admin(), locks the
+       * The console's levers (migration 207). Each checks is_admin(), locks the
        * row, refuses a transition that makes no sense, and writes the audit
        * record in the same transaction.
        */

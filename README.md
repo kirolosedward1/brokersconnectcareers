@@ -209,7 +209,7 @@ the audit log, internal notes, global search and taxonomy management sit beside
 them.
 
 **Every lever is a database function, and every decision is recorded.**
-Migration 70's `admin_*` functions check `is_admin()`, lock the row, refuse a
+Migration 207's `admin_*` functions check `is_admin()`, lock the row, refuse a
 transition the product does not have, require a reason where somebody is owed
 one, and write to `admin_audit_log` in the same transaction as the change. The
 log is append-only for everyone, the service role included. An admin writing
@@ -221,7 +221,7 @@ reason, and the request is recorded. Opening a company's verification document
 is recorded the same way.
 
 **Deploy the migrations before the code.** The console reads functions and
-columns from migrations 68–70; against a database without them, console pages
+columns from migrations 205–207; against a database without them, console pages
 show an error naming the missing migrations. The public site tolerates either
 order.
 
