@@ -65,7 +65,22 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-web-browser',
     'expo-font',
     'expo-apple-authentication',
+    [
+      'expo-image-picker',
+      {
+        // The base language's strings; the English ones are in assets/locales.
+        photosPermission:
+          'بنستخدم صورك عشان تختار صورتك الشخصية أو لوجو شركتك، ومفيش حاجة بتترفع غير اللي انت تختاره.',
+        cameraPermission: 'بنستخدم الكاميرا عشان تصوّر صورتك الشخصية أو مستندات شركتك.',
+        microphonePermission: false,
+      },
+    ],
   ],
+  // The app's name and the permission prompts in each language the app speaks.
+  locales: {
+    ar: './assets/locales/ar.json',
+    en: './assets/locales/en.json',
+  },
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
