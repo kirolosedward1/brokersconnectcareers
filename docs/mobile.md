@@ -136,6 +136,16 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   `cvs/<uid>/<uuid>.<ext>` first (the file's type from `src/lib/file-type.ts`);
   `applyToJob` then sniffs it, and any refusal takes the upload back out. The
   confirmation offers two more roles ranked by `rankJobs`.
+- **The directory profile** is `/account/profile` (the website's
+  `/dashboard/profile`, kept in the Account tab): what is missing and why
+  (`profileGaps`, the SQL's weights), the form, the sales record and the CV
+  sections, each saved by its own website action — entries can be edited as
+  well as added. A profile that could not be read is an error, never an
+  empty form. A restricted profile says so with the moderator's reason and
+  the appeal panel (`submitAppeal`, `my_appeal_state`). "Remove CV" now
+  clears the profile's CV on the website too (`saveAgentProfile` ignored
+  it); only the column is cleared, since an application may have been sent
+  with that file.
 - **The bell** sits at the end of each tab's first screen with the unread
   count, read like everything else about the person straight from Supabase.
   Its feed pages by `(created_at, id)` as the website's does, marks read up to

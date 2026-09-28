@@ -71,5 +71,16 @@
     "profileCv": "The CV on your profile",
     "useProfileCv": "Use the CV on your profile",
     "removeCv": "Remove the file"
+  },
+  "profile": {
+    "edit": "Edit",
+    "saveFirst": "Save your profile first; then you can add your experience, education and certificates.",
+    "yearsInvalid": "Enter a number from 0 to 60.",
+    "numberInvalid": "Enter a whole number.",
+    "monthHint": "Year and month",
+    "monthInvalid": "Write the year and month like this: 2024-03",
+    "endedHint": "Leave it empty if you still work there",
+    "endBeforeStart": "The end date must come after the start.",
+    "yearInvalid": "Enter a year between 1950 and 2100."
   }
 }

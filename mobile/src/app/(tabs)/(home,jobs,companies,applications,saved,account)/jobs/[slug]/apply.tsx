@@ -21,12 +21,12 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import {
   ApplyRefused,
-  pickCv,
   useApplyContext,
   useApplyToJob,
   useNextRoles,
   type Attachment,
 } from '~/features/apply/apply';
+import { pickCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
 import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';

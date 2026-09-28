@@ -102,7 +102,7 @@ describe('appPathFor', () => {
     ['/employer', '/'],
     // The website keeps the account under /dashboard; the app has a tab for it.
     ['/dashboard/account', '/account'],
-    ['/dashboard/profile?notice=directory', '/account?notice=directory'],
+    ['/dashboard/profile?notice=directory', '/account/profile?notice=directory'],
     // Everything else is the same path.
     ['/dashboard/applications', '/dashboard/applications'],
     ['/jobs/a-1', '/jobs/a-1'],
@@ -144,7 +144,7 @@ describe('who a link is for', () => {
   });
 
   it('sends a candidate who reaches for the directory to their own profile, with the reason', () => {
-    expect(routeFromOutside('/agents/sara', candidate)).toBe('/account?notice=directory');
+    expect(routeFromOutside('/agents/sara', candidate)).toBe('/account/profile?notice=directory');
   });
 
   it('decides the same inside the app, without naming a tab', () => {

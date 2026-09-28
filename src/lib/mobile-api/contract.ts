@@ -7,6 +7,7 @@ import type {
 import type {
   AgentAvailability,
   AgentVisibility,
+  AppealSubjectType,
   ApplicationNoteRow,
   ApplicationStatus,
   Benefit,
@@ -55,6 +56,17 @@ export type ContactRevealResult =
 /** Where following a notification lands: its link, or the feed with a reason. */
 export type NotificationDestination = { href: string } | { fallback: string };
 
+/** Why an appeal was not filed — the database's refusals (migration 328), as submitAppeal names them. */
+export type AppealRefusal =
+  | 'message_required'
+  | 'not_appealable'
+  | 'appeal_open'
+  | 'appeal_limit'
+  | 'appeal_too_soon'
+  | 'rate_limit'
+  | 'company_suspended'
+  | 'unavailable';
+
 type Nullable<T> = T | null | undefined;
 
 export type OnboardingInput = {
@@ -84,6 +96,8 @@ export type AgentProfileInput = {
   visibility: AgentVisibility;
   /** A path in the caller's own `cvs/<uid>/` folder, uploaded first; absent means unchanged. */
   cvPath?: Nullable<string>;
+  /** Take the CV off the profile (the file is kept: an application may have been sent with it). */
+  removeCv?: boolean;
 };
 
 export type ApplyInput = {
@@ -283,6 +297,12 @@ export type MobileActions = {
 
   // Notifications
   openNotification: { input: { id: string }; output: ActionResult<NotificationDestination> };
+
+  // Asking for a moderator's decision to be looked at again
+  submitAppeal: {
+    input: { subjectType: AppealSubjectType; subjectId: string; message: string };
+    output: ActionResult;
+  };
 };
 
 export type MobileActionName = keyof MobileActions;

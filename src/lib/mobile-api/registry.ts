@@ -13,6 +13,7 @@ import {
 } from '@/lib/actions/account';
 import { revealAgentContact } from '@/lib/actions/agent-contact';
 import { saveAgentProfile } from '@/lib/actions/agent-profile';
+import { submitAppeal } from '@/lib/actions/appeals';
 import {
   addApplicationNote,
   applyToJob,
@@ -202,6 +203,8 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
       return { ok: true, data: destination };
     },
   },
+
+  submitAppeal: { run: (input) => submitAppeal(input) },
 };
 
 export function isActionName(name: string): name is MobileActionName {

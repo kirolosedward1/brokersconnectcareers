@@ -61,6 +61,7 @@ const tree = {
   '(tabs)/(saved)/dashboard/saved/index': screen('saved'),
   '(tabs)/(account)/account/index': screen('account'),
   '(tabs)/(account)/account/delete': screen('delete'),
+  '(tabs)/(account)/account/profile': screen('profile'),
   '(auth)/sign-in/index': screen('sign-in'),
   '+not-found': screen('missing'),
 };
@@ -129,6 +130,7 @@ describe('links to signed-in pages', () => {
     ['https://www.brokersconnect.net/dashboard/saved', ['(tabs)', '(saved)', 'dashboard', 'saved']],
     ['https://www.brokersconnect.net/dashboard', ['(tabs)', '(home)']],
     ['https://www.brokersconnect.net/dashboard/account', ['(tabs)', '(account)', 'account']],
+    ['https://www.brokersconnect.net/dashboard/profile', ['(tabs)', '(account)', 'account', 'profile']],
     ['https://www.brokersconnect.net/notifications', ['(tabs)', '(home)', 'notifications']],
   ])("opens %s in a candidate's own tab", (url, segments) => {
     actor = candidate;

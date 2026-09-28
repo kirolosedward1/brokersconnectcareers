@@ -4,7 +4,8 @@ import { router, Stack } from 'expo-router';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { useTranslations } from 'use-intl';
-import { ExternalLink, LogOut, Mail, ShieldAlert, Trash2 } from 'lucide-react-native';
+import { ExternalLink, LogOut, Mail, ShieldAlert, Trash2, UserRound } from 'lucide-react-native';
+import { canAccessCandidateArea } from '@/lib/permissions';
 import { HeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
@@ -32,7 +33,7 @@ import { hitTarget, radius, space } from '~/theme/tokens';
 export default function AccountScreen() {
   const t = useTranslations();
   const { colors, preference, setPreference } = useTheme();
-  const { ready, session, viewer } = useSession();
+  const { ready, session, viewer, actor } = useSession();
   const config = useMobileConfig();
   const supportEmail = config.data?.supportEmail ?? null;
   const version = Constants.expoConfig?.version ?? '';
@@ -126,6 +127,14 @@ export default function AccountScreen() {
             overflow: 'hidden',
           }}
         >
+          {/* A candidate's directory profile: the website keeps it in the console, the app here. */}
+          {canAccessCandidateArea(actor) ? (
+            <Row
+              icon={<UserRound size={18} color={colors.foreground} />}
+              label={t('dashboard.profile')}
+              onPress={() => router.push('/account/profile')}
+            />
+          ) : null}
           <Row
             icon={<ExternalLink size={18} color={colors.foreground} />}
             label={t('app.account.openWebsite')}

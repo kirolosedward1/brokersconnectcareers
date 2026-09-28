@@ -82,7 +82,7 @@ function pathnameOf(path: string): string {
 const APP_PATHS: Record<string, string> = {
   '/dashboard': '/',
   '/dashboard/account': '/account',
-  '/dashboard/profile': '/account',
+  '/dashboard/profile': '/account/profile',
   '/employer': '/',
 };
 
