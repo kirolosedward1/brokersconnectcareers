@@ -1,12 +1,12 @@
 -- =============================================================================
--- 315 — An email with nothing left to say
+-- 323 — An email with nothing left to say
 --
--- safety: ships-with-code — an enum value nothing writes until migration 316 and the new sweeper do; the code on main never reads or writes it, so either order is safe
+-- safety: ships-with-code — an enum value nothing writes until migration 324 and the new sweeper do; the code on main never reads or writes it, so either order is safe
 -- rollback: none needed and none possible in place — Postgres cannot drop an enum value; an unused 'cancelled' is inert. Rows written with it would be relabelled 'failed' before any type rebuild.
 --
 -- One statement, alone in its file, because Postgres will not let a
 -- transaction use an enum value it added, and db-push and the test harness
--- run each migration file as its own transaction. Migration 316 uses it.
+-- run each migration file as its own transaction. Migration 324 uses it.
 -- Migrations 21 and 51 split a pair for the same reason.
 --
 -- `cancelled` is for an outbox row the retry sweeper closed because, by the

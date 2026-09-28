@@ -271,7 +271,7 @@ for (const address of ['ahmed@brokersconnect.net', 'a@gmail.com', 'b@testing.co.
 
 report.section('retry budget');
 
-// Five real attempts, counted on the one row (migration 316). Each failure
+// Five real attempts, counted on the one row (migration 324). Each failure
 // schedules the next try with backoff, so the row is pulled due again by hand
 // before each one — waiting ten minutes, then forty, is not a unit test. The
 // full lease/backoff story is in jobs.test.mjs; this is the budget alone.

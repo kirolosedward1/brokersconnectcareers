@@ -13,6 +13,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { unaccent } from '@electric-sql/pglite/contrib/unaccent';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -153,7 +154,7 @@ select set_config('demo.users', '${JSON.stringify(
  * into testing different databases.
  *
  * Each migration stays its own script, and so its own transaction, for the
- * reason migration 315 exists: Postgres will not let a transaction use an enum
+ * reason migration 323 exists: Postgres will not let a transaction use an enum
  * value it has just added.
  */
 export function testDbScripts({ seed = true } = {}) {
@@ -178,7 +179,8 @@ export function testDbScripts({ seed = true } = {}) {
 }
 
 export async function createTestDb({ seed = true } = {}) {
-  const db = new PGlite({ extensions: { pgcrypto, unaccent } });
+  // pg_trgm: the console's search indexes (migration 317) need it.
+  const db = new PGlite({ extensions: { pgcrypto, unaccent, pg_trgm } });
   for (const script of testDbScripts({ seed })) {
     await db.exec(script.sql);
   }

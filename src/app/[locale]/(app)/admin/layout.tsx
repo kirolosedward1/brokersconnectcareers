@@ -1,6 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 import { asLocale } from '@/i18n/routing';
 import { requireAdmin } from '@/lib/auth';
+import { ConsoleToaster } from '@/components/admin/console-toaster';
 
 /**
  * The guard for this section, and nothing else. The chrome — rail, top bar,
@@ -18,5 +19,10 @@ export default async function AdminLayout({
 
   await requireAdmin(locale);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <ConsoleToaster />
+    </>
+  );
 }

@@ -23,6 +23,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { unaccent } from '@electric-sql/pglite/contrib/unaccent';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { createTestDb, reporter, runner, testDbScripts, USERS } from './setup.mjs';
 
 const base = reporter();
@@ -649,7 +650,7 @@ report.section('dead letters are an admin screen, and requeue is an admin action
 report.section('invalid payload: webhook events cannot move a message backwards');
 {
   // Ordering and suppression are migration 68's webhook ledger; email.test.mjs
-  // covers them. What 315 adds is that a provider-side failure after
+  // covers them. What 323 adds is that a provider-side failure after
   // acceptance is a dead letter the lease can see, not a row still "due".
   const a = await claim('hook:a');
   await record(a, 'sent', { provider: 'prov-a' });
@@ -1009,11 +1010,11 @@ report.section('release_email_claim is disarmed for the old sweeper still deploy
     'the row keeps its key and count, so the old rebuild claims nothing and cannot send twice');
 }
 
-report.section('the backfill: rows the old code left, as migration 316 finds them');
+report.section('the backfill: rows the old code left, as migration 324 finds them');
 {
-  // A database as it stood before migration 316, with the rows the old sweeper
+  // A database as it stood before migration 324, with the rows the old sweeper
   // could leave behind, and then the migration run over them.
-  const old = new PGlite({ extensions: { pgcrypto, unaccent } });
+  const old = new PGlite({ extensions: { pgcrypto, unaccent, pg_trgm } });
   const scripts = testDbScripts({ seed: false });
   const at = scripts.findIndex((sc) => sc.name.startsWith('20260101000316'));
   for (const sc of scripts.slice(0, at)) await old.exec(sc.sql);

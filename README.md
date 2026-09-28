@@ -298,6 +298,33 @@ random suffix, so the two can never collide.
 **Expired listings keep their URL.** They render a "this listing has closed" state
 and are marked `noindex`, rather than 404-ing every inbound link and search result.
 
+## The operations console
+
+`/admin` is where the marketplace is run day to day — nobody should need to edit
+rows in Supabase. Accounts, companies, listings, applications, consultant
+profiles and reports each have a searchable, paginated list and a detail page;
+the audit log, internal notes, global search and taxonomy management sit beside
+them.
+
+**Every lever is a database function, and every decision is recorded.**
+Migration 318's `admin_*` functions check `is_admin()`, lock the row, refuse a
+transition the product does not have, require a reason where somebody is owed
+one, and write to `admin_audit_log` in the same transaction as the change. The
+log is append-only for everyone, the service role included. An admin writing
+the tables directly through the API is still recorded (`via = 'direct'`).
+
+**Contact details are never listed.** No console list or search returns a phone
+number or email; an admin reveals one account's details at a time, with a
+reason, and the request is recorded. Opening a company's verification document
+is recorded the same way.
+
+**Deploy the migrations before the code.** The console reads functions and
+columns from migrations 316–319; against a database without them, console pages
+show an error naming the missing migrations. The public site tolerates either
+order.
+
+`pnpm test:admin` exercises the console's rules as every kind of user.
+
 ## Known gaps
 
 - **Brand assets live in `public/brand/`.** The palette in `globals.css` is sampled
