@@ -13,6 +13,7 @@ import { localized } from '@/i18n/routing';
 import { formatDate, formatEgp, formatList, formatNumber, isoDate, whatsappLink, cn } from '@/lib/utils';
 import { employerOpener } from '@/lib/whatsapp';
 import { setApplicationStatus } from '@/lib/actions/applications';
+import { reach } from '@/lib/reach';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -130,7 +131,7 @@ export function ApplicantCard({
     setConflict(false);
 
     startTransition(async () => {
-      const result = await setApplicationStatus({
+      const result = await reach(setApplicationStatus({
         applicationId: application.id,
         status: next,
         decisionNote,
@@ -139,7 +140,7 @@ export function ApplicantCard({
         // them — a company is a team, and two people in the same inbox is an
         // ordinary Tuesday.
         from: previousStatus,
-      });
+      }));
       if (recoverSession(result)) return;
 
       if (!result.ok) {

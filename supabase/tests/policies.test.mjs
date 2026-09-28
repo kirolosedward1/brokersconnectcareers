@@ -906,7 +906,7 @@ report.section('the agent directory gate');
 {
   /*
     The directory answers the people who hire — an approved employer account
-    or an admin — and nobody else (migration 314). A candidate is not a
+    or an admin — and nobody else (migration 322). A candidate is not a
     directory reader, a stranger is not, and a suspended or still-pending
     employer is not. Inside it, what each company sees is as migration 304
     left it: anonymised cards on gated profiles until the company is
@@ -1315,7 +1315,7 @@ report.section('no consultant is named by their address');
   report.check('and no profile keeps any other shape', left === 0, String(left));
 
   // Read as the directory's least-trusted reader — an approved employer whose
-  // company is not verified — since migration 314 answers nobody else.
+  // company is not verified — since migration 322 answers nobody else.
   const reader = await as(employerUnverified, 'select id, slug from search_agents(null,null,null,null,60,0)');
   report.check('so the directory carries no names in its links',
     reader.ok && reader.rows.length > 0 && reader.rows.every((row) =>

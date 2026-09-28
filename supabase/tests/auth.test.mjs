@@ -13,6 +13,10 @@
  */
 import { reporter } from './setup.mjs';
 import { safeNext, stripLocalePrefix } from '../../src/lib/safe-next.ts';
+import { register } from 'node:module';
+
+// Node cannot resolve the app's `@/` alias; phone.ts below needs it.
+register('./alias-hooks.mjs', import.meta.url);
 
 const base = reporter();
 const report = {

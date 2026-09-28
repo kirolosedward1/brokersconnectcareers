@@ -9,23 +9,12 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { cn, uuid } from '@/lib/utils';
+import { fileExtension, fileType } from '@/lib/file-type';
 import { createClient } from '@/lib/supabase/client';
 import { CV_BUCKET } from '@/lib/buckets';
-import { safeExtension } from '@/lib/storage-path';
 import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
 import { saveAgentProfile } from '@/lib/actions/agent-profile';
-
-const MAX_CV_BYTES = 10 * 1024 * 1024;
-const CV_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-];
-const CV_EXTENSIONS: Record<string, string> = {
-  'application/pdf': 'pdf',
-  'application/msword': 'doc',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-};
+import { reach } from '@/lib/reach';
 import type {
   AgentProfileRow,
   AgentVisibility,
@@ -34,6 +23,13 @@ import type {
   ProfileRow,
 } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
+
+const MAX_CV_BYTES = 10 * 1024 * 1024;
+const CV_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
 
 const VISIBILITY_ICON: Record<AgentVisibility, React.ReactNode> = {
   public: <Eye className="size-4" aria-hidden />,
@@ -112,7 +108,9 @@ export function AgentProfileForm({
       setPickedCv(null);
       return;
     }
-    if (!CV_TYPES.includes(file.type)) {
+    // Through fileType(): the browser's guess when it makes one, the extension
+    // when it does not — a .docx from a device with no Office is still a CV.
+    if (!CV_TYPES.includes(fileType(file))) {
       setErrors((current) => ({ ...current, cv: tValidation('fileType') }));
       event.target.value = '';
       setPickedCv(null);
@@ -132,11 +130,10 @@ export function AgentProfileForm({
       const file = fileRef.current?.files?.[0];
 
       if (file) {
-        const extension = CV_EXTENSIONS[file.type] ?? safeExtension(file.name, 'pdf');
-        const path = `${profile.id}/${uuid()}.${extension}`;
+        const path = `${profile.id}/${uuid()}.${fileExtension(file, 'pdf')}`;
         const { error } = await createClient()
           .storage.from(CV_BUCKET)
-          .upload(path, file, { contentType: file.type });
+          .upload(path, file, { contentType: fileType(file) });
 
         if (error) {
           setErrors({ cv: tCommon('errorBody') });
@@ -145,7 +142,7 @@ export function AgentProfileForm({
         cvPath = path;
       }
 
-      const result = await saveAgentProfile({
+      const result = await reach(saveAgentProfile({
         fullName: String(form.get('fullName') ?? ''),
         whatsapp: String(form.get('whatsapp') ?? ''),
         headlineAr: String(form.get('headlineAr') ?? ''),
@@ -159,7 +156,7 @@ export function AgentProfileForm({
         visibility,
         cvPath,
         removeCv,
-      });
+      }));
 
       if (!result.ok) {
         /*
@@ -206,6 +203,7 @@ export function AgentProfileForm({
             required
             minLength={2}
             maxLength={120}
+            autoComplete="name"
             defaultValue={profile.full_name}
           />
         </Field>
@@ -221,6 +219,8 @@ export function AgentProfileForm({
             type="tel"
             required
             dir="ltr"
+            inputMode="tel"
+            autoComplete="tel"
             className="numeral-field"
             defaultValue={profile.whatsapp_phone}
           />
@@ -293,6 +293,9 @@ export function AgentProfileForm({
               id="yearsExperience"
               name="yearsExperience"
               type="number"
+              // A whole number: the digit pad, where a bare type="number"
+              // gets iOS's punctuation keyboard with the digits along its top.
+              inputMode="numeric"
               min={0}
               max={60}
               className="numeral-field sm:w-28"

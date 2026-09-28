@@ -137,7 +137,9 @@ export default async function ApplyPage({
         .select('tracks, district_ids, years_experience')
         .eq('user_id', viewer!.userId)
         .maybeSingle(),
-      supabase.from('applications').select('job_id'),
+      // Scoped explicitly, as the dashboard's copy of this read is: left to the
+      // policies it scanned every application on the platform.
+      supabase.from('applications').select('job_id').eq('candidate_id', viewer!.userId),
     ]);
 
     const appliedTo = new Set((mine ?? []).map((row) => row.job_id));

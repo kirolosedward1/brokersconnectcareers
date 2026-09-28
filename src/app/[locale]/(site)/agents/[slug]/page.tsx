@@ -29,7 +29,7 @@ export async function generateMetadata({
 
   /*
     No name in the title, whoever is asking. A directory page is never
-    indexed — it is behind a sign-in since migration 314, so there is no
+    indexed — it is behind a sign-in since migration 322, so there is no
     "public profile" for a crawler to be told about — and the metadata
     streams before the page's own guard has run, so it must not carry
     anything the guard exists to withhold. The heading on the page is where
@@ -51,7 +51,7 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
   const agent = await getAgentCard(slug);
 
   /*
-    Who may be here (migration 314): the directory's readers — an approved
+    Who may be here (migration 322): the directory's readers — an approved
     employer or an admin — and the consultant whose page it is. The card is
     fetched first because the card is what says whose page this is:
     get_agent_card() returns a row only to those groups, so a null here for

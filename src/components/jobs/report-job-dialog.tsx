@@ -9,6 +9,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { REPORT_REASONS } from '@/lib/taxonomy';
 import { reportJob } from '@/lib/actions/jobs';
+import { reach } from '@/lib/reach';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -45,11 +46,11 @@ export function ReportJobDialog({
     const form = new FormData(event.currentTarget);
 
     startTransition(async () => {
-      const result = await reportJob({
+      const result = await reach(reportJob({
         jobId,
         reason: form.get("reason"),
         detail: String(form.get("detail") ?? ""),
-      });
+      }));
       if (recoverSession(result)) return;
       if (result.ok) {
         setSent(true);

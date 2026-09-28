@@ -11,11 +11,12 @@ import { createClient } from '@/lib/supabase/client';
 import { CV_BUCKET } from '@/lib/buckets';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { applyToJob } from '@/lib/actions/applications';
+import { reach } from '@/lib/reach';
 import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { track } from '@/lib/analytics';
 import { shareSource } from '@/lib/share-source';
 import { uuid } from '@/lib/utils';
-import { safeExtension } from '@/lib/storage-path';
+import { fileExtension, fileType } from '@/lib/file-type';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 const MAX_CV_BYTES = 10 * 1024 * 1024;
@@ -24,11 +25,6 @@ const CV_TYPES = [
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
-const CV_EXTENSIONS: Record<string, string> = {
-  'application/pdf': 'pdf',
-  'application/msword': 'doc',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-};
 
 export function ApplyForm({
   jobId,
@@ -85,7 +81,7 @@ export function ApplyForm({
       setFileName(null);
       return;
     }
-    if (!CV_TYPES.includes(file.type)) {
+    if (!CV_TYPES.includes(fileType(file))) {
       setErrors((current) => ({ ...current, cv: tValidation('fileType') }));
       event.target.value = '';
       setFileName(null);
@@ -105,13 +101,13 @@ export function ApplyForm({
       if (file) {
         // The CV goes straight to the private bucket from the browser; storage
         // RLS confines every candidate to their own folder. The extension comes
-        // from the type the browser reported, which the bucket also checks.
-        const extension = CV_EXTENSIONS[file.type] ?? safeExtension(file.name, 'pdf');
-        const path = `${userId}/${uuid()}.${extension}`;
+        // from the file's type — sniffed from its name when the browser will
+        // not say — which the bucket also checks.
+        const path = `${userId}/${uuid()}.${fileExtension(file, 'pdf')}`;
 
         const { error: uploadError } = await createClient()
           .storage.from(CV_BUCKET)
-          .upload(path, file, { upsert: false, contentType: file.type });
+          .upload(path, file, { upsert: false, contentType: fileType(file) });
 
         if (uploadError) {
           setErrors({ cv: tCommon('errorBody') });
@@ -120,14 +116,14 @@ export function ApplyForm({
         cvPath = path;
       }
 
-      const result = await applyToJob({
+      const result = await reach(applyToJob({
         jobId,
         fullName: String(form.get('fullName') ?? ''),
         whatsapp: String(form.get('whatsapp') ?? ''),
         experienceBand: String(form.get('experienceBand') ?? ''),
         cvPath,
         note: String(form.get('note') ?? ''),
-      });
+      }));
 
       if (recoverSession(result)) {
         // The file goes with it: nothing will ever point at it now.

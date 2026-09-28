@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/field';
 import { moderateJob, setJobFeatured } from '@/lib/actions/admin';
+import { reach } from '@/lib/reach';
 
 export function ModerateJobActions({
   jobId,
@@ -28,7 +29,7 @@ export function ModerateJobActions({
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     startTransition(async () => {
-      const result = await fn();
+      const result = await reach(fn());
       if (!result.ok) {
         // Named, never echoed: `result.error` was printed as it stood, which
         // put a Postgres constraint name under the reviewer's button.

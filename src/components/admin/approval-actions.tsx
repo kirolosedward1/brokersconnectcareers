@@ -7,6 +7,7 @@ import { Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/field';
 import { setAccountApproval } from '@/lib/actions/admin';
+import { reach } from '@/lib/reach';
 import type { ApprovalStatus } from '@/lib/supabase/database.types';
 
 /**
@@ -36,7 +37,7 @@ export function ApprovalActions({
   function apply(next: ApprovalStatus, reason?: string) {
     startTransition(async () => {
       setFailed(false);
-      const result = await setAccountApproval({ userId, status: next, note: reason });
+      const result = await reach(setAccountApproval({ userId, status: next, note: reason }));
       // An approval that quietly failed leaves an employer waiting on a
       // decision the reviewer believes they already made.
       if (!result.ok) {

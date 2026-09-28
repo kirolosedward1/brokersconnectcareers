@@ -9,6 +9,7 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Badge } from '@/components/ui/badge';
 import { Field, Input, Select } from '@/components/ui/field';
 import { addCompanyMember, removeCompanyMember } from '@/lib/actions/company';
+import { reach } from '@/lib/reach';
 import type { CompanyMemberRole } from '@/lib/supabase/database.types';
 import { Avatar } from '@/components/ui/avatar';
 import { useSessionRecovery } from '@/lib/session-expired';
@@ -61,10 +62,10 @@ export function TeamSettings({
     setError(null);
 
     startTransition(async () => {
-      const result = await addCompanyMember({
+      const result = await reach(addCompanyMember({
         email: String(data.get('email') ?? ''),
         role,
-      });
+      }));
 
       if (recoverSession(result)) return;
       if (!result.ok) {
@@ -93,7 +94,7 @@ export function TeamSettings({
   function onRemove(userId: string) {
     setError(null);
     startTransition(async () => {
-      const result = await removeCompanyMember(userId);
+      const result = await reach(removeCompanyMember(userId));
       if (recoverSession(result)) return;
       if (!result.ok) {
         setError(result.error === 'owner' ? t('teamCannotRemoveOwner') : tCommon('errorBody'));

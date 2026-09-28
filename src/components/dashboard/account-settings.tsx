@@ -7,6 +7,7 @@ import { Download, Loader2, Trash2 } from 'lucide-react';
 import { localeHref, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { deleteMyAccount, updateNotificationPreferences } from '@/lib/actions/account';
+import { reach } from '@/lib/reach';
 import type { ProfileRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 
@@ -51,7 +52,7 @@ export function AccountSettings({
     setPrefs(next);
     setSaved(false);
     startTransition(async () => {
-      const result = await updateNotificationPreferences(next);
+      const result = await reach(updateNotificationPreferences(next));
       if (recoverSession(result)) return;
       if (result.ok) setSaved(true);
       else setPrefs(prefs); // put the switch back rather than lie about it
@@ -61,7 +62,7 @@ export function AccountSettings({
   function onDelete() {
     setError(null);
     startDeleting(async () => {
-      const result = await deleteMyAccount();
+      const result = await reach(deleteMyAccount());
       if (recoverSession(result)) return;
       if (result.ok) {
         /*

@@ -1,5 +1,5 @@
 -- =============================================================================
--- 20260101000314 — The directory is for employers
+-- 20260101000322 — The directory is for employers
 --
 -- The consultant directory was public. Anybody — a signed-out visitor, another
 -- consultant, a scraper — could call search_agents() and page through every
@@ -104,24 +104,27 @@ comment on function public.can_browse_agent_directory() is
 -- the employer an applicant applied to. Not by other candidates, not by anon.
 -- ---------------------------------------------------------------------------
 
+-- The helpers are asked once per statement, as `(select …)`, the way
+-- migration 314 rewrote every policy before this one: each is STABLE and
+-- takes no argument, so the answer is the same for every row of the scan.
 drop policy if exists agent_profiles_select_public on agent_profiles;
 create policy agent_profiles_select_public on agent_profiles
   for select using (
     visibility = 'public'
-    and public.can_browse_agent_directory()
+    and (select public.can_browse_agent_directory())
   );
 
 drop policy if exists agent_profiles_select_gated on agent_profiles;
 create policy agent_profiles_select_gated on agent_profiles
   for select using (
     visibility = 'verified_employers_only'
-    and public.viewer_has_verified_company()
-    and public.can_browse_agent_directory()
+    and (select public.viewer_has_verified_company())
+    and (select public.can_browse_agent_directory())
   );
 
 comment on policy agent_profiles_select_public on agent_profiles is
   'A public profile is public to the directory''s readers — approved employers '
-  'and admins — not to the internet and not to other candidates. See migration 314.';
+  'and admins — not to the internet and not to other candidates. See migration 322.';
 
 -- agent_profiles_select_own, agent_profiles_select_applicants and
 -- agent_profiles_admin are unchanged: the owner, the employer somebody
@@ -562,7 +565,7 @@ create policy saved_jobs_owner_delete on saved_jobs
 create policy saved_jobs_owner_insert on saved_jobs
   for insert with check (
     candidate_id = (select auth.uid())
-    and public.current_role_of_user() = 'candidate'
+    and (select public.current_role_of_user()) = 'candidate'
   );
 
 -- ---------------------------------------------------------------------------
@@ -576,5 +579,5 @@ create policy saved_jobs_owner_insert on saved_jobs
 
 drop policy if exists jobs_update_owner on jobs;
 create policy jobs_update_owner on jobs
-  for update using (public.owns_company(company_id) and public.is_approved_employer())
-  with check (public.owns_company(company_id) and public.is_approved_employer());
+  for update using (public.owns_company(company_id) and (select public.is_approved_employer()))
+  with check (public.owns_company(company_id) and (select public.is_approved_employer()));

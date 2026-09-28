@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/field';
 import { formatNumber } from '@/lib/utils';
+import { westernDigits } from '@/lib/search/arabic';
 
 /**
  * A figure with its thousands separators, grouped as it is typed.
@@ -95,7 +96,17 @@ export function NumberInput({
   }, [shown]);
 
   function onChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const typed = event.target.value;
+    /*
+      Arabic-Indic digits in, Western digits kept.
+
+      `inputMode="numeric"` asks for a digit pad, and an Arabic keyboard's
+      digit pad can type ٠١٢٣ rather than 0123. `\D` is ASCII-only, so every
+      one of those was stripped as a non-digit and the field refused to take a
+      single keystroke: the salary box on a phone set to Arabic stayed empty
+      however many times it was tapped. One character becomes one character,
+      so the caret arithmetic below is unaffected.
+    */
+    const typed = westernDigits(event.target.value);
     const caret = event.target.selectionStart ?? typed.length;
 
     // Digits only, and capped: past 15 digits Number loses precision, and a

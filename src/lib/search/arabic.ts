@@ -54,7 +54,7 @@ const FOLD: Record<string, string> = {
 };
 
 /** ٠١٢٣٤٥٦٧٨٩ and the Extended Arabic-Indic ۰۱۲۳۴۵۶۷۸۹. */
-function westernDigits(input: string): string {
+export function westernDigits(input: string): string {
   return input.replace(/[٠-٩۰-۹]/g, (digit) => {
     const code = digit.charCodeAt(0);
     const base = code >= 0x06f0 ? 0x06f0 : 0x0660;

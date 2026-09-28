@@ -376,7 +376,7 @@ report.section('the agent directory searches only what the card shows');
 
   /*
     The directory answers approved employers and admins and nobody else
-    (migration 314, `the_directory_is_for_employers`): a signed-out visitor is
+    (migration 322, `the_directory_is_for_employers`): a signed-out visitor is
     refused the function outright, and a candidate is answered with nothing.
     So the headline searches below run as an employer whose company is not
     verified — the reader with the least the directory will show.

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Bell, BellOff, Building2, Search, Trash2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { deleteSavedSearch, setSearchAlerts } from '@/lib/actions/saved-searches';
+import { reach } from '@/lib/reach';
 import { followedCompany } from '@/lib/saved-search';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
 import { ICON_HIT_AREA } from '@/components/ui/button';
@@ -42,7 +43,7 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
     const next = !row.alerts;
     setRows((current) => current.map((r) => (r.id === row.id ? { ...r, alerts: next } : r)));
     startTransition(async () => {
-      const result = await setSearchAlerts({ id: row.id, alerts: next });
+      const result = await reach(setSearchAlerts({ id: row.id, alerts: next }));
       if (recoverSession(result)) return;
       if (!result.ok) {
         setRows((current) => current.map((r) => (r.id === row.id ? { ...r, alerts: !next } : r)));
@@ -54,7 +55,7 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
     const before = rows;
     setRows((current) => current.filter((r) => r.id !== id));
     startTransition(async () => {
-      const result = await deleteSavedSearch(id);
+      const result = await reach(deleteSavedSearch(id));
       if (recoverSession(result)) return;
       if (!result.ok) setRows(before);
     });

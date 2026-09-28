@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { saveAvatar } from '@/lib/actions/account';
 import { uploadImage } from '@/lib/actions/uploads';
+import { reach } from '@/lib/reach';
+import { fileType } from '@/lib/file-type';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -51,16 +53,20 @@ export function AvatarUpload({
 
   function onPick(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
+    // Emptied at once, whatever happens next. A picker only reports a change,
+    // so after a failed upload the same photo was still selected, and choosing
+    // it again — the obvious retry — did nothing at all.
+    event.target.value = '';
     if (!file) return;
 
     if (file.size > MAX_BYTES) {
       setError(tValidation('fileTooLarge'));
-      event.target.value = '';
       return;
     }
-    if (!TYPES.includes(file.type)) {
+    // The browser's guess, with the extension standing in when it has none;
+    // the server checks the bytes either way.
+    if (!TYPES.includes(fileType(file))) {
       setError(tValidation('fileType'));
-      event.target.value = '';
       return;
     }
 
@@ -69,7 +75,7 @@ export function AvatarUpload({
       form.set('kind', 'avatar');
       form.set('file', file);
 
-      const result = await uploadImage(form);
+      const result = await reach(uploadImage(form));
       if (recoverSession(result)) return;
       if (!result.ok) {
         setError(
@@ -83,7 +89,6 @@ export function AvatarUpload({
       }
 
       setError(null);
-      event.target.value = '';
       router.refresh();
     });
   }
@@ -94,7 +99,7 @@ export function AvatarUpload({
       // deleting it here would break any page or email still holding the old
       // URL. The database queues it on the way out and the lifecycle sweep
       // removes it once its grace period has passed (migration 204).
-      const result = await saveAvatar({ storagePath: null });
+      const result = await reach(saveAvatar({ storagePath: null }));
       if (recoverSession(result)) return;
       if (!result.ok) setError(tCommon('errorBody'));
       else {

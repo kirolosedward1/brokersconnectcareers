@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { UserRoundPlus, UserRoundCheck } from 'lucide-react';
 import { Button, ICON_HIT_AREA } from '@/components/ui/button';
 import { toggleSavedAgent } from '@/lib/actions/talent-pool';
+import { reach } from '@/lib/reach';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { cn } from '@/lib/utils';
 
@@ -38,7 +39,7 @@ function useShortlist(agentId: string, initialSaved: boolean, onRemoved?: () => 
     setSaved(next);
 
     startTransition(async () => {
-      const result = await toggleSavedAgent(agentId);
+      const result = await reach(toggleSavedAgent(agentId));
       if (recoverSession(result)) return;
       if (!result.ok) {
         setSaved(!next);
