@@ -29,7 +29,14 @@
     "deleteApple": "We will ask you to confirm with Apple, so the app is disconnected from your Apple ID too.",
     "deleteAppleFailed": "We could not confirm with Apple. Try again.",
     "deleted": "Your account has been deleted.",
-    "version": "Version {version}"
+    "version": "Version {version}",
+    "security": "Sign-in and security",
+    "oauthOnlyApple": "This account signs in with Apple, so there is no password to change.",
+    "mfaOpenApp": "Open in your authenticator app",
+    "mfaNoApp": "No authenticator app on this phone opened it. Enter the key below in yours.",
+    "mfaDisableConfirm": "Turn off two-step verification?",
+    "mfaDisableBody": "Signing in will ask for your password only.",
+    "exportLimit": "You have downloaded a copy of your data several times today. Try again tomorrow."
   },
   "jobs": {
     "loadMore": "Load more",

@@ -1,19 +1,33 @@
-import type { ReactNode } from 'react';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { useTranslations } from 'use-intl';
-import { ExternalLink, LogOut, Mail, ShieldAlert, Trash2, UserRound } from 'lucide-react-native';
+import {
+  Download,
+  ExternalLink,
+  LogOut,
+  Mail,
+  MailCheck,
+  ShieldAlert,
+  ShieldCheck,
+  Trash2,
+  UserRound,
+} from 'lucide-react-native';
 import { canAccessCandidateArea } from '@/lib/permissions';
+import { PhotoControls } from '~/components/account/photo-controls';
 import { HeaderBell } from '~/components/notifications/header-bell';
+import { Avatar } from '~/components/ui/avatar';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
 import { ForwardChevron } from '~/components/ui/icons';
 import { LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
+import { shareMyData } from '~/features/account/settings';
 import { useMobileConfig } from '~/features/config';
+import { ApiError } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -22,10 +36,11 @@ import { hitTarget, radius, space } from '~/theme/tokens';
 
 /**
  * The Account tab. Signed out, it is the door: sign in, create an account, or
- * register a company. Signed in, who this is, the app's appearance, the way to
- * the website (where the admin console stays), signing out of this phone, and
- * deleting the account — which an app that creates accounts must offer in the
- * app itself.
+ * register a company. Signed in, who this is and their photo, the app's
+ * appearance, the settings the website keeps on /dashboard/account (signing in
+ * and security, the emails, a copy of the data), the way to the website
+ * (where the admin console stays), signing out of this phone, and deleting the
+ * account — which an app that creates accounts must offer in the app itself.
  *
  * Signing out here is this phone only (`scope: 'local'`): leaving the app
  * should not end a session on somebody's laptop.
@@ -36,6 +51,7 @@ export default function AccountScreen() {
   const { ready, session, viewer, actor } = useSession();
   const config = useMobileConfig();
   const supportEmail = config.data?.supportEmail ?? null;
+  const [exporting, setExporting] = useState(false);
   const version = Constants.expoConfig?.version ?? '';
 
   const themes: { value: ThemePreference; label: string }[] = [
@@ -48,6 +64,23 @@ export default function AccountScreen() {
 
   const role = viewer?.profile?.role;
 
+  // The portability right: the website's export, handed to the share sheet.
+  const exportData = async () => {
+    if (!session || exporting) return;
+    setExporting(true);
+    try {
+      await shareMyData(session.user.id, t('account.exportTitle'));
+    } catch (failure) {
+      const status = failure instanceof ApiError ? failure.status : -1;
+      Alert.alert(
+        t('account.exportTitle'),
+        status === 429 ? t('app.account.exportLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'),
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <>
       <Stack.Screen options={{ title: t('app.tabs.account'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
@@ -57,14 +90,21 @@ export default function AccountScreen() {
       >
         {session ? (
           <Card style={{ gap: space[1] }}>
-            {viewer?.profile?.full_name ? (
-              <Text variant="title" weight="bold">
-                {viewer.profile.full_name}
-              </Text>
-            ) : null}
-            <Text variant="small" tone="mutedForeground">
-              {t('app.account.signedInAs', { email: session.user.email ?? '' })}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
+              {viewer?.profile ? (
+                <Avatar name={viewer.profile.full_name} src={viewer.profile.avatar_url} seed={viewer.profile.id} size="lg" />
+              ) : null}
+              <View style={{ flex: 1, gap: space[1] }}>
+                {viewer?.profile?.full_name ? (
+                  <Text variant="title" weight="bold">
+                    {viewer.profile.full_name}
+                  </Text>
+                ) : null}
+                <Text variant="small" tone="mutedForeground">
+                  {t('app.account.signedInAs', { email: session.user.email ?? '' })}
+                </Text>
+              </View>
+            </View>
             {role === 'candidate' || role === 'employer' ? (
               <Text variant="small">
                 {role === 'employer' ? t('onboarding.roleKnownEmployer') : t('onboarding.roleKnownCandidate')}
@@ -81,6 +121,12 @@ export default function AccountScreen() {
                 <Text variant="small" tone="mutedForeground" style={{ flexShrink: 1 }}>
                   {t('app.account.adminOnWeb')}
                 </Text>
+              </View>
+            ) : null}
+            {/* The one thing here other people see. */}
+            {viewer?.profile ? (
+              <View style={{ marginTop: space[3] }}>
+                <PhotoControls hasPhoto={Boolean(viewer.profile.avatar_url)} />
               </View>
             ) : null}
           </Card>
@@ -134,6 +180,31 @@ export default function AccountScreen() {
               label={t('dashboard.profile')}
               onPress={() => router.push('/account/profile')}
             />
+          ) : null}
+          {session ? (
+            <>
+              <Row
+                icon={<ShieldCheck size={18} color={colors.foreground} />}
+                label={t('app.account.security')}
+                onPress={() => router.push('/account/security')}
+              />
+              <Row
+                icon={<MailCheck size={18} color={colors.foreground} />}
+                label={t('account.emailsTitle')}
+                onPress={() => router.push('/account/emails')}
+              />
+              <Row
+                icon={
+                  exporting ? (
+                    <ActivityIndicator color={colors.primary} accessibilityLabel={t('common.loading')} />
+                  ) : (
+                    <Download size={18} color={colors.foreground} />
+                  )
+                }
+                label={t('account.exportCta')}
+                onPress={exportData}
+              />
+            </>
           ) : null}
           <Row
             icon={<ExternalLink size={18} color={colors.foreground} />}

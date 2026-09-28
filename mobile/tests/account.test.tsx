@@ -1,0 +1,409 @@
+import type { ReactNode } from 'react';
+import { Alert, Linking, type AlertButton } from 'react-native';
+import { Stack } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import * as Sharing from 'expo-sharing';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import type { ProfileRow } from '@/lib/supabase/database.types';
+import { catalogues, I18nProvider } from '~/i18n/provider';
+import { rememberActor } from '~/lib/last-actor';
+import { SessionProvider, useSession } from '~/lib/session';
+import { supabase } from '~/lib/supabase';
+import { ThemeProvider } from '~/theme/provider';
+import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
+import * as EmailsScreen from '../src/app/(tabs)/(account)/account/emails';
+import * as SecurityScreen from '../src/app/(tabs)/(account)/account/security';
+import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID, type AuthUser } from './auth-fixtures';
+import { fakeServer } from './server';
+
+/*
+  The account's own settings, as the website's /dashboard/account has them:
+  the photo, the email address, the password, the second factor, the emails
+  and a copy of the data. The real screens against stand-ins for Supabase
+  Auth and the website; what is checked is what each is sent, and what the
+  person is told.
+*/
+
+jest.mock('~/lib/session-storage', () => {
+  const store = new Map<string, string>();
+  return {
+    encryptedSessionStorage: {
+      getItem: async (key: string) => store.get(key) ?? null,
+      setItem: async (key: string, value: string) => {
+        store.set(key, value);
+      },
+      removeItem: async (key: string) => {
+        store.delete(key);
+      },
+    },
+  };
+});
+
+jest.mock('expo-image-picker', () => ({ launchImageLibraryAsync: jest.fn() }));
+jest.mock('expo-image-manipulator', () => {
+  type MockContext = { resize: () => MockContext; renderAsync: () => Promise<{ saveAsync: () => Promise<{ uri: string }> }> };
+  const context: MockContext = {
+    resize: jest.fn(() => context),
+    renderAsync: async () => ({ saveAsync: async () => ({ uri: 'file:///cache/manipulated.jpg', width: 1024, height: 1024 }) }),
+  };
+  return { ImageManipulator: { manipulate: jest.fn(() => context) }, SaveFormat: { JPEG: 'jpeg' } };
+});
+const mockWritten: Record<string, string> = {};
+jest.mock('expo-file-system', () => ({
+  Paths: { cache: 'file:///cache' },
+  File: jest.fn().mockImplementation((...parts: string[]) => {
+    const uri = parts.join('/');
+    return {
+      uri,
+      size: 250_000,
+      exists: false,
+      create: jest.fn(),
+      delete: jest.fn(),
+      write: (content: string) => {
+        mockWritten[uri] = content;
+      },
+    };
+  }),
+}));
+jest.mock('expo-sharing', () => ({ shareAsync: jest.fn(async () => {}) }));
+
+// React Native's own FormData, whose file parts are `{ uri, name, type }` as a phone sends them.
+const NativeFormData = jest.requireActual('react-native/Libraries/Network/FormData').default;
+type Part = { fieldName: string; string?: string; uri?: string; name?: string; type?: string };
+
+const ar = catalogues.ar;
+const server = fakeServer();
+const PASSWORD = 'correct-horse';
+const QR = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>';
+
+let user: AuthUser;
+let me: ProfileRow;
+
+beforeAll(() => {
+  globalThis.fetch = server.fetch as unknown as typeof fetch;
+  globalThis.FormData = NativeFormData;
+});
+
+beforeEach(async () => {
+  user = authUser();
+  me = { ...profile };
+  jest.mocked(ImagePicker.launchImageLibraryAsync).mockReset();
+  jest.mocked(Sharing.shareAsync).mockClear();
+
+  server.on('GET /api/mobile/v1/config', mobileConfig());
+  server.on('POST /auth/v1/token', () =>
+    authSession(user, user.factors?.some((factor) => factor.status === 'verified') ? 'aal2' : 'aal1'),
+  );
+  server.on('POST /auth/v1/logout', {});
+  server.on('GET /auth/v1/user', () => user);
+  server.on('PUT /auth/v1/user', (_url, init) => {
+    const body = JSON.parse(String(init?.body ?? '{}'));
+    if (body.email === 'taken@example.com') {
+      return { status: 422, body: { code: 422, error_code: 'email_exists', msg: 'A user with this email address has already been registered' } };
+    }
+    return user;
+  });
+  server.on('POST /auth/v1/factors', {
+    id: totpFactor.id,
+    type: 'totp',
+    friendly_name: 'Brokers Connect',
+    totp: { qr_code: QR, secret: 'JBSWY3DPEHPK3PXP', uri: 'otpauth://totp/Brokers%20Connect:sara@example.com?secret=JBSWY3DPEHPK3PXP' },
+  });
+  server.on(`POST /auth/v1/factors/${totpFactor.id}/challenge`, {
+    id: 'challenge-1',
+    type: 'totp',
+    expires_at: Math.floor(Date.now() / 1000) + 300,
+  });
+  server.on(`POST /auth/v1/factors/${totpFactor.id}/verify`, (_url, init) => {
+    const body = JSON.parse(String(init?.body ?? '{}'));
+    if (body.code !== '123456') {
+      return { status: 422, body: { code: 422, error_code: 'mfa_verification_failed', msg: 'Invalid TOTP code entered' } };
+    }
+    user = authUser({ factors: [totpFactor] });
+    return authSession(user, 'aal2');
+  });
+  server.on(`DELETE /auth/v1/factors/${totpFactor.id}`, () => {
+    user = authUser();
+    return { id: totpFactor.id };
+  });
+  server.on('/rest/v1/profiles', () => [me]);
+  server.on('HEAD /rest/v1/notifications', { body: null, headers: { 'content-range': '*/0' } });
+  server.on('POST /api/mobile/v1/actions/uploadImage', () => {
+    me = { ...me, avatar_url: 'https://example.supabase.co/storage/v1/object/public/avatars/photo.webp' };
+    return { ok: true, data: { url: me.avatar_url } };
+  });
+  server.on('POST /api/mobile/v1/actions/saveAvatar', { ok: true });
+  server.on('POST /api/mobile/v1/actions/announcePasswordChange', { ok: true });
+  server.on('POST /api/mobile/v1/actions/updateNotificationPreferences', { ok: true });
+  server.on('GET /api/account/export', { exported_at: '2026-09-28T10:00:00Z', account: { id: USER_ID } });
+
+  await supabase.auth.signOut({ scope: 'local' });
+  await AsyncStorage.clear();
+});
+
+async function signIn(overrides: Partial<AuthUser> = {}) {
+  user = authUser(overrides);
+  const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: PASSWORD });
+  expect(error).toBeNull();
+  await rememberActor({ userId: USER_ID, profile: { role: me.role, approval_status: me.approval_status }, company: null });
+  server.requests.length = 0;
+}
+
+function Settled({ children }: { children: ReactNode }) {
+  return useSession().settled ? children : null;
+}
+
+function Root() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  return (
+    <QueryClientProvider client={client}>
+      <ThemeProvider>
+        <I18nProvider>
+          <SessionProvider>
+            <Settled>
+              <Stack screenOptions={{ headerShown: false }} />
+            </Settled>
+          </SessionProvider>
+        </I18nProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
+
+const app = {
+  _layout: Root,
+  '(tabs)/(account)/_layout': () => <Stack />,
+  '(tabs)/(account)/account/index': AccountScreen,
+  '(tabs)/(account)/account/security': SecurityScreen,
+  '(tabs)/(account)/account/emails': EmailsScreen,
+};
+
+const bodyOf = (path: string, index = 0) => server.asked(path)[index]?.body;
+/** What Supabase Auth was asked to change (the reads of the user are GETs to the same path). */
+const userUpdates = () => server.requests.filter((request) => request.method === 'PUT' && request.url.pathname === '/auth/v1/user');
+
+/** Press the alert's button with this label, as the person would. */
+async function answerAlert(label: string) {
+  const buttons = (jest.mocked(Alert.alert).mock.calls.at(-1)?.[2] ?? []) as AlertButton[];
+  await act(async () => {
+    await buttons.find((button) => button.text === label)?.onPress?.();
+  });
+}
+
+beforeEach(() => {
+  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  jest.mocked(Alert.alert).mockClear();
+});
+
+describe('the photo', () => {
+  it('is picked, cropped square, made a JPEG and sent to the website as the avatar', async () => {
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///library/IMG_0001.HEIC', width: 3024, height: 3024 }],
+    } as ImagePicker.ImagePickerResult);
+    await signIn();
+    renderRouter(app, { initialUrl: '/account' });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.photoUpload }));
+
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/uploadImage')).toHaveLength(1));
+    expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: true, aspect: [1, 1] }));
+    const parts = (bodyOf('/api/mobile/v1/actions/uploadImage') as { getParts: () => Part[] }).getParts();
+    expect(parts.find((part) => part.fieldName === 'kind')?.string).toBe('avatar');
+    expect(parts.find((part) => part.fieldName === 'file')).toMatchObject({
+      uri: 'file:///cache/manipulated.jpg',
+      name: 'photo.jpg',
+      type: 'image/jpeg',
+    });
+    // The profile is read again, and now offers to replace the photo.
+    expect(await screen.findByRole('button', { name: ar.account.photoReplace })).toBeTruthy();
+  });
+
+  it("says what the website refused", async () => {
+    server.on('POST /api/mobile/v1/actions/uploadImage', { ok: false, error: 'file_type' });
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///library/IMG_0002.PNG', width: 800, height: 800 }],
+    } as ImagePicker.ImagePickerResult);
+    await signIn();
+    renderRouter(app, { initialUrl: '/account' });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.photoUpload }));
+    expect(await screen.findByText(ar.validation.fileType)).toBeTruthy();
+  });
+
+  it('is taken off after asking, and only the column is cleared', async () => {
+    me = { ...profile, avatar_url: 'https://example.supabase.co/storage/v1/object/public/avatars/photo.webp' };
+    await signIn();
+    renderRouter(app, { initialUrl: '/account' });
+
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.common.delete}: ${ar.account.photo}` }));
+    await answerAlert(ar.common.delete);
+    await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/saveAvatar')).toEqual({ input: { storagePath: null } }));
+  });
+});
+
+describe('signing in and security', () => {
+  it('changes the email address through Supabase, and says a confirmation is on its way', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.account.newEmail), 'sara.new@example.com');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[0]);
+
+    expect(await screen.findByText(ar.account.emailPending)).toBeTruthy();
+    // With the PKCE challenge supabase-js adds; the link itself carries a token hash (see /auth/confirm).
+    expect(userUpdates().map((request) => request.body)).toEqual([expect.objectContaining({ email: 'sara.new@example.com' })]);
+  });
+
+  it('says so when the address belongs to another account', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.account.newEmail), 'taken@example.com');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[0]);
+    expect(await screen.findByText(ar.auth.errEmailTaken)).toBeTruthy();
+  });
+
+  it("changes the password, ends every other session, and has the website tell the account", async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.account.newPassword), 'short');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'short');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.validation.passwordShort)).toBeTruthy();
+
+    fireEvent.changeText(screen.getByLabelText(ar.account.newPassword), 'a-new-password');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-passwort');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.validation.passwordMismatch)).toBeTruthy();
+    expect(userUpdates()).toHaveLength(0);
+
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+
+    expect(await screen.findByText(ar.account.passwordSaved)).toBeTruthy();
+    expect(userUpdates().map((request) => request.body)).toEqual([expect.objectContaining({ password: 'a-new-password' })]);
+    await waitFor(() =>
+      expect(server.asked('/auth/v1/logout').map((request) => request.url.searchParams.get('scope'))).toEqual(['others']),
+    );
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
+  });
+
+  it.each([
+    ['google', ar.account.oauthOnly],
+    ['apple', ar.app.account.oauthOnlyApple],
+  ])('offers no password form to an account made with %s', async (provider, copy) => {
+    await signIn({
+      app_metadata: { provider, providers: [provider] },
+      identities: [{ id: 'identity-1', user_id: USER_ID, provider, identity_data: {} }],
+    });
+    renderRouter(app, { initialUrl: '/account/security' });
+
+    expect(await screen.findByText(copy)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.account.newPassword) === null).toBe(true);
+  });
+
+  it('sets up two-step verification: the key opens in an authenticator, then the first code', async () => {
+    jest.spyOn(Linking, 'openURL').mockRejectedValueOnce(new Error('no handler'));
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.mfaSetup }));
+    expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
+    expect(bodyOf('/auth/v1/factors')).toMatchObject({ factor_type: 'totp', friendly_name: 'Brokers Connect' });
+
+    // No authenticator on this phone: the key is there to type in.
+    fireEvent.press(screen.getByRole('button', { name: ar.app.account.mfaOpenApp }));
+    expect(await screen.findByText(ar.app.account.mfaNoApp)).toBeTruthy();
+    expect(Linking.openURL).toHaveBeenCalledWith(expect.stringMatching(/^otpauth:\/\/totp\//));
+
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '000000');
+    fireEvent.press(screen.getByRole('button', { name: ar.account.mfaVerify }));
+    expect(await screen.findByText(ar.account.mfaCodeInvalid)).toBeTruthy();
+
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+    fireEvent.press(screen.getByRole('button', { name: ar.account.mfaVerify }));
+    expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
+  });
+
+  it('clears an abandoned setup before starting again', async () => {
+    await signIn({ factors: [{ ...totpFactor, id: 'abandoned', status: 'unverified' }] });
+    server.on('DELETE /auth/v1/factors/abandoned', { id: 'abandoned' });
+    renderRouter(app, { initialUrl: '/account/security' });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.mfaSetup }));
+    expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
+    expect(server.asked('/auth/v1/factors/abandoned').map((request) => request.method)).toEqual(['DELETE']);
+  });
+
+  it('turns it off after asking, from a session that has proved it', async () => {
+    await signIn({ factors: [totpFactor] });
+    renderRouter(app, { initialUrl: '/account/security' });
+
+    expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.account.mfaDisable }));
+    await answerAlert(ar.account.mfaDisable);
+
+    expect(await screen.findByRole('button', { name: ar.account.mfaSetup })).toBeTruthy();
+    expect(server.asked(`/auth/v1/factors/${totpFactor.id}`).map((request) => request.method)).toEqual(['DELETE']);
+  });
+});
+
+describe('the emails', () => {
+  it("shows a candidate's switches and sends all four when one is flipped", async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/emails' });
+
+    const digest = await screen.findByLabelText(ar.account.notifyDigest);
+    expect(screen.queryByLabelText(ar.account.notifyApplications) === null).toBe(true);
+    fireEvent(digest, 'valueChange', false);
+
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/updateNotificationPreferences')).toEqual({
+        input: { notify_applications: true, notify_status: true, notify_digest: false, notify_applicant_digest: false },
+      }),
+    );
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+  });
+
+  it('puts the switch back when the website refuses', async () => {
+    server.on('POST /api/mobile/v1/actions/updateNotificationPreferences', { ok: false, error: 'invalid' });
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/emails' });
+
+    fireEvent(await screen.findByLabelText(ar.account.notifyStatus), 'valueChange', false);
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    expect(screen.getByLabelText(ar.account.notifyStatus).props.value).toBe(true);
+  });
+});
+
+describe('a copy of the data', () => {
+  it("is the website's export, handed to the share sheet", async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account' });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.exportCta }));
+
+    await waitFor(() => expect(Sharing.shareAsync).toHaveBeenCalled());
+    const [uri, options] = jest.mocked(Sharing.shareAsync).mock.calls[0];
+    expect(uri).toBe(`file:///cache/brokers-connect-data-${USER_ID.slice(0, 8)}.json`);
+    expect(options).toMatchObject({ mimeType: 'application/json' });
+    expect(JSON.parse(mockWritten[uri])).toMatchObject({ account: { id: USER_ID } });
+    // Asked as the person: the token rides along.
+    expect(server.asked('/api/account/export')).toHaveLength(1);
+  });
+
+  it('says when the day’s copies are used up', async () => {
+    server.on('GET /api/account/export', { status: 429, body: { error: 'rate_limited', retryAfterSeconds: 3600 } });
+    await signIn();
+    renderRouter(app, { initialUrl: '/account' });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.exportCta }));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.account.exportTitle, ar.app.account.exportLimit));
+    expect(Sharing.shareAsync).not.toHaveBeenCalled();
+  });
+});

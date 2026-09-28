@@ -193,6 +193,22 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   deletes the account through `deleteMyAccount` — for an Apple account after
   asking Apple for a fresh authorization code, so the website can revoke the
   grant. An account that owns a company is pointed to the team, as on the web.
+- **Account settings** are the website's `/dashboard/account`, split for a
+  phone. The photo sits on the Account tab: picked from the library, cropped
+  square by the system, written again as a JPEG no wider than 1024 px (which
+  is how a HEIC becomes readable) and sent multipart to `uploadImage`; removing
+  it is `saveAvatar(null)`. "Sign-in and security" changes the email address
+  and the password with Supabase Auth's own `updateUser` (then ends other
+  sessions and runs `announcePasswordChange`; an account made with Google or
+  Apple is told it has no password), and sets up TOTP — the key opens straight
+  in an authenticator on the same phone (`otpauth://`), with the QR code and
+  the key for another device. "Emails" is `updateNotificationPreferences`,
+  all four switches at once, put back when refused. "Download my data" is
+  `/api/account/export`, written to the cache and handed to the share sheet.
+  Setting up a second factor now clears an abandoned attempt first, on the
+  website too: `listFactors().totp` holds only verified factors, so the
+  website's cleanup never found one and a single abandoned setup blocked
+  every later one.
 
 ## Pushes
 

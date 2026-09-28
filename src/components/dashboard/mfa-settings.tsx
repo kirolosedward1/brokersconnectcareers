@@ -88,10 +88,14 @@ export function MfaSettings({
       const supabase = createClient();
 
       // An abandoned attempt leaves an unverified factor behind, and Supabase
-      // refuses a second one under the same name. Clear it first.
+      // refuses a second one under the same name. Clear it first — found in
+      // `all`: the `totp` list holds verified factors only, so looking there
+      // found nothing, and one abandoned attempt blocked every later one.
       const { data: existing } = await supabase.auth.mfa.listFactors();
-      for (const factor of existing?.totp ?? []) {
-        if (factor.status !== 'verified') await supabase.auth.mfa.unenroll({ factorId: factor.id });
+      for (const factor of existing?.all ?? []) {
+        if (factor.factor_type === 'totp' && factor.status !== 'verified') {
+          await supabase.auth.mfa.unenroll({ factorId: factor.id });
+        }
       }
 
       const { data, error: enrolError } = await supabase.auth.mfa.enroll({
