@@ -26,11 +26,12 @@ for the app exactly as for the site. The actions the app may call are listed in
 action is. Their inputs and outputs are typed in `src/lib/mobile-api/contract.ts`,
 which the app imports.
 
-Two kinds of write go straight to Supabase, as the website's browser code does:
-notification read-state (the `mark_notifications_read` / `open_notification`
-RPCs — the logic is in SQL) and file bytes to Storage (CVs, company documents),
-whose path is then submitted through the action, which inspects the file and
-deletes it if refused.
+Three kinds of write go straight to Supabase, as the website's browser code
+does: notification read-state (the `mark_notifications_read` /
+`open_notification` RPCs — the logic is in SQL), the phone's push registration
+(`register_push_device` / `unregister_push_device`, likewise all SQL) and file
+bytes to Storage (CVs, company documents), whose path is then submitted through
+the action, which inspects the file and deletes it if refused.
 
 **Reads** the website builds in TypeScript — the board's search, the company
 directory, the browse counts, a listing with its similar roles — come from GET
@@ -136,6 +137,40 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   asking Apple for a fresh authorization code, so the website can revoke the
   grant. An account that owns a company is pointed to the team, as on the web.
 
+## Pushes
+
+A push is a second delivery of a bell notification, never a different one
+(migration 329, `src/lib/push/`):
+
+- **Phones.** The app registers its Expo push token with
+  `register_push_device` (a definer function it calls directly, like the
+  notification read-state functions): the token moves to whoever signs in on
+  the phone, and signing out forgets it (`unregister_push_device`). Ten phones
+  a person at most.
+- **What is queued.** A trigger on `notifications` queues one push for a row
+  that is unread and not folded into another — so twenty applicants to one
+  listing are one push, as they are one row in the bell — only for people with
+  a phone, and it can never fail the notification. The expiry notices the
+  night sweep writes wait until nine in Cairo.
+- **What is sent.** The bell's own sentence (`notificationTitle`) in the
+  phone's language, the unread count as the badge, and the notification's id —
+  never the free-text note, which is not for a lock screen. Opening it asks the
+  website for the destination (`openNotification`), as the bell does.
+- **When.** Right after the action that caused it (`publish()` flushes in
+  `after()`), and every minute from `/api/cron/push`, which also reads Expo's
+  receipts and switches off phones that no longer have the app. Retries back
+  off over five tries; anything a day old is dropped rather than sent late.
+
+Scheduling the minute sweep inside the database needs two Vault secrets, set
+by hand in the SQL editor (the repository is public):
+
+```sql
+select vault.create_secret('https://www.brokersconnect.net/api/cron/push', 'push_sweep_url');
+select vault.create_secret('<the CRON_SECRET set on Vercel>', 'push_sweep_secret');
+```
+
+Vercel Cron calls the same route every five minutes as a second caller.
+
 ## Reporting and hiding
 
 The App Store asks an app where people publish to one another to let readers
@@ -211,6 +246,7 @@ On the website (Vercel):
 | `APPLE_APP_ID` | `TEAMID.net.brokersconnect.app` — serves the universal-link file. |
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_CLIENT_ID` | The Sign in with Apple key (`.p8`, newlines escaped) and the app's bundle id, used to revoke an Apple user's grant when they delete their account from the app (`src/lib/apple/revoke.ts`). Secret. |
 | `SUPPORT_EMAIL` | Already the footer's contact address; the app offers it too (`/api/mobile/v1/config`), and a company owner who wants their account deleted is pointed to it. |
+| `EXPO_ACCESS_TOKEN` | Only once "enhanced push security" is on in the Expo project: authenticates the website's pushes. Secret. |
 
 In the Supabase dashboard (Authentication):
 

@@ -16,12 +16,14 @@ import {
   notifyVisibilityChanged,
   notifyWelcome,
 } from '@/lib/email/notify';
+import { flushPushes } from '@/lib/push/deliver';
 import { dispatch, type DispatchReport, type Route } from './dispatch';
 
 /**
  * The notification service.
  *
  *   BUSINESS EVENT  →  publish()  →  in-app  →  email  →  delivery log
+ *                                       └→  phone (a push per in-app row, migration 329)
  *
  * An action says *what happened*; this decides who hears about it and through
  * which channels. No page or action calls an email function directly any more
@@ -195,7 +197,15 @@ export type PublishReport = DispatchReport & { type: EventType };
  */
 export async function publish(event: BusinessEvent): Promise<PublishReport> {
   const route = ROUTES[event.type] as Route<BusinessEvent>;
-  return { type: event.type, ...(await dispatch(route, event)) };
+  const report = { type: event.type, ...(await dispatch(route, event)) };
+  /*
+    Phones. The bell's rows for this event were written with the fact, and a
+    trigger queued a push for each one somebody has a phone for (migration
+    329); this sends them now rather than at the next minute's sweep. Never
+    throws, and gives up after a few seconds — the sweep has the rest.
+  */
+  await flushPushes();
+  return report;
 }
 
 // ---------------------------------------------------------------------------
