@@ -8,8 +8,15 @@ const report = reporter();
 const db = await createTestDb();
 const as = runner(db);
 
-const { employerVerified, employerUnverified, candidate, publicAgent, hiddenAgent, admin } =
-  FIXTURES;
+const {
+  employerVerified,
+  employerUnverified,
+  employerPending,
+  candidate,
+  publicAgent,
+  hiddenAgent,
+  admin,
+} = FIXTURES;
 const OUTSIDER = '55555555-5555-5555-5555-555555555555';
 
 await db.exec(`
@@ -679,8 +686,10 @@ report.section('only candidates apply');
   const r = await as(employerVerified,
     `insert into applications (job_id, candidate_id, experience_band)
      values ('${liveOther}', '${employerVerified}', 'mid_3_5') returning id`);
+  // Either refusal is the right one: the trigger migration 202 added speaks
+  // first, and the insert policy says the same thing behind it.
   report.check('an employer cannot apply to a listing',
-    !r.ok && /row-level security/.test(r.error ?? ''), r.ok ? 'insert was allowed' : r.error);
+    !r.ok && /row-level security|applicant_role/.test(r.error ?? ''), r.ok ? 'insert was allowed' : r.error);
 
   const own = (
     await db.query(`
@@ -910,43 +919,119 @@ report.section('applying is consent, and the applicant inbox may read it');
 
 report.section('the agent directory gate');
 {
+  /*
+    The directory answers the people who hire — an approved employer account
+    or an admin — and nobody else (migration 322). A candidate is not a
+    directory reader, a stranger is not, and a suspended or still-pending
+    employer is not. Inside it, what each company sees is as migration 304
+    left it: anonymised cards on gated profiles until the company is
+    verified, names on public ones, and the number only from the reveal.
+  */
   const GATED = 'consultant-81880411'; // verified_employers_only
   const PUBLIC = 'consultant-90952122'; // public
   const gatedId = (await db.query(`select id from agent_profiles where slug = '${GATED}'`)).rows[0].id;
   const publicId = (await db.query(`select id from agent_profiles where slug = '${PUBLIC}'`)).rows[0].id;
 
   /*
-    A visitor with no session reads the directory as anon, the way the public
-    page does. What changed (migration 304) is the row: a locked card has no
-    name, no avatar and no slug — only an id — and no directory row anywhere
-    carries a phone number or a CV path, so paging it yields the page.
+    An approved employer whose company is not verified AND who holds no
+    application from the gated consultant. Property Hub is the obvious
+    fixture and the wrong one: the seed has this consultant applying there,
+    and applying opens a card to the company it was sent to (migration 43),
+    which is a different rule from the one under test. Computed, like the
+    consent section above computes its stranger.
   */
-  const anon = await as(null, 'select * from search_agents(null,null,null,null,60,0)', 'anon');
-  const anonGated = anon.rows.find((row) => row.id === gatedId);
-  const anonPublic = anon.rows.find((row) => row.id === publicId);
+  const NOSY = 'a7a7a7a7-1111-4222-8333-777777777777';
+  const nosyCompany = (
+    await db.query(`
+      select c.id from companies c
+       where c.verification_status <> 'verified'
+         and not exists (
+           select 1 from applications a join jobs j on j.id = a.job_id
+            where j.company_id = c.id and a.candidate_id = (select user_id from agent_profiles where slug = '${GATED}')
+         )
+       limit 1`)
+  ).rows[0].id;
+  await db.exec(`
+    insert into auth.users (id, email) values ('${NOSY}', 'nosy-unverified@demo.test') on conflict do nothing;
+    insert into profiles (id, role, full_name, whatsapp_phone)
+      values ('${NOSY}', 'employer', 'فضولي', '+201777777777') on conflict do nothing;
+    update profiles set approval_status = 'approved' where id = '${NOSY}';
+    insert into company_members (company_id, user_id, role)
+      values ('${nosyCompany}', '${NOSY}', 'recruiter') on conflict do nothing;
+  `);
 
-  report.check('a visitor sees the directory', anon.ok && anon.rows.length > 1, JSON.stringify(anon.error));
-  report.check('and no row carries a phone number or a CV path',
-    anon.rows.length > 0 && anon.rows.every((row) => !('whatsapp_phone' in row) && !('cv_path' in row)),
-    Object.keys(anon.rows[0] ?? {}).join(','));
-  report.check('a gated profile comes back with no name',
-    anonGated?.is_unlocked === false && anonGated?.full_name === null, JSON.stringify(anonGated));
-  // The slug is the name transliterated, so a locked card is known by its id.
-  report.check('and not by its slug either',
-    anonGated?.slug === gatedId, JSON.stringify(anonGated));
-  report.check('a public profile keeps its name',
-    anonPublic?.is_unlocked === true && anonPublic?.full_name !== null && anonPublic?.slug === PUBLIC,
-    JSON.stringify(anonPublic));
+  const SEARCH = 'select * from search_agents(null,null,null,null,60,0)';
 
-  const unverified = await as(employerUnverified, 'select id, slug, full_name from search_agents(null,null,null,null,60,0)');
+  const anon = await as(null, SEARCH, 'anon');
+  report.check('anonymous cannot call the directory at all',
+    !anon.ok && /permission denied/.test(anon.error ?? ''), anon.ok ? `${anon.rows.length} rows` : anon.error);
+
+  const asCandidate = await as(candidate, SEARCH);
+  report.check('a candidate gets an empty directory',
+    asCandidate.ok && asCandidate.rows.length === 0, asCandidate.error ?? `${asCandidate.rows.length} rows`);
+
+  const asOutsider = await as(OUTSIDER, SEARCH);
+  report.check('and so does a candidate with no profile of their own',
+    asOutsider.ok && asOutsider.rows.length === 0, asOutsider.error ?? `${asOutsider.rows.length} rows`);
+
+  const pending = await as(employerPending, SEARCH);
+  report.check('an employer still awaiting approval gets nothing, verified company or not',
+    pending.ok && pending.rows.length === 0, pending.error ?? `${pending.rows.length} rows`);
+
+  const unverified = await as(NOSY, SEARCH);
   const unverifiedGated = unverified.rows.find((row) => row.id === gatedId);
-  report.check('an unverified employer still gets no name on gated rows',
-    unverifiedGated?.full_name === null && unverifiedGated?.slug === gatedId, JSON.stringify(unverifiedGated));
+  const unverifiedPublic = unverified.rows.find((row) => row.id === publicId);
+  report.check('an approved employer sees the directory', unverified.rows.length > 1, unverified.error);
+  report.check('an unverified company gets no name on gated rows',
+    unverifiedGated?.is_unlocked === false && unverifiedGated?.full_name === null, JSON.stringify(unverifiedGated));
+  // The handle on a locked row is the id (migration 304): a link that opens
+  // the card, and never a name.
+  report.check('nor a slug that could spell the name — the handle is the id',
+    unverifiedGated?.slug === gatedId, JSON.stringify(unverifiedGated));
+  report.check('but a public profile keeps its name',
+    unverifiedPublic?.is_unlocked === true && unverifiedPublic?.full_name !== null && unverifiedPublic?.slug === PUBLIC,
+    JSON.stringify(unverifiedPublic));
 
-  const verified = await as(employerVerified, 'select slug, is_unlocked, full_name from search_agents(null,null,null,null,60,0)');
-  const verifiedGated = verified.rows.find((row) => row.slug === GATED);
-  report.check('a verified employer gets the name',
-    verifiedGated?.is_unlocked === true && verifiedGated?.full_name !== null);
+  const verified = await as(employerVerified, SEARCH);
+  const verifiedGated = verified.rows.find((row) => row.id === gatedId);
+  report.check('a verified company gets the name',
+    verifiedGated?.is_unlocked === true && verifiedGated?.full_name !== null && verifiedGated?.slug === GATED);
+
+  const adminRows = await as(admin, SEARCH);
+  report.check('and so does an admin', adminRows.rows.find((row) => row.id === gatedId)?.full_name != null);
+
+  const cardAnon = await as(null, `select * from get_agent_card('${GATED}')`, 'anon');
+  report.check('anonymous cannot open a card', !cardAnon.ok && /permission denied/.test(cardAnon.error ?? ''),
+    cardAnon.ok ? JSON.stringify(cardAnon.rows[0]) : '');
+
+  const cardCandidate = await as(candidate, `select id from get_agent_card('${PUBLIC}')`);
+  report.check('a candidate cannot open another consultant\'s card, public or not',
+    cardCandidate.ok && cardCandidate.rows.length === 0, cardCandidate.error ?? JSON.stringify(cardCandidate.rows));
+
+  const cardOwner = await as(candidate, `select is_unlocked, full_name, can_reveal from get_agent_card('${GATED}')`);
+  report.check('but still opens their own, unlocked',
+    cardOwner.rows[0]?.is_unlocked === true && cardOwner.rows[0]?.full_name !== null, JSON.stringify(cardOwner.rows[0] ?? cardOwner.error));
+
+  const cardPending = await as(employerPending, `select id from get_agent_card('${PUBLIC}')`);
+  report.check('a pending employer cannot open a card either',
+    cardPending.ok && cardPending.rows.length === 0, cardPending.error ?? JSON.stringify(cardPending.rows));
+
+  const nosyGated = await as(NOSY, `select slug, is_unlocked, full_name, can_reveal from get_agent_card('${GATED}')`);
+  report.check('an unverified company opens a gated card anonymous, known only by its id',
+    nosyGated.rows[0]?.is_unlocked === false && nosyGated.rows[0]?.full_name === null
+      && nosyGated.rows[0]?.slug === gatedId && nosyGated.rows[0]?.can_reveal === false,
+    JSON.stringify(nosyGated.rows[0] ?? nosyGated.error));
+
+  const byIdNosy = await as(NOSY, `select id, slug from get_agent_card('${gatedId}')`);
+  report.check('and can open it by id, which is how the anonymised card links',
+    byIdNosy.rows[0]?.id === gatedId && byIdNosy.rows[0]?.slug === gatedId, JSON.stringify(byIdNosy.rows[0] ?? byIdNosy.error));
+
+  // The consent path is untouched: the company this consultant applied to
+  // still opens the card, name and slug, verified or not.
+  const consented = await as(employerUnverified, `select is_unlocked, slug, can_reveal from get_agent_card('${GATED}')`);
+  report.check('while the company they applied to still opens it',
+    consented.rows[0]?.is_unlocked === true && consented.rows[0]?.slug === GATED && consented.rows[0]?.can_reveal === true,
+    JSON.stringify(consented.rows[0] ?? consented.error));
 
   // The card by its id opens the same page the directory links to.
   const byId = await as(employerVerified, `select slug, is_unlocked from get_agent_card('${gatedId}')`);
@@ -958,12 +1043,6 @@ report.section('the agent directory gate');
     which wants a signed-in employer in good standing with a company to act
     for, applies the same gate, and counts what it hands over.
   */
-  const cardAnon = await as(null, `select * from get_agent_card('${GATED}')`, 'anon');
-  report.check('a visitor opens a gated card anonymous, known only by its id',
-    cardAnon.ok && cardAnon.rows[0]?.is_unlocked === false && cardAnon.rows[0]?.full_name === null
-      && cardAnon.rows[0]?.slug === gatedId && !('whatsapp_phone' in (cardAnon.rows[0] ?? {})),
-    JSON.stringify(cardAnon.rows[0] ?? cardAnon.error));
-
   const revealAnon = await as(null, `select status from reveal_agent_contact('${PUBLIC}')`, 'anon');
   report.check('anonymous gets no contact details',
     !revealAnon.ok && /permission denied/.test(revealAnon.error ?? ''), revealAnon.error);
@@ -1009,18 +1088,12 @@ report.section('the agent directory gate');
     as(who, `select * from get_agent_card('${PUBLIC}')`, role);
 
   const publicAnon = await card(null, 'anon');
-  const publicAnonCard = publicAnon.rows[0];
-  report.check('anonymous gets a public name and CV indicator, not contact fields',
-    publicAnon.ok && publicAnonCard?.full_name != null && publicAnonCard?.has_cv === true &&
-      !('whatsapp_phone' in (publicAnonCard ?? {})) && !('cv_path' in (publicAnonCard ?? {})),
-    JSON.stringify(publicAnonCard ?? publicAnon.error));
+  report.check('anonymous is refused a public card outright',
+    !publicAnon.ok && /permission denied/.test(publicAnon.error ?? ''), publicAnon.ok ? JSON.stringify(publicAnon.rows[0]) : '');
 
   const publicStranger = await card(OUTSIDER);
-  const publicStrangerCard = publicStranger.rows[0];
-  report.check('another candidate also sees no contact fields',
-    publicStranger.ok && publicStrangerCard?.full_name != null &&
-      !('whatsapp_phone' in (publicStrangerCard ?? {})) && !('cv_path' in (publicStrangerCard ?? {})),
-    JSON.stringify(publicStrangerCard ?? publicStranger.error));
+  report.check('another candidate gets no card at all, public or not',
+    publicStranger.ok && publicStranger.rows.length === 0, publicStranger.error ?? JSON.stringify(publicStranger.rows));
 
   const publicHiring = await card(employerUnverified);
   const publicHiringCard = publicHiring.rows[0];
@@ -1042,11 +1115,188 @@ report.section('the agent directory gate');
     JSON.stringify(publicReveal.rows[0] ?? publicReveal.error));
   await db.exec(`update agent_profiles set cv_path = null where slug = '${PUBLIC}'`);
 
-  const raw = await as(null, `select id from agent_profiles where slug = '${GATED}'`, 'anon');
-  report.check('and the gated row is unreadable directly', raw.rows.length === 0);
+  // And the rows themselves, past the functions.
+  const rawAnon = await as(null, `select id from agent_profiles where slug in ('${GATED}', '${PUBLIC}')`, 'anon');
+  report.check('anonymous reads no profile row directly', rawAnon.ok && rawAnon.rows.length === 0);
 
-  const rawPublic = await as(null, `select id from agent_profiles where slug = '${PUBLIC}'`, 'anon');
-  report.check('while a public row is readable directly', rawPublic.rows.length === 1);
+  const rawCandidate = await as(OUTSIDER, `select id from agent_profiles where slug in ('${GATED}', '${PUBLIC}')`);
+  report.check('nor does a candidate, even a public one', rawCandidate.ok && rawCandidate.rows.length === 0, JSON.stringify(rawCandidate.rows));
+
+  const rawPending = await as(employerPending, `select id from agent_profiles where slug in ('${GATED}', '${PUBLIC}')`);
+  report.check('nor a pending employer', rawPending.ok && rawPending.rows.length === 0, JSON.stringify(rawPending.rows));
+
+  const rawUnverified = await as(NOSY, `select slug from agent_profiles where slug in ('${GATED}', '${PUBLIC}')`);
+  report.check('an approved employer reads the public row and not the gated one',
+    rawUnverified.ok && rawUnverified.rows.length === 1 && rawUnverified.rows[0].slug === PUBLIC, JSON.stringify(rawUnverified.rows));
+
+  const rawVerified = await as(employerVerified, `select slug from agent_profiles where slug in ('${GATED}', '${PUBLIC}')`);
+  report.check('and a verified one reads both', rawVerified.ok && rawVerified.rows.length === 2, JSON.stringify(rawVerified.rows));
+
+  // The work history behind a public profile follows the same rule.
+  const seededAgentId = publicId;
+  await db.exec(`insert into agent_experience (agent_id, company_name, title, started)
+                 values ('${seededAgentId}', 'شركة معلنة للاختبار', 'استشاري', '2022-01-01')`);
+  const historyCandidate = await as(OUTSIDER, `select company_name from agent_experience where agent_id = '${seededAgentId}'`);
+  report.check('a candidate reads no other consultant\'s work history',
+    historyCandidate.ok && historyCandidate.rows.length === 0, JSON.stringify(historyCandidate.rows));
+  const historyEmployer = await as(NOSY, `select company_name from agent_experience where agent_id = '${seededAgentId}'`);
+  report.check('while an employer reads a public consultant\'s', historyEmployer.ok && historyEmployer.rows.length === 1, historyEmployer.error);
+  await db.exec(`delete from agent_experience where agent_id = '${seededAgentId}'`);
+
+  // Suspension closes the directory too, however verified the company is.
+  await db.exec(`update profiles set approval_status = 'rejected' where id = '${employerVerified}'`);
+  const suspended = await as(employerVerified, SEARCH);
+  report.check('a suspended employer gets nothing, verified company or not',
+    suspended.ok && suspended.rows.length === 0, suspended.error ?? `${suspended.rows.length} rows`);
+  await db.exec(`update profiles set approval_status = 'approved' where id = '${employerVerified}'`);
+
+  await db.exec(`delete from auth.users where id = '${NOSY}'`);
+}
+
+report.section('a suspended employer keeps nothing that was sent to them');
+{
+  const applicationsBefore = await as(employerVerified, `select id, cv_path from applications`);
+  report.check('an approved employer reads the applications to their listings', applicationsBefore.ok && applicationsBefore.rows.length > 0);
+
+  const applicantBefore = await as(employerVerified,
+    `select whatsapp_phone from profiles where id in (select candidate_id from applications where job_id = '${liveJob}')`);
+  report.check('and their applicants\' numbers', applicantBefore.ok && applicantBefore.rows.length > 0);
+
+  await db.exec(`update profiles set approval_status = 'rejected' where id = '${employerVerified}'`);
+
+  const applicationsAfter = await as(employerVerified, `select id from applications`);
+  report.check('suspended, the applications are gone from their view',
+    applicationsAfter.ok && applicationsAfter.rows.length === 0, JSON.stringify(applicationsAfter.rows));
+
+  const applicantAfter = await as(employerVerified,
+    `select whatsapp_phone from profiles where id in (select candidate_id from applications where job_id = '${liveJob}')`);
+  report.check('and so are the numbers', applicantAfter.ok && applicantAfter.rows.length === 0);
+
+  const moveAfter = await as(employerVerified,
+    `update applications set status = 'rejected' where job_id = '${liveJob}' returning id`);
+  report.check('and they can no longer move anybody', moveAfter.ok && moveAfter.rows.length === 0, moveAfter.error);
+
+  const notesAfter = await as(employerVerified, `select id from application_notes`);
+  report.check('nor read the team\'s notes', notesAfter.ok && notesAfter.rows.length === 0);
+
+  // Migration 308 folded good standing into the membership helpers, so the
+  // membership itself — and with it the company's own view of its listings —
+  // is out of reach while the account is suspended. The console says what
+  // happened from the profile row (isSuspended), not from a company read.
+  const membershipAfter = await as(employerVerified,
+    `select company_id from company_members where user_id = '${employerVerified}'`);
+  report.check('and the membership itself is out of reach while suspended',
+    membershipAfter.ok && membershipAfter.rows.length === 0, membershipAfter.error ?? JSON.stringify(membershipAfter.rows));
+
+  // Readable, not editable: closing or rewording an advert is an employer's
+  // act, and a suspended account is not acting as one.
+  const editAfter = await as(employerVerified,
+    `update jobs set title_ar = title_ar where company_id = (select company_id from company_members where user_id = '${employerVerified}' limit 1) returning id`);
+  report.check('but not editable', editAfter.ok && editAfter.rows.length === 0, editAfter.error);
+
+  const closeAfter = await as(employerVerified,
+    `update jobs set status = 'closed' where id = '${liveJob}' returning id`);
+  report.check('nor closable', !closeAfter.ok || closeAfter.rows.length === 0, closeAfter.ok ? 'update was allowed' : '');
+
+  await db.exec(`update profiles set approval_status = 'approved' where id = '${employerVerified}'`);
+
+  const restored = await as(employerVerified, `select id from applications`);
+  report.check('and reinstatement gives it all back', restored.ok && restored.rows.length === applicationsBefore.rows.length);
+}
+
+report.section('only a candidate account applies, whoever is asking');
+{
+  const asAdmin = await as(admin, `
+    insert into applications (job_id, candidate_id, experience_band)
+    values ('${liveJob}', '${admin}', 'mid_3_5') returning id`);
+  report.check('an admin cannot apply to a listing',
+    !asAdmin.ok && /applicant_role/.test(asAdmin.error ?? ''), asAdmin.ok ? 'insert was allowed' : asAdmin.error);
+
+  const asService = await as(null, `
+    insert into applications (job_id, candidate_id, experience_band)
+    values ('${liveJob}', '${employerUnverified}', 'mid_3_5') returning id`, 'service_role');
+  report.check('nor can the service role write an employer in as an applicant',
+    !asService.ok && /applicant_role/.test(asService.error ?? ''), asService.ok ? 'insert was allowed' : asService.error);
+}
+
+report.section('a bookmark is a candidate\'s');
+{
+  const asEmployer = await as(employerVerified,
+    `insert into saved_jobs (candidate_id, job_id) values ('${employerVerified}', '${liveJob}') returning job_id`);
+  report.check('an employer cannot save a listing', !asEmployer.ok, asEmployer.ok ? 'insert was allowed' : undefined);
+
+  const asAdminSave = await as(admin,
+    `insert into saved_jobs (candidate_id, job_id) values ('${admin}', '${liveJob}') returning job_id`);
+  report.check('nor can an admin, through the candidate policy', !asAdminSave.ok);
+
+  const asCandidateSave = await as(OUTSIDER,
+    `insert into saved_jobs (candidate_id, job_id) values ('${OUTSIDER}', '${liveJob}') returning job_id`);
+  report.check('while a candidate still can', asCandidateSave.ok && asCandidateSave.rows.length === 1, asCandidateSave.error);
+
+  const forSomebodyElse = await as(OUTSIDER,
+    `insert into saved_jobs (candidate_id, job_id) values ('${candidate}', '${liveJob}') returning job_id`);
+  report.check('and only for themselves', !forSomebodyElse.ok);
+}
+
+report.section('a photo is the account\'s own photo');
+{
+  const own = await as(candidate, `
+    update profiles set avatar_url = 'https://xyz.supabase.co/storage/v1/object/public/avatars/${candidate}/a1b2c3.webp'
+     where id = '${candidate}' returning id`);
+  report.check('a file in the account\'s own avatar folder is accepted', own.ok && own.rows.length === 1, own.error);
+
+  const google = await as(candidate, `
+    update profiles set avatar_url = 'https://lh3.googleusercontent.com/a/ACg8ocK=s96-c'
+     where id = '${candidate}' returning id`);
+  report.check('and so is the picture Google handed over', google.ok && google.rows.length === 1, google.error);
+
+  const elsewhere = await as(candidate, `
+    update profiles set avatar_url = 'https://xyz.supabase.co/storage/v1/object/public/avatars/${publicAgent}/a1b2c3.webp'
+     where id = '${candidate}' returning id`);
+  report.check('somebody else\'s folder is refused',
+    !elsewhere.ok && /own avatar folder/.test(elsewhere.error ?? ''), elsewhere.ok ? 'update was allowed' : elsewhere.error);
+
+  const pixel = await as(candidate, `
+    update profiles set avatar_url = 'https://tracker.example/pixel.gif?u=1' where id = '${candidate}' returning id`);
+  report.check('and so is any other host',
+    !pixel.ok && /own avatar folder/.test(pixel.error ?? ''), pixel.ok ? 'update was allowed' : pixel.error);
+
+  const traversal = await as(candidate, `
+    update profiles set avatar_url = 'https://xyz.supabase.co/storage/v1/object/public/avatars/${candidate}/../${publicAgent}/x.png'
+     where id = '${candidate}' returning id`);
+  report.check('and a path that climbs out of the folder',
+    !traversal.ok, traversal.ok ? 'update was allowed' : undefined);
+
+  const cleared = await as(candidate, `update profiles set avatar_url = null where id = '${candidate}' returning id`);
+  report.check('clearing it is always allowed', cleared.ok && cleared.rows.length === 1, cleared.error);
+
+  const byAdmin = await as(admin, `
+    update profiles set avatar_url = 'https://cdn.example/repaired.png' where id = '${candidate}' returning id`);
+  report.check('an admin may repair a row with anything', byAdmin.ok && byAdmin.rows.length === 1, byAdmin.error);
+}
+
+report.section('a file path is one folder and one file');
+{
+  const climb = await as(candidate, `
+    insert into applications (job_id, candidate_id, cv_path, experience_band)
+    values ('${liveJob}', '${candidate}', '${candidate}/../${publicAgent}/stolen.pdf', 'mid_3_5')`);
+  report.check('an application cannot name a CV through the parent folder',
+    !climb.ok && /applications_cv_is_the_applicants/.test(climb.error ?? ''), climb.ok ? 'insert was allowed' : climb.error);
+
+  const dots = await as(candidate, `
+    insert into applications (job_id, candidate_id, cv_path, experience_band)
+    values ('${liveJob}', '${candidate}', '${candidate}/..', 'mid_3_5')`);
+  report.check('nor name the folder itself',
+    !dots.ok && /applications_cv_is_the_applicants/.test(dots.error ?? ''), dots.ok ? 'insert was allowed' : dots.error);
+
+  const agentClimb = await as(publicAgent,
+    `update agent_profiles set cv_path = '${publicAgent}/../${candidate}/stolen.pdf' where user_id = '${publicAgent}'`);
+  report.check('and a directory profile cannot either',
+    !agentClimb.ok && /agent_profiles_cv_is_the_owners/.test(agentClimb.error ?? ''), agentClimb.ok ? 'update was allowed' : agentClimb.error);
+
+  const fine = await as(publicAgent,
+    `update agent_profiles set cv_path = '${publicAgent}/9f1c2d3e-4b5a-6c7d-8e9f-0a1b2c3d4e5f.pdf' where user_id = '${publicAgent}' returning id`);
+  report.check('while the shape every upload produces is fine', fine.ok && fine.rows.length === 1, fine.error);
 }
 
 report.section('no consultant is named by their address');
@@ -1079,11 +1329,13 @@ report.section('no consultant is named by their address');
   ).rows[0].n;
   report.check('and no profile keeps any other shape', left === 0, String(left));
 
-  const anon = await as(null, 'select id, slug from search_agents(null,null,null,null,60,0)', 'anon');
-  report.check('so the anonymous directory carries no names in its links',
-    anon.ok && anon.rows.every((row) =>
+  // Read as the directory's least-trusted reader — an approved employer whose
+  // company is not verified — since migration 322 answers nobody else.
+  const reader = await as(employerUnverified, 'select id, slug from search_agents(null,null,null,null,60,0)');
+  report.check('so the directory carries no names in its links',
+    reader.ok && reader.rows.length > 0 && reader.rows.every((row) =>
       row.slug === row.id || /^consultant-[1-9][0-9]{7}$/.test(row.slug)),
-    JSON.stringify(anon.rows.map((row) => row.slug)));
+    reader.error ?? JSON.stringify(reader.rows.map((row) => row.slug)));
 
   await db.exec(`delete from agent_profiles where user_id = '${OUTSIDER}';`);
 }
@@ -1145,13 +1397,16 @@ report.section('a CV section never outlives the gate on its profile');
     values ('${hiddenId}', 'شهادة وسيط عقاري');
   `);
 
+  // A stranger here is a candidate, and since migration 202 a candidate is not
+  // a directory reader at all — so they see neither row. The employer half
+  // below is what distinguishes "gated" from "hidden".
   const r = await as(OUTSIDER, `select company_name from agent_experience`);
   report.check(
     'a stranger sees no hidden employer name',
     r.ok && !r.rows.some((row) => row.company_name.includes('الحالي')),
     JSON.stringify(r.rows),
   );
-  report.check('but does see the public one', r.ok && r.rows.length === 1, r.error);
+  report.check('nor the public one, being a candidate', r.ok && r.rows.length === 0, r.error);
 
   const r2 = await as(employerVerified, `select company_name from agent_experience`);
   report.check(
@@ -1159,6 +1414,7 @@ report.section('a CV section never outlives the gate on its profile');
     r2.ok && !r2.rows.some((row) => row.company_name.includes('الحالي')),
     JSON.stringify(r2.rows),
   );
+  report.check('but the employer does see the public one', r2.ok && r2.rows.length === 1, JSON.stringify(r2.rows));
 
   const r3 = await as(OUTSIDER, `select institution from agent_education`);
   report.check('education is gated too', r3.ok && r3.rows.length === 0, JSON.stringify(r3.rows));
@@ -1661,6 +1917,10 @@ report.section('a company is a team, not a login');
     insert into profiles (id, role, full_name, whatsapp_phone)
       values ('${COLLEAGUE}', 'employer', 'زميلة', '+201666666666');
   `);
+  // In good standing, stated after the insert: a new employer account is
+  // forced to 'pending' on the way in, and since migration 202 an account that
+  // is not approved reaches no applicant however many companies it joins.
+  await db.exec(`update profiles set approval_status = 'approved' where id = '${COLLEAGUE}'`);
 
   /*
     The company this fixture is an admin of, asked for by membership.
@@ -2835,6 +3095,33 @@ report.section('who looked at your profile, counted and never named');
   report.check('and two companies', (await companies()) === 2);
 
   /*
+    The directory's gate, on the counter too. A pending employer resolves a
+    company but is not somebody the directory answers, and a hidden card is
+    not a card the directory shows — so neither leaves a row, or a consultant
+    on `hidden` would be told a company had looked when no company can.
+  */
+  await viewAs(employerPending);
+  report.check('an employer still awaiting approval leaves no row', (await views()) === 2);
+
+  const hiddenSlug = await slugOf(hiddenAgent);
+  const hiddenId = (
+    await db.query(`select id from agent_profiles where user_id = '${hiddenAgent}'`)
+  ).rows[0].id;
+  await db.exec(`update agent_profiles set visibility = 'hidden' where user_id = '${hiddenAgent}'`);
+  await db.exec(`
+    set local role authenticated;
+    set local request.jwt.claim.sub = '${employerVerified}';
+    set local request.jwt.claims = '{"role":"authenticated","sub":"${employerVerified}"}';
+    select public.record_agent_view('${hiddenSlug}');
+    select public.record_agent_view('${hiddenId}');
+    reset role;
+  `);
+  const hiddenRows = (
+    await db.query(`select count(*)::int as n from agent_profile_views where agent_id = '${hiddenId}'`)
+  ).rows[0].n;
+  report.check('and a hidden card is never counted, by slug or by id', hiddenRows === 0);
+
+  /*
     The owner's own preview is not a view.
 
     Migration 40 gave them a link to it, so they have a reason to load their
@@ -2954,6 +3241,168 @@ report.section('who looked at your profile, counted and never named');
   report.check('and the next view sweeps it', swept === 0);
 
   await db.exec(`delete from agent_profile_views`);
+}
+
+report.section('a company sees its own pipeline, and no other company\'s');
+{
+  /*
+    Tenant isolation, stated as one block rather than left to be inferred from
+    the sections above. Two companies from the seed, each with an application
+    on one of its listings; the admin of one tries every table the employer
+    console reads or writes, against the other's rows.
+
+    State is pinned rather than assumed: the sections above suspend accounts,
+    expire adverts and move applications, and a test that passed because a
+    fixture happened to be suspended would prove nothing.
+  */
+  const rowadCo = (await db.query("select id from companies where slug='al-rowad-real-estate-309047'")).rows[0].id;
+  const hubCo = unverifiedCo;
+
+  await db.exec(`
+    update profiles set approval_status = 'approved' where id in ('${employerVerified}', '${employerUnverified}');
+  `);
+
+  const application = async (companyId) =>
+    (
+      await db.query(`
+        select a.id, a.job_id, a.candidate_id from applications a
+          join jobs j on j.id = a.job_id
+         where j.company_id = '${companyId}'
+         order by a.created_at
+         limit 1`)
+    ).rows[0];
+
+  const rowadApp = await application(rowadCo);
+  const hubApp = await application(hubCo);
+  report.check('both companies have an applicant to compare', Boolean(rowadApp && hubApp));
+
+  if (rowadApp && hubApp) {
+    // The control: the owning company does see its own.
+    const own = await as(employerVerified, `select id from applications where id = '${rowadApp.id}'`);
+    report.check('the owning company sees its application', own.ok && own.rows.length === 1, own.error);
+
+    const other = await as(employerUnverified, `select id from applications where id = '${rowadApp.id}'`);
+    report.check('the other company does not', other.ok && other.rows.length === 0, other.error);
+
+    const move = await as(employerUnverified,
+      `update applications set status = 'rejected' where id = '${rowadApp.id}' returning id`);
+    report.check('nor can it move it', !move.ok || move.rows.length === 0, move.ok ? 'update was allowed' : '');
+
+    const note = await as(employerUnverified,
+      `insert into application_notes (application_id, author_id, body)
+       values ('${rowadApp.id}', '${employerUnverified}', 'x')`);
+    report.check('nor write a note on it', !note.ok, note.ok ? 'insert was allowed' : '');
+
+    const events = await as(employerUnverified,
+      `select id from application_events where application_id = '${rowadApp.id}'`);
+    report.check('nor read its history', events.ok && events.rows.length === 0, events.error);
+
+    const edit = await as(employerUnverified,
+      `update jobs set title_ar = title_ar where id = '${rowadApp.job_id}' returning id`);
+    report.check('nor edit the listing it was sent to', !edit.ok || edit.rows.length === 0, edit.ok ? 'update was allowed' : '');
+
+    const roster = await as(employerUnverified, `select user_id from company_members where company_id = '${rowadCo}'`);
+    report.check('nor read the other company\'s roster', roster.ok && roster.rows.length === 0, roster.error);
+
+    const shortlist = await as(employerUnverified, `select agent_id from saved_agents where company_id = '${rowadCo}'`);
+    report.check('nor its shortlist', shortlist.ok && shortlist.rows.length === 0, shortlist.error);
+
+    const orders = await as(employerUnverified, `select id from orders where company_id = '${rowadCo}'`);
+    report.check('nor its orders', orders.ok && orders.rows.length === 0, orders.error);
+
+    const papers = await as(employerUnverified, `select id from company_documents where company_id = '${rowadCo}'`);
+    report.check('nor its verification papers', papers.ok && papers.rows.length === 0, papers.error);
+
+    const stats = await as(employerUnverified, `select agent_id from agent_profile_views where company_id = '${rowadCo}'`);
+    report.check('nor who it looked at', stats.ok && stats.rows.length === 0, stats.error);
+
+    // And the same in the other direction, so the seed's asymmetry cannot
+    // carry the result.
+    const reverse = await as(employerVerified, `select id from applications where id = '${hubApp.id}'`);
+    report.check('and the verified company sees nothing of the unverified one\'s',
+      reverse.ok && reverse.rows.length === 0, reverse.error);
+
+    const reverseMove = await as(employerVerified,
+      `update applications set status = 'shortlisted' where id = '${hubApp.id}' returning id`);
+    report.check('nor moves it', !reverseMove.ok || reverseMove.rows.length === 0, reverseMove.ok ? 'update was allowed' : '');
+  }
+}
+
+report.section('a listing that is not live takes no applications');
+{
+  /*
+    The insert policy is the rule the apply page and the server action lean
+    on: `active`, and not past its end date. Each of the other states is tried
+    here by a candidate who is free to apply, and each is refused by the
+    database rather than by a page.
+  */
+  const rowadCo = (await db.query("select id from companies where slug='al-rowad-real-estate-309047'")).rows[0].id;
+  const job = (
+    await db.query(`select id from jobs where company_id = '${rowadCo}' order by created_at limit 1`)
+  ).rows[0].id;
+
+  await db.exec(`
+    update jobs set status = 'active', published_at = now(), expires_at = now() + interval '30 days'
+     where id = '${job}';
+  `);
+
+  // A candidate who has not applied to this listing and is nowhere near the
+  // daily cap — chosen, because the sections above spend applications freely.
+  const who = (
+    await db.query(`
+      select p.id from profiles p
+       where p.role = 'candidate' and p.approval_status = 'approved'
+         and not exists (select 1 from applications a where a.job_id = '${job}' and a.candidate_id = p.id)
+         and (select count(*) from applications a where a.candidate_id = p.id and a.created_at > now() - interval '1 day') < 20
+       order by p.created_at
+       limit 1`)
+  ).rows[0]?.id;
+  report.check('found a candidate free to apply', Boolean(who));
+
+  const apply = `insert into applications (job_id, candidate_id) values ('${job}', '${who}') returning id`;
+
+  const live = await as(who, apply);
+  report.check('a live listing takes the application', live.ok && live.rows.length === 1, live.error);
+
+  // Still labelled active — only the date has passed, which is the state a
+  // listing sits in between its end date and the nightly cron.
+  await db.exec(`update jobs set published_at = now() - interval '31 days', expires_at = now() - interval '1 hour' where id = '${job}'`);
+  const expired = await as(who, apply);
+  report.check('one past its end date refuses it, whatever its label says',
+    !expired.ok && /row-level security/.test(expired.error ?? ''), expired.ok ? 'insert was allowed' : expired.error);
+  await db.exec(`update jobs set published_at = now(), expires_at = now() + interval '30 days' where id = '${job}'`);
+
+  await db.exec(`update jobs set status = 'closed' where id = '${job}'`);
+  const closed = await as(who, apply);
+  report.check('a closed one refuses it',
+    !closed.ok && /row-level security/.test(closed.error ?? ''), closed.ok ? 'insert was allowed' : closed.error);
+
+  await db.exec(`update jobs set status = 'expired' where id = '${job}'`);
+  const stale = await as(who, apply);
+  report.check('an expired one refuses it',
+    !stale.ok && /row-level security/.test(stale.error ?? ''), stale.ok ? 'insert was allowed' : stale.error);
+
+  await db.exec(`update jobs set status = 'active', published_at = now(), expires_at = now() + interval '30 days' where id = '${job}'`);
+
+  const unpublished = (
+    await db.query(`select id from jobs where status in ('draft', 'pending_review') limit 1`)
+  ).rows[0]?.id;
+  if (unpublished) {
+    const draft = await as(who,
+      `insert into applications (job_id, candidate_id) values ('${unpublished}', '${who}') returning id`);
+    report.check('one still in review refuses it',
+      !draft.ok && /row-level security/.test(draft.error ?? ''), draft.ok ? 'insert was allowed' : draft.error);
+  }
+
+  // Twice. The first is kept (the runner rolls its own statements back, so it
+  // is written outside it); the second collides with the unique key the
+  // server action turns into "already applied".
+  await db.exec(`insert into applications (job_id, candidate_id) values ('${job}', '${who}')`);
+  const again = await as(who, apply);
+  report.check('and the same person cannot apply to it twice',
+    !again.ok && /duplicate key|unique/.test(again.error ?? ''), again.ok ? 'insert was allowed' : again.error);
+
+  await db.exec(`delete from applications where job_id = '${job}' and candidate_id = '${who}'`);
 }
 
 process.exit(report.finish() ? 0 : 1);

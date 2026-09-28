@@ -23,7 +23,7 @@ const reportSchema = z.discriminatedUnion('target', [
 const detailSchema = z.string().trim().max(1000).optional();
 
 /**
- * The refusals the database names (migrations 19 and 208), each mapped to a
+ * The refusals the database names (migrations 19 and 326), each mapped to a
  * word the dialog turns into its own sentence. "Try tomorrow", "wait a few
  * minutes" and "we already have it" ask the reader for different things.
  */
@@ -53,11 +53,13 @@ export type ReportRefusal =
  * nobody who can be wrong twice. The queue those rows land in is read by a
  * person, which is exactly what makes it worth flooding.
  *
- * The rules are the database's, so a hand-built request meets the same ones:
- * one report per person per target, ten a day, three in ten minutes, three on
- * an account's first day, three a week about any one company, none about your
- * own company or profile, none while suspended or under a reporting ban. And
- * none of them hides or removes anything: a report asks a person to look.
+ * The same door serves listings, companies and consultant profiles (migration
+ * 317). The rules are the database's, so a hand-built request meets the same
+ * ones: one report per person per target, ten a day, three in ten minutes,
+ * three on an account's first day, three a week about any one company, none
+ * about your own company or profile, none while suspended or under a
+ * reporting ban. And none of them hides or removes anything: a report asks a
+ * person to look.
  */
 export async function reportTarget(input: unknown): Promise<ActionResult> {
   const parsed = reportSchema.safeParse(input);
@@ -91,7 +93,9 @@ export async function reportTarget(input: unknown): Promise<ActionResult> {
     if (error.code === '23505') return { ok: false, error: 'already_reported' };
     // Row-level security: a suspended account files no reports.
     if (error.code === '42501') return { ok: false, error: 'restricted' };
-    logFailure('report', 'report refused', { target, code: error.code ?? undefined });
+    // The database's own words name constraints and triggers; they go to the
+    // log with the row's identifiers, and the caller gets a code.
+    logFailure('report', 'report refused', { [target]: targetId, code: error.code ?? undefined });
     return { ok: false, error: 'failed' };
   }
 

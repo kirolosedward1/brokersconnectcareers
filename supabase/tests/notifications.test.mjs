@@ -454,8 +454,10 @@ report.section('retention: read history older than 180 days is pruned');
 
 report.section('a retried email knows who it was for');
 {
-  await db.exec(`insert into email_log (template, recipient, user_id, entity_type, entity_id, status, created_at)
-                 values ('job_submitted', 'mate2@demo.test', '${MATE}', 'job', '${job.id}', 'failed', now() - interval '10 minutes')`);
+  // Due now: since migration 324 a row is due by next_attempt_at, which a
+  // claim sets five minutes out and a failed attempt moves on by backoff.
+  await db.exec(`insert into email_log (template, recipient, user_id, entity_type, entity_id, status, created_at, next_attempt_at)
+                 values ('job_submitted', 'mate2@demo.test', '${MATE}', 'job', '${job.id}', 'failed', now() - interval '10 minutes', now() - interval '5 minutes')`);
   const pending = await db.query(`select * from public.pending_emails(100) where template = 'job_submitted'`);
   report.check('the sweeper is handed the recipient as well as the entity',
     pending.rows.some((row) => row.user_id === MATE && row.entity_id === job.id), JSON.stringify(pending.rows));

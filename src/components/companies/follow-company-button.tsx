@@ -7,6 +7,7 @@ import { useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { followCompany, unfollowCompany } from '@/lib/actions/saved-searches';
+import { reach } from '@/lib/reach';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -64,7 +65,7 @@ export function FollowCompanyButton({
     setError(null);
 
     startTransition(async () => {
-      const result = next ? await followCompany({ slug, label }) : await unfollowCompany(slug);
+      const result = next ? await reach(followCompany({ slug, label })) : await reach(unfollowCompany(slug));
       if (recoverSession(result)) return;
 
       if (!result.ok) {

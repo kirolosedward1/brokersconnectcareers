@@ -11,6 +11,7 @@ import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { optional, raise } from '@/lib/queries/error';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { formatNumber } from '@/lib/utils';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -37,6 +38,9 @@ type ApplicantRow = {
 
 const PIPELINE: ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
 
+/** The inbox's cap, for the same reason: past it, the inbox's filters reach the rest. */
+const APPLICANTS_SHOWN = 200;
+
 export async function generateMetadata({
   params,
 }: {
@@ -59,26 +63,33 @@ export default async function ApplicantsPage({
   setRequestLocale(locale);
 
   const viewer = await requireEmployer(locale);
+  if (!viewer.company) notFound();
   const supabase = await createClient();
 
   /*
-    Unreadable is not the same as absent.
+    This company's listing, or nothing.
 
-    Both used to arrive as `job: null` and both became a 404 — so a database
-    blip told an employer their own listing did not exist. `maybeSingle()`
-    returns no error for no row, so an error here is a real failure and
-    belongs in the error boundary, where Retry means something.
+    RLS lets everyone read a live listing and lets an admin read every
+    application, so an admin — or an employer holding another company's
+    listing id — reached this page, and merely opening it stamped every
+    applicant as seen and told each candidate the company had opened their
+    application. Scoped to the company the caller acts for, whoever they are.
+
+    Unreadable is still not absent: `maybeSingle()` returns no error for no
+    row, so an error here is a real failure and belongs in the error
+    boundary, where Retry means something.
   */
   const { data: job, error: jobError } = await supabase
     .from('jobs')
     .select('id, slug, title_ar, title_en, status')
     .eq('id', id)
+    .eq('company_id', viewer.company.id)
     .maybeSingle();
 
   if (jobError) raise(jobError, 'loading the listing');
   if (!job) notFound();
 
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from('applications')
     .select(
       `
@@ -93,15 +104,27 @@ export default async function ApplicantsPage({
         )
       )
     `,
+      { count: 'exact' },
     )
     .eq('job_id', id)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    /*
+      The newest APPLICANTS_SHOWN, and how many there are in all.
+
+      This had no bound, and each applicant is a full card: a listing with 427
+      applicants — the busiest in the load-test dataset — was a 4.3 MB page,
+      and every render also wrote employer_viewed_at for the whole set. The
+      inbox caps at the same number and has the filters to reach the rest, so
+      past the cap this page says so and links there.
+    */
+    .limit(APPLICANTS_SHOWN);
 
   // And the pipeline itself: "nobody has applied" is the wrong thing to tell
   // an employer whose listing has five applicants and a badge counting them.
   if (error) raise(error, 'loading this listing\'s applicants');
 
   const applications = (data ?? []) as unknown as ApplicantRow[];
+  const total = count ?? applications.length;
 
   /*
     Seen, because they are on the screen.
@@ -182,7 +205,7 @@ export default async function ApplicantsPage({
           <h1 className="text-xl font-bold">{jobTitle}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {t.rich('pipelineCount', {
-              count: applications.length,
+              count: total,
               v: (chunks) => <span className="numeral">{chunks}</span>,
             })}
           </p>
@@ -246,6 +269,20 @@ export default async function ApplicantsPage({
           })}
         </div>
       )}
+
+      {total > applications.length ? (
+        <div className="mt-6 space-y-3 text-center">
+          <p className="text-sm text-warning">
+            {t.rich('applicantsCapped', {
+              count: formatNumber(APPLICANTS_SHOWN, locale),
+              v: (chunks) => <span className="numeral">{chunks}</span>,
+            })}
+          </p>
+          <Button asChild variant="outline">
+            <Link href={`/employer/applicants?job=${job.id}`}>{t('allApplicants')}</Link>
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

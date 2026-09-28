@@ -43,8 +43,9 @@ type Profile = {
   locale: 'ar' | 'en';
   created_at: string;
   approval_status: ApprovalStatus;
-  private: { approval_note: string | null } | null;
   approved_at: string | null;
+  /** The reviewer's note lives on profile_private (migration 305), readable by admins alone. */
+  private: { approval_note: string | null } | null;
 };
 
 type Membership = {
@@ -92,6 +93,8 @@ export default async function AdminUserPage({
     .select('id, role, full_name, avatar_url, locale, created_at, approval_status, approved_at, private:profile_private (approval_note)')
     .eq('id', id)
     .maybeSingle();
+  // The generated types do not know profile_private's foreign key yet, so the
+  // embed is typed by hand, as the accounts list does.
   const profile = must(profileRead, 'loading an account').data as unknown as Profile | null;
   if (!profile) notFound();
 

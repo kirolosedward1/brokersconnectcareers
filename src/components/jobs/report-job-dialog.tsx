@@ -9,7 +9,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { AGENT_REPORT_REASONS, COMPANY_REPORT_REASONS, REPORT_REASONS } from '@/lib/taxonomy';
 import { reportTarget, type ReportRefusal, type ReportTarget } from '@/lib/actions/reports';
-import type { ActionResult } from '@/lib/actions/jobs';
+import { reach } from '@/lib/reach';
 import type { ReportReason } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 
@@ -64,6 +64,10 @@ const REFUSAL_COPY = {
 /**
  * The same dialog for a listing, a company or a consultant's profile.
  *
+ * Reports about companies and people arrived with migration 317, because the
+ * two things a moderator most needs to hear about — a company that is not what
+ * it says, somebody wearing another consultant's name — had no door at all.
+ *
  * Quick on purpose: one tap on what is wrong, and a line more only if the
  * reader wants to add one. Each reason says in a few words what it covers,
  * so nobody has to decide between "fake" and "scam" in the abstract — and
@@ -113,24 +117,24 @@ export function ReportDialog({
     const form = new FormData(event.currentTarget);
 
     startTransition(async () => {
-      let result: ActionResult;
-      try {
-        result = await reportTarget({
+      const result = await reach(
+        reportTarget({
           target,
           targetId,
           reason,
           detail: String(form.get('detail') ?? ''),
-        });
-      } catch {
-        // The request never came back. Nothing is claimed; the form stays
-        // filled in so sending again is one tap.
-        setError(t('network'));
-        return;
-      }
+        }),
+      );
       if (recoverSession(result)) return;
       if (result.ok) {
         setSent(true);
         setError(null);
+        return;
+      }
+      if (result.error === 'network') {
+        // The request never came back. Nothing is claimed; the form stays
+        // filled in so sending again is one tap.
+        setError(t('network'));
         return;
       }
       const refusal = result.error as ReportRefusal;

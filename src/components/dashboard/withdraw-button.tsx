@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { withdrawApplication } from '@/lib/actions/applications';
+import { reach } from '@/lib/reach';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
  * The action tells the truth about whether the withdrawal happened; this shows
@@ -23,6 +25,7 @@ export function WithdrawButton({
   const router = useRouter();
   const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
@@ -44,7 +47,8 @@ export function WithdrawButton({
         onClick={() =>
           startTransition(async () => {
             setFailed(false);
-            const result = await withdrawApplication(applicationId);
+            const result = await reach(withdrawApplication(applicationId));
+            if (recoverSession(result)) return;
             if (!result.ok) {
               setFailed(true);
               return;

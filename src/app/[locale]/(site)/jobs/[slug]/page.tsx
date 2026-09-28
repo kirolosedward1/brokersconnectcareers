@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { after } from 'next/server';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
 import { JobDetailView } from '@/components/jobs/job-detail-view';
@@ -190,8 +191,18 @@ export default async function JobOrLandingPage({ params }: { params: Promise<Par
   const open = isOpen(job);
 
   if (open) {
-    // Fire and forget — a failed counter increment must never break the page.
-    void recordJobView(slug).catch(() => {});
+    /*
+      After the response, not beside it.
+
+      This used to be an un-awaited promise started during render, which the
+      platform is free to freeze the moment the page has streamed — so on a
+      serverless host the count quietly depended on how fast the rest of the
+      page was. `after()` is the sanctioned way to keep work alive past the
+      response. A failed increment must still never break the page, hence
+      the catch; recordJobView uses the service role, never cookies, which
+      are gone by the time this runs.
+    */
+    after(() => recordJobView(slug).catch(() => {}));
   }
 
   // Google matches "jobs near me" on the region, which for Egypt is the

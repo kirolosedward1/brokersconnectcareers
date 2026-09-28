@@ -23,7 +23,6 @@ import { withShareSource } from '@/lib/share-source';
  */
 export function ShareJobButton({ title }: { title: string }) {
   const t = useTranslations('jobs');
-  const tCommon = useTranslations('common');
   const [copied, setCopied] = useState(false);
 
   async function share() {
@@ -41,9 +40,13 @@ export function ShareJobButton({ title }: { title: string }) {
       try {
         await navigator.share({ title, url });
         return;
-      } catch {
-        // Cancelled, or refused by the platform. Fall through to the clipboard
-        // rather than leaving the tap with nothing to show for it.
+      } catch (error) {
+        // Dismissing the sheet is an answer, not a failure. Falling through
+        // put a link on the clipboard of somebody who had just said no, and on
+        // iOS even that did not work: the tap was spent opening the sheet, so
+        // the clipboard refused the write. Only a platform that refused to
+        // share at all falls through to copying.
+        if (error instanceof DOMException && error.name === 'AbortError') return;
       }
     }
 
@@ -60,7 +63,7 @@ export function ShareJobButton({ title }: { title: string }) {
   return (
     <Button variant="ghost" onClick={share}>
       {copied ? <Check aria-hidden /> : <Share2 aria-hidden />}
-      {copied ? tCommon('saveSuccess') : t('share')}
+      {copied ? t('linkCopied') : t('share')}
     </Button>
   );
 }

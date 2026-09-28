@@ -12,6 +12,7 @@ import { safeNext } from '@/lib/safe-next';
 import { cn } from '@/lib/utils';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { completeOnboarding } from '@/lib/actions/onboarding';
+import { reach } from '@/lib/reach';
 import type { DistrictRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 
@@ -51,7 +52,7 @@ export function OnboardingForm({
     const form = new FormData(event.currentTarget);
 
     startTransition(async () => {
-      const result = await completeOnboarding({
+      const result = await reach(completeOnboarding({
         role,
         fullName: String(form.get('fullName') ?? ''),
         whatsapp: String(form.get('whatsapp') ?? ''),
@@ -65,7 +66,7 @@ export function OnboardingForm({
                 districtId: String(form.get('companyDistrict') ?? '') || null,
               }
             : undefined,
-      });
+      }));
 
       if (recoverSession(result)) return;
       if (!result.ok) {
@@ -86,8 +87,10 @@ export function OnboardingForm({
         `//evil.example` through: a protocol-relative URL, and an open redirect
         the moment the last hop stopped going through next-intl's router.
       */
+      // The same answer homeFor gives on the server: the console for the role
+      // the database recorded, not the one the form asked for.
       const destination =
-        safeNext(next) ?? (result.data!.role === 'employer' ? '/employer' : '/dashboard/applications');
+        safeNext(next) ?? (result.data!.role === 'employer' ? '/employer' : '/dashboard');
       /*
         The profile did not exist a moment ago and now does, which changes
         what every server component on the other side renders. Fetched

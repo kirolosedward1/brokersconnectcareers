@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import type { AgentVisibility, ApplicationStatus } from '@/lib/supabase/database.types';
 import { env } from '@/lib/env';
 import { localized } from '@/i18n/routing';
+import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { copyFor, localeOf } from './copy';
 import { followedCompany } from '@/lib/saved-search';
 import { buildEnvelope, type Audience } from './envelope';
@@ -48,34 +49,57 @@ type Recipient = {
 const PREFERENCE_COLUMNS = 'notify_applications, notify_status, notify_digest';
 
 /**
+ * A read that failed, as opposed to one that found nothing.
+ *
+ * supabase-js answers a timeout, a 503 or a dropped connection with
+ * `{ data: null, error }` rather than a throw, and these composers used to
+ * read only `data` — so an outage looked exactly like "no such application"
+ * or "this person opted out", and came back as 'skipped'. For a first send
+ * that is a message silently not sent; under the retry sweeper it was worse,
+ * because 'skipped' there means "nothing left to say" and cancels the row for
+ * good. Thrown instead, the composer's own catch returns 'failed' and the row
+ * is retried like any other failure.
+ *
+ * Only the code travels in the message: it is what that catch logs.
+ */
+function readFailed(what: string, error: { code?: string; status?: number } | null): never {
+  throw new Error(`${what} read failed (${error?.code ?? error?.status ?? 'unknown'})`);
+}
+
+/**
  * The recipient's address and language, or null if they should not be written
- * to — preference off, no profile, or no email on the account.
+ * to — preference off, no profile, or no email on the account. A read that
+ * errors throws (readFailed) rather than answering null.
  */
 async function recipient(
   admin: ReturnType<typeof createAdminClient>,
   userId: string,
   preference: Preference,
 ): Promise<Recipient | null> {
-  const { data: profile } = await admin
+  const { data: profile, error: profileError } = await admin
     .from('profiles')
     .select(`locale, ${PREFERENCE_COLUMNS}`)
     .eq('id', userId)
     .maybeSingle();
 
+  if (profileError) readFailed('profile', profileError);
   if (!profile) return null;
   if (preference && (profile as Record<string, unknown>)[preference] === false) return null;
 
   // The token lives on profile_private (migration 305), where no company that
   // reads an applicant's profile can reach it. Service role, as before.
-  const { data: secret } = await admin
+  const { data: secret, error: secretError } = await admin
     .from('profile_private')
     .select('unsubscribe_token')
     .eq('user_id', userId)
     .maybeSingle();
+  if (secretError) readFailed('unsubscribe token', secretError);
   if (!secret) return null;
 
-  // The address lives on auth.users, not profiles.
+  // The address lives on auth.users, not profiles. A 404 is a real "no such
+  // account"; anything else is the Auth API failing to answer.
   const { data, error } = await admin.auth.admin.getUserById(userId);
+  if (error && error.status !== 404) readFailed('account', error);
   if (error || !data.user?.email) return null;
 
   return {
@@ -151,11 +175,12 @@ export async function notifyWelcome(userId: string): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
 
-    const { data: profile } = await admin
+    const { data: profile, error: profileError } = await admin
       .from('profiles')
       .select('role')
       .eq('id', userId)
       .maybeSingle();
+    if (profileError) readFailed('profile', profileError);
     if (!profile) return 'skipped';
     if (profile.role === 'admin') return 'skipped';
 
@@ -409,23 +434,25 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
   try {
     const admin = createAdminClient();
 
-    const { data } = await admin
+    const { data, error: applicationError } = await admin
       .from('applications')
       .select(
         `id, created_at, experience_band, candidate_id, job:jobs (${JOB_FIELDS}, company:companies (id))`,
       )
       .eq('id', applicationId)
       .maybeSingle();
+    if (applicationError) readFailed('application', applicationError);
 
     const application = data as unknown as ApplicationForEmployer | null;
     const job = application?.job;
     const companyId = job?.company?.id;
     if (!application || !job || !companyId) return 'skipped';
 
-    const { data: members } = await admin
+    const { data: members, error: membersError } = await admin
       .from('company_members')
       .select('user_id')
       .eq('company_id', companyId);
+    if (membersError) readFailed('members', membersError);
 
     const audience = (members ?? []).map((row) => row.user_id);
     if (!audience.length) return 'skipped';
@@ -438,23 +465,36 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
 
     const name = candidate?.full_name ?? '';
     let outcome: SendOutcome = 'skipped';
+    let anyFailed = false;
 
     for (const memberId of audience) {
       // One person's preferences are not the company's: a member who has
       // turned this off is skipped, and the next member's copy is unaffected.
-      const sent = await oneApplicationNotice({
-        admin,
-        memberId,
-        job,
-        applicationId,
-        candidateId: application.candidate_id,
-        name,
-      });
+      // Nor is one person's failure: a read that fails for this member is
+      // theirs, and the rest still hear about the applicant.
+      let sent: SendOutcome;
+      try {
+        sent = await oneApplicationNotice({
+          admin,
+          memberId,
+          job,
+          applicationId,
+          candidateId: application.candidate_id,
+          name,
+        });
+      } catch (error) {
+        console.warn('[email] employer application notice failed for a member:', asMessage(error));
+        sent = 'failed';
+      }
       if (sent === 'sent') outcome = 'sent';
-      else if (sent === 'failed' && outcome !== 'sent') outcome = 'failed';
+      if (sent === 'failed') anyFailed = true;
     }
 
-    return outcome;
+    // Any member's failure makes the whole call 'failed', even if another
+    // member's copy went. The retry sweeper reads this: a rebuild for one
+    // member's row that "sent" to a colleague must not look like a message
+    // with nothing left to say, or that member's row is cancelled unsent.
+    return anyFailed ? 'failed' : outcome;
   } catch (error) {
     console.warn('[email] employer application notice failed:', asMessage(error));
     return 'failed';
@@ -484,11 +524,14 @@ async function oneApplicationNotice({
   // notice stands down and the daily summary carries the same event. Checked
   // here rather than at the cron, so there is one place that decides and no
   // window in which both go out.
-  const { data: mode } = await admin
+  const { data: mode, error: modeError } = await admin
     .from('profiles')
     .select('notify_applicant_digest')
     .eq('id', memberId)
     .maybeSingle();
+  // Unknown is not "off": sending the single notice to someone who chose the
+  // digest would tell them twice.
+  if (modeError) readFailed('delivery mode', modeError);
   if (mode?.notify_applicant_digest) return 'skipped';
 
   const t = copyFor(to.locale).newApplication;
@@ -929,6 +972,73 @@ async function oneModerationNotice({
   });
 }
 
+/** How far ahead the expiring warning looks. expire-jobs uses the same. */
+export const EXPIRY_WARN_DAYS = 3;
+
+/**
+ * The prefix every member's copy of one expiry notice shares — the key is
+ * `<prefix><memberId>`. expire-jobs matches on it to pass over listings whose
+ * notice already has outbox rows before spending its nightly budget on them.
+ * `expiresAt` is the string PostgREST returns for the column, which is what
+ * both callers have in hand.
+ */
+export function jobExpiryKeyPrefix(
+  stage: 'expiring' | 'expired',
+  jobId: string,
+  expiresAt: string | null,
+): string {
+  return `${stage === 'expiring' ? 'job_expiring' : 'job_expired'}:${jobId}:${expiresAt ?? ''}:`;
+}
+
+/**
+ * An expiry notice, re-derived for the retry sweeper.
+ *
+ * notifyJobExpiry takes the applicant count from its caller, so it had no
+ * rebuilder — and a row with no rebuilder is dead-lettered on sight, keeping
+ * its key. That key then made every later catch-up run's claim come back
+ * empty: a notice that failed once on a provider 503 was never sent at all,
+ * and requeueing it only dead-lettered it again. This recounts, and first
+ * checks the notice is still true — a warning about a listing that has since
+ * expired or been renewed past the warning band, or an "it has expired" about
+ * one that is live again, would be worse than none. A count that cannot be
+ * read fails the rebuild (an attempt spent, retried) rather than sending
+ * "nobody applied" to an employer who had forty applicants.
+ */
+export async function rebuildJobExpiry(
+  jobId: string,
+  stage: 'expiring' | 'expired',
+): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const { data: job, error } = await admin
+      .from('jobs')
+      .select('status, expires_at')
+      .eq('id', jobId)
+      .maybeSingle();
+    if (error) readFailed('listing', error);
+    if (!job?.expires_at) return 'skipped';
+
+    // By the date, not the label (job-state.ts): a listing the relabel has
+    // not reached yet is expired all the same.
+    const stillTrue =
+      stage === 'expiring'
+        ? jobIsLive(job) && Date.parse(job.expires_at) <= Date.now() + EXPIRY_WARN_DAYS * 86_400_000
+        : displayJobStatus(job) === 'expired';
+    if (!stillTrue) return 'skipped';
+
+    const { count, error: countError } = await admin
+      .from('applications')
+      .select('id', { count: 'exact', head: true })
+      .eq('job_id', jobId);
+    if (countError || count === null) readFailed('applicant count', countError);
+
+    return notifyJobExpiry(jobId, stage, count);
+  } catch (error) {
+    console.warn('[email] expiry notice rebuild failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
 /** Employer: a listing is near the end of its run, or past it. Every member. */
 export async function notifyJobExpiry(
   jobId: string,
@@ -1103,11 +1213,12 @@ export async function notifyCompanyVerification(
   try {
     const admin = createAdminClient();
 
-    const { data: company } = await admin
+    const { data: company, error: companyError } = await admin
       .from('companies')
       .select('id, slug, name_ar, name_en, owner_id, logo_url')
       .eq('id', companyId)
       .maybeSingle();
+    if (companyError) readFailed('company', companyError);
     if (!company) return 'skipped';
 
     return forEachMember(admin, companyId, async (memberId) => {
@@ -1318,12 +1429,14 @@ async function forEachMember(
   companyId: string,
   send: (memberId: string) => Promise<SendOutcome>,
 ): Promise<SendOutcome> {
-  const { data: members } = await admin
+  const { data: members, error: membersError } = await admin
     .from('company_members')
     .select('user_id')
     .eq('company_id', companyId);
+  if (membersError) readFailed('members', membersError);
 
   let outcome: SendOutcome = 'skipped';
+  let anyFailed = false;
   for (const { user_id } of members ?? []) {
     let result: SendOutcome;
     try {
@@ -1334,9 +1447,12 @@ async function forEachMember(
       result = 'failed';
     }
     if (result === 'sent') outcome = 'sent';
-    else if (result === 'failed' && outcome !== 'sent') outcome = 'failed';
+    if (result === 'failed') anyFailed = true;
   }
-  return outcome;
+  // Any failure wins, as in notifyEmployerOfApplication: the retry sweeper
+  // must not read a colleague's 'sent' as "nothing left to say" for the
+  // member whose copy failed.
+  return anyFailed ? 'failed' : outcome;
 }
 
 function audienceOf(to: Recipient, preference: Preference): Audience {
@@ -1355,22 +1471,24 @@ async function candidateApplication(
   admin: ReturnType<typeof createAdminClient>,
   applicationId: string,
 ) {
-  const { data } = await admin
+  const { data, error } = await admin
     .from('applications')
     .select(
       `id, status, created_at, decision_note, candidate_id, job:jobs (${JOB_FIELDS}, company:companies (name_ar, name_en, slug))`,
     )
     .eq('id', applicationId)
     .maybeSingle();
+  if (error) readFailed('application', error);
   return data as unknown as ApplicationForCandidate | null;
 }
 
 async function ownedJob(admin: ReturnType<typeof createAdminClient>, jobId: string) {
-  const { data } = await admin
+  const { data, error } = await admin
     .from('jobs')
     .select(`${JOB_FIELDS}, company:companies (id, owner_id, name_ar)`)
     .eq('id', jobId)
     .maybeSingle();
+  if (error) readFailed('listing', error);
   return data as unknown as JobForOwner | null;
 }
 

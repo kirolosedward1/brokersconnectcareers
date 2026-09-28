@@ -1,21 +1,33 @@
--- 317 — #7's levers, after #13 moved the approval note.
+-- =============================================================================
+-- 319 — One approval lever after the note moved
 --
--- Migration 305 (#13) moved profiles.approval_note into profile_private, which
--- only an admin can read, and restated set_account_approval() to write it
--- there. Migration 316 (#7) restated the same function from the version
--- before that — adding the row lock, the no-op refusal, the required reason
--- for a suspension and the audit record — and so still writes
--- profiles.approval_note. Applied in file order, 316 wins, and every approval
--- change fails on a column that no longer exists; admin_search_users() fails
--- the same way reading it.
+-- Two migrations restate set_account_approval, and neither knew the other.
 --
--- Both are restated here with #7's rules and #13's storage, nothing else
--- changed. my_account_note() is new: the account's holder may read the reason
--- a moderator gave them — the standing notice shows it — and nothing else in
--- profile_private.
+--   305 moved the reviewer's note off profiles into profile_private, where only
+--       an admin can read it, and dropped the column.
+--   318 (the operations console, live on production since 2026-09-27) made the
+--       function the console's lever: a row lock, a refusal to repeat a
+--       decision, a validated reason, and an audit record in the same
+--       transaction as the change.
 --
--- On production 314–316 are already live; this goes on once 305 is.
--- rollback: restate set_account_approval() and admin_search_users() as migration 316 wrote them (only after re-adding profiles.approval_note per 305's rollback), then drop function public.my_account_note();
+-- Whichever runs second throws away the other's half. 305 last, and the
+-- console's suspensions stop being recorded. 318 last, and the function writes
+-- a column that no longer exists, so every approval fails. admin_search_users
+-- (318) has the same problem in a smaller form: it still reads the dropped
+-- column.
+--
+-- This migration keeps both halves. set_account_approval is 318's lever, and it
+-- writes the note to profile_private before the profile row changes, because
+-- the approval notification trigger reads it there (305).
+-- admin_search_users reads the note from the same place. Signatures and grants
+-- are unchanged, so the console calls them exactly as before.
+--
+-- Order: production ran 318 before any of 300–314, so there this must be applied
+-- after 305. On a fresh database it sorts after both.
+-- =============================================================================
+
+-- rollback: forward-fix only — the bodies this replaces are 305's and 318's, and each of them alone is broken against the other's schema.
+-- safety: ships-with-code — the console calls both functions with the same arguments and reads the same columns before and after this, so the code and this migration can reach production in either order.
 
 create or replace function public.set_account_approval(
   p_user   uuid,
@@ -51,9 +63,12 @@ begin
     raise exception 'no_change' using hint = format('The account is already %s.', p_status);
   end if;
 
-  v_note := public.admin_reason(p_note, p_status = 'rejected');
+  -- At most 500 characters, the same cap profile_private enforces, so a long
+  -- note is refused as 'reason_too_long' rather than as a constraint name.
+  v_note := public.admin_reason(p_note, p_status = 'rejected', 500);
 
-  -- The note first: the notification trigger on profiles reads it (305).
+  -- The note first: the notification trigger on profiles reads it, and it
+  -- fires as part of the UPDATE below.
   insert into profile_private (user_id, approval_note, updated_at)
   values (p_user, v_note, now())
   on conflict (user_id) do update
@@ -66,8 +81,13 @@ begin
    where id = p_user;
 
   if p_status = 'rejected' then
-    -- As 316: a company whose only member has just been suspended must not
-    -- count that member as cover for itself.
+    /*
+      The profile above is already suspended by the time this runs, so the
+      "is anybody else still approved" test does not need to exclude the target
+      by status — but it does exclude them by id, because a company whose only
+      member has just been suspended must not count that member as cover for
+      itself.
+    */
     update jobs
        set status = 'rejected',
            rejection_note = coalesce(v_note, 'الحساب موقوف')
@@ -180,25 +200,11 @@ begin
 end;
 $$;
 
--- The reason a moderator gave this account, to its holder and nobody else.
--- profile_private stays admin-only; this reads one column of the caller's own
--- row, so the standing notice can say why without the table being opened up.
-create or replace function public.my_account_note()
-returns text
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-  select pp.approval_note
-    from profile_private pp
-   where pp.user_id = auth.uid();
-$$;
-
+-- Stated outright rather than inherited, so the result does not depend on
+-- which of 305 and 318 ran last. Supabase grants anon EXECUTE at creation;
+-- `from public` alone would leave that grant in place.
 revoke execute on function public.set_account_approval(uuid, approval_status, text) from public, anon;
-revoke execute on function public.admin_search_users(text, user_role, approval_status, int, int) from public, anon;
-revoke execute on function public.my_account_note() from public, anon;
-
 grant execute on function public.set_account_approval(uuid, approval_status, text) to authenticated, service_role;
+
+revoke execute on function public.admin_search_users(text, user_role, approval_status, int, int) from public, anon;
 grant execute on function public.admin_search_users(text, user_role, approval_status, int, int) to authenticated;
-grant execute on function public.my_account_note() to authenticated;

@@ -6,7 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Archive, RotateCcw, SendHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { transitionJob } from '@/lib/actions/employer-jobs';
+import { reach } from '@/lib/reach';
 import type { JobStatus } from '@/lib/supabase/database.types';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
  * Only the transitions an employer may actually make. Publishing is absent by
@@ -26,10 +28,12 @@ export function JobStatusActions({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function move(next: 'draft' | 'pending_review' | 'closed') {
     startTransition(async () => {
-      const result = await transitionJob({ jobId, status: next });
+      const result = await reach(transitionJob({ jobId, status: next }));
+      if (recoverSession(result)) return;
       if (!result.ok) {
         /*
           Named, not echoed. `result.error` is a code on the way to a message

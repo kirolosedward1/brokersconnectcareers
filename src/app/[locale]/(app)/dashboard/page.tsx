@@ -79,6 +79,16 @@ export default async function DashboardOverviewPage({
   const [{ data }, { data: recent }, { data: mine }, openRoles, { data: agent }, districts] =
     await Promise.all([
     supabase.rpc('candidate_summary'),
+    /*
+      Both application reads are scoped to this candidate explicitly, with
+      row-level security still behind them — the same rule the applications
+      and saved pages already follow. The policies alone read
+      `candidate_id = me OR owns_job(job_id) OR is_admin()`, an OR no index can
+      serve: the ids-only read below scanned every application on the platform
+      and called two functions per row, about a second at 140,000 rows, on the
+      page a candidate opens most. Scoped, it is one index range. It also stops
+      an admin who opens this page seeing everybody's applications as their own.
+    */
     supabase
       .from('applications')
       .select(
@@ -87,12 +97,12 @@ export default async function DashboardOverviewPage({
         job:jobs (slug, title_ar, title_en, company:companies (name_ar, name_en))
       `,
       )
+      .eq('candidate_id', viewer.userId)
       .order('created_at', { ascending: false })
       .limit(3),
     // Every job this candidate has applied to, ids only, to keep them out of
-    // the suggestions below. Scoped by row-level security, so no candidate_id
-    // filter is written here.
-    supabase.from('applications').select('job_id'),
+    // the suggestions below.
+    supabase.from('applications').select('job_id').eq('candidate_id', viewer.userId),
     /*
       Every live role, ordered below rather than filtered here.
 
@@ -160,7 +170,11 @@ export default async function DashboardOverviewPage({
   // start filled. Losing it draws them empty, and the toggle corrects itself
   // on the first press.
   const { data: savedRows } = suggestionIds.length
-    ? await supabase.from('saved_jobs').select('job_id').in('job_id', suggestionIds)
+    ? await supabase
+        .from('saved_jobs')
+        .select('job_id')
+        .eq('candidate_id', viewer.userId)
+        .in('job_id', suggestionIds)
     : { data: [] };
   const savedIds = new Set((savedRows ?? []).map((row) => row.job_id));
 

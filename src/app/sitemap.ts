@@ -36,7 +36,6 @@ type DbRows = {
   jobs: { slug: string; published_at: string | null }[];
   /** Companies with at least one live listing, and the newest one's date. */
   companies: { slug: string; lastModified: string | undefined }[];
-  agents: { slug: string; created_at: string }[];
   districts: { id: number; slug: string }[];
   /** `track:districtId` → newest live listing there, for every pair that has one. */
   liveLandings: Map<string, string | undefined>;
@@ -87,7 +86,6 @@ async function fromDatabase(): Promise<DbRows> {
   const empty: DbRows = {
     jobs: [],
     companies: [],
-    agents: [],
     districts: [],
     liveLandings: new Map(),
   };
@@ -96,7 +94,13 @@ async function fromDatabase(): Promise<DbRows> {
     const supabase = createPublicClient();
     const now = new Date().toISOString();
 
-    const [jobs, agents, districts] = await Promise.all([
+    /*
+      No consultants. The directory is behind a sign-in since migration 202 —
+      it answers approved employers and admins and nobody else — so a profile
+      URL in a sitemap would advertise a page every crawler is turned away
+      from, and name a person while doing it.
+    */
+    const [jobs, districts] = await Promise.all([
       /*
         Every live listing — live by the date, not only the label, because
         the nightly cron that writes `expired` can be a day late. The same
@@ -127,16 +131,6 @@ async function fromDatabase(): Promise<DbRows> {
           error: unknown;
         }>,
       ),
-      // Only profiles the owner has made public. A gated profile must not be
-      // advertised to a crawler; RLS would hide it anyway, this says so.
-      readAll<{ slug: string; created_at: string }>((from, to) =>
-        supabase
-          .from('agent_profiles')
-          .select('slug, created_at')
-          .eq('visibility', 'public')
-          .order('id')
-          .range(from, to),
-      ),
       supabase.from('districts').select('id, slug'),
     ]);
 
@@ -165,7 +159,6 @@ async function fromDatabase(): Promise<DbRows> {
     return {
       jobs: [...jobs].sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? '')),
       companies: [...companies.entries()].map(([slug, lastModified]) => ({ slug, lastModified })),
-      agents,
       districts: districts.data ?? [],
       liveLandings,
     };
@@ -181,13 +174,12 @@ async function fromDatabase(): Promise<DbRows> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const { jobs, companies, agents, districts, liveLandings } = await fromDatabase();
+  const { jobs, companies, districts, liveLandings } = await fromDatabase();
 
   const staticPages: MetadataRoute.Sitemap = [
     entry('/', { changeFrequency: 'daily', priority: 1 }),
     entry('/jobs', { changeFrequency: 'hourly', priority: 0.9 }),
     entry('/companies', { changeFrequency: 'daily', priority: 0.6 }),
-    entry('/agents', { changeFrequency: 'daily', priority: 0.6 }),
     entry('/employers', { changeFrequency: 'monthly', priority: 0.8 }),
     entry('/blog', { changeFrequency: 'weekly', priority: 0.6 }),
   ];
@@ -227,20 +219,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   );
 
-  const agentPages: MetadataRoute.Sitemap = agents.map((agent) =>
-    entry(`/agents/${agent.slug}`, {
-      lastModified: agent.created_at,
-      changeFrequency: 'weekly',
-      priority: 0.4,
-    }),
-  );
-
-  return [
-    ...staticPages,
-    ...blogPages,
-    ...landingPages,
-    ...jobPages,
-    ...companyPages,
-    ...agentPages,
-  ];
+  return [...staticPages, ...blogPages, ...landingPages, ...jobPages, ...companyPages];
 }

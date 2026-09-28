@@ -37,14 +37,13 @@ create schema if not exists extensions;
 -- names and types as GoTrue's own table, checked against production.
 create table auth.users (
   id uuid primary key, instance_id uuid, aud text, role text, email text,
-  -- last_sign_in_at is present on the real table; the console's account facts
-  -- (admin_user_facts) and the lifecycle report both read it.
-  encrypted_password text, email_confirmed_at timestamptz, last_sign_in_at timestamptz,
+  encrypted_password text, email_confirmed_at timestamptz,
   raw_app_meta_data jsonb, raw_user_meta_data jsonb,
   created_at timestamptz, updated_at timestamptz,
-  -- The support console reads these three (migration 201); the lifecycle
-  -- report reads last_sign_in_at, above, to find abandoned signups (204).
-  confirmation_sent_at timestamptz, recovery_sent_at timestamptz, banned_until timestamptz
+  confirmation_sent_at timestamptz, recovery_sent_at timestamptz,
+  -- Present on the real table; support reads it (migration 201) and the
+  -- lifecycle report uses it to identify abandoned signups (migration 204).
+  last_sign_in_at timestamptz, banned_until timestamptz
 );
 
 create or replace function auth.uid() returns uuid language sql stable as $fn$
@@ -144,25 +143,47 @@ select set_config('demo.users', '${JSON.stringify(
 )}', false);
 `;
 
-export async function createTestDb({ seed = true } = {}) {
-  const db = new PGlite({ extensions: { pgcrypto, unaccent, pg_trgm } });
-  await db.exec(PRELUDE);
+/**
+ * The scripts that build a test database, in the order they must run: the
+ * Supabase stand-ins, every migration, the seed and the demo accounts, then
+ * the API grants.
+ *
+ * Exported as data, not only as createTestDb(), because the concurrency tests
+ * need the same schema on a real Postgres server — PGlite is one connection,
+ * and a race needs at least two. One list means the two harnesses cannot drift
+ * into testing different databases.
+ *
+ * Each migration stays its own script, and so its own transaction, for the
+ * reason migration 323 exists: Postgres will not let a transaction use an enum
+ * value it has just added.
+ */
+export function testDbScripts({ seed = true } = {}) {
+  const scripts = [{ name: 'prelude', sql: PRELUDE }];
 
   const migrations = join(SUPABASE_DIR, 'migrations');
   for (const file of readdirSync(migrations).sort()) {
     if (!file.endsWith('.sql')) continue;
-    await db.exec(readFileSync(join(migrations, file), 'utf8'));
+    scripts.push({ name: file, sql: readFileSync(join(migrations, file), 'utf8') });
   }
 
   if (seed) {
-    await db.exec(readFileSync(join(SUPABASE_DIR, 'seed.sql'), 'utf8'));
+    scripts.push({ name: 'seed.sql', sql: readFileSync(join(SUPABASE_DIR, 'seed.sql'), 'utf8') });
     // The real auth users come from the Auth admin API in production; here the
     // stubbed schema lets them be inserted directly.
-    await db.exec(DEMO_USERS);
-    await db.exec(readFileSync(join(SUPABASE_DIR, 'seed-demo.sql'), 'utf8'));
+    scripts.push({ name: 'demo users', sql: DEMO_USERS });
+    scripts.push({ name: 'seed-demo.sql', sql: readFileSync(join(SUPABASE_DIR, 'seed-demo.sql'), 'utf8') });
   }
-  await db.exec(GRANTS);
+  scripts.push({ name: 'grants', sql: GRANTS });
 
+  return scripts;
+}
+
+export async function createTestDb({ seed = true } = {}) {
+  // pg_trgm: the console's search indexes (migration 317) need it.
+  const db = new PGlite({ extensions: { pgcrypto, unaccent, pg_trgm } });
+  for (const script of testDbScripts({ seed })) {
+    await db.exec(script.sql);
+  }
   return db;
 }
 
@@ -224,6 +245,9 @@ export const USERS = Object.fromEntries(DEMO_KEYS.map(([key, id]) => [key, id]))
 export const FIXTURES = {
   employerVerified: USERS.employer1, // Al Rowad — verified
   employerUnverified: USERS.employer2, // Property Hub — unverified
+  // Skyline — a verified company whose one account is still awaiting approval
+  // (seed-demo leaves employer7 pending so the admin queue has a row in it).
+  employerPending: USERS.employer7,
   candidate: USERS.candidate1, // gated agent profile
   publicAgent: USERS.candidate2, // public agent profile
   hiddenAgent: USERS.candidate5, // hidden from everyone

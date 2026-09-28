@@ -40,8 +40,10 @@ export async function EmployerLanding({
 
   // A signed-out visitor sent to the posting form bounces off the auth wall and
   // arrives at a generic sign-in, having lost the fact that they are an
-  // employer. Send them through the employer door instead.
+  // employer. Send them through the employer door instead — and the same for
+  // the directory, which now needs an employer account to open at all.
   const postHref = signedIn ? '/employer/jobs/new' : '/sign-up/employer';
+  const directoryHref = signedIn ? '/agents' : '/sign-in/employer?next=/agents';
 
   return (
     <>
@@ -65,7 +67,7 @@ export async function EmployerLanding({
             variant="ghost"
             className="border border-white/25 px-7 text-white hover:bg-white/10"
           >
-            <Link href="/agents">{t('employerHero.ctaSecondary')}</Link>
+            <Link href={directoryHref}>{t('employerHero.ctaSecondary')}</Link>
           </Button>
         </div>
 

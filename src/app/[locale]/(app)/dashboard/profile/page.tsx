@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Eye } from 'lucide-react';
+import { Eye, Info } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { asLocale, type Locale } from '@/i18n/routing';
@@ -32,13 +32,24 @@ export async function generateMetadata({
   return { title: t('profile'), robots: { index: false, follow: false } };
 }
 
-export default async function ProfilePage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function ProfilePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ notice?: string }>;
+}) {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
   const viewer = await requireCandidate(locale);
   const supabase = await createClient();
+
+  // Sent here from the consultant directory, which is not theirs to browse.
+  // Said once, in words, rather than a silent redirect to an unrelated page.
+  const { notice } = await searchParams;
+  const fromDirectory = notice === 'directory';
 
   /*
     Unreadable is not the same as "has not made one yet".
@@ -92,6 +103,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
   const views = (summary?.data as CandidateSummary | null)?.profile_views_30d ?? 0;
 
   const t = await getTranslations('dashboard');
+  const tAgents = await getTranslations('agents');
 
   /*
     Narrower than the shell allows. Every block on this page is a form or a
@@ -122,10 +134,20 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
         ) : null}
       </header>
 
+      {fromDirectory ? (
+        <p
+          role="status"
+          className="flex items-start gap-2 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm"
+        >
+          <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+          <span>{tAgents('deniedNotice')}</span>
+        </p>
+      ) : null}
+
       {/*
         Said to the consultant, not only recorded for the admins. A restricted
         profile stays hidden whatever the visibility control below is set to
-        (migration 206), and a form that silently ignored the choice would read
+        (migration 317), and a form that silently ignored the choice would read
         as broken. The reason is the one the admin gave.
       */}
       {typedAgent?.restricted_at ? (

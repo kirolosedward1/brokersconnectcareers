@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import {
+  Activity,
   Bell,
   Bookmark,
+  BookUser,
   Briefcase,
   Building2,
   Contact,
@@ -34,7 +36,6 @@ import { Link, usePathname } from '@/i18n/navigation';
 import { Avatar } from '@/components/ui/avatar';
 import { dirOf, localeHref, type Locale } from '@/i18n/routing';
 import { LogoMark } from '@/components/logo';
-import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
 /**
@@ -54,6 +55,8 @@ const ICONS = {
   // The company's shortlist of people, which is not the candidate's
   // bookmark of listings — a different noun deserves a different mark.
   shortlist: UserRoundCheck,
+  // The consultant directory: a book of people, which is what it is.
+  directory: BookUser,
   company: Building2,
   billing: CreditCard,
   queue: FileCheck2,
@@ -64,6 +67,8 @@ const ICONS = {
   security: ShieldAlert,
   users: UserCog,
   email: Mail,
+  // The scheduled jobs and the outbox: a pulse, not a letter.
+  operations: Activity,
   // The console's investigation pages: applications as an inbox of cases,
   // the directory as contact cards, the audit log as a scroll nobody edits.
   inbox: Inbox,
@@ -194,6 +199,8 @@ export function AppShell({
   }, [open]);
 
   async function signOut() {
+    // Loaded when it is used, as the public header's menu does.
+    const { createClient } = await import('@/lib/supabase/client');
     await createClient().auth.signOut();
     /*
       A document navigation, not a router push. Signing out changes who the

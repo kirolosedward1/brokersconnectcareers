@@ -1,18 +1,19 @@
 'use server';
 
-import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { publish } from '@/lib/notifications/events';
+import { isRetryable } from '@/lib/email/rebuild';
+import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { adminErrorCode } from '@/lib/admin/errors';
 
 /**
  * The console's levers.
  *
- * Every mutation here is one call to an admin_* function (migration 207), made
+ * Every mutation here is one call to an admin_* function (migration 318), made
  * through the caller's own session — never the service role. That function is
  * where the rules live: it refuses anybody who is not an admin, locks the row,
  * refuses a transition the product does not have, requires a reason where
@@ -25,8 +26,10 @@ import { adminErrorCode } from '@/lib/admin/errors';
  * turns a stray call into a cheap refusal before any work, and it is the check
  * for the one read here (the signed document URL) that is not a function call.
  *
- * Emails are sent after the response, and only for decisions somebody is
- * waiting on. The in-app bell is written by triggers either way.
+ * Decisions somebody is waiting on are published after the response, as the
+ * same business events the rest of the product sends (lib/notifications).
+ * Search engines are told after the response too, whenever a lever changes
+ * whether a listing is public.
  */
 type AdminResult<T = undefined> = ActionResult<T>;
 
@@ -53,44 +56,42 @@ function refreshConsole() {
   revalidatePath('/admin', 'layout');
 }
 
-type ConsoleClient = NonNullable<Awaited<ReturnType<typeof assertAdmin>>>;
-type Listing = { id: string; slug: string };
+type Client = NonNullable<Awaited<ReturnType<typeof assertAdmin>>>;
 
 /**
- * The live listings a lever could take down, read before it is pulled, so
- * that afterwards Google is told about exactly the ones that went — a company
- * with somebody else still in good standing keeps trading, and its listings
- * must not be announced as gone. Allowed to fail quietly: this only decides
- * what Google is told, and an unanswered question means it is told nothing.
+ * The live listings a suspension could take down, read before it happens.
+ *
+ * Compared afterwards by announceTakedowns(), so only the listings that actually
+ * went to `rejected` are reported to Google: a company with somebody else still
+ * in good standing keeps trading, and its listings must not be announced as
+ * gone. Allowed to fail quietly — it only decides what Google is told.
  */
-async function liveListings(
-  supabase: ConsoleClient,
-  scope: { companyIds?: string[]; userId?: string },
-): Promise<Listing[]> {
-  let companyIds = scope.companyIds ?? [];
-  if (scope.userId) {
-    const { data: memberships } = await supabase
-      .from('company_members')
-      .select('company_id')
-      .eq('user_id', scope.userId);
-    companyIds = (memberships ?? []).map((row) => row.company_id);
-  }
+async function liveListings(supabase: Client, companyIds: string[]) {
   if (!companyIds.length) return [];
   const { data } = await supabase
     .from('jobs')
     .select('id, slug')
     .in('company_id', companyIds)
     .eq('status', 'active');
-  return data ?? [];
+  return (data ?? []) as { id: string; slug: string }[];
 }
 
-/** Taken down means gone from the public site: its URL now answers 404. */
-function announceTakedowns(supabase: ConsoleClient, before: Listing[]) {
-  if (!before.length) return;
-  const ids = before.map((row) => row.id);
+// Taken down means gone from the public site: row-level security hides a
+// rejected listing and its URL now answers 404, which is what Google is told.
+function announceTakedowns(supabase: Client, exposed: { id: string }[]) {
+  if (!exposed.length) return;
+  const ids = exposed.map((row) => row.id);
   after(async () => {
-    const { data: takenDown } = await supabase.from('jobs').select('slug').in('id', ids).eq('status', 'rejected');
-    for (const row of takenDown ?? []) await notifyJobChanged(row.slug, 'URL_DELETED');
+    const { data } = await supabase.from('jobs').select('slug').in('id', ids).eq('status', 'rejected');
+    for (const row of data ?? []) await notifyJobChanged(row.slug, 'URL_DELETED');
+  });
+}
+
+/** One listing's slug, for telling Google about a decision on it. */
+function announceListing(supabase: Client, jobId: string, type: 'URL_UPDATED' | 'URL_DELETED') {
+  after(async () => {
+    const { data } = await supabase.from('jobs').select('slug').eq('id', jobId).maybeSingle();
+    await notifyJobChanged(data?.slug, type);
   });
 }
 
@@ -132,14 +133,13 @@ export async function moderateJob(input: unknown): Promise<AdminResult> {
     after(() => publish({ type: 'JOB_REJECTED', jobId, note }));
   }
 
-  // Approved or restored, it is a job page for Google to read now rather than
-  // on its next crawl; closed, the page stays and says so (as expiry does);
-  // rejected or taken down, it is off the public site and answers 404.
-  const { data: moderated } = await supabase.from('jobs').select('slug').eq('id', jobId).maybeSingle();
-  if (moderated?.slug) {
-    const slug = moderated.slug;
-    const gone = action === 'reject' || action === 'request_changes' || action === 'unpublish';
-    after(() => notifyJobChanged(slug, gone ? 'URL_DELETED' : 'URL_UPDATED'));
+  // Google hears about the listings whose public page changed: live now
+  // (approve, restore), closed (still a page, now noindex) or taken down
+  // (unpublish). A rejection from review was never public and is not news.
+  if (action === 'approve' || action === 'restore' || action === 'close') {
+    announceListing(supabase, jobId, 'URL_UPDATED');
+  } else if (action === 'unpublish') {
+    announceListing(supabase, jobId, 'URL_DELETED');
   }
 
   refreshConsole();
@@ -221,7 +221,7 @@ export async function setCompanySuspension(input: unknown): Promise<AdminResult<
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
-  const exposed = parsed.data.suspend ? await liveListings(supabase, { companyIds: [parsed.data.companyId] }) : [];
+  const exposed = parsed.data.suspend ? await liveListings(supabase, [parsed.data.companyId]) : [];
 
   const { data, error } = await supabase.rpc('admin_set_company_suspension', {
     p_company: parsed.data.companyId,
@@ -279,7 +279,16 @@ export async function setAccountApproval(input: unknown): Promise<AdminResult> {
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
-  const exposed = parsed.data.status === 'rejected' ? await liveListings(supabase, { userId: parsed.data.userId }) : [];
+  // A suspension can take down the listings of every company this person
+  // belongs to (when nobody approved is left on it).
+  let exposed: { id: string; slug: string }[] = [];
+  if (parsed.data.status === 'rejected') {
+    const { data: memberships } = await supabase
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', parsed.data.userId);
+    exposed = await liveListings(supabase, (memberships ?? []).map((row) => row.company_id));
+  }
 
   const { error } = await supabase.rpc('set_account_approval', {
     p_user: parsed.data.userId,
@@ -288,18 +297,18 @@ export async function setAccountApproval(input: unknown): Promise<AdminResult> {
   });
   if (error) return { ok: false, error: adminErrorCode(error) };
 
-  announceTakedowns(supabase, exposed);
-
   if (parsed.data.status !== 'pending') {
+    const { userId, note } = parsed.data;
     after(() =>
       publish(
         parsed.data.status === 'approved'
-          ? { type: 'ACCOUNT_APPROVED', userId: parsed.data.userId }
-          : { type: 'ACCOUNT_SUSPENDED', userId: parsed.data.userId, note: parsed.data.note },
+          ? { type: 'ACCOUNT_APPROVED', userId }
+          : { type: 'ACCOUNT_SUSPENDED', userId, note },
       ),
     );
   }
 
+  announceTakedowns(supabase, exposed);
   refreshConsole();
   // Suspension takes the account's live listings down with it when nobody
   // approved is left on the company.
@@ -396,14 +405,8 @@ export async function moderateReports(input: unknown): Promise<AdminResult<{ mov
   const { targetType, targetId, status, takeAction } = parsed.data;
   const note = parsed.data.note || null;
 
-  // A takedown on a listing or a company can take public pages with it.
-  let exposed: Listing[] = [];
-  if (takeAction && targetType === 'company') {
-    exposed = await liveListings(supabase, { companyIds: [targetId] });
-  } else if (takeAction && targetType === 'job') {
-    const { data: job } = await supabase.from('jobs').select('id, slug').eq('id', targetId).eq('status', 'active').maybeSingle();
-    exposed = job ? [job] : [];
-  }
+  // Acting on a company suspends it, which takes its live listings down.
+  const exposed = takeAction && targetType === 'company' ? await liveListings(supabase, [targetId]) : [];
 
   const { data, error } = await supabase.rpc('admin_moderate_reports', {
     p_target_type: targetType,
@@ -417,6 +420,7 @@ export async function moderateReports(input: unknown): Promise<AdminResult<{ mov
   const outcome = data as { reports: number; took_action: boolean } | null;
   if (outcome?.took_action && targetType === 'job') {
     after(() => publish({ type: 'JOB_REJECTED', jobId: targetId, note }));
+    announceListing(supabase, targetId, 'URL_DELETED');
   }
   if (outcome?.took_action) announceTakedowns(supabase, exposed);
 
@@ -514,5 +518,61 @@ export async function deleteTaxonomy(input: unknown): Promise<AdminResult> {
 
   revalidateTag('taxonomy');
   refreshConsole();
+  return { ok: true };
+}
+
+const requeueSchema = z.object({ emailId: z.string().uuid() });
+
+/**
+ * Give a dead-lettered email one more try.
+ *
+ * Goes through requeue_email rather than an UPDATE for the same reason as
+ * set_account_approval: email_log has no admin write policy, and the rules —
+ * admin only, only a row that was actually given up on, one more attempt and
+ * not a fresh five — live in that function. It restarts the retry window from
+ * now, so the next sweep (every ten minutes) picks the row up; nothing is sent
+ * from this request.
+ *
+ * `false` from the function means the row was not a dead letter by the time
+ * the click arrived — requeued by somebody else, or never dead. That is
+ * reported as not_found rather than as a success for work that did not happen.
+ */
+export async function requeueEmail(input: unknown): Promise<ActionResult> {
+  const parsed = requeueSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  /*
+    Only a message the sweeper can rebuild is worth another try. The page
+    already hides the button for the rest, but the action is callable on its
+    own, and requeueing a digest would only dead-letter it again an hour
+    later — with its original error overwritten by "not retryable".
+
+    Read through the admin-gated list rather than the service role, keeping
+    this file's rule. Fails closed: a row not in the list — already requeued,
+    never dead, or past the list's cap, where the check could not be made —
+    is refused rather than waved through. The operations page lists far
+    fewer than the cap, so every button it renders is inside it.
+  */
+  const { data: dead, error: deadError } = await supabase.rpc('email_dead_letters', {
+    p_limit: 500,
+  });
+  if (deadError) return { ok: false, error: deadError.message };
+  const target = (dead ?? []).find((row) => row.id === parsed.data.emailId);
+  if (!target) return { ok: false, error: 'not_found' };
+  if (!isRetryable(target.template) || !target.entity_id) {
+    return { ok: false, error: 'not_retryable' };
+  }
+
+  const { data: requeued, error } = await supabase.rpc('requeue_email', {
+    p_id: parsed.data.emailId,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!requeued) return { ok: false, error: 'not_found' };
+
+  revalidatePath('/admin/operations');
+  revalidatePath('/admin/email');
   return { ok: true };
 }

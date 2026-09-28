@@ -9,6 +9,8 @@ import { FollowCompanyButton } from '@/components/companies/follow-company-butto
 import { ReportDialog } from '@/components/jobs/report-job-dialog';
 import { JobCard } from '@/components/jobs/job-card';
 import { JsonLd } from '@/components/json-ld';
+import { Button } from '@/components/ui/button';
+import { Link } from '@/i18n/navigation';
 import { safeHttpUrl } from '@/lib/security/sanitize';
 import { getCompanyBySlug, getCompanyOpenJobs } from '@/lib/queries/companies';
 import { createClient } from '@/lib/supabase/server';
@@ -58,7 +60,7 @@ export async function generateMetadata({
     sitemap now does the same, so the page agrees. It stays reachable for
     anybody following a link, and returns to the index the day it hires.
   */
-  const hiring = (await getCompanyOpenJobs(company.id)).length > 0;
+  const hiring = (await getCompanyOpenJobs(company.id)).total > 0;
 
   return {
     title: name,
@@ -77,7 +79,7 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
   const company = await getCompanyBySlug(slug);
   if (!company) notFound();
 
-  const jobs = await getCompanyOpenJobs(company.id);
+  const { jobs, total: openRoles } = await getCompanyOpenJobs(company.id);
   const supabase = await createClient();
 
   const viewer = await getViewer();
@@ -249,7 +251,7 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
 
         <section className="mt-10" aria-labelledby="roles-heading">
           <h2 id="roles-heading" className="text-lg font-semibold">
-            {t('openRoles', { count: jobs.length })}
+            {t('openRoles', { count: openRoles })}
           </h2>
 
           {jobs.length ? (
@@ -260,7 +262,22 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
                 </li>
               ))}
             </ul>
-          ) : (
+          ) : null}
+          {/* The profile shows the newest; the board has every one, paged,
+              filtered to this company — the same view a follow opens. */}
+          {openRoles > jobs.length ? (
+            <p className="mt-4">
+              <Button asChild variant="outline">
+                <Link href={`/jobs?company=${company.slug}`}>
+                  {t.rich('seeAllRoles', {
+                    count: openRoles,
+                    v: (chunks) => <span className="numeral">{chunks}</span>,
+                  })}
+                </Link>
+              </Button>
+            </p>
+          ) : null}
+          {jobs.length ? null : (
             <p className="mt-4 rounded-xl border border-dashed border-border px-6 py-8 text-center text-muted-foreground">
               {tJobs('empty')}
             </p>

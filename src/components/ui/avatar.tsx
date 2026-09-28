@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { trustedAvatarUrl } from '@/lib/avatar-url';
 
 /**
  * A person, as a circle.
@@ -10,11 +11,12 @@ import { useState } from 'react';
  * photo the profile already holds. This does both, from one place.
  *
  * The photo is a plain <img> rather than next/image on purpose. `avatar_url`
- * is only ever populated from an OAuth provider's user_metadata, so its host
- * is Google's, and next.config only allowlists Supabase storage: next/image
- * would answer 400 for every avatar the platform actually has. It also 403s
- * from time to time on its own, hence the fallback to the monogram rather than
- * a broken-image glyph inside the circle.
+ * is a file in the account's own avatars folder or a Google account picture,
+ * and next.config only allowlists Supabase storage: next/image would answer
+ * 400 for every Google avatar. It also 403s from time to time on its own,
+ * hence the fallback to the monogram rather than a broken-image glyph inside
+ * the circle. Which hosts are fetched at all is decided by trustedAvatarUrl,
+ * because this <img> runs in every employer's browser.
  *
  * Colour identifies the person, not their state. A column of identical brand
  * circles tells the eye nothing, so the hue is derived from a stable seed and
@@ -71,12 +73,16 @@ export function Avatar({
   const [failed, setFailed] = useState(false);
   const shape = `grid shrink-0 place-items-center overflow-hidden rounded-full font-bold ${SIZES[size]}`;
 
-  if (src && !failed) {
+  // Only the app's own storage and Google's picture host are ever fetched.
+  // The variable is inlined at build time, so this holds in the browser too.
+  const photo = trustedAvatarUrl(src, process.env.NEXT_PUBLIC_SUPABASE_URL);
+
+  if (photo && !failed) {
     return (
       <span aria-hidden className={`${shape} bg-muted ${className ?? ''}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={src}
+          src={photo}
           alt=""
           loading="lazy"
           decoding="async"

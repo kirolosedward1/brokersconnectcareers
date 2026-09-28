@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import { useRouter } from '@/i18n/navigation';
-import { createClient } from '@/lib/supabase/client';
 
 /**
  * A session that arrived in the URL fragment, spent.
@@ -56,8 +55,16 @@ export function FragmentSession() {
       return;
     }
 
-    createClient()
-      .auth.setSession({ access_token: accessToken!, refresh_token: refreshToken })
+    /*
+      Imported here, on the one visit in thousands that arrives carrying a
+      token. This component is in the root layout, so a static import shipped
+      the whole Supabase client (~65 KB gzipped) to every page view on the site
+      in order to handle a link that almost nobody follows.
+    */
+    import('@/lib/supabase/client')
+      .then(({ createClient }) =>
+        createClient().auth.setSession({ access_token: accessToken!, refresh_token: refreshToken }),
+      )
       .then(({ error }) => {
         if (error) {
           router.replace({ pathname: '/sign-in', query: { error: 'link_expired' } });
@@ -71,7 +78,10 @@ export function FragmentSession() {
               : '/onboarding',
         );
         router.refresh();
-      });
+      })
+      // The client chunk failing to load is a failed link like any other: the
+      // fragment is already wiped, so say so rather than leave a blank page.
+      .catch(() => router.replace({ pathname: '/sign-in', query: { error: 'link_expired' } }));
     };
 
     spend();
