@@ -49,10 +49,10 @@ pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept eve
 ## Navigation & Routing
 
 - Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Each tab is a route group with its own stack; listings, company pages and the bell's feed live in the
-  shared group `(home,jobs,companies,applications,account)` so they open inside whichever tab the reader
-  is in. Which tabs a person has is `src/lib/tabs.ts`; a hidden tab's screens do not exist for them, so
-  open signed-in pages with `routeInside` / `openWhenReady`, never a bare path.
+- Each tab is a route group with its own stack; listings, company pages, the companies directory and the
+  bell's feed live in the shared group `(home,jobs,companies,applications,saved,account)` so they open inside
+  whichever tab the reader is in. Which tabs a person has is `src/lib/tabs.ts`; a hidden tab's screens do not
+  exist for them, so open signed-in pages with `routeInside` / `openWhenReady`, never a bare path.
 - Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
 - Docs: https://docs.expo.dev/router/introduction.md
 

@@ -22,6 +22,7 @@ import { CompanyLogo } from '~/components/companies/company-logo';
 import { FilterSheet } from '~/components/jobs/filter-sheet';
 import { JobCard } from '~/components/jobs/job-card';
 import { PopularLandings } from '~/components/jobs/popular-landings';
+import { SaveSearchButton } from '~/components/saved/save-controls';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
@@ -140,7 +141,9 @@ export default function BoardScreen() {
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
-        ListHeaderComponent={<BoardHeader filters={filters} first={first} apply={apply} onFilters={openFilters} />}
+        ListHeaderComponent={
+          <BoardHeader filters={filters} first={first} apply={apply} onFilters={openFilters} hasResults={jobs.length > 0} />
+        }
         ListEmptyComponent={<EmptyBoard filters={filters} first={first} apply={apply} />}
         ListFooterComponent={
           <BoardFooter
@@ -173,11 +176,13 @@ function BoardHeader({
   first,
   apply,
   onFilters,
+  hasResults,
 }: {
   filters: JobFilters;
   first: JobBoardResponse | undefined;
   apply: (next: JobFilters) => void;
   onFilters: () => void;
+  hasResults: boolean;
 }) {
   const locale = useLocale();
   const t = useTranslations('jobs');
@@ -186,6 +191,7 @@ function BoardHeader({
   const active = activeFilterList(filters);
   const company = first?.company;
   const inSheet = sheetFilterCount(filters);
+  const searchLabel = useSearchLabel(filters, first);
 
   return (
     <View style={{ gap: space[3], marginBottom: space[3] }}>
@@ -237,6 +243,11 @@ function BoardHeader({
         </Card>
       ) : null}
 
+      {/* Only once the board is narrowed: saving the whole board is emailing it weekly. */}
+      {countActiveFilters(filters) > 0 && hasResults ? (
+        <SaveSearchButton key={boardQuery(filters)} query={boardQuery(filters)} defaultLabel={searchLabel} />
+      ) : null}
+
       {active.length ? (
         <View accessibilityLabel={t('filters')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
           {active.map((filter) => {
@@ -282,6 +293,7 @@ function EmptyBoard({
 }) {
   const t = useTranslations('jobs');
   const labelFor = useFilterLabel(filters);
+  const searchLabel = useSearchLabel(filters, first);
   const active = activeFilterList(filters);
   const byKey = new Map(active.map((filter) => [filter.key, filter]));
   const relaxations = (first?.relaxations ?? []).flatMap((relaxation) => {
@@ -314,10 +326,39 @@ function EmptyBoard({
           {countActiveFilters(filters) > 0 ? (
             <Button label={t('clearFilters')} variant="outline" onPress={() => apply(EMPTY_FILTERS)} />
           ) : null}
+          {/* The honest answer to "there is nothing yet": tell me when there is. */}
+          {countActiveFilters(filters) > 0 ? (
+            <View style={{ alignItems: 'center', gap: space[1] }}>
+              <SaveSearchButton key={boardQuery(filters)} query={boardQuery(filters)} defaultLabel={searchLabel} />
+              <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
+                {t('emptySaveHint')}
+              </Text>
+            </View>
+          ) : null}
         </View>
       }
     />
   );
+}
+
+/**
+ * What a saved search is called unless the reader renames it — the website's
+ * default: a board pinned to one brokerage is a follow, named after it; then
+ * the words searched for; then the track and the place; then "jobs".
+ */
+function useSearchLabel(filters: JobFilters, first: JobBoardResponse | undefined): string {
+  const locale = useLocale();
+  const t = useTranslations();
+  const districts = useDistricts().data ?? [];
+
+  const company = first?.company;
+  if (company) return localized(locale, company.name_ar, company.name_en);
+  if (filters.q) return filters.q;
+  const parts: string[] = [];
+  if (filters.tracks[0]) parts.push(t(`track.${filters.tracks[0]}`));
+  const district = districts.find((item) => item.slug === filters.districtSlugs[0]);
+  if (district) parts.push(localized(locale, district.name_ar, district.name_en));
+  return parts.join(' · ') || t('jobs.title');
 }
 
 function BoardFooter({ loadingMore, ended, unfiltered }: { loadingMore: boolean; ended: boolean; unfiltered: boolean }) {

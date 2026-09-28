@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, type Href } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Briefcase, Check, Search, Users } from 'lucide-react-native';
+import { Briefcase, Building2, Check, Search, Users } from 'lucide-react-native';
 import { formatNumber } from '@/lib/format';
 import { HeaderBell } from '~/components/notifications/header-bell';
 import { JobBrowse } from '~/components/home/job-browse';
@@ -15,7 +15,9 @@ import { useBrowseCounts } from '~/features/browse/queries';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { useDistricts } from '~/features/taxonomy';
+import { inOwnTab } from '~/lib/links';
 import { useSession } from '~/lib/session';
+import { tabsFor } from '~/lib/tabs';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
 
@@ -35,7 +37,7 @@ export default function HomeScreen() {
   const locale = useLocale();
   const t = useTranslations();
   const { colors } = useTheme();
-  const { viewer } = useSession();
+  const { viewer, actor } = useSession();
   const [q, setQ] = useState('');
 
   const board = useJobBoard('');
@@ -172,6 +174,16 @@ export default function HomeScreen() {
         ) : null}
 
         {name ? <JobBrowse counts={counts.data} districts={districts.data} /> : null}
+
+        {/* The directory, for somebody whose tab bar has no Companies tab (a candidate's). */}
+        {tabsFor(actor).includes('companies') ? null : (
+          <Button
+            label={t('nav.companies')}
+            variant="outline"
+            icon={<Building2 size={16} color={colors.foreground} />}
+            onPress={() => router.push(inOwnTab('/companies', tabsFor(actor)) as Href)}
+          />
+        )}
       </ScrollView>
     </>
   );

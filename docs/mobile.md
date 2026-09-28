@@ -101,7 +101,9 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   a group all tabs share, so they open inside the tab the reader is in. The
   tab bar depends on who is signed in (`mobile/src/lib/tabs.ts`, from
   `src/lib/permissions.ts`): signed out it is Home · Jobs · Companies ·
-  Account, and a candidate adds Applications. A tab left out is `hidden`,
+  Account; a candidate's is their console — Home · Jobs · Applications ·
+  Saved · Account — with the companies directory a tap from Home (it lives in
+  the shared group, so any tab can open it). A tab left out is `hidden`,
   which removes its screens for that person altogether, so every path is
   checked before it is opened, with the website's own rules (`routeAudience` /
   `mayEnter`): a signed-in page with nobody signed in opens the sign-in sheet,
@@ -119,6 +121,12 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   right after a sign-in waits the same way (`open-path.ts`, `PendingPath`), so
   it is never asked of a tab bar not yet drawn for the account. A website page
   the app has no screen for offers to open it in the in-app browser.
+- **Saved.** Bookmarks, saved searches and follows are the website's rows and
+  actions (`toggleSavedJob`, `saveSearch`, `setSearchAlerts`,
+  `deleteSavedSearch`, `followCompany` / `unfollowCompany`): offered to a
+  candidate and, as a way into an account, to somebody signed out; shown at
+  once and put back if the server refuses. A follow is a saved search with
+  one filter, so the ten-row cap and the weekly email are shared.
 - **The bell** sits at the end of each tab's first screen with the unread
   count, read like everything else about the person straight from Supabase.
   Its feed pages by `(created_at, id)` as the website's does, marks read up to

@@ -7,9 +7,9 @@ import { useTheme } from '~/theme/provider';
 /**
  * The tab bar, by who is using the app (src/lib/tabs.ts, which asks
  * src/lib/permissions.ts). Signed out, it is the public site: home, the board,
- * the companies — and the account, where signing in starts. A candidate adds
- * their applications. An employer's listings and applicants join when their
- * screens are built.
+ * the companies — and the account, where signing in starts. A candidate has
+ * their console instead of the directory: applications and saved. An
+ * employer's listings and applicants join when their screens are built.
  *
  * A tab left out is `hidden`, which takes its screens out of the app for that
  * person altogether; links are routed with the same list (links.ts), so none
@@ -18,7 +18,7 @@ import { useTheme } from '~/theme/provider';
  * Each tab is a group with a stack of its own ((home), (jobs), …); a listing
  * or a company opened from any of them is pushed onto that tab's stack, so the
  * tab bar stays and Back returns to where the reader was. See
- * (home,jobs,companies,applications,account)/_layout.tsx.
+ * (home,jobs,companies,applications,saved,account)/_layout.tsx.
  */
 export default function TabsLayout() {
   const t = useTranslations();
@@ -45,6 +45,11 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="(applications)" hidden={!tabs.includes('applications')}>
         <NativeTabs.Trigger.Label>{t('dashboard.applications')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'doc.text', selected: 'doc.text.fill' }} />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="(saved)" hidden={!tabs.includes('saved')}>
+        <NativeTabs.Trigger.Label>{t('app.tabs.saved')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'bookmark', selected: 'bookmark.fill' }} />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="(account)">

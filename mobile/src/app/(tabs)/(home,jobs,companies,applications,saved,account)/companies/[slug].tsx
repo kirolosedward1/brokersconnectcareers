@@ -8,6 +8,7 @@ import { CompanyLogo } from '~/components/companies/company-logo';
 import { JobCard } from '~/components/jobs/job-card';
 import { HiddenNotice, HideCompany } from '~/components/moderation/hide-company';
 import { ReportButton } from '~/components/moderation/report';
+import { FollowCompanyButton } from '~/components/saved/save-controls';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
@@ -103,6 +104,9 @@ export default function CompanyScreen() {
             </View>
           </View>
         </View>
+
+        {/* Tell me when this brokerage posts — a candidate's, or the way into an account. */}
+        <FollowCompanyButton slug={company.slug} label={name} />
 
         {about ? (
           <View style={{ gap: space[2] }}>

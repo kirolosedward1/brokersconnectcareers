@@ -104,6 +104,7 @@ const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabNa
   ['/jobs', ['jobs']],
   ['/companies', ['companies', 'home']],
   ['/dashboard/applications', ['applications']],
+  ['/dashboard/saved', ['saved']],
   ['/account', ['account']],
   ['/notifications', ['home']],
 ];

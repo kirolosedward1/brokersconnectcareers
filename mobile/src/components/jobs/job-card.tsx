@@ -10,6 +10,7 @@ import { Badge } from '~/components/ui/badge';
 import { Card } from '~/components/ui/card';
 import { Text } from '~/components/ui/text';
 import { CompanyLogo } from '~/components/companies/company-logo';
+import { SaveJobIcon, useSaveJob } from '~/components/saved/save-controls';
 import { useCompensationText } from '~/features/jobs/compensation';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
@@ -18,13 +19,15 @@ import { space } from '~/theme/tokens';
  * A listing in a list — the website's JobCard, fact for fact and in the same
  * order: who and where, the track and the experience asked for; then what it
  * pays, the commission when it is a number, where the clients come from, and
- * how many seats. Freshness at the end of the first line.
+ * how many seats. Freshness at the end of the first line. A candidate can
+ * bookmark it from here without opening it (the website's card toggle).
  */
 export function JobCard({ job, applied = false }: { job: JobListItem; applied?: boolean }) {
   const locale = useLocale();
   const t = useTranslations();
   const { colors } = useTheme();
   const pay = useCompensationText();
+  const save = useSaveJob(job.id);
 
   const closed = !jobIsLive(job);
   const title = localized(locale, job.title_ar, job.title_en);
@@ -37,6 +40,10 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
     <Card
       onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
       accessibilityLabel={formatList([title, company, district], locale)}
+      accessibilityActions={save.savable ? [{ name: 'save', label: save.label }] : undefined}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'save') save.toggle();
+      }}
       style={closed ? { opacity: 0.7 } : undefined}
     >
       <View style={{ flexDirection: 'row', gap: space[3] }}>
@@ -52,6 +59,7 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
                 {formatRelativeDay(job.published_at, locale)}
               </Text>
             ) : null}
+            {save.savable ? <SaveJobIcon save={save} /> : null}
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[1] }}>

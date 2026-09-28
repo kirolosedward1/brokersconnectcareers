@@ -12,6 +12,7 @@ import { buildLandingSlug } from '@/lib/taxonomy';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { HiddenNotice } from '~/components/moderation/hide-company';
 import { ReportButton } from '~/components/moderation/report';
+import { SaveJobButton } from '~/components/saved/save-controls';
 import { CompensationCard } from '~/components/jobs/compensation-card';
 import { JobCard } from '~/components/jobs/job-card';
 import { Badge } from '~/components/ui/badge';
@@ -196,6 +197,9 @@ export function JobDetail({
             </Text>
           </Card>
         ) : null}
+
+        {/* A bookmark is a candidate's; somebody signed out is sent to sign in. */}
+        <SaveJobButton jobId={job.id} slug={job.slug} />
 
         <Section title={t('description')}>
           <Text selectable>{description}</Text>
