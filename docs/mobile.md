@@ -104,10 +104,12 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   Account; a candidate's is their console — Home · Jobs · Applications ·
   Saved · Account — with the companies directory a tap from Home (it lives in
   the shared group, so any tab can open it); an employer's is theirs — Home
-  (the `/employer` overview) · Listings · Account (where the company, team and
-  billing are kept), the applicants and the consultant directory joining as
-  their screens land — and has no board: a listing opens at home, and the
-  board's own address goes home. A tab left out is `hidden`,
+  (the `/employer` overview) · Listings · Applicants · Account (where the
+  company, team and billing are kept), with the consultant directory joining
+  as its screens land — and has no board: a listing opens at home, and the
+  board's own address goes home. A listing's applicants
+  (`/employer/jobs/<id>/applicants`) open in whichever of Listings and
+  Applicants the employer is in. A tab left out is `hidden`,
   which removes its screens for that person altogether, so every path is
   checked before it is opened, with the website's own rules (`routeAudience` /
   `mayEnter`): a signed-in page with nobody signed in opens the sign-in sheet,
@@ -145,6 +147,15 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   and the version the form was built from, so a retry never posts twice and a
   colleague's save is never overwritten; a refusal sends the employer back to
   the step that holds it. A live listing is edited, never drafted.
+  **Applicants** — one listing's pipeline by stage, and the inbox across all of
+  them with the website's filters in the address and stage counts under them —
+  are the website's reads (the newest two hundred, under the employer's own
+  session). Each card is the website's: the directory profile when the company
+  may see it and a word saying so when not, WhatsApp with `employerOpener`'s
+  first message, the CV (`/api/cv/<id>` as JSON, opened in the in-app browser),
+  the move with `from` and the decision note always sent (the action writes
+  the note on every move), the reason to the candidate, and the private
+  notes. Cards on screen are stamped seen with `markApplicantsSeen`.
 - **A candidate's Home** is their overview, the website's `/dashboard`: where
   the account stands when it is held or suspended (`my_account_note`, with the
   appeal panel), the one next action by the website's rule (a reply, else a
