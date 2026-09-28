@@ -48,7 +48,7 @@ export type AdminLever =
       takeAction?: boolean;
     }
   | { do: 'deleteTaxonomy'; kind: TaxonomyKind; id: number }
-  // Moderation (migrations 208 and 210).
+  // Moderation (migrations 326 and 328).
   | {
       do: 'closeReports';
       ids: string[];

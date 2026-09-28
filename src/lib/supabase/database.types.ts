@@ -265,7 +265,7 @@ export type AdminSummary = {
   queue_total: number;
   queue_over_24h: number;
   reports_open: number;
-  /** Migration 210. Absent before it. */
+  /** Migration 328. Absent before it. */
   appeals_open?: number;
   companies_pending: number;
   /** Employer accounts between signing up and being allowed to post. */
@@ -320,7 +320,7 @@ export type NotificationKind =
   | 'password_changed'
   // Migration 200: support answered a request (written by 201's answer function).
   | 'support_replied'
-  // Moderation (migration 318): the decision's subject is told, and so is
+  // Moderation (migration 325): the decision's subject is told, and so is
   // whoever reported or appealed.
   | 'report_reviewed'
   | 'company_suspended'
@@ -608,7 +608,7 @@ export type SavedJobRow = Timestamped & {
 };
 
 /**
- * What a report was about, as it stood when it was filed (migration 208).
+ * What a report was about, as it stood when it was filed (migration 326).
  * Written by the database, never by the reporter.
  */
 export type ReportSnapshot = {
@@ -644,7 +644,7 @@ export type ReportRow = Timestamped & {
   resolved: boolean;
   resolved_by: string | null;
   resolved_at: string | null;
-  /** Migration 208; optional so code can run before it. */
+  /** Migration 326; optional so code can run before it. */
   target_type?: ReportTargetType;
   target_id?: string;
   target_snapshot?: ReportSnapshot;
@@ -708,7 +708,7 @@ export type AdminReportDetail = {
   total_count: number;
 };
 
-/** A text flag (migration 209): what raised it, and how much it weighs. */
+/** A text flag (migration 327): what raised it, and how much it weighs. */
 export type SafetyFlag = {
   flag:
     | 'asks_for_money'
@@ -729,7 +729,7 @@ export type SafetyFlag = {
 
 export type SignalCompanyRef = { id: string; name_ar: string; name_en: string | null; suspended: boolean };
 
-/** A company signal (migration 209). Each is a fact for review, never a verdict. */
+/** A company signal (migration 327). Each is a fact for review, never a verdict. */
 export type CompanySignal =
   | { signal: 'mass_posting'; day: number; week: number }
   | { signal: 'rejections'; count: number }
@@ -750,7 +750,7 @@ export type CompanySignals = {
 export type AppealSubjectType = 'job' | 'company' | 'account' | 'agent';
 export type AppealStatus = 'open' | 'upheld' | 'overturned';
 
-/** One message about one decision, and one answer (migration 210). */
+/** One message about one decision, and one answer (migration 328). */
 export type AppealRow = {
   id: string;
   subject_type: AppealSubjectType;
@@ -773,14 +773,14 @@ export type AppealRow = {
   created_at: string;
 };
 
-/** What the page offers about one decision (my_appeal_state, migration 210). */
+/** What the page offers about one decision (my_appeal_state, migration 328). */
 export type AppealState = {
   appealable: boolean;
   open: { id: string; created_at: string } | null;
   last: { status: Exclude<AppealStatus, 'open'>; decided_at: string; note: string | null } | null;
 };
 
-/** A company's suspension reason, readable by its members and admins only (migration 209). */
+/** A company's suspension reason, readable by its members and admins only (migration 327). */
 export type CompanyModerationRow = {
   company_id: string;
   suspension_reason: string | null;
@@ -1411,7 +1411,7 @@ export type Database = {
         Args: { p_target_type: AuditTargetType; p_target_id: string; p_body: string };
         Returns: number;
       };
-      /** Moderation (migrations 208–210). Each checks is_admin() itself. */
+      /** Moderation (migrations 326–328). Each checks is_admin() itself. */
       admin_close_reports: {
         Args: {
           p_reports: string[];

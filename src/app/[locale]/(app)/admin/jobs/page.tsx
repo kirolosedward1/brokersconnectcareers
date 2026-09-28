@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 const VIEWS = [
   'pending',
   // Waiting for review, and the listing's own text carries a high-weight
-  // flag (migration 209): money asked of the candidate, ID or bank details,
+  // flag (migration 327): money asked of the candidate, ID or bank details,
   // a link that hides where it goes. For a closer look, not a verdict.
   'flagged',
   'live',

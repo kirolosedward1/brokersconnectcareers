@@ -123,7 +123,7 @@ export const HEADCOUNT_BANDS = ['1_10', '11_50', '51_200', '201_500', '500_plus'
 /**
  * Why somebody reports a listing, most serious first — the order a candidate
  * who has just been asked for money reads them in, and the order severity is
- * ranked in the queue (migration 208). `duplicate` and `discriminatory` are no
+ * ranked in the queue (migration 326). `duplicate` and `discriminatory` are no
  * longer offered: "spam or duplicate" and "offensive or discriminatory" cover
  * them in fewer choices, and the database still accepts both for the reports
  * already filed with them.

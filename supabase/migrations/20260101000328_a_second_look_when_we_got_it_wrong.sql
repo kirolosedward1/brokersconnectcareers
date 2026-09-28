@@ -1,5 +1,5 @@
 -- =============================================================================
--- 210 — A second look when we got it wrong
+-- 328 — A second look when we got it wrong
 --
 -- Every lever in the console can be pulled on the wrong thing. A listing taken
 -- down on a competitor's report, a company suspended for another company's
@@ -30,8 +30,8 @@
 -- be open, so the second is told it has already been decided.
 -- =============================================================================
 
--- rollback: by hand, first of 208–210 — the statements are listed at the end of this file
--- safety: ships-with-code — apply after the deploy that carries this branch's src/ changes. The new code works without it (the console says the migration is missing, the report and appeal forms refuse cleanly), but the bell on main has no icon for the notification kinds this writes (appeal_decided).
+-- rollback: by hand, first of 326–328 — the statements are listed at the end of this file
+-- safety: ships-with-code — apply after the deploy that carries this branch's src/ changes. The new code works without it (the console says the migration is missing, the report and appeal forms refuse cleanly), but main's bell shows the notification kind this writes (appeal_decided) only as its generic line, so the person would not be told what happened until the code arrives.
 
 create table if not exists moderation_appeals (
   id                uuid primary key default gen_random_uuid(),
@@ -69,7 +69,7 @@ drop policy if exists moderation_appeals_read on moderation_appeals;
 create policy moderation_appeals_read on moderation_appeals
   for select using (
     appellant_id = (select auth.uid())
-    or public.is_admin()
+    or (select public.is_admin())
     or (subject_type = 'company' and public.owns_company(subject_id))
     or (subject_type = 'job' and public.owns_job(subject_id))
   );
@@ -286,6 +286,30 @@ grant  execute on function public.my_appeal_state(text, uuid) to authenticated;
 revoke execute on function public.submit_appeal(text, uuid, text) from public, anon;
 grant  execute on function public.submit_appeal(text, uuid, text) to authenticated;
 
+-- The reason a moderator gave for the decision on this account, to its holder
+-- while the decision stands, and to nobody else. profile_private stays
+-- admin-only (305): this reads one column of the caller's own row, and only
+-- while the account is suspended or on hold. A suspension's reason has already
+-- been sent to them (on_approval_changed puts it in the notification); a hold
+-- is announced without it, and the console tells the moderator the person is
+-- told the reason — this is where they read it, beside the way to appeal it.
+create or replace function public.my_account_note()
+returns text
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select pp.approval_note
+    from profile_private pp
+    join profiles p on p.id = pp.user_id
+   where pp.user_id = (select auth.uid())
+     and p.approval_status <> 'approved';
+$$;
+
+revoke execute on function public.my_account_note() from public, anon;
+grant  execute on function public.my_account_note() to authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Answering
 -- ---------------------------------------------------------------------------
@@ -392,7 +416,7 @@ revoke execute on function public.admin_decide_appeal(uuid, boolean, text) from 
 grant  execute on function public.admin_decide_appeal(uuid, boolean, text) to authenticated;
 
 -- ---------------------------------------------------------------------------
--- The rail badges, restated whole (migration 206) with two changes:
+-- The rail badges, restated whole (migration 318) with two changes:
 -- reports_open counts every reported target by its record, so reports about a
 -- deleted listing still count; and appeals_open is new.
 -- ---------------------------------------------------------------------------
@@ -434,12 +458,13 @@ revoke execute on function public.admin_summary() from public, anon;
 grant  execute on function public.admin_summary() to authenticated;
 
 -- ---------------------------------------------------------------------------
--- Rollback, by hand, before 209 and 208:
+-- Rollback, by hand, before 327 and 326:
 --
 --   drop function if exists public.admin_decide_appeal(uuid, boolean, text);
+--   drop function if exists public.my_account_note();
 --   drop function if exists public.my_appeal_state(text, uuid);
 --   drop function if exists public.submit_appeal(text, uuid, text);
 --   drop function if exists public.appeal_decision_snapshot(uuid, text, uuid);
 --   drop table if exists moderation_appeals;
---   -- restate admin_summary() exactly as migration 206 wrote it
+--   -- restate admin_summary() exactly as migration 318 wrote it
 -- ---------------------------------------------------------------------------

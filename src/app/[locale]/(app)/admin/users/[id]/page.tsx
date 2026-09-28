@@ -126,7 +126,7 @@ export default async function AdminUserPage({
       .eq('target_id', id)
       .order('created_at', { ascending: false })
       .limit(50),
-    // A ban on reporting is its own admin-only record (migration 208).
+    // A ban on reporting is its own admin-only record (migration 326).
     supabase.from('reporting_restrictions').select('reason, created_at').eq('user_id', id).maybeSingle(),
   ]);
 

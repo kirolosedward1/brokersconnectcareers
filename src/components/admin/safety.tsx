@@ -7,7 +7,7 @@ import { formatNumber } from '@/lib/utils';
 import type { CompanySignal, CompanySignals, ReportSeverity, SafetyFlag } from '@/lib/supabase/database.types';
 
 /**
- * What the console shows a moderator beside a decision (migrations 208–209).
+ * What the console shows a moderator beside a decision (migrations 326–327).
  *
  * Every line here is a fact to weigh, worded as one: "mentions a registration
  * fee", "shares a WhatsApp number with…", never "scammer" or "fraudulent".

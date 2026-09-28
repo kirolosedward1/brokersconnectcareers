@@ -1,5 +1,5 @@
 -- =============================================================================
--- 209 — What a moderator should see first
+-- 327 — What a moderator should see first
 --
 -- Every listing already passes a person before it goes live. What that person
 -- was not shown is the part that takes experience to spot: that an advert asks
@@ -34,13 +34,16 @@
 --   block; the English text, the requirements, the commission note and the
 --   employment type could be rewritten on an approved advert without anybody
 --   seeing it — "requirements: a 500 EGP registration fee" included. A second
---   trigger, not a restatement, because that function is restated on another
---   open branch and whichever restatement runs last would drop this clause.
+--   trigger, not a restatement, because other migrations restate that
+--   function, and whichever restatement runs last would drop this clause.
 --
 --   Nothing is submitted for review by an account that is not in good
---   standing. A restricted (held) or suspended account keeps what it has live,
---   can close a listing and edit a draft — and cannot put anything new in
---   front of a moderator or a candidate.
+--   standing. A restricted (held) or suspended account keeps what it has live
+--   and cannot put anything new in front of a moderator or a candidate. Row-
+--   level security already keeps both out of their listings — a suspended
+--   account since 308, and since 322 any account not approved, which a hold
+--   is — so this is the same rule for the write those policies do not see: a
+--   new listing inserted straight into review.
 --
 --   A company's suspension reason is no longer public. companies is readable
 --   by anyone (it is the directory), so the reason an admin wrote "to the
@@ -48,9 +51,9 @@
 --   company_moderation, which the company's members and admins read.
 -- =============================================================================
 
--- rollback: by hand, after 210 and before 208 — the statements are listed at the end of this file
+-- rollback: by hand, after 328 and before 326 — the statements are listed at the end of this file
 -- safety: constraint — no company on production is suspended or carries a suspension reason (checked 2026-09-27), and this file moves any reason into company_moderation before the check is added
--- safety: ships-with-code — apply after the deploy that carries this branch's src/ changes. The new code works without it (the console says the migration is missing, the report and appeal forms refuse cleanly), but the bell on main has no icon for the notification kinds this writes (company_suspended, company_restored, profile_restricted, profile_restored, account_held); main's admin company page would also stop showing a suspension reason, which the new page reads from company_moderation.
+-- safety: ships-with-code — apply after the deploy that carries this branch's src/ changes. The new code works without it (the console says the migration is missing, the report and appeal forms refuse cleanly), but main's bell shows the notification kinds this writes (company_suspended, company_restored, profile_restricted, profile_restored, account_held) only as its generic line, so the person would not be told what happened until the code arrives; main's admin company page would also stop showing a suspension reason, which the new page reads from company_moderation.
 
 -- ---------------------------------------------------------------------------
 -- Where a link goes
@@ -410,14 +413,27 @@ revoke execute on function public.company_safety_flags(uuid) from public, anon, 
 -- A fingerprint of each listing's description (normalised, punctuation and
 -- spacing gone) makes "the same advert again" an indexed equality rather than
 -- a comparison of every listing with every other.
+--
+-- An index on the expression, not a column on jobs. A stored generated column
+-- reads as null in a BEFORE trigger's NEW, and bump_version() (324) compares
+-- whole rows to tell a page view from an edit: a second such column made
+-- every view look like an edit, moving the version that approval emails and
+-- the edit form's lock key on. It would also have rewritten the whole table.
 -- ---------------------------------------------------------------------------
 
-alter table jobs add column if not exists text_fingerprint text
-  generated always as (
-    md5(regexp_replace(public.ar_normalise(coalesce(description_ar, '')), '[[:space:][:punct:]]+', ' ', 'g'))
-  ) stored;
+create or replace function public.job_text_fingerprint(p_description text)
+returns text
+language sql
+immutable
+parallel safe
+set search_path = public, pg_temp
+as $$
+  select md5(regexp_replace(public.ar_normalise(coalesce(p_description, '')), '[[:space:][:punct:]]+', ' ', 'g'));
+$$;
 
-create index if not exists jobs_text_fingerprint_idx on jobs (text_fingerprint) where status <> 'draft';
+create index if not exists jobs_text_fingerprint_idx
+  on jobs (public.job_text_fingerprint(description_ar))
+  where status <> 'draft';
 
 -- Shared phone numbers are found by equality on the number.
 create index if not exists profiles_whatsapp_phone_idx on profiles (whatsapp_phone);
@@ -470,7 +486,7 @@ begin
     from (select count(*)::int as n
             from jobs
            where company_id = p_company and status in ('pending_review', 'active')
-           group by text_fingerprint) g;
+           group by public.job_text_fingerprint(description_ar)) g;
   if v_n >= 3 then
     v_signals := v_signals || jsonb_build_object('signal', 'duplicate_listings', 'count', v_n);
   end if;
@@ -482,7 +498,7 @@ begin
            'suspended', c.suspended_at is not null)), '[]'::jsonb)
     into v_list
     from jobs mine
-    join jobs theirs on theirs.text_fingerprint = mine.text_fingerprint
+    join jobs theirs on public.job_text_fingerprint(theirs.description_ar) = public.job_text_fingerprint(mine.description_ar)
                     and theirs.company_id <> mine.company_id
                     and theirs.status <> 'draft'
     join companies c on c.id = theirs.company_id
@@ -813,7 +829,7 @@ alter table company_moderation enable row level security;
 
 drop policy if exists company_moderation_read on company_moderation;
 create policy company_moderation_read on company_moderation
-  for select using (public.owns_company(company_id) or public.is_admin());
+  for select using (public.owns_company(company_id) or (select public.is_admin()));
 
 revoke all on company_moderation from anon;
 revoke insert, update, delete, truncate on company_moderation from authenticated;
@@ -829,10 +845,10 @@ alter table companies add constraint companies_suspension_reason_is_private
   check (suspension_reason is null);
 
 comment on column companies.suspension_reason is
-  'Always null since migration 209: the reason lives in company_moderation, '
+  'Always null since migration 327: the reason lives in company_moderation, '
   'which only the company''s members and admins can read.';
 
--- Restated from migration 206 with one change: the reason is written to
+-- Restated from migration 318 with one change: the reason is written to
 -- company_moderation, before the company row, so the notification trigger
 -- below can read it.
 create or replace function public.admin_set_company_suspension(
@@ -906,8 +922,8 @@ grant  execute on function public.admin_set_company_suspension(uuid, boolean, te
 -- Telling the people a decision is about
 --
 -- Separate triggers rather than clauses in on_approval_changed() or
--- on_job_moderated(), which two open branches restate. None of these reads
--- profiles.approval_note, which one of those branches moves elsewhere.
+-- on_job_moderated(), which other migrations restate (305, 318). None of
+-- these reads the approval note, which 305 moved into profile_private.
 -- ---------------------------------------------------------------------------
 
 create or replace function public.tell_company_about_suspension()
@@ -995,7 +1011,7 @@ create trigger profiles_93_tell_about_hold
   for each row execute function public.tell_account_about_hold();
 
 -- ---------------------------------------------------------------------------
--- Rollback, by hand, after 210 and before 208:
+-- Rollback, by hand, after 328 and before 326:
 --
 --   drop trigger if exists profiles_93_tell_about_hold on profiles;
 --   drop trigger if exists agent_profiles_93_tell_about_restriction on agent_profiles;
@@ -1013,8 +1029,8 @@ create trigger profiles_93_tell_about_hold
 --   alter table companies drop constraint if exists companies_suspension_reason_is_private;
 --   update companies c set suspension_reason = m.suspension_reason
 --     from company_moderation m where m.company_id = c.id and c.suspended_at is not null;
---   -- restate admin_set_company_suspension() exactly as migration 206 wrote it
+--   -- restate admin_set_company_suspension() exactly as migration 318 wrote it
 --   drop table if exists company_moderation;
 --   drop index if exists jobs_text_fingerprint_idx, profiles_whatsapp_phone_idx;
---   alter table jobs drop column if exists text_fingerprint;
+--   drop function if exists public.job_text_fingerprint(text);
 -- ---------------------------------------------------------------------------

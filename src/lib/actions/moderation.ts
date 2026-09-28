@@ -12,7 +12,7 @@ import { jobIsLive } from '@/lib/job-state';
 
 /**
  * The moderation levers that act on reports by id, on a person's ability to
- * report, and on appeals (migrations 208 and 210).
+ * report, and on appeals (migrations 326 and 328).
  *
  * Same contract as the console's other levers (lib/actions/admin.ts): one call
  * to a database function through the admin's own session, which refuses

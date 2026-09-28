@@ -112,7 +112,7 @@ export default async function AdminCompanyPage({
       .in('status', ['open', 'investigating']),
     supabase.from('admin_audit_log').select('*').eq('target_type', 'company').eq('target_id', id).order('created_at', { ascending: false }).limit(50),
     supabase.from('moderation_notes').select('*').eq('target_type', 'company').eq('target_id', id).order('created_at', { ascending: false }).limit(50),
-    // The suspension reason lives here since migration 209; the companies row
+    // The suspension reason lives here since migration 327; the companies row
     // is readable by anybody, so it no longer carries it.
     supabase.from('company_moderation').select('suspension_reason').eq('company_id', id).maybeSingle(),
     supabase.rpc('admin_company_signals', { p_companies: [id] }),

@@ -21,7 +21,7 @@ export type AppealRefusal =
   | 'company_suspended'
   | 'unavailable';
 
-/** The database's words (migration 210), each with its own sentence in the form. */
+/** The database's words (migration 328), each with its own sentence in the form. */
 const REFUSALS: [needle: string, code: AppealRefusal][] = [
   ['appeal_message_required', 'message_required'],
   ['appeal_message_too_long', 'message_required'],

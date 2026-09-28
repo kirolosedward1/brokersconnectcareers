@@ -425,7 +425,7 @@ function mapJobError(message: string): string {
   if (message.includes('unverified_company_post_cap')) return 'post_cap';
   if (message.includes('job status cannot go from')) return 'invalid_transition';
   // Restricted or suspended: nothing new goes in front of a moderator
-  // (migration 320). And a suspended company submits nothing at all (315).
+  // (migration 327). And a suspended company submits nothing at all (317).
   if (message.includes('account_not_in_good_standing')) return 'standing';
   if (message.includes('company_suspended')) return 'company_suspended';
   if (message.includes('job_post_rate_limit')) return 'post_rate_limit';

@@ -35,7 +35,7 @@ const SUBJECT_HREF: Record<AppealSubjectType, (id: string) => string> = {
 };
 
 /**
- * Appeals: one message about one decision, and one answer (migration 210).
+ * Appeals: one message about one decision, and one answer (migration 328).
  *
  * Oldest first, because the person waiting longest has been without their
  * listing, company or account longest. Each shows the decision as it stood

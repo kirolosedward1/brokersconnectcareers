@@ -999,7 +999,7 @@
       "invalid_governorate": "Choose an existing governorate.",
       "slug_taken": "That slug is already taken.",
       "unavailable": "The file is not available right now.",
-      "not_migrated": "The database needs migrations 316–319 before this action works.",
+      "not_migrated": "The database needs migrations 316–319 and 325–328 before this action works.",
       "unknown": "Something unexpected went wrong. Nothing was changed.",
       "network": "The connection dropped before we could confirm. The page has been refreshed — check the state before retrying."
     },
@@ -1189,7 +1189,7 @@
     "appealDecidedBy": "Answered by {name} on {date}",
     "safetyHeading": "What to look at",
     "restrictAccount": "Restrict while reviewing",
-    "restrictAccountBodyEmployer": "A hold, not a suspension: their live listings stay up, but nothing new can be posted or sent for review until you lift it. They are told, with your reason, and can ask for a review.",
+    "restrictAccountBodyEmployer": "A hold, not a suspension: their live listings stay up, but until you lift it they can’t post, edit or close listings, or send anything for review. They are told, with your reason, and can ask for a review.",
     "restrictAccountBodyCandidate": "A hold, not a suspension: their applications stay, but they cannot apply to new jobs until you lift it. They are told, with your reason, and can ask for a review.",
     "reportsBadFaith": "Dismissed as bad faith: {count}",
     "reportingBanned": "Reporting restricted since {date}",
@@ -1621,8 +1621,7 @@
     "account_held": "Your account is restricted while we review it",
     "appeal_decided": "We answered your appeal about {subject}",
     "appealOverturned": "We reviewed your appeal about “{subject}” and reversed the decision",
-    "appealUpheld": "We reviewed your appeal about “{subject}”; the decision stands",
-    "somethingChanged": "There is an update on your account"
+    "appealUpheld": "We reviewed your appeal about “{subject}”; the decision stands"
   },
   "emailStatus": {
     "queued": "Queued",
@@ -1673,7 +1672,7 @@
     "suspendedBodyEmployer": "You can sign in and see everything, but you can’t post listings or send them for review while it is suspended. Nothing has been deleted.",
     "suspendedBodyCandidate": "You can sign in and see your applications, but you can’t apply or report while it is suspended. Nothing has been deleted.",
     "heldTitle": "Your account is restricted while we review it",
-    "heldBodyEmployer": "Your live listings stay up. Until the review ends you can’t post new listings or send changes for review.",
+    "heldBodyEmployer": "Your live listings stay up. Until the review ends you can’t post, edit or close listings, or send anything for review.",
     "heldBodyCandidate": "Your applications stay as they are. Until the review ends you can’t apply to new jobs.",
     "reason": "Our team’s note: {reason}",
     "companySuspendedTitle": "Your company is suspended",

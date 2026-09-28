@@ -1,7 +1,7 @@
 /**
  * Moderation and user safety, exercised as each kind of user.
  *
- * Migrations 207–210: reports that are evidence and cannot be used as a
+ * Migrations 325–328: reports that are evidence and cannot be used as a
  * weapon, signals that tell a moderator what to look at without deciding
  * anything, a live listing whose text cannot change unseen, and an appeal for
  * every decision somebody can be on the wrong end of.
@@ -527,14 +527,29 @@ report.section('a restricted or suspended employer keeps what is live and adds n
     edit = await q.probe(`update jobs set title_ar = 'عنوان جديد' where id = '${live}'`);
     const draftEdit = await q(`update jobs set title_ar = 'مسودة معدلة' where id = '${draft}' returning status`);
     const close = await q(`update jobs set status = 'closed' where id = '${live}' returning status`);
-    return { bell, liveNow, submit, edit, draftEdit: draftEdit[0]?.status, close: close[0]?.status };
+    // Read back as the platform. Since 322 row-level security keeps an account
+    // that is not approved — a hold is one — out of its listings altogether, so
+    // a refused write may be an error or simply nothing changed.
+    await q(`reset role`);
+    const rows = await q(`select id, status, title_ar from jobs where id in ('${draft}', '${live}')`);
+    const after = Object.fromEntries(rows.map((row) => [row.id, row]));
+    return {
+      bell, liveNow, submit, edit,
+      draftEdited: draftEdit.length, closed: close.length,
+      draftAfter: after[draft], liveAfter: after[live],
+    };
   });
   const h = held.value ?? {};
   report.check('restricting (holding) an account tells its holder', h.bell?.kind === 'account_held' && h.bell.href === '/employer', JSON.stringify(h.bell));
   report.check('and leaves the live listings up', h.liveNow === 'active');
-  report.check('a restricted employer cannot submit a listing for review', /account_not_in_good_standing/.test(h.submit ?? ''), h.submit ?? JSON.stringify(held));
-  report.check('nor slip an edit past review on a live one', /account_not_in_good_standing/.test(h.edit ?? ''), h.edit);
-  report.check('but can still work on a draft and close a listing', h.draftEdit === 'draft' && h.close === 'closed', JSON.stringify(h));
+  const refused = (error) => error === null || /account_not_in_good_standing/.test(error ?? '');
+  report.check('a restricted employer cannot submit a listing for review',
+    refused(h.submit) && h.draftAfter?.status === 'draft', `${h.submit} → ${h.draftAfter?.status}`);
+  report.check('nor slip an edit past review on a live one',
+    refused(h.edit) && h.liveAfter?.title_ar !== 'عنوان جديد', `${h.edit} → ${h.liveAfter?.title_ar}`);
+  report.check('and, since 322, edits and closes nothing while held: the live listing stays up as it was',
+    h.draftEdited === 0 && h.closed === 0 && h.liveAfter?.status === 'active' && h.draftAfter?.title_ar !== 'مسودة معدلة',
+    JSON.stringify({ draftEdited: h.draftEdited, closed: h.closed, live: h.liveAfter?.status }));
 
   const suspended = await session(admin, async (q) => {
     await q(`select set_account_approval('${employer3}', 'rejected', 'احتيال مؤكد')`);
