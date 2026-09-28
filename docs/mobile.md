@@ -104,6 +104,22 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   board under it. A website page the app has no screen for offers to open it in
   the in-app browser.
 
+## Links, email and the captcha
+
+- **Universal links.** `/.well-known/apple-app-site-association`
+  (`src/lib/apple/app-site-association.ts`) tells iOS which links to the site
+  open the app: the board, companies, the directory, notifications, the
+  dashboards and `/auth/confirm`; never the code-flow callback, the API,
+  unsubscribe links or the admin console. It is served only once `APPLE_APP_ID`
+  (`TEAMID.net.brokersconnect.app`) is set on Vercel.
+- **Email links** go to `/auth/confirm` with a token hash. The website verifies
+  it after a "Continue" press; the app, opening the same URL, verifies it
+  itself (`src/lib/auth/confirm-link.ts` reads the link for both).
+- **Captcha.** When Supabase Auth requires Turnstile, the app loads
+  `/api/mobile/v1/captcha` in a hidden WebView — the site key only runs on the
+  site's hostname — and receives the token over the WebView's message channel,
+  showing the page only when Cloudflare asks for a person.
+
 ## Running and testing
 
 ```bash

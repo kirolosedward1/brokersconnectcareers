@@ -135,6 +135,59 @@ console.log('\n— the shared CV route keeps its website behaviour');
   check('a malformed bearer is 401 invalid_token', m.status === 401 && (m.headers.get('www-authenticate') ?? '').includes('invalid_token'), `got ${m.status}`);
 }
 
+console.log('\n— an email link: a GET draws a button and spends nothing');
+{
+  const hash = 'a'.repeat(56);
+  const onboarding = '/onboarding?role=employer&confirmed=1';
+  const redirect = `${BASE}/auth/callback?next=${encodeURIComponent(onboarding)}`;
+  const r = await fetch(`${BASE}/auth/confirm?token_hash=${hash}&type=email&redirect_to=${redirect}`, { redirect: 'manual' });
+  const html = await r.text();
+  check('200, a page with one form', r.status === 200 && html.includes('<form method="post" action="/auth/confirm">'), `got ${r.status}`);
+  check('carrying the token and the destination, unwrapped', html.includes(`value="${hash}"`) && html.includes('value="/onboarding?role=employer&amp;confirmed=1"'));
+  check('never cached, indexed or referred', (r.headers.get('cache-control') ?? '').includes('no-store') && (r.headers.get('x-robots-tag') ?? '').includes('noindex') && html.includes('<meta name="referrer" content="no-referrer">'));
+  const bad = await fetch(`${BASE}/auth/confirm?token_hash=x&type=email`, { redirect: 'manual' });
+  check('a malformed link goes to sign-in, "expired"', bad.status === 303 && (bad.headers.get('location') ?? '').endsWith('/sign-in?error=link_expired'), `got ${bad.status} ${bad.headers.get('location')}`);
+}
+
+console.log('\n— and a POST spends it only from this site');
+{
+  const body = () => new URLSearchParams({ token_hash: 'a'.repeat(56), type: 'email', next: '' });
+  const form = { 'content-type': 'application/x-www-form-urlencoded' };
+  const cross = await fetch(`${BASE}/auth/confirm`, { method: 'POST', body: body(), headers: { ...form, origin: 'https://evil.example' }, redirect: 'manual' });
+  check('another origin is 403', cross.status === 403, `got ${cross.status}`);
+  const fetchSite = await fetch(`${BASE}/auth/confirm`, { method: 'POST', body: body(), headers: { ...form, 'sec-fetch-site': 'cross-site' }, redirect: 'manual' });
+  check('a cross-site fetch is 403', fetchSite.status === 403, `got ${fetchSite.status}`);
+  if (process.env.AUTH_DOWN === '1') {
+    // Only where the auth server is nowhere: the token is made up.
+    const same = await fetch(`${BASE}/auth/confirm`, { method: 'POST', body: body(), headers: { ...form, origin: BASE }, redirect: 'manual' });
+    check('a token that does not verify goes to sign-in, "expired"', same.status === 303 && (same.headers.get('location') ?? '').endsWith('/sign-in?error=link_expired'), `got ${same.status} ${same.headers.get('location')}`);
+  }
+}
+
+console.log('\n— the universal-link file');
+{
+  const r = await fetch(`${BASE}/.well-known/apple-app-site-association`, { redirect: 'manual' });
+  if (process.env.APPLE_APP_ID) {
+    const file = await r.json().catch(() => null);
+    check('200 JSON, no redirect', r.status === 200 && (r.headers.get('content-type') ?? '').startsWith('application/json'), `got ${r.status}`);
+    check('naming the app', file?.applinks?.details?.[0]?.appIDs?.includes(process.env.APPLE_APP_ID.split(',')[0].trim()));
+  } else {
+    check('no app configured, no file (404)', r.status === 404, `got ${r.status}`);
+  }
+}
+
+console.log('\n— the captcha page');
+{
+  const r = await fetch(`${BASE}/api/mobile/v1/captcha?action=sign-up&theme=dark`, { redirect: 'manual' });
+  if (r.status === 404) {
+    check('no site key, no page', (await r.json().catch(() => null))?.error === 'captcha_disabled');
+  } else {
+    const html = await r.text();
+    check('200, the widget for the WebView', r.status === 200 && html.includes('ReactNativeWebView') && html.includes('"action":"sign-up"') && html.includes('"theme":"dark"'), `got ${r.status}`);
+    check('never cached', (r.headers.get('cache-control') ?? '').includes('no-store'));
+  }
+}
+
 if (process.env.AUTH_DOWN === '1') {
   console.log('\n— an auth server that does not answer is an outage, not a sign-out');
   const r = await call('/api/mobile/v1/actions/deleteMyAccount', {

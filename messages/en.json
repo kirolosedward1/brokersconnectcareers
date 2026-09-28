@@ -329,7 +329,17 @@
     "applyingToCompany": "at {company} — sign in and finish; you will not start over.",
     "slowDown": "Wait {seconds, plural, one {a second} other {# seconds}} and try again.",
     "challengeHint": "After several attempts we check you are not a script. Complete the verification above and try again.",
-    "applyingToCompanySignUp": "at {company} — create your account and we will bring you back to this job to finish."
+    "applyingToCompanySignUp": "at {company} — create your account and we will bring you back to this job to finish.",
+    "confirm": {
+      "titleEmail": "Confirm your email",
+      "titleRecovery": "Reset your password",
+      "titleEmailChange": "Confirm your new email",
+      "titleInvite": "Accept the invitation",
+      "titleMagiclink": "Sign in to your account",
+      "body": "Press Continue to pick up where you left off.",
+      "continue": "Continue",
+      "why": "This step keeps the link safe from email scanners that open it before you do."
+    }
   },
   "onboarding": {
     "title": "Finish your profile",

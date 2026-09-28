@@ -212,6 +212,11 @@ The `rua` mailbox must exist. Check with `dig TXT _dmarc.brokersconnect.net`.
      "Minimum interval per user" 60s.
    - Emails → Templates: paste the five regenerated templates (the
      confirmation template changed: it now says the link lasts an hour).
+     Since September 2026 the links go to `/auth/confirm` with the token hash
+     (`pnpm auth:templates`), which works on any device and in the iOS app —
+     **deploy the site with `/auth/confirm` first**, then paste, then send one
+     test email and follow its link: it must show the "Continue" page and land
+     where it should. Older emails keep working through `/auth/callback`.
    - URL Configuration: Site URL `https://www.brokersconnect.net`, redirect
      allow-list `https://www.brokersconnect.net/auth/callback`.
 5. **Publish DMARC** (above) once the record is confirmed absent.
