@@ -76,7 +76,7 @@ export default async function AudienceSignInPage({
   // for what counts as internal lives in one place.
   const next = safeNext((await searchParams).next) ?? undefined;
 
-  const { google: googleEnabled } = await enabledProviders();
+  const { google: googleEnabled, apple: appleEnabled } = await enabledProviders();
 
   const t = await getTranslations('auth');
 
@@ -107,7 +107,7 @@ export default async function AudienceSignInPage({
 
         <div className="mt-6">
           <Suspense>
-            <AuthForm mode="sign-in" locale={locale} googleEnabled={googleEnabled} />
+            <AuthForm mode="sign-in" locale={locale} googleEnabled={googleEnabled} appleEnabled={appleEnabled} />
           </Suspense>
         </div>
       </div>

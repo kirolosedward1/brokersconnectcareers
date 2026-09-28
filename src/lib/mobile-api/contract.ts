@@ -141,7 +141,8 @@ export type ReportInput =
 
 export type MobileActions = {
   // Account
-  deleteMyAccount: { input: undefined; output: ActionResult };
+  /** An account made with Apple sends a fresh authorization code, so the grant is revoked too. */
+  deleteMyAccount: { input: { appleAuthorizationCode?: string }; output: ActionResult };
   announcePasswordChange: { input: undefined; output: ActionResult };
   updateNotificationPreferences: {
     input: {

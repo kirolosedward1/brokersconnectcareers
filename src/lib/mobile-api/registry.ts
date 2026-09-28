@@ -102,7 +102,7 @@ const seenSchema = z.object({ ids: z.array(uuid).min(1).max(200) });
 
 export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   // Account
-  deleteMyAccount: { run: () => deleteMyAccount() },
+  deleteMyAccount: { run: (input) => deleteMyAccount(input) },
   announcePasswordChange: { run: () => announcePasswordChange() },
   updateNotificationPreferences: { run: (input) => updateNotificationPreferences(input) },
   saveAvatar: { run: (input) => saveAvatar(input) },

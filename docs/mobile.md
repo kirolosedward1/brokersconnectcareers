@@ -143,11 +143,17 @@ The app is built with three public values (`mobile/.env.example`, and `eas.json`
 for EAS builds): the Supabase URL, the publishable key the website also ships
 to browsers, and the site URL. Nothing secret is in the app.
 
-On the website, `MOBILE_MIN_APP_VERSION` (Vercel) is the lowest app version
-`/api/mobile/v1/config` accepts; below it the app asks to be updated rather than
-call an API that has moved on. The other values the later phases need — the
-Apple app id for universal links, Sign in with Apple keys, the Expo push token —
-are listed where they are introduced.
+On the website (Vercel):
+
+| Variable | For |
+| --- | --- |
+| `MOBILE_MIN_APP_VERSION` | The lowest app version `/api/mobile/v1/config` accepts; below it the app asks to be updated. |
+| `APPLE_APP_ID` | `TEAMID.net.brokersconnect.app` — serves the universal-link file. |
+| `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_CLIENT_ID` | The Sign in with Apple key (`.p8`, newlines escaped) and the app's bundle id, used to revoke an Apple user's grant when they delete their account from the app (`src/lib/apple/revoke.ts`). Secret. |
+
+Sign in with Apple itself is switched on in Supabase (Authentication →
+Providers → Apple, with the Services ID for the website and the bundle id for
+the app); the website's button appears once it is (`enabledProviders()`).
 
 ## Releasing
 

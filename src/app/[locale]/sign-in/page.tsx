@@ -74,7 +74,7 @@ export default async function SignInPage({
   */
   const sessionExpired = error === 'session_expired';
 
-  const { google: googleEnabled } = await enabledProviders();
+  const { google: googleEnabled, apple: appleEnabled } = await enabledProviders();
   const t = await getTranslations('auth');
 
   return (
@@ -109,7 +109,7 @@ export default async function SignInPage({
 
         <div className="mt-6">
           <Suspense>
-            <AuthForm mode="sign-in" locale={locale} googleEnabled={googleEnabled} />
+            <AuthForm mode="sign-in" locale={locale} googleEnabled={googleEnabled} appleEnabled={appleEnabled} />
           </Suspense>
         </div>
       </div>

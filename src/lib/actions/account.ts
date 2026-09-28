@@ -10,6 +10,8 @@ import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
 import { isOwnedPath } from '@/lib/security/files';
 import { publish } from '@/lib/notifications/events';
+import { revokeWithAuthorizationCode } from '@/lib/apple/revoke';
+import { logFailure } from '@/lib/observe';
 
 /**
  * Deleting your own account.
@@ -28,8 +30,22 @@ import { publish } from '@/lib/notifications/events';
  * That is not a refusal of the erasure right. It is a refusal to let one
  * person erase several other people at the same time, which the right never
  * covered.
+ *
+ * An account that signs in with Apple is also disconnected from Apple, when
+ * the caller brings a fresh authorization code (the iOS app asks Apple for one
+ * just before calling this — App Store Guideline 5.1.1(v)). A code Apple
+ * refuses stops the deletion with `apple_reauth_required`, so the app can ask
+ * again; Apple not answering does not keep somebody's account alive, and is
+ * logged instead. The website, which has no such code, deletes as before.
  */
-export async function deleteMyAccount(): Promise<ActionResult> {
+const deleteSchema = z
+  .object({ appleAuthorizationCode: z.string().trim().min(10).max(2048).optional() })
+  .nullish();
+
+export async function deleteMyAccount(input?: unknown): Promise<ActionResult> {
+  const parsed = deleteSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
   const supabase = await createClient();
 
   const {
@@ -75,6 +91,16 @@ export async function deleteMyAccount(): Promise<ActionResult> {
     looking at; a person asking to be deleted is owed the prompt removal of
     their CV, which nobody else is looking at.
   */
+  const appleCode = parsed.data?.appleAuthorizationCode;
+  const signsInWithApple =
+    (user.identities ?? []).some((identity) => identity.provider === 'apple') ||
+    (user.app_metadata?.providers as string[] | undefined)?.includes('apple') === true;
+  if (signsInWithApple && appleCode) {
+    const outcome = await revokeWithAuthorizationCode(appleCode);
+    if (outcome === 'invalid_code') return { ok: false, error: 'apple_reauth_required' };
+    if (outcome !== 'revoked') logFailure('account', 'could not revoke the Sign in with Apple grant', { outcome });
+  }
+
   const { error } = await admin.auth.admin.deleteUser(user.id);
   if (error) return { ok: false, error: error.message };
 

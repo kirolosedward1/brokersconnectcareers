@@ -79,7 +79,7 @@ export default async function AudienceSignUpPage({
   // Carried in from sign-in; see the plain /sign-up page.
   const next = safeNext((await searchParams).next) ?? undefined;
 
-  const { google: googleEnabled } = await enabledProviders();
+  const { google: googleEnabled, apple: appleEnabled } = await enabledProviders();
 
   const t = await getTranslations('auth');
 
@@ -107,7 +107,7 @@ export default async function AudienceSignUpPage({
 
         <div className="mt-6">
           <Suspense>
-            <AuthForm mode="sign-up" locale={locale} audience={audience} googleEnabled={googleEnabled} />
+            <AuthForm mode="sign-up" locale={locale} audience={audience} googleEnabled={googleEnabled} appleEnabled={appleEnabled} />
           </Suspense>
         </div>
       </div>
