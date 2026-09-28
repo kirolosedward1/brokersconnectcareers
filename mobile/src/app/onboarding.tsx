@@ -20,11 +20,11 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { asRole, intentFromParams, type AuthIntent, type Role } from '~/features/auth/intent';
 import { useCloseFlow, useLand } from '~/features/auth/land';
+import { signOutHere } from '~/features/push/device';
 import { useDistricts } from '~/features/taxonomy';
 import { callAction } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
-import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -80,7 +80,7 @@ export default function OnboardingScreen() {
           }}
           onSignOut={async () => {
             left.current = true;
-            await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+            await signOutHere();
             close();
           }}
         />

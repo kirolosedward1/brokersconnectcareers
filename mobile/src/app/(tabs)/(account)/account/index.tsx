@@ -5,6 +5,7 @@ import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { useTranslations } from 'use-intl';
 import {
+  BellRing,
   Building2,
   Download,
   ExternalLink,
@@ -29,10 +30,10 @@ import { LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { shareMyData } from '~/features/account/settings';
 import { useMobileConfig } from '~/features/config';
+import { signOutHere } from '~/features/push/device';
 import { ApiError } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
-import { supabase } from '~/lib/supabase';
 import { useTheme, type ThemePreference } from '~/theme/provider';
 import { hitTarget, radius, space } from '~/theme/tokens';
 
@@ -206,6 +207,11 @@ export default function AccountScreen() {
                 onPress={() => router.push('/account/security')}
               />
               <Row
+                icon={<BellRing size={18} color={colors.foreground} />}
+                label={t('app.push.title')}
+                onPress={() => router.push('/account/alerts')}
+              />
+              <Row
                 icon={<MailCheck size={18} color={colors.foreground} />}
                 label={t('account.emailsTitle')}
                 onPress={() => router.push('/account/emails')}
@@ -239,7 +245,7 @@ export default function AccountScreen() {
             <Row
               icon={<LogOut size={18} color={colors.foreground} />}
               label={t('nav.signOut')}
-              onPress={() => supabase.auth.signOut({ scope: 'local' }).catch(() => {})}
+              onPress={() => signOutHere()}
             />
           ) : null}
           {session ? (

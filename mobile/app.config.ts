@@ -66,6 +66,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-font',
     'expo-apple-authentication',
     [
+      'expo-notifications',
+      {
+        // The APNs environment the build signs for: a development build talks
+        // to the sandbox, everything installed from TestFlight, an internal
+        // (ad hoc) link or the App Store to production. No background mode:
+        // a push is shown by the system and opened by a tap, never handled
+        // silently.
+        mode: /^development/.test(process.env.EAS_BUILD_PROFILE ?? 'development') ? 'development' : 'production',
+      },
+    ],
+    [
       'expo-image-picker',
       {
         // The base language's strings; the English ones are in assets/locales.

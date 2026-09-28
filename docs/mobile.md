@@ -302,6 +302,23 @@ A push is a second delivery of a bell notification, never a different one
   `after()`), and every minute from `/api/cron/push`, which also reads Expo's
   receipts and switches off phones that no longer have the app. Retries back
   off over five tries; anything a day old is dropped rather than sent late.
+- **On the phone** (`mobile/src/features/push/`, `PushBridge` beside the root
+  stack). Permission is asked for with a reason — a card on Home saying what
+  the person would hear about ("not now" puts it away) — never at launch; the
+  Account tab's "Notifications on this phone" (`/account/alerts`) turns them
+  off for this person on this phone without the phone's settings, and says so
+  when the phone's settings have them off, with the way there. The phone is
+  registered at every launch for somebody with a profile who allowed it
+  (which keeps `last_seen_at` fresh) and again when its token changes.
+  Signing out forgets the phone first (`signOutHere`, before the session
+  goes); a session that ended any other way — revoked from another device,
+  a refresh refused — makes the phone stop listening (Apple's registration),
+  and the next sign-in registers it again. A tapped push, the one that
+  launched the app included, is opened as the bell opens a notification, once
+  it is known who is signed in; the icon's badge follows the bell's count. A
+  push arriving while the app is open shows as a banner and refreshes the
+  bell. The APNs environment follows the EAS build profile (`app.config.ts`):
+  a development build uses the sandbox, everything else production.
 
 Scheduling the minute sweep inside the database needs two Vault secrets, set
 by hand in the SQL editor (the repository is public):
@@ -408,7 +425,10 @@ distribution) and `production` (App Store, build number incremented remotely).
 Before the first build:
 
 - an Apple Developer Program membership (an organisation needs a D-U-N-S number)
-  and an Expo account; `npx eas-cli@latest init` then writes the project id;
+  and an Expo account; `npx eas-cli@latest init` then writes the project id
+  (set it as `EAS_PROJECT_ID` for builds: push tokens are issued for it);
+- an APNs key for pushes, uploaded with `npx eas-cli@latest credentials`
+  (Expo sends to Apple with it);
 - confirm the bundle identifier `net.brokersconnect.app` — it cannot change once
   the app is on the App Store;
 - real Privacy Policy and Terms pages on the website (the App Store requires a

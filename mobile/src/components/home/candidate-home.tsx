@@ -8,6 +8,7 @@ import { localized } from '@/lib/locale';
 import type { ProfileRow } from '@/lib/supabase/database.types';
 import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
+import { PushPrompt } from '~/components/push/push-prompt';
 import { StatStrip } from '~/components/dashboard/stat-strip';
 import { JobBrowse } from '~/components/home/job-browse';
 import { JobCard } from '~/components/jobs/job-card';
@@ -95,6 +96,9 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
       </View>
 
       {profile ? <StandingNotice profile={profile} /> : null}
+
+      {/* The phone's question, with its reason, until it has been answered. */}
+      {profile ? <PushPrompt audience="candidate" /> : null}
 
       {figuresPending ? (
         <ActivityIndicator color={colors.primary} accessibilityLabel={t('common.loading')} />

@@ -55,3 +55,28 @@ jest.mock('expo-apple-authentication', () => {
       React.createElement(Pressable, { accessibilityRole: 'button', accessibilityLabel: 'Sign in with Apple', onPress }),
   };
 });
+
+// Notifications are the system's. The phone has not been asked yet, asking
+// grants, a token is always to be had, and nothing has been tapped — unless a
+// test says otherwise.
+jest.mock('expo-notifications', () => {
+  const subscription = () => ({ remove: jest.fn() });
+  return {
+    DEFAULT_ACTION_IDENTIFIER: 'expo.modules.notifications.actions.DEFAULT',
+    IosAuthorizationStatus: { NOT_DETERMINED: 0, DENIED: 1, AUTHORIZED: 2, PROVISIONAL: 3, EPHEMERAL: 4 },
+    AndroidImportance: { DEFAULT: 3, HIGH: 4, MAX: 5 },
+    setNotificationHandler: jest.fn(),
+    setNotificationChannelAsync: jest.fn(async () => null),
+    getPermissionsAsync: jest.fn(async () => ({ status: 'undetermined', granted: false, canAskAgain: true, expires: 'never' })),
+    requestPermissionsAsync: jest.fn(async () => ({ status: 'granted', granted: true, canAskAgain: true, expires: 'never' })),
+    getExpoPushTokenAsync: jest.fn(async () => ({ type: 'expo', data: 'ExponentPushToken[test-token-0001]' })),
+    addPushTokenListener: jest.fn(subscription),
+    addNotificationReceivedListener: jest.fn(subscription),
+    addNotificationResponseReceivedListener: jest.fn(subscription),
+    getLastNotificationResponse: jest.fn(() => null),
+    clearLastNotificationResponse: jest.fn(),
+    setBadgeCountAsync: jest.fn(async () => true),
+    unregisterForNotificationsAsync: jest.fn(async () => {}),
+  };
+});
+jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '1' }));

@@ -9,6 +9,7 @@ import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
 import { ConversionBars } from '~/components/dashboard/conversion-bars';
 import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
+import { PushPrompt } from '~/components/push/push-prompt';
 import { StatStrip } from '~/components/dashboard/stat-strip';
 import { TrendBars } from '~/components/dashboard/trend-bars';
 import { SetupChecklist } from '~/components/employer/setup-checklist';
@@ -206,6 +207,7 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
       {header}
       {/* Without a company (and so without figures) the standing still comes first. */}
       {s?.has_company ? null : standing}
+      {profile ? <PushPrompt audience="employer" /> : null}
       {body}
     </ScrollView>
   );

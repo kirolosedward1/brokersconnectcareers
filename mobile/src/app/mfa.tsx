@@ -9,6 +9,7 @@ import { Notice } from '~/components/ui/notice';
 import { TextField } from '~/components/ui/text-field';
 import { intentFromParams } from '~/features/auth/intent';
 import { useCloseFlow, useLand } from '~/features/auth/land';
+import { signOutHere } from '~/features/push/device';
 import { supabase } from '~/lib/supabase';
 import { space } from '~/theme/tokens';
 
@@ -67,7 +68,7 @@ export default function SecondFactorScreen() {
   }
 
   async function signOut() {
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    await signOutHere();
     close();
   }
 

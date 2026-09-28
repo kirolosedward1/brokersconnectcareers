@@ -79,7 +79,7 @@ export default function DeleteAccountScreen() {
       return;
     }
 
-    // The account no longer exists; what is left on this phone goes with it.
+    // The account no longer exists (its phones went with it); what is left on this phone goes too.
     await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
     router.back();
     Alert.alert(t('app.account.deleted'));

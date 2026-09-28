@@ -12,6 +12,7 @@ import { IBMPlexSansArabic_500Medium } from '@expo-google-fonts/ibm-plex-sans-ar
 import { IBMPlexSansArabic_600SemiBold } from '@expo-google-fonts/ibm-plex-sans-arabic/600SemiBold';
 import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic/700Bold';
 import { PendingPath } from '~/components/navigation/pending-path';
+import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { I18nProvider } from '~/i18n/provider';
 import { persistOptions, queryClient } from '~/lib/query';
@@ -88,6 +89,7 @@ function AppStack() {
       </Stack>
       <SessionGate />
       <PendingPath />
+      <PushBridge />
     </>
   );
 }
