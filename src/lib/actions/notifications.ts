@@ -7,7 +7,8 @@ import { asLocale } from '@/i18n/routing';
 import { getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
-import { FALLBACK_HREF, safeNotificationHref } from '@/lib/notifications/links';
+import { FALLBACK_HREF } from '@/lib/notifications/links';
+import { resolveNotification } from '@/lib/notifications/open';
 
 /**
  * Mark the reader's feed as read — up to the newest notification they were
@@ -53,17 +54,8 @@ const openSchema = z.object({ id: z.string().uuid(), locale: z.string() });
  * against their role and the current state of the target — not frozen into
  * an <a href> when the row was written.
  *
- * Three outcomes that are not the stored href:
- *
- *   not theirs      open_notification is security-invoker and RLS-scoped, so
- *                   another person's id updates nothing and returns nothing.
- *                   They land on their own feed, told nothing about the row.
- *   wrong section   the href fails the role check in links.ts — an employer
- *                   link held by somebody who is no longer an employer. The
- *                   feed, with a line saying the link is not available.
- *   gone            the listing it is about was deleted, or is no longer
- *                   visible to them. The feed, with a line saying so, rather
- *                   than a 404 that reads like the site is broken.
+ * Where it may send them is decided in notifications/open.ts, which the
+ * mobile app's feed asks too.
  */
 export async function openNotification(formData: FormData): Promise<void> {
   const parsed = openSchema.safeParse({
@@ -78,51 +70,11 @@ export async function openNotification(formData: FormData): Promise<void> {
   const role = viewer!.profile!.role;
 
   const supabase = await createClient();
-  const id = parsed.data!.id;
-  const { data, error } = await supabase.rpc('open_notification', { p_id: id });
-  let row = !error ? data?.[0] : undefined;
-
-  // PGRST202: a database migration 301 has not reached. The same two steps
-  // through the reader's own session — RLS scopes both to their own row, and
-  // the update guard lets read_at and nothing else change.
-  if (error?.code === 'PGRST202') {
-    await supabase
-      .from('notifications')
-      .update({ read_at: new Date().toISOString() })
-      .eq('id', id)
-      .is('read_at', null);
-    const { data: own } = await supabase
-      .from('notifications')
-      .select('kind, href, payload')
-      .eq('id', id)
-      .maybeSingle();
-    row = own ?? undefined;
-  }
+  const destination = await resolveNotification(supabase, parsed.data!.id, role);
 
   revalidatePath('/', 'layout');
 
-  if (!row) redirect({ href: FALLBACK_HREF, locale });
-
-  const href = safeNotificationHref(row!.href, role);
-  if (row!.href && !href) redirect({ href: `${FALLBACK_HREF}?link=unavailable`, locale });
-  if (!href) redirect({ href: FALLBACK_HREF, locale });
-
-  // The deleted-target check, only where the link is to the listing itself.
-  // A link to a list (/dashboard/applications, /employer/jobs) still works
-  // when one thing on it is gone, and needs no round trip.
-  const jobId = row!.payload?.job_id;
-  const slug = row!.payload?.slug;
-  const pointsAtJob =
-    (jobId && href!.startsWith(`/employer/jobs/${jobId}`)) ||
-    (slug && href!.split(/[?#]/)[0] === `/jobs/${slug}`);
-
-  if (pointsAtJob && jobId) {
-    // Through the reader's own session: "exists" means "exists for them".
-    const { data: job } = await supabase.from('jobs').select('id').eq('id', jobId).maybeSingle();
-    if (!job) redirect({ href: `${FALLBACK_HREF}?link=gone`, locale });
-  }
-
-  redirect({ href: href!, locale });
+  redirect({ href: 'href' in destination ? destination.href : destination.fallback, locale });
 }
 
 /**

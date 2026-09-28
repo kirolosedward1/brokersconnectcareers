@@ -5,6 +5,7 @@ import { logFailure } from '@/lib/observe';
 import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 import { recordSecurityEvent } from '@/lib/security/events';
 import { retryAfter } from '@/lib/security/request';
+import { wantsJson, withOptionalBearer } from '@/lib/mobile-api/http';
 
 /**
  * Hands an employer a CV without ever giving them read access to the bucket.
@@ -13,8 +14,8 @@ import { retryAfter } from '@/lib/security/request';
  * into the page — a URL in the HTML would outlive the session, survive a copied
  * screenshot, and be shareable with anyone.
  */
-export async function GET(
-  _request: NextRequest,
+async function handle(
+  request: NextRequest,
   { params }: { params: Promise<{ applicationId: string }> },
 ) {
   const { applicationId } = await params;
@@ -87,7 +88,18 @@ export async function GET(
     return NextResponse.json({ error: 'unavailable' }, { status: 500 });
   }
 
+  // The app opens the file in its own viewer, so it asks for the link itself.
+  if (wantsJson(request)) {
+    return NextResponse.json({ url }, { headers: { 'Cache-Control': 'no-store, private' } });
+  }
+
   return NextResponse.redirect(url, {
     headers: { 'Cache-Control': 'no-store, private' },
   });
 }
+
+/*
+  The website follows this link with its cookie; the mobile app calls it with
+  its bearer token (and never its cookies — see withOptionalBearer).
+*/
+export const GET = withOptionalBearer(handle);

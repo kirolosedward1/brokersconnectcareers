@@ -26,7 +26,7 @@ import { env } from '@/lib/env';
  */
 type GoTrueSettings = { external?: Record<string, boolean> };
 
-export async function enabledProviders(): Promise<{ google: boolean }> {
+export async function enabledProviders(): Promise<{ google: boolean; apple: boolean }> {
   try {
     const response = await fetch(`${env.supabaseUrl}/auth/v1/settings`, {
       headers: { apikey: env.supabaseAnonKey },
@@ -35,11 +35,11 @@ export async function enabledProviders(): Promise<{ google: boolean }> {
       next: { revalidate: 300 },
     });
 
-    if (!response.ok) return { google: false };
+    if (!response.ok) return { google: false, apple: false };
 
     const settings = (await response.json()) as GoTrueSettings;
-    return { google: settings.external?.google === true };
+    return { google: settings.external?.google === true, apple: settings.external?.apple === true };
   } catch {
-    return { google: false };
+    return { google: false, apple: false };
   }
 }

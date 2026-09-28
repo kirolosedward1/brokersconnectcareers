@@ -172,3 +172,76 @@ export function countActiveFilters(filters: JobFilters): number {
     filters.companyTypes.length
   );
 }
+
+/** Which part of the filter model an active filter is. */
+export type ActiveFilterKind =
+  | 'q'
+  | 'track'
+  | 'district'
+  | 'gov'
+  | 'ctype'
+  | 'leads'
+  | 'salary'
+  | 'pay'
+  | 'comm'
+  | 'posted'
+  | 'exp'
+  | 'type';
+
+export type ActiveFilter = {
+  /** Stable per value — `track-primary`, `district-new-cairo` — for keys and analytics. */
+  key: string;
+  kind: ActiveFilterKind;
+  /** The value as the model holds it; the reader's label is the caller's to build. */
+  value: string | number | boolean;
+  /** The filters with this one taken away. */
+  without: Partial<JobFilters>;
+};
+
+/**
+ * What the board is narrowed by, one removable entry per value, in the order
+ * the board shows them.
+ *
+ * The order matters twice: it is the order of the chips a reader undoes, and
+ * the first six are the ones an empty board tries dropping to suggest "without
+ * X (n)". The website and the app both take the list from here so the two
+ * cannot suggest different ways out of the same empty board. The pinned
+ * company is not in it — the banner that names the company carries its own
+ * way back.
+ */
+export function activeFilterList(filters: JobFilters): ActiveFilter[] {
+  const each = <T extends string>(
+    kind: ActiveFilterKind,
+    values: T[],
+    field: keyof JobFilters,
+  ): ActiveFilter[] =>
+    values.map((value) => ({
+      key: `${kind}-${value}`,
+      kind,
+      value,
+      without: { [field]: values.filter((item) => item !== value) } as Partial<JobFilters>,
+    }));
+
+  return [
+    ...(filters.q ? [{ key: 'q', kind: 'q' as const, value: filters.q, without: { q: '' } }] : []),
+    ...each('track', filters.tracks, 'tracks'),
+    ...each('district', filters.districtSlugs, 'districtSlugs'),
+    ...(filters.governorateSlug
+      ? [{ key: 'gov', kind: 'gov' as const, value: filters.governorateSlug, without: { governorateSlug: null } }]
+      : []),
+    ...each('ctype', filters.companyTypes, 'companyTypes'),
+    ...each('leads', filters.leadsSources, 'leadsSources'),
+    ...(filters.hasBasicSalary === null
+      ? []
+      : [{ key: 'salary', kind: 'salary' as const, value: filters.hasBasicSalary, without: { hasBasicSalary: null } }]),
+    ...(filters.minSalary
+      ? [{ key: 'pay', kind: 'pay' as const, value: filters.minSalary, without: { minSalary: null } }]
+      : []),
+    ...each('comm', filters.commissionTypes, 'commissionTypes'),
+    ...(filters.postedWithin
+      ? [{ key: 'posted', kind: 'posted' as const, value: filters.postedWithin, without: { postedWithin: null } }]
+      : []),
+    ...each('exp', filters.experienceBands, 'experienceBands'),
+    ...each('type', filters.employmentTypes, 'employmentTypes'),
+  ];
+}

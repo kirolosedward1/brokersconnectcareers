@@ -345,8 +345,13 @@ export const queryJobs = cache(async function queryJobs(
  * drop. Null rather than a throw on any failure: a suggestion that could not
  * be counted is a suggestion not shown, never a broken page.
  */
-export async function countJobs(filters: JobFilters): Promise<number | null> {
-  const supabase = await createClient();
+export async function countJobs(
+  filters: JobFilters,
+  client?: SupabaseLikeClient,
+): Promise<number | null> {
+  // The same optional client queryJobs takes: the mobile board counts with the
+  // anonymous one, so its answer is the same for every reader and cacheable.
+  const supabase = client ?? (await createClient());
   const resolved = await resolveFilters(filters);
   if (!resolved) return 0;
 
