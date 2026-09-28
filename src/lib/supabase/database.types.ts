@@ -560,6 +560,53 @@ export type LeasedEmailRow = {
   lock_token: string;
 };
 
+/** A phone signed in with the app (migration 329). Written through register_push_device only. */
+export type PushDeviceRow = {
+  id: string;
+  user_id: string;
+  token: string;
+  platform: 'ios' | 'android';
+  locale: 'ar' | 'en';
+  app_version: string | null;
+  created_at: string;
+  last_seen_at: string;
+  disabled_at: string | null;
+  disabled_reason: string | null;
+};
+
+export type PushOutboxRow = {
+  id: number;
+  notification_id: string;
+  user_id: string;
+  status: 'queued' | 'sent' | 'skipped' | 'failed';
+  attempts: number;
+  leases: number;
+  next_attempt_at: string;
+  lease_until: string | null;
+  lock_token: string | null;
+  created_at: string;
+  settled_at: string | null;
+  detail: string | null;
+};
+
+export type PushTicketRow = {
+  ticket_id: string;
+  device_id: string;
+  outbox_id: number | null;
+  created_at: string;
+};
+
+/** What lease_due_pushes() hands the sender: the row and the token that proves it holds it. */
+export type LeasedPushRow = {
+  id: number;
+  notification_id: string;
+  user_id: string;
+  attempts: number;
+  lock_token: string;
+};
+
+export type SettlePushOutcome = 'sent' | 'skipped' | 'retry' | 'failed';
+
 export type OutboxOverview = {
   /** Eligible for a retry right now. */
   due: number;
@@ -1198,6 +1245,12 @@ export type Database = {
       email_log: Table<EmailLogRow, never>;
       /** Scheduled-job runs. RLS on, no policies: service role and admin functions only. */
       job_runs: Table<JobRunRow, never>;
+      /** Its owner reads it; register_push_device / unregister_push_device write it; the sender disables it. */
+      push_devices: Table<PushDeviceRow, never>;
+      /** Queued by the notifications trigger; RLS on, no policies: the sender (service role) only. */
+      push_outbox: Table<PushOutboxRow, never>;
+      /** Expo tickets awaiting their receipts; the sender (service role) only. */
+      push_tickets: Table<PushTicketRow, Pick<PushTicketRow, 'ticket_id' | 'device_id'> & Partial<PushTicketRow>>;
       application_events: Table<ApplicationEventRow, never>;
       /** No Insertable: admin_audit() is the only writer, and it is not callable from the API. */
       admin_audit_log: Table<AdminAuditRow, never>;
@@ -1645,6 +1698,24 @@ export type Database = {
       };
       /** Dead-letters rows past the retry window or leased too often. Returns how many. */
       reap_email_outbox: { Args: Empty; Returns: number };
+      /** The sender's lease on due pushes (migration 329); service role only. */
+      lease_due_pushes: {
+        Args: { p_limit?: number; p_lease_seconds?: number };
+        Returns: LeasedPushRow[];
+      };
+      /** Only the lease holder can settle: false when the token no longer matches. */
+      settle_push: {
+        Args: { p_id: number; p_lock_token: string; p_outcome: SettlePushOutcome; p_detail?: string | null };
+        Returns: boolean;
+      };
+      /** Settled pushes after 30 days and tickets after two. Returns how many rows went. */
+      prune_push_outbox: { Args: { p_limit?: number }; Returns: number };
+      /** The signed-in caller's phone; moves the token to them if another account had it. */
+      register_push_device: {
+        Args: { p_token: string; p_platform: 'ios' | 'android'; p_locale?: 'ar' | 'en'; p_app_version?: string | null };
+        Returns: string;
+      };
+      unregister_push_device: { Args: { p_token: string }; Returns: undefined };
       /** Admin only. Puts one dead-lettered row back in the queue for one more attempt. */
       requeue_email: { Args: { p_id: string }; Returns: boolean };
       /** Admin only. */
