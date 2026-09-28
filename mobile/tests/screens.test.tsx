@@ -1,6 +1,7 @@
 import { Stack, Tabs } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { Modal } from 'react-native';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import { I18nProvider } from '~/i18n/provider';
 import { SessionProvider } from '~/lib/session';
 import { ThemeProvider } from '~/theme/provider';
@@ -125,6 +126,49 @@ describe('the board', () => {
     // Named from the taxonomy, which arrives beside the board.
     fireEvent.press(await screen.findByText('من غير القاهرة الجديدة · 4 وظائف'));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
+  });
+
+  it('offers every filter the website has, counts what they come to, and applies them in one go', async () => {
+    // A narrowed board answers with how many it would show.
+    server.on('/api/mobile/v1/jobs', (url: URL) => board([listing], { total: url.searchParams.has('track') ? 7 : 1 }));
+    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?q=%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA' });
+    await screen.findByText(listing.title_ar);
+
+    fireEvent.press(screen.getByRole('button', { name: 'الفلاتر' }));
+    // The groups, in the website's order and words.
+    for (const heading of ['مصدر العملاء', 'راتب أساسي', 'راتب أساسي من', 'نوع العمولة', 'تاريخ النشر', 'التخصص', 'نوع الشركة', 'سنوات الخبرة', 'نوع التعاقد', 'المنطقة']) {
+      expect(await screen.findByRole('header', { name: heading })).toBeTruthy();
+    }
+
+    fireEvent.press(screen.getByRole('button', { name: 'بيع أول' }));
+    fireEvent.press(screen.getByRole('button', { name: 'براتب أساسي' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'القاهرة الجديدة' }));
+    fireEvent.press(screen.getByRole('button', { name: 'آخر 7 أيام' }));
+    expect(await screen.findByRole('button', { name: 'شوف النتايج · ⁦7⁩' })).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: 'شوف النتايج · ⁦7⁩' }));
+    // The words typed in the search bar are kept; the rest is the sheet's.
+    await waitFor(() =>
+      expect(result.getSearchParams()).toEqual({
+        q: 'مبيعات',
+        track: 'primary',
+        district: 'new-cairo',
+        salary: 'yes',
+        posted: '7',
+      }),
+    );
+  });
+
+  it('clears what the sheet chose, and nothing else', async () => {
+    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?q=x&track=primary&pay=10000' });
+    await screen.findByText(listing.title_ar);
+    fireEvent.press(screen.getByRole('button', { name: 'الفلاتر · 2' }));
+    // The sheet's own button, not the board's behind it.
+    const sheet = within(screen.UNSAFE_getByType(Modal));
+    fireEvent.press(sheet.getByRole('button', { name: 'امسح كل الفلاتر' }));
+    // Pressable at once, whether or not the count has come back.
+    fireEvent.press(sheet.getByRole('button', { name: /شوف النتايج/ }));
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'x' }));
   });
 
   it('re-sorts', async () => {

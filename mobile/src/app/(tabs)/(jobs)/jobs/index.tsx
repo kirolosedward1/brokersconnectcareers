@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
+import { SlidersHorizontal } from 'lucide-react-native';
 import type { SearchBarCommands } from 'react-native-screens';
 import {
   activeFilterList,
@@ -13,9 +14,11 @@ import {
   type JobSort,
   type SearchParams,
 } from '@/lib/job-filters';
+import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
 import { CompanyLogo } from '~/components/companies/company-logo';
+import { FilterSheet } from '~/components/jobs/filter-sheet';
 import { JobCard } from '~/components/jobs/job-card';
 import { PopularLandings } from '~/components/jobs/popular-landings';
 import { Button } from '~/components/ui/button';
@@ -24,7 +27,7 @@ import { Chip } from '~/components/ui/chip';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useBrowseCounts } from '~/features/browse/queries';
-import { boardQuery, filtersToParams, useFilterLabel } from '~/features/jobs/filters';
+import { boardQuery, filtersToParams, sheetFilterCount, useFilterLabel } from '~/features/jobs/filters';
 import { useAppliedJobIds } from '~/features/jobs/marks';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useDistricts } from '~/features/taxonomy';
@@ -60,6 +63,8 @@ export default function BoardScreen() {
   const applied = useAppliedJobIds(useMemo(() => jobs.map((job) => job.id), [jobs]));
 
   const apply = (next: JobFilters) => router.setParams(filtersToParams(next));
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const openFilters = () => setSheetOpen(true);
 
   // The header's search field follows the filter, whichever way it changed:
   // typed here, carried in a link, or dropped with its chip.
@@ -88,10 +93,23 @@ export default function BoardScreen() {
     />
   );
 
+  const sheet = (
+    <FilterSheet
+      visible={sheetOpen}
+      filters={filters}
+      onClose={() => setSheetOpen(false)}
+      onApply={(next) => {
+        setSheetOpen(false);
+        apply(next);
+      }}
+    />
+  );
+
   if (board.isPending) {
     return (
       <>
         {header}
+        {sheet}
         <LoadingState />
       </>
     );
@@ -109,6 +127,7 @@ export default function BoardScreen() {
   return (
     <>
       {header}
+      {sheet}
       <FlashList
         data={jobs}
         keyExtractor={(job) => job.id}
@@ -117,7 +136,7 @@ export default function BoardScreen() {
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
-        ListHeaderComponent={<BoardHeader filters={filters} first={first} apply={apply} />}
+        ListHeaderComponent={<BoardHeader filters={filters} first={first} apply={apply} onFilters={openFilters} />}
         ListEmptyComponent={<EmptyBoard filters={filters} first={first} apply={apply} />}
         ListFooterComponent={
           <BoardFooter
@@ -149,20 +168,30 @@ function BoardHeader({
   filters,
   first,
   apply,
+  onFilters,
 }: {
   filters: JobFilters;
   first: JobBoardResponse | undefined;
   apply: (next: JobFilters) => void;
+  onFilters: () => void;
 }) {
   const locale = useLocale();
   const t = useTranslations('jobs');
+  const { colors } = useTheme();
   const labelFor = useFilterLabel(filters);
   const active = activeFilterList(filters);
   const company = first?.company;
+  const inSheet = sheetFilterCount(filters);
 
   return (
     <View style={{ gap: space[3], marginBottom: space[3] }}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
+        <Chip
+          label={inSheet ? `${t('filters')} · ${formatNumber(inSheet, locale)}` : t('filters')}
+          selected={inSheet > 0}
+          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primary : colors.foreground} />}
+          onPress={onFilters}
+        />
         <Text variant="small" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
           {t('resultsCount', { count: first?.total ?? 0 })}
         </Text>

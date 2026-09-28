@@ -1,7 +1,14 @@
 import { EMPTY_FILTERS, parseJobFilters, type JobFilters } from '@/lib/job-filters';
 import type { JobListItem } from '@/lib/job-list';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
-import { boardQuery, BOARD_PARAMS, filtersToParams } from '~/features/jobs/filters';
+import {
+  boardQuery,
+  BOARD_PARAMS,
+  clearSheetFilters,
+  filtersToParams,
+  sheetFilterCount,
+  toggled,
+} from '~/features/jobs/filters';
 import { flattenBoard } from '~/features/jobs/queries';
 
 const job = (id: string) => ({ id, slug: `job-${id}` }) as JobListItem;
@@ -72,5 +79,37 @@ describe('filters in the route', () => {
     const b = parseJobFilters({ track: 'resale,primary', district: 'new-cairo' });
     expect(boardQuery(a)).toBe(boardQuery(b));
     expect(boardQuery(EMPTY_FILTERS)).toBe('');
+  });
+});
+
+describe('the filter sheet', () => {
+  const narrowed = parseJobFilters({
+    q: 'مبيعات',
+    company: 'nile-brokers',
+    gov: 'cairo',
+    track: 'primary,resale',
+    pay: '10000',
+    sort: 'salary',
+  });
+
+  it('counts only what it edits — not the words, the company or the governorate', () => {
+    expect(sheetFilterCount(narrowed)).toBe(3);
+    expect(sheetFilterCount(EMPTY_FILTERS)).toBe(0);
+  });
+
+  it('clears its own groups and keeps the rest', () => {
+    const cleared: JobFilters = clearSheetFilters(narrowed);
+    expect(cleared).toEqual({
+      ...EMPTY_FILTERS,
+      q: 'مبيعات',
+      companySlug: 'nile-brokers',
+      governorateSlug: 'cairo',
+      sort: 'salary',
+    });
+  });
+
+  it('toggles a value in and out of a multi-select', () => {
+    expect(toggled(['primary'], 'resale')).toEqual(['primary', 'resale']);
+    expect(toggled(['primary', 'resale'], 'primary')).toEqual(['resale']);
   });
 });

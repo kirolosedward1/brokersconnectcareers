@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { JobListItem } from '@/lib/job-list';
 import type { JobBoardResponse, JobDetailResponse } from '@/lib/mobile-api/reads';
 import { getJson } from '~/lib/api';
@@ -23,6 +23,22 @@ export function useJobBoard(query: string) {
     // Paging is by offset and the server may serve an earlier page than asked
     // for, so the next page is the one after what actually came back.
     getNextPageParam: (last) => (last.page < last.pageCount ? last.page + 1 : undefined),
+  });
+}
+
+/**
+ * How many listings a filter set would show, for the filter sheet's "show
+ * results" button while the reader is still choosing. The first page of the
+ * same endpoint (edge-cached per query), the previous count kept on screen
+ * while the next is asked for.
+ */
+export function useBoardTotal(query: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['jobs', 'total', query],
+    queryFn: async () => (await getJson<JobBoardResponse>(`/api/mobile/v1/jobs${query ? `?${query}` : ''}`)).total,
+    enabled,
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
   });
 }
 
