@@ -193,10 +193,15 @@ Every production migration follows these steps:
 7. **After applying**, run `pnpm dr:drift` against production and record the
    migration in the PR.
 
-**Never run `supabase db push` or `pnpm db:push` against production** until
-the migration history is reconciled (§2 item 4). Reconciling means rewriting
-`supabase_migrations.schema_migrations` to the repo's versions. That is a
-separate, reviewed change.
+**Never run `supabase db push`, `pnpm db:push` or `pnpm db:push:url` against
+production.** Production's ledger records every migration under the time it
+was applied, not the file's version, so the CLI would try to run all of them
+again; `db:push:url` re-runs every file, then the seed and the grants. Apply
+what production is missing with `pnpm db:apply` instead: it reads production's
+own ledger, matches it to the files by name (`reconcile()` in
+`scripts/release/migrations.mjs`) and applies only the rest, each file in one
+transaction with its ledger row. Rehearse it first with
+`pnpm db:rehearse:ledger`; see `docs/release/2026-09-prod-reconciliation.md`.
 
 ## 7. Access and audit
 
