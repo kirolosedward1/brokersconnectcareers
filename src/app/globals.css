@@ -1,6 +1,10 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* The Expo app's sources are not the website's: without this, Tailwind's
+   automatic source detection scans them for class names too. */
+@source not "../../mobile";
+
 /* Dark mode is on. `.dark` is put on <html> by two things that agree with each
    other: an inline script in the root layout that runs before the first paint,
    and the ThemeToggle in the footer.

@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["bom1"],
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)mobile' ':(exclude).github/workflows/mobile.yml'",
   "crons": [
     {
       "path": "/api/cron/expire-jobs",

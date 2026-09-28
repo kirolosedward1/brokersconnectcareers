@@ -1,3 +1,11 @@
+# The workspace is this directory and nothing under it. Said explicitly: with
+# no list pnpm defaults to the root, but its package finder falls back to every
+# directory when handed none, and mobile/ — the Expo app, with its own
+# pnpm-workspace.yaml and lockfile — must never be installed by the website's
+# install on Vercel.
+packages:
+  - '.'
+
 # Build-script approvals. Without these, pnpm reports ERR_PNPM_IGNORED_BUILDS —
 # a warning on pnpm 10, which is what Vercel currently uses, but an error on
 # pnpm 11, where it also fails `pnpm build` via the dependency-status check.

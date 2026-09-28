@@ -1,0 +1,3 @@
+# The Expo app. It is built by EAS, not Vercel, and the website never imports
+# from it (the app imports from the website, not the other way round).
+mobile/

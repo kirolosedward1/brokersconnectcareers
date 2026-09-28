@@ -68,6 +68,13 @@
       "action": { "mitigate": { "action": "deny", "rateLimit": { "algo": "fixed_window", "window": 60, "limit": 30, "keys": ["ip"], "action": "deny" } } }
     },
     {
+      "name": "mobile api",
+      "description": "The iOS app's door. Deny, never challenge: a native client cannot solve a browser challenge, so a challenge is a silent outage for every app user behind the address. Loose because Egyptian carriers put many phones behind one IP; per-account limits live in the database.",
+      "active": true,
+      "conditionGroup": [{ "conditions": [{ "type": "path", "op": "pre", "value": "/api/mobile/" }] }],
+      "action": { "mitigate": { "action": "deny", "rateLimit": { "algo": "fixed_window", "window": 60, "limit": 600, "keys": ["ip"], "action": "deny" } } }
+    },
+    {
       "name": "block empty user agent on api",
       "active": true,
       "conditionGroup": [{ "conditions": [{ "type": "path", "op": "pre", "value": "/api/" }, { "type": "user_agent", "op": "nex" }] }],
