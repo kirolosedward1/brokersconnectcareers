@@ -542,6 +542,8 @@ describe('one-tap sign-in', () => {
     renderRouter(app, { initialUrl: '/sign-in' });
     await press(ar.auth.continueWithGoogle);
     await waitFor(() => expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled());
+    // The sheet is usable again, and says nothing went wrong.
+    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle, disabled: false })).toBeTruthy();
     expect(screen.queryByText(ar.common.errorBody)).toBeNull();
     expect(screen.getByText(ar.auth.signInTitle)).toBeTruthy();
   });
