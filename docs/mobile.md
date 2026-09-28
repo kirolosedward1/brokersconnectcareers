@@ -97,13 +97,34 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   `globals.css`), IBM Plex Sans Arabic 400–700, light by default with light /
   dark / system as on the site, 44-point touch targets.
 - **Navigation.** Routes mirror the website's paths. Each tab is a route group
-  with its own stack, and listings and company pages live in a group all tabs
-  share, so they open inside the tab the reader is in. Links from outside the
-  app — universal links to the website, `brokersconnect://` — are mapped by
-  `+native-intent.tsx` (`src/lib/links.ts`): the `/en` prefix and `?src=share`
-  come off, other hosts go home, and a listing opens in the Jobs tab with the
-  board under it. A website page the app has no screen for offers to open it in
-  the in-app browser.
+  with its own stack, and listings, company pages and the bell's feed live in
+  a group all tabs share, so they open inside the tab the reader is in. The
+  tab bar depends on who is signed in (`mobile/src/lib/tabs.ts`, from
+  `src/lib/permissions.ts`): signed out it is Home · Jobs · Companies ·
+  Account, and a candidate adds Applications. A tab left out is `hidden`,
+  which removes its screens for that person altogether, so every path is
+  checked before it is opened, with the website's own rules (`routeAudience` /
+  `mayEnter`): a signed-in page with nobody signed in opens the sign-in sheet,
+  which comes back to it; a page for somebody else goes home, as the website's
+  guards send people home. Links from outside the app — universal links to the
+  website, `brokersconnect://` — are mapped by `+native-intent.tsx`
+  (`src/lib/links.ts`): the `/en` prefix and `?src=share` come off, other hosts
+  go home, a listing opens in the Jobs tab with the board under it, and a few
+  pages have another home in the app (`/dashboard` is the home tab,
+  `/dashboard/account` the Account tab). Because the profile is read over the
+  network, the app keeps the last signed-in person's role on the phone
+  (`mobile/src/lib/last-actor.ts`, never an authority) and draws the first
+  frame and routes cold-start links for them; when it remembers nobody, a
+  signed-in page waits until the stored session has been read. A page opened
+  right after a sign-in waits the same way (`open-path.ts`, `PendingPath`), so
+  it is never asked of a tab bar not yet drawn for the account. A website page
+  the app has no screen for offers to open it in the in-app browser.
+- **The bell** sits at the end of each tab's first screen with the unread
+  count, read like everything else about the person straight from Supabase.
+  Its feed pages by `(created_at, id)` as the website's does, marks read up to
+  the newest row shown, and follows a notification through
+  `openNotification`, which answers with the page to open or why not.
+  Returning to the app re-reads whatever has gone stale meanwhile.
 
 ## Signing in
 

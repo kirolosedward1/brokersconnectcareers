@@ -8,6 +8,7 @@ import { BadgeCheck, Briefcase, MapPin } from 'lucide-react-native';
 import type { CompanyListItem } from '@/lib/read-types';
 import { formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
+import { HeaderBell } from '~/components/notifications/header-bell';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
@@ -70,6 +71,7 @@ export default function CompaniesScreen() {
       options={{
         title: t('companies.title'),
         headerLargeTitle: true,
+        headerRight: () => <HeaderBell />,
         headerSearchBarOptions: {
           ref: searchBar,
           placeholder: t('companies.title'),

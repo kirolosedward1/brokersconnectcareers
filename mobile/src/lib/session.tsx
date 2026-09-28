@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Actor } from '@/lib/permissions';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
+import { readLastActor, rememberActor } from './last-actor';
 import { supabase } from './supabase';
 
 /**
@@ -17,7 +18,10 @@ import { supabase } from './supabase';
  * onboarding.
  *
  * `actor` is the slice src/lib/permissions.ts reads, so every show-or-hide and
- * every redirect in the app is the website's own decision.
+ * every redirect in the app is the website's own decision. Until the profile
+ * has been read — at launch, or offline, when it cannot be — it is the last
+ * answer this phone had for the same account (last-actor.ts), so the tab bar a
+ * returning candidate sees does not start as a stranger's.
  */
 export type Viewer = {
   userId: string;
@@ -30,6 +34,11 @@ export type Viewer = {
 type SessionState = {
   /** false until the stored session has been read — draw nothing that depends on it before then. */
   ready: boolean;
+  /**
+   * The last known account on this phone has been read, so `actor` is as good
+   * as it gets before the network answers: the tab bar can be drawn.
+   */
+  settled: boolean;
   session: Session | null;
   viewer: Viewer | null;
   viewerLoading: boolean;
@@ -82,6 +91,15 @@ export async function fetchViewer(queryClient: QueryClient): Promise<Viewer | nu
   });
 }
 
+/** The permissions slice of a viewer. */
+export function actorOf(viewer: Viewer): Actor {
+  return {
+    userId: viewer.userId,
+    profile: viewer.profile ? { role: viewer.profile.role, approval_status: viewer.profile.approval_status } : null,
+    company: viewer.company ? { id: viewer.company.id, verification_status: viewer.company.verification_status } : null,
+  };
+}
+
 /** aal1 on an account that could prove aal2. Read from the session's own token; no request. */
 export async function secondFactorDue(): Promise<boolean> {
   const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -93,6 +111,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
 
+  const [remembered, setRemembered] = useState<{ loaded: boolean; actor: Actor }>({ loaded: false, actor: null });
+
   useEffect(() => {
     let active = true;
     supabase.auth.getSession().then(({ data }) => {
@@ -100,12 +120,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setReady(true);
     });
+    // Local only, so the first frame waits on nothing but the phone's storage.
+    readLastActor().then((actor) => {
+      if (active) setRemembered((current) => (current.loaded ? current : { loaded: true, actor }));
+    });
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next);
       // Someone else's data must not be on screen for a frame after a switch.
       if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
         queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'taxonomy' });
+      }
+      if (event === 'SIGNED_OUT') {
+        setRemembered({ loaded: true, actor: null });
+        rememberActor(null);
       }
     });
 
@@ -140,22 +168,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     staleTime: 60_000,
   });
 
+  // Each profile read is the answer the next launch starts from.
+  const known = session && viewerQuery.data && !viewerQuery.data.profileUnreadable ? viewerQuery.data : null;
+  useEffect(() => {
+    if (known) rememberActor(actorOf(known));
+  }, [known]);
+
   const value = useMemo<SessionState>(() => {
     const viewer = session ? (viewerQuery.data ?? null) : null;
-    const actor: Actor = viewer
-      ? {
-          userId: viewer.userId,
-          profile: viewer.profile
-            ? { role: viewer.profile.role, approval_status: viewer.profile.approval_status }
-            : null,
-          company: viewer.company
-            ? { id: viewer.company.id, verification_status: viewer.company.verification_status }
-            : null,
-        }
-      : null;
+
+    let actor: Actor = null;
+    if (viewer && !viewer.profileUnreadable) {
+      actor = actorOf(viewer);
+    } else if (!ready || session) {
+      // Not read yet, or not readable: the last answer for the same account.
+      const last = remembered.actor;
+      if (last && (!session || last.userId === session.user.id)) actor = last;
+      else if (viewer) actor = actorOf(viewer);
+    }
 
     return {
       ready,
+      settled: remembered.loaded,
       session,
       viewer,
       viewerLoading: Boolean(session) && viewerQuery.isPending,
@@ -163,7 +197,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       secondFactorDue: Boolean(session) && factorDue,
       refreshViewer: () => fetchViewer(queryClient),
     };
-  }, [ready, session, viewerQuery, factorDue, queryClient]);
+  }, [ready, remembered, session, viewerQuery, factorDue, queryClient]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

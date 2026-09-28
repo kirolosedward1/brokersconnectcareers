@@ -17,6 +17,7 @@ import {
 import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
+import { HeaderBell } from '~/components/notifications/header-bell';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { FilterSheet } from '~/components/jobs/filter-sheet';
 import { JobCard } from '~/components/jobs/job-card';
@@ -80,6 +81,7 @@ export default function BoardScreen() {
       options={{
         title: t('jobs.title'),
         headerLargeTitle: true,
+        headerRight: () => <HeaderBell />,
         headerSearchBarOptions: {
           ref: searchBar,
           placeholder: t('filters.searchPlaceholder'),

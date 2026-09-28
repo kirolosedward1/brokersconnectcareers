@@ -78,12 +78,3 @@ export function confirmationPath(intent: Pick<AuthIntent, 'next' | 'role'>): str
   if (intent.next) landing += `&next=${encodeURIComponent(intent.next)}`;
   return `/auth/callback?next=${encodeURIComponent(landing)}`;
 }
-
-/**
- * The website path of a landing, as the app opens it. The account settings
- * the website keeps under /dashboard are the Account tab here.
- */
-export function appPathFor(path: string): string {
-  if (path === '/dashboard/account' || path.startsWith('/dashboard/account?')) return '/account';
-  return path;
-}

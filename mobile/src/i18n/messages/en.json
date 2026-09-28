@@ -59,5 +59,9 @@
     "hideConfirm": "Hide it",
     "hidden": "You have hidden this company, so its listings do not appear for you in the app.",
     "unhide": "Show this company again"
+  },
+  "applications": {
+    "withdrawTitle": "Withdraw your application to “{title}”?",
+    "withdrawBody": "The company will no longer see it. This cannot be undone."
   }
 }

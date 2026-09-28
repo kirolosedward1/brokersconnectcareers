@@ -1,4 +1,22 @@
-import { inOwnTab, webPathToAppPath } from '~/lib/links';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Actor } from '@/lib/permissions';
+import { parseActor, rememberActor } from '~/lib/last-actor';
+import { appPathFor, inOwnTab, isPublicPath, routeFromOutside, routeInside, webPathToAppPath } from '~/lib/links';
+import { takePendingPath } from '~/lib/open-path';
+import { tabsFor } from '~/lib/tabs';
+import { redirectSystemPath } from '../src/app/+native-intent';
+
+const candidate: Actor = {
+  userId: '11111111-1111-4111-8111-111111111111',
+  profile: { role: 'candidate', approval_status: 'approved' },
+  company: null,
+};
+const employer: Actor = {
+  userId: '22222222-2222-4222-8222-222222222222',
+  profile: { role: 'employer', approval_status: 'approved' },
+  company: { id: '33333333-3333-4333-8333-333333333333', verification_status: 'verified' },
+};
+const newcomer: Actor = { userId: '44444444-4444-4444-8444-444444444444', profile: null, company: null };
 
 describe('webPathToAppPath', () => {
   it.each([
@@ -50,17 +68,148 @@ describe('webPathToAppPath', () => {
 });
 
 describe('inOwnTab', () => {
+  const everyone = tabsFor(null);
+
   it.each([
     ['/jobs', '/(jobs)/jobs'],
     ['/jobs?track=primary', '/(jobs)/jobs?track=primary'],
     ['/jobs/sales-a1b2', '/(jobs)/jobs/sales-a1b2'],
     ['/companies', '/(companies)/companies'],
     ['/companies/nile', '/(companies)/companies/nile'],
+    ['/account', '/(account)/account'],
+    ['/notifications', '/(home)/notifications'],
     ['/', '/'],
-    ['/notifications', '/notifications'],
     ['/jobsearch', '/jobsearch'],
     ['/auth/confirm?type=signup', '/auth/confirm?type=signup'],
   ])('%s → %s', (input, expected) => {
-    expect(inOwnTab(input)).toBe(expected);
+    expect(inOwnTab(input, everyone)).toBe(expected);
+  });
+
+  it("opens a candidate's applications in their own tab, and only for somebody who has it", () => {
+    expect(inOwnTab('/dashboard/applications', tabsFor(candidate))).toBe('/(applications)/dashboard/applications');
+    expect(inOwnTab('/dashboard/applications', everyone)).toBe('/dashboard/applications');
+  });
+
+  it('falls back to the next tab a section names when the first is not there', () => {
+    expect(inOwnTab('/companies/nile', ['home', 'jobs', 'account'])).toBe('/(home)/companies/nile');
+  });
+});
+
+describe('appPathFor', () => {
+  it.each([
+    // The candidate's overview is the home tab; the employer's console will be too.
+    ['/dashboard', '/'],
+    ['/employer', '/'],
+    // The website keeps the account under /dashboard; the app has a tab for it.
+    ['/dashboard/account', '/account'],
+    ['/dashboard/profile?notice=directory', '/account?notice=directory'],
+    // Everything else is the same path.
+    ['/dashboard/applications', '/dashboard/applications'],
+    ['/jobs/a-1', '/jobs/a-1'],
+    ['/dashboard/accounts', '/dashboard/accounts'],
+  ])('%s → %s', (input, expected) => {
+    expect(appPathFor(input)).toBe(expected);
+  });
+});
+
+describe('who a link is for', () => {
+  it('opens public pages for anybody', () => {
+    expect(routeFromOutside('https://www.brokersconnect.net/jobs/abc', null)).toBe('/(jobs)/jobs/abc');
+    expect(routeFromOutside('https://www.brokersconnect.net/jobs/abc', employer)).toBe('/(jobs)/jobs/abc');
+  });
+
+  it('asks somebody signed out to sign in first, keeping the page as it was asked for', () => {
+    expect(routeFromOutside('https://www.brokersconnect.net/dashboard/applications?x=1', null)).toBe(
+      '/sign-in?next=%2Fdashboard%2Fapplications%3Fx%3D1',
+    );
+    expect(routeFromOutside('/notifications', null)).toBe('/sign-in?next=%2Fnotifications');
+  });
+
+  it("opens a candidate's pages for the candidate", () => {
+    expect(routeFromOutside('https://www.brokersconnect.net/dashboard/applications', candidate)).toBe(
+      '/(applications)/dashboard/applications',
+    );
+    expect(routeFromOutside('https://www.brokersconnect.net/dashboard', candidate)).toBe('/');
+    expect(routeFromOutside('https://www.brokersconnect.net/dashboard/account', candidate)).toBe('/(account)/account');
+  });
+
+  it("sends anybody else home from a candidate's page, as the website's guard does", () => {
+    expect(routeFromOutside('/dashboard/applications', employer)).toBe('/');
+    expect(routeFromOutside('/dashboard/applications', newcomer)).toBe('/');
+  });
+
+  it('lets anybody signed in open their own account settings and feed', () => {
+    expect(routeFromOutside('/dashboard/account', employer)).toBe('/(account)/account');
+    expect(routeFromOutside('/notifications', employer)).toBe('/(home)/notifications');
+  });
+
+  it('sends a candidate who reaches for the directory to their own profile, with the reason', () => {
+    expect(routeFromOutside('/agents/sara', candidate)).toBe('/account?notice=directory');
+  });
+
+  it('decides the same inside the app, without naming a tab', () => {
+    expect(routeInside('/dashboard/applications', candidate)).toBe('/dashboard/applications');
+    expect(routeInside('/dashboard/applications', employer)).toBe('/');
+    expect(routeInside('/jobs/abc', null)).toBe('/jobs/abc');
+    expect(routeInside('/dashboard/applications', null)).toBe('/sign-in?next=%2Fdashboard%2Fapplications');
+    // What is not a page of ours is not followed.
+    expect(routeInside('https://evil.example/jobs', candidate)).toBe('/');
+  });
+});
+
+describe('the last person on this phone', () => {
+  it('reads back what was kept', () => {
+    expect(parseActor(JSON.parse(JSON.stringify(candidate)))).toEqual(candidate);
+    expect(parseActor(JSON.parse(JSON.stringify(employer)))).toEqual(employer);
+    expect(parseActor(newcomer)).toEqual(newcomer);
+  });
+
+  it('is nobody when what was kept is not an actor', () => {
+    expect(parseActor(null)).toBeNull();
+    expect(parseActor('candidate')).toBeNull();
+    expect(parseActor({ userId: '' })).toBeNull();
+    expect(parseActor({ ...candidate, profile: { role: 'owner', approval_status: 'approved' } })).toBeNull();
+    expect(parseActor({ ...employer, company: { id: 7, verification_status: 'verified' } })).toBeNull();
+  });
+});
+
+describe('a link that opens the app', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    takePendingPath();
+  });
+
+  it('opens a public page at once, for anybody', async () => {
+    expect(await redirectSystemPath({ path: 'https://www.brokersconnect.net/jobs/abc?src=share', initial: true })).toBe(
+      '/(jobs)/jobs/abc',
+    );
+    expect(takePendingPath()).toBeNull();
+  });
+
+  it("opens a signed-in page in the tab of the person the phone remembers", async () => {
+    await rememberActor(candidate);
+    expect(await redirectSystemPath({ path: 'https://www.brokersconnect.net/dashboard/applications', initial: true })).toBe(
+      '/(applications)/dashboard/applications',
+    );
+  });
+
+  it('holds a signed-in page when the phone remembers nobody, until the session has been read', async () => {
+    expect(await redirectSystemPath({ path: 'https://www.brokersconnect.net/dashboard/applications?x=1', initial: false })).toBeNull();
+    expect(takePendingPath()).toBe('/dashboard/applications?x=1');
+  });
+
+  it('forgets the person on sign-out', async () => {
+    await rememberActor(candidate);
+    await rememberActor(null);
+    expect(await redirectSystemPath({ path: '/notifications', initial: true })).toBeNull();
+    expect(takePendingPath()).toBe('/notifications');
+  });
+
+  it('knows which pages are public', () => {
+    expect(isPublicPath('https://www.brokersconnect.net/en/jobs')).toBe(true);
+    expect(isPublicPath('/auth/confirm?type=signup')).toBe(true);
+    expect(isPublicPath('/dashboard')).toBe(false);
+    expect(isPublicPath('/notifications')).toBe(false);
+    expect(isPublicPath('/employer/jobs')).toBe(false);
   });
 });

@@ -1,7 +1,6 @@
 import { landingFromRedirect } from '@/lib/auth/confirm-link';
 import { allowCaptchaLoad, captchaUrl, parseCaptchaMessage } from '~/features/auth/captcha';
 import {
-  appPathFor,
   confirmationPath,
   intentFromParams,
   intentFromPath,
@@ -61,11 +60,6 @@ describe('an intent', () => {
     expect(intentFromPath('/companies/nile-brokers')).toEqual({ next: '/companies/nile-brokers', role: null, confirmed: false });
     expect(intentFromPath('/onboarding?confirmed=1')).toEqual({ next: null, role: null, confirmed: true });
     expect(intentFromPath(null)).toEqual(NO_INTENT);
-  });
-
-  it("opens the website's account settings as the Account tab", () => {
-    expect(appPathFor('/dashboard/account')).toBe('/account');
-    expect(appPathFor('/jobs/a-1')).toBe('/jobs/a-1');
   });
 });
 

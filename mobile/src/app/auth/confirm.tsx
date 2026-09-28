@@ -6,9 +6,10 @@ import { asConfirmType, confirmDestination, isTokenHash } from '@/lib/auth/confi
 import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
 import { Button } from '~/components/ui/button';
 import { LoadingState } from '~/components/ui/states';
-import { appPathFor, intentFromPath } from '~/features/auth/intent';
+import { intentFromPath } from '~/features/auth/intent';
 import { useCloseFlow, useLand } from '~/features/auth/land';
 import { env } from '~/lib/env';
+import { openWhenReady } from '~/lib/open-path';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { space } from '~/theme/tokens';
@@ -60,7 +61,7 @@ export default function ConfirmLinkScreen() {
     }
     if (type === 'email_change') {
       close();
-      router.navigate(appPathFor(destination ?? '/dashboard/account') as never);
+      openWhenReady(destination ?? '/dashboard/account');
       return;
     }
     await land(intentFromPath(destination));

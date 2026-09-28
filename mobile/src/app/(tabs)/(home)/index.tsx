@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Briefcase, Check, Search, Users } from 'lucide-react-native';
 import { formatNumber } from '@/lib/format';
+import { HeaderBell } from '~/components/notifications/header-bell';
 import { JobBrowse } from '~/components/home/job-browse';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
@@ -58,7 +59,7 @@ export default function HomeScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: t('meta.siteName'), headerLargeTitle: true }} />
+      <Stack.Screen options={{ title: t('meta.siteName'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"

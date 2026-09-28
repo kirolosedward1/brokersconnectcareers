@@ -1,14 +1,18 @@
 import { Text } from 'react-native';
 import { Stack, Tabs, router } from 'expo-router';
 import { act, renderRouter } from 'expo-router/testing-library';
-import { unstable_settings } from '../src/app/(tabs)/(home,jobs,companies)/_layout';
-import { redirectSystemPath } from '../src/app/+native-intent';
+import type { Actor } from '@/lib/permissions';
+import { routeFromOutside } from '~/lib/links';
+import { tabsFor } from '~/lib/tabs';
+import { unstable_settings } from '../src/app/(tabs)/(home,jobs,companies,applications,account)/_layout';
 
 /*
   The app's route tree, file for file, with stand-in screens: the real tree's
   shape and the real per-tab first screens (unstable_settings), under a plain
-  JS tab navigator in place of the native one. What is tested is where a link
-  lands and where Back goes — the file layout's job, not the screens'.
+  JS tab navigator in place of the native one. A tab the person does not have
+  is left out the way the native bar's `hidden` leaves it out — as a protected
+  route. What is tested is where a link lands and where Back goes — the file
+  layout's job, not the screens'.
 */
 function screen(name: string) {
   function Screen() {
@@ -17,20 +21,63 @@ function screen(name: string) {
   return Screen;
 }
 
+/** Who the tab bar is drawn for in the test at hand. */
+let actor: Actor = null;
+
+function TabBar() {
+  const tabs = tabsFor(actor);
+  return (
+    <Tabs>
+      <Tabs.Screen name="(home)" />
+      <Tabs.Screen name="(jobs)" />
+      <Tabs.Protected guard={tabs.includes('companies')}>
+        <Tabs.Screen name="(companies)" />
+      </Tabs.Protected>
+      <Tabs.Protected guard={tabs.includes('applications')}>
+        <Tabs.Screen name="(applications)" />
+      </Tabs.Protected>
+      <Tabs.Screen name="(account)" />
+    </Tabs>
+  );
+}
+
+const SHARED = '(tabs)/(home,jobs,companies,applications,account)';
+
 const tree = {
-  _layout: () => <Stack screenOptions={{ headerShown: false }} />,
-  '(tabs)/_layout': () => <Tabs />,
-  '(tabs)/(home,jobs,companies)/_layout': { default: () => <Stack />, unstable_settings },
-  '(tabs)/(home,jobs,companies)/jobs/[slug]': screen('job'),
-  '(tabs)/(home,jobs,companies)/companies/[slug]': screen('company'),
+  _layout: { default: () => <Stack screenOptions={{ headerShown: false }} />, unstable_settings: { anchor: '(tabs)' } },
+  '(tabs)/_layout': TabBar,
+  [`${SHARED}/_layout`]: { default: () => <Stack />, unstable_settings },
+  [`${SHARED}/jobs/[slug]`]: screen('job'),
+  [`${SHARED}/companies/[slug]`]: screen('company'),
+  [`${SHARED}/notifications`]: screen('notifications'),
   '(tabs)/(home)/index': screen('home'),
   '(tabs)/(jobs)/jobs/index': screen('board'),
   '(tabs)/(companies)/companies/index': screen('directory'),
+  '(tabs)/(applications)/dashboard/applications/index': screen('applications'),
+  '(tabs)/(account)/account/index': screen('account'),
+  '(tabs)/(account)/account/delete': screen('delete'),
+  '(auth)/sign-in/index': screen('sign-in'),
   '+not-found': screen('missing'),
 };
 
+const candidate: Actor = {
+  userId: '11111111-1111-4111-8111-111111111111',
+  profile: { role: 'candidate', approval_status: 'approved' },
+  company: null,
+};
+
+const employer: Actor = {
+  userId: '22222222-2222-4222-8222-222222222222',
+  profile: { role: 'employer', approval_status: 'approved' },
+  company: { id: '33333333-3333-4333-8333-333333333333', verification_status: 'verified' },
+};
+
 /** A cold start from a link: the path the app's native intent makes of it, opened fresh. */
-const open = (url: string) => renderRouter(tree, { initialUrl: redirectSystemPath({ path: url, initial: true }) });
+const open = (url: string) => renderRouter(tree, { initialUrl: routeFromOutside(url, actor) });
+
+beforeEach(() => {
+  actor = null;
+});
 
 describe('links from the website', () => {
   it.each([
@@ -63,6 +110,35 @@ describe('links from the website', () => {
   });
 });
 
+describe('links to signed-in pages', () => {
+  it('asks somebody signed out to sign in, and remembers where they were going', () => {
+    const result = open('https://www.brokersconnect.net/dashboard/applications');
+    expect(result.getSegments()).toEqual(['(auth)', 'sign-in']);
+    expect(result.getSearchParams()).toEqual({ next: '/dashboard/applications' });
+  });
+
+  it.each([
+    ['https://www.brokersconnect.net/dashboard/applications', ['(tabs)', '(applications)', 'dashboard', 'applications']],
+    ['https://www.brokersconnect.net/dashboard', ['(tabs)', '(home)']],
+    ['https://www.brokersconnect.net/dashboard/account', ['(tabs)', '(account)', 'account']],
+    ['https://www.brokersconnect.net/notifications', ['(tabs)', '(home)', 'notifications']],
+  ])("opens %s in a candidate's own tab", (url, segments) => {
+    actor = candidate;
+    expect(open(url).getSegments()).toEqual(segments);
+  });
+
+  it("sends an employer who follows a candidate's link home, as the website does", () => {
+    actor = employer;
+    expect(open('https://www.brokersconnect.net/dashboard/applications').getSegments()).toEqual(['(tabs)', '(home)']);
+  });
+
+  it('never opens a tab the person does not have', () => {
+    actor = employer;
+    // An employer has no applications tab; the address is refused before it is opened.
+    expect(routeFromOutside('/dashboard/applications', employer)).toBe('/');
+  });
+});
+
 describe('moving around inside a tab', () => {
   it('opens a listing from home in the home tab, and Back returns home', () => {
     const result = open('/');
@@ -89,5 +165,26 @@ describe('moving around inside a tab', () => {
     act(() => router.navigate({ pathname: '/jobs', params: { district: 'new-cairo' } }));
     expect(result.getSegments()).toEqual(['(tabs)', '(jobs)', 'jobs']);
     expect(result.getSearchParams()).toEqual({ district: 'new-cairo' });
+  });
+
+  it("opens the bell's feed in the tab it was rung from, and a listing from an application there too", () => {
+    actor = candidate;
+    const result = open('/dashboard/applications');
+    act(() => router.push('/notifications'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'notifications']);
+
+    act(() => router.back());
+    act(() => router.push('/jobs/sales-a1b2'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'jobs', '[slug]']);
+    act(() => router.back());
+    expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);
+  });
+
+  it("switches to the applications tab when a notification points there", () => {
+    actor = candidate;
+    const result = open('/');
+    act(() => router.push('/notifications'));
+    act(() => router.navigate('/dashboard/applications'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);
   });
 });

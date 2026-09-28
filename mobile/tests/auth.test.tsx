@@ -4,20 +4,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
+import { PendingPath } from '~/components/navigation/pending-path';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { confirmationPath } from '~/features/auth/intent';
-import { catalogues } from '~/i18n/provider';
+import { catalogues, I18nProvider } from '~/i18n/provider';
 import { SessionProvider } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
-import { I18nProvider } from '~/i18n/provider';
 import * as AuthLayout from '../src/app/(auth)/_layout';
 import * as SignInScreen from '../src/app/(auth)/sign-in/index';
 import * as ForgotScreen from '../src/app/(auth)/sign-in/forgot';
 import * as NewPasswordScreen from '../src/app/(auth)/sign-in/new-password';
 import * as SignUpScreen from '../src/app/(auth)/sign-up';
-import * as AccountLayout from '../src/app/(tabs)/(account)/_layout';
-import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies)/companies/[slug]';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,account)/_layout';
+import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,account)/companies/[slug]';
 import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import * as DeleteAccountScreen from '../src/app/(tabs)/(account)/account/delete';
 import * as ConfirmScreen from '../src/app/auth/confirm';
@@ -165,6 +165,7 @@ function Root() {
           <SessionProvider>
             <Stack screenOptions={{ headerShown: false }} />
             <SessionGate />
+            <PendingPath />
           </SessionProvider>
         </I18nProvider>
       </ThemeProvider>
@@ -177,13 +178,13 @@ const app = {
   // Home first, as the app's own tab bar has it.
   '(tabs)/_layout': () => (
     <Tabs screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name="(home)/index" />
+      <Tabs.Screen name="(home)" />
       <Tabs.Screen name="(account)" />
     </Tabs>
   ),
+  '(tabs)/(home,account)/_layout': TabStack,
+  '(tabs)/(home,account)/companies/[slug]': CompanyScreen,
   '(tabs)/(home)/index': () => <Text>home screen</Text>,
-  '(tabs)/(home)/companies/[slug]': CompanyScreen,
-  '(tabs)/(account)/_layout': AccountLayout,
   '(tabs)/(account)/account/index': AccountScreen,
   '(tabs)/(account)/account/delete': DeleteAccountScreen,
   '(auth)/_layout': AuthLayout,

@@ -5,6 +5,7 @@ import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { useTranslations } from 'use-intl';
 import { ExternalLink, LogOut, Mail, ShieldAlert, Trash2 } from 'lucide-react-native';
+import { HeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
@@ -48,7 +49,7 @@ export default function AccountScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: t('app.tabs.account'), headerLargeTitle: true }} />
+      <Stack.Screen options={{ title: t('app.tabs.account'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}

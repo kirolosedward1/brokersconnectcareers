@@ -1,5 +1,6 @@
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { QueryClient } from '@tanstack/react-query';
+import { focusManager, QueryClient } from '@tanstack/react-query';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import type { PersistQueryClientProviderProps } from '@tanstack/react-query-persist-client';
 import { ApiError } from './api';
@@ -18,6 +19,17 @@ export const queryClient = new QueryClient({
         !(error instanceof ApiError && error.status >= 400 && error.status < 500) && failures < 2,
     },
   },
+});
+
+/**
+ * Coming back to the app is the phone's "returning to the tab": whatever has
+ * gone stale while it was in the background — the bell's count, the
+ * applications — is read again, as the website re-reads a tab that has sat a
+ * minute unseen.
+ */
+focusManager.setEventListener((setFocused) => {
+  const subscription = AppState.addEventListener('change', (state) => setFocused(state === 'active'));
+  return () => subscription.remove();
 });
 
 const DAY = 24 * 60 * 60 * 1000;

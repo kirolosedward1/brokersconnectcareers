@@ -11,10 +11,11 @@ import { IBMPlexSansArabic_400Regular } from '@expo-google-fonts/ibm-plex-sans-a
 import { IBMPlexSansArabic_500Medium } from '@expo-google-fonts/ibm-plex-sans-arabic/500Medium';
 import { IBMPlexSansArabic_600SemiBold } from '@expo-google-fonts/ibm-plex-sans-arabic/600SemiBold';
 import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic/700Bold';
+import { PendingPath } from '~/components/navigation/pending-path';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { I18nProvider } from '~/i18n/provider';
 import { persistOptions, queryClient } from '~/lib/query';
-import { SessionProvider } from '~/lib/session';
+import { SessionProvider, useSession } from '~/lib/session';
 import { ThemeProvider, useTheme } from '~/theme/provider';
 import { font } from '~/theme/tokens';
 
@@ -31,8 +32,9 @@ export const unstable_settings = {
 /**
  * Everything the screens stand on: the website's font, cached server state,
  * the theme, the website's catalogue, and who is signed in. The splash screen
- * stays up until the font is ready, so no screen is ever drawn in the system
- * font first.
+ * stays up until the font is ready and the phone has said who was signed in
+ * last, so no screen is ever drawn in the system font first, nor with a tab
+ * bar that changes a moment later.
  */
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -41,13 +43,8 @@ export default function RootLayout() {
     IBMPlexSansArabic_600SemiBold,
     IBMPlexSansArabic_700Bold,
   });
-  const ready = fontsLoaded || Boolean(fontError);
 
-  useEffect(() => {
-    if (ready) SplashScreen.hideAsync().catch(() => {});
-  }, [ready]);
-
-  if (!ready) return null;
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>
@@ -56,21 +53,42 @@ export default function RootLayout() {
           <I18nProvider>
             <SessionProvider>
               <Navigation>
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="(tabs)" />
-                  <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
-                  <Stack.Screen name="mfa" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
-                  <Stack.Screen name="auth/confirm" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
-                </Stack>
-                <SessionGate />
+                <AppStack />
               </Navigation>
             </SessionProvider>
           </I18nProvider>
         </ThemeProvider>
       </PersistQueryClientProvider>
     </SafeAreaProvider>
+  );
+}
+
+/**
+ * The screens, once the tab bar can be drawn for the person using the app —
+ * the same person a link that opened the app was routed for (+native-intent).
+ */
+function AppStack() {
+  const { settled } = useSession();
+
+  useEffect(() => {
+    if (settled) SplashScreen.hideAsync().catch(() => {});
+  }, [settled]);
+
+  if (!settled) return null;
+
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+        <Stack.Screen name="mfa" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+        <Stack.Screen name="auth/confirm" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
+      </Stack>
+      <SessionGate />
+      <PendingPath />
+    </>
   );
 }
 

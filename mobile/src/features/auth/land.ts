@@ -1,8 +1,9 @@
 import { useCallback } from 'react';
-import { router, useNavigation, useSegments, type Href } from 'expo-router';
+import { router, useNavigation, useSegments } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { openWhenReady } from '~/lib/open-path';
 import { fetchViewer, secondFactorDue } from '~/lib/session';
-import { appPathFor, intentParams, type AuthIntent } from './intent';
+import { intentParams, type AuthIntent } from './intent';
 
 /**
  * Where a finished sign-in goes — the website's landing, step for step
@@ -10,7 +11,9 @@ import { appPathFor, intentParams, type AuthIntent } from './intent';
  *
  *   1. an authenticator on the account and not yet used this session → its code;
  *   2. no profile yet → onboarding, with the door's role and the destination;
- *   3. otherwise the sheet closes, onto wherever the person was headed.
+ *   3. otherwise the sheet closes, onto wherever the person was headed — once
+ *      the app has been drawn for the account (open-path.ts), and only if the
+ *      account may open it (the same rules as any link).
  *
  * Steps 1 and 2 *replace* the screen they are called from, so the account is
  * never on screen half-arrived — the session gate in the root layout would
@@ -36,7 +39,7 @@ export function useLand() {
       }
 
       close();
-      if (intent.next) router.navigate(appPathFor(intent.next) as Href);
+      if (intent.next) openWhenReady(intent.next);
     },
     [queryClient, close],
   );

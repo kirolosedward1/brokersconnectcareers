@@ -4,7 +4,10 @@
  * answers; anything unregistered is a 404, and every request is recorded so a
  * test can say what the app asked for.
  */
-type Handler = (url: URL, init: RequestInit | undefined) => { status?: number; body: unknown } | unknown;
+type Handler = (
+  url: URL,
+  init: RequestInit | undefined,
+) => { status?: number; body: unknown; headers?: Record<string, string> } | unknown;
 
 export type Request = { method: string; url: URL; body: unknown };
 
@@ -28,13 +31,13 @@ export function fakeServer() {
     const handler = routes.get(`${method} ${url.pathname}`) ?? routes.get(url.pathname);
     if (!handler) return new Response(JSON.stringify({ error: 'not_found' }), { status: 404 });
     const answer = handler(url, init);
-    const { status, body: payload } =
+    const { status, body: payload, headers } =
       answer && typeof answer === 'object' && 'body' in answer
-        ? (answer as { status?: number; body: unknown })
-        : { status: 200, body: answer };
-    return new Response(JSON.stringify(payload), {
+        ? (answer as { status?: number; body: unknown; headers?: Record<string, string> })
+        : { status: 200, body: answer, headers: undefined };
+    return new Response(method === 'HEAD' ? null : JSON.stringify(payload), {
       status: status ?? 200,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...headers },
     });
   });
 

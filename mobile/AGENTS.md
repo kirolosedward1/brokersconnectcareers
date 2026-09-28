@@ -29,7 +29,8 @@ pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept eve
 - **Writes go through the website.** Every change to data is a server action called as
   `callAction(name, input)` (`src/lib/api.ts`) through `/api/mobile/v1/actions/<name>`, so emails,
   upload checks, rate limits and slugs happen exactly as on the site. The only direct writes are the
-  notification read-state RPCs and file bytes to Storage — see `../docs/mobile.md`.
+  notification read-state RPCs, the push registration RPCs and file bytes to Storage — see
+  `../docs/mobile.md`.
 - **Reads the website builds in TypeScript come from its GET endpoints** (`/api/mobile/v1/jobs`,
   `/companies`, `/browse`, …), typed by `../src/lib/mobile-api/reads.ts`. Simple per-user reads go
   straight to Supabase under row-level security.
@@ -48,8 +49,10 @@ pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept eve
 ## Navigation & Routing
 
 - Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Each tab is a route group with its own stack; listings and company pages live in the shared group
-  `(home,jobs,companies)` so they open inside whichever tab the reader is in.
+- Each tab is a route group with its own stack; listings, company pages and the bell's feed live in the
+  shared group `(home,jobs,companies,applications,account)` so they open inside whichever tab the reader
+  is in. Which tabs a person has is `src/lib/tabs.ts`; a hidden tab's screens do not exist for them, so
+  open signed-in pages with `routeInside` / `openWhenReady`, never a bare path.
 - Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
 - Docs: https://docs.expo.dev/router/introduction.md
 
