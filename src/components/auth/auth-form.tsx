@@ -15,6 +15,7 @@ import { safeNext } from '@/lib/safe-next';
 import { Turnstile, turnstileEnabled } from '@/components/security/turnstile';
 import { reportAuthOutcome, type AuthFriction } from '@/lib/actions/security';
 import { reach } from '@/lib/reach';
+import { knownAuthError } from '@/lib/auth/errors';
 
 /**
  * Google's mark, inline.
@@ -47,56 +48,6 @@ function AppleMark() {
     </svg>
   );
 }
-
-/**
- * Supabase speaks English, and this page does not.
- *
- * Every auth failure was reaching the reader as whatever string GoTrue
- * returned — "Invalid login credentials" on an otherwise Arabic sign-in form.
- * The same class of bug as an untranslated status enum, and worse placed: it
- * lands on the one screen where somebody is already unsure whether they did
- * something wrong.
- *
- * Matched on substrings rather than codes because GoTrue's error codes are not
- * stable across versions and its messages have been. Anything unrecognised
- * falls through to the generic line rather than to English — a reader is
- * better served by "something went wrong" in their own language than by a
- * precise sentence in one they may not read.
- */
-type Mapped = { namespace: 'auth' | 'validation'; key: string };
-
-/**
- * GoTrue's own error codes, which are stable across versions and do not change
- * with the server's language. Matched first.
- *
- * The message regexes below were the only thing here, and they are English
- * prose from another team's codebase — a rewording upstream silently turns a
- * precise message into "something went wrong". Live testing found one already:
- * a rejected domain answers `Email address "x@y" is invalid`, which matches
- * neither /unable to validate email/ nor /invalid format/, so a mistyped
- * address produced the generic error instead of "check your email address".
- */
-const AUTH_ERROR_CODES: Record<string, Mapped> = {
-  invalid_credentials: { namespace: 'auth', key: 'errBadCredentials' },
-  user_already_exists: { namespace: 'auth', key: 'errEmailTaken' },
-  email_exists: { namespace: 'auth', key: 'errEmailTaken' },
-  email_not_confirmed: { namespace: 'auth', key: 'errEmailUnconfirmed' },
-  over_request_rate_limit: { namespace: 'auth', key: 'errTooMany' },
-  over_email_send_rate_limit: { namespace: 'auth', key: 'errTooMany' },
-  email_address_invalid: { namespace: 'validation', key: 'invalidEmail' },
-  validation_failed: { namespace: 'validation', key: 'invalidEmail' },
-  weak_password: { namespace: 'validation', key: 'passwordShort' },
-};
-
-/** Kept as the fallback, for older servers and errors that carry no code. */
-const AUTH_ERRORS: { match: RegExp; namespace: 'auth' | 'validation'; key: string }[] = [
-  { match: /invalid login credentials/i, namespace: 'auth', key: 'errBadCredentials' },
-  { match: /already registered|already been registered|user already exists/i, namespace: 'auth', key: 'errEmailTaken' },
-  { match: /email not confirmed|confirm your email/i, namespace: 'auth', key: 'errEmailUnconfirmed' },
-  { match: /for security purposes|rate limit|too many requests/i, namespace: 'auth', key: 'errTooMany' },
-  { match: /unable to validate email|invalid format|address .* is invalid/i, namespace: 'validation', key: 'invalidEmail' },
-  { match: /password should be at least/i, namespace: 'validation', key: 'passwordShort' },
-];
 
 export function AuthForm({
   mode,
@@ -136,14 +87,11 @@ export function AuthForm({
    * read first and the prose only consulted when there is none.
    */
   const readable = (error: { message: string; code?: string } | string) => {
-    const message = typeof error === 'string' ? error : error.message;
-    const code = typeof error === 'string' ? undefined : error.code;
-
-    const known =
-      (code ? AUTH_ERROR_CODES[code] : undefined) ??
-      AUTH_ERRORS.find((entry) => entry.match.test(message));
+    const known = knownAuthError(error);
 
     if (!known) {
+      const message = typeof error === 'string' ? error : error.message;
+      const code = typeof error === 'string' ? undefined : error.code;
       // Unmapped, so the user gets the generic line — but the detail stays in
       // the console, because the alternative is an error nobody can diagnose.
       console.warn('[auth] unmapped error', { code, message });
