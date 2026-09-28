@@ -24,6 +24,8 @@ export type MobileConfig = {
   billingEnabled: boolean;
   /** SUPPORT_EMAIL, the address the website's footer offers; null while unset. */
   supportEmail: string | null;
+  /** MOBILE_APP_STORE_URL, where "update the app" leads; null until the app is listed. */
+  appStoreUrl: string | null;
 };
 
 /** GET /jobs */

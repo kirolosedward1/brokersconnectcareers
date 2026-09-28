@@ -39,6 +39,43 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       CFBundleDevelopmentRegion: 'ar',
       CFBundleLocalizations: ['ar', 'en'],
     },
+    /*
+      The app's own privacy manifest. No tracking, and no analytics or
+      advertising SDK. What it collects is what an account holds on the
+      website — linked to the person, used only to run the service — and it
+      must say the same as the App Store's privacy answers (docs/app-store.md).
+      The system APIs with required reasons are declared by the libraries that
+      call them (React Native, AsyncStorage and the Expo modules ship their own
+      manifests); the four here are the ones React Native's own template
+      declares, repeated for any library that does not.
+    */
+    privacyManifests: {
+      NSPrivacyTracking: false,
+      NSPrivacyTrackingDomains: [],
+      NSPrivacyCollectedDataTypes: [
+        'NSPrivacyCollectedDataTypeName',
+        'NSPrivacyCollectedDataTypeEmailAddress',
+        'NSPrivacyCollectedDataTypePhoneNumber',
+        'NSPrivacyCollectedDataTypePhotosorVideos',
+        'NSPrivacyCollectedDataTypeOtherUserContent',
+        'NSPrivacyCollectedDataTypeCustomerSupport',
+        'NSPrivacyCollectedDataTypeSearchHistory',
+        'NSPrivacyCollectedDataTypeUserID',
+        'NSPrivacyCollectedDataTypeDeviceID',
+        'NSPrivacyCollectedDataTypeOtherDataTypes',
+      ].map((type) => ({
+        NSPrivacyCollectedDataType: type,
+        NSPrivacyCollectedDataTypeLinked: true,
+        NSPrivacyCollectedDataTypeTracking: false,
+        NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+      })),
+      NSPrivacyAccessedAPITypes: [
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults', NSPrivacyAccessedAPITypeReasons: ['CA92.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp', NSPrivacyAccessedAPITypeReasons: ['C617.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime', NSPrivacyAccessedAPITypeReasons: ['35F9.1'] },
+        { NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace', NSPrivacyAccessedAPITypeReasons: ['E174.1'] },
+      ],
+    },
   },
   android: {
     package: 'net.brokersconnect.app',

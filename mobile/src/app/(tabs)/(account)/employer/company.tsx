@@ -8,6 +8,7 @@ import { CompanyForm } from '~/components/employer/company-form';
 import { LogoControls } from '~/components/employer/logo-controls';
 import { TeamSettings } from '~/components/employer/team-settings';
 import { VerificationPanel } from '~/components/employer/verification-panel';
+import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useCompanyPage } from '~/features/employer/company';
@@ -34,7 +35,7 @@ export default function CompanyScreen() {
   const header = <Stack.Screen options={{ title: t('employer.company') }} />;
 
   let body: React.ReactNode;
-  if (!session || !viewer?.profile) body = <LoadingState />;
+  if (!session || !viewer?.profile) body = <ViewerPending />;
   else if (!canAccessEmployerArea(actor)) body = <EmptyState title={t('common.notFound')} body={t('common.notFoundBody')} />;
   else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (company && page.isPending) body = <LoadingState />;

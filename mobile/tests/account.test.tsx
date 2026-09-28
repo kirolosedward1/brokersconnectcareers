@@ -381,6 +381,21 @@ describe('the emails', () => {
   });
 });
 
+describe('a profile that could not be read', () => {
+  it('says so with a way to try again, rather than waiting for ever', async () => {
+    let down = true;
+    // A 500, which the client does not retry (a 503 it retries for a while first).
+    server.on('/rest/v1/profiles', () => (down ? { status: 500, body: { message: 'failed' } } : [me]));
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/emails' });
+
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    down = false;
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
+    expect(await screen.findByLabelText(ar.account.notifyDigest)).toBeTruthy();
+  });
+});
+
 describe('a copy of the data', () => {
   it("is the website's export, handed to the share sheet", async () => {
     await signIn();

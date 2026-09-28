@@ -14,6 +14,7 @@ import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arab
 import { PendingPath } from '~/components/navigation/pending-path';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
+import { UpdateGate } from '~/components/navigation/update-gate';
 import { I18nProvider } from '~/i18n/provider';
 import { persistOptions, queryClient } from '~/lib/query';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -78,7 +79,7 @@ function AppStack() {
   if (!settled) return null;
 
   return (
-    <>
+    <UpdateGate>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
@@ -90,7 +91,7 @@ function AppStack() {
       <SessionGate />
       <PendingPath />
       <PushBridge />
-    </>
+    </UpdateGate>
   );
 }
 

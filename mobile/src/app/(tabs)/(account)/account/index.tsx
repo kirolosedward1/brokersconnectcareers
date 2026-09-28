@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, View } from 'react-native';
 import { router, Stack } from 'expo-router';
-import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { useTranslations } from 'use-intl';
 import {
@@ -31,6 +30,7 @@ import { Text } from '~/components/ui/text';
 import { shareMyData } from '~/features/account/settings';
 import { useMobileConfig } from '~/features/config';
 import { signOutHere } from '~/features/push/device';
+import { appVersion } from '~/features/update';
 import { ApiError } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
@@ -55,7 +55,7 @@ export default function AccountScreen() {
   const config = useMobileConfig();
   const supportEmail = config.data?.supportEmail ?? null;
   const [exporting, setExporting] = useState(false);
-  const version = Constants.expoConfig?.version ?? '';
+  const version = appVersion() ?? '';
 
   const themes: { value: ThemePreference; label: string }[] = [
     { value: 'light', label: t('theme.light') },

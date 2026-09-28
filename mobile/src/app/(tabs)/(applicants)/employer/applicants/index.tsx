@@ -12,6 +12,7 @@ import { useApplicantContext } from '~/components/employer/applicant-context';
 import { HeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
+import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Select } from '~/components/ui/select';
 import { Text } from '~/components/ui/text';
@@ -58,7 +59,7 @@ export default function InboxScreen() {
   const setFilter = (next: Record<string, string | undefined>) => router.setParams(next as never);
 
   let body: React.ReactNode;
-  if (!session || !viewer?.profile) body = <LoadingState />;
+  if (!session || !viewer?.profile) body = <ViewerPending />;
   else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) {
     body = (

@@ -408,6 +408,7 @@ On the website (Vercel):
 | Variable | For |
 | --- | --- |
 | `MOBILE_MIN_APP_VERSION` | The lowest app version `/api/mobile/v1/config` accepts; below it the app asks to be updated. |
+| `MOBILE_APP_STORE_URL` | The app's App Store page (`https://apps.apple.com/...` only), where the "update the app" screen leads; unset until the app is listed. |
 | `APPLE_APP_ID` | `TEAMID.net.brokersconnect.app` — serves the universal-link file. |
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_CLIENT_ID` | The Sign in with Apple key (`.p8`, newlines escaped) and the app's bundle id, used to revoke an Apple user's grant when they delete their account from the app (`src/lib/apple/revoke.ts`). Secret. |
 | `SUPPORT_EMAIL` | Already the footer's contact address; the app offers it too (`/api/mobile/v1/config`), beside a company owner's in-app deletion request. |
@@ -424,6 +425,9 @@ In the Supabase dashboard (Authentication):
   which is already listed.
 
 ## Releasing
+
+What App Store Connect asks, and the answers the code gives — the privacy
+label, the guidelines that apply, review notes — is in `docs/app-store.md`.
 
 Builds are made with EAS (`eas.json`): `development` (a development client for
 a registered iPhone), `development-simulator`, `preview` (internal

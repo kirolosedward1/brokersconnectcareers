@@ -14,6 +14,7 @@ import { HeaderBell } from '~/components/notifications/header-bell';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
+import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
@@ -59,7 +60,7 @@ export default function ListingsScreen() {
 
   let body: React.ReactNode;
   if (!session || !viewer?.profile) {
-    body = <LoadingState />;
+    body = <ViewerPending />;
   } else if (isSuspended(actor)) {
     // The website's console for a suspended account: nothing to act on, said once.
     body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;

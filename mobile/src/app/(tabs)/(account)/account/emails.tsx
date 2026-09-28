@@ -3,7 +3,8 @@ import { ScrollView, Switch, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
-import { EmptyState, LoadingState } from '~/components/ui/states';
+import { ViewerPending } from '~/components/navigation/viewer-pending';
+import { EmptyState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useSaveEmailPreferences, type EmailPreferences } from '~/features/account/settings';
 import { useSession } from '~/lib/session';
@@ -36,7 +37,7 @@ export default function EmailsScreen() {
     return (
       <>
         {header}
-        <LoadingState />
+        <ViewerPending />
       </>
     );
   }

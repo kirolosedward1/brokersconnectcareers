@@ -16,6 +16,7 @@ import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
 import { Select } from '~/components/ui/select';
+import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
@@ -120,7 +121,7 @@ function Apply({ job }: { job: JobDetail }) {
     );
   }
 
-  if (!viewer?.profile) return <LoadingState />;
+  if (!viewer?.profile) return <ViewerPending />;
 
   if (!isCandidate(actor)) {
     return (

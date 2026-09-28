@@ -107,6 +107,7 @@ export function mobileConfig(overrides: Partial<MobileConfig> = {}): MobileConfi
     englishEnabled: false,
     billingEnabled: false,
     supportEmail: 'help@brokersconnect.net',
+    appStoreUrl: null,
     ...overrides,
   };
 }

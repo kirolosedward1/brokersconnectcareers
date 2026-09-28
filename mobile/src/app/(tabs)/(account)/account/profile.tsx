@@ -11,6 +11,7 @@ import { ProfileGaps } from '~/components/profile/profile-gaps';
 import { RecordForm } from '~/components/profile/record-form';
 import { Button } from '~/components/ui/button';
 import { Notice } from '~/components/ui/notice';
+import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAgentProfile, useCandidateSummary, useCompleteness, useCvSections } from '~/features/profile/queries';
@@ -59,7 +60,7 @@ export default function ProfileScreen() {
     return (
       <>
         {header}
-        <LoadingState />
+        {viewer?.profile ? <LoadingState /> : <ViewerPending />}
       </>
     );
   }

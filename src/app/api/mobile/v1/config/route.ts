@@ -18,6 +18,8 @@ import type { MobileConfig } from '@/lib/mobile-api/reads';
  *   supportEmail      the contact address the website's footer shows, when
  *                     one is set — the app's "contact us" and the way out
  *                     of a deletion only the team can finish.
+ *   appStoreUrl       the app's App Store page, where "update the app" leads
+ *                     (MOBILE_APP_STORE_URL); null until the app is listed.
  */
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +34,20 @@ export async function GET() {
       englishEnabled: ENGLISH_ENABLED,
       billingEnabled: BILLING_ENABLED,
       supportEmail: configuredValue(env.supportEmail) ?? null,
+      appStoreUrl: appStoreUrl(),
     } satisfies MobileConfig,
     { headers: { 'cache-control': 'public, s-maxage=300, stale-while-revalidate=600' } },
   );
+}
+
+/** Only an https address on Apple's own host: this is opened on people's phones. */
+function appStoreUrl(): string | null {
+  const value = configuredValue(process.env.MOBILE_APP_STORE_URL);
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname === 'apps.apple.com' ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }

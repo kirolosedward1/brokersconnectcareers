@@ -3,7 +3,8 @@ import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
 import { Notice } from '~/components/ui/notice';
-import { EmptyState, LoadingState } from '~/components/ui/states';
+import { ViewerPending } from '~/components/navigation/viewer-pending';
+import { EmptyState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { usePushControls } from '~/features/push/controls';
 import { usePushState } from '~/features/push/device';
@@ -41,7 +42,7 @@ export default function AlertsScreen() {
     return (
       <>
         {header}
-        <LoadingState />
+        <ViewerPending />
       </>
     );
   }

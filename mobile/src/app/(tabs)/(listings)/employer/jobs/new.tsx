@@ -3,7 +3,8 @@ import { useTranslations } from 'use-intl';
 import { isSuspended } from '@/lib/permissions';
 import { JobWizard } from '~/components/employer/job-wizard';
 import { Button } from '~/components/ui/button';
-import { EmptyState, LoadingState } from '~/components/ui/states';
+import { ViewerPending } from '~/components/navigation/viewer-pending';
+import { EmptyState } from '~/components/ui/states';
 import { useSession } from '~/lib/session';
 
 /**
@@ -17,7 +18,7 @@ export default function NewJobScreen() {
   const header = <Stack.Screen options={{ title: t('employer.newJob') }} />;
 
   let body: React.ReactNode;
-  if (!session || !viewer?.profile) body = <LoadingState />;
+  if (!session || !viewer?.profile) body = <ViewerPending />;
   else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) {
     body = (

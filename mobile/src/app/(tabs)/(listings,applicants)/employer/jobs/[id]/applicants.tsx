@@ -7,6 +7,7 @@ import { ApplicantCard } from '~/components/employer/applicant-card';
 import { useApplicantContext } from '~/components/employer/applicant-context';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
+import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
@@ -45,7 +46,7 @@ export default function ListingApplicantsScreen() {
   const header = <Stack.Screen options={{ title }} />;
 
   let body: React.ReactNode;
-  if (!session || !viewer?.profile) body = <LoadingState />;
+  if (!session || !viewer?.profile) body = <ViewerPending />;
   else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) body = <NotFoundState />;
   else if (pipeline.isPending) body = <LoadingState />;
