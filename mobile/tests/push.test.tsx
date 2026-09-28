@@ -166,13 +166,13 @@ describe('asking, with a reason', () => {
     fireEvent.press(screen.getByRole('button', { name: ar.app.push.turnOn }));
 
     await waitFor(() => expect(registered()[0]).toEqual({ p_token: TOKEN, p_platform: 'ios', p_locale: 'ar', p_app_version: '1.0.0' }));
-    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle) === null).toBe(true));
   });
 
   it('puts the prompt away for good on "not now"', async () => {
     const first = renderRouter(app, { initialUrl: '/' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.push.notNow }));
-    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle) === null).toBe(true));
     first.unmount();
 
     // Read again from scratch — the phone's answer and the choice kept here — and still away.
@@ -193,7 +193,7 @@ describe('asking, with a reason', () => {
     // The system's question, answered no: from now on the phone says denied.
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(denied as never);
     fireEvent.press(turnOn);
-    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle) === null).toBe(true));
     expect(registered()).toHaveLength(0);
   });
 });

@@ -452,7 +452,7 @@ describe("the company's shortlist", () => {
 
     const remove = await screen.findAllByRole('button', { name: ar.agents.shortlistRemove });
     fireEvent.press(remove[0]);
-    await waitFor(() => expect(screen.queryByText('منى علي')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('منى علي') === null).toBe(true));
     expect(input('/api/mobile/v1/actions/toggleSavedAgent')).toEqual({ agentId: mona.id });
   });
 
