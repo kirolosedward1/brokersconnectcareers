@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { publish } from '@/lib/notifications/events';
+import { isRetryable } from '@/lib/email/rebuild';
 import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { adminErrorCode } from '@/lib/admin/errors';
 
@@ -517,5 +518,61 @@ export async function deleteTaxonomy(input: unknown): Promise<AdminResult> {
 
   revalidateTag('taxonomy');
   refreshConsole();
+  return { ok: true };
+}
+
+const requeueSchema = z.object({ emailId: z.string().uuid() });
+
+/**
+ * Give a dead-lettered email one more try.
+ *
+ * Goes through requeue_email rather than an UPDATE for the same reason as
+ * set_account_approval: email_log has no admin write policy, and the rules —
+ * admin only, only a row that was actually given up on, one more attempt and
+ * not a fresh five — live in that function. It restarts the retry window from
+ * now, so the next sweep (every ten minutes) picks the row up; nothing is sent
+ * from this request.
+ *
+ * `false` from the function means the row was not a dead letter by the time
+ * the click arrived — requeued by somebody else, or never dead. That is
+ * reported as not_found rather than as a success for work that did not happen.
+ */
+export async function requeueEmail(input: unknown): Promise<ActionResult> {
+  const parsed = requeueSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  /*
+    Only a message the sweeper can rebuild is worth another try. The page
+    already hides the button for the rest, but the action is callable on its
+    own, and requeueing a digest would only dead-letter it again an hour
+    later — with its original error overwritten by "not retryable".
+
+    Read through the admin-gated list rather than the service role, keeping
+    this file's rule. Fails closed: a row not in the list — already requeued,
+    never dead, or past the list's cap, where the check could not be made —
+    is refused rather than waved through. The operations page lists far
+    fewer than the cap, so every button it renders is inside it.
+  */
+  const { data: dead, error: deadError } = await supabase.rpc('email_dead_letters', {
+    p_limit: 500,
+  });
+  if (deadError) return { ok: false, error: deadError.message };
+  const target = (dead ?? []).find((row) => row.id === parsed.data.emailId);
+  if (!target) return { ok: false, error: 'not_found' };
+  if (!isRetryable(target.template) || !target.entity_id) {
+    return { ok: false, error: 'not_retryable' };
+  }
+
+  const { data: requeued, error } = await supabase.rpc('requeue_email', {
+    p_id: parsed.data.emailId,
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!requeued) return { ok: false, error: 'not_found' };
+
+  revalidatePath('/admin/operations');
+  revalidatePath('/admin/email');
   return { ok: true };
 }

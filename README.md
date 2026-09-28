@@ -115,6 +115,77 @@ four to six in a row. A reader in Egypt now pays one hop to Mumbai instead, and
 the queries behind it cost a millisecond each. If the database ever moves
 region, move this with it.
 
+## Background work
+
+There is no queue service and no worker process. Background work is two
+things: `after()` callbacks that run once a response has gone, and Vercel Cron
+calling routes under `/api/cron/`. Everything durable about it lives in
+Postgres.
+
+**What stays synchronous, and why.** Every user-facing write — applying,
+posting, moderating — commits before the response, because the person is
+waiting on that answer. The email it causes is sent in an `after()` on the same
+request: it is claimed in `email_log` first, so if the send fails or the
+function is frozen mid-send the row is still there for the sweeper. New rows
+are not eligible for a retry for five minutes, which protects one that is
+mid-send. The job-view counter is also an `after()`, through the service role,
+because cookies are gone by then.
+
+**Scheduled jobs.** Each route except `lifecycle` goes through `runScheduledJob`
+(`src/lib/jobs/run.ts`): bearer-secret check, a per-job lease, a time budget of
+`maxDuration` minus ten seconds, and a row in `job_runs` with start, finish,
+duration, counts and a sanitised error.
+
+| Job | Schedule (UTC) | What it does |
+|---|---|---|
+| `email-retry` | every 10 min | Dead-letters outbox rows past their window, prunes `job_runs` older than 90 days, then leases due outbox rows and retries them in place |
+| `lifecycle` | 02:23 daily, and hourly in pg_cron | Expiry, retention and storage cleanup — see `docs/data-lifecycle.md`; it keeps its own run log, `maintenance_runs` |
+| `expire-jobs` | 01:00 daily | Expires listings; sends "expiring in 3 days" and "has expired (last 7 days)" notices |
+| `daily-digest` | 06:00 daily | Applicant digests (window starts at each employer's last digest, capped at 7 days) and reminders |
+| `job-alerts` | 06:00–11:00 Mondays, hourly | Saved-search alerts, oldest-checked first, resuming where the last run stopped |
+
+The notice windows are state-based rather than "the last 24 hours", and every
+message has a dedupe key, so a missed or late run catches up on the next one
+without sending anything twice.
+
+**Retries and backoff.** A failed email is retried on the *same* `email_log`
+row, at most 5 attempts, with exponential backoff and jitter — roughly 10 min,
+40 min, 2 h 40 m, 10 h 40 m — inside a 3-day window. A permanent provider error
+(a 4xx other than 408, 425 and 429) gives up at once. Transient database errors
+inside a run get a short in-process retry (`withRetry` in
+`src/lib/jobs/policy.ts`); anything else fails the run and is recorded.
+
+**Dead letters.** A row that ran out of attempts, hit a permanent error, aged
+past the window, or crashed its worker eight times gets `gave_up_at` and stays
+`failed`. They are listed at **Admin → Background work**
+(`/admin/operations`), with the error. **Retry** there calls `requeue_email`:
+one more attempt and a fresh window, picked up by the next sweep — nothing is
+sent from the click. A row with nothing left to send by retry time (recipient
+opted out, listing gone, superseded) becomes `cancelled`, which is not a
+failure.
+
+**Concurrency.** Two runs of the same job cannot overlap: `begin_job_run`
+inserts a `running` row under a unique partial index, and a second caller
+records `skipped` and exits. A crashed run's lease lapses (`maxDuration` + 30 s)
+and the next run closes it as failed. The sweeper leases rows with
+`FOR UPDATE SKIP LOCKED` and a lock token, so concurrent sweeps never take the
+same row, and every write back is checked against the token.
+
+**Watching it.** `/admin/operations` shows each job's last run, last success,
+failures in 7 days and a job that has never run; the outbox's due, in-flight,
+waiting and dead counts; and the last 50 runs. `/api/health` adds
+`jobs: { "email-retry": true, … }` — fresh means a success within 30 min
+(email-retry), 26 h (expire-jobs, daily-digest) or 8 days
+(job-alerts) — and reports `degraded` if any is stale. Logs carry job names,
+ids and counts only, never addresses or content.
+
+**Tests.** The SQL is exercised by `pnpm test:db` against the real migrations
+in PGlite (`pnpm test:email` runs the outbox suite on its own). The policy,
+runner and sweeper modules in `src/lib/jobs/` take their dependencies as
+arguments and have no runtime imports, so their tests run under plain
+`node --experimental-strip-types` with no database. `pnpm typecheck`,
+`pnpm test:messages` and `pnpm test:reads` cover the admin page and its copy.
+
 ## Commands
 
 | Command | What it does |

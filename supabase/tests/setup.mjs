@@ -143,25 +143,47 @@ select set_config('demo.users', '${JSON.stringify(
 )}', false);
 `;
 
-export async function createTestDb({ seed = true } = {}) {
-  const db = new PGlite({ extensions: { pgcrypto, unaccent, pg_trgm } });
-  await db.exec(PRELUDE);
+/**
+ * The scripts that build a test database, in the order they must run: the
+ * Supabase stand-ins, every migration, the seed and the demo accounts, then
+ * the API grants.
+ *
+ * Exported as data, not only as createTestDb(), because the concurrency tests
+ * need the same schema on a real Postgres server — PGlite is one connection,
+ * and a race needs at least two. One list means the two harnesses cannot drift
+ * into testing different databases.
+ *
+ * Each migration stays its own script, and so its own transaction, for the
+ * reason migration 323 exists: Postgres will not let a transaction use an enum
+ * value it has just added.
+ */
+export function testDbScripts({ seed = true } = {}) {
+  const scripts = [{ name: 'prelude', sql: PRELUDE }];
 
   const migrations = join(SUPABASE_DIR, 'migrations');
   for (const file of readdirSync(migrations).sort()) {
     if (!file.endsWith('.sql')) continue;
-    await db.exec(readFileSync(join(migrations, file), 'utf8'));
+    scripts.push({ name: file, sql: readFileSync(join(migrations, file), 'utf8') });
   }
 
   if (seed) {
-    await db.exec(readFileSync(join(SUPABASE_DIR, 'seed.sql'), 'utf8'));
+    scripts.push({ name: 'seed.sql', sql: readFileSync(join(SUPABASE_DIR, 'seed.sql'), 'utf8') });
     // The real auth users come from the Auth admin API in production; here the
     // stubbed schema lets them be inserted directly.
-    await db.exec(DEMO_USERS);
-    await db.exec(readFileSync(join(SUPABASE_DIR, 'seed-demo.sql'), 'utf8'));
+    scripts.push({ name: 'demo users', sql: DEMO_USERS });
+    scripts.push({ name: 'seed-demo.sql', sql: readFileSync(join(SUPABASE_DIR, 'seed-demo.sql'), 'utf8') });
   }
-  await db.exec(GRANTS);
+  scripts.push({ name: 'grants', sql: GRANTS });
 
+  return scripts;
+}
+
+export async function createTestDb({ seed = true } = {}) {
+  // pg_trgm: the console's search indexes (migration 317) need it.
+  const db = new PGlite({ extensions: { pgcrypto, unaccent, pg_trgm } });
+  for (const script of testDbScripts({ seed })) {
+    await db.exec(script.sql);
+  }
   return db;
 }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  Activity,
   Bell,
   Bookmark,
   BookUser,
@@ -63,6 +64,8 @@ const ICONS = {
   security: ShieldAlert,
   users: UserCog,
   email: Mail,
+  // The scheduled jobs and the outbox: a pulse, not a letter.
+  operations: Activity,
   // The console's investigation pages: applications as an inbox of cases,
   // the directory as contact cards, the audit log as a scroll nobody edits.
   inbox: Inbox,

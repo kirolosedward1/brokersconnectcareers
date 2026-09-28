@@ -82,6 +82,11 @@ export async function GET(request: Request) {
     endpoint answers it. Names only — never a value, not even a masked one:
     this route is public.
   */
+  /*
+    Keyed by variable name, plus `scheduler` for the freshness check below —
+    which can only ever be 'unverified', since a stale job is reported under
+    `jobs`, not here.
+  */
   const attention: Record<string, 'absent' | 'placeholder' | 'rejected' | 'unverified'> = {};
   for (const name of [
     'NEXT_PUBLIC_SUPABASE_URL',
@@ -117,6 +122,46 @@ export async function GET(request: Request) {
   } catch {
     database = false;
   }
+
+  /*
+    Is the scheduler actually running?
+
+    Every background job — expiry, the outbox sweep, digests, alerts — runs
+    only when Vercel Cron calls it, and a cron that has stopped (secret
+    rotated, route renamed, plan limit hit) looks exactly like a quiet day.
+    Each run records itself in job_runs; this asks when each job last
+    finished successfully and compares that with how often it is meant to.
+
+    The allowance is the schedule plus slack for one late or failed run:
+    email-retry fires every ten minutes, the two nightly
+    jobs daily, job-alerts on Monday mornings.
+
+    Booleans only, same rule as the rest of this endpoint: no timestamps, no
+    error text. And the same 2.5s bound as the key check, because this is
+    the same kind of call through the same client. A timeout or a refusal is
+    "could not check", reported as such and never as stale or fresh.
+  */
+  const FRESH_WITHIN_MS: Record<string, number> = {
+    'expire-jobs': 26 * 60 * 60 * 1000,
+    'email-retry': 30 * 60 * 1000,
+    'daily-digest': 26 * 60 * 60 * 1000,
+    'job-alerts': 8 * 24 * 60 * 60 * 1000,
+  };
+
+  /*
+    Started here and awaited further down, so it runs alongside the key check
+    rather than after it: two bounded calls in a row would let this endpoint
+    take five seconds on its worst day instead of two and a half.
+  */
+  const freshnessCheck = configured.serviceRole
+    ? Promise.race([
+        Promise.resolve()
+          .then(() => createAdminClient().rpc('job_freshness'))
+          .then(({ data, error }) => (error ? null : (data ?? [])))
+          .catch(() => null),
+        new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 2500)),
+      ])
+    : null;
 
   /*
     Does the service-role key actually work, or is it merely present?
@@ -159,6 +204,33 @@ export async function GET(request: Request) {
     }
   }
 
+  let jobs: Record<string, boolean> | null = null;
+  if (freshnessCheck) {
+    const freshness = await freshnessCheck;
+
+    if (freshness === null || freshness === 'timeout') {
+      attention.scheduler = 'unverified';
+    } else {
+      const lastSuccess = new Map(freshness.map((row) => [row.job, row.last_success_at]));
+      const now = Date.now();
+      jobs = Object.fromEntries(
+        Object.entries(FRESH_WITHIN_MS).map(([job, allowance]) => {
+          const at = lastSuccess.get(job);
+          return [job, Boolean(at) && now - new Date(at as string).getTime() <= allowance];
+        }),
+      );
+    }
+  } else {
+    // Without a working service role there is no way to ask; say so rather
+    // than let the absence of `jobs` read as "nothing to report".
+    attention.scheduler = 'unverified';
+  }
+
+  // A stale job degrades the status; an unanswered question does not, for the
+  // same reason a timed-out key check leaves serviceRole alone — "could not
+  // check" is not a finding, and `attention.scheduler` already names it.
+  const scheduled = jobs === null || Object.values(jobs).every(Boolean);
+
   // The site is servable without a mailer; it is not servable without a
   // database, and an unconfigured Supabase is the same outage by another name.
   const healthy = database && configured.supabase;
@@ -174,7 +246,8 @@ export async function GET(request: Request) {
     and hear back about mail; "degraded" with a 200 when it merely cannot,
     because the pages still serve and a 503 would be a lie of the other kind.
   */
-  const whole = healthy && configured.serviceRole && configured.email && configured.emailWebhook;
+  const whole =
+    healthy && configured.serviceRole && configured.email && configured.emailWebhook && scheduled;
 
   if (!operator) {
     return NextResponse.json(
@@ -188,6 +261,9 @@ export async function GET(request: Request) {
       status: whole ? 'ok' : 'degraded',
       database,
       configured,
+      // Omitted when the scheduler could not be asked; `attention.scheduler`
+      // says so instead.
+      ...(jobs ? { jobs } : {}),
       // Omitted entirely when everything is in place, so a healthy response
       // stays as short as it was.
       ...(Object.keys(attention).length ? { attention } : {}),
