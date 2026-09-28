@@ -30,6 +30,7 @@ import { useBrowseCounts } from '~/features/browse/queries';
 import { boardQuery, filtersToParams, sheetFilterCount, useFilterLabel } from '~/features/jobs/filters';
 import { useAppliedJobIds } from '~/features/jobs/marks';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
+import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
@@ -58,7 +59,8 @@ export default function BoardScreen() {
   const query = boardQuery(filters);
 
   const board = useJobBoard(query);
-  const jobs = useMemo(() => flattenBoard(board.data?.pages), [board.data]);
+  const hidden = useHiddenCompanies();
+  const jobs = useMemo(() => withoutHidden(flattenBoard(board.data?.pages), hidden), [board.data, hidden]);
   const first = board.data?.pages[0];
   const applied = useAppliedJobIds(useMemo(() => jobs.map((job) => job.id), [jobs]));
 

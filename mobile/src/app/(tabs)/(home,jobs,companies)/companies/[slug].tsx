@@ -6,6 +6,8 @@ import { localized } from '@/lib/locale';
 import { safeHttpUrl } from '@/lib/security/sanitize';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { JobCard } from '~/components/jobs/job-card';
+import { HiddenNotice, HideCompany } from '~/components/moderation/hide-company';
+import { ReportButton } from '~/components/moderation/report';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
@@ -67,6 +69,8 @@ export default function CompanyScreen() {
         refreshControl={<RefreshControl refreshing={page.isRefetching} onRefresh={() => page.refetch()} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
       >
+        <HiddenNotice companyId={company.id} />
+
         <View style={{ flexDirection: 'row', gap: space[4] }}>
           <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} size="lg" />
           <View style={{ flex: 1, gap: space[2] }}>
@@ -141,6 +145,11 @@ export default function CompanyScreen() {
               onPress={() => router.navigate({ pathname: '/jobs', params: { company: company.slug } })}
             />
           ) : null}
+        </View>
+
+        <View style={{ alignItems: 'flex-start', gap: space[1], paddingTop: space[4], borderTopWidth: 1, borderTopColor: colors.border }}>
+          <ReportButton target="company" targetId={company.id} returnPath={`/companies/${company.slug}`} label={t('report')} />
+          <HideCompany companyId={company.id} companyName={name} />
         </View>
       </ScrollView>
     </>

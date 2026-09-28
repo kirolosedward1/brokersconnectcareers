@@ -136,6 +136,23 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   asking Apple for a fresh authorization code, so the website can revoke the
   grant. An account that owns a company is pointed to the team, as on the web.
 
+## Reporting and hiding
+
+The App Store asks an app where people publish to one another to let readers
+report what is objectionable and block whoever is behind it, and to answer
+reports promptly.
+
+- **Report** a listing or a company (and, in the employer's directory, a
+  consultant's profile) through the website's `reportTarget`: an account is
+  required (a signed-out reader is sent to sign in and brought back), each
+  target has its own reasons, one report per person per target, ten a day.
+  Reports land in the admin console's queue on the website.
+- **Hide a company** keeps it out of the board, the home screen, "roles like
+  this" and the directory on that phone
+  (`mobile/src/features/moderation/hidden-companies.ts`), signed in or not;
+  its page says it is hidden and takes it back. Kept on the device — a list of
+  company ids the server has no need of.
+
 ## Links, email and the captcha
 
 - **Universal links.** `/.well-known/apple-app-site-association`

@@ -15,6 +15,7 @@ import { Chip } from '~/components/ui/chip';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { flattenCompanies, useCompanyDirectory, type CompanyQuery } from '~/features/companies/queries';
+import { useHiddenCompanies } from '~/features/moderation/hidden-companies';
 import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
@@ -40,7 +41,11 @@ export default function CompaniesScreen() {
   );
 
   const directory = useCompanyDirectory(query);
-  const companies = useMemo(() => flattenCompanies(directory.data?.pages), [directory.data]);
+  const hidden = useHiddenCompanies();
+  const companies = useMemo(
+    () => flattenCompanies(directory.data?.pages).filter((company) => !hidden.has(company.id)),
+    [directory.data, hidden],
+  );
   const total = directory.data?.pages[0]?.total ?? 0;
   const { data: districts } = useDistricts();
   const district = districts?.find((item) => item.slug === query.district);

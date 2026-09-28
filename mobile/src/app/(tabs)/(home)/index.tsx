@@ -12,6 +12,7 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useBrowseCounts } from '~/features/browse/queries';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
+import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { useDistricts } from '~/features/taxonomy';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
@@ -40,7 +41,7 @@ export default function HomeScreen() {
   const counts = useBrowseCounts();
   const districts = useDistricts();
 
-  const jobs = flattenBoard(board.data?.pages).slice(0, 20);
+  const jobs = withoutHidden(flattenBoard(board.data?.pages), useHiddenCompanies()).slice(0, 20);
   const total = board.data?.pages[0]?.total ?? 0;
   const name = viewer?.profile?.full_name;
 

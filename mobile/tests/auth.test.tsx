@@ -17,6 +17,7 @@ import * as ForgotScreen from '../src/app/(auth)/sign-in/forgot';
 import * as NewPasswordScreen from '../src/app/(auth)/sign-in/new-password';
 import * as SignUpScreen from '../src/app/(auth)/sign-up';
 import * as AccountLayout from '../src/app/(tabs)/(account)/_layout';
+import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies)/companies/[slug]';
 import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import * as DeleteAccountScreen from '../src/app/(tabs)/(account)/account/delete';
 import * as ConfirmScreen from '../src/app/auth/confirm';
@@ -34,7 +35,7 @@ import {
   USER_ID,
   type AuthUser,
 } from './auth-fixtures';
-import { cairo, newCairo } from './fixtures';
+import { cairo, company, companyPage, newCairo } from './fixtures';
 import { fakeServer } from './server';
 
 /*
@@ -181,6 +182,7 @@ const app = {
     </Tabs>
   ),
   '(tabs)/(home)/index': () => <Text>home screen</Text>,
+  '(tabs)/(home)/companies/[slug]': CompanyScreen,
   '(tabs)/(account)/_layout': AccountLayout,
   '(tabs)/(account)/account/index': AccountScreen,
   '(tabs)/(account)/account/delete': DeleteAccountScreen,
@@ -669,6 +671,38 @@ describe('deleting the account', () => {
     expect(await screen.findByText(ar.account.deleteBlockedCompany)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.account.deleteCta })).toBeNull();
     expect(screen.getByRole('button', { name: ar.app.account.contact })).toBeTruthy();
+  });
+});
+
+describe('reporting', () => {
+  beforeEach(() => {
+    server.on('/api/mobile/v1/companies/nile-brokers', companyPage);
+  });
+
+  it('sends the reason chosen and the words added, for the team to read', async () => {
+    server.on('POST /api/mobile/v1/actions/reportTarget', { ok: true });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/companies/nile-brokers' });
+    await press(ar.companies.report);
+    fireEvent.press(await screen.findByRole('radio', { name: ar.reportReason.scam }));
+    fireEvent.changeText(screen.getByLabelText(ar.app.moderation.reportDetail), ' طلبوا فلوس قبل المقابلة ');
+    await press(ar.common.submit);
+
+    expect(await screen.findByText(ar.app.moderation.reportSent)).toBeTruthy();
+    expect(bodyOf('/api/mobile/v1/actions/reportTarget')).toEqual({
+      input: { target: 'company', targetId: company.id, reason: 'scam', detail: 'طلبوا فلوس قبل المقابلة' },
+    });
+  });
+
+  it('says so when this person has reported it already', async () => {
+    server.on('POST /api/mobile/v1/actions/reportTarget', { ok: false, error: 'already_reported' });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/companies/nile-brokers' });
+    await press(ar.companies.report);
+    await press(ar.common.submit);
+    expect(await screen.findByText(ar.jobs.alreadyReported)).toBeTruthy();
+    // The first of the company's own reasons, as on the website.
+    expect(bodyOf('/api/mobile/v1/actions/reportTarget')).toMatchObject({ input: { reason: 'suspicious_company' } });
   });
 });
 

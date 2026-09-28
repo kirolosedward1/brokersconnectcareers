@@ -1,7 +1,8 @@
 import { Stack, Tabs } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Modal } from 'react-native';
+import { Alert, Modal, type AlertButton } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { unhideCompany } from '~/features/moderation/hidden-companies';
 import { I18nProvider } from '~/i18n/provider';
 import { SessionProvider } from '~/lib/session';
 import { ThemeProvider } from '~/theme/provider';
@@ -12,7 +13,7 @@ import * as HomeScreen from '../src/app/(tabs)/(home)/index';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
 import * as CompaniesScreen from '../src/app/(tabs)/(companies)/companies/index';
 import * as NotFoundScreen from '../src/app/+not-found';
-import { board, browse, cairo, companyPage, directory, jobPage, listing, newCairo } from './fixtures';
+import { board, browse, cairo, company, companyPage, directory, jobPage, listing, newCairo } from './fixtures';
 import { fakeServer } from './server';
 
 /*
@@ -222,6 +223,44 @@ describe('companies', () => {
     expect(await screen.findByRole('header', { name: 'نايل بروكرز' })).toBeTruthy();
     expect(screen.getByText('وساطة عقارية في شرق القاهرة.')).toBeTruthy();
     expect(screen.getByText(listing.title_ar)).toBeTruthy();
+  });
+});
+
+describe('reporting and hiding', () => {
+  afterEach(() => {
+    act(() => unhideCompany(company.id));
+  });
+
+  it('asks a signed-out reader to sign in first, and to come back to the listing', async () => {
+    const result = renderRouter(app, { initialUrl: `/(jobs)/jobs/${listing.slug}` });
+    fireEvent.press(await screen.findByRole('button', { name: 'بلّغ عن الإعلان' }));
+    await waitFor(() => expect(result.getPathname()).toBe('/sign-in'));
+    expect(result.getSearchParams().next).toBe(`/jobs/${listing.slug}`);
+  });
+
+  it("takes a hidden company's listings off the board, and brings them back from its page", async () => {
+    // The confirmation's destructive choice, as a tap on it.
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons?: AlertButton[]) => {
+      buttons?.find((button) => button.style === 'destructive')?.onPress?.();
+    });
+    renderRouter(app, { initialUrl: '/(companies)/companies/nile-brokers' });
+    fireEvent.press(await screen.findByRole('button', { name: 'اخفي الشركة دي' }));
+    expect(await screen.findByText('انت مخبّي الشركة دي، فإعلاناتها مش بتظهرلك في التطبيق.')).toBeTruthy();
+    screen.unmount();
+
+    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    expect(await screen.findByText('مفيش وظائف مطابقة لبحثك.')).toBeTruthy();
+    expect(screen.queryByText(listing.title_ar)).toBeNull();
+    screen.unmount();
+
+    renderRouter(app, { initialUrl: '/(companies)/companies' });
+    await screen.findByText(/شركات العقارات|الشركات/);
+    await waitFor(() => expect(screen.queryByText('نايل بروكرز')).toBeNull());
+    screen.unmount();
+
+    renderRouter(app, { initialUrl: '/(companies)/companies/nile-brokers' });
+    fireEvent.press(await screen.findByRole('button', { name: 'رجّع الشركة' }));
+    expect(await screen.findByRole('button', { name: 'اخفي الشركة دي' })).toBeTruthy();
   });
 });
 

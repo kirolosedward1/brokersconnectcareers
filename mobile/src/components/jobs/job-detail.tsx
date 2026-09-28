@@ -10,6 +10,8 @@ import { localized } from '@/lib/locale';
 import { withShareSource } from '@/lib/share-source';
 import { buildLandingSlug } from '@/lib/taxonomy';
 import { CompanyLogo } from '~/components/companies/company-logo';
+import { HiddenNotice } from '~/components/moderation/hide-company';
+import { ReportButton } from '~/components/moderation/report';
 import { CompensationCard } from '~/components/jobs/compensation-card';
 import { JobCard } from '~/components/jobs/job-card';
 import { Badge } from '~/components/ui/badge';
@@ -17,6 +19,7 @@ import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Text } from '~/components/ui/text';
 import { useAppliedJobIds } from '~/features/jobs/marks';
+import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { callAction } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
@@ -61,6 +64,7 @@ export function JobDetail({
   const role = viewer?.profile?.role;
   const canApply = !role || role === 'candidate';
   const applied = useAppliedJobIds([job.id]).has(job.id);
+  const similarShown = withoutHidden(similar, useHiddenCompanies());
 
   // A view is a reader opening an open listing, once per visit — the website
   // counts the page render the same way (recordJobView, after the response).
@@ -95,6 +99,8 @@ export function JobDetail({
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[5] }}
       >
+        <HiddenNotice companyId={job.company.id} />
+
         {open ? null : (
           <View style={{ padding: space[3], borderRadius: radius.xl, backgroundColor: colors.warningMuted }}>
             <Text weight="medium">{t('expired')}</Text>
@@ -266,15 +272,19 @@ export function JobDetail({
           />
         </Card>
 
-        {similar.length ? (
+        {similarShown.length ? (
           <Section title={t('similarJobs')}>
             <View style={{ gap: space[2] }}>
-              {similar.map((item) => (
+              {similarShown.map((item) => (
                 <JobCard key={item.id} job={item} />
               ))}
             </View>
           </Section>
         ) : null}
+
+        <View style={{ alignItems: 'flex-start' }}>
+          <ReportButton target="job" targetId={job.id} returnPath={`/jobs/${job.slug}`} label={t('report')} />
+        </View>
       </ScrollView>
     </>
   );

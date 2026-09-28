@@ -51,5 +51,15 @@
     "terms": "I agree to the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>.",
     "termsRequired": "Agree to the Terms of use to continue.",
     "choose": "Choose"
+  },
+  "moderation": {
+    "hide": "Hide this company",
+    "hideTitle": "Hide {company}?",
+    "hideBody": "You will not see its listings in the app on this phone again. You can bring it back from the company's page at any time.",
+    "hideConfirm": "Hide it",
+    "hidden": "You have hidden this company, so its listings do not appear for you in the app.",
+    "unhide": "Show this company again",
+    "reportSent": "We have your report, and a person on our team will review it.",
+    "reportDetail": "Anything that helps us understand (optional)"
   }
 }
