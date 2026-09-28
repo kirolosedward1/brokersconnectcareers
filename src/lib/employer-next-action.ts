@@ -1,5 +1,5 @@
 import type { EmployerSummary } from '@/lib/supabase/database.types';
-import type { NextActionKind } from '@/components/dashboard/next-action';
+import type { NextActionKind } from '@/lib/next-action';
 
 /**
  * Which one thing the employer console puts above everything else.

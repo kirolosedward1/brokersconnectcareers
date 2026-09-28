@@ -1,6 +1,7 @@
 import { getRequestConfig } from 'next-intl/server';
 import { hasLocale } from 'next-intl';
 import { routing } from './routing';
+import { intlFormats } from '@/lib/format';
 
 export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale;
@@ -9,15 +10,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   return {
     locale,
     messages: (await import(`../../messages/${locale}.json`)).default,
-    formats: {
-      // Western numerals in both locales — 1234, not ١٢٣٤. This is the web
-      // convention in Egypt for prices, dates and counts.
-      number: {
-        egp: { style: 'currency', currency: 'EGP', maximumFractionDigits: 0 },
-      },
-      dateTime: {
-        short: { day: 'numeric', month: 'short', year: 'numeric' },
-      },
-    },
+    // Shared with the mobile app, so both format EGP and dates alike.
+    formats: intlFormats,
   };
 });

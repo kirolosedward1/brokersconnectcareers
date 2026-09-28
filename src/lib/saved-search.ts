@@ -1,4 +1,4 @@
-import type { JobFilters } from '@/lib/queries/jobs';
+import type { JobFilters } from '@/lib/job-filters';
 
 /**
  * The canonical form of a set of filters.

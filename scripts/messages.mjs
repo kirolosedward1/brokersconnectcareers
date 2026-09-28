@@ -23,7 +23,7 @@
  * nobody built — which is how this codebase carried the words for a password
  * reset for months without carrying the reset.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -382,6 +382,20 @@ console.log('\n— every key in the catalogue is asked for');
     }
   })(join(ROOT, 'src'));
 
+  // The mobile app reads this same catalogue. A key only the app asks for is
+  // asked for, and deleting it would break the app, not tidy the website.
+  for (const dir of ['app', 'src'].map((part) => join(ROOT, 'mobile', part))) {
+    if (!existsSync(dir)) continue;
+    (function walk(current) {
+      for (const entry of readdirSync(current)) {
+        if (entry === 'node_modules') continue;
+        const full = join(current, entry);
+        if (statSync(full).isDirectory()) walk(full);
+        else if (/\.tsx?$/.test(entry)) sources.push(full);
+      }
+    })(dir);
+  }
+
   const used = new Set();
   /**
    * Namespaces and prefixes reached by a key built at runtime, which no grep
@@ -402,24 +416,47 @@ console.log('\n— every key in the catalogue is asked for');
       list.push(match[2]);
       namespaces.set(match[1], list);
     }
+    /*
+      Translators over the whole catalogue, whose keys carry their own
+      namespace: one made with no namespace at all, and one handed in as a
+      parameter typed `Translate` — the shape shared code like
+      notifications/title.ts takes, because the web and the app each bring
+      their own. The empty string stands for "no namespace".
+    */
+    const rootBindings = [
+      /(?:const|let)\s+(\w+)\s*=\s*(?:await\s+)?(?:useTranslations|getTranslations)\s*\(\s*\)/g,
+      /\b(\w+)\s*:\s*Translate\b/g,
+    ];
+    for (const pattern of rootBindings) {
+      for (const match of text.matchAll(pattern)) {
+        const list = namespaces.get(match[1]) ?? [];
+        if (!list.includes('')) list.push('');
+        namespaces.set(match[1], list);
+      }
+    }
+    const qualify = (namespace, key) => (namespace ? `${namespace}.${key}` : key);
 
     for (const [variable, list] of namespaces) {
       for (const match of text.matchAll(
         new RegExp(`\\b${variable}(?:\\.rich)?\\((['"])([\\w.]+)\\1`, 'g'),
       )) {
-        for (const namespace of list) used.add(`${namespace}.${match[2]}`);
+        for (const namespace of list) used.add(qualify(namespace, match[2]));
       }
 
       // t(`stem.${…}`) — everything under the static stem is reachable.
       for (const match of text.matchAll(
         new RegExp('\\b' + variable + '(?:\\.rich)?\\(\\s*`([\\w.]*)\\$\\{', 'g'),
       )) {
-        for (const namespace of list) dynamic.add(`${namespace}.${match[1]}`);
+        // A root translator's stem is a namespace of its own; an empty stem
+        // under the root would claim the whole catalogue, so it claims nothing.
+        for (const namespace of list) {
+          if (namespace || match[1]) dynamic.add(namespace ? `${namespace}.${match[1]}` : match[1]);
+        }
       }
 
       // t(value) — an identifier, not a string. The whole namespace is in play.
       if (new RegExp('\\b' + variable + '(?:\\.rich)?\\(\\s*[A-Za-z_$]').test(text)) {
-        for (const namespace of list) dynamic.add(`${namespace}.`);
+        for (const namespace of list) if (namespace) dynamic.add(`${namespace}.`);
       }
     }
   }
