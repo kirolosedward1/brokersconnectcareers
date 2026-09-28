@@ -454,7 +454,7 @@ report.section('retention: read history older than 180 days is pruned');
 
 report.section('a retried email knows who it was for');
 {
-  // Due now: since migration 315 a row is due by next_attempt_at, which a
+  // Due now: since migration 316 a row is due by next_attempt_at, which a
   // claim sets five minutes out and a failed attempt moves on by backoff.
   await db.exec(`insert into email_log (template, recipient, user_id, entity_type, entity_id, status, created_at, next_attempt_at)
                  values ('job_submitted', 'mate2@demo.test', '${MATE}', 'job', '${job.id}', 'failed', now() - interval '10 minutes', now() - interval '5 minutes')`);

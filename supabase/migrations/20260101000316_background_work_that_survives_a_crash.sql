@@ -1,11 +1,11 @@
 -- =============================================================================
--- 315 — Background work that survives a crash
+-- 316 — Background work that survives a crash
 --
 -- rollback: the outbox — drop function public.lease_due_emails, settle_leased_email, reap_email_outbox, requeue_email, email_dead_letters, outbox_overview, email_retry_delay; restate claim_email (migration 68's seven-argument body, after dropping the eight-argument one), record_email_attempt, pending_emails and release_email_claim (migrations 27 and 302), record_email_event and email_status_rank (migration 68); alter table email_log drop column next_attempt_at, locked_until, lock_token, last_attempt_at, gave_up_at, leases, requeued_at. The runs — drop function public.begin_job_run, finish_job_run, prune_job_runs, scheduled_job_overview, recent_job_runs, job_freshness; drop table job_runs. The rest — restate pending_applicant_digests (51), guard_saved_search_update (09/38) and bump_version (50); alter table saved_searches drop column last_checked_at. The backfill below is not reversed: it only labels rows the old sweeper had already abandoned.
 -- safety: rewrite — the backfill updates email_log rows by status with explicit where clauses; next_attempt_at is added without a default and given one afterwards, so no existing row is rewritten by the default
 -- safety: ships-with-code — every changed function keeps its callers working: claim_email gains a trailing optional p_lock_token, record_email_attempt a trailing optional p_expected_attempts, pending_emails keeps its shape, and release_email_claim becomes a no-op so the sweeper still deployed on main, if this migration lands first, rebuilds into keys that are still held and sends nothing twice. The new cron code needs this migration first; deploy it before merging.
 --
--- Renumbered from 69 when main moved to 313; rebuilt on main's own versions
+-- Renumbered from 69, then 315, as main moved to 313 and 314; rebuilt on main's own versions
 -- of claim_email (p_essential and the hourly ceiling, migration 68),
 -- record_email_event (the webhook ledger, migration 68) and pending_emails
 -- (migration 302). What main already does is not repeated here: the webhook's

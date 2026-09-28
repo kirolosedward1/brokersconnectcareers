@@ -153,7 +153,7 @@ select set_config('demo.users', '${JSON.stringify(
  * into testing different databases.
  *
  * Each migration stays its own script, and so its own transaction, for the
- * reason migration 314 exists: Postgres will not let a transaction use an enum
+ * reason migration 315 exists: Postgres will not let a transaction use an enum
  * value it has just added.
  */
 export function testDbScripts({ seed = true } = {}) {

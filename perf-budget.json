@@ -1,0 +1,70 @@
+{
+  "$comment": "Regression targets, checked by `pnpm perf:budget` after `pnpm build`. Each limit sits a little above what the site measured when it was set (2026-09-27, measured values in `measured`). Raising one is allowed; doing it silently is what this file exists to prevent. Time-based and data-dependent budgets (Core Web Vitals, database, images) are listed under `manual` and are checked against Lighthouse and the staging load test, not by the script.",
+  "javascript": {
+    "sharedKb": 110,
+    "firstLoad": {
+      "public pages": {
+        "kb": 160,
+        "measured": "133-144 KB",
+        "routes": [
+          "/[locale]/(site)/page",
+          "/[locale]/(site)/jobs/(list)/page",
+          "/[locale]/(site)/jobs/[slug]/page",
+          "/[locale]/(site)/agents/(list)/page",
+          "/[locale]/(site)/agents/[slug]/page",
+          "/[locale]/(site)/companies/(list)/page",
+          "/[locale]/(site)/companies/[slug]/page"
+        ]
+      },
+      "forms that load the Supabase browser client": {
+        "kb": 230,
+        "measured": "205-214 KB",
+        "routes": [
+          "/[locale]/sign-in/page",
+          "/[locale]/(site)/jobs/[slug]/apply/page",
+          "/[locale]/(app)/dashboard/profile/page",
+          "/[locale]/(app)/employer/company/page"
+        ]
+      },
+      "signed-in consoles": {
+        "kb": 160,
+        "measured": "137-141 KB",
+        "routes": [
+          "/[locale]/(app)/dashboard/page",
+          "/[locale]/(app)/employer/jobs/page",
+          "/[locale]/(app)/employer/applicants/page"
+        ]
+      }
+    }
+  },
+  "css": { "totalKb": 20, "measured": "15 KB" },
+  "fonts": {
+    "preloadedKb": 200,
+    "measured": "194 KB: IBM Plex Sans Arabic, 4 weights x (arabic, latin). Every weight is used (font-medium 142x, font-semibold 114x, font-bold 72x). Lower this if a weight is ever dropped."
+  },
+  "manual": {
+    "coreWebVitals": {
+      "lcpMobileMs": 2500,
+      "cls": 0.1,
+      "inpMs": 200,
+      "tbtMobileMs": 200,
+      "source": "Lighthouse mobile (simulated slow 4G) on production pages; INP needs field data, TBT is the lab proxy"
+    },
+    "html": { "listPageGzipKb": 60, "detailPageGzipKb": 40 },
+    "images": {
+      "listThumbnailKb": 50,
+      "rule": "No image in a list is served at more than twice its drawn size. Avatars are downscaled to 320 px before upload; logos go through next/image."
+    },
+    "database": {
+      "perPageViewRoundTripsOnCriticalPath": { "anonymous": 2, "signedIn": 4 },
+      "perPageViewDbCpuMs": 50,
+      "perPageViewRestPayloadKb": 60,
+      "rule": "Every query that returns user-scoped rows filters on the owner explicitly; row-level security decides what may be seen, the filter decides what to look at. No page reads an unbounded list.",
+      "source": "staging load-test dataset: 10k agents, 12k jobs (3k live), 143k applications, 459k notifications"
+    },
+    "serverLatency": {
+      "p95PageMs": 800,
+      "note": "server-side render, function co-located with the database (bom1 <-> ap-south-1)"
+    }
+  }
+}

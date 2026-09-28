@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/field';
 import { actOnReportedJob } from '@/lib/actions/admin';
+import { reach } from '@/lib/reach';
 
 /**
  * The two things a reviewer can decide about a reported listing.
@@ -33,7 +34,7 @@ export function ReportActions({ jobId, jobIsLive }: { jobId: string; jobIsLive: 
   function run(takeDown: boolean) {
     startTransition(async () => {
       setFailed(false);
-      const result = await actOnReportedJob({ jobId, takeDown, note: note || undefined });
+      const result = await reach(actOnReportedJob({ jobId, takeDown, note: note || undefined }));
       if (!result.ok) {
         setFailed(true);
         return;

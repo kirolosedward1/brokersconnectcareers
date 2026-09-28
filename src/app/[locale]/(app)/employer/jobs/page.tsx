@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/pagination';
 import { JobStatusActions } from '@/components/employer/job-status-actions';
 import { requireEmployer } from '@/lib/auth';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
@@ -33,12 +34,18 @@ export async function generateMetadata({
   return { title: t('jobs'), robots: { index: false, follow: false } };
 }
 
+/** Listings per console page. */
+const PAGE_SIZE = 25;
+
 export default async function EmployerJobsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
   const { locale: rawLocale } = await params;
+  const requested = Number.parseInt((await searchParams).page ?? '1', 10);
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
@@ -68,21 +75,50 @@ export default async function EmployerJobsPage({
     tiles, which come from a different call, would be counting them at the same
     time.
   */
-  const { data, error } = await supabase
-    .from('jobs')
-    .select(
-      `
-      *,
-      district:districts (name_ar, name_en),
-      applications (count)
-    `,
-    )
-    .eq('company_id', viewer.company.id)
-    .order('created_at', { ascending: false });
+  /*
+    A page at a time, and only the columns this list draws.
+
+    This read had neither bound. A brokerage a year in — 489 listings, most of
+    them expired, in the load-test dataset — got every one of them, `*` and
+    all, on every visit: 2.4 MB out of the database and a 5.3 MB page, with an
+    applicant count per listing that the policies price per application.
+    Newest first, so page one is what an employer came to look at.
+  */
+  const listings = (page: number) =>
+    supabase
+      .from('jobs')
+      .select(
+        `
+        id, slug, title_ar, title_en, status, seats, view_count,
+        published_at, expires_at, created_at, rejection_note,
+        district:districts (name_ar, name_en),
+        applications (count)
+      `,
+        { count: 'exact' },
+      )
+      .eq('company_id', viewer.company!.id)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+
+  let page = Number.isFinite(requested) && requested > 0 ? Math.min(requested, 1000) : 1;
+  let { data, error, count } = await listings(page);
+  // A page past the end is answered with page one rather than an error:
+  // PostgREST refuses an unsatisfiable range outright (PGRST103).
+  if (error?.code === 'PGRST103' || (!error && page > 1 && !data?.length)) {
+    page = 1;
+    ({ data, error, count } = await listings(page));
+  }
 
   if (error) raise(error, 'loading your listings');
 
-  const jobs = (data ?? []) as unknown as (JobRow & {
+  const total = count ?? data?.length ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const jobs = (data ?? []) as unknown as (Pick<
+    JobRow,
+    | 'id' | 'slug' | 'title_ar' | 'title_en' | 'status' | 'seats' | 'view_count'
+    | 'published_at' | 'expires_at' | 'created_at' | 'rejection_note'
+  > & {
     district: { name_ar: string; name_en: string } | null;
     applications: { count: number }[];
   })[];
@@ -106,7 +142,7 @@ export default async function EmployerJobsPage({
       </header>
 
       <p className="text-sm text-muted-foreground">
-        {tJobs('resultsCount', { count: jobs.length })}
+        {tJobs('resultsCount', { count: total })}
       </p>
 
       {jobs.length === 0 ? (
@@ -237,6 +273,12 @@ export default async function EmployerJobsPage({
           })}
         </ul>
       )}
+
+      <Pagination
+        page={page}
+        pageCount={pageCount}
+        buildHref={(next) => (next > 1 ? `/employer/jobs?page=${next}` : '/employer/jobs')}
+      />
     </div>
   );
 }

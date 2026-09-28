@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/field';
 import { getDocumentUrl, verifyCompany } from '@/lib/actions/admin';
+import { reach } from '@/lib/reach';
 
 export function VerifyCompanyActions({
   companyId,
@@ -28,7 +29,7 @@ export function VerifyCompanyActions({
   function decide(approve: boolean) {
     startTransition(async () => {
       setFailed(false);
-      const result = await verifyCompany({ companyId, approve, note: approve ? undefined : note });
+      const result = await reach(verifyCompany({ companyId, approve, note: approve ? undefined : note }));
       if (!result.ok) {
         setFailed(true);
         return;
@@ -43,7 +44,7 @@ export function VerifyCompanyActions({
    */
   function openDocument(documentId: string) {
     startTransition(async () => {
-      const result = await getDocumentUrl(documentId);
+      const result = await reach(getDocumentUrl(documentId));
       if (result.ok) window.open(result.data!.url, '_blank', 'noopener,noreferrer');
     });
   }

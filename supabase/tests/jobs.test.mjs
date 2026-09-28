@@ -1009,13 +1009,13 @@ report.section('release_email_claim is disarmed for the old sweeper still deploy
     'the row keeps its key and count, so the old rebuild claims nothing and cannot send twice');
 }
 
-report.section('the backfill: rows the old code left, as migration 315 finds them');
+report.section('the backfill: rows the old code left, as migration 316 finds them');
 {
-  // A database as it stood before migration 315, with the rows the old sweeper
+  // A database as it stood before migration 316, with the rows the old sweeper
   // could leave behind, and then the migration run over them.
   const old = new PGlite({ extensions: { pgcrypto, unaccent } });
   const scripts = testDbScripts({ seed: false });
-  const at = scripts.findIndex((sc) => sc.name.startsWith('20260101000315'));
+  const at = scripts.findIndex((sc) => sc.name.startsWith('20260101000316'));
   for (const sc of scripts.slice(0, at)) await old.exec(sc.sql);
   await old.exec(`
     insert into email_log (dedupe_key, template, recipient, status, attempts, error, provider_id, created_at) values

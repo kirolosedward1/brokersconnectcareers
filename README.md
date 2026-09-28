@@ -106,6 +106,15 @@ which needs no application secret; `/api/cron/lifecycle` deletes released files
 through the Storage API. See `docs/data-lifecycle.md`. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically once that
 variable is set; the route returns 401 to anything else.
 
+**Functions run next to the database, not next to the reader.** `vercel.json`
+pins them to `bom1` (Mumbai), the same city as the Supabase project
+(`ap-south-1`). Left to Vercel's default they ran in `iad1` (Washington), and
+every query from a page crossed from the US to India and back — 200–650 ms
+each, measured from production's own `/api/health` — and a signed-in page asks
+four to six in a row. A reader in Egypt now pays one hop to Mumbai instead, and
+the queries behind it cost a millisecond each. If the database ever moves
+region, move this with it.
+
 ## Background work
 
 There is no queue service and no worker process. Background work is two

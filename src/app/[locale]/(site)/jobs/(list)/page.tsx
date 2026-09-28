@@ -112,12 +112,15 @@ export default async function JobsPage({
 
   if (viewer?.profile && jobIds.length) {
     const supabase = await createClient();
+    // Scoped to this reader explicitly, with row-level security still behind
+    // it. Keyed on the page's ids alone, the applications read fetched every
+    // application to twenty listings — hundreds on a popular board — and ran
+    // the table's policies, functions included, on each one to find this
+    // reader's handful.
     const [{ data: applied }, { data: saved }] = await Promise.all([
-      supabase.from('applications').select('job_id').in('job_id', jobIds),
-      supabase.from('saved_jobs').select('job_id').in('job_id', jobIds),
+      supabase.from('applications').select('job_id').eq('candidate_id', viewer.userId).in('job_id', jobIds),
+      supabase.from('saved_jobs').select('job_id').eq('candidate_id', viewer.userId).in('job_id', jobIds),
     ]);
-    // Row-level security scopes both to this reader; no candidate_id filter is
-    // written here, for the same reason it is not written on the inbox.
     appliedIds = new Set((applied ?? []).map((row) => row.job_id));
     savedIds = new Set((saved ?? []).map((row) => row.job_id));
   }
