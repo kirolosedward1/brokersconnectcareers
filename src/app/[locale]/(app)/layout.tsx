@@ -176,6 +176,7 @@ export default async function AppLayout({
         badge: adminCounts?.accounts_pending,
       },
       { href: '/admin/email', label: tAdmin('emailActivity'), icon: 'email' },
+      { href: '/admin/security', label: tAdmin('security'), icon: 'security' },
       // The directory, for review. Admins read it whole.
       { href: '/agents', label: tNav('agents'), icon: 'directory' },
     ],
@@ -245,9 +246,9 @@ export default async function AppLayout({
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             {tAccount('suspendedBody')}
           </p>
-          {profile.approval_note ? (
-            <p className="mt-3 rounded-lg bg-card px-4 py-3 text-sm">{profile.approval_note}</p>
-          ) : null}
+          {/* The reason is not on the profile row any more (migration 305
+              moved it to profile_private, admin-read); the notification and
+              the email that announced the suspension carry it. */}
         </div>
       ) : (
         children

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { isCronRequest } from '@/lib/cron-auth';
+import { env } from '@/lib/env';
+import { bearerToken, secretsMatch } from '@/lib/security/secrets';
 import { createPublicClient } from '@/lib/supabase/public';
 import { isPlaceholder } from '@/lib/env';
 import { senderProblem } from '@/lib/email/sender';
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
     not let anyone make at will. The operator sends the cron secret, which
     every cron route already accepts as the same bearer.
   */
-  const operator = isCronRequest(request);
+  const operator = secretsMatch(bearerToken(request.headers.get('authorization')), env.cronSecret);
 
   // Configuration first: an unset variable is the failure that looks like a
   // database outage, and the two need telling apart at a glance.
@@ -59,6 +60,12 @@ export async function GET(request: Request) {
       senderProblem(process.env.RESEND_FROM) === null,
     emailWebhook: set(process.env.RESEND_WEBHOOK_SECRET),
     cron: set(process.env.CRON_SECRET),
+    // Informational: neither takes the site down, both are expected in
+    // production. The salt keeps the security log's hashes from being
+    // comparable across environments; the two Turnstile keys are what stand
+    // between the sign-in form and a script.
+    securitySalt: set(process.env.SECURITY_SALT),
+    turnstile: set(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) && set(process.env.TURNSTILE_SECRET_KEY),
   };
 
   /*
@@ -85,6 +92,9 @@ export async function GET(request: Request) {
     'RESEND_FROM',
     'RESEND_WEBHOOK_SECRET',
     'CRON_SECRET',
+    'SECURITY_SALT',
+    'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+    'TURNSTILE_SECRET_KEY',
   ]) {
     const value = process.env[name];
     if (!value) attention[name] = 'absent';

@@ -6,11 +6,8 @@ import { useRouter } from 'next/navigation';
 import { ImageUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CompanyLogo } from '@/components/companies/company-logo';
-import { createClient } from '@/lib/supabase/client';
-import { COMPANY_LOGOS_BUCKET } from '@/lib/buckets';
 import { saveCompanyLogo } from '@/lib/actions/company';
-import { uuid } from '@/lib/utils';
-import { safeExtension } from '@/lib/storage-path';
+import { uploadImage } from '@/lib/actions/uploads';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
@@ -21,9 +18,9 @@ import { useSessionRecovery } from '@/lib/session-expired';
  * schema — but nothing ever let an employer put a file in it. Every company
  * showed the monogram fallback, permanently, and would have kept doing so.
  *
- * Uploads go straight from the browser to the public bucket, into a folder
- * named for the company, where a storage policy checks ownership. The server
- * action only records the resulting URL.
+ * The bytes go to the server, which checks that they are a picture, decodes
+ * it and writes a fresh WebP into the company's folder — and records the URL
+ * through the caller's own session, so only a company admin's upload sticks.
  */
 const MAX_BYTES = 2 * 1024 * 1024;
 /**
@@ -39,12 +36,7 @@ const MAX_BYTES = 2 * 1024 * 1024;
  * these are uploaded by anybody who registers a company. PNG, JPEG and WebP
  * cover every real logo.
  */
-const EXTENSIONS: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/webp': 'webp',
-};
-const TYPES = Object.keys(EXTENSIONS);
+const TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 export function LogoUpload({
   companyId,
@@ -82,28 +74,21 @@ export function LogoUpload({
     }
 
     startTransition(async () => {
-      // The extension comes from the type the browser sniffed, not from the
-      // name the file arrived with: `logo.png.exe`, `logo.` and `logo` all
-      // upload as what they are, and the path stays one the database's own
-      // rule for storage paths accepts.
-      const extension = EXTENSIONS[file.type] ?? safeExtension(file.name, 'png');
-      // A fresh name every time rather than a fixed one: the URL is public and
-      // cached, and overwriting in place would leave the old logo showing.
-      const path = `${companyId}/logo-${uuid()}.${extension}`;
+      const form = new FormData();
+      form.set('kind', 'logo');
+      form.set('companyId', companyId);
+      form.set('file', file);
 
-      const { error: uploadError } = await createClient()
-        .storage.from(COMPANY_LOGOS_BUCKET)
-        .upload(path, file, { contentType: file.type });
-
-      if (uploadError) {
-        setError(tCommon('errorBody'));
-        return;
-      }
-
-      const result = await saveCompanyLogo({ companyId, storagePath: path });
+      const result = await uploadImage(form);
       if (recoverSession(result)) return;
       if (!result.ok) {
-        setError(tCommon('errorBody'));
+        setError(
+          result.error === 'file_type'
+            ? tValidation('fileType')
+            : result.error === 'too_large'
+              ? tValidation('fileTooLarge')
+              : tCommon('errorBody'),
+        );
         return;
       }
 
@@ -115,9 +100,10 @@ export function LogoUpload({
 
   function remove() {
     startTransition(async () => {
-      // The column is cleared and the action removes the file it pointed at,
-      // the same way it removes a replaced one: a logo taken down should not
-      // stay reachable at a public URL somebody may have kept.
+      // The column is cleared and the file is left where it is for now:
+      // deleting it here would break any page or email still holding the old
+      // URL. The database queues it on the way out and the lifecycle sweep
+      // removes it once its grace period has passed (migration 204).
       const result = await saveCompanyLogo({ companyId, storagePath: null });
       if (recoverSession(result)) return;
       if (!result.ok) setError(tCommon('errorBody'));

@@ -33,6 +33,8 @@ const ROLE_ICON: Record<UserRole, React.ComponentType<{ className?: string }>> =
   admin: ShieldCheck,
 };
 
+type AccountRow = ProfileRow & { private: { approval_note: string | null } | null };
+
 const STATUS_VARIANT: Record<ApprovalStatus, 'success' | 'warning' | 'destructive'> = {
   approved: 'success',
   pending: 'warning',
@@ -63,9 +65,11 @@ export default async function AdminUsersPage({
   const { role, status } = await searchParams;
   const supabase = await createClient();
 
+  // The reviewer's note lives on profile_private (migration 305), readable by
+  // admins alone; embedded here so the list still costs one read.
   let query = supabase
     .from('profiles')
-    .select('*')
+    .select('*, private:profile_private (approval_note)')
     .order('created_at', { ascending: false })
     .limit(ACCOUNTS_SHOWN);
 
@@ -86,12 +90,12 @@ export default async function AdminUsersPage({
   const { data, error } = await query;
   if (error) raise(error, 'loading the accounts list');
 
-  const profiles = (data ?? []) as ProfileRow[];
+  const profiles = (data ?? []) as unknown as AccountRow[];
 
   // Pending first, whatever the sort. The database can order by a CASE, but the
   // list is capped at 200 rows and this keeps the query one plain select.
   const sorted = [...profiles].sort((a, b) => {
-    const weight = (row: ProfileRow) => (row.approval_status === 'pending' ? 0 : 1);
+    const weight = (row: AccountRow) => (row.approval_status === 'pending' ? 0 : 1);
     return weight(a) - weight(b);
   });
 
@@ -196,9 +200,9 @@ export default async function AdminUsersPage({
                       <span>{formatDate(profile.created_at, locale)}</span>
                     </p>
 
-                    {profile.approval_note ? (
+                    {profile.private?.approval_note ? (
                       <p className="mt-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-                        {profile.approval_note}
+                        {profile.private.approval_note}
                       </p>
                     ) : null}
                   </div>

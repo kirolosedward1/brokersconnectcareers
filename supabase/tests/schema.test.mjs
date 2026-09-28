@@ -308,13 +308,10 @@ report.section('who may call a definer function, on purpose');
     the API, and this schema has thirty-eight of them. Left as a wall of
     warnings the list means nothing; pinned, it means somebody decided.
 
-    Two reasons a function is anon-callable here and no third:
-
-      the public API   increment_job_view is what the view counter is made
-                       of, and it needs no session. search_agents and
-                       get_agent_card used to be here too; migration 202
-                       closed the directory to anybody who is not hiring,
-                       and a signed-out visitor is not.
+    One reason a function is anon-callable here and no second. search_agents
+    and get_agent_card used to be listed as the public API; migration 314
+    closed the directory to anybody who is not hiring, and a signed-out
+    visitor is not.
 
       RLS calls it     Postgres evaluates a policy as the *calling* role, so a
                        policy invoking a function anon cannot execute does not
@@ -324,12 +321,19 @@ report.section('who may call a definer function, on purpose');
                        these answers about the caller and returns false or
                        null to a stranger.
 
+    The directory functions are the other reason. search_agents and
+    get_agent_card are what the public directory and a public card are made
+    of, and neither needs a session. Since migration 304 neither returns a
+    phone number, a CV path or a locked card's slug, so what a script can page
+    is what the page already shows. increment_job_view() left the list there:
+    the server counts views, and a visitor's own call was never bounded.
+
     A new name in this list is a decision, so it should cost a line in this
     file rather than arriving with a migration nobody re-read.
   */
   const EXPECTED = new Set([
-    // Public API.
-    'increment_job_view',
+    // The directory and the card are for signed-in employers and admins
+    // (migration 314); nothing public is left on this list but the helpers.
     // Support (migration 201). The failures that most need a reference happen
     // to people who are not signed in — sign-up, sign-in, a confirmation link
     // — and production has no service-role key to write for them. Both take

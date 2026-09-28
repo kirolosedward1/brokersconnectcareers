@@ -159,9 +159,13 @@ section('a job listing carries valid Google Jobs markup');
         data.jobLocation?.address?.addressRegion !== data.jobLocation?.address?.addressLocality,
         `${data.jobLocation?.address?.addressRegion}`,
       );
+      // A fresh-graduate listing has no floor, and Google's documented way to
+      // say so is the literal "no requirements" (job-posting-core.ts, and the
+      // unit test that pins it). Anything else must be a number of months.
       check(
-        'experience is a number Google can filter on',
-        typeof data.experienceRequirements?.monthsOfExperience === 'number',
+        'experience is a number Google can filter on, or "no requirements"',
+        typeof data.experienceRequirements?.monthsOfExperience === 'number' ||
+          data.experienceRequirements === 'no requirements',
         JSON.stringify(data.experienceRequirements),
       );
       check('the description is HTML', /^<p>/.test(data.description ?? ''), data.description?.slice(0, 40));
@@ -590,6 +594,60 @@ section('the directory is closed to strangers');
   check('the sitemap advertises no consultant', !/\/agents/.test(sitemap.body));
   const robots = await get('/robots.txt');
   check('and robots disallows the directory', /Disallow:\s*\/agents/.test(robots.body));
+}
+
+// ---------------------------------------------------------------------------
+section('the hardening headers are on every response');
+{
+  const { headers } = await get('/');
+  const csp = headers.get('content-security-policy') ?? '';
+  check('a Content-Security-Policy is sent', csp.length > 0);
+  check("it forbids framing", /frame-ancestors 'none'/.test(csp), csp.slice(0, 120));
+  check('it forbids plugins', /object-src 'none'/.test(csp));
+  check('it pins form posts to this origin', /form-action 'self'/.test(csp));
+  check('HSTS is sent', /max-age=\d+/.test(headers.get('strict-transport-security') ?? ''));
+  check('nosniff is sent', headers.get('x-content-type-options') === 'nosniff');
+  check('a referrer policy is sent', Boolean(headers.get('referrer-policy')));
+  check('a permissions policy is sent', Boolean(headers.get('permissions-policy')));
+}
+
+// ---------------------------------------------------------------------------
+section('the private API answers a stranger with a status, not a page');
+{
+  const cv = await get('/api/agent-cv/some-consultant-000001');
+  check('/api/agent-cv refuses anonymously (401)', cv.status === 401, `got ${cv.status}`);
+
+  const appCv = await get('/api/cv/00000000-0000-4000-8000-000000000000');
+  check('/api/cv refuses anonymously (401)', appCv.status === 401, `got ${appCv.status}`);
+
+  const badId = await get('/api/cv/not-an-id');
+  check('/api/cv with a malformed id is 404, not 500', badId.status === 404, `got ${badId.status}`);
+
+  const exp = await get('/api/account/export');
+  check('/api/account/export refuses anonymously (401)', exp.status === 401, `got ${exp.status}`);
+
+  const sec = await get('/admin/security');
+  check('/admin/security sends a stranger to sign-in', sec.status === 307 && (sec.headers.get('location') ?? '').includes('/sign-in'), `got ${sec.status}`);
+
+  const bump = await get('/api/unsubscribe?token=x&kind=notify_digest');
+  check('/api/unsubscribe on GET redirects rather than acting', bump.status === 303, `got ${bump.status}`);
+}
+
+// ---------------------------------------------------------------------------
+section('no phone number is in any public page');
+{
+  for (const path of ['/agents', '/jobs', '/companies']) {
+    const { body } = await get(path);
+    check(`${path} carries no WhatsApp link or E.164 number`, !/wa\.me\//.test(body) && !/\+20\d{9,10}/.test(body));
+  }
+  const html = (await get('/agents')).body;
+  const handle = html.match(/href="\/agents\/([a-z0-9-]+)"/)?.[1];
+  if (handle) {
+    const { body } = await get(`/agents/${handle}`);
+    check('a consultant page carries no number for a visitor', !/wa\.me\//.test(body) && !/\+20\d{9,10}/.test(body));
+  } else {
+    check('found a consultant to open', false, 'the directory had no cards');
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

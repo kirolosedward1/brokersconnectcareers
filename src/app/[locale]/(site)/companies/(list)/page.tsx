@@ -47,8 +47,11 @@ export default async function CompaniesPage({
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
-  const { q, district, verified, page } = await searchParams;
-  const current = Math.max(1, Number.parseInt(page ?? '1', 10) || 1);
+  const { q: rawQ, district, verified, page } = await searchParams;
+  // Bounded the way the board's are: a query is a few words, and a page past
+  // five hundred is a probe, not a reader.
+  const q = typeof rawQ === 'string' ? rawQ.trim().slice(0, 120) : undefined;
+  const current = Math.min(500, Math.max(1, Number.parseInt(page ?? '1', 10) || 1));
 
   const districts = await getDistricts();
   // The URL carries a slug because that is what a person can read and share;

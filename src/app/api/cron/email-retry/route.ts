@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isCronRequest } from '@/lib/cron-auth';
+import { env } from '@/lib/env';
+import { bearerToken, secretsMatch } from '@/lib/security/secrets';
 import { REBUILDERS } from '@/lib/email/rebuild';
 
 export const dynamic = 'force-dynamic';
@@ -32,7 +33,8 @@ export const maxDuration = 60;
 const BATCH = 25;
 
 export async function GET(request: NextRequest) {
-  if (!isCronRequest(request)) {
+  const secret = env.cronSecret;
+  if (!secretsMatch(bearerToken(request.headers.get('authorization')), secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -73,7 +75,7 @@ export async function GET(request: NextRequest) {
     await admin.rpc('release_email_claim', { p_id: row.id });
 
     retried += 1;
-    if ((await rebuild(row.entity_id)) === 'sent') sent += 1;
+    if ((await rebuild(row.entity_id, row.user_id)) === 'sent') sent += 1;
   }
 
   return NextResponse.json({ retried, sent, abandoned, at: new Date().toISOString() });

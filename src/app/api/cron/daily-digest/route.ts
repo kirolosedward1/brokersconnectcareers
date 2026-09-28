@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isCronRequest } from '@/lib/cron-auth';
+import { env } from '@/lib/env';
+import { bearerToken, secretsMatch } from '@/lib/security/secrets';
 import { localized } from '@/i18n/routing';
 import { notifyProfileIncomplete, sendApplicantDigest } from '@/lib/email/notify';
 import { logFailure } from '@/lib/observe';
@@ -27,7 +28,8 @@ export const maxDuration = 60;
  */
 
 export async function GET(request: NextRequest) {
-  if (!isCronRequest(request)) {
+  const secret = env.cronSecret;
+  if (!secretsMatch(bearerToken(request.headers.get('authorization')), secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

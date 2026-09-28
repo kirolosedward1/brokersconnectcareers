@@ -837,7 +837,7 @@ report.section('applying is consent, and the applicant inbox may read it');
 
   // The card the applicant list links to opens too, or the panel would fill in
   // beside a link to an anonymous page.
-  const card = await as(employerUnverified, `select is_unlocked, whatsapp_phone from get_agent_card('shy-consultant-000001')`);
+  const card = await as(employerUnverified, `select is_unlocked, can_reveal from get_agent_card('shy-consultant-000001')`);
   report.check('the card behind the link opens',
     card.rows[0]?.is_unlocked === true, JSON.stringify(card.rows[0] ?? card.error));
 
@@ -906,13 +906,14 @@ report.section('the agent directory gate');
 {
   /*
     The directory answers the people who hire — an approved employer account
-    or an admin — and nobody else. A candidate is not a directory reader, a
-    stranger is not, and a suspended or still-pending employer is not. Inside
-    it, what each company sees is as before: anonymised cards on gated
-    profiles until the company is verified, names on public ones.
+    or an admin — and nobody else (migration 314). A candidate is not a
+    directory reader, a stranger is not, and a suspended or still-pending
+    employer is not. Inside it, what each company sees is as migration 304
+    left it: anonymised cards on gated profiles until the company is
+    verified, names on public ones, and the number only from the reveal.
   */
-  const GATED = 'ahmed-mahmoud-818804'; // verified_employers_only
-  const PUBLIC = 'menna-sherif-909521'; // public
+  const GATED = 'consultant-81880411'; // verified_employers_only
+  const PUBLIC = 'consultant-90952122'; // public
   const gatedId = (await db.query(`select id from agent_profiles where slug = '${GATED}'`)).rows[0].id;
   const publicId = (await db.query(`select id from agent_profiles where slug = '${PUBLIC}'`)).rows[0].id;
 
@@ -944,7 +945,7 @@ report.section('the agent directory gate');
       values ('${nosyCompany}', '${NOSY}', 'recruiter') on conflict do nothing;
   `);
 
-  const SEARCH = 'select id, slug, is_unlocked, full_name from search_agents(null,null,null,null,60,0)';
+  const SEARCH = 'select * from search_agents(null,null,null,null,60,0)';
 
   const anon = await as(null, SEARCH, 'anon');
   report.check('anonymous cannot call the directory at all',
@@ -968,8 +969,10 @@ report.section('the agent directory gate');
   report.check('an approved employer sees the directory', unverified.rows.length > 1, unverified.error);
   report.check('an unverified company gets no name on gated rows',
     unverifiedGated?.is_unlocked === false && unverifiedGated?.full_name === null, JSON.stringify(unverifiedGated));
-  report.check('nor the slug, which spells the name',
-    unverifiedGated?.slug === null, JSON.stringify(unverifiedGated));
+  // The handle on a locked row is the id (migration 304): a link that opens
+  // the card, and never a name.
+  report.check('nor a slug that could spell the name — the handle is the id',
+    unverifiedGated?.slug === gatedId, JSON.stringify(unverifiedGated));
   report.check('but a public profile keeps its name',
     unverifiedPublic?.is_unlocked === true && unverifiedPublic?.full_name !== null && unverifiedPublic?.slug === PUBLIC,
     JSON.stringify(unverifiedPublic));
@@ -982,37 +985,120 @@ report.section('the agent directory gate');
   const adminRows = await as(admin, SEARCH);
   report.check('and so does an admin', adminRows.rows.find((row) => row.id === gatedId)?.full_name != null);
 
-  const phoneAnon = await as(null, `select whatsapp_phone from get_agent_card('${GATED}')`, 'anon');
-  report.check('anonymous cannot open a card', !phoneAnon.ok && /permission denied/.test(phoneAnon.error ?? ''));
+  const cardAnon = await as(null, `select * from get_agent_card('${GATED}')`, 'anon');
+  report.check('anonymous cannot open a card', !cardAnon.ok && /permission denied/.test(cardAnon.error ?? ''),
+    cardAnon.ok ? JSON.stringify(cardAnon.rows[0]) : '');
 
   const cardCandidate = await as(candidate, `select id from get_agent_card('${PUBLIC}')`);
   report.check('a candidate cannot open another consultant\'s card, public or not',
     cardCandidate.ok && cardCandidate.rows.length === 0, cardCandidate.error ?? JSON.stringify(cardCandidate.rows));
 
-  const cardOwner = await as(candidate, `select is_unlocked, full_name, whatsapp_phone from get_agent_card('${GATED}')`);
+  const cardOwner = await as(candidate, `select is_unlocked, full_name, can_reveal from get_agent_card('${GATED}')`);
   report.check('but still opens their own, unlocked',
-    cardOwner.rows[0]?.is_unlocked === true && cardOwner.rows[0]?.whatsapp_phone !== null, JSON.stringify(cardOwner.rows[0] ?? cardOwner.error));
+    cardOwner.rows[0]?.is_unlocked === true && cardOwner.rows[0]?.full_name !== null, JSON.stringify(cardOwner.rows[0] ?? cardOwner.error));
 
   const cardPending = await as(employerPending, `select id from get_agent_card('${PUBLIC}')`);
   report.check('a pending employer cannot open a card either',
     cardPending.ok && cardPending.rows.length === 0, cardPending.error ?? JSON.stringify(cardPending.rows));
 
-  const phoneUnverified = await as(NOSY, `select whatsapp_phone, slug from get_agent_card('${GATED}')`);
-  report.check('an unverified company gets no contact details on a gated card',
-    phoneUnverified.rows[0]?.whatsapp_phone === null && phoneUnverified.rows[0]?.slug === null, JSON.stringify(phoneUnverified.rows[0]));
+  const nosyGated = await as(NOSY, `select slug, is_unlocked, full_name, can_reveal from get_agent_card('${GATED}')`);
+  report.check('an unverified company opens a gated card anonymous, known only by its id',
+    nosyGated.rows[0]?.is_unlocked === false && nosyGated.rows[0]?.full_name === null
+      && nosyGated.rows[0]?.slug === gatedId && nosyGated.rows[0]?.can_reveal === false,
+    JSON.stringify(nosyGated.rows[0] ?? nosyGated.error));
 
-  const byId = await as(NOSY, `select id, slug from get_agent_card('${gatedId}')`);
+  const byIdNosy = await as(NOSY, `select id, slug from get_agent_card('${gatedId}')`);
   report.check('and can open it by id, which is how the anonymised card links',
-    byId.rows[0]?.id === gatedId && byId.rows[0]?.slug === null, JSON.stringify(byId.rows[0] ?? byId.error));
+    byIdNosy.rows[0]?.id === gatedId && byIdNosy.rows[0]?.slug === gatedId, JSON.stringify(byIdNosy.rows[0] ?? byIdNosy.error));
 
   // The consent path is untouched: the company this consultant applied to
-  // still opens the card, name and number and slug, verified or not.
-  const consented = await as(employerUnverified, `select is_unlocked, whatsapp_phone from get_agent_card('${GATED}')`);
+  // still opens the card, name and slug, verified or not.
+  const consented = await as(employerUnverified, `select is_unlocked, slug, can_reveal from get_agent_card('${GATED}')`);
   report.check('while the company they applied to still opens it',
-    consented.rows[0]?.is_unlocked === true && consented.rows[0]?.whatsapp_phone !== null, JSON.stringify(consented.rows[0] ?? consented.error));
+    consented.rows[0]?.is_unlocked === true && consented.rows[0]?.slug === GATED && consented.rows[0]?.can_reveal === true,
+    JSON.stringify(consented.rows[0] ?? consented.error));
 
-  const phoneVerified = await as(employerVerified, `select whatsapp_phone from get_agent_card('${GATED}')`);
-  report.check('a verified company gets contact details', phoneVerified.rows[0]?.whatsapp_phone !== null);
+  // The card by its id opens the same page the directory links to.
+  const byId = await as(employerVerified, `select slug, is_unlocked from get_agent_card('${gatedId}')`);
+  report.check('a card opens by id as well as by slug',
+    byId.rows[0]?.is_unlocked === true && byId.rows[0]?.slug === GATED, JSON.stringify(byId.rows[0] ?? byId.error));
+
+  /*
+    The number is never on the card. It comes from reveal_agent_contact(),
+    which wants a signed-in employer in good standing with a company to act
+    for, applies the same gate, and counts what it hands over.
+  */
+  const revealAnon = await as(null, `select status from reveal_agent_contact('${PUBLIC}')`, 'anon');
+  report.check('anonymous gets no contact details',
+    !revealAnon.ok && /permission denied/.test(revealAnon.error ?? ''), revealAnon.error);
+
+  const revealCandidate = await as(candidate, `select status, whatsapp_phone from reveal_agent_contact('${PUBLIC}')`);
+  report.check('a candidate gets no contact details, even on a public card',
+    revealCandidate.rows[0]?.status === 'forbidden' && revealCandidate.rows[0]?.whatsapp_phone === null,
+    JSON.stringify(revealCandidate.rows[0] ?? revealCandidate.error));
+
+  /*
+    A gated consultant who has never applied to this company. The seed spreads
+    applications around, and an application opens the card by consent
+    (migration 43) — so the fixture consultant may legitimately be open to the
+    unverified company, and the assertion needs one who is not.
+  */
+  const LOCKED = '77777777-7777-4777-8777-777777777777';
+  await db.exec(`
+    insert into auth.users (id, email) values ('${LOCKED}', 'locked@demo.test');
+    insert into profiles (id, role, full_name, whatsapp_phone)
+      values ('${LOCKED}', 'candidate', 'مقفول', '+201777777777');
+    insert into agent_profiles (user_id, slug, visibility, years_experience)
+      values ('${LOCKED}', 'locked-consultant-000001', 'verified_employers_only', 4);
+  `);
+  const revealLocked = await as(employerUnverified, `select status, whatsapp_phone from reveal_agent_contact('locked-consultant-000001')`);
+  report.check('an unverified employer is told the card is locked',
+    revealLocked.rows[0]?.status === 'locked' && revealLocked.rows[0]?.whatsapp_phone === null,
+    JSON.stringify(revealLocked.rows[0] ?? revealLocked.error));
+  await db.exec(`delete from auth.users where id = '${LOCKED}';`);
+
+  const phoneVerified = await as(employerVerified, `select status, whatsapp_phone from reveal_agent_contact('${GATED}')`);
+  report.check('a verified employer gets contact details',
+    phoneVerified.rows[0]?.status === 'ok' && phoneVerified.rows[0]?.whatsapp_phone !== null,
+    JSON.stringify(phoneVerified.rows[0] ?? phoneVerified.error));
+
+  /*
+    A public card is open, not reachable. Its name is for everyone; the number
+    and the CV are for somebody hiring. Until migration 202 an anonymous call to
+    get_agent_card returned both — no screen ever offered them, but the API
+    did, to anybody holding the publishable key every page ships.
+  */
+  await db.exec(`update agent_profiles set cv_path = user_id::text || '/cv.pdf' where slug = '${PUBLIC}'`);
+  const card = (who, role) =>
+    as(who, `select * from get_agent_card('${PUBLIC}')`, role);
+
+  const publicAnon = await card(null, 'anon');
+  report.check('anonymous is refused a public card outright',
+    !publicAnon.ok && /permission denied/.test(publicAnon.error ?? ''), publicAnon.ok ? JSON.stringify(publicAnon.rows[0]) : '');
+
+  const publicStranger = await card(OUTSIDER);
+  report.check('another candidate gets no card at all, public or not',
+    publicStranger.ok && publicStranger.rows.length === 0, publicStranger.error ?? JSON.stringify(publicStranger.rows));
+
+  const publicHiring = await card(employerUnverified);
+  const publicHiringCard = publicHiring.rows[0];
+  report.check('a company member is told they may ask for contact details',
+    publicHiring.ok && publicHiringCard?.can_reveal === true &&
+      !('whatsapp_phone' in (publicHiringCard ?? {})) && !('cv_path' in (publicHiringCard ?? {})),
+    JSON.stringify(publicHiringCard ?? publicHiring.error));
+
+  const publicOwner = await card(publicAgent);
+  const publicOwnerCard = publicOwner.rows[0];
+  report.check('the owner can preview without contact fields on the card',
+    publicOwner.ok && publicOwnerCard?.can_reveal === true &&
+      !('whatsapp_phone' in (publicOwnerCard ?? {})) && !('cv_path' in (publicOwnerCard ?? {})),
+    JSON.stringify(publicOwnerCard ?? publicOwner.error));
+  const publicReveal = await as(employerUnverified,
+    `select status, whatsapp_phone from reveal_agent_contact('${PUBLIC}')`);
+  report.check('contact details are handed over only by the reveal function',
+    publicReveal.rows[0]?.status === 'ok' && publicReveal.rows[0]?.whatsapp_phone !== null,
+    JSON.stringify(publicReveal.rows[0] ?? publicReveal.error));
+  await db.exec(`update agent_profiles set cv_path = null where slug = '${PUBLIC}'`);
 
   // And the rows themselves, past the functions.
   const rawAnon = await as(null, `select id from agent_profiles where slug in ('${GATED}', '${PUBLIC}')`, 'anon');
@@ -1078,11 +1164,14 @@ report.section('a suspended employer keeps nothing that was sent to them');
   const notesAfter = await as(employerVerified, `select id from application_notes`);
   report.check('nor read the team\'s notes', notesAfter.ok && notesAfter.rows.length === 0);
 
-  // But the listings and the company record are still theirs to read, so the
-  // console can say what happened rather than rendering as though they had
-  // never had a company.
-  const ownJobs = await as(employerVerified, `select id from jobs where company_id = (select company_id from company_members where user_id = '${employerVerified}' limit 1)`);
-  report.check('while their own listings stay readable', ownJobs.ok && ownJobs.rows.length > 0);
+  // Migration 308 folded good standing into the membership helpers, so the
+  // membership itself — and with it the company's own view of its listings —
+  // is out of reach while the account is suspended. The console says what
+  // happened from the profile row (isSuspended), not from a company read.
+  const membershipAfter = await as(employerVerified,
+    `select company_id from company_members where user_id = '${employerVerified}'`);
+  report.check('and the membership itself is out of reach while suspended',
+    membershipAfter.ok && membershipAfter.rows.length === 0, membershipAfter.error ?? JSON.stringify(membershipAfter.rows));
 
   // Readable, not editable: closing or rewording an advert is an employer's
   // act, and a suspended account is not acting as one.
@@ -1195,6 +1284,47 @@ report.section('a file path is one folder and one file');
   report.check('while the shape every upload produces is fine', fine.ok && fine.rows.length === 1, fine.error);
 }
 
+report.section('no consultant is named by their address');
+{
+  /*
+    A gated card hides the name, so its link must not spell it. Migration 202
+    renames every slug that is not already `consultant-<8 digits>`; exercised
+    here by re-running it over a profile in the old `<name>-<id>` shape, which
+    is the state production was in.
+  */
+  const { readFileSync } = await import('node:fs');
+  const migration = readFileSync(
+    new URL('../migrations/20260101000202_what_the_card_said_and_what_the_api_said.sql', import.meta.url),
+    'utf8',
+  );
+  const backfillMarker = '-- Every existing slug, renamed to the shape the application now mints.';
+  const backfillStart = migration.indexOf(backfillMarker);
+  if (backfillStart === -1) throw new Error('The directory slug backfill was not found in migration 202');
+  await db.exec(`
+    insert into agent_profiles (user_id, slug, visibility)
+    values ('${OUTSIDER}', 'zaer-el-outsider-123456', 'verified_employers_only');
+  `);
+  await db.exec(migration.slice(backfillStart));
+
+  const renamed = (await db.query(`select slug from agent_profiles where user_id = '${OUTSIDER}'`)).rows[0]?.slug;
+  report.check('a name-shaped slug is renamed', /^consultant-[1-9][0-9]{7}$/.test(renamed ?? ''), renamed);
+
+  const left = (
+    await db.query(`select count(*)::int as n from agent_profiles where slug !~ '^consultant-[1-9][0-9]{7}$'`)
+  ).rows[0].n;
+  report.check('and no profile keeps any other shape', left === 0, String(left));
+
+  // Read as the directory's least-trusted reader — an approved employer whose
+  // company is not verified — since migration 314 answers nobody else.
+  const reader = await as(employerUnverified, 'select id, slug from search_agents(null,null,null,null,60,0)');
+  report.check('so the directory carries no names in its links',
+    reader.ok && reader.rows.length > 0 && reader.rows.every((row) =>
+      row.slug === row.id || /^consultant-[1-9][0-9]{7}$/.test(row.slug)),
+    reader.error ?? JSON.stringify(reader.rows.map((row) => row.slug)));
+
+  await db.exec(`delete from agent_profiles where user_id = '${OUTSIDER}';`);
+}
+
 report.section('the directory pages in a total order');
 {
   /*
@@ -1295,7 +1425,7 @@ report.section('a CV section never outlives the gate on its profile');
 report.section('an employed agent can hide from their own employer');
 {
   // mostafa-elgendy is seeded `hidden` — this is the demo dataset's own proof.
-  const HIDDEN = 'mostafa-elgendy-339125';
+  const HIDDEN = 'consultant-33912555';
 
   const verified = await as(employerVerified, 'select slug from search_agents(null,null,null,null,60,0)');
   report.check('a hidden profile is absent even for a verified employer',
@@ -2108,12 +2238,33 @@ report.section('applications are capped per day too');
   ).rows.map((row) => row.id);
 
   const needed = 30 - held;
+
+  /*
+    Two windows since migration 306. Eight applications in ten minutes is the
+    first wall — a person filing that fast is a script — so the rows are
+    written eight at a time and aged past the short window between batches,
+    which is what a day of honest applying looks like to the counter.
+  */
+  const ageTheShortWindow = () =>
+    db.exec(`update applications set created_at = created_at - interval '11 minutes'
+              where candidate_id = '${candidate}' and created_at > now() - interval '10 minutes'`);
+
+  // Whatever earlier sections filed for this candidate counts against the
+  // short window too, so it is aged before the first batch.
+  await ageTheShortWindow();
+  let written = 0;
   for (const id of fixtures.slice(0, needed)) {
+    if (written > 0 && written % 8 === 0) await ageTheShortWindow();
     await db.exec(`insert into applications (job_id, candidate_id) values ('${id}','${candidate}')`);
+    written += 1;
   }
 
   const atCap = (await db.query(inWindow)).rows[0].n;
   report.check(`thirty applications in a day are allowed (${atCap})`, atCap === 30);
+
+  // Age the last batch too, so what refuses the thirty-first is the day, not
+  // the ten minutes.
+  await ageTheShortWindow();
 
   // service_role, so this proves the trigger holds even for a caller that RLS
   // does not apply to — the cap is a property of the table, not of a policy.
@@ -2410,6 +2561,11 @@ report.section('the same request twice converges on one answer');
     await db.query(`select company_id from company_members where user_id = '${employerVerified}' and role = 'admin' limit 1`)
   ).rows[0].company_id;
   const KEY = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+
+  // The seed wrote this company's listings a moment ago, which to the daily
+  // cap (migration 306) is a busy day already. Age them: this section is about
+  // the retry, and the cap has a section of its own.
+  await db.exec(`update jobs set created_at = created_at - interval '2 days' where company_id = '${company}'`);
 
   const post = (slug) => as(employerVerified, `
     insert into jobs (company_id, slug, title_ar, track, employment_type, experience_band,

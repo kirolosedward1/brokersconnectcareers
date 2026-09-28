@@ -64,13 +64,24 @@ export function CredentialsSettings({
     }
 
     startPassword(async () => {
-      const { error } = await createClient().auth.updateUser({ password });
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({ password });
       if (error) {
         setPasswordError(tCommon('errorBody'));
         return;
       }
       form.reset();
       setPasswordDone(true);
+
+      /*
+        Every other session ends. A password is changed because the old one
+        may be known to somebody else, and that somebody may be signed in
+        right now on another device — leaving those sessions alive would
+        make the change a formality. This device keeps its session, which is
+        what the copy above promises. Best effort: the password is already
+        changed, and a failure here is not a failed change.
+      */
+      await supabase.auth.signOut({ scope: 'others' }).catch(() => {});
 
       // A security notice, sent after the change rather than instead of it:
       // the password is already changed at this point, and a mail failure must

@@ -48,7 +48,8 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
     }
 
     startTransition(async () => {
-      const { error: updateError } = await createClient().auth.updateUser({ password });
+      const supabase = createClient();
+      const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) {
         setError(
           /session|jwt|expired/i.test(updateError.message)
@@ -58,6 +59,9 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
         return;
       }
       setDone(true);
+      // A recovery is the strongest reason to end every other session: the
+      // account was, by the person's own account, out of their control.
+      await supabase.auth.signOut({ scope: 'others' }).catch(() => {});
       /*
         The security notice, which the reset path never sent — only the
         settings page asked for it, so the one password change most likely to

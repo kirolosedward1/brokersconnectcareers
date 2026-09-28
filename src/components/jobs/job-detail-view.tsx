@@ -330,9 +330,11 @@ export async function JobDetailView({
                 </time>
               </span>
             ) : null}
+            {/* Past tense once the listing is closed: "closes 26 September"
+                under a banner saying it already has read as a contradiction. */}
             {job.expires_at ? (
               <time dateTime={isoDate(job.expires_at)} >
-                {t('expiresOn', { date: formatDate(job.expires_at, locale) })}
+                {t(open ? 'expiresOn' : 'endedOn', { date: formatDate(job.expires_at, locale) })}
               </time>
             ) : null}
             <span className="inline-flex items-center gap-1">
@@ -420,7 +422,10 @@ export async function JobDetailView({
                 </p>
               ) : null}
               <Button asChild variant="outline" className="w-full">
-                <Link href={`/companies/${job.company.slug}`}>{tCompanies('title')}</Link>
+                {/* This company's page, so it says so. It used to carry the
+                    directory's own title, "Real estate companies", which is
+                    the label of the header link to the list of all of them. */}
+                <Link href={`/companies/${job.company.slug}`}>{t('companyPage')}</Link>
               </Button>
             </CardContent>
           </Card>

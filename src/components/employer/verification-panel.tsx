@@ -11,16 +11,10 @@ import { COMPANY_DOCS_BUCKET } from '@/lib/buckets';
 import { recordCompanyDocument } from '@/lib/actions/company';
 import type { CompanyDocumentRow, VerificationStatus } from '@/lib/supabase/database.types';
 import { uuid } from '@/lib/utils';
-import { safeExtension } from '@/lib/storage-path';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 const MAX_BYTES = 10 * 1024 * 1024;
-const EXTENSIONS: Record<string, string> = {
-  'application/pdf': 'pdf',
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-};
-const TYPES = Object.keys(EXTENSIONS);
+const TYPES = ['application/pdf', 'image/png', 'image/jpeg'];
 
 export function VerificationPanel({
   companyId,
@@ -58,10 +52,7 @@ export function VerificationPanel({
       }
 
       startTransition(async () => {
-        // From the type, not the name: a name with no extension, or one with
-        // characters the storage path rule refuses, must not fail an upload
-        // that is otherwise a perfectly good PDF.
-        const extension = EXTENSIONS[file.type] ?? safeExtension(file.name, 'pdf');
+        const extension = file.name.split('.').pop()?.toLowerCase() ?? 'pdf';
         // Private bucket, keyed by company id. Nothing here is ever served
         // publicly — reviewers read it through a signed URL.
         const path = `${companyId}/${docType}-${uuid()}.${extension}`;
@@ -76,14 +67,14 @@ export function VerificationPanel({
         }
 
         const result = await recordCompanyDocument({ companyId, docType, storagePath: path });
-
-        if (recoverSession(result)) return;
         if (!result.ok) {
           // The file is already in the private bucket and nothing will ever
           // point at it now — and a tax card is not a thing to leave lying
-          // around unreferenced.
+          // around unreferenced. (A refused file type was already removed by
+          // the server; removing it again is harmless.)
           await createClient().storage.from(COMPANY_DOCS_BUCKET).remove([path]);
-          setError(tCommon('errorBody'));
+          if (recoverSession(result)) return;
+          setError(result.error === 'file_type' ? tValidation('fileType') : tCommon('errorBody'));
           return;
         }
 

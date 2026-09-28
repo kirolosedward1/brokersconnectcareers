@@ -5,12 +5,11 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { allow } from '@/lib/rate-limit';
-import { AVATAR_BUCKET, CV_BUCKET } from '@/lib/buckets';
-import { isOwnStoragePath } from '@/lib/storage-path';
+import { AVATAR_BUCKET } from '@/lib/buckets';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
-import { notifyPasswordChanged } from '@/lib/email/notify';
-import { logFailure } from '@/lib/observe';
+import { isOwnedPath } from '@/lib/security/files';
+import { publish } from '@/lib/notifications/events';
 
 /**
  * Deleting your own account.
@@ -61,49 +60,43 @@ export async function deleteMyAccount(): Promise<ActionResult> {
     return { ok: false, error: 'unavailable' };
   }
 
-  // Uploaded files first. Storage objects are not reached by the database
-  // cascade, and a CV outliving the account it belonged to is the exact
-  // failure this feature exists to prevent.
-  for (const bucket of [CV_BUCKET, AVATAR_BUCKET] as const) {
-    try {
-      await removeFolder(admin, bucket, user.id);
-    } catch (error) {
-      // A missing bucket must not block the deletion. Losing the account is
-      // the part the person asked for; an orphaned file is a smaller wrong
-      // than an account that would not die.
-      logFailure('account', `could not clear ${bucket}`, {
-        user: user.id,
-        detail: error instanceof Error ? error.message : 'unknown',
-      });
-    }
-  }
+  /*
+    The account first, the files second.
 
+    This used to run the other way round, and a failure in between left the
+    worse of the two half-states: files gone, account still alive, with a
+    profile and applications pointing at CVs that no longer existed. In this
+    order a failure leaves the opposite — no account, a file behind it — and
+    that is the state the storage sweep exists to finish (migration 204): the
+    cascade has already queued every CV and photo this account referenced.
+
+    Removed here as well, immediately, rather than left to the sweep's grace
+    period. The grace period protects a public URL somebody may still be
+    looking at; a person asking to be deleted is owed the prompt removal of
+    their CV, which nobody else is looking at.
+  */
   const { error } = await admin.auth.admin.deleteUser(user.id);
   if (error) return { ok: false, error: error.message };
+
+  for (const bucket of ['cvs', 'avatars'] as const) {
+    try {
+      const { data: files } = await admin.storage.from(bucket).list(user.id);
+      const paths = (files ?? []).map((file) => `${user.id}/${file.name}`);
+      if (paths.length) await admin.storage.from(bucket).remove(paths);
+    } catch (error) {
+      // The account is already gone; a file left behind is queued for the
+      // sweep and will not outlive its grace period.
+      console.warn(
+        `[account] could not clear ${bucket} for ${user.id}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
 
   await supabase.auth.signOut();
   return { ok: true };
 }
 
-/**
- * Every file in one account's folder, however many there are.
- *
- * `list()` answers a hundred at a time by default. An account that replaced
- * its photo a hundred times would have kept the hundred-and-first, so this
- * pages until the folder is empty.
- */
-async function removeFolder(
-  admin: ReturnType<typeof createAdminClient>,
-  bucket: string,
-  folder: string,
-): Promise<void> {
-  for (let round = 0; round < 50; round += 1) {
-    const { data: files } = await admin.storage.from(bucket).list(folder, { limit: 100 });
-    const paths = (files ?? []).map((file) => `${folder}/${file.name}`);
-    if (!paths.length) return;
-    await admin.storage.from(bucket).remove(paths);
-  }
-}
 
 /**
  * Tell the account holder their password changed.
@@ -115,7 +108,7 @@ async function removeFolder(
  * nothing to point somewhere else. It mails the session's own account or it
  * does nothing.
  *
- * The claim is checked rather than believed. notifyPasswordChanged requires
+ * The claim is checked rather than believed. Both channels require
  * auth.users.updated_at to have moved in the last few minutes, so calling this
  * without changing anything sends nothing.
  */
@@ -131,7 +124,7 @@ export async function announcePasswordChange(): Promise<ActionResult> {
   // the password change itself succeeded, which is what the caller cares about.
   if (!(await allow(`password_notice:${user.id}`, 5, 3600))) return { ok: true };
 
-  after(() => notifyPasswordChanged(user.id));
+  after(() => publish({ type: 'SECURITY_EVENT', userId: user.id, kind: 'password_changed' }));
   return { ok: true };
 }
 
@@ -183,17 +176,9 @@ const avatarSchema = z.object({
  *
  * The file is already in the public `avatars` bucket by the time this runs —
  * the browser puts it there, into a folder named for the account, where a
- * storage policy checks that the folder is the uploader's own. This turns the
- * path into a URL and writes it down through the caller's own session, so the
- * row it updates is theirs by the same rule; the `profiles_10_guard_avatar`
- * trigger refuses any URL that is not a file in that folder.
- *
- * The photo it replaces is deleted afterwards, and so is the one a "remove"
- * clears. The old rule was to keep them — "a page still holding the old URL
- * would break" — and what it produced was a public bucket that kept every
- * photo anybody had ever uploaded, including the ones they had asked to have
- * taken down. A stale page shows a monogram for a second; a photo somebody
- * removed staying on a public URL forever is the wrong trade.
+ * storage policy checks that the folder is the uploader's own. This only turns
+ * the path into a URL and writes it down, and it writes it through the
+ * caller's own session so the row it updates is theirs by the same rule.
  *
  * `.select()` because an update that RLS filters to zero rows comes back with
  * no error at all, and reporting success for a save that saved nothing is the
@@ -209,17 +194,11 @@ export async function saveAvatar(input: unknown): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // The path is not taken on trust: exactly the account's own folder and one
-  // file in it, whatever the caller sent.
-  if (parsed.data.storagePath && !isOwnStoragePath(user.id, parsed.data.storagePath)) {
+  // The path is not taken on trust: it must be inside this account's own
+  // folder, whatever the caller sent.
+  if (parsed.data.storagePath && !isOwnedPath(parsed.data.storagePath, user.id)) {
     return { ok: false, error: 'forbidden' };
   }
-
-  const { data: before } = await supabase
-    .from('profiles')
-    .select('avatar_url')
-    .eq('id', user.id)
-    .maybeSingle();
 
   const url = parsed.data.storagePath
     ? supabase.storage.from(AVATAR_BUCKET).getPublicUrl(parsed.data.storagePath).data.publicUrl
@@ -231,64 +210,11 @@ export async function saveAvatar(input: unknown): Promise<ActionResult> {
     .eq('id', user.id)
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'failed' };
   if (!updated?.length) return { ok: false, error: 'not_found' };
-
-  /*
-    The previous file, gone. Only a file in this account's own folder of the
-    avatars bucket — a Google picture is not ours to delete, and nothing else
-    can be in the column. Through the caller's own session, which the storage
-    policy confines to their folder; a failure is logged and the save stands,
-    because a photo that saved is what they asked for.
-  */
-  const previous = ownAvatarPath(user.id, before?.avatar_url);
-  if (previous && previous !== parsed.data.storagePath) {
-    const { error: removeError } = await supabase.storage.from(AVATAR_BUCKET).remove([previous]);
-    if (removeError) {
-      logFailure('account', 'could not remove the replaced photo', { user: user.id });
-    }
-  }
 
   revalidatePath('/dashboard/account');
   revalidatePath('/dashboard/profile');
   revalidatePath('/agents');
-  return { ok: true };
-}
-
-/** The storage path inside a public avatar URL, when it is one of ours and in this folder. */
-function ownAvatarPath(userId: string, url: string | null | undefined): string | null {
-  if (!url) return null;
-  const marker = `/storage/v1/object/public/${AVATAR_BUCKET}/`;
-  const at = url.indexOf(marker);
-  if (at === -1) return null;
-  const path = decodeURIComponent(url.slice(at + marker.length).split('?')[0]);
-  return isOwnStoragePath(userId, path) ? path : null;
-}
-
-/**
- * Take a file back out of storage after a save that did not happen.
- *
- * The browser uploads before the action runs, so a refused save leaves a
- * file with nothing pointing at it. The browser can remove its own upload —
- * the storage policy allows it — but it cannot when the reason the save
- * failed was that the session had ended. This is the same removal with the
- * same rule, through the account's own session, for the paths that are
- * demonstrably theirs.
- */
-export async function discardUpload(input: unknown): Promise<ActionResult> {
-  const parsed = z
-    .object({ bucket: z.enum([AVATAR_BUCKET, CV_BUCKET]), storagePath: z.string().trim().max(300) })
-    .safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'invalid' };
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: 'unauthenticated' };
-  if (!isOwnStoragePath(user.id, parsed.data.storagePath)) return { ok: false, error: 'forbidden' };
-
-  const { error } = await supabase.storage.from(parsed.data.bucket).remove([parsed.data.storagePath]);
-  if (error) return { ok: false, error: 'unavailable' };
   return { ok: true };
 }

@@ -6,28 +6,34 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { allow } from '@/lib/rate-limit';
 import { COMPANY_LOGOS_BUCKET } from '@/lib/storage';
-import { isOwnStoragePath } from '@/lib/storage-path';
 import { buildCompanySlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { COMPANY_TYPES, HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
-import { logFailure } from '@/lib/observe';
+import { COMPANY_DOCS_BUCKET } from '@/lib/buckets';
+import { DOCUMENT_KINDS, MAX_BYTES, isOwnedPath, verifyStoredObject } from '@/lib/security/files';
+import { recordSecurityEvent } from '@/lib/security/events';
+import { clean, cleanText, safeHttpUrl } from '@/lib/security/sanitize';
+import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 
 const schema = z.object({
   nameAr: z.string().trim().min(2).max(160),
   nameEn: z.string().trim().max(160).optional().nullable(),
   aboutAr: z.string().trim().max(2000).optional().nullable(),
   aboutEn: z.string().trim().max(2000).optional().nullable(),
-  // http(s) only. zod's .url() accepts `javascript:` and the value is rendered
-  // as a link on the public company page.
+  /*
+    http(s) only. zod's `.url()` accepts any scheme a parser recognises, and a
+    `javascript:` one was rendered as the company page's website link. The
+    same rule is a CHECK on the column (migration 307) and is applied again
+    where the link is drawn.
+  */
   website: z
     .string()
     .trim()
     .max(200)
-    .refine((value) => !value || /^https?:\/\/[^\s]+$/i.test(value), 'url')
     .optional()
     .nullable()
-    .or(z.literal('')),
+    .refine((value) => !value || safeHttpUrl(value) !== null, { message: 'invalidUrl' }),
   headcountBand: z.enum(HEADCOUNT_BANDS).optional().nullable(),
   companyType: z.enum(COMPANY_TYPES).optional().nullable(),
   districtId: z.coerce.number().int().positive().optional().nullable(),
@@ -45,12 +51,17 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
+  const aboutAr = cleanText(parsed.data.aboutAr, { multiline: true, maxLinks: 3 });
+  const aboutEn = cleanText(parsed.data.aboutEn, { multiline: true, maxLinks: 3 });
+  if (!aboutAr.ok) return { ok: false, error: 'invalid', fieldErrors: { aboutAr: 'tooManyLinks' } };
+  if (!aboutEn.ok) return { ok: false, error: 'invalid', fieldErrors: { aboutEn: 'tooManyLinks' } };
+
   const payload = {
-    name_ar: parsed.data.nameAr,
-    name_en: parsed.data.nameEn || null,
-    about_ar: parsed.data.aboutAr || null,
-    about_en: parsed.data.aboutEn || null,
-    website: parsed.data.website || null,
+    name_ar: clean(parsed.data.nameAr),
+    name_en: clean(parsed.data.nameEn) || null,
+    about_ar: aboutAr.value || null,
+    about_en: aboutEn.value || null,
+    website: safeHttpUrl(parsed.data.website),
     headcount_band: parsed.data.headcountBand || null,
     district_id: parsed.data.districtId || null,
     // Only when the form carried a choice. Left out otherwise, so saving the
@@ -109,7 +120,7 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
       update(withoutType),
     );
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: 'failed' };
 
     // companies_update_own is admin-only, so a recruiter reaches zero rows
     // rather than an error, and was previously told it saved. A version that
@@ -138,7 +149,7 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
 
   const { data, error } = await retryWithoutType(await insert(payload), () => insert(withoutType));
 
-  if (error || !data) return { ok: false, error: error?.message ?? 'insert_failed' };
+  if (error || !data) return { ok: false, error: 'failed' };
 
   revalidatePath('/employer/company');
   return { ok: true, data: { id: data.id } };
@@ -169,21 +180,12 @@ export async function saveCompanyLogo(input: unknown): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // The file is in this company's own folder and nowhere else. The column
-  // used to take any path at all, which made it a way to point a company's
-  // logo at another company's file, or at `..`.
-  if (
-    parsed.data.storagePath &&
-    !isOwnStoragePath(parsed.data.companyId, parsed.data.storagePath)
-  ) {
+  // The company's own folder and one file name, or nothing at all: the path
+  // was not held to the folder before, so any object in the public bucket
+  // could be pointed at as this company's logo.
+  if (parsed.data.storagePath && !isOwnedPath(parsed.data.storagePath, parsed.data.companyId)) {
     return { ok: false, error: 'invalid_path' };
   }
-
-  const { data: before } = await supabase
-    .from('companies')
-    .select('logo_url')
-    .eq('id', parsed.data.companyId)
-    .maybeSingle();
 
   const url = parsed.data.storagePath
     ? supabase.storage.from(COMPANY_LOGOS_BUCKET).getPublicUrl(parsed.data.storagePath).data
@@ -203,24 +205,8 @@ export async function saveCompanyLogo(input: unknown): Promise<ActionResult> {
     .eq('id', parsed.data.companyId)
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'failed' };
   if (!updated?.length) return { ok: false, error: 'forbidden' };
-
-  // The logo it replaced, gone — for the reason saveAvatar gives. Through the
-  // caller's session, which the storage policy confines to the company's own
-  // folder; a failure is logged and the save stands.
-  const marker = `/storage/v1/object/public/${COMPANY_LOGOS_BUCKET}/`;
-  const previousAt = before?.logo_url?.indexOf(marker) ?? -1;
-  const previous =
-    previousAt >= 0 ? decodeURIComponent(before!.logo_url!.slice(previousAt + marker.length).split('?')[0]) : null;
-  if (
-    previous &&
-    previous !== parsed.data.storagePath &&
-    isOwnStoragePath(parsed.data.companyId, previous)
-  ) {
-    const { error: removeError } = await supabase.storage.from(COMPANY_LOGOS_BUCKET).remove([previous]);
-    if (removeError) logFailure('company', 'could not remove the replaced logo', { company: parsed.data.companyId });
-  }
 
   revalidatePath('/employer/company');
   revalidatePath('/companies');
@@ -247,11 +233,35 @@ export async function recordCompanyDocument(input: unknown): Promise<ActionResul
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // Storage RLS already confines uploads to the owner's own company folder;
-  // this keeps a crafted request from pointing the row somewhere else — and
-  // exactly one file in that folder, not `<company>/../<other>/register.pdf`.
-  if (!isOwnStoragePath(parsed.data.companyId, parsed.data.storagePath)) {
+  // The company's folder, one file name, no dot segments.
+  if (!isOwnedPath(parsed.data.storagePath, parsed.data.companyId)) {
     return { ok: false, error: 'invalid_path' };
+  }
+
+  // Only a company admin's document is worth reading: the row insert below
+  // would refuse anyone else, and the object check must not run for them.
+  const { data: membership } = await supabase
+    .from('company_members')
+    .select('role')
+    .eq('company_id', parsed.data.companyId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (membership?.role !== 'admin') return { ok: false, error: 'forbidden' };
+
+  // A commercial register is a PDF or a photograph, whatever the browser
+  // said. Anything else is removed from the bucket before a row names it.
+  const verdict = await verifyStoredObject(
+    COMPANY_DOCS_BUCKET,
+    parsed.data.storagePath,
+    DOCUMENT_KINDS,
+    MAX_BYTES.document,
+  );
+  if (!verdict.ok && verdict.reason !== 'unavailable') {
+    void recordSecurityEvent('upload.rejected', {
+      actorId: user.id,
+      metadata: { kind: 'document', reason: verdict.reason, sniffed: verdict.kind ?? null },
+    });
+    return { ok: false, error: 'file_type' };
   }
 
   const { error } = await supabase.from('company_documents').insert({
@@ -260,7 +270,7 @@ export async function recordCompanyDocument(input: unknown): Promise<ActionResul
     storage_path: parsed.data.storagePath,
   });
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: 'failed' };
 
   revalidatePath('/employer/company');
   revalidatePath('/admin/companies');
@@ -327,24 +337,39 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
   if (!companyId) return { ok: false, error: 'no_company' };
 
   /*
-    Before anything is looked up: the caller is an admin of this company and
-    their account is in good standing.
+    Admins only, and a bounded number of times.
 
-    The lookup below runs with the service role and answers whether an email
-    address has an account and, through the insert's refusal, whether it is a
-    candidate's — which is the one fact a consultant on `hidden` is entitled
-    to keep from an employer. It was reachable by any member, recruiters and
-    accounts still awaiting approval included, before the insert policy had
-    its say. The policy still decides the insert; this decides the question.
+    The address lookup answers whether an email has an account, which is an
+    oracle. It used to run for any member before the insert policy refused
+    the recruiter; now the same policy's question is asked first, through the
+    caller's own session, and the lookups a person may make in a day are
+    counted. What remains is a slow, authenticated, audited oracle available
+    to people who run a company — which is what the feature is.
   */
-  const [{ data: isAdmin }, { data: profile }] = await Promise.all([
-    supabase.rpc('is_company_admin', { target: companyId }),
-    supabase.from('profiles').select('approval_status').eq('id', user.id).maybeSingle(),
-  ]);
-  if (!isAdmin || profile?.approval_status !== 'approved') return { ok: false, error: 'forbidden' };
+  const { data: membership } = await supabase
+    .from('company_members')
+    .select('role')
+    .eq('company_id', companyId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (membership?.role !== 'admin') return { ok: false, error: 'forbidden' };
+
+  const lookups = await rateLimit(
+    `member_lookup:user:${user.id}`,
+    await policyFor('member_lookup:user:day', { windowSeconds: 86400, max: 20 }),
+  );
+  if (!lookups.allowed) {
+    void recordSecurityEvent('members.lookup_rate_limited', { severity: 'warning', actorId: user.id });
+    return { ok: false, error: 'rate_limit' };
+  }
 
   /*
     Asked of the database rather than scanned for in a page of accounts.
+
+    This listed the first 200 users on the platform and searched them in
+    JavaScript, which is right until account 201 and then quietly wrong:
+    inviting a colleague who does have an account starts answering "no account
+    with that email", confidently, with nothing for either person to go on.
 
     user_id_by_email is granted to service_role alone — the answer is whether
     an address has an account, which is not for every signed-in user to ask —
@@ -360,38 +385,11 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
   */
   if (!(await allow(`team_add:${user.id}`, 20, 3600))) return { ok: false, error: 'rate_limited' };
 
-  // A missing service-role key is an answer the form can show, not a stack.
-  let admin;
-  try {
-    admin = createAdminClient();
-  } catch {
-    return { ok: false, error: 'unavailable' };
-  }
+  const admin = createAdminClient();
   const { data: invitee } = await admin.rpc('user_id_by_email', { p_email: parsed.data.email });
 
   if (!invitee) return { ok: false, error: 'no_account' };
   if (invitee === user.id) return { ok: false, error: 'already_member' };
-
-  /*
-    One company per account, from this door.
-
-    my_company_id() picks an admin membership first, then the oldest, so
-    adding somebody who already works for another company as an admin here
-    silently switched their whole console — their listings, their applicants,
-    their free post — to this company. An account that belongs to a company
-    already is not one this button may claim.
-  */
-  const { data: elsewhere } = await admin
-    .from('company_members')
-    .select('company_id')
-    .eq('user_id', invitee)
-    .limit(1);
-  if (elsewhere?.length) {
-    return {
-      ok: false,
-      error: elsewhere[0].company_id === companyId ? 'already_member' : 'elsewhere',
-    };
-  }
 
   const { error } = await supabase
     .from('company_members')
@@ -400,6 +398,8 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_member' };
     if (error.message.includes('company_member_role')) return { ok: false, error: 'not_employer' };
+    // One company per account (migration 307): somebody already on another
+    // team is answered the same way as somebody who may not be added.
     return { ok: false, error: 'forbidden' };
   }
 
@@ -408,14 +408,7 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
 }
 
 export async function removeCompanyMember(userId: string): Promise<ActionResult> {
-  if (!z.string().uuid().safeParse(userId).success) return { ok: false, error: 'invalid' };
-
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: 'unauthenticated' };
-
   const { data: companyId } = await supabase.rpc('my_company_id');
   if (!companyId) return { ok: false, error: 'no_company' };
 

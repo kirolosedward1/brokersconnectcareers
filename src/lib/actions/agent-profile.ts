@@ -6,13 +6,14 @@ import { createClient } from '@/lib/supabase/server';
 import { buildAgentSlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { normalisePhone, isValidPhone } from '@/lib/phone';
-import { isOwnStoragePath } from '@/lib/storage-path';
-import { CV_BUCKET } from '@/lib/buckets';
 import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
-import { notifyProfileReady, notifyVisibilityChanged } from '@/lib/email/notify';
-import { logFailure } from '@/lib/observe';
+import { CV_BUCKET } from '@/lib/buckets';
+import { CV_KINDS, MAX_BYTES, isOwnedPath, verifyStoredObject } from '@/lib/security/files';
+import { recordSecurityEvent } from '@/lib/security/events';
+import { clean } from '@/lib/security/sanitize';
+import { publish } from '@/lib/notifications/events';
 
 const schema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -23,13 +24,10 @@ const schema = z.object({
   tracks: z.array(z.enum(JOB_TRACKS)).max(6),
   districtIds: z.array(z.coerce.number().int().positive()).max(20),
   developerIds: z.array(z.coerce.number().int().positive()).max(30),
-  languages: z.array(z.enum(['ar', 'en', 'fr'])).max(3),
+  languages: z.array(z.string().trim().max(12)).max(6),
   availability: z.enum(AVAILABILITIES),
   visibility: z.enum(['public', 'verified_employers_only', 'hidden']),
-  /** A newly uploaded file, or nothing. */
   cvPath: z.string().trim().max(512).optional().nullable(),
-  /** Take the current CV down, whether or not a new one is coming. */
-  removeCv: z.boolean().optional(),
 });
 
 /**
@@ -38,24 +36,10 @@ const schema = z.object({
  * `visibility` is the whole point of this form: an agent who is currently
  * employed can set `hidden` and disappear from the directory entirely, which is
  * what makes it safe for them to have a profile at all.
- *
- * The role is the database's to check. agent_profiles_write_own requires
- * is_candidate() and the trigger from migration 48 refuses any other kind of
- * account whoever is writing, so an employer calling this is refused there.
  */
 export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
   const parsed = schema.safeParse(input);
-  if (!parsed.success) {
-    // Name the field, the way applyToJob does, so the form can point at it
-    // instead of falling back to "something went wrong" under the button.
-    const fieldErrors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const field = String(issue.path[0] ?? '');
-      if (!field || fieldErrors[field]) continue;
-      fieldErrors[field] = field === 'whatsapp' ? 'invalidPhone' : 'required';
-    }
-    return { ok: false, error: 'invalid', fieldErrors };
-  }
+  if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const phone = normalisePhone(parsed.data.whatsapp);
   if (!isValidPhone(phone)) {
@@ -68,19 +52,26 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // Exactly this account's folder and one file in it. The database says the
-  // same (agent_profiles_cv_is_the_owners), so this is the earlier, clearer
-  // refusal rather than the only one.
-  if (parsed.data.cvPath && !isOwnStoragePath(user.id, parsed.data.cvPath)) {
-    return { ok: false, error: 'invalid_cv_path' };
+  // Own folder, one file name, and bytes that are a document — see applyToJob.
+  if (parsed.data.cvPath) {
+    if (!isOwnedPath(parsed.data.cvPath, user.id)) return { ok: false, error: 'invalid_cv_path' };
+
+    const verdict = await verifyStoredObject(CV_BUCKET, parsed.data.cvPath, CV_KINDS, MAX_BYTES.cv);
+    if (!verdict.ok && verdict.reason !== 'unavailable') {
+      void recordSecurityEvent('upload.rejected', {
+        actorId: user.id,
+        metadata: { kind: 'cv', reason: verdict.reason, sniffed: verdict.kind ?? null },
+      });
+      return { ok: false, error: 'invalid', fieldErrors: { cv: 'fileType' } };
+    }
   }
 
   const { data: profileSaved, error: profileError } = await supabase
     .from('profiles')
-    .update({ full_name: parsed.data.fullName, whatsapp_phone: phone })
+    .update({ full_name: clean(parsed.data.fullName), whatsapp_phone: phone })
     .eq('id', user.id)
     .select('id');
-  if (profileError) return { ok: false, error: profileError.message };
+  if (profileError) return { ok: false, error: 'failed' };
   if (!profileSaved?.length) return { ok: false, error: 'not_found' };
 
   const { data: existing } = await supabase
@@ -89,27 +80,17 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  /*
-    Which CV the row ends up pointing at.
-
-    A new upload replaces the current one; "remove" clears it; neither means
-    the current one stays. The file that stops being referenced is deleted
-    after the row is written, so a save that fails leaves the old file where
-    the row still points.
-  */
-  const nextCv = parsed.data.cvPath || (parsed.data.removeCv ? null : (existing?.cv_path ?? null));
-  const orphanedCv = existing?.cv_path && existing.cv_path !== nextCv ? existing.cv_path : null;
-
   const payload = {
-    headline_ar: parsed.data.headlineAr || null,
-    headline_en: parsed.data.headlineEn || null,
+    headline_ar: clean(parsed.data.headlineAr) || null,
+    headline_en: clean(parsed.data.headlineEn) || null,
     years_experience: parsed.data.yearsExperience,
     tracks: parsed.data.tracks,
     district_ids: parsed.data.districtIds,
     languages: parsed.data.languages,
     availability: parsed.data.availability,
     visibility: parsed.data.visibility,
-    cv_path: nextCv,
+    // An empty cvPath from the form means "unchanged", not "remove".
+    cv_path: parsed.data.cvPath || existing?.cv_path || null,
   };
 
   let agentId = existing?.id;
@@ -128,7 +109,7 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
     if (!updated?.length) return { ok: false, error: 'not_found' };
   } else {
     const { data, error } = await withUniqueSlug<{ id: string }>(
-      () => buildAgentSlug(parsed.data.fullName),
+      () => buildAgentSlug(),
       (slug) =>
         supabase.from('agent_profiles').insert({ user_id: user.id, slug, ...payload }).select('id').single(),
     );
@@ -140,22 +121,6 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
       .eq('id', data.id)
       .maybeSingle();
     createdSlug = created?.slug ?? null;
-  }
-
-  /*
-    The CV nothing points at any more, removed the moment that becomes true.
-
-    This ran after the developer tags below, so a tag write that failed
-    returned before it and the replaced file stayed in the bucket with
-    nothing referencing it. The row is the authority: once it is written,
-    the old file is an orphan whatever happens next, so it goes now. Through
-    the account's own session, which the storage policy confines to its own
-    folder. A failure here is logged and the save stands: the row is right,
-    and a stray file in a private bucket is the smaller wrong.
-  */
-  if (orphanedCv && isOwnStoragePath(user.id, orphanedCv)) {
-    const { error: removeError } = await supabase.storage.from(CV_BUCKET).remove([orphanedCv]);
-    if (removeError) logFailure('profile', 'could not remove the replaced CV', { user: user.id });
   }
 
   /*
@@ -208,9 +173,11 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
   // of noise that gets a sender muted.
   if (createdSlug) {
     const slug = createdSlug;
-    after(() => notifyProfileReady(user.id, slug, parsed.data.visibility));
+    after(() => publish({ type: 'PROFILE_CREATED', userId: user.id, slug, visibility: parsed.data.visibility }));
   } else if (existing && existing.visibility !== parsed.data.visibility) {
-    after(() => notifyVisibilityChanged(user.id, parsed.data.visibility));
+    after(() =>
+      publish({ type: 'PROFILE_VISIBILITY_CHANGED', userId: user.id, visibility: parsed.data.visibility }),
+    );
   }
 
   revalidatePath('/dashboard/profile');

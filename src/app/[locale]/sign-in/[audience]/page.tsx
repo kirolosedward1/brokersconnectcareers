@@ -102,7 +102,7 @@ export default async function AudienceSignInPage({
         <ReturnIntent next={next} locale={locale} />
 
         <div className="mt-8">
-          <AudienceSwitch mode="sign-in" active={audience} />
+          <AudienceSwitch mode="sign-in" active={audience} next={next} />
         </div>
 
         <div className="mt-6">

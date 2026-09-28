@@ -28,14 +28,19 @@ import type { SendOutcome } from './send';
  * expire out of the sweeper's window.
  */
 
-type Rebuild = (entityId: string) => Promise<SendOutcome>;
+/**
+ * Rebuilt from the entity, and — where the message was for one particular
+ * person rather than whoever the entity implies — the recipient the outbox
+ * row recorded.
+ */
+type Rebuild = (entityId: string, userId: string | null) => Promise<SendOutcome>;
 
 export const REBUILDERS: Record<string, Rebuild> = {
   new_application: (id) => notifyEmployerOfApplication(id),
   application_receipt: (id) => notifyCandidateOfApplication(id),
   application_status: (id) => notifyCandidateOfStatus(id),
   application_rejected: (id) => notifyCandidateOfStatus(id),
-  job_submitted: (id) => notifyJobSubmitted(id),
+  job_submitted: (id, userId) => notifyJobSubmitted(id, userId),
   job_approved: (id) => notifyEmployerOfModeration(id, true),
   job_rejected: (id) => notifyEmployerOfModeration(id, false),
   company_verified: (id) => notifyCompanyVerification(id, true),
