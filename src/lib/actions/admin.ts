@@ -576,3 +576,30 @@ export async function requeueEmail(input: unknown): Promise<ActionResult> {
   revalidatePath('/admin/email');
   return { ok: true };
 }
+
+const closeRequestSchema = z.object({ requestId: z.string().uuid() });
+
+/**
+ * An owner's deletion request, dealt with: closed, which takes it off the
+ * overview's list. Only that — deciding what happens to the company, and
+ * deleting the account, are done on purpose elsewhere first; this records
+ * that they were. Through admin_answer_support_request(), which checks the
+ * caller is an admin itself, with no reply (so no bell rings for it).
+ */
+export async function closeDeletionRequest(input: unknown): Promise<ActionResult> {
+  const parsed = closeRequestSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { error } = await supabase.rpc('admin_answer_support_request', {
+    p_id: parsed.data.requestId,
+    p_reply: null,
+    p_status: 'closed',
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  revalidatePath('/admin');
+  return { ok: true };
+}

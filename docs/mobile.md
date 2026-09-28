@@ -261,7 +261,13 @@ for rule, over Supabase Auth directly — as the website's browser code does:
 - **The Account tab** signs out of this phone only (`scope: 'local'`), and
   deletes the account through `deleteMyAccount` — for an Apple account after
   asking Apple for a fresh authorization code, so the website can revoke the
-  grant. An account that owns a company is pointed to the team, as on the web.
+  grant. An account that owns a company cannot be deleted at a tap — the
+  company, its listings and other people's applications would go with it — so
+  its owner asks for it instead, in the app or on the website
+  (`requestAccountDeletion`, a support request under the `account_deletion`
+  topic, migration 330), and is told how long it takes; the admin console's
+  overview lists the open requests until the team has agreed what happens to
+  the company, done it, and closed them.
 - **Account settings** are the website's `/dashboard/account`, split for a
   phone. The photo sits on the Account tab: picked from the library, cropped
   square by the system, written again as a JPEG no wider than 1024 px (which
@@ -404,7 +410,7 @@ On the website (Vercel):
 | `MOBILE_MIN_APP_VERSION` | The lowest app version `/api/mobile/v1/config` accepts; below it the app asks to be updated. |
 | `APPLE_APP_ID` | `TEAMID.net.brokersconnect.app` — serves the universal-link file. |
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_CLIENT_ID` | The Sign in with Apple key (`.p8`, newlines escaped) and the app's bundle id, used to revoke an Apple user's grant when they delete their account from the app (`src/lib/apple/revoke.ts`). Secret. |
-| `SUPPORT_EMAIL` | Already the footer's contact address; the app offers it too (`/api/mobile/v1/config`), and a company owner who wants their account deleted is pointed to it. |
+| `SUPPORT_EMAIL` | Already the footer's contact address; the app offers it too (`/api/mobile/v1/config`), beside a company owner's in-app deletion request. |
 | `EXPO_ACCESS_TOKEN` | Only once "enhanced push security" is on in the Expo project: authenticates the website's pushes. Secret. |
 
 In the Supabase dashboard (Authentication):

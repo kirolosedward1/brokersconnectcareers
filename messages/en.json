@@ -1208,7 +1208,11 @@
     "reportingUnban": "Allow reporting again",
     "reportingBanBody": "They can no longer file reports; everything else about the account is unchanged. When they try, they are told reporting is unavailable on their account — not why.",
     "reportingUnbanBody": "They can file reports again, under the same limits as everyone.",
-    "reportingBanReason": "Why (kept on the record, sent to nobody)"
+    "reportingBanReason": "Why (kept on the record, sent to nobody)",
+    "deletionRequests": "Account deletion requests",
+    "deletionRequestsLede": "Company owners asking to leave. Deleting the account would delete the company, its listings and the applications to them: agree what happens to the company, do it, then close the request.",
+    "deletionRequestClose": "Close request",
+    "deletionRequestAccountGone": "Account already deleted"
   },
   "reportReason": {
     "fake_listing": "Fake listing",
@@ -1509,7 +1513,10 @@
     "mfaRequiredBanner": "Admin accounts must set up two-step verification before the admin console opens.",
     "mfaChallengeBanner": "Confirm with a code from your authenticator app so the admin console opens in this session.",
     "mfaCodeInvalid": "That code is not right. Try the new number in the app.",
-    "deleteBlockedSuspended": "Your account is suspended, so it can’t be deleted from here while the decision stands. You can ask for the suspension to be reviewed from your dashboard, or contact us and we’ll close the account once the case is done."
+    "deleteBlockedSuspended": "Your account is suspended, so it can’t be deleted from here while the decision stands. You can ask for the suspension to be reviewed from your dashboard, or contact us and we’ll close the account once the case is done.",
+    "deleteRequestCta": "Ask us to delete it",
+    "deleteRequested": "We have your request (reference {reference}). We will write to you within 7 days to agree what happens to the company, and your account is deleted within 30 days.",
+    "deleteRequestLimited": "You have sent several requests today, and we have them. There is no need to send another."
   },
   "savedSearch": {
     "cta": "Alert me",

@@ -678,14 +678,43 @@ describe('deleting the account', () => {
     expect(await screen.findByText(ar.account.deleteBlockedSuspended)).toBeTruthy();
   });
 
-  it("is not offered to a company's owner, who is pointed to the team instead", async () => {
+  it("is not offered to a company's owner, who asks the team instead and is told how long it takes", async () => {
     profileRow = { ...profile, role: 'employer' };
     companyId = ownedCompany.id;
+    server.on('GET /rest/v1/support_requests', []);
+    server.on('POST /api/mobile/v1/actions/requestAccountDeletion', { ok: true, data: { reference: 'BC-7K3M-9QX2' } });
     await signedIn();
     renderRouter(app, { initialUrl: '/account/delete' });
     expect(await screen.findByText(ar.account.deleteBlockedCompany)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.account.deleteCta })).toBeNull();
     expect(screen.getByRole('button', { name: ar.app.account.contact })).toBeTruthy();
+
+    await press(ar.account.deleteRequestCta);
+    expect(await screen.findByText(ar.account.deleteRequested.replace('{reference}', 'BC-7K3M-9QX2'))).toBeTruthy();
+    const sent = (bodyOf('/api/mobile/v1/actions/requestAccountDeletion') as { input: { key: string; client: string } }).input;
+    expect(sent.key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(sent.client).toMatch(/^Brokers Connect app · ios/);
+  });
+
+  it('shows an owner the request they already made, rather than the button again', async () => {
+    profileRow = { ...profile, role: 'employer' };
+    companyId = ownedCompany.id;
+    server.on('GET /rest/v1/support_requests', [{ reference: 'BC-AAAA-BBBB' }]);
+    await signedIn();
+    renderRouter(app, { initialUrl: '/account/delete' });
+    expect(await screen.findByText(ar.account.deleteRequested.replace('{reference}', 'BC-AAAA-BBBB'))).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.account.deleteRequestCta })).toBeNull();
+  });
+
+  it("says when the day's requests are used up", async () => {
+    profileRow = { ...profile, role: 'employer' };
+    companyId = ownedCompany.id;
+    server.on('GET /rest/v1/support_requests', []);
+    server.on('POST /api/mobile/v1/actions/requestAccountDeletion', { ok: false, error: 'rate_limit' });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/account/delete' });
+    await press(ar.account.deleteRequestCta);
+    expect(await screen.findByText(ar.account.deleteRequestLimited)).toBeTruthy();
   });
 });
 

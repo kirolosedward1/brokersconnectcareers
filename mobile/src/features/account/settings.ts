@@ -1,9 +1,13 @@
+import { useState } from 'react';
+import { Platform } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Application from 'expo-application';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import type { ProfileRow } from '@/lib/supabase/database.types';
+import { uuid } from '@/lib/uuid';
 import { callAction, getJson } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -226,4 +230,64 @@ export async function removeSecondFactor(): Promise<boolean> {
     if (unenrollError) removed = false;
   }
   return removed;
+}
+
+// ---------------------------------------------------------------------------
+// An owner asking for the account to be deleted
+// ---------------------------------------------------------------------------
+
+/**
+ * The open request this person made to have their account deleted, if any —
+ * their own support request, which they may read (migration 201's policy).
+ * Allowed to fail quietly: offering the button again is the safe answer, and
+ * the website converges a repeat on the day's limit.
+ */
+export function useDeletionRequest() {
+  const userId = useSession().session?.user.id ?? null;
+  return useQuery({
+    queryKey: ['account', 'deletion-request', userId],
+    enabled: Boolean(userId),
+    queryFn: async (): Promise<string | null> => {
+      const { data } = await supabase
+        .from('support_requests')
+        .select('reference')
+        .eq('user_id', userId as string)
+        .eq('topic', 'account_deletion')
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      return data?.[0]?.reference ?? null;
+    },
+  });
+}
+
+/** Why a deletion request was not filed: too many today, not an owner after all, or anything else. */
+export class DeletionRequestRefused extends Error {
+  constructor(readonly reason: string) {
+    super(reason);
+    this.name = 'DeletionRequestRefused';
+  }
+}
+
+/**
+ * Ask for the account to be deleted — the website's requestAccountDeletion,
+ * for an owner, whose account cannot be deleted at a tap without taking the
+ * company and other people's applications with it. One key for the life of
+ * the screen, so a retry after a timeout is the same request.
+ */
+export function useRequestDeletion() {
+  const queryClient = useQueryClient();
+  const [key] = useState(uuid);
+  return useMutation({
+    mutationFn: async (): Promise<string> => {
+      const version = Application.nativeApplicationVersion ?? '';
+      const result = await callAction('requestAccountDeletion', {
+        key,
+        client: `Brokers Connect app · ${Platform.OS} ${version}`.trim(),
+      });
+      if (!result.ok) throw new DeletionRequestRefused(result.error);
+      return result.data?.reference ?? '';
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['account', 'deletion-request'] }),
+  });
 }

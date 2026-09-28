@@ -157,6 +157,8 @@ export type MobileActions = {
   // Account
   /** An account made with Apple sends a fresh authorization code, so the grant is revoked too. */
   deleteMyAccount: { input: { appleAuthorizationCode?: string }; output: ActionResult };
+  /** A company owner, whom deleteMyAccount refuses, asking us to do it; the answer is the request's reference. */
+  requestAccountDeletion: { input: { key: string; client?: string }; output: ActionResult<{ reference: string }> };
   announcePasswordChange: { input: undefined; output: ActionResult };
   updateNotificationPreferences: {
     input: {

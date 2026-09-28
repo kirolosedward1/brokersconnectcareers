@@ -7,9 +7,10 @@ import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
+import { DeletionRequestRefused, useDeletionRequest, useRequestDeletion } from '~/features/account/settings';
 import { appleAuthorizationCode } from '~/features/auth/providers';
 import { useMobileConfig } from '~/features/config';
-import { callAction } from '~/lib/api';
+import { ApiError, callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { space } from '~/theme/tokens';
@@ -23,9 +24,10 @@ import { space } from '~/theme/tokens';
  * an irreversible loss. An account made with Apple is asked to confirm with
  * Apple first, which hands the website a one-time code to revoke the app's
  * access to the Apple ID — deleting only the account would leave the app
- * listed there. An account that owns a company cannot be deleted from here or
- * from the website: other people's applications belong to that company, and
- * the team handles it with the owner. Nor, while a suspension stands, can the
+ * listed there. An account that owns a company cannot be deleted at a tap,
+ * here or on the website: other people's applications belong to that company.
+ * Its owner asks instead, from here (requestAccountDeletion), and is told how
+ * long it takes; the team agrees what happens to the company and deletes it. Nor, while a suspension stands, can the
  * suspended account: its records are what the case is about (the website's
  * rule; the person can appeal, or write to the team).
  */
@@ -45,6 +47,21 @@ export default function DeleteAccountScreen() {
     (user?.identities ?? []).some((identity) => identity.provider === 'apple') ||
     ((user?.app_metadata?.providers as string[] | undefined) ?? []).includes('apple');
   const supportEmail = config.data?.supportEmail ?? null;
+
+  // An owner asks instead (requestAccountDeletion); one already asked sees their reference.
+  const existing = useDeletionRequest();
+  const ask = useRequestDeletion();
+  const [notOwner, setNotOwner] = useState(false);
+  const reference = ask.data ?? existing.data ?? null;
+  const askError = !ask.error
+    ? null
+    : ask.error instanceof ApiError && ask.error.status === 0
+      ? t('app.offline.body')
+      : ask.error instanceof DeletionRequestRefused && ask.error.reason === 'rate_limit'
+        ? t('account.deleteRequestLimited')
+        : ask.error instanceof DeletionRequestRefused && ask.error.reason === 'not_owner'
+          ? null
+          : t('common.errorBody');
 
   async function remove() {
     setError(null);
@@ -96,9 +113,27 @@ export default function DeleteAccountScreen() {
       >
         <Text>{t('account.deleteBody')}</Text>
 
-        {ownsCompany ? (
+        {ownsCompany && !notOwner ? (
           <View style={{ gap: space[3] }}>
             <Notice tone="warning">{t('account.deleteBlockedCompany')}</Notice>
+            {/* Asked for here, handled by the team: what happens to the company is decided first. */}
+            {reference ? (
+              <Notice tone="success">{t('account.deleteRequested', { reference })}</Notice>
+            ) : (
+              <Button
+                label={t('account.deleteRequestCta')}
+                size="lg"
+                loading={ask.isPending || existing.isPending}
+                onPress={() =>
+                  ask.mutate(undefined, {
+                    onError: (failure) => {
+                      if (failure instanceof DeletionRequestRefused && failure.reason === 'not_owner') setNotOwner(true);
+                    },
+                  })
+                }
+              />
+            )}
+            {askError ? <Notice tone="destructive">{askError}</Notice> : null}
             {supportEmail ? (
               <Button
                 label={t('app.account.contact')}

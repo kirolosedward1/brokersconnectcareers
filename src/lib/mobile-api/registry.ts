@@ -8,6 +8,7 @@ import { resolveNotification } from '@/lib/notifications/open';
 import {
   announcePasswordChange,
   deleteMyAccount,
+  requestAccountDeletion,
   saveAvatar,
   updateNotificationPreferences,
 } from '@/lib/actions/account';
@@ -108,6 +109,7 @@ const AGENT_HANDLE = z.string().regex(/^(?:[a-z0-9][a-z0-9-]{0,118}|[0-9a-f-]{36
 export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   // Account
   deleteMyAccount: { run: (input) => deleteMyAccount(input) },
+  requestAccountDeletion: { run: (input) => requestAccountDeletion(input) },
   announcePasswordChange: { run: () => announcePasswordChange() },
   updateNotificationPreferences: { run: (input) => updateNotificationPreferences(input) },
   saveAvatar: { run: (input) => saveAvatar(input) },

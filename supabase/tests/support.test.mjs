@@ -281,6 +281,44 @@ report.section('a help request carries its own context, and only once');
   });
 }
 
+report.section('an owner asks for their account to be deleted');
+{
+  const ask = (key) => `select public.submit_support_request('${key}', 'account_deletion',
+    'حذف الحساب هيحذف الشركة وإعلاناتها وطلبات التقديم عليها — المالك طالب إننا نتولى ده.',
+    null, null, '/dashboard/account', 'Brokers Connect iOS 1.0.0', 'ar', '1.0.0') as reference`;
+
+  await tx(async () => {
+    await become(employerVerified);
+    const asked = await attempt(ask('77777777-7777-4777-8777-777777777777'));
+    await owner();
+    const { rows } = await db.query(`
+      select user_id, role, topic, status from support_requests
+       where request_key = '77777777-7777-4777-8777-777777777777'`);
+    report.check('the request is filed under its own topic',
+      asked.ok && rows[0]?.topic === 'account_deletion' && rows[0]?.status === 'open', asked.error);
+    report.check('as the owner, with the role the platform knows',
+      rows[0]?.user_id === employerVerified && rows[0]?.role === 'employer', JSON.stringify(rows[0]));
+
+    // What the admin overview reads: open requests under this topic.
+    await become(admin);
+    const queue = await attempt(`select reference from support_requests
+                                   where topic = 'account_deletion' and status = 'open'`);
+    report.check('and an admin sees it in the queue',
+      queue.ok && queue.rows.some((row) => row.reference === asked.rows[0]?.reference), queue.error);
+  });
+
+  await tx(async () => {
+    await db.exec(`insert into support_requests (reference, request_key, user_id, role, topic, message)
+                   values ('BC-DE00-0001', '78787878-7878-4787-8787-787878787878', '${employerVerified}', 'employer',
+                           'account_deletion', 'طلب حذف حساب للاختبار')`);
+    const constraint = await attempt(`insert into support_requests (reference, request_key, topic, message, contact_email)
+                   values ('BC-DE00-0002', '79797979-7979-4797-8797-797979797979', 'delete_everything',
+                           'موضوع مش موجود في المنتج', 'x@example.com')`);
+    report.check('the table itself still refuses a topic nobody defined',
+      !constraint.ok && /support_requests_topic_check/.test(constraint.error ?? ''), constraint.error);
+  });
+}
+
 report.section('a request is read by its sender and by admins');
 {
   await db.exec(`
