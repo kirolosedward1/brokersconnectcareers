@@ -140,6 +140,19 @@ export default async function ProfilePage({
       ) : null}
 
       {/*
+        Said to the consultant, not only recorded for the admins. A restricted
+        profile stays hidden whatever the visibility control below is set to
+        (migration 317), and a form that silently ignored the choice would read
+        as broken. The reason is the one the admin gave.
+      */}
+      {typedAgent?.restricted_at ? (
+        <p role="status" className="rounded-xl border border-destructive/30 bg-destructive-muted px-4 py-3 text-sm text-destructive">
+          {t('profileRestricted')}
+          {typedAgent.restriction_reason ? ` «${typedAgent.restriction_reason}»` : null}
+        </p>
+      ) : null}
+
+      {/*
         Only when somebody has actually looked.
 
         Zero is not a number worth printing here: it would be the first thing a

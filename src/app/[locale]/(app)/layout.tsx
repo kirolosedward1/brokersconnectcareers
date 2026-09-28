@@ -175,6 +175,11 @@ export default async function AppLayout({
         icon: 'users',
         badge: adminCounts?.accounts_pending,
       },
+      { href: '/admin/applications', label: tAdmin('applications'), icon: 'inbox' },
+      { href: '/admin/agents', label: tAdmin('agents'), icon: 'agents' },
+      { href: '/admin/search', label: tAdmin('search'), icon: 'search' },
+      { href: '/admin/audit', label: tAdmin('auditLog'), icon: 'audit' },
+      { href: '/admin/taxonomy', label: tAdmin('taxonomy'), icon: 'taxonomy' },
       { href: '/admin/email', label: tAdmin('emailActivity'), icon: 'email' },
       { href: '/admin/security', label: tAdmin('security'), icon: 'security' },
       // The directory, for review. Admins read it whole.

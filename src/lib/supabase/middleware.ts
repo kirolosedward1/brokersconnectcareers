@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import type { User } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
 /**
@@ -13,7 +14,11 @@ import type { Database } from './database.types';
  * unconfigured or briefly unreachable should degrade to "nobody is signed in",
  * not to a 500 on every URL.
  */
-export async function updateSession(request: NextRequest, response: NextResponse) {
+export async function updateSession(
+  request: NextRequest,
+  response: NextResponse,
+  { checkAdmin = false }: { checkAdmin?: boolean } = {},
+): Promise<{ user: User | null; response: NextResponse; isAdmin?: boolean | null }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -42,7 +47,29 @@ export async function updateSession(request: NextRequest, response: NextResponse
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    return { user, response };
+
+    /*
+      Whether this is an admin, asked only on the console's own paths.
+
+      The console's layout already refuses anybody else, but it runs inside a
+      streamed response: the (app) loading boundary has sent a 200 and the
+      signed-in user's own shell before the layout's redirect is reached, so
+      the refusal arrives as a client-side redirect. Nothing of the console
+      renders — the layout throws before its children — but a refusal should be
+      a refusal, before anything is rendered at all.
+
+      `null` when the role could not be read: the request continues and the
+      layout, which reads the same row, decides. A blip should not lock an
+      admin out, and it cannot let anybody else in, because the layout and the
+      database both still check.
+    */
+    let isAdmin: boolean | null | undefined;
+    if (checkAdmin && user) {
+      const { data, error } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+      isAdmin = error ? null : data?.role === 'admin';
+    }
+
+    return { user, response, isAdmin };
   } catch (error) {
     // A network failure reaching the auth server is not a reason to fail the
     // request. Protected routes will redirect to sign-in, which is the right

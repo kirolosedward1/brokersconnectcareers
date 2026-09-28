@@ -1,19 +1,37 @@
 'use server';
 
-import { notifyJobChanged } from '@/lib/seo/indexing-api';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { publish } from '@/lib/notifications/events';
+import { notifyJobChanged } from '@/lib/seo/indexing-api';
+import { adminErrorCode } from '@/lib/admin/errors';
 
 /**
- * Every action here runs through the caller's own session, not the service
- * role. The admin RLS policies and the acting_as_admin() bypass in the guard
- * triggers are what grant the privilege, so a non-admin who reaches these
- * functions is refused by the database rather than by a check we might forget.
+ * The console's levers.
+ *
+ * Every mutation here is one call to an admin_* function (migration 318), made
+ * through the caller's own session — never the service role. That function is
+ * where the rules live: it refuses anybody who is not an admin, locks the row,
+ * refuses a transition the product does not have, requires a reason where
+ * somebody is owed one, and writes the audit record in the same transaction as
+ * the change. So a success returned from here means the change and its record
+ * are both committed, and there is no path through this file that can report
+ * success for a write that did not persist.
+ *
+ * assertAdmin() still runs first. It is not the lock — the database is — but it
+ * turns a stray call into a cheap refusal before any work, and it is the check
+ * for the one read here (the signed document URL) that is not a function call.
+ *
+ * Decisions somebody is waiting on are published after the response, as the
+ * same business events the rest of the product sends (lib/notifications).
+ * Search engines are told after the response too, whenever a lever changes
+ * whether a listing is public.
  */
+type AdminResult<T = undefined> = ActionResult<T>;
+
 async function assertAdmin() {
   const supabase = await createClient();
   const {
@@ -30,375 +48,474 @@ async function assertAdmin() {
   return profile?.role === 'admin' ? supabase : null;
 }
 
+const reason = z.string().trim().max(500).optional();
+
+/** Every admin page reads through the console layout, so one call covers them. */
+function refreshConsole() {
+  revalidatePath('/admin', 'layout');
+}
+
+type Client = NonNullable<Awaited<ReturnType<typeof assertAdmin>>>;
+
+/**
+ * The live listings a suspension could take down, read before it happens.
+ *
+ * Compared afterwards by announceTakedowns(), so only the listings that actually
+ * went to `rejected` are reported to Google: a company with somebody else still
+ * in good standing keeps trading, and its listings must not be announced as
+ * gone. Allowed to fail quietly — it only decides what Google is told.
+ */
+async function liveListings(supabase: Client, companyIds: string[]) {
+  if (!companyIds.length) return [];
+  const { data } = await supabase
+    .from('jobs')
+    .select('id, slug')
+    .in('company_id', companyIds)
+    .eq('status', 'active');
+  return (data ?? []) as { id: string; slug: string }[];
+}
+
+// Taken down means gone from the public site: row-level security hides a
+// rejected listing and its URL now answers 404, which is what Google is told.
+function announceTakedowns(supabase: Client, exposed: { id: string }[]) {
+  if (!exposed.length) return;
+  const ids = exposed.map((row) => row.id);
+  after(async () => {
+    const { data } = await supabase.from('jobs').select('slug').in('id', ids).eq('status', 'rejected');
+    for (const row of data ?? []) await notifyJobChanged(row.slug, 'URL_DELETED');
+  });
+}
+
+/** One listing's slug, for telling Google about a decision on it. */
+function announceListing(supabase: Client, jobId: string, type: 'URL_UPDATED' | 'URL_DELETED') {
+  after(async () => {
+    const { data } = await supabase.from('jobs').select('slug').eq('id', jobId).maybeSingle();
+    await notifyJobChanged(data?.slug, type);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Listings
+// ---------------------------------------------------------------------------
+
+const JOB_ACTIONS = ['approve', 'reject', 'request_changes', 'unpublish', 'close', 'restore'] as const;
+export type JobModerationAction = (typeof JOB_ACTIONS)[number];
+
 const moderateSchema = z.object({
   jobId: z.string().uuid(),
-  approve: z.boolean(),
-  note: z.string().trim().max(500).optional(),
+  action: z.enum(JOB_ACTIONS),
+  reason,
 });
 
-export async function moderateJob(input: unknown): Promise<ActionResult> {
+export async function moderateJob(input: unknown): Promise<AdminResult> {
   const parsed = moderateSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
-  const { data: moderated, error } = await supabase
-    .from('jobs')
-    .update(
-      parsed.data.approve
-        ? { status: 'active', rejection_note: null }
-        : { status: 'rejected', rejection_note: parsed.data.note || null },
-    )
-    .eq('id', parsed.data.jobId)
-    // Only a listing that is actually waiting. A queue open in a stale tab
-    // used to publish a listing the employer had since pulled back to draft,
-    // or closed — an admin bypasses the transition guard, so nothing else
-    // would have refused it.
-    .eq('status', 'pending_review')
-    // An id that matches nothing is not a successful moderation. Without this
-    // the reviewer was told it worked and the employer was emailed about a
-    // decision on a listing that does not exist.
-    .select('id, slug');
+  const { jobId, action } = parsed.data;
+  const note = parsed.data.reason || null;
 
-  if (error) {
-    // The unverified-company post cap is enforced in the database, so approving
-    // a second listing from an unverified company fails here rather than
-    // silently overriding the rule. Name it, so the reviewer knows to verify
-    // the company first.
-    if (error.message.includes('unverified_company_post_cap')) {
-      return { ok: false, error: 'post_cap' };
-    }
-    // Approval is where a new posting window spends a credit (migration 66),
-    // so a company with none left is refused at this button.
-    if (error.message.includes('insufficient_post_credits')) {
-      return { ok: false, error: 'no_credits' };
-    }
-    return { ok: false, error: error.message };
+  const { error } = await supabase.rpc('admin_moderate_job', {
+    p_job: jobId,
+    p_action: action,
+    p_reason: note,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  // The employer has been waiting on this decision. Closing on their behalf
+  // is not a verdict on the listing, so it sends nothing.
+  if (action === 'approve' || action === 'restore') {
+    after(() => publish({ type: 'JOB_APPROVED', jobId }));
+  } else if (action !== 'close') {
+    after(() => publish({ type: 'JOB_REJECTED', jobId, note }));
   }
 
-  // Nothing waiting under that id: gone, or already decided, or withdrawn by
-  // the employer. Named for the queue, which re-reads on it.
-  if (!moderated?.length) return { ok: false, error: 'stale' };
+  // Google hears about the listings whose public page changed: live now
+  // (approve, restore), closed (still a page, now noindex) or taken down
+  // (unpublish). A rejection from review was never public and is not news.
+  if (action === 'approve' || action === 'restore' || action === 'close') {
+    announceListing(supabase, jobId, 'URL_UPDATED');
+  } else if (action === 'unpublish') {
+    announceListing(supabase, jobId, 'URL_DELETED');
+  }
 
-  // The employer has been waiting on this decision; it is the one moderation
-  // outcome they actually need pushed to them rather than discovered.
-  after(() =>
-    publish(
-      parsed.data.approve
-        ? { type: 'JOB_APPROVED', jobId: parsed.data.jobId }
-        : { type: 'JOB_REJECTED', jobId: parsed.data.jobId, note: parsed.data.note },
-    ),
-  );
-
-  // Approved, it is a new job page for Google to read now rather than on its
-  // next crawl; rejected, it is off the public site (and may have been live).
-  const moderatedSlug = moderated[0].slug;
-  after(() => notifyJobChanged(moderatedSlug, parsed.data.approve ? 'URL_UPDATED' : 'URL_DELETED'));
-
-  revalidatePath('/admin/jobs');
+  refreshConsole();
   revalidatePath('/jobs');
   return { ok: true };
 }
 
 const featureSchema = z.object({ jobId: z.string().uuid(), featured: z.boolean() });
 
-export async function setJobFeatured(input: unknown): Promise<ActionResult> {
+export async function setJobFeatured(input: unknown): Promise<AdminResult> {
   const parsed = featureSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
-  const { data: featured, error } = await supabase
-    .from('jobs')
-    .update({
-      is_featured: parsed.data.featured,
-      // 14 days pinned, per the featured add-on. Clearing the flag clears the
-      // window so a later re-feature starts fresh.
-      featured_until: parsed.data.featured
-        ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-        : null,
-    })
-    .eq('id', parsed.data.jobId)
-    // A featured slot is a place on the board; a draft or a rejected listing
-    // has no place on it to be given.
-    .eq('status', 'active')
-    .select('id');
+  const { error } = await supabase.rpc('admin_set_job_featured', {
+    p_job: parsed.data.jobId,
+    p_featured: parsed.data.featured,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
 
-  if (error) return { ok: false, error: error.message };
-  if (!featured?.length) return { ok: false, error: 'stale' };
-
-  revalidatePath('/admin/jobs');
+  refreshConsole();
   revalidatePath('/jobs');
   return { ok: true };
 }
 
-const verifySchema = z.object({
+// ---------------------------------------------------------------------------
+// Companies
+// ---------------------------------------------------------------------------
+
+const reviewSchema = z.object({
   companyId: z.string().uuid(),
-  approve: z.boolean(),
-  note: z.string().trim().max(500).optional(),
+  decision: z.enum(['verify', 'reject', 'request_changes', 'revoke']),
+  note: reason,
 });
 
-export async function verifyCompany(input: unknown): Promise<ActionResult> {
-  const parsed = verifySchema.safeParse(input);
+export async function reviewCompany(input: unknown): Promise<AdminResult> {
+  const parsed = reviewSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { companyId, decision } = parsed.data;
+  const note = parsed.data.note || null;
 
-  const { data: verified, error } = await supabase
-    .from('companies')
-    .update({
-      verification_status: parsed.data.approve ? 'verified' : 'rejected',
-      verified_at: parsed.data.approve ? new Date().toISOString() : null,
-    })
-    .eq('id', parsed.data.companyId)
-    .select('id');
+  const { error } = await supabase.rpc('admin_review_company', {
+    p_company: companyId,
+    p_decision: decision,
+    p_note: note,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
 
-  if (error) return { ok: false, error: error.message };
-  // A company id that matches nothing is not a completed review.
-  if (!verified?.length) return { ok: false, error: 'not_found' };
+  // A company waiting on its review has no other way to hear the outcome. A
+  // request for changes is told the same way as a rejection — with the note,
+  // which is the part they act on.
+  if (decision === 'verify') {
+    after(() => publish({ type: 'COMPANY_VERIFIED', companyId }));
+  } else if (decision !== 'revoke') {
+    after(() => publish({ type: 'COMPANY_VERIFICATION_REJECTED', companyId, note }));
+  }
 
-  const { error: documentsError } = await supabase
-    .from('company_documents')
-    .update({
-      status: parsed.data.approve ? 'verified' : 'rejected',
-      review_note: parsed.data.note || null,
-      reviewed_by: user?.id ?? null,
-      reviewed_at: new Date().toISOString(),
-    })
-    .eq('company_id', parsed.data.companyId)
-    .eq('status', 'pending');
-
-  // The company is decided and the papers are not: said, rather than reported
-  // as a finished review with documents still sitting at `pending` in the
-  // queue the reviewer is looking at.
-  if (documentsError) return { ok: false, error: documentsError.message };
-
-  // The owner is told what the review decided. Transactional: a company left
-  // waiting on verification has no other way to find out, and the bell only
-  // helps somebody who is already logged in and looking.
-  after(() =>
-    publish(
-      parsed.data.approve
-        ? { type: 'COMPANY_VERIFIED', companyId: parsed.data.companyId }
-        : {
-            type: 'COMPANY_VERIFICATION_REJECTED',
-            companyId: parsed.data.companyId,
-            note: parsed.data.note,
-          },
-    ),
-  );
-
-  revalidatePath('/admin/companies');
+  refreshConsole();
   revalidatePath('/companies');
   return { ok: true };
 }
 
-const reportedJobSchema = z.object({
-  jobId: z.string().uuid(),
-  takeDown: z.boolean(),
-  note: z.string().trim().max(500).optional(),
+const suspensionSchema = z.object({
+  companyId: z.string().uuid(),
+  suspend: z.boolean(),
+  reason: z.string().trim().min(3).max(500),
 });
 
-/**
- * Close out every open report on one listing, optionally taking it down.
- *
- * The queue used to resolve reports one at a time, and its only verb was
- * "resolve" — which marks the complaint handled and leaves the listing exactly
- * where it was. A reviewer reading "this advert is a fake" had nothing on that
- * screen to act with: they had to remember the title, cross to the jobs queue,
- * switch it to the active tab, and find it in an unpaginated list. The
- * realistic outcome of that walk is that the report gets closed and the fake
- * advert stays up.
- *
- * Reports are also one-per-person — there is a unique index on
- * (job_id, reporter_id) — so five reports on a listing are five different
- * people, which is the strongest signal the queue has. Handling them
- * individually threw it away and made the reviewer close the same complaint
- * five times.
- *
- * So the unit of work is the listing, not the row: both verbs act on every
- * open report at once, and taking down means the listing actually comes down.
- */
-export async function actOnReportedJob(input: unknown): Promise<ActionResult<{ tookDown: boolean }>> {
-  const parsed = reportedJobSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'invalid' };
+export async function setCompanySuspension(input: unknown): Promise<AdminResult<{ takenDown: number }>> {
+  const parsed = suspensionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'reason_required' };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const exposed = parsed.data.suspend ? await liveListings(supabase, [parsed.data.companyId]) : [];
 
-  let tookDown = false;
+  const { data, error } = await supabase.rpc('admin_set_company_suspension', {
+    p_company: parsed.data.companyId,
+    p_suspend: parsed.data.suspend,
+    p_reason: parsed.data.reason,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
 
-  if (parsed.data.takeDown) {
-    const { data: rejected, error } = await supabase
-      .from('jobs')
-      .update({ status: 'rejected', rejection_note: parsed.data.note || null })
-      .eq('id', parsed.data.jobId)
-      // Already rejected is not a second rejection. Without this the employer
-      // is emailed again every time a later report on a listing that is
-      // already down gets cleared.
-      .neq('status', 'rejected')
-      .select('id');
-
-    if (error) return { ok: false, error: error.message };
-    tookDown = Boolean(rejected?.length);
-
-    if (tookDown) {
-      after(() => publish({ type: 'JOB_REJECTED', jobId: parsed.data.jobId, note: parsed.data.note }));
-    }
-  }
-
-  const { data: resolved, error: resolveError } = await supabase
-    .from('reports')
-    .update({
-      resolved: true,
-      resolved_by: user?.id ?? null,
-      resolved_at: new Date().toISOString(),
-    })
-    .eq('job_id', parsed.data.jobId)
-    .eq('resolved', false)
-    .select('id');
-
-  if (resolveError) return { ok: false, error: resolveError.message };
-  // Nothing open and nothing taken down means the queue moved on without this
-  // reviewer — somebody else cleared it. Saying so beats a success message for
-  // work that did not happen.
-  if (!resolved?.length && !tookDown) return { ok: false, error: 'not_found' };
-
-  revalidatePath('/admin/reports');
-  revalidatePath('/admin/jobs');
-  revalidatePath('/admin');
-  if (tookDown) revalidatePath('/jobs');
-  return { ok: true, data: { tookDown } };
+  announceTakedowns(supabase, exposed);
+  refreshConsole();
+  revalidatePath('/jobs');
+  revalidatePath('/companies');
+  return { ok: true, data: { takenDown: Number(data ?? 0) } };
 }
 
-/** Mints a short-lived signed URL for a verification document. */
-export async function getDocumentUrl(documentId: string): Promise<ActionResult<{ url: string }>> {
+/** Mints a five-minute signed URL for a verification document, on the record. */
+export async function getDocumentUrl(documentId: string): Promise<AdminResult<{ url: string }>> {
   if (!z.string().uuid().safeParse(documentId).success) return { ok: false, error: 'invalid' };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
-  const { data: document } = await supabase
-    .from('company_documents')
-    .select('storage_path, company_id')
-    .eq('id', documentId)
-    .maybeSingle();
-
-  if (!document) return { ok: false, error: 'not_found' };
-
-  // The row's path is one the company wrote, and the signed URL is minted with
-  // the service role — so the path is checked to be that company's own folder
-  // and one file before anything is signed.
-  const { isOwnStoragePath } = await import('@/lib/storage-path');
-  if (!isOwnStoragePath(document.company_id, document.storage_path)) {
-    return { ok: false, error: 'not_found' };
-  }
+  const { data: path, error } = await supabase.rpc('admin_open_document', { p_document: documentId });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+  if (!path) return { ok: false, error: 'not_found' };
 
   const { signedUrl, COMPANY_DOCS_BUCKET } = await import('@/lib/storage');
-  const url = await signedUrl(COMPANY_DOCS_BUCKET, document.storage_path, 300);
+  const url = await signedUrl(COMPANY_DOCS_BUCKET, path, 300);
   if (!url) return { ok: false, error: 'unavailable' };
 
   return { ok: true, data: { url } };
 }
 
+// ---------------------------------------------------------------------------
+// Accounts
+// ---------------------------------------------------------------------------
+
 const approvalSchema = z.object({
   userId: z.string().uuid(),
   status: z.enum(['approved', 'pending', 'rejected']),
-  note: z.string().trim().max(500).optional(),
+  note: reason,
 });
 
 /**
- * Approve, hold or suspend an account.
+ * Approve, hold, suspend or restore an account.
  *
- * Goes through set_account_approval rather than an UPDATE, because the rules
- * that make this safe — admin only, never an admin as the target, never
- * yourself — live in that function, and an UPDATE here would be a second place
- * to keep them. The guard trigger refuses the column to everyone else anyway;
- * this is the one door.
+ * Goes through set_account_approval, where the rules that make this safe
+ * live: admin only, never an admin as the target, never yourself, a reason for
+ * a suspension, no repeat of a decision already made, and the record of it.
  */
-export async function setAccountApproval(input: unknown): Promise<ActionResult> {
+export async function setAccountApproval(input: unknown): Promise<AdminResult> {
   const parsed = approvalSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
-  /*
-    The listings a suspension could take down, read before it happens: the
-    live and in-review listings of every company this person belongs to.
-    Compared afterwards, so only the ones that actually went to `rejected`
-    are reported to Google — a company with somebody else still in good
-    standing keeps trading, and its listings must not be announced as gone.
-
-    Allowed to fail quietly: this only decides what Google is told, and an
-    unanswered question means it is told nothing.
-  */
+  // A suspension can take down the listings of every company this person
+  // belongs to (when nobody approved is left on it).
   let exposed: { id: string; slug: string }[] = [];
   if (parsed.data.status === 'rejected') {
     const { data: memberships } = await supabase
       .from('company_members')
       .select('company_id')
       .eq('user_id', parsed.data.userId);
-    const companyIds = (memberships ?? []).map((row) => row.company_id);
-    if (companyIds.length) {
-      const { data: listings } = await supabase
-        .from('jobs')
-        .select('id, slug')
-        .in('company_id', companyIds)
-        .eq('status', 'active');
-      exposed = listings ?? [];
-    }
+    exposed = await liveListings(supabase, (memberships ?? []).map((row) => row.company_id));
   }
 
   const { error } = await supabase.rpc('set_account_approval', {
     p_user: parsed.data.userId,
     p_status: parsed.data.status,
-    p_note: parsed.data.note ?? null,
+    p_note: parsed.data.note || null,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: adminErrorCode(error) };
 
-  // The in-app notification is written by a trigger, but somebody waiting to be
-  // approved is not sitting in the console watching a bell. Pending accounts
-  // are exactly the ones that need pushing to.
   if (parsed.data.status !== 'pending') {
+    const { userId, note } = parsed.data;
     after(() =>
       publish(
         parsed.data.status === 'approved'
-          ? { type: 'ACCOUNT_APPROVED', userId: parsed.data.userId }
-          : { type: 'ACCOUNT_SUSPENDED', userId: parsed.data.userId, note: parsed.data.note },
+          ? { type: 'ACCOUNT_APPROVED', userId }
+          : { type: 'ACCOUNT_SUSPENDED', userId, note },
       ),
     );
   }
 
-  revalidatePath('/admin/users');
-  revalidatePath('/admin');
+  announceTakedowns(supabase, exposed);
+  refreshConsole();
   // Suspension takes the account's live listings down with it when nobody
-  // approved is left on the company, so the board and the jobs queue have both
-  // changed by the time this returns.
-  if (parsed.data.status === 'rejected') {
-    revalidatePath('/jobs');
-    revalidatePath('/admin/jobs');
-  }
+  // approved is left on the company.
+  if (parsed.data.status === 'rejected') revalidatePath('/jobs');
+  return { ok: true };
+}
 
-  // Taken down means gone from the public site: row-level security hides a
-  // rejected listing and its URL now answers 404, which is what Google is told.
-  if (exposed.length) {
-    const ids = exposed.map((row) => row.id);
-    after(async () => {
-      const { data: takenDown } = await supabase.from('jobs').select('slug').in('id', ids).eq('status', 'rejected');
-      for (const row of takenDown ?? []) await notifyJobChanged(row.slug, 'URL_DELETED');
-    });
+const revealSchema = z.object({
+  userId: z.string().uuid(),
+  reason: z.string().trim().min(3).max(300),
+});
+
+/**
+ * One account's email and phone, for an admin who says why.
+ *
+ * Nothing else in the console returns either. The request is recorded with
+ * its reason before the details come back, in the same transaction.
+ */
+export async function revealContact(
+  input: unknown,
+): Promise<AdminResult<{ email: string | null; phone: string }>> {
+  const parsed = revealSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'reason_required' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { data, error } = await supabase.rpc('admin_reveal_contact', {
+    p_user: parsed.data.userId,
+    p_reason: parsed.data.reason,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  const row = data?.[0];
+  if (!row) return { ok: false, error: 'not_found' };
+
+  refreshConsole();
+  return { ok: true, data: { email: row.email, phone: row.whatsapp_phone } };
+}
+
+// ---------------------------------------------------------------------------
+// Consultants
+// ---------------------------------------------------------------------------
+
+const restrictionSchema = z.object({
+  agentId: z.string().uuid(),
+  restrict: z.boolean(),
+  reason: z.string().trim().min(3).max(500),
+});
+
+export async function setAgentRestriction(input: unknown): Promise<AdminResult> {
+  const parsed = restrictionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'reason_required' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { error } = await supabase.rpc('admin_set_agent_restriction', {
+    p_agent: parsed.data.agentId,
+    p_restrict: parsed.data.restrict,
+    p_reason: parsed.data.reason,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  refreshConsole();
+  revalidatePath('/agents');
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Reports
+// ---------------------------------------------------------------------------
+
+const reportsSchema = z.object({
+  targetType: z.enum(['job', 'company', 'agent']),
+  targetId: z.string().uuid(),
+  status: z.enum(['investigating', 'resolved', 'dismissed']),
+  note: reason,
+  takeAction: z.boolean().default(false),
+});
+
+/**
+ * Move every open report on one target together, optionally taking the
+ * matching action — listing down, company suspended, consultant restricted —
+ * in the same transaction as the resolution.
+ */
+export async function moderateReports(input: unknown): Promise<AdminResult<{ moved: number }>> {
+  const parsed = reportsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { targetType, targetId, status, takeAction } = parsed.data;
+  const note = parsed.data.note || null;
+
+  // Acting on a company suspends it, which takes its live listings down.
+  const exposed = takeAction && targetType === 'company' ? await liveListings(supabase, [targetId]) : [];
+
+  const { data, error } = await supabase.rpc('admin_moderate_reports', {
+    p_target_type: targetType,
+    p_target_id: targetId,
+    p_status: status,
+    p_note: note,
+    p_take_action: takeAction,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  const outcome = data as { reports: number; took_action: boolean } | null;
+  if (outcome?.took_action && targetType === 'job') {
+    after(() => publish({ type: 'JOB_REJECTED', jobId: targetId, note }));
+    announceListing(supabase, targetId, 'URL_DELETED');
   }
+  if (outcome?.took_action) announceTakedowns(supabase, exposed);
+
+  refreshConsole();
+  if (outcome?.took_action) {
+    revalidatePath('/jobs');
+    revalidatePath('/companies');
+    revalidatePath('/agents');
+  }
+  return { ok: true, data: { moved: outcome?.reports ?? 0 } };
+}
+
+// ---------------------------------------------------------------------------
+// Internal notes
+// ---------------------------------------------------------------------------
+
+const noteSchema = z.object({
+  targetType: z.enum(['user', 'company', 'job', 'agent', 'application', 'report']),
+  targetId: z.string().min(1).max(64),
+  body: z.string().trim().min(1).max(2000),
+});
+
+export async function addModerationNote(input: unknown): Promise<AdminResult> {
+  const parsed = noteSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { error } = await supabase.rpc('admin_add_note', {
+    p_target_type: parsed.data.targetType,
+    p_target_id: parsed.data.targetId,
+    p_body: parsed.data.body,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  refreshConsole();
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Taxonomy
+// ---------------------------------------------------------------------------
+
+const taxonomySchema = z.object({
+  kind: z.enum(['district', 'governorate', 'developer']),
+  id: z.number().int().positive().nullable(),
+  nameAr: z.string().trim().min(1).max(80),
+  nameEn: z.string().trim().min(1).max(80),
+  slug: z.string().trim().max(60).optional(),
+  governorateId: z.number().int().positive().nullable().optional(),
+});
+
+export async function saveTaxonomy(input: unknown): Promise<AdminResult<{ id: number }>> {
+  const parsed = taxonomySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid_name' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { data, error } = await supabase.rpc('admin_save_taxonomy', {
+    p_kind: parsed.data.kind,
+    p_id: parsed.data.id,
+    p_name_ar: parsed.data.nameAr,
+    p_name_en: parsed.data.nameEn,
+    p_slug: parsed.data.slug || null,
+    p_governorate_id: parsed.data.governorateId ?? null,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  // Districts, governorates and developers are cached for a day across the
+  // whole site; a rename that waited a day to appear would look like a bug.
+  revalidateTag('taxonomy');
+  refreshConsole();
+  return { ok: true, data: { id: Number(data) } };
+}
+
+const deleteTaxonomySchema = z.object({
+  kind: z.enum(['district', 'governorate', 'developer']),
+  id: z.number().int().positive(),
+});
+
+export async function deleteTaxonomy(input: unknown): Promise<AdminResult> {
+  const parsed = deleteTaxonomySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { error } = await supabase.rpc('admin_delete_taxonomy', {
+    p_kind: parsed.data.kind,
+    p_id: parsed.data.id,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  revalidateTag('taxonomy');
+  refreshConsole();
   return { ok: true };
 }

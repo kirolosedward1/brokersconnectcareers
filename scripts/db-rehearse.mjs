@@ -21,6 +21,7 @@ import { join } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { unaccent } from '@electric-sql/pglite/contrib/unaccent';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 import pg from 'pg';
 import { ROOT } from './env.mjs';
@@ -58,7 +59,7 @@ alter table storage.objects enable row level security;
 create or replace function storage.foldername(name text) returns text[] language sql immutable as $fn$ select string_to_array(name,'/'); $fn$;
 `;
 
-const db = new PGlite({ extensions: { pgcrypto, unaccent } });
+const db = new PGlite({ extensions: { pgcrypto, unaccent, pg_trgm } });
 await db.exec(PRELUDE);
 
 const server = new PGLiteSocketServer({ db, port: PORT, host: '127.0.0.1' });

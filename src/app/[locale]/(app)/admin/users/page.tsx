@@ -1,236 +1,141 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Building2, ShieldCheck, UserRound } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
-import { asLocale } from '@/i18n/routing';
+import { asLocale, localized } from '@/i18n/routing';
+import { AdminTable, FilterTabs, PageHeader, Pager, SearchForm, type Column } from '@/components/admin/kit';
+import { ApprovalBadge } from '@/components/admin/badges';
 import { Badge } from '@/components/ui/badge';
-import { ApprovalActions } from '@/components/admin/approval-actions';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { raise } from '@/lib/queries/error';
-import { formatDate, formatNumber } from '@/lib/utils';
-import type { ApprovalStatus, ProfileRow, UserRole } from '@/lib/supabase/database.types';
+import { must } from '@/lib/admin/read';
+import { PAGE_SIZE, hrefWith, oneOf, pageOf, param, type SearchParams } from '@/lib/admin/params';
+import { formatDate } from '@/lib/utils';
+import type { AdminUserSearchRow, ApprovalStatus, UserRole } from '@/lib/supabase/database.types';
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = asLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: 'admin' });
   return { title: t('users'), robots: { index: false, follow: false } };
 }
 
-/**
- * How many accounts this page draws — named because the number has to appear
- * both in the query and in the sentence that admits the list was cut.
- */
-const ACCOUNTS_SHOWN = 200;
-
-const ROLE_ICON: Record<UserRole, React.ComponentType<{ className?: string }>> = {
-  candidate: UserRound,
-  employer: Building2,
-  admin: ShieldCheck,
-};
-
-type AccountRow = ProfileRow & { private: { approval_note: string | null } | null };
-
-const STATUS_VARIANT: Record<ApprovalStatus, 'success' | 'warning' | 'destructive'> = {
-  approved: 'success',
-  pending: 'warning',
-  rejected: 'destructive',
-};
+const STATUSES = ['all', 'pending', 'approved', 'rejected'] as const;
+const ROLES = ['all', 'candidate', 'employer', 'admin'] as const;
 
 /**
- * Every account, and the one lever that matters for each.
+ * Every account, found the way support gets asked about them.
  *
- * Sorted so the queue leads: anything waiting on a person comes first, then
- * everything else newest-first. An admin opening this page in the morning
- * should not have to search for the work.
+ * Search is the database's (admin_search_users): a name fragment through a
+ * trigram index, or an exact email, phone or account id — matched without the
+ * results ever carrying a phone number or an email. Contact details are on the
+ * account's own page, one at a time, behind a reason.
  *
- * Filters are links rather than a form, so each view is a URL somebody can
- * bookmark or send to a colleague.
+ * Pending accounts sort first within any filter, because they are the work.
  */
 export default async function AdminUsersPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ role?: string; status?: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const locale = asLocale((await params).locale);
   setRequestLocale(locale);
   await requireAdmin(locale);
 
-  const { role, status } = await searchParams;
+  const sp = await searchParams;
+  const q = param(sp, 'q');
+  const status = oneOf(param(sp, 'status'), STATUSES, 'all');
+  const role = oneOf(param(sp, 'role'), ROLES, 'all');
+  const page = pageOf(sp);
+
   const supabase = await createClient();
-
-  // The reviewer's note lives on profile_private (migration 305), readable by
-  // admins alone; embedded here so the list still costs one read.
-  let query = supabase
-    .from('profiles')
-    .select('*, private:profile_private (approval_note)')
-    .order('created_at', { ascending: false })
-    .limit(ACCOUNTS_SHOWN);
-
-  if (role === 'candidate' || role === 'employer' || role === 'admin') query = query.eq('role', role);
-  if (status === 'approved' || status === 'pending' || status === 'rejected') {
-    query = query.eq('approval_status', status);
-  }
-
-  /*
-    The error is read, not dropped.
-
-    A moderation queue that renders empty when the read failed is the worst
-    place in the product for this: the answer "nothing is waiting" is exactly
-    what a reviewer acts on, and acting on it means going away. There is no
-    honest partial version of a queue, so this raises to the console's error
-    boundary, which offers Retry.
-  */
-  const { data, error } = await query;
-  if (error) raise(error, 'loading the accounts list');
-
-  const profiles = (data ?? []) as unknown as AccountRow[];
-
-  // Pending first, whatever the sort. The database can order by a CASE, but the
-  // list is capped at 200 rows and this keeps the query one plain select.
-  const sorted = [...profiles].sort((a, b) => {
-    const weight = (row: AccountRow) => (row.approval_status === 'pending' ? 0 : 1);
-    return weight(a) - weight(b);
-  });
+  const rows = must(
+    await supabase.rpc('admin_search_users', {
+      p_query: q ?? null,
+      p_role: role === 'all' ? null : (role as UserRole),
+      p_status: status === 'all' ? null : (status as ApprovalStatus),
+      p_limit: PAGE_SIZE,
+      p_offset: (page - 1) * PAGE_SIZE,
+    }),
+    'searching accounts',
+  ).data;
+  const total = Number(rows[0]?.total_count ?? 0);
 
   const t = await getTranslations('admin');
   const tOnboarding = await getTranslations('onboarding');
+  const current = { q, status: status === 'all' ? undefined : status, role: role === 'all' ? undefined : role };
 
   const roleLabel = (value: UserRole) =>
-    value === 'employer'
-      ? tOnboarding('roleEmployer')
-      : value === 'admin'
-        ? t('title')
-        : tOnboarding('roleCandidate');
+    value === 'employer' ? tOnboarding('roleEmployer') : value === 'admin' ? t('title') : tOnboarding('roleCandidate');
 
-  const filters: { key: string; label: string; href: string; active: boolean }[] = [
-    { key: 'all', label: t('filterAll'), href: '/admin/users', active: !role && !status },
+  const columns: Column<AdminUserSearchRow>[] = [
+    { key: 'name', header: t('colName'), cell: (row) => row.full_name, mobile: 'title' },
+    { key: 'role', header: t('colRole'), cell: (row) => roleLabel(row.role), mobile: 'meta' },
     {
-      key: 'pending',
-      label: t('filterPending'),
-      href: '/admin/users?status=pending',
-      active: status === 'pending',
+      key: 'company',
+      header: t('colCompany'),
+      cell: (row) =>
+        row.company_id ? localized(locale, row.company_name_ar, row.company_name_en) : row.agent_slug ? (
+          <span className="inline-flex items-center gap-1">
+            {t('hasAgentProfile')}
+            {row.agent_restricted ? <Badge variant="destructive">{t('restricted')}</Badge> : null}
+          </span>
+        ) : (
+          '—'
+        ),
+      mobile: 'meta',
     },
-    {
-      key: 'employers',
-      label: tOnboarding('roleEmployer'),
-      href: '/admin/users?role=employer',
-      active: role === 'employer' && !status,
-    },
-    {
-      key: 'candidates',
-      label: tOnboarding('roleCandidate'),
-      href: '/admin/users?role=candidate',
-      active: role === 'candidate' && !status,
-    },
-    {
-      key: 'rejected',
-      label: t('filterRejected'),
-      href: '/admin/users?status=rejected',
-      active: status === 'rejected',
-    },
+    { key: 'joined', header: t('colJoined'), cell: (row) => formatDate(row.created_at, locale), mobile: 'meta' },
+    { key: 'status', header: t('colStatus'), cell: (row) => <ApprovalBadge status={row.approval_status} />, mobile: 'aside' },
   ];
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-xl font-bold">{t('users')}</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">{t('usersLede')}</p>
-      </header>
+    <div className="space-y-5">
+      <PageHeader title={t('users')} lede={t('usersLede')} />
 
-      <nav className="flex flex-wrap gap-2" aria-label={t('users')}>
-        {filters.map((filter) => (
-          <Link
-            key={filter.key}
-            href={filter.href}
-            aria-current={filter.active ? 'page' : undefined}
-            className={
-              filter.active
-                ? 'rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground'
-                : 'rounded-full border border-border px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
-            }
-          >
-            {filter.label}
-          </Link>
-        ))}
-      </nav>
+      <SearchForm
+        locale={locale}
+        path="/admin/users"
+        q={q}
+        keep={{ status: current.status, role: current.role }}
+        placeholder={t('usersSearchPlaceholder')}
+        label={t('search')}
+      />
 
-      {sorted.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
-          {t('emptyQueue')}
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {sorted.map((profile) => {
-            const Icon = ROLE_ICON[profile.role];
-            return (
-              <li
-                key={profile.id}
-                className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-border bg-card p-4"
-              >
-                <div className="flex min-w-0 items-start gap-3">
-                  <span
-                    aria-hidden
-                    className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground"
-                  >
-                    <Icon className="size-4" />
-                  </span>
+      <FilterTabs
+        label={t('colStatus')}
+        items={STATUSES.map((value) => ({
+          key: value,
+          label: value === 'all' ? t('filterAll') : t(`approval.${value}`),
+          href: hrefWith('/admin/users', current, { status: value === 'all' ? undefined : value }),
+          active: status === value,
+        }))}
+      />
+      <FilterTabs
+        label={t('colRole')}
+        items={ROLES.map((value) => ({
+          key: value,
+          label: value === 'all' ? t('filterAllRoles') : roleLabel(value),
+          href: hrefWith('/admin/users', current, { role: value === 'all' ? undefined : value }),
+          active: role === value,
+        }))}
+      />
 
-                  <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-2 font-medium">
-                      <span className="truncate">{profile.full_name}</span>
-                      <Badge variant={STATUS_VARIANT[profile.approval_status]}>
-                        {t(`approval.${profile.approval_status}`)}
-                      </Badge>
-                    </p>
+      <AdminTable
+        caption={t('users')}
+        rows={rows}
+        columns={columns}
+        rowKey={(row) => row.id}
+        rowHref={(row) => `/admin/users/${row.id}`}
+        empty={q ? t('searchNothing') : t('emptyQueue')}
+      />
 
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      <span className="numeral" dir="ltr">{profile.whatsapp_phone}</span>
-                    </p>
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {roleLabel(profile.role)}
-                      <span aria-hidden> · </span>
-                      <span>{formatDate(profile.created_at, locale)}</span>
-                    </p>
-
-                    {profile.private?.approval_note ? (
-                      <p className="mt-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-                        {profile.private.approval_note}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-
-                {/* An admin's own row carries no lever. The database refuses it
-                    either way — set_account_approval will not touch an admin —
-                    so offering the button would only produce an error. */}
-                {profile.role === 'admin' ? null : (
-                  <ApprovalActions userId={profile.id} status={profile.approval_status} />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {/* The list stops at 200. Fifteen accounts today, so this is a sentence
-          for later — but a moderation queue that quietly omits accounts is the
-          wrong place to find out by counting. */}
-      {sorted.length >= ACCOUNTS_SHOWN ? (
-        <p className="text-center text-sm text-warning">
-          {t.rich('usersCapped', {
-            count: formatNumber(ACCOUNTS_SHOWN, locale),
-            v: (chunks) => <span className="numeral">{chunks}</span>,
-          })}
-        </p>
-      ) : null}
+      <Pager
+        page={page}
+        total={total}
+        size={PAGE_SIZE}
+        locale={locale}
+        buildHref={(next) => hrefWith('/admin/users', current, { page: next })}
+      />
     </div>
   );
 }
