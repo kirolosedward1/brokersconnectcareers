@@ -30,6 +30,7 @@ import { pickCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
 import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
+import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, radius, space } from '~/theme/tokens';
 
@@ -87,6 +88,7 @@ function Apply({ job }: { job: JobDetail }) {
   const locale = useLocale();
   const { session, viewer, actor } = useSession();
   const context = useApplyContext(isCandidate(actor) ? job.id : null);
+  const hasBoard = useHasBoard();
   const [sentAt, setSentAt] = useState<Date | null>(null);
 
   const title = localized(locale, job.title_ar, job.title_en);
@@ -98,7 +100,7 @@ function Apply({ job }: { job: JobDetail }) {
       <EmptyState
         title={t('jobs.expired')}
         body={t('jobs.expiredBody')}
-        action={<Button label={t('jobs.title')} onPress={() => router.navigate('/jobs')} />}
+        action={hasBoard ? <Button label={t('jobs.title')} onPress={() => router.navigate('/jobs')} /> : null}
       />
     );
   }

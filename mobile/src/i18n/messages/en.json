@@ -3,7 +3,9 @@
     "home": "Home",
     "companies": "Companies",
     "saved": "Saved",
-    "account": "Account"
+    "account": "Account",
+    "applicants": "Applicants",
+    "consultants": "Consultants"
   },
   "offline": {
     "title": "No internet connection",

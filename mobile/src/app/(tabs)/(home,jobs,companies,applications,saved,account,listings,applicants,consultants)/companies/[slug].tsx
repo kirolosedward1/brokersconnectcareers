@@ -16,6 +16,7 @@ import { Text } from '~/components/ui/text';
 import { useCompany } from '~/features/companies/queries';
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
+import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -32,6 +33,7 @@ export default function CompanyScreen() {
   const tJobs = useTranslations('jobs');
   const { colors } = useTheme();
   const page = useCompany(slug);
+  const hasBoard = useHasBoard();
 
   if (page.isPending) {
     return (
@@ -142,7 +144,7 @@ export default function CompanyScreen() {
               </Text>
             </View>
           )}
-          {total > jobs.length ? (
+          {total > jobs.length && hasBoard ? (
             <Button
               variant="outline"
               label={t.markup('seeAllRoles', { count: total, ...markupTags })}

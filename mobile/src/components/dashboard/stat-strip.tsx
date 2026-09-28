@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native';
+import { TrendingDown, TrendingUp } from 'lucide-react-native';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
@@ -9,6 +10,10 @@ export type StatCell = {
   label: string;
   value: string;
   tone?: StatTone;
+  /** Beside the figure, quieter: what a change is measured against. */
+  hint?: string;
+  /** A change, drawn only when there is one. */
+  delta?: { value: string; direction: 'up' | 'down' | 'flat' };
   onPress: () => void;
 };
 
@@ -60,10 +65,18 @@ function Cell({ cell }: { cell: StatCell }) {
     urgent: { figure: colors.destructive, dot: colors.destructive },
   }[cell.tone ?? 'default'];
 
+  const moved = cell.delta && cell.delta.direction !== 'flat' ? cell.delta : null;
+  const Trend = moved?.direction === 'down' ? TrendingDown : TrendingUp;
+  const trendColor = moved?.direction === 'down' ? colors.destructive : colors.success;
+  // A status word is a label, not a quantity: smaller than a figure.
+  const isFigure = /[0-9٠-٩]/.test(cell.value);
+
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`${cell.label}: ${cell.value}`}
+      accessibilityLabel={[`${cell.label}: ${cell.value}`, moved ? `${moved.value} ${cell.hint ?? ''}`.trim() : null]
+        .filter(Boolean)
+        .join('، ')}
       onPress={cell.onPress}
       style={({ pressed }) => ({
         flex: 1,
@@ -80,9 +93,24 @@ function Cell({ cell }: { cell: StatCell }) {
           {cell.label}
         </Text>
       </View>
-      <Text variant="title" weight="bold" style={{ color: tone.figure }}>
-        {cell.value}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: space[2] }}>
+        <Text variant={isFigure ? 'title' : 'small'} weight="bold" style={{ color: tone.figure }}>
+          {cell.value}
+        </Text>
+        {moved ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+            <Trend size={12} color={trendColor} />
+            <Text variant="caption" weight="medium" style={{ color: trendColor }}>
+              {moved.value}
+            </Text>
+          </View>
+        ) : null}
+        {moved && cell.hint ? (
+          <Text variant="caption" tone="mutedForeground">
+            {cell.hint}
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }

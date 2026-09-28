@@ -85,9 +85,21 @@ describe('inOwnTab', () => {
     expect(inOwnTab(input, everyone)).toBe(expected);
   });
 
-  it("opens a candidate's applications in their own tab, and only for somebody who has it", () => {
+  it("opens a candidate's applications in their own tab, and nowhere for somebody without it", () => {
     expect(inOwnTab('/dashboard/applications', tabsFor(candidate))).toBe('/(applications)/dashboard/applications');
-    expect(inOwnTab('/dashboard/applications', everyone)).toBe('/dashboard/applications');
+    expect(inOwnTab('/dashboard/applications', everyone)).toBe('/');
+  });
+
+  it("opens an employer's console in their tabs, and a listing at home, since they have no board", () => {
+    const tabs = tabsFor(employer);
+    expect(inOwnTab('/employer/jobs', tabs)).toBe('/(listings)/employer/jobs');
+    expect(inOwnTab('/employer/jobs/abc/edit', tabs)).toBe('/(listings)/employer/jobs/abc/edit');
+    expect(inOwnTab('/employer/company', tabs)).toBe('/(account)/employer/company');
+    expect(inOwnTab('/employer/billing', tabs)).toBe('/(account)/employer/billing');
+    expect(inOwnTab('/jobs/sales-a1b2', tabs)).toBe('/(home)/jobs/sales-a1b2');
+    expect(inOwnTab('/companies/nile', tabs)).toBe('/(home)/companies/nile');
+    // The board is the Jobs tab's own screen: without the tab there is none.
+    expect(inOwnTab('/jobs?track=primary', tabs)).toBe('/');
   });
 
   it('falls back to the next tab a section names when the first is not there', () => {
@@ -97,7 +109,7 @@ describe('inOwnTab', () => {
 
 describe('appPathFor', () => {
   it.each([
-    // The candidate's overview is the home tab; the employer's console will be too.
+    // The candidate's overview is the home tab, and so is the employer's.
     ['/dashboard', '/'],
     ['/employer', '/'],
     // The website keeps the account under /dashboard; the app has a tab for it.
@@ -115,7 +127,14 @@ describe('appPathFor', () => {
 describe('who a link is for', () => {
   it('opens public pages for anybody', () => {
     expect(routeFromOutside('https://www.brokersconnect.net/jobs/abc', null)).toBe('/(jobs)/jobs/abc');
-    expect(routeFromOutside('https://www.brokersconnect.net/jobs/abc', employer)).toBe('/(jobs)/jobs/abc');
+    expect(routeFromOutside('https://www.brokersconnect.net/jobs/abc', employer)).toBe('/(home)/jobs/abc');
+  });
+
+  it("opens an employer's console for the employer, and nobody else's", () => {
+    expect(routeFromOutside('https://www.brokersconnect.net/employer', employer)).toBe('/');
+    expect(routeFromOutside('https://www.brokersconnect.net/employer/jobs', employer)).toBe('/(listings)/employer/jobs');
+    expect(routeFromOutside('/employer/jobs', candidate)).toBe('/');
+    expect(routeFromOutside('/employer/jobs', null)).toBe('/sign-in?next=%2Femployer%2Fjobs');
   });
 
   it('asks somebody signed out to sign in first, keeping the page as it was asked for', () => {
@@ -151,6 +170,10 @@ describe('who a link is for', () => {
     expect(routeInside('/dashboard/applications', candidate)).toBe('/dashboard/applications');
     expect(routeInside('/dashboard/applications', employer)).toBe('/');
     expect(routeInside('/jobs/abc', null)).toBe('/jobs/abc');
+    expect(routeInside('/jobs/abc', employer)).toBe('/jobs/abc');
+    // A screen none of their tabs has — the board, for an employer — is home.
+    expect(routeInside('/jobs', employer)).toBe('/');
+    expect(routeInside('/employer/jobs', employer)).toBe('/employer/jobs');
     expect(routeInside('/dashboard/applications', null)).toBe('/sign-in?next=%2Fdashboard%2Fapplications');
     // What is not a page of ours is not followed.
     expect(routeInside('https://evil.example/jobs', candidate)).toBe('/');

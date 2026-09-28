@@ -3,7 +3,9 @@
     "home": "الرئيسية",
     "companies": "الشركات",
     "saved": "المحفوظات",
-    "account": "حسابي"
+    "account": "حسابي",
+    "applicants": "المتقدمين",
+    "consultants": "الاستشاريين"
   },
   "offline": {
     "title": "مفيش اتصال بالإنترنت",

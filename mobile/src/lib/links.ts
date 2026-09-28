@@ -98,22 +98,42 @@ export function appPathFor(path: string): string {
  * with no screen to be "similar to", expo-router would open a page every tab
  * can show (a listing, the bell's feed) in whichever tab sorts first. Each
  * section names its tabs in order of preference; the first this person has
- * wins.
+ * wins. A section none of their tabs has — the board, for an employer — has
+ * no screen for them at all, and opens home instead.
  */
-const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabName[]])[] = [
-  ['/jobs', ['jobs']],
+const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabName[], exact?: 'exact'])[] = [
+  // The board is the Jobs tab's own screen; a listing opens in any tab.
+  ['/jobs', ['jobs'], 'exact'],
+  ['/jobs', ['jobs', 'home']],
   ['/companies', ['companies', 'home']],
   ['/dashboard/applications', ['applications']],
   ['/dashboard/saved', ['saved']],
   ['/account', ['account']],
   ['/notifications', ['home']],
+  ['/employer/jobs', ['listings']],
+  ['/employer/company', ['account']],
+  ['/employer/billing', ['account']],
 ];
 
-export function inOwnTab(path: string, tabs: readonly TabName[]): string {
+function ownersOf(path: string): readonly TabName[] | null {
   const pathname = pathnameOf(path);
-  const owners = TAB_OF_SECTION.find(([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`))?.[1];
-  const owner = owners?.find((tab) => tabs.includes(tab));
-  return owner ? `/(${owner})${path}` : path;
+  const section = TAB_OF_SECTION.find(
+    ([prefix, , exact]) => pathname === prefix || (!exact && pathname.startsWith(`${prefix}/`)),
+  );
+  return section ? section[1] : null;
+}
+
+export function inOwnTab(path: string, tabs: readonly TabName[]): string {
+  const owners = ownersOf(path);
+  if (!owners) return path;
+  const owner = owners.find((tab) => tabs.includes(tab));
+  return owner ? `/(${owner})${path}` : '/';
+}
+
+/** Whether any of this person's tabs has a screen for the path. */
+function hasScreen(path: string, tabs: readonly TabName[]): boolean {
+  const owners = ownersOf(path);
+  return !owners || owners.some((tab) => tabs.includes(tab));
 }
 
 /**
@@ -154,5 +174,6 @@ export function routeInside(input: string, actor: Actor): string {
   const path = webPathToAppPath(input);
   const audience = routeAudience(pathnameOf(path));
   if (!mayEnter(actor, audience)) return deniedPath(path, actor, audience);
-  return appPathFor(path);
+  const inApp = appPathFor(path);
+  return hasScreen(inApp, tabsFor(actor)) ? inApp : '/';
 }

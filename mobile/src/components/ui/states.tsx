@@ -2,6 +2,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { ApiError } from '~/lib/api';
+import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 import { Button } from './button';
@@ -67,15 +68,23 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
 
 /**
  * A link to something that is not there, or no longer is — the website's
- * not-found page: what happened, and the way back to the board.
+ * not-found page: what happened, and the way back to the board (home, for
+ * somebody whose tab bar has no board).
  */
 export function NotFoundState() {
   const t = useTranslations();
+  const hasBoard = useHasBoard();
   return (
     <EmptyState
       title={t('common.notFound')}
       body={t('common.notFoundBody')}
-      action={<Button label={t('nav.browseJobs')} variant="outline" onPress={() => router.navigate('/jobs')} />}
+      action={
+        hasBoard ? (
+          <Button label={t('nav.browseJobs')} variant="outline" onPress={() => router.navigate('/jobs')} />
+        ) : (
+          <Button label={t('app.tabs.home')} variant="outline" onPress={() => router.navigate('/')} />
+        )
+      }
     />
   );
 }

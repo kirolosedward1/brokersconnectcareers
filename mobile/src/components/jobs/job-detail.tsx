@@ -25,6 +25,7 @@ import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-
 import { callAction } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
+import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -66,6 +67,7 @@ export function JobDetail({
   const role = viewer?.profile?.role;
   const canApply = !role || role === 'candidate';
   const applied = useAppliedJobIds([job.id]).has(job.id);
+  const hasBoard = useHasBoard();
   const similarShown = withoutHidden(similar, useHiddenCompanies());
 
   // A view is a reader opening an open listing, once per visit — the website
@@ -183,7 +185,7 @@ export function JobDetail({
             <Text variant="small" tone="mutedForeground">
               {job.expires_at ? t('closedOn', { date: formatDate(job.expires_at, locale) }) : t('closedCtaBody')}
             </Text>
-            <Button label={t('browseOpen')} onPress={() => router.navigate('/jobs')} />
+            {hasBoard ? <Button label={t('browseOpen')} onPress={() => router.navigate('/jobs')} /> : null}
           </Card>
         ) : !canApply ? (
           <Card>

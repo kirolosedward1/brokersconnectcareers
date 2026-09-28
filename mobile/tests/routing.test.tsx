@@ -4,7 +4,7 @@ import { act, renderRouter } from 'expo-router/testing-library';
 import type { Actor } from '@/lib/permissions';
 import { routeFromOutside } from '~/lib/links';
 import { tabsFor } from '~/lib/tabs';
-import { unstable_settings } from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account)/_layout';
+import { unstable_settings } from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
 
 /*
   The app's route tree, file for file, with stand-in screens: the real tree's
@@ -29,7 +29,9 @@ function TabBar() {
   return (
     <Tabs>
       <Tabs.Screen name="(home)" />
-      <Tabs.Screen name="(jobs)" />
+      <Tabs.Protected guard={tabs.includes('jobs')}>
+        <Tabs.Screen name="(jobs)" />
+      </Tabs.Protected>
       <Tabs.Protected guard={tabs.includes('companies')}>
         <Tabs.Screen name="(companies)" />
       </Tabs.Protected>
@@ -39,12 +41,15 @@ function TabBar() {
       <Tabs.Protected guard={tabs.includes('saved')}>
         <Tabs.Screen name="(saved)" />
       </Tabs.Protected>
+      <Tabs.Protected guard={tabs.includes('listings')}>
+        <Tabs.Screen name="(listings)" />
+      </Tabs.Protected>
       <Tabs.Screen name="(account)" />
     </Tabs>
   );
 }
 
-const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account)';
+const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)';
 
 const tree = {
   _layout: { default: () => <Stack screenOptions={{ headerShown: false }} />, unstable_settings: { anchor: '(tabs)' } },
@@ -59,6 +64,7 @@ const tree = {
   '(tabs)/(jobs)/jobs/index': screen('board'),
   '(tabs)/(applications)/dashboard/applications/index': screen('applications'),
   '(tabs)/(saved)/dashboard/saved/index': screen('saved'),
+  '(tabs)/(listings)/employer/jobs/index': screen('listings'),
   '(tabs)/(account)/account/index': screen('account'),
   '(tabs)/(account)/account/delete': screen('delete'),
   '(tabs)/(account)/account/profile': screen('profile'),
@@ -171,6 +177,34 @@ describe("a candidate's tab bar", () => {
     expect(result.getSegments()).toEqual(['(tabs)', '(saved)', 'jobs', '[slug]']);
     act(() => router.back());
     expect(result.getSegments()).toEqual(['(tabs)', '(saved)', 'dashboard', 'saved']);
+  });
+});
+
+describe("an employer's tab bar", () => {
+  it.each([
+    ['https://www.brokersconnect.net/employer', ['(tabs)', '(home)']],
+    ['https://www.brokersconnect.net/employer/jobs', ['(tabs)', '(listings)', 'employer', 'jobs']],
+    // No board for an employer: a listing opens at home, the board itself is home.
+    ['https://www.brokersconnect.net/jobs/sales-a1b2', ['(tabs)', '(home)', 'jobs', '[slug]']],
+    ['https://www.brokersconnect.net/jobs?track=primary', ['(tabs)', '(home)']],
+    ['https://www.brokersconnect.net/notifications', ['(tabs)', '(home)', 'notifications']],
+  ])("opens %s in the employer's own tab", (url, segments) => {
+    actor = employer;
+    expect(open(url).getSegments()).toEqual(segments);
+  });
+
+  it('opens a listing from the console in Listings, with the console under it', () => {
+    actor = employer;
+    const result = open('/employer/jobs');
+    act(() => router.push('/jobs/sales-a1b2'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(listings)', 'jobs', '[slug]']);
+    act(() => router.back());
+    expect(result.getSegments()).toEqual(['(tabs)', '(listings)', 'employer', 'jobs']);
+  });
+
+  it("sends a candidate who follows an employer's link home", () => {
+    actor = candidate;
+    expect(open('https://www.brokersconnect.net/employer/jobs').getSegments()).toEqual(['(tabs)', '(home)']);
   });
 });
 

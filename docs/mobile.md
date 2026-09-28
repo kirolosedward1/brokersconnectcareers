@@ -103,7 +103,11 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   `src/lib/permissions.ts`): signed out it is Home · Jobs · Companies ·
   Account; a candidate's is their console — Home · Jobs · Applications ·
   Saved · Account — with the companies directory a tap from Home (it lives in
-  the shared group, so any tab can open it). A tab left out is `hidden`,
+  the shared group, so any tab can open it); an employer's is theirs — Home
+  (the `/employer` overview) · Listings · Account (where the company, team and
+  billing are kept), the applicants and the consultant directory joining as
+  their screens land — and has no board: a listing opens at home, and the
+  board's own address goes home. A tab left out is `hidden`,
   which removes its screens for that person altogether, so every path is
   checked before it is opened, with the website's own rules (`routeAudience` /
   `mayEnter`): a signed-in page with nobody signed in opens the sign-in sheet,
@@ -112,8 +116,8 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   website, `brokersconnect://` — are mapped by `+native-intent.tsx`
   (`src/lib/links.ts`): the `/en` prefix and `?src=share` come off, other hosts
   go home, a listing opens in the Jobs tab with the board under it, and a few
-  pages have another home in the app (`/dashboard` is the home tab,
-  `/dashboard/account` the Account tab). Because the profile is read over the
+  pages have another home in the app (`/dashboard` and `/employer` are the
+  home tab, `/dashboard/account` the Account tab). Because the profile is read over the
   network, the app keeps the last signed-in person's role on the phone
   (`mobile/src/lib/last-actor.ts`, never an authority) and draws the first
   frame and routes cold-start links for them; when it remembers nobody, a
@@ -121,6 +125,18 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   right after a sign-in waits the same way (`open-path.ts`, `PendingPath`), so
   it is never asked of a tab bar not yet drawn for the account. A website page
   the app has no screen for offers to open it in the in-app browser.
+- **An employer's Home** is the website's `/employer` overview: the one next
+  action (`employerNextAction`, shared), where the account and the company
+  stand (a first review, a hold, a suspension — the company's with its own
+  reason from `company_moderation` and its own appeal), the setup checklist
+  until there is a listing, then the `employer_summary` figures in two strips
+  and `employer_trend`'s month as bars with each live listing's conversion.
+  A suspended account sees its standing and the appeal, which the website's
+  console never shows it. **Listings** (`/employer/jobs`) is the website's
+  console read, twenty-five at a time: the status by date as well as label
+  (`displayJobStatus`), the rejection note and the appeal, and only the moves
+  an employer may make through `transitionJob`, with the website's words for
+  each refusal.
 - **A candidate's Home** is their overview, the website's `/dashboard`: where
   the account stands when it is held or suspended (`my_account_note`, with the
   appeal panel), the one next action by the website's rule (a reply, else a

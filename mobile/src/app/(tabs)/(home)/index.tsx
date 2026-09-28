@@ -4,8 +4,9 @@ import { router, Stack, type Href } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Briefcase, Building2, Check, Search, Users } from 'lucide-react-native';
 import { formatNumber } from '@/lib/format';
-import { canAccessCandidateArea } from '@/lib/permissions';
+import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { CandidateHome } from '~/components/home/candidate-home';
+import { EmployerHome } from '~/components/home/employer-home';
 import { JobBrowse } from '~/components/home/job-browse';
 import { HeaderBell } from '~/components/notifications/header-bell';
 import { JobCard } from '~/components/jobs/job-card';
@@ -27,7 +28,8 @@ import { hitTarget, space } from '~/theme/tokens';
  * Home — the website's home page for the phone, and a candidate's console.
  *
  * A candidate opens on their overview (the website's /dashboard, which the
- * app keeps here): CandidateHome.
+ * app keeps here): CandidateHome. An employer on theirs (/employer):
+ * EmployerHome.
  *
  * Signed out, the product before the pitch: a search, the ways into the board
  * with live counts, then the newest listings (the website's Landing, without
@@ -45,7 +47,13 @@ export default function HomeScreen() {
   return (
     <>
       <Stack.Screen options={{ title: t('meta.siteName'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
-      {canAccessCandidateArea(actor) ? <CandidateHome profile={viewer?.profile ?? null} /> : <MarketHome />}
+      {canAccessEmployerArea(actor) ? (
+        <EmployerHome profile={viewer?.profile ?? null} company={viewer?.company ?? null} />
+      ) : canAccessCandidateArea(actor) ? (
+        <CandidateHome profile={viewer?.profile ?? null} />
+      ) : (
+        <MarketHome />
+      )}
     </>
   );
 }

@@ -15,6 +15,7 @@ import { useBrowseCounts, useLanding } from '~/features/browse/queries';
 import { boardQuery, filtersToParams } from '~/features/jobs/filters';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useDistricts } from '~/features/taxonomy';
+import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -36,6 +37,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const board = useJobBoard(boardQuery(filters));
   const counts = useBrowseCounts();
   const districts = useDistricts();
+  const hasBoard = useHasBoard();
 
   if (landing.isPending) return <LoadingState />;
   if (landing.isError) {
@@ -139,11 +141,11 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
         ) : (
           <EmptyState
             title={tJobs('empty')}
-            action={<Button label={tJobs('title')} variant="outline" onPress={() => router.navigate('/jobs')} />}
+            action={hasBoard ? <Button label={tJobs('title')} variant="outline" onPress={() => router.navigate('/jobs')} /> : null}
           />
         )}
 
-        {total > 20 ? (
+        {total > 20 && hasBoard ? (
           <Button
             label={tJobs('title')}
             variant="outline"

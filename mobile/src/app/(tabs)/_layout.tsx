@@ -9,7 +9,8 @@ import { useTheme } from '~/theme/provider';
  * src/lib/permissions.ts). Signed out, it is the public site: home, the board,
  * the companies — and the account, where signing in starts. A candidate has
  * their console instead of the directory: applications and saved. An
- * employer's listings and applicants join when their screens are built.
+ * employer has theirs: listings, applicants and the consultant directory,
+ * with the overview at home and the company in the account.
  *
  * A tab left out is `hidden`, which takes its screens out of the app for that
  * person altogether; links are routed with the same list (links.ts), so none
@@ -18,7 +19,7 @@ import { useTheme } from '~/theme/provider';
  * Each tab is a group with a stack of its own ((home), (jobs), …); a listing
  * or a company opened from any of them is pushed onto that tab's stack, so the
  * tab bar stays and Back returns to where the reader was. See
- * (home,jobs,companies,applications,saved,account)/_layout.tsx.
+ * (home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout.tsx.
  */
 export default function TabsLayout() {
   const t = useTranslations();
@@ -32,7 +33,7 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="(jobs)">
+      <NativeTabs.Trigger name="(jobs)" hidden={!tabs.includes('jobs')}>
         <NativeTabs.Trigger.Label>{t('nav.jobs')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'briefcase', selected: 'briefcase.fill' }} />
       </NativeTabs.Trigger>
@@ -50,6 +51,21 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="(saved)" hidden={!tabs.includes('saved')}>
         <NativeTabs.Trigger.Label>{t('app.tabs.saved')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'bookmark', selected: 'bookmark.fill' }} />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="(listings)" hidden={!tabs.includes('listings')}>
+        <NativeTabs.Trigger.Label>{t('employer.jobs')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'list.bullet.rectangle', selected: 'list.bullet.rectangle.fill' }} />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="(applicants)" hidden={!tabs.includes('applicants')}>
+        <NativeTabs.Trigger.Label>{t('app.tabs.applicants')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'tray', selected: 'tray.fill' }} />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="(consultants)" hidden={!tabs.includes('consultants')}>
+        <NativeTabs.Trigger.Label>{t('app.tabs.consultants')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'person.2', selected: 'person.2.fill' }} />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="(account)">
