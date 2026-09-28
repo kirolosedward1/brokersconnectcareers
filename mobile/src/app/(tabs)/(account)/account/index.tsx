@@ -5,17 +5,19 @@ import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { useTranslations } from 'use-intl';
 import {
+  Building2,
   Download,
   ExternalLink,
   LogOut,
   Mail,
   MailCheck,
+  Receipt,
   ShieldAlert,
   ShieldCheck,
   Trash2,
   UserRound,
 } from 'lucide-react-native';
-import { canAccessCandidateArea } from '@/lib/permissions';
+import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { PhotoControls } from '~/components/account/photo-controls';
 import { HeaderBell } from '~/components/notifications/header-bell';
 import { Avatar } from '~/components/ui/avatar';
@@ -180,6 +182,21 @@ export default function AccountScreen() {
               label={t('dashboard.profile')}
               onPress={() => router.push('/account/profile')}
             />
+          ) : null}
+          {/* An employer's company, team and billing: the website's console keeps them, the app here. */}
+          {canAccessEmployerArea(actor) ? (
+            <>
+              <Row
+                icon={<Building2 size={18} color={colors.foreground} />}
+                label={t('employer.company')}
+                onPress={() => router.push('/employer/company' as never)}
+              />
+              <Row
+                icon={<Receipt size={18} color={colors.foreground} />}
+                label={t('employer.billing')}
+                onPress={() => router.push('/employer/billing' as never)}
+              />
+            </>
           ) : null}
           {session ? (
             <>

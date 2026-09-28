@@ -26,7 +26,7 @@ export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 /** Wider than any place the photo is drawn, and small enough to send over a slow line. */
 const PHOTO_EDGE = 1024;
 
-export type PickedPhoto = { uri: string; name: string; type: 'image/jpeg' };
+export type PickedPhoto = { uri: string; name: string; type: 'image/jpeg' | 'image/png' };
 
 /** Why a photo was not taken, in the website's words for each. */
 export class PhotoRefused extends Error {
@@ -37,16 +37,18 @@ export class PhotoRefused extends Error {
 }
 
 /**
- * A photo from the library, cropped square in the system's own editor and
- * written again as a JPEG no wider than 1024 px — which is also how a HEIC
- * from the camera becomes something the server can read. The server decodes
- * it once more and keeps only the pixels, as a WebP. Null when cancelled.
+ * A picture from the library, written again no wider than 1024 px — which is
+ * also how a HEIC from the camera becomes something the server can read. The
+ * server decodes it once more and keeps only the pixels, as a WebP. A photo
+ * is cropped square in the system's own editor and sent as a JPEG; a logo is
+ * left as drawn and sent as a PNG, so a transparent ground stays transparent.
+ * Null when cancelled.
  */
-export async function pickPhoto(): Promise<PickedPhoto | null> {
+export async function pickImage(kind: 'photo' | 'logo'): Promise<PickedPhoto | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    allowsEditing: true,
-    aspect: [1, 1],
+    allowsEditing: kind === 'photo',
+    ...(kind === 'photo' ? { aspect: [1, 1] as [number, number] } : {}),
     quality: 1,
   });
   const asset = result.canceled ? null : result.assets[0];
@@ -54,11 +56,19 @@ export async function pickPhoto(): Promise<PickedPhoto | null> {
 
   const context = ImageManipulator.manipulate(asset.uri);
   const image = await (asset.width > PHOTO_EDGE ? context.resize({ width: PHOTO_EDGE }) : context).renderAsync();
-  const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.85 });
+  const saved =
+    kind === 'photo'
+      ? await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.85 })
+      : await image.saveAsync({ format: SaveFormat.PNG });
 
   if (new File(saved.uri).size > MAX_PHOTO_BYTES) throw new PhotoRefused('too_large');
-  return { uri: saved.uri, name: 'photo.jpg', type: 'image/jpeg' };
+  return kind === 'photo'
+    ? { uri: saved.uri, name: 'photo.jpg', type: 'image/jpeg' }
+    : { uri: saved.uri, name: 'logo.png', type: 'image/png' };
 }
+
+/** The account's photo: square, as a JPEG. */
+export const pickPhoto = () => pickImage('photo');
 
 /** Send the photo to the website's uploadImage, which writes it and records it on the profile. */
 export function useUploadPhoto() {

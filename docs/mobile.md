@@ -156,6 +156,17 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   the move with `from` and the decision note always sent (the action writes
   the note on every move), the reason to the candidate, and the private
   notes. Cards on screen are stamped seen with `markApplicantsSeen`.
+  **The company** (`/employer/company`) and **billing** (`/employer/billing`)
+  sit in the Account tab. The company page offers what the roster allows, as
+  the website does: the logo (picked as drawn, sent as a PNG so a transparent
+  ground stays, through `uploadImage`), the profile (`saveCompany` on the
+  version it loaded, an address without a scheme given `https://`, anything
+  but http(s) refused before sending), the verification papers (bytes to
+  `company-documents/<company>/…` first, then `recordCompanyDocument`, the
+  upload taken back out on a refusal) and the team (`addCompanyMember` /
+  `removeCompanyMember`). Billing is read-only — credits, orders and the
+  monthly free post for a verified company, granted only when the database
+  says it was — and sells nothing.
 - **A candidate's Home** is their overview, the website's `/dashboard`: where
   the account stands when it is held or suspended (`my_account_note`, with the
   appeal panel), the one next action by the website's rule (a reply, else a
