@@ -136,7 +136,15 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   console read, twenty-five at a time: the status by date as well as label
   (`displayJobStatus`), the rejection note and the appeal, and only the moves
   an employer may make through `transitionJob`, with the website's words for
-  each refusal.
+  each refusal. **The job wizard** (`/employer/jobs/new`,
+  `/employer/jobs/<id>/edit`) is the website's four steps, each checked before
+  the next with the schema's own rules (numbers typed with either set of
+  digits); leaving the first asks `findSimilarListing` and
+  `salaryReferenceFor` in the background; the review shows the advert with the
+  listing's own compensation card. `saveJob` gets one idempotency key per form
+  and the version the form was built from, so a retry never posts twice and a
+  colleague's save is never overwritten; a refusal sends the employer back to
+  the step that holds it. A live listing is edited, never drafted.
 - **A candidate's Home** is their overview, the website's `/dashboard`: where
   the account stands when it is held or suspended (`my_account_note`, with the
   appeal panel), the one next action by the website's rule (a reply, else a

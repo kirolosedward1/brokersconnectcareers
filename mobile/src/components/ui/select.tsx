@@ -13,7 +13,8 @@ export type SelectOption<T extends string | number> = { value: T; label: string 
  * The website's <select>, as a phone does it: a field that says what is
  * chosen, and a sheet listing the choices with a tick on the current one.
  * `placeholder` doubles as the empty choice ("optional") when the field may
- * be left unset, exactly as the website's first <option value="">.
+ * be left unset, exactly as the website's first <option value="">; a
+ * `required` one offers no empty choice, as a <select> without it.
  */
 export function Select<T extends string | number>({
   label,
@@ -21,13 +22,15 @@ export function Select<T extends string | number>({
   options,
   placeholder,
   onChange,
+  required = false,
 }: {
   label: string;
   value: T | null;
   options: SelectOption<T>[];
-  /** Shown when nothing is chosen; also offered as a choice, to unset it. */
+  /** Shown when nothing is chosen; also offered as a choice, to unset it — unless `required`. */
   placeholder: string;
   onChange: (value: T | null) => void;
+  required?: boolean;
 }) {
   const t = useTranslations('common');
   const { colors } = useTheme();
@@ -40,7 +43,7 @@ export function Select<T extends string | number>({
     setOpen(false);
   };
 
-  const rows: { value: T | null; label: string }[] = [{ value: null, label: placeholder }, ...options];
+  const rows: { value: T | null; label: string }[] = required ? options : [{ value: null, label: placeholder }, ...options];
 
   return (
     <>
