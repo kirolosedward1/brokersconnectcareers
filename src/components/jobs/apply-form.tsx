@@ -100,7 +100,9 @@ export function ApplyForm({
 
       if (file) {
         // The CV goes straight to the private bucket from the browser; storage
-        // RLS confines every candidate to their own folder.
+        // RLS confines every candidate to their own folder. The extension comes
+        // from the file's type — sniffed from its name when the browser will
+        // not say — which the bucket also checks.
         const path = `${userId}/${uuid()}.${fileExtension(file, 'pdf')}`;
 
         const { error: uploadError } = await createClient()

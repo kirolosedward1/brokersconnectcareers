@@ -8,12 +8,13 @@ import { formatList, formatNumber } from '@/lib/utils';
 import type { AgentCardRow, DistrictRow } from '@/lib/supabase/database.types';
 
 /**
- * A directory card, anonymised by default.
+ * A directory card, anonymised until the company is verified.
  *
- * An unauthenticated visitor sees experience, tracks and districts — enough to
- * judge the depth of the directory — and no name, no photo, no way to make
- * contact. That gate is enforced in the database; this only has to render
- * honestly on either side of it.
+ * An unverified company sees experience, tracks and districts — enough to
+ * judge whether somebody is worth verifying for — and no name, no photo and
+ * no way to make contact. That gate is enforced in the database; this only
+ * has to render honestly on either side of it, and it links by id where the
+ * slug would have spelled the name.
  *
  * Identity on top, facts underneath a rule. The three things an employer scans
  * a directory for — how experienced, where, and are they even looking — sit in
@@ -30,7 +31,7 @@ export function AgentCard({
   agent: AgentCardRow;
   locale: string;
   districts: Map<number, DistrictRow>;
-  /** Whether the viewer has a company to keep this consultant in. */
+  /** Whether the viewer has a company to keep this consultant in, and the card is open. */
   shortlistable?: boolean;
   shortlisted?: boolean;
 }) {
@@ -46,46 +47,35 @@ export function AgentCard({
   const moreAreas = agent.district_ids.length - areas.length;
 
   const looking = agent.availability === 'actively_searching';
+  const href = `/agents/${agent.slug ?? agent.id}`;
 
   return (
     <article className="lift relative h-full rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5">
-      <div className="flex gap-4">
-        {/*
-          The same avatar the rest of the product draws.
-
-          This was a raw <img> with a grey silhouette behind it, which meant
-          two things. A consultant with no photo — most of them — appeared as
-          the identical grey person icon as every other row, so a directory
-          page had nothing for the eye to catch; the company list solved that
-          with a tinted monogram long ago and this side never did. And a photo
-          that fails to load had no fallback at all: `avatar_url` is usually
-          Google's, which 403s from time to time, and the card was left with a
-          broken-image glyph in the circle.
-
-          Locked profiles keep the silhouette. A monogram is an initial, and an
-          initial is more than an anonymous card is allowed to say.
-        */}
+      <div className="flex gap-3 sm:gap-4">
+        {/* A monogram rather than a silhouette when there is no photo, and a
+            fallback when the photo fails to load. A locked profile keeps the
+            silhouette — an initial is more than an anonymous card may say. */}
         {agent.is_unlocked ? (
           <Avatar
             name={agent.full_name ?? ''}
             src={agent.avatar_url}
-            seed={agent.slug}
-            size="lg"
-            className="ring-2 ring-primary/10"
+            seed={agent.slug ?? agent.id}
+            size="md"
+            className="ring-2 ring-primary/10 sm:size-16 sm:text-2xl"
           />
         ) : (
           <span
             aria-hidden
-            className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-muted ring-2 ring-primary/10"
+            className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-muted ring-2 ring-primary/10 sm:size-16"
           >
-            <UserRound className="size-7 text-muted-foreground" />
+            <UserRound className="size-5 text-muted-foreground sm:size-7" />
           </span>
         )}
 
         <div className="min-w-0 flex-1">
-          <h3 className="flex items-center gap-1.5 text-lg font-semibold leading-tight">
-            <Link href={`/agents/${agent.slug}`} className="after:absolute after:inset-0">
-              {agent.is_unlocked && agent.full_name ? agent.full_name : t('anonymous')}
+          <h3 className="flex items-center gap-1.5 text-base font-semibold leading-tight sm:text-lg">
+            <Link href={href} className="after:absolute after:inset-0">
+              <bdi>{agent.is_unlocked && agent.full_name ? agent.full_name : t('anonymous')}</bdi>
             </Link>
             {agent.is_unlocked ? null : (
               <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-label={t('locked')} />
@@ -99,7 +89,7 @@ export function AgentCard({
           ) : null}
 
           {agent.tracks.length ? (
-            <ul className="mt-3 flex flex-wrap gap-1.5">
+            <ul className="mt-2.5 flex flex-wrap gap-1.5">
               {agent.tracks.slice(0, 3).map((track) => (
                 <li
                   key={track}
@@ -122,7 +112,7 @@ export function AgentCard({
         ) : null}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-4 text-sm text-muted-foreground">
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border pt-3 text-sm text-muted-foreground sm:mt-5 sm:gap-x-5 sm:pt-4">
         <span className="inline-flex items-center gap-1.5">
           <Briefcase className="size-4" aria-hidden />
           {t('yearsExperience', { count: agent.years_experience })}

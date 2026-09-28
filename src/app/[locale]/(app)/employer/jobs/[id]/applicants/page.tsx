@@ -63,20 +63,27 @@ export default async function ApplicantsPage({
   setRequestLocale(locale);
 
   const viewer = await requireEmployer(locale);
+  if (!viewer.company) notFound();
   const supabase = await createClient();
 
   /*
-    Unreadable is not the same as absent.
+    This company's listing, or nothing.
 
-    Both used to arrive as `job: null` and both became a 404 — so a database
-    blip told an employer their own listing did not exist. `maybeSingle()`
-    returns no error for no row, so an error here is a real failure and
-    belongs in the error boundary, where Retry means something.
+    RLS lets everyone read a live listing and lets an admin read every
+    application, so an admin — or an employer holding another company's
+    listing id — reached this page, and merely opening it stamped every
+    applicant as seen and told each candidate the company had opened their
+    application. Scoped to the company the caller acts for, whoever they are.
+
+    Unreadable is still not absent: `maybeSingle()` returns no error for no
+    row, so an error here is a real failure and belongs in the error
+    boundary, where Retry means something.
   */
   const { data: job, error: jobError } = await supabase
     .from('jobs')
     .select('id, slug, title_ar, title_en, status')
     .eq('id', id)
+    .eq('company_id', viewer.company.id)
     .maybeSingle();
 
   if (jobError) raise(jobError, 'loading the listing');

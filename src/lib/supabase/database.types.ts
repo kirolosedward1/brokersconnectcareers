@@ -969,6 +969,7 @@ export type Database = {
        * limit — is not rolled back with it.
        */
       reveal_agent_contact: { Args: { p_handle: string }; Returns: ContactRevealRow[] };
+      is_company_admin: { Args: { target: string }; Returns: boolean };
       /** Service role only: the server's own counter (migration 306). */
       rate_limit_hit: {
         Args: { p_key: string; p_window_seconds: number; p_max: number };

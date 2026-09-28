@@ -374,29 +374,41 @@ report.section('the agent directory searches only what the card shows');
     as(user, `select slug, full_name from search_agents(null,null,null,null,60,0,${q === null ? 'null' : `'${q}'`})`, role);
   const slugs = (result) => result.rows.map((row) => row.slug);
 
-  // The headline is on every card, so everyone may search it.
-  const headline = await search(null, 'إيجارات', 'anon');
-  report.check('a signed-out visitor finds a consultant by headline',
+  /*
+    The directory answers approved employers and admins and nobody else
+    (migration 322, `the_directory_is_for_employers`): a signed-out visitor is
+    refused the function outright, and a candidate is answered with nothing.
+    So the headline searches below run as an employer whose company is not
+    verified — the reader with the least the directory will show.
+  */
+  const stranger = await search(null, 'إيجارات', 'anon');
+  report.check('a signed-out visitor cannot search the directory at all',
+    !stranger.ok && /permission denied/.test(stranger.error ?? ''), stranger.ok ? 'call was allowed' : stranger.error);
+
+  const candidate = await search(FIXTURES.candidate, 'إيجارات');
+  report.check('nor can a candidate find anybody', candidate.ok && candidate.rows.length === 0, candidate.error);
+
+  // The headline is on every card the directory shows, so every reader may search it.
+  const headline = await search(FIXTURES.employerUnverified, 'إيجارات');
+  report.check('an unverified employer finds a consultant by headline',
     headline.ok && slugs(headline).includes('consultant-90952122'), headline.error);
 
-  const english = await search(null, 'lettings Maadi', 'anon');
+  const english = await search(FIXTURES.employerUnverified, 'lettings Maadi');
   report.check('in English too', slugs(english).includes('consultant-90952122'));
 
   // A public profile shows its name, so its name is searchable.
-  const publicName = await search(null, 'منة الله', 'anon');
+  const publicName = await search(FIXTURES.employerUnverified, 'منة الله');
   report.check('a public consultant is found by name', slugs(publicName).includes('consultant-90952122'));
 
   /*
-    The gate. «أحمد محمود» is verified-employers-only: a stranger sees the card
-    without the name. Were the name searchable, the result count would answer
-    "is Ahmed Mahmoud in this directory" for anyone who asked.
+    The gate within the gate. «أحمد محمود» is verified-employers-only: an
+    unverified employer sees the card without the name. Were the name
+    searchable, the result count would answer "is Ahmed Mahmoud in this
+    directory" for anyone who asked.
   */
-  const gatedAnon = await search(null, 'أحمد محمود', 'anon');
-  report.check('a gated name finds nothing for a signed-out visitor',
-    gatedAnon.ok && gatedAnon.rows.length === 0, JSON.stringify(gatedAnon.rows));
-
   const gatedUnverified = await search(FIXTURES.employerUnverified, 'أحمد محمود');
-  report.check('nor for an unverified employer', gatedUnverified.rows.length === 0);
+  report.check('a gated name finds nothing for an unverified employer',
+    gatedUnverified.ok && gatedUnverified.rows.length === 0, JSON.stringify(gatedUnverified.rows));
 
   const gatedVerified = await search(FIXTURES.employerVerified, 'احمد محمود');
   report.check('a verified employer finds them by name, typed without the hamza',
@@ -407,12 +419,12 @@ report.section('the agent directory searches only what the card shows');
   report.check('a hidden profile is not found even by its headline',
     !slugs(hidden).includes('consultant-33912555'));
 
-  const unfiltered = await search(null, null, 'anon');
-  const everyone = await as(null, 'select slug from search_agents(null,null,null,null,60,0)', 'anon');
+  const unfiltered = await search(FIXTURES.employerVerified, null);
+  const everyone = await as(FIXTURES.employerVerified, 'select slug from search_agents(null,null,null,null,60,0)');
   report.check('no keyword is the directory as it was',
     unfiltered.ok && slugs(unfiltered).length === slugs(everyone).length && slugs(everyone).length > 0);
 
-  const injected = await search(null, "x'' or true --", 'anon');
+  const injected = await search(FIXTURES.employerVerified, "x'' or true --");
   report.check('a keyword is data, not SQL', injected.ok && injected.rows.length === 0, injected.error);
 }
 

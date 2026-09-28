@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { env } from '@/lib/env';
+import { bearerToken, secretsMatch } from '@/lib/security/secrets';
 import { createPublicClient } from '@/lib/supabase/public';
 import { isPlaceholder } from '@/lib/env';
 import { senderProblem } from '@/lib/email/sender';
@@ -24,8 +26,21 @@ export const dynamic = 'force-dynamic';
  * 200 when the platform can do its job, 503 when it cannot — so an uptime
  * monitor can watch one URL and a status code rather than parse the body.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const started = Date.now();
+
+  /*
+    Two answers, depending on who is asking.
+
+    A public monitor gets the status code and one word: 200 "ok"/"degraded"
+    or 503 — which is everything an uptime check needs. The detailed body —
+    which variables are absent, which are placeholders, whether the
+    service-role key is rejected — is for the operator, and it costs a call
+    to the Supabase auth admin API on every request, which a public URL must
+    not let anyone make at will. The operator sends the cron secret, which
+    every cron route already accepts as the same bearer.
+  */
+  const operator = secretsMatch(bearerToken(request.headers.get('authorization')), env.cronSecret);
 
   // Configuration first: an unset variable is the failure that looks like a
   // database outage, and the two need telling apart at a glance.
@@ -117,7 +132,7 @@ export async function GET() {
     valid key and would prove nothing about privilege. Nothing is done with the
     result; only whether it was refused.
   */
-  if (configured.serviceRole) {
+  if (configured.serviceRole && operator) {
     /*
       Bounded, because the failing path is the slow one. A rejected key takes
       seconds to come back — measured at 3.5s against a rotated key, against
@@ -160,6 +175,13 @@ export async function GET() {
     because the pages still serve and a 503 would be a lie of the other kind.
   */
   const whole = healthy && configured.serviceRole && configured.email && configured.emailWebhook;
+
+  if (!operator) {
+    return NextResponse.json(
+      { status: whole ? 'ok' : 'degraded' },
+      { status: healthy ? 200 : 503, headers: { 'cache-control': 'no-store' } },
+    );
+  }
 
   return NextResponse.json(
     {

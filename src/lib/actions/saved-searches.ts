@@ -53,7 +53,14 @@ export async function saveSearch(input: unknown): Promise<ActionResult<{ id: str
 }
 
 export async function deleteSavedSearch(id: string): Promise<ActionResult> {
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, error: 'invalid' };
+
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
   // RLS scopes this to the caller's own searches, and filtering to zero rows is
   // not an error — so deleting somebody else's reported success.
   const { data: removed, error } = await supabase
@@ -76,6 +83,11 @@ export async function setSearchAlerts(input: unknown): Promise<ActionResult> {
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
   const { data: changed, error } = await supabase
     .from('saved_searches')
     .update({ alerts: parsed.data.alerts })
@@ -165,6 +177,11 @@ export async function unfollowCompany(slug: unknown): Promise<ActionResult> {
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
   // RLS scopes the delete to the caller's own rows. Removing nothing is
   // reported as success here, unlike deleteSavedSearch by id: the id form can
   // only be aimed at somebody else's row, while this one names a company, and

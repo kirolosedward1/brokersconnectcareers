@@ -6,7 +6,8 @@ import { NotificationItem } from '@/components/notifications/notification-item';
 import { MarkAllReadButton } from '@/components/notifications/mark-all-read-button';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
-import { requireProfile } from '@/lib/auth';
+import { actorOf, requireProfile } from '@/lib/auth';
+import { canAccessAdminArea, canAccessEmployerArea } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from '@/lib/queries/error';
 import { syncMyJobNotifications } from '@/lib/actions/notifications';
@@ -115,6 +116,7 @@ export default async function NotificationsPage({
   const newestShown = !cursor ? (notifications[0]?.created_at ?? null) : null;
 
   const t = await getTranslations('notifications');
+  const tNav = await getTranslations('nav');
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -152,8 +154,10 @@ export default async function NotificationsPage({
             {t('emptyHint')}
           </p>
           <Button asChild variant="outline" className="mt-5">
-            {viewer.profile.role === 'employer' || viewer.profile.role === 'admin' ? (
+            {canAccessEmployerArea(actorOf(viewer)) ? (
               <Link href="/employer/applicants">{t('emptyCtaEmployer')}</Link>
+            ) : canAccessAdminArea(actorOf(viewer)) ? (
+              <Link href="/admin">{tNav('admin')}</Link>
             ) : (
               <Link href="/jobs">{t('emptyCtaCandidate')}</Link>
             )}

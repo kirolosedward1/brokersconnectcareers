@@ -24,7 +24,24 @@ const handleI18n = createIntlMiddleware(routing);
  * time a hand-maintained list of (app) routes has drifted — the header
  * suppression list did it first — so the list now has something checking it.
  */
-const PROTECTED = ['/dashboard', '/employer', '/admin', '/notifications', '/onboarding'];
+const PROTECTED = ['/dashboard', '/employer', '/admin', '/notifications', '/onboarding', '/agents'];
+
+/**
+ * The sign-in and sign-up screens, which a signed-in user has no business on.
+ *
+ * Not `/sign-in/new-password`: the password-reset link establishes a session
+ * on the way in, and bouncing that session off the very screen it needs would
+ * make resetting a password impossible. Not `/sign-in/forgot` either — it is
+ * harmless, and somebody signed in who wants a reset link may have one.
+ */
+const AUTH_DOORS = [
+  '/sign-in',
+  '/sign-in/candidate',
+  '/sign-in/employer',
+  '/sign-up',
+  '/sign-up/candidate',
+  '/sign-up/employer',
+];
 
 /** Strips `/en` so route matching is written once, against the canonical path. */
 function stripLocale(pathname: string): { locale: string; path: string } {
@@ -173,10 +190,19 @@ async function handle(request: NextRequest): Promise<NextResponse> {
   // that already had a session, was told to sign in and then dropped on their
   // dashboard with the listing forgotten. Validated, because it is a redirect
   // target read from a query string.
-  if (user && (path === '/sign-in' || path === '/sign-up')) {
+  if (user && AUTH_DOORS.includes(path)) {
     const intended = safeNext(request.nextUrl.searchParams.get('next'));
+    /*
+      `/onboarding` rather than `/dashboard` when nothing was intended. The
+      middleware knows the session and not the role — the role is a profile
+      row, and reading it here would cost every request a query — so it hands
+      over to the one page that reads the profile and sends each kind of
+      account to its own console (homeFor in permissions.ts). An employer
+      sent to /dashboard used to be bounced twice on the way to /employer,
+      and an admin landed on the candidate's applications tab.
+    */
     return NextResponse.redirect(
-      new URL(localized(locale, intended ?? '/dashboard'), request.url),
+      new URL(localized(locale, intended ?? '/onboarding'), request.url),
     );
   }
 

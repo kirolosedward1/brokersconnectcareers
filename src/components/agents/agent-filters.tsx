@@ -26,7 +26,6 @@ export function AgentFilters({
   const tTrack = useTranslations('track');
   const tAgents = useTranslations('agents');
   const tAvailability = useTranslations('availability');
-  const tExp = useTranslations('experienceBand');
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -129,15 +128,21 @@ export function AgentFilters({
 
       <fieldset>
         <legend className="mb-2 text-sm font-semibold">{t('experienceBand')}</legend>
+        {/* A floor, and labelled as one. The options were the board's bands —
+            "1–3 years", "3–5 years" — and search_agents() filters on
+            `years_experience >= n`, so "1–3 years" returned a twenty-year
+            veteran. The label now says what the filter does. */}
         <Select
           aria-label={t('experienceBand')}
           value={searchParams.get('years') ?? ''}
           onChange={(event) => setSingle('years', event.target.value)}
         >
           <option value="">{t('any')}</option>
-          <option value="1">{tExp('junior_1_3')}</option>
-          <option value="3">{tExp('mid_3_5')}</option>
-          <option value="5">{tExp('senior_5_plus')}</option>
+          {[1, 3, 5, 10].map((years) => (
+            <option key={years} value={String(years)}>
+              {t('minYears', { count: years })}
+            </option>
+          ))}
         </Select>
       </fieldset>
 

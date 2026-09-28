@@ -87,12 +87,15 @@ export function ShortlistList({ rows: fromServer }: { rows: ShortlistRow[] }) {
                   {/* A consultant who has left the directory has no page to
                       link to, and their slug is their name transliterated — so
                       there is no link and no name, only the fact of the row. */}
-                  {row.isListed && row.slug ? (
+                  {row.isListed ? (
                     <Link
-                      href={`/agents/${row.slug}`}
+                      // By slug where the name may be shown, by id where it may
+                      // not: the slug is the name transliterated, and the
+                      // reader re-derives which on every read.
+                      href={`/agents/${row.slug ?? row.id}`}
                       className="after:absolute after:inset-0 hover:text-primary"
                     >
-                      {row.isUnlocked && row.name ? row.name : tAgents('anonymous')}
+                      <bdi>{row.isUnlocked && row.name ? row.name : tAgents('anonymous')}</bdi>
                     </Link>
                   ) : (
                     <span className="text-muted-foreground">{t('shortlistGone')}</span>

@@ -24,6 +24,7 @@ import type { Locale } from '@/i18n/routing';
 import { WhatsAppMark } from '@/components/brand-marks';
 import { ApplicantNotes } from '@/components/employer/applicant-notes';
 import { Avatar } from '@/components/ui/avatar';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 export type ApplicantProfile = {
   slug: string;
@@ -116,6 +117,7 @@ export function ApplicantCard({
   const [savedReason, setSavedReason] = useState(application.decision_note ?? '');
   const [conflict, setConflict] = useState(false);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   const candidate = application.candidate;
   const profile = candidate?.agent_profiles ?? null;
@@ -139,6 +141,7 @@ export function ApplicantCard({
         // ordinary Tuesday.
         from: previousStatus,
       }));
+      if (recoverSession(result)) return;
 
       if (!result.ok) {
         setStatus(previousStatus);

@@ -13,6 +13,10 @@
  */
 import { reporter } from './setup.mjs';
 import { safeNext, stripLocalePrefix } from '../../src/lib/safe-next.ts';
+import { register } from 'node:module';
+
+// Node cannot resolve the app's `@/` alias; phone.ts below needs it.
+register('./alias-hooks.mjs', import.meta.url);
 
 const base = reporter();
 const report = {
@@ -548,6 +552,196 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
     /withoutAddresses\(detail\)/.test(send),
     "the provider's own error text has addresses stripped before it is logged",
   );
+}
+
+
+/*
+  Who may do what, decided in one place — and the same place the database
+  decides it.
+
+  permissions.ts is pure and imports types only, so it loads here the way
+  safe-next.ts does. These are the rules the product rests on, stated as
+  actors: a candidate never reaches the directory, an employer reaches it
+  only once approved, a suspended account reaches nothing, and the owner of a
+  profile always reaches their own.
+*/
+report.section('the permission model says what the policies say');
+{
+  const {
+    audienceOf, canBrowseAgentDirectory, canViewAgentProfile, canContactAgent,
+    canShortlistAgents, canAccessCandidateArea, canAccessEmployerArea,
+    canAccessAdminArea, canApplyToJobs, canSaveJobs, canPostJobs, homeFor,
+    directoryDeniedRedirect, siteNavFor, postJobHref, routeAudience, mayEnter,
+    PROTECTED_PREFIXES, isSuspended,
+  } = await import('../../src/lib/permissions.ts');
+
+  const actor = (role, approval = 'approved', company = null) => ({
+    userId: 'u-' + role,
+    profile: { role, approval_status: approval },
+    company,
+  });
+  const verified = { id: 'c1', verification_status: 'verified' };
+  const unverified = { id: 'c2', verification_status: 'unverified' };
+
+  const anon = null;
+  const onboarding = { userId: 'u-new', profile: null, company: null };
+  const candidate = actor('candidate');
+  const suspendedCandidate = actor('candidate', 'rejected');
+  const employer = actor('employer', 'approved', unverified);
+  const verifiedEmployer = actor('employer', 'approved', verified);
+  const pendingEmployer = actor('employer', 'pending', verified);
+  const suspendedEmployer = actor('employer', 'rejected', verified);
+  const admin = actor('admin');
+  const adminWithCompany = actor('admin', 'approved', verified);
+
+  report.is(audienceOf(anon), 'anon', 'a visitor is anonymous');
+  report.is(audienceOf(onboarding), 'onboarding', 'a session with no profile is onboarding');
+  report.is(audienceOf(candidate), 'candidate', 'a candidate is a candidate');
+
+  // The directory: can_browse_agent_directory() restated.
+  report.ok(!canBrowseAgentDirectory(anon), 'a visitor cannot browse the directory');
+  report.ok(!canBrowseAgentDirectory(onboarding), 'nor an account that has not onboarded');
+  report.ok(!canBrowseAgentDirectory(candidate), 'nor a candidate');
+  report.ok(!canBrowseAgentDirectory(pendingEmployer), 'nor an employer still awaiting approval, verified company or not');
+  report.ok(!canBrowseAgentDirectory(suspendedEmployer), 'nor a suspended employer');
+  report.ok(canBrowseAgentDirectory(employer), 'an approved employer can, unverified company included');
+  report.ok(canBrowseAgentDirectory(verifiedEmployer), 'and a verified one');
+  report.ok(canBrowseAgentDirectory(admin), 'and an admin');
+
+  // A profile page: the directory's readers, plus its owner.
+  const theirs = { user_id: 'u-candidate' };
+  const somebodyElses = { user_id: 'u-other' };
+  report.ok(canViewAgentProfile(candidate, theirs), 'a candidate opens their own profile');
+  report.ok(!canViewAgentProfile(candidate, somebodyElses), 'and nobody else\'s');
+  report.ok(!canViewAgentProfile(anon, somebodyElses), 'a visitor opens none');
+  report.ok(canViewAgentProfile(employer, somebodyElses), 'an approved employer opens any');
+  report.ok(!canViewAgentProfile(pendingEmployer, somebodyElses), 'a pending employer opens none');
+
+  // Contact: only with a number, only unlocked, only a company, never yourself.
+  const openCard = { is_unlocked: true, whatsapp_phone: '+201001234567', user_id: 'u-other' };
+  const lockedCard = { is_unlocked: false, whatsapp_phone: null, user_id: 'u-other' };
+  report.ok(canContactAgent(verifiedEmployer, openCard), 'a company contacts an unlocked consultant');
+  report.ok(!canContactAgent(verifiedEmployer, lockedCard), 'and not a locked one');
+  report.ok(!canContactAgent(admin, openCard), 'an admin reviews and does not contact');
+  report.ok(!canContactAgent(candidate, { ...openCard, user_id: 'u-candidate' }), 'and the owner is not offered their own number');
+  report.ok(!canContactAgent(actor('employer', 'approved', null), openCard), 'an employer with no company has nobody to contact as');
+
+  report.ok(canShortlistAgents(employer) && !canShortlistAgents(admin) && !canShortlistAgents(candidate),
+    'shortlisting needs a company and directory access');
+
+  // The consoles.
+  report.ok(canAccessCandidateArea(candidate) && !canAccessCandidateArea(employer) && !canAccessCandidateArea(admin),
+    'the candidate console is the candidate\'s');
+  report.ok(canAccessEmployerArea(employer) && canAccessEmployerArea(pendingEmployer) && !canAccessEmployerArea(candidate),
+    'the employer console is the employer\'s, pending included');
+  report.ok(!canAccessEmployerArea(admin) && canAccessEmployerArea(adminWithCompany),
+    'an admin reaches the employer console only through a company');
+  report.ok(canAccessAdminArea(admin) && !canAccessAdminArea(employer) && !canAccessAdminArea(candidate),
+    'the admin console is the admin\'s');
+
+  // Jobs.
+  report.ok(canApplyToJobs(candidate) && !canApplyToJobs(suspendedCandidate) && !canApplyToJobs(employer) && !canApplyToJobs(admin),
+    'only an approved candidate applies');
+  report.ok(canSaveJobs(candidate) && !canSaveJobs(employer) && !canSaveJobs(admin), 'only a candidate bookmarks');
+  report.ok(canPostJobs(employer) && !canPostJobs(pendingEmployer) && !canPostJobs(actor('employer', 'approved', null)),
+    'posting needs an approved employer with a company');
+
+  // Where people go.
+  report.is(homeFor(anon), '/sign-in', 'a visitor\'s home is sign-in');
+  report.is(homeFor(onboarding), '/onboarding', 'an un-onboarded account\'s is onboarding');
+  report.is(homeFor(candidate), '/dashboard', 'a candidate\'s is the dashboard');
+  report.is(homeFor(employer), '/employer', 'an employer\'s is the employer console');
+  report.is(homeFor(admin), '/admin', 'an admin\'s is the admin console — not the applications tab');
+  report.is(directoryDeniedRedirect(candidate), '/dashboard/profile?notice=directory',
+    'a candidate turned away from the directory lands on their own profile, told why');
+  report.is(directoryDeniedRedirect(pendingEmployer), '/employer', 'a pending employer lands on their console');
+  report.ok(isSuspended(suspendedEmployer) && isSuspended(suspendedCandidate) && !isSuspended(pendingEmployer),
+    'suspended is rejected, not pending');
+
+  // Navigation, one list for both bars.
+  const keys = (a) => siteNavFor(a).map((item) => item.key).join(',');
+  report.is(keys(anon), 'jobs,companies,blog', 'a visitor\'s nav has no directory');
+  report.is(keys(candidate), 'jobs,companies,blog', 'nor a candidate\'s');
+  report.is(keys(employer), 'jobs,companies,agents,blog', 'an employer\'s does');
+  report.is(keys(admin), 'jobs,companies,agents,blog', 'and an admin\'s');
+  report.is(postJobHref(anon), '/sign-in/employer?next=/employer/jobs/new', 'a visitor posts through the employer door');
+  report.is(postJobHref(candidate), null, 'a candidate is not offered "post a job"');
+  report.is(postJobHref(employer), '/employer/jobs/new', 'an employer posts');
+
+  // Routes.
+  report.is(routeAudience('/agents/ahmed-mahmoud-818804'), 'directory', '/agents/* is the directory\'s');
+  report.is(routeAudience('/dashboard/account'), 'authenticated', '/dashboard/account is for everyone signed in');
+  report.is(routeAudience('/dashboard/profile'), 'candidate', 'the rest of /dashboard is the candidate\'s');
+  report.is(routeAudience('/jobs/x'), 'public', 'the board is public');
+  report.ok(!mayEnter(candidate, 'directory') && mayEnter(employer, 'directory') && !mayEnter(anon, 'authenticated'),
+    'mayEnter agrees with the helpers');
+
+  // And the middleware's list matches this file's.
+  const listed = middleware.match(/const PROTECTED = \[([^\]]*)\]/)?.[1] ?? '';
+  const middlewarePrefixes = [...listed.matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
+  report.is(
+    middlewarePrefixes.join(','),
+    [...PROTECTED_PREFIXES].sort().join(','),
+    'the middleware protects exactly the prefixes permissions.ts names',
+  );
+}
+
+report.section('a storage path is one folder and one file');
+{
+  const { isOwnStoragePath, safeExtension } = await import('../../src/lib/storage-path.ts');
+  const uid = '33333333-3333-3333-3333-333333333333';
+  report.ok(isOwnStoragePath(uid, `${uid}/9f1c2d3e-4b5a-6c7d-8e9f-0a1b2c3d4e5f.pdf`), 'the shape every upload produces passes');
+  report.ok(!isOwnStoragePath(uid, `${uid}/../other/cv.pdf`), 'climbing out of the folder does not');
+  report.ok(!isOwnStoragePath(uid, `${uid}/..`), 'nor naming the folder');
+  report.ok(!isOwnStoragePath(uid, `${uid}/a/b.pdf`), 'nor a second folder');
+  report.ok(!isOwnStoragePath(uid, `other/${uid}.pdf`), 'nor somebody else\'s folder');
+  report.ok(!isOwnStoragePath(uid, `${uid}/`), 'nor an empty file name');
+  report.ok(!isOwnStoragePath(uid, ''), 'nor nothing');
+  report.is(safeExtension('CV final.PDF', 'pdf'), 'pdf', 'the extension is lower-cased');
+  report.is(safeExtension('weird.name.with/slash', 'pdf'), 'pdf', 'and an unusable one falls back');
+}
+
+report.section('a phone number is normalised the way people type it');
+{
+  const { normalisePhone, isValidPhone } = await import('../../src/lib/phone.ts');
+  report.is(normalisePhone('01001234567'), '+201001234567', 'a local mobile');
+  report.is(normalisePhone('1001234567'), '+201001234567', 'a local mobile with its zero dropped');
+  report.is(normalisePhone('00201001234567'), '+201001234567', 'the 00 international prefix');
+  report.is(normalisePhone('+20 0100 123 4567'), '+201001234567', 'the trunk zero after the country code');
+  report.is(normalisePhone('٠١٠٠١٢٣٤٥٦٧'), '+201001234567', 'Arabic-Indic digits');
+  report.ok(isValidPhone('+201001234567'), 'a real Egyptian mobile is valid');
+  report.ok(!isValidPhone('+20100123456'), 'a digit short is not');
+  report.ok(isValidPhone('+971501234567'), 'a foreign number in full international form still passes');
+}
+
+report.section('an avatar is fetched from this site\'s storage or from Google, nowhere else');
+{
+  const { trustedAvatarUrl } = await import('../../src/lib/avatar-url.ts');
+  const origin = 'https://abcdefghijklmnopqrst.supabase.co';
+  const uid = '33333333-3333-3333-3333-333333333333';
+  const own = `${origin}/storage/v1/object/public/avatars/${uid}/photo.webp`;
+
+  report.is(trustedAvatarUrl(own, origin), own, 'the account\'s own upload is fetched');
+  report.is(
+    trustedAvatarUrl('https://lh3.googleusercontent.com/a/ACg8ocK=s96-c', origin),
+    'https://lh3.googleusercontent.com/a/ACg8ocK=s96-c',
+    'and a Google account picture',
+  );
+  report.is(
+    trustedAvatarUrl(`https://attacker.example/storage/v1/object/public/avatars/${uid}/photo.webp`, origin),
+    null,
+    'the same path on another host is not — that is the tracking pixel',
+  );
+  report.is(
+    trustedAvatarUrl(`https://zzzzzzzzzzzzzzzzzzzz.supabase.co/storage/v1/object/public/avatars/${uid}/photo.webp`, origin),
+    null,
+    'nor on somebody else\'s Supabase project',
+  );
+  report.is(trustedAvatarUrl(`${origin}/storage/v1/object/public/cvs/${uid}/cv.pdf`, origin), null, 'nor another bucket on our own host');
+  report.is(trustedAvatarUrl('http://lh3.googleusercontent.com/a/x', origin), null, 'nor Google over plain http');
+  report.is(trustedAvatarUrl(own, undefined), null, 'with no storage origin configured, nothing remote is fetched');
+  report.is(trustedAvatarUrl('not a url', origin), null, 'and garbage is a monogram');
+  report.is(trustedAvatarUrl(null, origin), null, 'as is nothing');
 }
 
 process.exitCode = base.finish() ? 0 : 1;

@@ -2,10 +2,11 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { CheckCircle2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, FileText, ShieldCheck, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { localized } from '@/i18n/routing';
 import { SubmitButton } from '@/components/ui/submit-button';
+import { Button } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { cn, uuid } from '@/lib/utils';
 import { fileExtension, fileType } from '@/lib/file-type';
@@ -22,6 +23,13 @@ import type {
   ProfileRow,
 } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
+
+const MAX_CV_BYTES = 10 * 1024 * 1024;
+const CV_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
 
 const VISIBILITY_ICON: Record<AgentVisibility, React.ReactNode> = {
   public: <Eye className="size-4" aria-hidden />,
@@ -70,8 +78,46 @@ export function AgentProfileForm({
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
 
+  /*
+    The CV on file, and whether this save takes it down.
+
+    The form used to show a bare file picker with no word about whether a CV
+    was already there, and it never cleared the picker after a save — so
+    editing a headline re-uploaded the same file and repointed the row at a
+    fresh copy, every time. Now the current file is named, removing it is a
+    choice, and the picker is emptied once its file has been saved.
+  */
+  const [hasCv, setHasCv] = useState(Boolean(agent?.cv_path));
+  const [removeCv, setRemoveCv] = useState(false);
+  const [pickedCv, setPickedCv] = useState<string | null>(null);
+
   function toggle<T>(list: T[], value: T, setter: (next: T[]) => void) {
     setter(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
+  }
+
+  function onPickCv(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setErrors((current) => ({ ...current, cv: '' }));
+    if (!file) {
+      setPickedCv(null);
+      return;
+    }
+    if (file.size > MAX_CV_BYTES) {
+      setErrors((current) => ({ ...current, cv: tValidation('fileTooLarge') }));
+      event.target.value = '';
+      setPickedCv(null);
+      return;
+    }
+    // Through fileType(): the browser's guess when it makes one, the extension
+    // when it does not — a .docx from a device with no Office is still a CV.
+    if (!CV_TYPES.includes(fileType(file))) {
+      setErrors((current) => ({ ...current, cv: tValidation('fileType') }));
+      event.target.value = '';
+      setPickedCv(null);
+      return;
+    }
+    setPickedCv(file.name);
+    setRemoveCv(false);
   }
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -109,6 +155,7 @@ export function AgentProfileForm({
         availability: String(form.get('availability') ?? 'open_to_offers'),
         visibility,
         cvPath,
+        removeCv,
       }));
 
       if (!result.ok) {
@@ -129,6 +176,12 @@ export function AgentProfileForm({
 
       setErrors({});
       setSaved(true);
+      // The picker has done its job; a second save must not upload the same
+      // file again.
+      if (fileRef.current) fileRef.current.value = '';
+      setPickedCv(null);
+      setHasCv(Boolean(cvPath) || (hasCv && !removeCv));
+      setRemoveCv(false);
       router.refresh();
     });
   }
@@ -139,11 +192,17 @@ export function AgentProfileForm({
           the form's full width they were two 800px inputs holding twelve
           characters apiece. */}
       <section className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
-        <Field label={tOnboarding('fullName')} htmlFor="fullName">
+        <Field
+          label={tOnboarding('fullName')}
+          htmlFor="fullName"
+          error={errors.fullName ? tValidation('required') : undefined}
+        >
           <Input
             id="fullName"
             name="fullName"
             required
+            minLength={2}
+            maxLength={120}
             autoComplete="name"
             defaultValue={profile.full_name}
           />
@@ -309,14 +368,49 @@ export function AgentProfileForm({
           onToggle={(value) => toggle(languages, value, setLanguages)}
         />
 
-        <Field label={tAgents('downloadCv')} error={errors.cv || undefined} htmlFor="cv">
+        <Field
+          label={hasCv && !removeCv ? tAgents('cvReplace') : tAgents('downloadCv')}
+          hint={tAgents('cvHint')}
+          error={errors.cv || undefined}
+          htmlFor="cv"
+        >
+          {/* What is on file now, and the way to take it down. Not a link:
+              the owner has the file, and a signed URL rendered into a form
+              would outlive the page. */}
+          {hasCv ? (
+            <p
+              className={cn(
+                'mb-2 flex flex-wrap items-center gap-2 text-sm',
+                removeCv && 'text-muted-foreground line-through',
+              )}
+            >
+              <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              {tAgents('cvCurrent')}
+              {removeCv ? null : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="ms-auto text-destructive hover:text-destructive"
+                  onClick={() => setRemoveCv(true)}
+                >
+                  <Trash2 aria-hidden />
+                  {tAgents('cvRemove')}
+                </Button>
+              )}
+            </p>
+          ) : (
+            <p className="mb-2 text-sm text-muted-foreground">{tAgents('cvNone')}</p>
+          )}
           <input
             ref={fileRef}
             id="cv"
             type="file"
             accept=".pdf,.doc,.docx"
+            onChange={onPickCv}
             className="block w-full text-sm file:me-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium"
           />
+          {pickedCv ? <p className="mt-1 text-xs text-muted-foreground">{pickedCv}</p> : null}
         </Field>
       </section>
 

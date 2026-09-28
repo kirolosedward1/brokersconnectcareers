@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Download, Lock, MapPin, UserRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
+import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { AgentCv } from '@/components/agents/agent-cv';
@@ -14,9 +14,8 @@ import { getAgentCard, shortlistedAgentIds } from '@/lib/queries/agents';
 import { ReportDialog } from '@/components/jobs/report-job-dialog';
 import { recordAgentView } from '@/lib/agent-views';
 import { getDistrictMap, getDevelopers } from '@/lib/queries/taxonomy';
-import { getViewer } from '@/lib/auth';
+import { getViewer, requireAgentProfileViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { createPublicClient } from '@/lib/supabase/public';
 
 type Params = { locale: string; slug: string };
 
@@ -27,64 +26,22 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale: rawLocale, slug } = await params;
   const locale = asLocale(rawLocale);
-  const agent = await getAgentCard(slug);
-  // notFound() here rather than returning empty metadata, so a missing record
-  // takes one path instead of rendering a page with no title and then failing
-  // in the body.
-  //
-  // It does NOT make the status a 404, and I tried: this route streams, so the
-  // headers are gone before either check runs and Next can only serve the
-  // not-found UI under a 200. Metadata streams with it, so moving the check
-  // earlier changes nothing. The only way to a real 404 here is to delete
-  // loading.tsx and give up the skeleton on the three page types that most
-  // need one, which is a worse trade than a soft 404 that carries
-  // `robots: noindex` — Google never indexes these, and what is left is a
-  // Search Console warning rather than a penalty. /blog returns a true 404
-  // only because it has no loading.tsx and therefore does not stream.
-  if (!agent) notFound();
-
   const t = await getTranslations({ locale, namespace: 'agents' });
-  const name = agent.is_unlocked && agent.full_name ? agent.full_name : t('anonymous');
-  const path = `/agents/${slug}`;
 
   /*
-    Indexable only when the owner chose `public` — asked of the database as an
-    anonymous visitor would ask it, not read off this viewer's card.
-
-    `is_unlocked` answers "may *this reader* see who it is", and it is true
-    for a verified employer, an admin, the owner and anybody the consultant
-    applied to. Deciding robots from it meant the directive depended on who
-    was looking. A crawler is anonymous today, so the answer happened to be
-    right, but a privacy rule that holds because of who happens to request
-    the page is not a rule. The public client carries no session, so only
-    the `visibility = 'public'` policy can let the row through.
+    No name in the title, whoever is asking. A directory page is never
+    indexed — it is behind a sign-in since migration 322, so there is no
+    "public profile" for a crawler to be told about — and the metadata
+    streams before the page's own guard has run, so it must not carry
+    anything the guard exists to withhold. The heading on the page is where
+    the name is.
   */
-  const isPublic = await isPublicProfile(slug);
-
   return {
-    title: name,
-    description: localized(locale, agent.headline_ar, agent.headline_en) || t('subtitle'),
-    ...(isPublic
-      ? { alternates: alternatesFor(path, locale) }
-      : { robots: { index: false, follow: false, noarchive: true, nosnippet: true } }),
+    title: t('title'),
+    description: t('subtitle'),
+    robots: { index: false, follow: false, noarchive: true, nosnippet: true },
+    alternates: { canonical: `/agents/${slug}` },
   };
-}
-
-async function isPublicProfile(slug: string): Promise<boolean> {
-  try {
-    // Allowed to fail quietly, and closed: an unanswered question keeps the
-    // profile out of the index rather than in it.
-    const { data } = await createPublicClient()
-      .from('agent_profiles')
-      .select('id')
-      .eq('slug', slug)
-      .eq('visibility', 'public')
-      .maybeSingle();
-    return Boolean(data);
-  } catch {
-    // Unreachable or unconfigured: fail closed.
-    return false;
-  }
 }
 
 export default async function AgentPage({ params }: { params: Promise<Params> }) {
@@ -93,7 +50,20 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
   setRequestLocale(locale);
 
   const agent = await getAgentCard(slug);
-  if (!agent) notFound();
+
+  /*
+    Who may be here (migration 322): the directory's readers — an approved
+    employer or an admin — and the consultant whose page it is. The card is
+    fetched first because the card is what says whose page this is:
+    get_agent_card() returns a row only to those groups, so a null here for
+    anybody else means "not for you", and the guard turns that into a
+    redirect to their own console rather than a 404 for a candidate who typed
+    a colleague's address. A directory reader with no row gets the 404.
+  */
+  if (!agent) {
+    await requireAgentProfileViewer(locale, { user_id: null });
+    notFound();
+  }
 
   const [districts, developers, viewer] = await Promise.all([
     getDistrictMap(),
@@ -117,6 +87,11 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
   // Was a ternary over two of the three languages the product offers, so a
   // consultant who ticked French had their badge render the string "fr".
   const tLanguage = await getTranslations('language');
+
+  // The same question again with the owner known, so the consultant opens
+  // their own preview and nobody else slips through on a card the database
+  // answered for a reason of its own.
+  await requireAgentProfileViewer(locale, { user_id: profileRow.data?.user_id ?? null });
 
   const isOwner = Boolean(viewer?.userId && profileRow.data?.user_id === viewer.userId);
 
