@@ -245,6 +245,9 @@ export const USERS = Object.fromEntries(DEMO_KEYS.map(([key, id]) => [key, id]))
 export const FIXTURES = {
   employerVerified: USERS.employer1, // Al Rowad — verified
   employerUnverified: USERS.employer2, // Property Hub — unverified
+  // Skyline — a verified company whose one account is still awaiting approval
+  // (seed-demo leaves employer7 pending so the admin queue has a row in it).
+  employerPending: USERS.employer7,
   candidate: USERS.candidate1, // gated agent profile
   publicAgent: USERS.candidate2, // public agent profile
   hiddenAgent: USERS.candidate5, // hidden from everyone

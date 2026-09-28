@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { getViewer } from '@/lib/auth';
+import { homeFor } from '@/lib/permissions';
 import { safeNext } from '@/lib/safe-next';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
@@ -42,15 +43,21 @@ export default async function OnboardingPage({
     throw new Error('the profile row could not be read');
   }
 
-  // Already onboarded — nothing to ask.
-  if (viewer!.profile) {
-    redirect({
-      href: viewer!.profile.role === 'employer' ? '/employer/jobs' : '/dashboard/applications',
-      locale,
-    });
-  }
-
   const { next, role, confirmed } = await searchParams;
+
+  /*
+    Already onboarded — nothing to ask.
+
+    Where they were going if the sign-in carried it, and their own console
+    otherwise. This is also where every sign-in lands when nothing was
+    intended (see AUTH_DOORS in middleware.ts), so the role-aware answer here
+    is the one that decides whether an admin sees the moderation queues or a
+    candidate's applications tab.
+  */
+  if (viewer!.profile) {
+    const wanted = safeNext(next);
+    redirect({ href: wanted && wanted !== '/onboarding' ? wanted : homeFor(viewer), locale });
+  }
 
   // Pre-selected, not decided. The account type cannot be changed once the
   // profile exists, and a permanent choice should not be made by a URL the

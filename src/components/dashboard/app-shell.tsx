@@ -5,6 +5,7 @@ import {
   Activity,
   Bell,
   Bookmark,
+  BookUser,
   Briefcase,
   Building2,
   Contact,
@@ -53,6 +54,8 @@ const ICONS = {
   // The company's shortlist of people, which is not the candidate's
   // bookmark of listings — a different noun deserves a different mark.
   shortlist: UserRoundCheck,
+  // The consultant directory: a book of people, which is what it is.
+  directory: BookUser,
   company: Building2,
   billing: CreditCard,
   queue: FileCheck2,

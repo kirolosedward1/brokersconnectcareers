@@ -27,19 +27,26 @@ export default async function EditJobPage({
   const { locale: rawLocale, id } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
-  await requireEmployer(locale);
+  const viewer = await requireEmployer(locale);
+  if (!viewer.company) notFound();
 
   const supabase = await createClient();
 
-  // RLS scopes this to jobs the caller's company owns, so a wrong id is simply
-  // not found rather than forbidden.
-  // Unreadable is not absent: both arrived as null and both became a 404, so
-  // a blip told an employer their own listing was gone rather than that
-  // something had failed. The same distinction the applicants page now makes.
+  /*
+    Scoped to the caller's own company, not left to RLS.
+
+    RLS lets everyone read a live, expired or closed listing — the public
+    board needs that — so an employer with another company's listing id got
+    its edit form, and an admin got anybody's. The save would have refused
+    both, but a form for something that is not yours is a page that lies.
+    Unreadable is still not absent: an error goes to the boundary, a
+    listing that is not this company's is a 404.
+  */
   const { data: job, error: jobError } = await supabase
     .from('jobs')
     .select('*')
     .eq('id', id)
+    .eq('company_id', viewer.company.id)
     .maybeSingle();
 
   if (jobError) raise(jobError, 'loading the listing to edit');

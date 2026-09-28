@@ -27,6 +27,8 @@ import { logFailure } from '@/lib/observe';
 export async function recordAgentView(slug: string): Promise<void> {
   const supabase = await createClient();
 
+  // A slug or an id — the function answers to either since migration 202,
+  // because a locked card is opened by id.
   after(async () => {
     try {
       const { error } = await supabase.rpc('record_agent_view', { p_slug: slug });

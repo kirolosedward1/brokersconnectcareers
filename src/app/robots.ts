@@ -2,8 +2,11 @@ import type { MetadataRoute } from 'next';
 import { env } from '@/lib/env';
 import { ENGLISH_ENABLED } from '@/i18n/routing';
 
-/** Private surfaces and anything whose URL carries a signed token. */
-const PRIVATE = ['/dashboard', '/employer', '/admin', '/notifications', '/onboarding', '/auth', '/api'];
+/**
+ * Private surfaces and anything whose URL carries a signed token. `/agents`
+ * is a directory of people behind a sign-in since migration 202.
+ */
+const PRIVATE = ['/dashboard', '/employer', '/admin', '/notifications', '/onboarding', '/agents', '/auth', '/api'];
 
 /**
  * Query parameters that only ever produce a view of a list page.

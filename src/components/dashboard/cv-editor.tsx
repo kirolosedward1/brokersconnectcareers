@@ -20,6 +20,7 @@ import type {
   AgentEducationRow,
   AgentExperienceRow,
 } from '@/lib/supabase/database.types';
+import { useSessionRecovery } from '@/lib/session-expired';
 
 /**
  * The CV sections, edited in place.
@@ -123,6 +124,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
   const [open, setOpen] = useState<'experience' | 'education' | 'certification' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const recoverSession = useSessionRecovery();
 
   function remove(section: 'experience' | 'education' | 'certification', id: string) {
     const before = { jobs, schools, certs };
@@ -132,6 +134,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
 
     startTransition(async () => {
       const result = await reach(deleteCvEntry(section, id));
+      if (recoverSession(result)) return;
       if (!result.ok) {
         setJobs(before.jobs);
         setSchools(before.schools);
@@ -157,6 +160,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
         ended: String(form.get('ended') ?? '') || null,
         highlights: String(form.get('highlights') ?? '') || null,
       }));
+      if (recoverSession(result)) return;
       if (!result.ok) {
         setError(result.error === 'cap' ? t('capReached') : tCommon('errorBody'));
         return;
@@ -179,6 +183,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
         field: String(form.get('field') ?? '') || null,
         graduated: year ? Number(year) : null,
       }));
+      if (recoverSession(result)) return;
       if (!result.ok) {
         setError(result.error === 'cap' ? t('capReached') : tCommon('errorBody'));
         return;
@@ -200,6 +205,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
         issued: String(form.get('issued') ?? '') || null,
         expires: String(form.get('expires') ?? '') || null,
       }));
+      if (recoverSession(result)) return;
       if (!result.ok) {
         setError(result.error === 'cap' ? t('capReached') : tCommon('errorBody'));
         return;
