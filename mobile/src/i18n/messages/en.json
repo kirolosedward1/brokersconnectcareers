@@ -1,0 +1,31 @@
+{
+  "tabs": {
+    "home": "Home",
+    "companies": "Companies",
+    "account": "Account"
+  },
+  "offline": {
+    "title": "No internet connection",
+    "body": "Check that your phone is online and try again."
+  },
+  "unavailable": {
+    "title": "The service is unavailable right now",
+    "body": "Try again in a little while. Nothing you saved has been lost."
+  },
+  "update": {
+    "title": "A newer version of the app is available",
+    "body": "Update the app from the App Store to keep using it.",
+    "cta": "Update the app"
+  },
+  "account": {
+    "signedOutTitle": "Sign in to your account",
+    "signedOutBody": "Apply for jobs, follow your applications and keep what you like — all from your phone.",
+    "signedInAs": "Signed in as {email}",
+    "adminOnWeb": "Admin tools are on the website only, not in the app.",
+    "openWebsite": "Open the website"
+  },
+  "jobs": {
+    "loadMore": "Load more",
+    "endOfList": "That is every matching job."
+  }
+}

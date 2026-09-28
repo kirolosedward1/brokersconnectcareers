@@ -1,0 +1,124 @@
+# The iOS app's checks (mobile/), on every pull request and push to main that
+# touches the app or the website code it bundles.
+#
+# The app imports the website's pure modules from src/lib and its message
+# catalogues from messages/, so a change there is a change to the app too and
+# runs this as well as the web workflow.
+#
+#   pnpm check      typecheck (app and tests), ESLint, the shared-code guard
+#                   (scripts/check-shared.mjs) and the Jest suites
+#   export:ios      bundles the app for iOS with Metro and Hermes, which is
+#                   what an EAS build does first: an import Metro cannot
+#                   resolve, or a module Hermes cannot compile, fails here
+#   expo-doctor     Expo's own check of dependency versions and config
+#
+# The native iOS build (prebuild + xcodebuild on macOS) is slower and runs on
+# main and by hand, not on every pull request.
+#
+# The EXPO_PUBLIC_* values are the public, client-side ones in eas.json. No
+# secrets are used; the repository is public.
+name: Mobile
+
+on:
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - 'src/lib/**'
+      - 'messages/**'
+      - '.github/workflows/mobile.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - 'src/lib/**'
+      - 'messages/**'
+      - '.github/workflows/mobile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_PUBLIC_SUPABASE_URL: https://hiwdhicwsohbipxzazmb.supabase.co
+  EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_ghKaq9WMTXgn01IEJuh-EA_LEa9Nlry
+  EXPO_PUBLIC_SITE_URL: https://www.brokersconnect.net
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: mobile/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm check
+
+      - name: Bundle for iOS
+        run: pnpm export:ios
+
+      - name: Expo doctor
+        run: npx expo-doctor
+
+  ios-build:
+    # A real native build for the simulator: config plugins, CocoaPods, Swift
+    # and Objective-C all compile. Not on pull requests (it takes a while and
+    # needs a macOS runner); on main, and on demand.
+    if: github.event_name != 'pull_request'
+    needs: check
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: mobile/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate the native project
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install pods
+        run: pod install
+        working-directory: mobile/ios
+
+      - name: Build for the simulator
+        working-directory: mobile/ios
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace BrokersConnect.xcworkspace \
+            -scheme BrokersConnect \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build | tail -n 200
