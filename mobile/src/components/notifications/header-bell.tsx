@@ -7,7 +7,7 @@ import { Text } from '~/components/ui/text';
 import { useUnreadCount } from '~/features/notifications/queries';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { hitTarget } from '~/theme/tokens';
+import { hitTarget, radius } from '~/theme/tokens';
 
 /**
  * The bell, at the trailing end of each tab's first screen — the website keeps
@@ -36,22 +36,28 @@ export function HeaderBell() {
       <View>
         <Bell size={22} color={colors.foreground} />
         {unread > 0 ? (
-          // The badge hangs off the icon, as on the website.
+          // The badge hangs off the icon, as on the website. It grows with the
+          // reader's text size up to a point: any larger would cover the bell,
+          // and VoiceOver reads the count out anyway.
           <View
             style={{
               position: 'absolute',
               top: -6,
               end: -8,
               minWidth: 18,
-              height: 18,
+              minHeight: 18,
               paddingHorizontal: 4,
-              borderRadius: 9,
+              borderRadius: radius.full,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: colors.destructive,
             }}
           >
-            <Text weight="semibold" style={{ fontSize: 11, lineHeight: 16, color: colors.destructiveForeground }}>
+            <Text
+              weight="semibold"
+              maxFontSizeMultiplier={1.4}
+              style={{ fontSize: 11, lineHeight: 16, color: colors.destructiveForeground }}
+            >
               {unread > 99 ? `${formatNumber(99, locale)}+` : formatNumber(unread, locale)}
             </Text>
           </View>
