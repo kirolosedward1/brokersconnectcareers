@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Field, Select, Textarea } from '@/components/ui/field';
 import { Dialog } from '@/components/ui/dialog';
 import { SubmitButton } from '@/components/ui/submit-button';
-import { REPORT_REASONS } from '@/lib/taxonomy';
-import { reportJob } from '@/lib/actions/jobs';
+import { AGENT_REPORT_REASONS, COMPANY_REPORT_REASONS, REPORT_REASONS } from '@/lib/taxonomy';
+import { reportTarget, type ReportTarget } from '@/lib/actions/reports';
 import { reach } from '@/lib/reach';
 import { useSessionRecovery } from '@/lib/session-expired';
 
@@ -32,6 +32,49 @@ export function ReportJobDialog({
   jobSlug: string;
 }) {
   const t = useTranslations("jobs");
+  return (
+    <ReportDialog
+      target="job"
+      targetId={jobId}
+      signedIn={signedIn}
+      returnPath={`/jobs/${jobSlug}`}
+      label={t("report")}
+    />
+  );
+}
+
+const REASONS_FOR: Record<ReportTarget, readonly string[]> = {
+  job: REPORT_REASONS,
+  company: COMPANY_REPORT_REASONS,
+  agent: AGENT_REPORT_REASONS,
+};
+
+/**
+ * The same dialog for a listing, a company or a consultant's profile.
+ *
+ * Reports about companies and people arrived with migration 317, because the
+ * two things a moderator most needs to hear about — a company that is not what
+ * it says, somebody wearing another consultant's name — had no door at all. It
+ * is one dialog rather than three so the rules are one set: an account is
+ * required, one report per person per target, the daily cap, and the same
+ * sentences for each refusal.
+ */
+export function ReportDialog({
+  target,
+  targetId,
+  signedIn,
+  returnPath,
+  label,
+}: {
+  target: ReportTarget;
+  targetId: string;
+  signedIn: boolean;
+  /** Where sign-in brings a signed-out reader back to. */
+  returnPath: string;
+  /** The button's words, which differ per target. */
+  label: string;
+}) {
+  const t = useTranslations("jobs");
   const tReason = useTranslations("reportReason");
   const tCommon = useTranslations("common");
 
@@ -46,8 +89,9 @@ export function ReportJobDialog({
     const form = new FormData(event.currentTarget);
 
     startTransition(async () => {
-      const result = await reach(reportJob({
-        jobId,
+      const result = await reach(reportTarget({
+        target,
+        targetId,
         reason: form.get("reason"),
         detail: String(form.get("detail") ?? ""),
       }));
@@ -74,9 +118,9 @@ export function ReportJobDialog({
   if (!signedIn) {
     return (
       <Button asChild variant="ghost">
-        <a href={`/sign-in?next=${encodeURIComponent(`/jobs/${jobSlug}`)}`}>
+        <a href={`/sign-in?next=${encodeURIComponent(returnPath)}`}>
           <Flag />
-          {t("report")}
+          {label}
         </a>
       </Button>
     );
@@ -86,26 +130,26 @@ export function ReportJobDialog({
     <>
       <Button variant="ghost" onClick={() => setOpen(true)}>
         <Flag />
-        {t("report")}
+        {label}
       </Button>
 
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
-        label={t("report")}
+        label={label}
         closeLabel={tCommon("close")}
       >
         <form onSubmit={onSubmit} className="space-y-4">
-          <h2 className="text-lg font-semibold">{t("report")}</h2>
+          <h2 className="text-lg font-semibold">{label}</h2>
 
           <Field label={t("reportReasonLabel")} htmlFor="reason">
             <Select
               id="reason"
               name="reason"
               required
-              defaultValue="fake_listing"
+              defaultValue={REASONS_FOR[target][0]}
             >
-              {REPORT_REASONS.map((reason) => (
+              {REASONS_FOR[target].map((reason) => (
                 <option key={reason} value={reason}>
                   {tReason(reason)}
                 </option>
