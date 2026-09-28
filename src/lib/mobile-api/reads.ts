@@ -22,6 +22,8 @@ export type MobileConfig = {
   providers: { google: boolean; apple: boolean };
   englishEnabled: boolean;
   billingEnabled: boolean;
+  /** SUPPORT_EMAIL, the address the website's footer offers; null while unset. */
+  supportEmail: string | null;
 };
 
 /** GET /jobs */

@@ -1,6 +1,5 @@
 import { Stack } from 'expo-router';
-import { useTheme } from '~/theme/provider';
-import { font } from '~/theme/tokens';
+import { useStackOptions } from '~/components/navigation/stack-options';
 
 /**
  * One stack per tab, shared by the three.
@@ -23,19 +22,5 @@ export const unstable_settings = {
 };
 
 export default function TabStack() {
-  const { colors } = useTheme();
-
-  return (
-    <Stack
-      screenOptions={{
-        headerTintColor: colors.primary,
-        headerTitleStyle: { fontFamily: font.semibold, color: colors.foreground },
-        headerLargeTitleStyle: { fontFamily: font.bold, color: colors.foreground },
-        headerBackButtonDisplayMode: 'minimal',
-        headerShadowVisible: false,
-        headerStyle: { backgroundColor: colors.background },
-        contentStyle: { backgroundColor: colors.background },
-      }}
-    />
-  );
+  return <Stack screenOptions={useStackOptions()} />;
 }

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Actor } from '@/lib/permissions';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
 import { supabase } from './supabase';
@@ -34,12 +34,17 @@ type SessionState = {
   viewer: Viewer | null;
   viewerLoading: boolean;
   actor: Actor;
-  refreshViewer: () => Promise<void>;
+  /**
+   * The account has an authenticator and this session has not used it yet
+   * (aal1 where aal2 is possible): the code is asked for before anything else.
+   */
+  secondFactorDue: boolean;
+  refreshViewer: () => Promise<Viewer | null>;
 };
 
 const SessionContext = createContext<SessionState | null>(null);
 
-async function loadViewer(session: Session): Promise<Viewer> {
+export async function loadViewer(session: Session): Promise<Viewer> {
   const user = session.user;
   const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
 
@@ -59,6 +64,28 @@ async function loadViewer(session: Session): Promise<Viewer> {
     company,
     profileUnreadable: Boolean(error),
   };
+}
+
+/**
+ * The viewer for the session as it is now, read afresh — for the moment right
+ * after a sign-in, when the provider's own query is still keyed on the
+ * account before it. Null when nobody is signed in.
+ */
+export async function fetchViewer(queryClient: QueryClient): Promise<Viewer | null> {
+  const { data } = await supabase.auth.getSession();
+  const session = data.session;
+  if (!session) return null;
+  return queryClient.fetchQuery({
+    queryKey: ['viewer', session.user.id],
+    queryFn: () => loadViewer(session),
+    staleTime: 0,
+  });
+}
+
+/** aal1 on an account that could prove aal2. Read from the session's own token; no request. */
+export async function secondFactorDue(): Promise<boolean> {
+  const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  return data?.currentLevel === 'aal1' && data.nextLevel === 'aal2';
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -88,6 +115,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, [queryClient]);
 
+  // Answered per token, so a new session never shows the last one's answer.
+  const token = session?.access_token ?? null;
+  const [factor, setFactor] = useState<{ token: string; due: boolean } | null>(null);
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    secondFactorDue()
+      .then((due) => {
+        if (active) setFactor({ token, due });
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [token]);
+  const factorDue = factor !== null && factor.token === token && factor.due;
+
   const userId = session?.user.id ?? null;
   const viewerQuery = useQuery({
     queryKey: ['viewer', userId],
@@ -116,11 +160,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       viewer,
       viewerLoading: Boolean(session) && viewerQuery.isPending,
       actor,
-      refreshViewer: async () => {
-        await viewerQuery.refetch();
-      },
+      secondFactorDue: Boolean(session) && factorDue,
+      refreshViewer: () => fetchViewer(queryClient),
     };
-  }, [ready, session, viewerQuery]);
+  }, [ready, session, viewerQuery, factorDue, queryClient]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

@@ -115,6 +115,7 @@ console.log('\n— config is public and says nothing secret');
   check('200', r.status === 200, `got ${r.status}`);
   check('has a minimum version', typeof r.json?.minAppVersion === 'string');
   check('names the providers', typeof r.json?.providers?.google === 'boolean' && typeof r.json?.providers?.apple === 'boolean');
+  check('says where to write, or that nowhere is set', r.json?.supportEmail === null || typeof r.json?.supportEmail === 'string');
   check('carries no key', !JSON.stringify(r.json ?? {}).match(/service|secret|sb_secret/i));
 }
 

@@ -31,6 +31,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier: 'net.brokersconnect.app',
     supportsTablet: false,
     associatedDomains: [`applinks:${SITE_HOST}`, `webcredentials:${SITE_HOST}`],
+    // Sign in with Apple, natively (the entitlement). Supabase's Apple provider
+    // must list this bundle id among its client ids for the identity token to pass.
+    usesAppleSignIn: true,
     config: { usesNonExemptEncryption: false },
     infoPlist: {
       CFBundleDevelopmentRegion: 'ar',
@@ -61,6 +64,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ['expo-localization', { supportsRTL: true, forcesRTL: true }],
     'expo-web-browser',
     'expo-font',
+    'expo-apple-authentication',
   ],
   experiments: {
     typedRoutes: true,

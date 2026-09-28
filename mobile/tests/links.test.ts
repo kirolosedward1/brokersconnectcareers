@@ -26,6 +26,13 @@ describe('webPathToAppPath', () => {
     ['brokersconnect://jobs/abc', '/jobs/abc'],
     ['brokersconnect:///companies/acme?x=1', '/companies/acme?x=1'],
     ['brokersconnect://', '/'],
+    // An email link keeps its token for the screen that verifies it.
+    [
+      'https://www.brokersconnect.net/auth/confirm?token_hash=pkce_abc123abc123abc1&type=recovery',
+      '/auth/confirm?token_hash=pkce_abc123abc123abc1&type=recovery',
+    ],
+    // Google, back from the authentication browser, if iOS hands it over as a link.
+    ['brokersconnect://auth/callback?code=abc', '/auth/callback?code=abc'],
   ])('%s → %s', (input, expected) => {
     expect(webPathToAppPath(input)).toBe(expected);
   });
@@ -52,6 +59,7 @@ describe('inOwnTab', () => {
     ['/', '/'],
     ['/notifications', '/notifications'],
     ['/jobsearch', '/jobsearch'],
+    ['/auth/confirm?type=signup', '/auth/confirm?type=signup'],
   ])('%s → %s', (input, expected) => {
     expect(inOwnTab(input)).toBe(expected);
   });

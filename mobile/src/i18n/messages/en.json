@@ -22,10 +22,34 @@
     "signedOutBody": "Apply for jobs, follow your applications and keep what you like — all from your phone.",
     "signedInAs": "Signed in as {email}",
     "adminOnWeb": "Admin tools are on the website only, not in the app.",
-    "openWebsite": "Open the website"
+    "openWebsite": "Open the website",
+    "appearance": "App appearance",
+    "contact": "Contact us",
+    "deleteApple": "We will ask you to confirm with Apple, so the app is disconnected from your Apple ID too.",
+    "deleteAppleFailed": "We could not confirm with Apple. Try again.",
+    "deleted": "Your account has been deleted.",
+    "version": "Version {version}"
   },
   "jobs": {
     "loadMore": "Load more",
     "endOfList": "That is every matching job."
+  },
+  "auth": {
+    "forCompanies": "Register your company",
+    "captchaChecking": "Checking your connection is secure…",
+    "captchaPrompt": "Tap the box so we know you are not a program, then continue.",
+    "captchaFailed": "We could not load the security check. Check your connection and try again.",
+    "captchaRetry": "Load the check again",
+    "verifying": "Checking your link…",
+    "switchTitle": "You are signed in with another account",
+    "switchBody": "You are signed in as {email}. This link signs you in with the account the email was sent to instead.",
+    "switchContinue": "Continue with that account",
+    "switchCancel": "Stay in my account",
+    "mfaSignOut": "I do not have the code — sign out"
+  },
+  "onboarding": {
+    "terms": "I agree to the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>.",
+    "termsRequired": "Agree to the Terms of use to continue.",
+    "choose": "Choose"
   }
 }

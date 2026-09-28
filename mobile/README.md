@@ -40,9 +40,9 @@ CI runs both on every pull request that touches `mobile/`, `src/lib/` or
 
 | Path | What |
 | --- | --- |
-| `src/app/` | Screens, by route. The paths mirror the website's: `/jobs`, `/jobs/<slug>`, `/companies/<slug>`. |
+| `src/app/` | Screens, by route. The paths mirror the website's: `/jobs`, `/jobs/<slug>`, `/companies/<slug>`, and the sign-in sheet at `/sign-in`, `/sign-up`, `/sign-in/forgot`. |
 | `src/components/` | The app's UI kit (`ui/`) and the website's components, redrawn for the phone. |
-| `src/features/` | Data hooks: the board, companies, the browse counts, the taxonomy. |
+| `src/features/` | Data hooks: the board, companies, the browse counts, the taxonomy; `auth/` for the captcha, Apple and Google, and where a sign-in lands. |
 | `src/lib/` | The Supabase client, the API client for `/api/mobile/v1`, the session, links. |
 | `src/i18n/` | The website's catalogue plus the app's own strings (`messages/`). |
 | `src/theme/` | The website's design tokens. |

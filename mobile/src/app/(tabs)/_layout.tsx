@@ -4,9 +4,10 @@ import { useTheme } from '~/theme/provider';
 
 /**
  * The tab bar. Signed out, it is the public site: home, the board, the
- * companies. The signed-in tabs (a candidate's applications and saved jobs, an
- * employer's listings and applicants) join as their screens are built, each
- * shown or hidden by src/lib/permissions.ts — the website's own rules.
+ * companies — and the account, where signing in starts. The signed-in tabs (a
+ * candidate's applications and saved jobs, an employer's listings and
+ * applicants) join as their screens are built, each shown or hidden by
+ * src/lib/permissions.ts — the website's own rules.
  *
  * Each tab is a group with a stack of its own ((home), (jobs), (companies));
  * a listing or a company opened from any of them is pushed onto that tab's
@@ -32,6 +33,11 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="(companies)">
         <NativeTabs.Trigger.Label>{t('app.tabs.companies')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'building.2', selected: 'building.2.fill' }} />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="(account)">
+        <NativeTabs.Trigger.Label>{t('app.tabs.account')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

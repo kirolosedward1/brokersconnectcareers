@@ -19,3 +19,39 @@ process.env.EXPO_PUBLIC_SITE_URL ??= 'http://127.0.0.1:9';
 jest.mock('@shopify/flash-list', () => ({
   FlashList: jest.requireActual('react-native').FlatList,
 }));
+
+// The WebView is native. A stand-in records what the latest one was given and
+// how many have been loaded, so a test can play the captcha page's part —
+// posting its messages — and see a spent token make the app load another.
+jest.mock('react-native-webview', () => {
+  const React = jest.requireActual('react');
+  const { View } = jest.requireActual('react-native');
+  const state: { latest: Record<string, unknown> | null; loads: number } = { latest: null, loads: 0 };
+  function WebView(props: Record<string, unknown>) {
+    state.latest = props;
+    React.useEffect(() => {
+      state.loads += 1;
+    }, []);
+    return React.createElement(View, { testID: 'webview' });
+  }
+  return { WebView, __webview: state };
+});
+
+// Sign in with Apple is the system's sheet. Unavailable unless a test says
+// otherwise, and its button a plain one a test can press.
+jest.mock('expo-apple-authentication', () => {
+  const React = jest.requireActual('react');
+  const { Pressable } = jest.requireActual('react-native');
+  return {
+    isAvailableAsync: jest.fn(async () => false),
+    signInAsync: jest.fn(),
+    formatFullName: jest.fn((name: { givenName?: string | null; familyName?: string | null }) =>
+      [name.givenName, name.familyName].filter(Boolean).join(' '),
+    ),
+    AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
+    AppleAuthenticationButtonType: { SIGN_IN: 0, CONTINUE: 1, SIGN_UP: 2 },
+    AppleAuthenticationButtonStyle: { WHITE: 0, WHITE_OUTLINE: 1, BLACK: 2 },
+    AppleAuthenticationButton: ({ onPress }: { onPress: () => void }) =>
+      React.createElement(Pressable, { accessibilityRole: 'button', accessibilityLabel: 'Sign in with Apple', onPress }),
+  };
+});

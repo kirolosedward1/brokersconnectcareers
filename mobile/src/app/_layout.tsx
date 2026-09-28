@@ -11,6 +11,7 @@ import { IBMPlexSansArabic_400Regular } from '@expo-google-fonts/ibm-plex-sans-a
 import { IBMPlexSansArabic_500Medium } from '@expo-google-fonts/ibm-plex-sans-arabic/500Medium';
 import { IBMPlexSansArabic_600SemiBold } from '@expo-google-fonts/ibm-plex-sans-arabic/600SemiBold';
 import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic/700Bold';
+import { SessionGate } from '~/components/navigation/session-gate';
 import { I18nProvider } from '~/i18n/provider';
 import { persistOptions, queryClient } from '~/lib/query';
 import { SessionProvider } from '~/lib/session';
@@ -18,6 +19,14 @@ import { ThemeProvider, useTheme } from '~/theme/provider';
 import { font } from '~/theme/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/**
+ * The tabs are always underneath: a link that opens straight onto a sheet (an
+ * email link, onboarding) closes onto the app, not onto nothing.
+ */
+export const unstable_settings = {
+  anchor: '(tabs)',
+};
 
 /**
  * Everything the screens stand on: the website's font, cached server state,
@@ -49,7 +58,13 @@ export default function RootLayout() {
               <Navigation>
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="(tabs)" />
+                  <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+                  <Stack.Screen name="mfa" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+                  <Stack.Screen name="auth/confirm" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
                 </Stack>
+                <SessionGate />
               </Navigation>
             </SessionProvider>
           </I18nProvider>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { enabledProviders } from '@/lib/auth-providers';
-import { BILLING_ENABLED, configuredValue } from '@/lib/env';
+import { BILLING_ENABLED, configuredValue, env } from '@/lib/env';
 import { ENGLISH_ENABLED } from '@/lib/locale';
 import type { MobileConfig } from '@/lib/mobile-api/reads';
 
@@ -15,6 +15,9 @@ import type { MobileConfig } from '@/lib/mobile-api/reads';
  *   providers         which one-tap sign-ins the auth server will accept today.
  *   englishEnabled    the website's switch; the app follows it.
  *   billingEnabled    the app never sells anything, but says what is free.
+ *   supportEmail      the contact address the website's footer shows, when
+ *                     one is set — the app's "contact us" and the way out
+ *                     of a deletion only the team can finish.
  */
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +31,7 @@ export async function GET() {
       providers,
       englishEnabled: ENGLISH_ENABLED,
       billingEnabled: BILLING_ENABLED,
+      supportEmail: configuredValue(env.supportEmail) ?? null,
     } satisfies MobileConfig,
     { headers: { 'cache-control': 'public, s-maxage=300, stale-while-revalidate=600' } },
   );

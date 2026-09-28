@@ -104,6 +104,38 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   board under it. A website page the app has no screen for offers to open it in
   the in-app browser.
 
+## Signing in
+
+The sign-in sheet (`mobile/src/app/(auth)/`) is the website's auth form, rule
+for rule, over Supabase Auth directly — as the website's browser code does:
+
+- **Password.** Eight characters before anything is sent; GoTrue's refusals in
+  the reader's language through the website's own mapping
+  (`src/lib/auth/errors.ts`); each failure reported to `reportAuthOutcome`,
+  whose advised pause the form honours; the confirmation email offered again
+  when an unconfirmed address is what stands in the way.
+- **Sign-up** keeps the door's role in user metadata and asks GoTrue for the
+  website's own confirmation redirect (`/auth/callback?next=/onboarding…`, with
+  the destination nested), so the email works the same opened anywhere.
+- **Apple** is the system sheet: a SHA-256 of a random nonce goes to Apple, the
+  nonce itself to `signInWithIdToken`, and the name Apple gives only once is
+  kept in `user_metadata.full_name`. **Google** runs Supabase's OAuth flow in
+  the system's authentication browser with PKCE, returning to
+  `brokersconnect://auth/callback`. Each button appears only when
+  `/api/mobile/v1/config` says the provider is on.
+- **Second factor.** An account with an authenticator is asked for its code
+  after any sign-in, before anything else opens (the website asks only in the
+  admin console); signing out is the way out for someone without the phone.
+- **Onboarding** runs the website's `completeOnboarding` and adds agreeing to
+  the Terms of use, which the App Store requires of an app where people publish
+  to each other. A session with no profile — just signed in, restored at launch,
+  or arriving from a link — is sent there by the session gate
+  (`mobile/src/components/navigation/session-gate.tsx`).
+- **The Account tab** signs out of this phone only (`scope: 'local'`), and
+  deletes the account through `deleteMyAccount` — for an Apple account after
+  asking Apple for a fresh authorization code, so the website can revoke the
+  grant. An account that owns a company is pointed to the team, as on the web.
+
 ## Links, email and the captcha
 
 - **Universal links.** `/.well-known/apple-app-site-association`
@@ -114,11 +146,16 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   (`TEAMID.net.brokersconnect.app`) is set on Vercel.
 - **Email links** go to `/auth/confirm` with a token hash. The website verifies
   it after a "Continue" press; the app, opening the same URL, verifies it
-  itself (`src/lib/auth/confirm-link.ts` reads the link for both).
+  itself at once (mail scanners do not open apps), asking first only when
+  another account is signed in on the phone. `src/lib/auth/confirm-link.ts`
+  reads the link for both: a reset opens the new-password screen, a
+  confirmation onboarding with the door's role and the destination.
 - **Captcha.** When Supabase Auth requires Turnstile, the app loads
   `/api/mobile/v1/captcha` in a hidden WebView — the site key only runs on the
   site's hostname — and receives the token over the WebView's message channel,
-  showing the page only when Cloudflare asks for a person.
+  showing the page only when Cloudflare asks for a person. The WebView may load
+  that page and Cloudflare's frames and nothing else; a token is spent on each
+  attempt and the page reloaded for the next (`mobile/src/features/auth/captcha.tsx`).
 
 ## Running and testing
 
@@ -132,8 +169,11 @@ pnpm export:ios     # bundle for iOS with Metro and Hermes
 ```
 
 The Jest suites cover the pure helpers, routing (where each kind of link lands
-and where Back goes) and the real screens rendered against fixtures typed with
-the API's own shapes. On the website side, `pnpm test:mobile-api` covers the
+and where Back goes), the real screens rendered against fixtures typed with the
+API's own shapes, and every sign-in path (`tests/auth.test.tsx`) run through the
+real supabase-js client against a stand-in for Supabase Auth: what GoTrue is
+sent, what the website's actions are asked, and where each flow leaves the
+person. On the website side, `pnpm test:mobile-api` covers the
 bearer handling and the registry, and `pnpm smoke:mobile-api` runs the endpoints
 against a local production build.
 
@@ -150,10 +190,17 @@ On the website (Vercel):
 | `MOBILE_MIN_APP_VERSION` | The lowest app version `/api/mobile/v1/config` accepts; below it the app asks to be updated. |
 | `APPLE_APP_ID` | `TEAMID.net.brokersconnect.app` — serves the universal-link file. |
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_CLIENT_ID` | The Sign in with Apple key (`.p8`, newlines escaped) and the app's bundle id, used to revoke an Apple user's grant when they delete their account from the app (`src/lib/apple/revoke.ts`). Secret. |
+| `SUPPORT_EMAIL` | Already the footer's contact address; the app offers it too (`/api/mobile/v1/config`), and a company owner who wants their account deleted is pointed to it. |
 
-Sign in with Apple itself is switched on in Supabase (Authentication →
-Providers → Apple, with the Services ID for the website and the bundle id for
-the app); the website's button appears once it is (`enabledProviders()`).
+In the Supabase dashboard (Authentication):
+
+- **Providers → Apple**: on, with the Services ID for the website and the
+  bundle id `net.brokersconnect.app` among the client ids for the app. Both
+  sign-in buttons appear once it is (`enabledProviders()`). The App Store
+  requires Sign in with Apple wherever Google is offered.
+- **URL Configuration → Redirect URLs**: add `brokersconnect://auth/callback`
+  for Google in the app; the email links use the website's own callback,
+  which is already listed.
 
 ## Releasing
 
