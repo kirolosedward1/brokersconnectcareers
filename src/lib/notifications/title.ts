@@ -37,6 +37,13 @@ const KNOWN: Record<NotificationKind, true> = {
   profile_visibility_changed: true,
   password_changed: true,
   support_replied: true,
+  report_reviewed: true,
+  company_suspended: true,
+  company_restored: true,
+  profile_restricted: true,
+  profile_restored: true,
+  account_held: true,
+  appeal_decided: true,
 };
 
 /**
@@ -68,8 +75,8 @@ export function notificationTitle(
   const { kind, payload } = notification;
   const subject = notificationSubject(payload, locale);
 
-  // Most kinds are one sentence with the subject in it; these three carry a
-  // second fact the sentence has to say.
+  // Most kinds are one sentence with the subject in it; these carry a second
+  // fact the sentence has to say.
   if (kind === 'application_moved') {
     return t('notifications.applicationMoved', {
       title: subject,
@@ -83,6 +90,13 @@ export function notificationTitle(
     return t('notifications.profileVisibilityChanged', {
       visibility: t(`visibility.${payload.visibility}`),
     });
+  }
+  // Whether a report led to action — never what the action was.
+  if (kind === 'report_reviewed') {
+    return t(payload.outcome === 'actioned' ? 'notifications.reportActioned' : 'notifications.reportNoBreach', { subject });
+  }
+  if (kind === 'appeal_decided') {
+    return t(payload.outcome === 'overturned' ? 'notifications.appealOverturned' : 'notifications.appealUpheld', { subject });
   }
   return isKnownNotificationKind(kind) ? t(`notifications.${kind}`, { subject }) : t('notifications.generic');
 }

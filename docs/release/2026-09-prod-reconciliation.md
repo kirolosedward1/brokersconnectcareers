@@ -14,7 +14,8 @@ is `scripts/release/fixtures/production-ledger-2026-09-28.json`):
   applied**, 026 was applied by hand (verified 2026-09-27), and two rows are the
   historical API grants, which have no file. **No drift**: everything production
   runs is in git.
-- **25 files are missing:**
+- **29 files are missing** — the 25 of the snapshot day, and 325–328, which
+  `main` gained with the moderation work (#28) since:
 
   | File | What it does |
   | --- | --- |
@@ -40,6 +41,10 @@ is `scripts/release/fixtures/production-ledger-2026-09-28.json`):
   | 320 | The audit trail asks `is_admin()` once |
   | 322 | The consultant directory is for employers |
   | 323–324 | Background email work that survives a crash |
+  | 325 | Notification kinds for moderation decisions |
+  | 326 | Reports kept as evidence, with limits that stop them being a weapon |
+  | 327 | The moderation console's signals; suspension reasons made private |
+  | 328 | Appeals: a second look at a decision |
 
 - **Production ran five files ahead of `main`'s order**: 203, 204, 316, 317 and
   318 were applied on 2026-09-27, before `main` placed 068–202 and 300–314 ahead
@@ -54,7 +59,7 @@ answers that before anything real runs. In a throwaway in-process Postgres it:
 
 1. rebuilds the database the ledger describes, file by file, **in production's
    own order**;
-2. applies the 25 missing files exactly as `pnpm db:apply` will;
+2. applies the missing files exactly as `pnpm db:apply` will;
 3. builds `main` fresh and compares the two, object by object, with
    `scripts/dr/fingerprint.sql` — the same query the disaster-recovery runbook
    uses to prove a restore (columns, constraints, indexes, RLS, policies,
@@ -71,8 +76,10 @@ this one constraint depends on the order. (203 is not even safe to re-run.)
 **The fix** is one entry in `ADJUSTMENTS` (`scripts/release/migrations.mjs`),
 run inside 307's own transaction and recorded in its ledger row beside the
 file: drop the constraint just before 307, and put it back exactly as 317 wrote
-it just after. With it, **all 25 files apply, the result is identical to
-`main`, and the seed and demo data load.**
+it just after. With it, **all 29 files apply, the result is identical to
+`main`, and the seed and demo data load.** (Re-run after merging 325–328: they
+need nothing of their own. 325 only adds enum values, in a transaction of its
+own, so they are committed before 326–328 use them.)
 
 `pnpm test:release` (in `pnpm check`) keeps this true: it rebuilds production's
 order from the snapshot and runs the real `apply` command against it over a
@@ -100,12 +107,15 @@ A constraint validated as it is added fails on any existing row that breaks it.
 `scripts/release/preflight/2026-09-prod-reconciliation.sql` is those
 constraints as read-only counts:
 
-- **Blocking — each must be 0**: 069's `email_suppressions_reason_check`, and
-  322's two CV-path checks on `applications` and `agent_profiles`. A non-zero
+- **Blocking — each must be 0**: 069's `email_suppressions_reason_check`,
+  322's two CV-path checks on `applications` and `agent_profiles`, and 326's
+  rule that every report names exactly one target (its authors found no reports
+  on production on 2026-09-27; this says whether that still holds). A non-zero
   count means that file would fail and the apply stop there; fix the rows first.
 - **Informational**: 307 adds its checks `NOT VALID` and validates what it can,
   leaving a constraint an old row breaks in place for new writes only. A count
-  here is the list of rows to clean up afterwards, not a failure.
+  here is the list of rows to clean up afterwards, not a failure. Also the rows
+  326 backfills and the suspension reasons 327 moves before its check.
 
 ## `pnpm db:apply`
 
@@ -155,7 +165,7 @@ Only on the owner's go-ahead.
    ```
 
    Alternatively, with the Supabase connector and an explicit go-ahead, the same
-   25 files can be applied one `apply_migration` call each, under their file's
+   29 files can be applied one `apply_migration` call each, under their file's
    name (307 with its adjustment), which production's name-matched ledger
    already expects.
 

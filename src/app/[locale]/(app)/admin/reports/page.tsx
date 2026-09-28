@@ -1,18 +1,27 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Ban, CheckCheck, EyeOff, Search, ShieldAlert, ThumbsUp } from 'lucide-react';
+import { Ban, CheckCheck, EyeOff, Search, ShieldAlert, ThumbsUp, UserX } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { asLocale, localized } from '@/i18n/routing';
+import { asLocale, localeHref, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmAction } from '@/components/admin/confirm-action';
-import { ReportStatusBadge } from '@/components/admin/badges';
+import { JobStatusBadge, ReportStatusBadge } from '@/components/admin/badges';
 import { FilterTabs, PageHeader, Pager } from '@/components/admin/kit';
+import { CompanySignalList, SafetyFlags, SeverityBadge } from '@/components/admin/safety';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { must, mustPage } from '@/lib/admin/read';
-import { hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
-import { formatDate } from '@/lib/utils';
-import type { JobStatus, ReportReason, ReportStatus, ReportTargetType } from '@/lib/supabase/database.types';
+import { must } from '@/lib/admin/read';
+import { cairoDayStart, dayOf, hrefWith, oneOf, pageOf, param, type SearchParams } from '@/lib/admin/params';
+import { formatDate, formatNumber } from '@/lib/utils';
+import type {
+  AdminReportCase,
+  AdminReportDetail,
+  CompanySignals,
+  JobStatus,
+  ReportReason,
+  ReportTargetType,
+  SafetyFlag,
+} from '@/lib/supabase/database.types';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = asLocale((await params).locale);
@@ -20,62 +29,44 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return { title: t('reports'), robots: { index: false, follow: false } };
 }
 
-const VIEWS = ['open', 'investigating', 'resolved', 'dismissed'] as const;
+const VIEWS = ['new', 'under_review', 'resolved', 'dismissed'] as const;
+type View = (typeof VIEWS)[number];
 const TYPES = ['all', 'job', 'company', 'agent'] as const;
+const REASONS = [
+  'scam',
+  'fake_listing',
+  'impersonation',
+  'harassment',
+  'suspicious_company',
+  'misleading_pay',
+  'inappropriate',
+  'discriminatory',
+  'spam',
+  'duplicate',
+  'other',
+] as const satisfies readonly ReportReason[];
+const SEVERITIES = ['any', '3', '2'] as const;
 
-/** How many open reports the queue draws at once. Grouped, this is far more cards than a morning's work. */
-const OPEN_LIMIT = 500;
+const CASE_PAGE = 20;
 const CLOSED_PAGE = 30;
 
-type ReportRow = {
-  id: string;
-  reason: ReportReason;
-  detail: string | null;
-  status: ReportStatus;
-  created_at: string;
-  resolved_at: string | null;
-  job_id: string | null;
-  company_id: string | null;
-  agent_id: string | null;
-  reporter: { id: string; full_name: string } | null;
-  job: {
-    id: string;
-    title_ar: string;
-    title_en: string | null;
-    status: JobStatus;
-    expires_at: string | null;
-    company: { name_ar: string; name_en: string | null } | null;
-  } | null;
-  company: { id: string; name_ar: string; name_en: string | null; suspended_at?: string | null } | null;
-  agent: { id: string; slug: string; restricted_at?: string | null; profile: { full_name: string } | null } | null;
-};
-
-type Case = {
-  type: ReportTargetType;
-  id: string;
-  label: string;
-  sublabel: string | null;
-  href: string;
-  /** Whether the matching takedown still has something to take down. */
-  actionable: boolean;
-  reports: ReportRow[];
-  since: string;
-};
+const JOB_STATUSES: readonly string[] = ['draft', 'pending_review', 'active', 'expired', 'closed', 'rejected'];
 
 /**
- * Reports, grouped by what they are about.
+ * Reports, one case per thing reported.
  *
- * A listing, a company or a consultant's profile: the unit of work is the
- * target, because five reports about one advert are five people describing
- * one problem (one report per person per target is a unique index). Handling
- * them one row at a time threw that signal away and made the reviewer close
- * the same complaint five times.
+ * New and under review are cases: every open report about one listing,
+ * company or consultant profile, ranked by what was alleged (severity, from
+ * the reason alone), then by how many different people said it, then by who
+ * has waited longest — aggregated in the database (admin_report_cases), not
+ * drawn five hundred rows at a time and grouped here. Resolved and dismissed
+ * are the reports themselves, newest decision first.
  *
- * Each verb moves every open report on the target together, and "resolve and
- * take down" does both in one transaction — the resolution cannot be recorded
- * while the harm stays up. Reporters whose past reports mostly found nothing
- * are flagged, which is the defence against somebody using the queue as a
- * weapon rather than a signal.
+ * Beside each case: what the listing or company says about itself (text
+ * flags), what the company has been doing (review signals), and who the
+ * reporters are — new accounts, a record of groundless reports, employers.
+ * Those three separate a real pile of complaints from a pile-on. None of it
+ * decides anything; every lever is a person's decision, with a reason.
  */
 export default async function AdminReportsPage({
   params,
@@ -89,115 +80,91 @@ export default async function AdminReportsPage({
   await requireAdmin(locale);
 
   const sp = await searchParams;
-  const view = oneOf(param(sp, 'status'), VIEWS, 'open');
+  const view: View = oneOf(param(sp, 'status'), VIEWS, 'new');
   const type = oneOf(param(sp, 'type'), TYPES, 'all');
+  const reason = oneOf(param(sp, 'reason'), ['all', ...REASONS] as const, 'all');
+  const severity = oneOf(param(sp, 'severity'), SEVERITIES, 'any');
+  const from = dayOf(param(sp, 'from'));
+  const to = dayOf(param(sp, 'to'));
+  const repeat = param(sp, 'repeat') === '1';
   const page = pageOf(sp);
-  const current = { status: view === 'open' ? undefined : view, type: type === 'all' ? undefined : type };
 
-  const supabase = await createClient();
-  let query = supabase
-    .from('reports')
-    .select(
-      `id, reason, detail, status, created_at, resolved_at, job_id, company_id, agent_id,
-       reporter:profiles!reports_reporter_id_fkey (id, full_name),
-       job:jobs (id, title_ar, title_en, status, expires_at, company:companies (name_ar, name_en)),
-       company:companies!reports_company_id_fkey (id, name_ar, name_en, suspended_at),
-       agent:agent_profiles (id, slug, restricted_at, profile:profiles (full_name))`,
-      { count: 'exact' },
-    );
-
-  if (view === 'open') query = query.in('status', ['open', 'investigating']);
-  else query = query.eq('status', view);
-
-  if (type === 'job') query = query.not('job_id', 'is', null);
-  if (type === 'company') query = query.not('company_id', 'is', null);
-  if (type === 'agent') query = query.not('agent_id', 'is', null);
-
-  const grouped = view === 'open' || view === 'investigating';
-  if (grouped) {
-    query = query.order('created_at', { ascending: true }).limit(OPEN_LIMIT);
-  } else {
-    const [from, to] = rangeOf(page, CLOSED_PAGE);
-    query = query.order('resolved_at', { ascending: false, nullsFirst: false }).order('id').range(from, to);
-  }
-
-  const read = grouped
-    ? must(await query, 'loading the reports queue')
-    : await mustPage(await query, 'loading closed reports', locale, hrefWith('/admin/reports', current, {}));
-  const rows = read.data as unknown as ReportRow[];
-
-  // How often each reporter in view has been right, from their whole history.
-  const reporterIds = [...new Set(rows.map((r) => r.reporter?.id).filter(Boolean))] as string[];
-  const history = reporterIds.length
-    ? (must(
-        await supabase.from('reports').select('reporter_id, status').in('reporter_id', reporterIds),
-        'loading reporter history',
-      ).data as { reporter_id: string; status: ReportStatus }[])
-    : [];
-  const noisy = new Set(
-    reporterIds.filter((id) => {
-      const mine = history.filter((h) => h.reporter_id === id);
-      const dismissed = mine.filter((h) => h.status === 'dismissed').length;
-      return mine.length >= 3 && dismissed / mine.length >= 0.5;
-    }),
-  );
-
-  const t = await getTranslations('admin');
-  const tReason = await getTranslations('reportReason');
-
-  const caseOf = (row: ReportRow): Case | null => {
-    if (row.job_id && row.job) {
-      return {
-        type: 'job',
-        id: row.job.id,
-        label: localized(locale, row.job.title_ar, row.job.title_en),
-        sublabel: row.job.company ? localized(locale, row.job.company.name_ar, row.job.company.name_en) : null,
-        href: `/admin/jobs/${row.job.id}`,
-        actionable: row.job.status === 'active' || row.job.status === 'pending_review',
-        reports: [],
-        since: row.created_at,
-      };
-    }
-    if (row.company_id && row.company) {
-      return {
-        type: 'company',
-        id: row.company.id,
-        label: localized(locale, row.company.name_ar, row.company.name_en),
-        sublabel: null,
-        href: `/admin/companies/${row.company.id}`,
-        actionable: !row.company.suspended_at,
-        reports: [],
-        since: row.created_at,
-      };
-    }
-    if (row.agent_id && row.agent) {
-      return {
-        type: 'agent',
-        id: row.agent.id,
-        label: row.agent.profile?.full_name ?? row.agent.slug,
-        sublabel: row.agent.slug,
-        href: `/admin/agents/${row.agent.id}`,
-        actionable: !row.agent.restricted_at,
-        reports: [],
-        since: row.created_at,
-      };
-    }
-    return null;
+  const current = {
+    status: view === 'new' ? undefined : view,
+    type: type === 'all' ? undefined : type,
+    reason: reason === 'all' ? undefined : reason,
+    severity: severity === 'any' ? undefined : severity,
+    from,
+    to,
+    repeat: repeat ? '1' : undefined,
+  };
+  const filters = {
+    p_type: type === 'all' ? null : type,
+    p_reason: reason === 'all' ? null : reason,
+    p_min_severity: severity === 'any' ? null : Number(severity),
+    p_from: from ? cairoDayStart(from) : null,
+    p_to: to ? cairoDayStart(to, 1) : null,
   };
 
-  const cases = new Map<string, Case>();
-  for (const row of rows) {
-    const c = caseOf(row);
-    if (!c) continue;
-    const key = `${c.type}:${c.id}`;
-    const existing = cases.get(key) ?? c;
-    existing.reports.push(row);
-    cases.set(key, existing);
+  const supabase = await createClient();
+  const t = await getTranslations('admin');
+  const tReason = await getTranslations('reportReason');
+  const grouped = view === 'new' || view === 'under_review';
+
+  let cases: AdminReportCase[] = [];
+  let rows: AdminReportDetail[] = [];
+  let total = 0;
+  const jobSignals = new Map<string, { flags: SafetyFlag[]; company: CompanySignals }>();
+  const companySignals = new Map<string, { flags: SafetyFlag[]; signals: CompanySignals }>();
+
+  if (grouped) {
+    cases = must(
+      await supabase.rpc('admin_report_cases', {
+        p_view: view,
+        ...filters,
+        p_min_reporters: repeat ? 2 : null,
+        p_limit: CASE_PAGE,
+        p_offset: (page - 1) * CASE_PAGE,
+      }),
+      'loading the reports queue',
+    ).data ?? [];
+    total = Number(cases[0]?.total_count ?? 0);
+
+    const ids = cases.flatMap((item) => item.report_ids);
+    const jobIds = cases.filter((item) => item.target_type === 'job' && item.target_state !== 'deleted').map((item) => item.target_id);
+    const companyIds = cases
+      .filter((item) => item.target_type === 'company' && item.target_state !== 'deleted')
+      .map((item) => item.target_id);
+
+    const [details, jobs, companies] = await Promise.all([
+      ids.length ? supabase.rpc('admin_report_rows', { p_ids: ids }) : Promise.resolve({ data: [], error: null }),
+      jobIds.length ? supabase.rpc('admin_job_signals', { p_jobs: jobIds }) : Promise.resolve({ data: [], error: null }),
+      companyIds.length
+        ? supabase.rpc('admin_company_signals', { p_companies: companyIds })
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    rows = must(details, 'loading the reports behind each case').data ?? [];
+    for (const row of must(jobs, 'loading listing signals').data ?? []) {
+      jobSignals.set(row.job_id, { flags: row.flags, company: row.company_signals });
+    }
+    for (const row of must(companies, 'loading company signals').data ?? []) {
+      companySignals.set(row.company_id, { flags: row.flags, signals: row.signals });
+    }
+  } else {
+    rows = must(
+      await supabase.rpc('admin_report_rows', {
+        p_status: view,
+        ...filters,
+        p_limit: CLOSED_PAGE,
+        p_offset: (page - 1) * CLOSED_PAGE,
+      }),
+      'loading closed reports',
+    ).data ?? [];
+    total = Number(rows[0]?.total_count ?? 0);
   }
-  // Most-reported first; among equals, whoever has waited longest.
-  const queue = [...cases.values()].sort(
-    (a, b) => b.reports.length - a.reports.length || a.since.localeCompare(b.since),
-  );
+
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const n = (value: number) => formatNumber(value, locale);
 
   const takeDown: Record<ReportTargetType, { label: string; body: string; icon: React.ReactNode }> = {
     job: { label: t('resolveTakeDownJob'), body: t('resolveTakeDownJobBody'), icon: <EyeOff /> },
@@ -205,28 +172,277 @@ export default async function AdminReportsPage({
     agent: { label: t('resolveRestrictAgent'), body: t('resolveRestrictAgentBody'), icon: <ShieldAlert /> },
   };
 
-  const reportLine = (report: ReportRow) => (
-    <li key={report.id} className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-medium">{tReason(report.reason)}</span>
-        <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          {report.status === 'investigating' ? <ReportStatusBadge status="investigating" /> : null}
-          {formatDate(report.created_at, locale)}
-        </span>
-      </div>
-      {report.detail ? <p className="mt-1.5 leading-relaxed text-muted-foreground">{report.detail}</p> : null}
-      <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        {report.reporter ? (
-          <Link href={`/admin/users/${report.reporter.id}`} className="hover:underline">
-            {report.reporter.full_name}
+  const hrefOf = (targetType: ReportTargetType, id: string) =>
+    targetType === 'job' ? `/admin/jobs/${id}` : targetType === 'company' ? `/admin/companies/${id}` : `/admin/agents/${id}`;
+
+  const stateBadge = (item: { target_type: ReportTargetType; target_state: string }) => {
+    if (item.target_state === 'deleted') return <Badge variant="outline">{t('stateDeleted')}</Badge>;
+    if (item.target_state === 'suspended' || item.target_state === 'company_suspended') {
+      return <Badge variant="destructive">{t('suspended')}</Badge>;
+    }
+    if (item.target_state === 'restricted') return <Badge variant="destructive">{t('restricted')}</Badge>;
+    if (item.target_type === 'job' && JOB_STATUSES.includes(item.target_state)) {
+      return <JobStatusBadge status={item.target_state as JobStatus} expiresAt={null} />;
+    }
+    return null;
+  };
+
+  const reportLine = (report: AdminReportDetail, withLevers: boolean) => {
+    const fresh = report.reporter_since
+      ? new Date(report.created_at).getTime() - new Date(report.reporter_since).getTime() < 7 * 86_400_000
+      : false;
+    return (
+      <li key={report.id} className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span className="font-medium">{tReason(report.reason)}</span>
+            <SeverityBadge severity={report.severity} />
+            {report.status === 'investigating' ? <ReportStatusBadge status="investigating" /> : null}
+            {report.abusive ? <Badge variant="warning">{t('badFaith')}</Badge> : null}
+          </span>
+          <span className="text-xs text-muted-foreground">{formatDate(report.created_at, locale)}</span>
+        </div>
+
+        {report.detail ? (
+          <p className="mt-1.5 leading-relaxed text-muted-foreground" dir="auto">
+            {report.detail}
+          </p>
+        ) : null}
+
+        {report.source === 'system' ? (
+          <p className="mt-1.5 text-xs text-muted-foreground">{t('systemFlag')}</p>
+        ) : (
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            {report.reporter_id ? (
+              <Link href={`/admin/users/${report.reporter_id}`} className="hover:underline">
+                {report.reporter_name}
+              </Link>
+            ) : (
+              <span>{t('reporterGone')}</span>
+            )}
+            {report.reporter_role === 'employer' ? (
+              <span>
+                · {t('reporterEmployer')}
+                {report.reporter_company_ar ? ` (${localized(locale, report.reporter_company_ar, report.reporter_company_en)})` : ''}
+              </span>
+            ) : null}
+            {report.reporter_id ? (
+              <span>
+                ·{' '}
+                {t('reporterRecord', {
+                  filed: n(report.reporter_filed),
+                  dismissed: n(report.reporter_dismissed),
+                  abusive: n(report.reporter_abusive),
+                })}
+              </span>
+            ) : null}
+            {fresh ? <Badge variant="warning">{t('reporterNewAccount')}</Badge> : null}
+            {report.reporter_restricted ? <Badge variant="destructive">{t('reporterBanned')}</Badge> : null}
+          </p>
+        )}
+
+        {withLevers && report.source === 'user' && (report.status === 'open' || report.status === 'investigating') ? (
+          <div className="mt-2">
+            <ConfirmAction
+              lever={{ do: 'closeReports', ids: [report.id], status: 'dismissed', abusive: true }}
+              label={t('dismissAbusive')}
+              title={t('dismissAbusive')}
+              body={t('dismissAbusiveBody')}
+              reason="required"
+              reasonLabel={t('abusiveReasonLabel')}
+              variant="ghost"
+              icon={<UserX />}
+            />
+          </div>
+        ) : null}
+      </li>
+    );
+  };
+
+  const caseCard = (item: AdminReportCase) => {
+    const reports = item.report_ids.map((id) => byId.get(id)).filter(Boolean) as AdminReportDetail[];
+    const deleted = item.target_state === 'deleted';
+    const live = !deleted;
+    const actionable =
+      live &&
+      (item.target_type === 'job'
+        ? item.target_state === 'active' || item.target_state === 'pending_review'
+        : item.target_type === 'company'
+          ? item.target_state === 'listed'
+          : item.target_state !== 'restricted');
+    const openIds = reports.filter((row) => row.status === 'open' || row.status === 'investigating').map((row) => row.id);
+    const snapshot = reports[0]?.target_snapshot;
+    const job = item.target_type === 'job' ? jobSignals.get(item.target_id) : undefined;
+    const company = item.target_type === 'company' ? companySignals.get(item.target_id) : undefined;
+    const label = localized(locale, item.label_ar ?? '', item.label_en) || t('untitled');
+
+    return (
+      <li key={`${item.target_type}:${item.target_id}`} className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">{t(`kind.${item.target_type}`)}</p>
+            <h2 className="font-semibold break-words">
+              {live ? (
+                <Link href={hrefOf(item.target_type, item.target_id)} className="hover:text-primary hover:underline">
+                  {label}
+                </Link>
+              ) : (
+                label
+              )}
+            </h2>
+            {item.target_type === 'job' && item.company_name_ar ? (
+              <p className="text-sm text-muted-foreground">
+                {item.company_id && live ? (
+                  <Link href={`/admin/companies/${item.company_id}`} className="hover:underline">
+                    {localized(locale, item.company_name_ar, item.company_name_en)}
+                  </Link>
+                ) : (
+                  localized(locale, item.company_name_ar, item.company_name_en)
+                )}
+              </p>
+            ) : null}
+          </div>
+          <span className="flex flex-wrap items-center gap-1.5">
+            <SeverityBadge severity={item.max_severity} />
+            {stateBadge(item)}
+            <Badge variant={item.reporters > 1 ? 'destructive' : 'outline'} size="lg">
+              {t('reportersCount', { count: n(item.reporters) })}
+            </Badge>
+            {item.system_flags ? <Badge variant="warning">{t('systemFlagShort')}</Badge> : null}
+          </span>
+        </div>
+
+        {item.fresh_reporters || item.noisy_reporters || item.employer_reporters ? (
+          <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {item.fresh_reporters ? <span>{t('freshReporters', { count: n(item.fresh_reporters) })}</span> : null}
+            {item.noisy_reporters ? (
+              <span className="text-warning">{t('noisyReporters', { count: n(item.noisy_reporters) })}</span>
+            ) : null}
+            {item.employer_reporters ? (
+              <span>{t('employerReporters', { count: n(item.employer_reporters) })}</span>
+            ) : null}
+          </p>
+        ) : null}
+
+        {deleted && snapshot?.excerpt ? (
+          <div className="mt-3 border-s-2 border-border ps-3 text-sm">
+            <p className="text-xs text-muted-foreground">{t('snapshotLabel')}</p>
+            <p className="mt-1 line-clamp-4 whitespace-pre-line" dir="auto">
+              {snapshot.excerpt}
+            </p>
+          </div>
+        ) : null}
+
+        {job && (job.flags.length || job.company.signals.length) ? (
+          <div className="mt-3 space-y-2 border-s-2 border-warning/60 ps-3">
+            <SafetyFlags flags={job.flags} />
+            <CompanySignalList signals={job.company} locale={locale} />
+          </div>
+        ) : null}
+        {company && (company.flags.length || company.signals.signals.length) ? (
+          <div className="mt-3 space-y-2 border-s-2 border-warning/60 ps-3">
+            <SafetyFlags flags={company.flags} />
+            <CompanySignalList signals={company.signals} locale={locale} />
+          </div>
+        ) : null}
+
+        <ul className="mt-3 space-y-2">{reports.map((report) => reportLine(report, true))}</ul>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {live ? (
+            <>
+              {item.open_reports > 0 ? (
+                <ConfirmAction
+                  lever={{ do: 'reports', targetType: item.target_type, targetId: item.target_id, status: 'investigating' }}
+                  label={t('investigate')}
+                  title={t('investigate')}
+                  body={t('investigateBody')}
+                  reason="optional"
+                  icon={<Search />}
+                />
+              ) : null}
+              {actionable ? (
+                <ConfirmAction
+                  lever={{
+                    do: 'reports',
+                    targetType: item.target_type,
+                    targetId: item.target_id,
+                    status: 'resolved',
+                    takeAction: true,
+                  }}
+                  label={takeDown[item.target_type].label}
+                  title={takeDown[item.target_type].label}
+                  body={takeDown[item.target_type].body}
+                  reason="required"
+                  reasonLabel={t('reasonToOwner')}
+                  variant="destructive"
+                  icon={takeDown[item.target_type].icon}
+                />
+              ) : null}
+              <ConfirmAction
+                lever={{ do: 'reports', targetType: item.target_type, targetId: item.target_id, status: 'resolved' }}
+                label={t('resolveOnly')}
+                title={t('resolveOnly')}
+                body={t('resolveOnlyBody')}
+                reason="optional"
+                icon={<CheckCheck />}
+              />
+              <ConfirmAction
+                lever={{ do: 'reports', targetType: item.target_type, targetId: item.target_id, status: 'dismissed' }}
+                label={t('dismissReports')}
+                title={t('dismissReports')}
+                body={t('dismissBody')}
+                reason="optional"
+                variant="ghost"
+                icon={<ThumbsUp />}
+              />
+            </>
+          ) : openIds.length ? (
+            <>
+              <ConfirmAction
+                lever={{ do: 'closeReports', ids: openIds, status: 'resolved' }}
+                label={t('closeDeletedResolve')}
+                title={t('closeDeletedResolve')}
+                body={t('closeDeletedBody')}
+                reason="optional"
+                icon={<CheckCheck />}
+              />
+              <ConfirmAction
+                lever={{ do: 'closeReports', ids: openIds, status: 'dismissed' }}
+                label={t('closeDeletedDismiss')}
+                title={t('closeDeletedDismiss')}
+                body={t('closeDeletedBody')}
+                reason="optional"
+                variant="ghost"
+                icon={<ThumbsUp />}
+              />
+            </>
+          ) : null}
+        </div>
+      </li>
+    );
+  };
+
+  const closedRow = (report: AdminReportDetail) => {
+    const label = localized(locale, report.target_snapshot.label_ar ?? '', report.target_snapshot.label_en) || t('untitled');
+    return (
+      <li key={report.id} className="rounded-xl border border-border bg-card p-3">
+        <p className="text-xs text-muted-foreground">
+          {t(`kind.${report.target_type}`)}
+          {report.resolved_at ? ` · ${formatDate(report.resolved_at, locale)}` : null}
+          {!report.target_live ? ` · ${t('stateDeleted')}` : null}
+        </p>
+        {report.target_live ? (
+          <Link href={hrefOf(report.target_type, report.target_id)} className="font-medium hover:text-primary hover:underline">
+            {label}
           </Link>
         ) : (
-          t('unknownActor')
+          <span className="font-medium">{label}</span>
         )}
-        {report.reporter && noisy.has(report.reporter.id) ? <Badge variant="warning">{t('noisyReporter')}</Badge> : null}
-      </p>
-    </li>
-  );
+        <ul className="mt-2">{reportLine(report, false)}</ul>
+      </li>
+    );
+  };
 
   return (
     <div className="space-y-5">
@@ -236,8 +452,8 @@ export default async function AdminReportsPage({
         label={t('colStatus')}
         items={VIEWS.map((value) => ({
           key: value,
-          label: t(`reportStatus.${value}`),
-          href: hrefWith('/admin/reports', current, { status: value === 'open' ? undefined : value }),
+          label: t(`reportView.${value}`),
+          href: hrefWith('/admin/reports', current, { status: value === 'new' ? undefined : value }),
           active: view === value,
         }))}
       />
@@ -251,118 +467,126 @@ export default async function AdminReportsPage({
         }))}
       />
 
+      <ReportFilters
+        locale={locale}
+        keep={{ status: current.status, type: current.type }}
+        reason={reason}
+        severity={severity}
+        from={from}
+        to={to}
+        repeat={repeat}
+        grouped={grouped}
+      />
+
       {grouped ? (
-        queue.length === 0 ? (
+        cases.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-sm text-muted-foreground">
             {t('emptyQueue')}
           </p>
         ) : (
-          <ul className="space-y-3">
-            {queue.map((c) => (
-              <li key={`${c.type}:${c.id}`} className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">{t(`kind.${c.type}`)}</p>
-                    <h2 className="font-semibold break-words">
-                      <Link href={c.href} className="hover:text-primary hover:underline">
-                        {c.label}
-                      </Link>
-                    </h2>
-                    {c.sublabel ? <p className="text-sm text-muted-foreground">{c.sublabel}</p> : null}
-                  </div>
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    <Badge variant={c.reports.length > 1 ? 'destructive' : 'outline'} size="lg">
-                      {t('reportCount', { count: c.reports.length })}
-                    </Badge>
-                    {!c.actionable ? <Badge variant="outline">{t('alreadyActioned')}</Badge> : null}
-                  </span>
-                </div>
-
-                <ul className="mt-3 space-y-2">{c.reports.map(reportLine)}</ul>
-
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  {c.reports.some((r) => r.status === 'open') ? (
-                    <ConfirmAction
-                      lever={{ do: 'reports', targetType: c.type, targetId: c.id, status: 'investigating' }}
-                      label={t('investigate')}
-                      title={t('investigate')}
-                      body={t('investigateBody')}
-                      reason="optional"
-                      icon={<Search />}
-                    />
-                  ) : null}
-                  {c.actionable ? (
-                    <ConfirmAction
-                      lever={{ do: 'reports', targetType: c.type, targetId: c.id, status: 'resolved', takeAction: true }}
-                      label={takeDown[c.type].label}
-                      title={takeDown[c.type].label}
-                      body={takeDown[c.type].body}
-                      reason="required"
-                      reasonLabel={t('reasonToOwner')}
-                      variant="destructive"
-                      icon={takeDown[c.type].icon}
-                    />
-                  ) : null}
-                  <ConfirmAction
-                    lever={{ do: 'reports', targetType: c.type, targetId: c.id, status: 'resolved' }}
-                    label={t('resolveOnly')}
-                    title={t('resolveOnly')}
-                    body={t('resolveOnlyBody')}
-                    reason="optional"
-                    icon={<CheckCheck />}
-                  />
-                  <ConfirmAction
-                    lever={{ do: 'reports', targetType: c.type, targetId: c.id, status: 'dismissed' }}
-                    label={t('dismissReports')}
-                    title={t('dismissReports')}
-                    body={t('dismissBody')}
-                    reason="optional"
-                    variant="ghost"
-                    icon={<ThumbsUp />}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <ul className="space-y-3">{cases.map(caseCard)}</ul>
         )
       ) : rows.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-sm text-muted-foreground">
           {t('emptyQueue')}
         </p>
       ) : (
-        <>
-          <ul className="space-y-2">
-            {rows.map((report) => {
-              const c = caseOf(report);
-              return (
-                <li key={report.id} className="rounded-xl border border-border bg-card p-3">
-                  <p className="text-xs text-muted-foreground">
-                    {c ? t(`kind.${c.type}`) : null}
-                    {report.resolved_at ? ` · ${formatDate(report.resolved_at, locale)}` : null}
-                  </p>
-                  {c ? (
-                    <Link href={c.href} className="font-medium hover:text-primary hover:underline">
-                      {c.label}
-                    </Link>
-                  ) : null}
-                  <ul className="mt-2">{reportLine(report)}</ul>
-                </li>
-              );
-            })}
-          </ul>
-          <Pager
-            page={page}
-            total={read.count}
-            size={CLOSED_PAGE}
-            locale={locale}
-            buildHref={(next) => hrefWith('/admin/reports', current, { page: next })}
-          />
-        </>
+        <ul className="space-y-2">{rows.map(closedRow)}</ul>
       )}
 
-      {grouped && rows.length >= OPEN_LIMIT ? (
-        <p className="text-center text-sm text-warning">{t('reportsCapped', { count: OPEN_LIMIT })}</p>
-      ) : null}
+      <Pager
+        page={page}
+        total={total}
+        size={grouped ? CASE_PAGE : CLOSED_PAGE}
+        locale={locale}
+        buildHref={(next) => hrefWith('/admin/reports', current, { page: next })}
+      />
     </div>
+  );
+}
+
+/**
+ * The finer filters, as a plain GET form: it works before hydration, and the
+ * result is a URL a moderator can send to a colleague.
+ */
+async function ReportFilters({
+  locale,
+  keep,
+  reason,
+  severity,
+  from,
+  to,
+  repeat,
+  grouped,
+}: {
+  locale: Locale;
+  keep: Record<string, string | undefined>;
+  reason: string;
+  severity: string;
+  from?: string;
+  to?: string;
+  repeat: boolean;
+  grouped: boolean;
+}) {
+  const t = await getTranslations('admin');
+  const tReason = await getTranslations('reportReason');
+  const control =
+    'h-10 rounded-lg border border-input bg-card px-2.5 text-sm focus-visible:border-ring';
+
+  return (
+    <form
+      method="get"
+      action={localeHref(locale, '/admin/reports')}
+      aria-label={t('filtersLabel')}
+      className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-3"
+    >
+      {Object.entries(keep).map(([key, value]) =>
+        value ? <input key={key} type="hidden" name={key} value={value} /> : null,
+      )}
+      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+        {t('filterReason')}
+        <select name="reason" defaultValue={reason} className={control}>
+          <option value="all">{t('anyReason')}</option>
+          {REASONS.map((value) => (
+            <option key={value} value={value}>
+              {tReason(value)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+        {t('filterSeverity')}
+        <select name="severity" defaultValue={severity} className={control}>
+          <option value="any">{t('anySeverity')}</option>
+          <option value="3">{t('severityOnlyHigh')}</option>
+          <option value="2">{t('severityMediumUp')}</option>
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+        {t('filterFrom')}
+        <input type="date" name="from" defaultValue={from} className={control} />
+      </label>
+      <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+        {t('filterTo')}
+        <input type="date" name="to" defaultValue={to} className={control} />
+      </label>
+      {grouped ? (
+        <label className="flex min-h-10 items-center gap-2 text-sm">
+          <input type="checkbox" name="repeat" value="1" defaultChecked={repeat} className="size-4 accent-primary" />
+          {t('filterRepeat')}
+        </label>
+      ) : null}
+      <div className="flex gap-2">
+        <button type="submit" className="h-10 rounded-lg border border-border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+          {t('applyFilters')}
+        </button>
+        <Link
+          href={hrefWith('/admin/reports', keep, {})}
+          className="inline-flex h-10 items-center rounded-lg px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          {t('clearFilters')}
+        </Link>
+      </div>
+    </form>
   );
 }

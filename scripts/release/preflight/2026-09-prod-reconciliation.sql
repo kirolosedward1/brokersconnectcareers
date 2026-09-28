@@ -1,8 +1,8 @@
 -- Read-only checks to run on production before the reconciliation of
 -- September 2026 (docs/release/2026-09-prod-reconciliation.md).
 --
--- The rehearsal (scripts/release/rehearse.mjs) proves the 25 pending files
--- apply to production's schema. It cannot prove they apply to production's
+-- The rehearsal (scripts/release/rehearse.mjs) proves the pending files
+-- (29 as of main's 328) apply to production's schema. It cannot prove they apply to production's
 -- rows: a constraint that is validated as it is added fails on any existing
 -- row that breaks it, and rolls its whole file back. These are those
 -- constraints, as queries. Nothing here writes.
@@ -63,5 +63,21 @@ select * from (
   union all
   select 10, 'informational', '307 company_documents_review_note_length', count(*)
     from company_documents where review_note is not null and length(review_note) > 500
+  union all
+  -- BLOCKING — 326 makes every report name exactly one target: target_id is
+  -- set NOT NULL from the one link a row has, and reports_target_agrees /
+  -- reports_one_target are validated as they are added. Its safety line says
+  -- production had no reports on 2026-09-27; this says whether that still
+  -- holds where it matters — a report with no link, or with two, fails the file.
+  select 11, 'blocking', '326 reports with no target, or more than one', count(*)
+    from reports
+   where num_nonnulls(job_id, company_id, agent_id) <> 1
+  union all
+  -- INFORMATIONAL — rows 326 backfills (target, snapshot) and 327 moves (a
+  -- suspension reason into company_moderation) before their checks are added.
+  select 12, 'informational', '326 reports to backfill', count(*) from reports
+  union all
+  select 13, 'informational', '327 suspension reasons moved to company_moderation', count(*)
+    from companies where suspension_reason is not null
 ) checks
 order by n;

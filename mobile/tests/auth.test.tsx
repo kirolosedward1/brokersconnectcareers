@@ -663,6 +663,18 @@ describe('deleting the account', () => {
     );
   });
 
+  it("is refused while a suspension stands, in the website's words", async () => {
+    server.on('POST /api/mobile/v1/actions/deleteMyAccount', { ok: false, error: 'under_review' });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/account/delete' });
+    fireEvent.changeText(
+      await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`),
+      ar.account.deleteConfirmWord,
+    );
+    await press(ar.account.deleteCta);
+    expect(await screen.findByText(ar.account.deleteBlockedSuspended)).toBeTruthy();
+  });
+
   it("is not offered to a company's owner, who is pointed to the team instead", async () => {
     profileRow = { ...profile, role: 'employer' };
     companyId = ownedCompany.id;
@@ -679,30 +691,46 @@ describe('reporting', () => {
     server.on('/api/mobile/v1/companies/nile-brokers', companyPage);
   });
 
+  const reasonNamed = (reason: keyof typeof ar.reportHint) =>
+    screen.findByRole('radio', { name: `${ar.reportReason[reason]}. ${ar.reportHint[reason]}` });
+
   it('sends the reason chosen and the words added, for the team to read', async () => {
     server.on('POST /api/mobile/v1/actions/reportTarget', { ok: true });
     await signedIn();
     renderRouter(app, { initialUrl: '/companies/nile-brokers' });
     await press(ar.companies.report);
-    fireEvent.press(await screen.findByRole('radio', { name: ar.reportReason.scam }));
-    fireEvent.changeText(screen.getByLabelText(ar.app.moderation.reportDetail), ' طلبوا فلوس قبل المقابلة ');
-    await press(ar.common.submit);
+    fireEvent.press(await reasonNamed('scam'));
+    fireEvent.changeText(screen.getByLabelText(ar.report.detailLabel), ' طلبوا فلوس قبل المقابلة ');
+    await press(ar.report.send);
 
-    expect(await screen.findByText(ar.app.moderation.reportSent)).toBeTruthy();
+    expect(await screen.findByText(ar.report.thanks)).toBeTruthy();
     expect(bodyOf('/api/mobile/v1/actions/reportTarget')).toEqual({
       input: { target: 'company', targetId: company.id, reason: 'scam', detail: 'طلبوا فلوس قبل المقابلة' },
     });
   });
 
-  it('says so when this person has reported it already', async () => {
-    server.on('POST /api/mobile/v1/actions/reportTarget', { ok: false, error: 'already_reported' });
+  it('chooses no reason for the reader, and asks for one', async () => {
     await signedIn();
     renderRouter(app, { initialUrl: '/companies/nile-brokers' });
     await press(ar.companies.report);
-    await press(ar.common.submit);
-    expect(await screen.findByText(ar.jobs.alreadyReported)).toBeTruthy();
-    // The first of the company's own reasons, as on the website.
-    expect(bodyOf('/api/mobile/v1/actions/reportTarget')).toMatchObject({ input: { reason: 'suspicious_company' } });
+    await press(ar.report.send);
+    expect(await screen.findByText(ar.report.chooseReason)).toBeTruthy();
+    expect(server.asked('/api/mobile/v1/actions/reportTarget')).toHaveLength(0);
+  });
+
+  it.each([
+    ['already_reported', 'alreadyReported'],
+    ['burst_limit', 'burstLimit'],
+    ['new_account_limit', 'newAccountLimit'],
+    ['own_target', 'ownTarget'],
+  ] as const)('says what %s asks of the reader', async (refusal, copy) => {
+    server.on('POST /api/mobile/v1/actions/reportTarget', { ok: false, error: refusal });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/companies/nile-brokers' });
+    await press(ar.companies.report);
+    fireEvent.press(await reasonNamed('suspicious_company'));
+    await press(ar.report.send);
+    expect(await screen.findByText(ar.report[copy])).toBeTruthy();
   });
 });
 

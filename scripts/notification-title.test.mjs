@@ -5,9 +5,9 @@
  *
  * notificationTitle() is shared by the web bell, the mobile app's feed and the
  * push a phone receives, so what is pinned here is what all three say: every
- * kind has words in Arabic and English, the three kinds that carry a second
- * fact say it, and a kind this build has never heard of reads as the generic
- * notice instead of a raw key.
+ * kind has words in Arabic and English, the kinds that carry a second fact say
+ * it, and a kind this build has never heard of reads as the generic notice
+ * instead of a raw key.
  */
 import { register } from 'node:module';
 import { readFileSync } from 'node:fs';
@@ -63,6 +63,14 @@ const KINDS = [
   'profile_visibility_changed',
   'password_changed',
   'support_replied',
+  // Moderation (migration 325).
+  'report_reviewed',
+  'company_suspended',
+  'company_restored',
+  'profile_restricted',
+  'profile_restored',
+  'account_held',
+  'appeal_decided',
 ];
 
 const payload = {
@@ -114,6 +122,25 @@ console.log('\n— the three kinds that say a second fact say it');
 
   const visibility = notificationTitle({ kind: 'profile_visibility_changed', payload }, 'en', t);
   ok('a visibility change names the new setting', visibility.includes(messages.en.visibility.public), visibility);
+}
+
+console.log('\n— a decision says which way it went, never what was done');
+for (const locale of ['ar', 'en']) {
+  const { t, missing } = translator(locale);
+  const say = (kind, outcome) => notificationTitle({ kind, payload: { ...payload, outcome } }, locale, t);
+  const notifications = messages[locale].notifications;
+  ok(
+    `${locale}: a report that led to action, and one that did not`,
+    say('report_reviewed', 'actioned') !== say('report_reviewed', 'reviewed') &&
+      say('report_reviewed', 'actioned').includes(payload[`title_${locale}`]) &&
+      missing.length === 0,
+  );
+  ok(
+    `${locale}: an appeal overturned, and one upheld`,
+    say('appeal_decided', 'overturned') !== say('appeal_decided', 'upheld') &&
+      !say('appeal_decided', 'upheld').includes('MISSING:') &&
+      notifications.appealUpheld.length > 0,
+  );
 }
 
 console.log('\n— a kind this build does not know reads as the generic notice');

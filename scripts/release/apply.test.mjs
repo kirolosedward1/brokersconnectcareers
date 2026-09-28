@@ -19,7 +19,8 @@ import { join } from 'node:path';
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 import { ROOT } from '../env.mjs';
 import { reporter } from '../../supabase/tests/setup.mjs';
-import { buildFromLedger, compare, fingerprint, freshBuild } from './rehearse.mjs';
+import { buildFromLedger, compare, fingerprint, freshBuild, migrationFiles } from './rehearse.mjs';
+import { reconciliationPlan } from './migrations.mjs';
 
 const PORT = 5435;
 const PRODUCTION_REF = 'hiwdhicwsohbipxzazmb';
@@ -28,6 +29,15 @@ const URL = `postgresql://postgres:postgres@127.0.0.1:${PORT}/postgres?applicati
 
 const ledger = JSON.parse(readFileSync(join(ROOT, 'scripts', 'release', 'fixtures', 'production-ledger-2026-09-28.json'), 'utf8'));
 const t = reporter();
+
+/**
+ * What production is missing: every file here its ledger does not account for.
+ * Worked out rather than written down, because main keeps adding migrations —
+ * 25 on the day of the snapshot, more with each merge — and each one joins
+ * the release. The files named here were pending on the day, and still are.
+ */
+const pending = reconciliationPlan(ledger.migrations, migrationFiles()).steps.map((step) => step.stem);
+const PENDING_ON_THE_DAY = ['20260101000068_', '20260101000069_', '20260101000307_', '20260101000324_'];
 
 /**
  * The command, as a child process. Asynchronously: the database it talks to
@@ -55,7 +65,12 @@ try {
   t.section('the plan, without applying it');
   const dry = await apply();
   t.check('a dry run succeeds', dry.code === 0, dry.out);
-  t.check('and lists the 25 files production is missing', /25 to apply/.test(dry.out), dry.out);
+  t.check(
+    'the files production was missing on the day are still pending',
+    PENDING_ON_THE_DAY.every((prefix) => pending.some((stem) => stem.startsWith(prefix))),
+    pending.join(', '),
+  );
+  t.check(`and lists the ${pending.length} files production is missing`, dry.out.includes(`${pending.length} to apply`), dry.out);
   t.check("and names the files production ran ahead of main's order", /ran ahead of main's order: .*203.*316/.test(dry.out));
   t.check('and applies nothing', (await ledgerCount()) === ledger.migrations.length);
 
@@ -74,8 +89,8 @@ try {
 
   t.section('applied');
   const real = await apply('--execute', '--confirm', PRODUCTION_REF);
-  t.check('every pending file applies', real.code === 0 && /applied 25/.test(real.out), real.out);
-  t.check('each is recorded in the ledger', (await ledgerCount()) === ledger.migrations.length + 25);
+  t.check('every pending file applies', real.code === 0 && real.out.includes(`applied ${pending.length}.`), real.out);
+  t.check('each is recorded in the ledger', (await ledgerCount()) === ledger.migrations.length + pending.length);
 
   const { rows: adjusted } = await db.query(
     "select statements from supabase_migrations.schema_migrations where version = '20260101000307'",

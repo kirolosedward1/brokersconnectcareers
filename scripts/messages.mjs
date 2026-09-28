@@ -657,6 +657,8 @@ console.log('\n— the browser gets the messages it needs and no more');
     'src/components/admin/',
     'src/components/employer/',
     'src/components/dashboard/',
+    // Standing notices and appeal panels: shown only inside the consoles.
+    'src/components/moderation/',
     'src/app/[locale]/(app)/',
   ];
 

@@ -8,6 +8,8 @@ import { AgentProfileForm } from '@/components/dashboard/agent-profile-form';
 import { CvEditor } from '@/components/dashboard/cv-editor';
 import { ProfileRecordForm } from '@/components/dashboard/profile-record-form';
 import { ProfileGaps } from '@/components/dashboard/profile-gaps';
+import { AppealPanel } from '@/components/moderation/appeal-panel';
+import { getAppealState } from '@/lib/moderation/appeal-state';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from '@/lib/queries/error';
@@ -108,6 +110,9 @@ export default async function ProfilePage({
     list of sentences, and neither is readable at the width a grid of stat
     tiles needs — which is what the console shell is sized for.
   */
+
+  // Whether this consultant can ask for the restriction to be looked at again.
+  const agentAppeal = typedAgent?.restricted_at ? await getAppealState(supabase, 'agent', typedAgent.id) : null;
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -146,10 +151,13 @@ export default async function ProfilePage({
         as broken. The reason is the one the admin gave.
       */}
       {typedAgent?.restricted_at ? (
-        <p role="status" className="rounded-xl border border-destructive/30 bg-destructive-muted px-4 py-3 text-sm text-destructive">
-          {t('profileRestricted')}
-          {typedAgent.restriction_reason ? ` «${typedAgent.restriction_reason}»` : null}
-        </p>
+        <div role="status" className="rounded-xl border border-destructive/30 bg-destructive-muted px-4 py-3 text-sm">
+          <p className="text-destructive">
+            {t('profileRestricted')}
+            {typedAgent.restriction_reason ? ` «${typedAgent.restriction_reason}»` : null}
+          </p>
+          <AppealPanel subjectType="agent" subjectId={typedAgent.id} state={agentAppeal} />
+        </div>
       ) : null}
 
       {/*

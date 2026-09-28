@@ -1,17 +1,22 @@
 import { getTranslations } from 'next-intl/server';
 import {
   BadgeCheck,
+  Ban,
   Bell,
   CalendarClock,
   CalendarX2,
+  CirclePause,
   CircleSlash,
   Eye,
+  EyeOff,
   FileCheck2,
   FileWarning,
   FileX2,
   KeyRound,
   LifeBuoy,
+  Scale,
   Send,
+  ShieldCheck,
   UserCheck,
   UserMinus,
   UserRound,
@@ -46,6 +51,13 @@ const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }
   profile_visibility_changed: Eye,
   password_changed: KeyRound,
   support_replied: LifeBuoy,
+  report_reviewed: ShieldCheck,
+  company_suspended: Ban,
+  company_restored: BadgeCheck,
+  profile_restricted: EyeOff,
+  profile_restored: Eye,
+  account_held: CirclePause,
+  appeal_decided: Scale,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -66,6 +78,13 @@ const TONES: Record<NotificationKind, string> = {
   // "look at this".
   password_changed: 'bg-warning-muted text-warning',
   support_replied: 'bg-primary/10 text-primary',
+  report_reviewed: 'bg-primary/10 text-primary',
+  company_suspended: 'bg-destructive-muted text-destructive',
+  company_restored: 'bg-success-muted text-success',
+  profile_restricted: 'bg-destructive-muted text-destructive',
+  profile_restored: 'bg-success-muted text-success',
+  account_held: 'bg-warning-muted text-warning',
+  appeal_decided: 'bg-primary/10 text-primary',
 };
 
 export async function NotificationItem({

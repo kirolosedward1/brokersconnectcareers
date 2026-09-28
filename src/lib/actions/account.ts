@@ -67,6 +67,23 @@ export async function deleteMyAccount(input?: unknown): Promise<ActionResult> {
 
   if (company) return { ok: false, error: 'owns_company' };
 
+  /*
+    A suspended account keeps its records while the decision stands.
+
+    Suspension is the one state in which somebody has a reason to make the
+    evidence disappear: the applications a harassing account sent, the
+    consultant profile an impersonation report is about. Deleting from here
+    would take them in one click, before anybody finished looking. The person
+    can still ask — by appealing the suspension, or writing to us — and an
+    admin can delete the account on purpose once the case is closed.
+  */
+  const { data: standing } = await supabase
+    .from('profiles')
+    .select('approval_status')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (standing?.approval_status === 'rejected') return { ok: false, error: 'under_review' };
+
   let admin;
   try {
     admin = createAdminClient();

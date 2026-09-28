@@ -3,8 +3,9 @@ import { Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
-import { Check, Flag, X } from 'lucide-react-native';
+import { EyeOff, Flag, ShieldCheck, X } from 'lucide-react-native';
 import type { ReportInput } from '@/lib/mobile-api/contract';
+import type { ReportReason } from '@/lib/supabase/database.types';
 import { AGENT_REPORT_REASONS, COMPANY_REPORT_REASONS, REPORT_REASONS } from '@/lib/taxonomy';
 import { Button } from '~/components/ui/button';
 import { Notice } from '~/components/ui/notice';
@@ -16,20 +17,37 @@ import { font, hitTarget, radius, space, type as scale } from '~/theme/tokens';
 
 type Target = ReportInput['target'];
 
-const REASONS_FOR: Record<Target, readonly string[]> = {
+const REASONS_FOR: Record<Target, readonly ReportReason[]> = {
   job: REPORT_REASONS,
   company: COMPANY_REPORT_REASONS,
   agent: AGENT_REPORT_REASONS,
 };
 
+/** The refusals reportTarget names, each with the website's own sentence. */
+const REFUSAL_COPY: Record<string, string> = {
+  already_reported: 'alreadyReported',
+  rate_limit: 'rateLimit',
+  burst_limit: 'burstLimit',
+  new_account_limit: 'newAccountLimit',
+  company_limit: 'companyLimit',
+  restricted: 'restricted',
+  own_target: 'ownTarget',
+};
+
 /**
  * Report a listing, a company or a consultant's profile — the website's one
  * dialog (src/components/jobs/report-job-dialog.tsx) through its one action
- * (reportTarget), with its rules: an account is needed, so a signed-out reader
- * is sent to sign in and brought back here; each target has its own reasons;
- * one report per person per target and ten a day, each refusal in its own
- * words. What is sent lands in the admin console's reports queue, read by a
- * person.
+ * (reportTarget), with its rules.
+ *
+ * An account is needed, so a signed-out reader is sent to sign in and brought
+ * back here. Quick on purpose: one tap on what is wrong, each reason saying in
+ * a few words what it covers, and a line more only if the reader wants to add
+ * one. None is chosen for them — a pre-selected answer is the answer a hurried
+ * reader sends. The database's limits (one per person per target, a few in a
+ * few minutes, fewer on a new account) each come back as their own sentence,
+ * because "you already told us", "wait a few minutes" and "try tomorrow" ask
+ * for different things. What is sent lands in the moderation console,
+ * read by a person, and the reporter is told when it has been looked at.
  */
 export function ReportButton({
   target,
@@ -44,7 +62,7 @@ export function ReportButton({
   /** The button's words, which differ per target. */
   label: string;
 }) {
-  const t = useTranslations('app.moderation');
+  const t = useTranslations('report');
   const { colors } = useTheme();
   const { session } = useSession();
   const [open, setOpen] = useState(false);
@@ -52,10 +70,10 @@ export function ReportButton({
 
   if (sent) {
     return (
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-        <Check size={16} color={colors.success} />
+      <View accessibilityRole="text" accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: space[2] }}>
+        <ShieldCheck size={16} color={colors.success} style={{ marginTop: 4 }} />
         <Text variant="small" tone="success" style={{ flexShrink: 1 }}>
-          {t('reportSent')}
+          {t('thanks')}
         </Text>
       </View>
     );
@@ -106,13 +124,17 @@ function ReportSheet({
   const t = useTranslations();
   const { colors, scheme } = useTheme();
   const insets = useSafeAreaInsets();
-  const reasons = REASONS_FOR[target];
-  const [reason, setReason] = useState(reasons[0]);
+  const [reason, setReason] = useState<ReportReason | null>(null);
   const [detail, setDetail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function submit() {
+    if (pending) return;
+    if (!reason) {
+      setError(t('report.chooseReason'));
+      return;
+    }
     setError(null);
     setPending(true);
     const result = await callAction('reportTarget', {
@@ -122,18 +144,19 @@ function ReportSheet({
       detail: detail.trim(),
     } as ReportInput).catch(() => null);
     setPending(false);
-    if (result?.ok) {
+
+    if (!result) {
+      // The request never came back. Nothing is claimed; the sheet stays
+      // filled in so sending again is one tap.
+      setError(t('report.network'));
+      return;
+    }
+    if (result.ok) {
       onSent();
       return;
     }
-    const code = result && !result.ok ? result.error : null;
-    setError(
-      code === 'already_reported'
-        ? t('jobs.alreadyReported')
-        : code === 'rate_limit'
-          ? t('jobs.reportRateLimit')
-          : t('common.errorBody'),
-    );
+    const copy = REFUSAL_COPY[result.error];
+    setError(copy ? t(`report.${copy}` as never) : t('common.errorBody'));
   }
 
   return (
@@ -169,32 +192,41 @@ function ReportSheet({
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: space[4], gap: space[5], paddingBottom: insets.bottom + space[6] }}
         >
-          <View style={{ gap: space[2] }} accessibilityRole="radiogroup" accessibilityLabel={t('jobs.reportReasonLabel')}>
+          <View style={{ gap: space[2] }} accessibilityRole="radiogroup" accessibilityLabel={t('report.question')}>
             <Text variant="small" weight="semibold">
-              {t('jobs.reportReasonLabel')}
+              {t('report.question')}
             </Text>
-            {reasons.map((value) => {
+            {REASONS_FOR[target].map((value) => {
               const selected = value === reason;
+              const name = t(`reportReason.${value}` as never);
+              const hint = t(`reportHint.${value}` as never);
               return (
                 <Pressable
                   key={value}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: selected }}
-                  onPress={() => setReason(value)}
+                  accessibilityLabel={`${name}. ${hint}`}
+                  onPress={() => {
+                    setReason(value);
+                    setError(null);
+                  }}
                   style={({ pressed }) => ({
                     minHeight: hitTarget,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: space[3],
+                    gap: 2,
                     paddingHorizontal: space[3],
+                    paddingVertical: space[2],
                     borderRadius: radius.lg,
                     borderWidth: selected ? 2 : 1,
                     borderColor: selected ? colors.primary : colors.border,
-                    backgroundColor: pressed ? colors.muted : colors.card,
+                    backgroundColor: pressed ? colors.muted : selected ? colors.secondary : colors.card,
                   })}
                 >
-                  <Text style={{ flex: 1 }}>{t(`reportReason.${value}` as never)}</Text>
-                  {selected ? <Check size={18} color={colors.primary} /> : null}
+                  <Text variant="small" weight="medium">
+                    {name}
+                  </Text>
+                  <Text variant="caption" tone="mutedForeground">
+                    {hint}
+                  </Text>
                 </Pressable>
               );
             })}
@@ -202,20 +234,22 @@ function ReportSheet({
 
           <View style={{ gap: space[1] }}>
             <Text variant="small" weight="medium">
-              {t('app.moderation.reportDetail')}
+              {t('report.detailLabel')}
             </Text>
             <TextInput
               value={detail}
               onChangeText={setDetail}
-              accessibilityLabel={t('app.moderation.reportDetail')}
+              accessibilityLabel={t('report.detailLabel')}
+              accessibilityHint={t('report.detailHint')}
+              placeholder={t('report.detailPlaceholder')}
               multiline
-              maxLength={1000}
+              maxLength={500}
               textAlignVertical="top"
               keyboardAppearance={scheme}
               placeholderTextColor={colors.mutedForeground}
               selectionColor={colors.primary}
               style={{
-                minHeight: 120,
+                minHeight: 72,
                 padding: space[3],
                 borderRadius: radius.lg,
                 borderWidth: 1,
@@ -227,11 +261,21 @@ function ReportSheet({
                 textAlign: 'left',
               }}
             />
+            <Text variant="caption" tone="mutedForeground">
+              {t('report.detailHint')}
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: space[2] }}>
+            <EyeOff size={14} color={colors.mutedForeground} style={{ marginTop: 4 }} />
+            <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }}>
+              {t('report.privacy')}
+            </Text>
           </View>
 
           {error ? <Notice tone="destructive">{error}</Notice> : null}
 
-          <Button label={t('common.submit')} size="lg" loading={pending} onPress={submit} />
+          <Button label={t('report.send')} size="lg" loading={pending} onPress={submit} />
           <Button label={t('common.cancel')} variant="ghost" disabled={pending} onPress={onClose} />
         </ScrollView>
       </View>

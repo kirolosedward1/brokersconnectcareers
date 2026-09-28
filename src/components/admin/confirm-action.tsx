@@ -17,6 +17,7 @@ import {
   setJobFeatured,
   type JobModerationAction,
 } from '@/lib/actions/admin';
+import { closeReports, decideAppeal, setReportingRestriction } from '@/lib/actions/moderation';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { isAdminErrorCode } from '@/lib/admin/errors';
 import { announceDone } from '@/components/admin/console-toaster';
@@ -46,7 +47,16 @@ export type AdminLever =
       status: 'investigating' | 'resolved' | 'dismissed';
       takeAction?: boolean;
     }
-  | { do: 'deleteTaxonomy'; kind: TaxonomyKind; id: number };
+  | { do: 'deleteTaxonomy'; kind: TaxonomyKind; id: number }
+  // Moderation (migrations 326 and 328).
+  | {
+      do: 'closeReports';
+      ids: string[];
+      status: 'investigating' | 'resolved' | 'dismissed';
+      abusive?: boolean;
+    }
+  | { do: 'reporting'; userId: string; restrict: boolean }
+  | { do: 'appeal'; appealId: string; overturn: boolean };
 
 function pull(lever: AdminLever, reason: string): Promise<ActionResult<unknown>> {
   switch (lever.do) {
@@ -72,6 +82,12 @@ function pull(lever: AdminLever, reason: string): Promise<ActionResult<unknown>>
       });
     case 'deleteTaxonomy':
       return deleteTaxonomy({ kind: lever.kind, id: lever.id });
+    case 'closeReports':
+      return closeReports({ ids: lever.ids, status: lever.status, note: reason, abusive: lever.abusive ?? false });
+    case 'reporting':
+      return setReportingRestriction({ userId: lever.userId, restrict: lever.restrict, reason });
+    case 'appeal':
+      return decideAppeal({ appealId: lever.appealId, overturn: lever.overturn, note: reason });
   }
 }
 

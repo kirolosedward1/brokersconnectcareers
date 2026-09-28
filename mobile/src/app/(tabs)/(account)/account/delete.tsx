@@ -25,7 +25,9 @@ import { space } from '~/theme/tokens';
  * access to the Apple ID — deleting only the account would leave the app
  * listed there. An account that owns a company cannot be deleted from here or
  * from the website: other people's applications belong to that company, and
- * the team handles it with the owner.
+ * the team handles it with the owner. Nor, while a suspension stands, can the
+ * suspended account: its records are what the case is about (the website's
+ * rule; the person can appeal, or write to the team).
  */
 export default function DeleteAccountScreen() {
   const t = useTranslations();
@@ -68,9 +70,11 @@ export default function DeleteAccountScreen() {
       setError(
         code === 'owns_company'
           ? t('account.deleteBlockedCompany')
-          : code === 'apple_reauth_required'
-            ? t('app.account.deleteAppleFailed')
-            : t('account.deleteUnavailable'),
+          : code === 'under_review'
+            ? t('account.deleteBlockedSuspended')
+            : code === 'apple_reauth_required'
+              ? t('app.account.deleteAppleFailed')
+              : t('account.deleteUnavailable'),
       );
       return;
     }

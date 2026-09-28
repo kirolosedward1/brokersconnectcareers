@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Clock } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { EmptyDashboard, StatStrip } from '@/components/dashboard/stat-tile';
 import { SetupChecklist } from '@/components/employer/setup-checklist';
+import { StandingNotice } from '@/components/moderation/standing-notice';
 import { NextAction } from '@/components/dashboard/next-action';
 import { employerNextAction } from '@/lib/employer-next-action';
 import { TrendChart } from '@/components/dashboard/trend-chart';
@@ -145,22 +145,10 @@ export default async function EmployerOverviewPage({
         />
       ) : null}
 
-      {/* Said once, at the top, in the place the work is. A company whose
-          account is still being reviewed will otherwise discover it by having
-          the listing form refuse them, with no explanation of what to do about
-          it — so this says what is happening and what moves it along. */}
-      {viewer.profile.approval_status !== 'approved' ? (
-        <div className="rounded-xl border border-warning/40 bg-warning-muted px-4 py-3.5">
-          <p className="flex items-center gap-2 font-semibold">
-            <Clock className="size-4" aria-hidden />
-            {tEmployer('pendingTitle')}
-          </p>
-          <p className="mt-1 text-sm leading-relaxed">{tEmployer('pendingBody')}</p>
-          <Button asChild size="sm" variant="outline" className="mt-3">
-            <Link href="/employer/company">{tEmployer('company')}</Link>
-          </Button>
-        </div>
-      ) : null}
+      {/* Where the account and the company stand: a first review, a hold, a
+          suspension — what happened, the reason a moderator gave, and a way
+          to ask for a second look. */}
+      <StandingNotice profile={viewer.profile} company={viewer.company} />
 
       {/*
         Two strips, in the order they are acted on. The first is the work:

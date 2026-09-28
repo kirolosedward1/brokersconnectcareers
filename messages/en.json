@@ -54,7 +54,6 @@
     "share": "Share",
     "linkCopied": "Link copied",
     "report": "Report this listing",
-    "reportReasonLabel": "Reason",
     "postedOn": "Posted {date}",
     "expiresOn": "Closes {date}",
     "endedOn": "Closed {date}",
@@ -76,8 +75,6 @@
     "seatsLabel": "{count, plural, one {open seat} other {open seats}}",
     "featured": "Featured",
     "closedShort": "Closed",
-    "alreadyReported": "You have already reported this listing.",
-    "reportRateLimit": "You have reported a lot of listings today. Try again tomorrow.",
     "removeSaved": "Remove from saved",
     "closedCtaBody": "It is no longer accepting applications.",
     "verifiedMeaning": "This company uploaded its commercial register and tax card, and our team reviewed them.",
@@ -88,7 +85,8 @@
     "allCompanies": "All companies",
     "relaxHeading": "There are listings if you drop one filter:",
     "withoutFilter": "Without {name} · {count, plural, one {# job} other {# jobs}}",
-    "emptySaveHint": "Save this search and we'll email you when a matching listing is posted."
+    "emptySaveHint": "Save this search and we'll email you when a matching listing is posted.",
+    "safetyNote": "Brokers Connect never asks you to pay to apply. If a listing asks you for money, or for your ID or bank details, report it."
   },
   "compensation": {
     "title": "Pay and commission",
@@ -617,7 +615,9 @@
     "applicantsCapped": "Showing the newest <v>{count}</v> applicants only. Narrow with the filters or the search to reach the rest.",
     "teamElsewhere": "That account already belongs to another company’s team. An account belongs to one company.",
     "duplicateListingBlocked": "You already have this listing in this district more than once. Add seats to the existing one instead of posting it again.",
-    "postRateLimited": "This company has created a lot of listings today. Try again tomorrow."
+    "postRateLimited": "This company has created a lot of listings today. Try again tomorrow.",
+    "standingBlocked": "Your account is restricted or suspended, so nothing can be sent for review right now. The notice on your dashboard says why and how to ask for a review.",
+    "companySuspendedBlocked": "Your company is suspended, so its listings can’t be submitted or published. The notice on your dashboard says why and how to ask for a review."
   },
   "jobForm": {
     "basics": "Basics",
@@ -651,7 +651,8 @@
     "next": "Next",
     "back": "Back",
     "reviewNote": "We review listings before they go live — usually within one working day.",
-    "liveEditNote": "This listing is live. Changing the title, description, salary, commission, seats or leads sends it back for review before it shows again. Anything else saves straight away."
+    "liveEditNote": "This listing is live. Changing any of its text — title, description, requirements, commission note — or its salary, commission, employment type, seats or leads sends it back for review before it shows again. Anything else saves straight away.",
+    "descriptionRules": "Listings that ask candidates for money, or for ID or bank details before an interview, are taken down."
   },
   "admin": {
     "title": "Admin",
@@ -660,7 +661,7 @@
     "companiesQueue": "Companies",
     "companiesQueueLede": "Every company — the verification queue first, oldest first.",
     "reports": "Reports",
-    "reportsLede": "Reports grouped by what they are about — a listing, a company or a consultant. Most reported first.",
+    "reportsLede": "One case per listing, company or consultant reported. Most serious allegation first, then the most people, then the longest wait.",
     "approve": "Approve",
     "reject": "Reject",
     "verify": "Verify",
@@ -913,8 +914,6 @@
     "closedNoLever": "Closed by the company. Reposting is its decision.",
     "allCompanyListings": "All of this company's listings",
     "reportTarget": "About",
-    "noisyReporter": "Mostly no-violation reporter",
-    "alreadyActioned": "Already actioned",
     "investigate": "Investigate",
     "investigateBody": "The reports are marked as under investigation so other admins know someone has them.",
     "resolveTakeDownJob": "Take listing down and resolve",
@@ -927,7 +926,6 @@
     "resolveOnly": "Resolved, no action",
     "resolveOnlyBody": "For example when the owner already fixed it. Nothing is taken down.",
     "dismissBody": "The reports close as no violation. This counts towards each reporter's record.",
-    "reportsCapped": "Showing the oldest {count} open reports. Clear these to see the rest.",
     "applications": "Applications",
     "applicationsLede": "For investigating only: what happened to an application, who moved it and when. Nothing is changed from here.",
     "applicationsSearchPlaceholder": "Candidate name or application ID…",
@@ -1012,7 +1010,7 @@
       "invalid_governorate": "Choose an existing governorate.",
       "slug_taken": "That slug is already taken.",
       "unavailable": "The file is not available right now.",
-      "not_migrated": "The database needs migrations 316–319 before this action works.",
+      "not_migrated": "The database needs migrations 316–319 and 325–328 before this action works.",
       "unknown": "Something unexpected went wrong. Nothing was changed.",
       "network": "The connection dropped before we could confirm. The page has been refreshed — check the state before retrying."
     },
@@ -1037,7 +1035,8 @@
       "closed": "Closed",
       "rejected": "Rejected",
       "draft": "Drafts",
-      "all": "All"
+      "all": "All",
+      "flagged": "Flagged"
     },
     "auditAction": {
       "job_approve": "Listing published",
@@ -1075,7 +1074,18 @@
       "report_dismissed": "Reports dismissed",
       "taxonomy_created": "Taxonomy entry added",
       "taxonomy_renamed": "Taxonomy entry renamed",
-      "taxonomy_deleted": "Taxonomy entry deleted"
+      "taxonomy_deleted": "Taxonomy entry deleted",
+      "report_dismissed_abusive": "Report dismissed as bad faith",
+      "user_reporting_restricted": "Reporting restricted",
+      "user_reporting_restored": "Reporting allowed again",
+      "job_appeal_overturned": "Appeal: listing decision reversed",
+      "job_appeal_upheld": "Appeal: listing decision stands",
+      "company_appeal_overturned": "Appeal: suspension lifted",
+      "company_appeal_upheld": "Appeal: suspension stands",
+      "user_appeal_overturned": "Appeal: account decision reversed",
+      "user_appeal_upheld": "Appeal: account decision stands",
+      "agent_appeal_overturned": "Appeal: profile restriction lifted",
+      "agent_appeal_upheld": "Appeal: profile restriction stands"
     },
     "taxonomyTab": {
       "district": "Districts",
@@ -1085,20 +1095,133 @@
     },
     "openDocument": "Open the document",
     "doneWhat": "Done: {what}",
-    "company": "Company"
+    "company": "Company",
+    "reportView": {
+      "new": "New",
+      "under_review": "Under review",
+      "resolved": "Resolved",
+      "dismissed": "Dismissed"
+    },
+    "filtersLabel": "Filter the reports",
+    "filterReason": "Reason",
+    "filterSeverity": "Severity",
+    "filterFrom": "Reported from",
+    "filterTo": "to",
+    "filterRepeat": "Reported by more than one person",
+    "applyFilters": "Apply",
+    "clearFilters": "Clear",
+    "anyReason": "Any reason",
+    "anySeverity": "Any severity",
+    "severityOnlyHigh": "High only",
+    "severityMediumUp": "Medium and high",
+    "severity": {
+      "1": "Low",
+      "2": "Medium",
+      "3": "High"
+    },
+    "severityHint": "From the reason the reporter chose: what was alleged, not a verdict.",
+    "stateDeleted": "Deleted",
+    "untitled": "(no title)",
+    "reportersCount": "Reported by: {count}",
+    "freshReporters": "Accounts under a week old: {count}",
+    "noisyReporters": "With a record of groundless or bad-faith reports: {count}",
+    "employerReporters": "Employers among them: {count}",
+    "systemFlag": "Raised by the platform from the company’s own text",
+    "systemFlagShort": "Platform flag",
+    "snapshotLabel": "What it said when it was reported",
+    "badFaith": "Bad faith",
+    "reporterGone": "Account since deleted",
+    "reporterEmployer": "employer",
+    "reporterRecord": "{filed} filed · {dismissed} groundless · {abusive} bad faith",
+    "reporterNewAccount": "Account under a week old",
+    "reporterBanned": "Reporting restricted",
+    "dismissAbusive": "Dismiss as bad faith",
+    "dismissAbusiveBody": "This one report closes as filed in bad faith. It goes on the reporter’s record, which the next moderator sees. It restricts nobody by itself — that is a separate decision, on the reporter’s account page.",
+    "abusiveReasonLabel": "Why (kept on the record, sent to nobody)",
+    "closeDeletedResolve": "Close as handled",
+    "closeDeletedDismiss": "Close: no breach",
+    "closeDeletedBody": "What was reported has been deleted, so these reports can only be closed. Each keeps what the listing or profile said when it was reported.",
+    "flagsNone": "Nothing in its own words stands out.",
+    "signalsNone": "No review signals.",
+    "flagsCount": "Flags: {count}",
+    "flag": {
+      "asks_for_money": "Mentions a payment asked of the candidate",
+      "asks_for_documents": "Asks for ID, bank or login details",
+      "shortened_link": "A shortened link",
+      "telegram_link": "A Telegram link",
+      "form_link": "A link to an outside form",
+      "suspicious_link": "A link to a bare address or a look-alike domain",
+      "whatsapp_link": "A WhatsApp link",
+      "external_link": "A link to another site",
+      "phone_in_text": "A phone number in the text",
+      "email_in_text": "An email address in the text",
+      "impersonation": "The name resembles"
+    },
+    "signal": {
+      "mass_posting": "Many listings at once: {day} in the last day, {week} in the last week",
+      "rejections": "Listings rejected or taken down in the last 90 days: {count}",
+      "duplicate_listings": "The same advert, live or waiting, this many times: {count}",
+      "copied_listings": "An advert word for word the same as one from",
+      "reported": "Reported by different people in the last 90 days: {reporters} ({reports} reports)",
+      "company_text": "In the company’s own profile: {flags}",
+      "flagged_listings": "Live or waiting listings with a high-weight flag: {count}",
+      "shared_phone": "A member’s WhatsApp number is also used at",
+      "phone_of_suspended_account": "A member’s WhatsApp number also belongs to a suspended account: {count}",
+      "shared_website": "The same website ({site}) as"
+    },
+    "listSeparator": ", ",
+    "appeals": "Appeals",
+    "appealsLede": "Somebody says a decision about them was wrong. Oldest first — they have been waiting longest.",
+    "appealView": {
+      "open": "Waiting",
+      "decided": "Answered"
+    },
+    "appealOutcome": {
+      "overturned": "Decision reversed",
+      "upheld": "Decision stands"
+    },
+    "appealSubject": {
+      "job": "Listing",
+      "company": "Company suspension",
+      "account": "Account",
+      "agent": "Consultant profile"
+    },
+    "appealDecision": "The decision appealed: {state}",
+    "appealOverturn": "Reverse the decision",
+    "appealUphold": "Let it stand",
+    "appealUpholdBody": "The decision stays. Your reason is sent to the person who appealed, so write it for them.",
+    "appealNoteToPerson": "Note to the person (sent to them)",
+    "appealOverturnBody": {
+      "job": "The listing goes back on the board, through the same rules as any approval — the post cap and credits still apply.",
+      "company": "The suspension is lifted. Its listings do not come back by themselves; restore the ones that deserve it one by one.",
+      "account": "The account is active again.",
+      "agent": "The restriction is lifted. The profile stays hidden until the consultant chooses who can see it."
+    },
+    "appealDecidedBy": "Answered by {name} on {date}",
+    "safetyHeading": "What to look at",
+    "restrictAccount": "Restrict while reviewing",
+    "restrictAccountBodyEmployer": "A hold, not a suspension: their live listings stay up, but until you lift it they can’t post, edit or close listings, or send anything for review. They are told, with your reason, and can ask for a review.",
+    "restrictAccountBodyCandidate": "A hold, not a suspension: their applications stay, but they cannot apply to new jobs until you lift it. They are told, with your reason, and can ask for a review.",
+    "reportsBadFaith": "Dismissed as bad faith: {count}",
+    "reportingBanned": "Reporting restricted since {date}",
+    "reportingBan": "Restrict reporting",
+    "reportingUnban": "Allow reporting again",
+    "reportingBanBody": "They can no longer file reports; everything else about the account is unchanged. When they try, they are told reporting is unavailable on their account — not why.",
+    "reportingUnbanBody": "They can file reports again, under the same limits as everyone.",
+    "reportingBanReason": "Why (kept on the record, sent to nobody)"
   },
   "reportReason": {
     "fake_listing": "Fake listing",
-    "misleading_pay": "Misleading pay",
+    "misleading_pay": "Misleading pay or details",
     "duplicate": "Duplicate",
-    "spam": "Spam",
+    "spam": "Spam or duplicate",
     "discriminatory": "Discriminatory terms",
     "other": "Something else",
     "scam": "Scam or request for money",
     "impersonation": "Impersonation",
     "harassment": "Harassment or abuse",
     "suspicious_company": "Fake or suspicious company",
-    "inappropriate": "Inappropriate content"
+    "inappropriate": "Offensive or discriminatory"
   },
   "billing": {
     "title": "Billing and credits",
@@ -1130,7 +1253,6 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
-    "submit": "Submit",
     "back": "Back",
     "optional": "optional",
     "all": "All",
@@ -1386,7 +1508,8 @@
     "mfaChallengeBody": "Enter the code from your authenticator app to continue.",
     "mfaRequiredBanner": "Admin accounts must set up two-step verification before the admin console opens.",
     "mfaChallengeBanner": "Confirm with a code from your authenticator app so the admin console opens in this session.",
-    "mfaCodeInvalid": "That code is not right. Try the new number in the app."
+    "mfaCodeInvalid": "That code is not right. Try the new number in the app.",
+    "deleteBlockedSuspended": "Your account is suspended, so it can’t be deleted from here while the decision stands. You can ask for the suspension to be reviewed from your dashboard, or contact us and we’ll close the account once the case is done."
   },
   "savedSearch": {
     "cta": "Alert me",
@@ -1498,7 +1621,18 @@
     "newest": "Newest",
     "older": "Older",
     "linkGone": "That item no longer exists — it may have been deleted or taken down.",
-    "linkUnavailable": "That link isn't available from your account."
+    "linkUnavailable": "That link isn't available from your account.",
+    "report_reviewed": "We reviewed your report about {subject}",
+    "reportActioned": "We reviewed your report about “{subject}” and acted on it. Thank you.",
+    "reportNoBreach": "We reviewed your report about “{subject}” and did not find a breach of our rules. Thank you for telling us.",
+    "company_suspended": "{subject} is suspended",
+    "company_restored": "{subject} is no longer suspended",
+    "profile_restricted": "Your consultant profile is hidden while we review it",
+    "profile_restored": "The restriction on your consultant profile is lifted",
+    "account_held": "Your account is restricted while we review it",
+    "appeal_decided": "We answered your appeal about {subject}",
+    "appealOverturned": "We reviewed your appeal about “{subject}” and reversed the decision",
+    "appealUpheld": "We reviewed your appeal about “{subject}”; the decision stands"
   },
   "emailStatus": {
     "queued": "Queued",
@@ -1514,5 +1648,63 @@
     "ar": "Arabic",
     "en": "English",
     "fr": "French"
+  },
+  "report": {
+    "question": "What’s wrong?",
+    "chooseReason": "Choose what’s wrong first.",
+    "detailLabel": "Anything else we should know? (optional)",
+    "detailHint": "One line is enough.",
+    "detailPlaceholder": "e.g. they asked me for a registration fee",
+    "privacy": "Whoever you report will not see that it was you.",
+    "send": "Send report",
+    "thanks": "Thanks — our team will review it, and we’ll let you know when we have.",
+    "alreadyReported": "You’ve already reported this — it’s with our team.",
+    "rateLimit": "You’ve sent a lot of reports today. Please try again tomorrow.",
+    "burstLimit": "You’ve sent several reports in a few minutes. Wait a little and try again.",
+    "newAccountLimit": "A new account can send a few reports on its first day. Please try again tomorrow.",
+    "companyLimit": "You’ve already reported several of this company’s listings — our team reviews them together.",
+    "restricted": "Reporting isn’t available on your account. If you think that’s a mistake, contact us.",
+    "ownTarget": "You can’t report your own listing, company or profile.",
+    "network": "We couldn’t send your report. Check your connection and try again."
+  },
+  "reportHint": {
+    "scam": "Asks you to pay, or for your ID, bank details or a code sent to your phone",
+    "fake_listing": "The job doesn’t exist, or isn’t what the advert says",
+    "impersonation": "Uses the name or logo of a company or person it isn’t",
+    "misleading_pay": "The pay, commission or conditions aren’t what was advertised",
+    "inappropriate": "Offensive, discriminatory or sexual content",
+    "spam": "The same advert again and again, or not a real job",
+    "other": "Something else — say what in a line below",
+    "suspicious_company": "The company doesn’t seem to exist, or isn’t who it says it is",
+    "harassment": "Threats, insults or unwanted contact"
+  },
+  "standing": {
+    "suspendedTitle": "Your account is suspended",
+    "suspendedBodyEmployer": "You can sign in and see everything, but you can’t post listings or send them for review while it is suspended. Nothing has been deleted.",
+    "suspendedBodyCandidate": "You can sign in and see your applications, but you can’t apply or report while it is suspended. Nothing has been deleted.",
+    "heldTitle": "Your account is restricted while we review it",
+    "heldBodyEmployer": "Your live listings stay up. Until the review ends you can’t post, edit or close listings, or send anything for review.",
+    "heldBodyCandidate": "Your applications stay as they are. Until the review ends you can’t apply to new jobs.",
+    "reason": "Our team’s note: {reason}",
+    "companySuspendedTitle": "Your company is suspended",
+    "companySuspendedBody": "Its listings are off the board, and nothing new can be submitted until the suspension is lifted. Applications you already received are kept."
+  },
+  "appeals": {
+    "ask": "Ask for a review",
+    "label": "Why is this a mistake?",
+    "hint": "A sentence or two is enough: what we got wrong, and anything that shows it.",
+    "send": "Send",
+    "sent": "Sent. We’ll tell you the answer here and in your notifications.",
+    "waiting": "You asked for a review on {date}. We’ll tell you the answer here and in your notifications.",
+    "stands": "We reviewed this on {date}, and the decision stands.",
+    "messageRequired": "Say in at least a sentence why the decision was wrong.",
+    "notAppealable": "There’s nothing here to appeal right now.",
+    "alreadyOpen": "You’ve already asked for a review of this — we’ll answer that one first.",
+    "limit": "This decision has been reviewed three times, so it can’t be appealed again. Contact us if something new has come up.",
+    "tooSoon": "We answered an appeal about this in the last week. You can ask again once a week has passed.",
+    "rateLimit": "You’ve sent several appeals today. Please try again tomorrow.",
+    "companySuspended": "Your company is suspended, so ask for a review of the company’s suspension instead.",
+    "unavailable": "Appeals aren’t available yet. Please contact us.",
+    "network": "We couldn’t send it. Check your connection and try again."
   }
 }

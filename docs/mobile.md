@@ -143,10 +143,13 @@ report what is objectionable and block whoever is behind it, and to answer
 reports promptly.
 
 - **Report** a listing or a company (and, in the employer's directory, a
-  consultant's profile) through the website's `reportTarget`: an account is
-  required (a signed-out reader is sent to sign in and brought back), each
-  target has its own reasons, one report per person per target, ten a day.
-  Reports land in the admin console's queue on the website.
+  consultant's profile) through the website's `reportTarget` and its dialog's
+  rules: an account is required (a signed-out reader is sent to sign in and
+  brought back), each target has its own reasons, each with a line saying what
+  it covers, none chosen in advance; the database's limits (one per person per
+  target, a few in a few minutes, fewer on a new account) each come back in
+  their own words. Reports land in the moderation console on the website, and
+  the reporter is told when one has been looked at.
 - **Hide a company** keeps it out of the board, the home screen, "roles like
   this" and the directory on that phone
   (`mobile/src/features/moderation/hidden-companies.ts`), signed in or not;
