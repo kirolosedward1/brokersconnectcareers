@@ -114,6 +114,10 @@ const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabNa
   ['/employer/applicants', ['applicants']],
   ['/employer/company', ['account']],
   ['/employer/billing', ['account']],
+  // The directory is the Consultants tab's own screen; a consultant's page opens in any tab.
+  ['/agents', ['consultants'], 'exact'],
+  ['/agents', ['consultants', 'home']],
+  ['/employer/talent', ['consultants']],
 ];
 
 function ownersOf(path: string): readonly TabName[] | null {

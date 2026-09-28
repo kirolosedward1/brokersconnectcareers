@@ -104,12 +104,13 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   Account; a candidate's is their console — Home · Jobs · Applications ·
   Saved · Account — with the companies directory a tap from Home (it lives in
   the shared group, so any tab can open it); an employer's is theirs — Home
-  (the `/employer` overview) · Listings · Applicants · Account (where the
-  company, team and billing are kept), with the consultant directory joining
-  as its screens land — and has no board: a listing opens at home, and the
-  board's own address goes home. A listing's applicants
-  (`/employer/jobs/<id>/applicants`) open in whichever of Listings and
-  Applicants the employer is in. A tab left out is `hidden`,
+  (the `/employer` overview) · Listings · Applicants · Consultants (once the
+  directory answers them: `canBrowseAgentDirectory`, an approved employer) ·
+  Account (where the company, team and billing are kept) — and has no board:
+  a listing opens at home, and the board's own address goes home. A listing's
+  applicants (`/employer/jobs/<id>/applicants`) open in whichever of Listings
+  and Applicants the employer is in, and a consultant's page (`/agents/<slug>`)
+  in whichever tab it was opened from. A tab left out is `hidden`,
   which removes its screens for that person altogether, so every path is
   checked before it is opened, with the website's own rules (`routeAudience` /
   `mayEnter`): a signed-in page with nobody signed in opens the sign-in sheet,
@@ -167,6 +168,24 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   `removeCompanyMember`). Billing is read-only — credits, orders and the
   monthly free post for a verified company, granted only when the database
   says it was — and sells nothing.
+  **The consultant directory** (`/agents`, the Consultants tab) is the
+  website's search through `/api/mobile/v1/agents`, its filters in the address
+  (`src/lib/agent-filters.ts`, shared) and in a sheet that counts as the
+  employer chooses; cards are anonymous until the company is verified, and a
+  company that is not is told why once — the papers are a company admin's to
+  upload, so a recruiter is told who can. **A consultant's page**
+  (`/agents/<slug>`, or `/agents/<id>` for a locked card) reads
+  `get_agent_card()` and the CV under the employer's own session, so the
+  database decides what shows; the number and the CV are asked for with
+  `revealAgentContact` (counted and limited, its refusals in the website's
+  words) and `/api/agent-cv/<handle>` as JSON, and the company's look is
+  recorded with `recordAgentView` (a new registry entry; the database decides
+  whether it counts). **The shortlist** (`/employer/talent`) is
+  `saved_agent_cards()`, which says what may still be shown of each — a
+  consultant who has since hidden their profile is a row with nothing but that
+  — and `toggleSavedAgent`, shown at once and put back when refused. An
+  applicant's profile panel opens their page for a company the directory
+  answers.
 - **A candidate's Home** is their overview, the website's `/dashboard`: where
   the account stands when it is held or suspended (`my_account_note`, with the
   appeal panel), the one next action by the website's rule (a reply, else a
@@ -200,7 +219,11 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   the appeal panel (`submitAppeal`, `my_appeal_state`). "Remove CV" now
   clears the profile's CV on the website too (`saveAgentProfile` ignored
   it); only the column is cleared, since an application may have been sent
-  with that file.
+  with that file. "See your profile as companies see it" opens
+  `/account/profile/preview`: the same page an employer reads, from
+  `get_agent_card()` (which answers its owner whatever the visibility), with
+  the website's owner banner saying which audience sees what, the candidate's
+  own CV, and nothing to report, keep or count.
 - **The bell** sits at the end of each tab's first screen with the unread
   count, read like everything else about the person straight from Supabase.
   Its feed pages by `(created_at, id)` as the website's does, marks read up to

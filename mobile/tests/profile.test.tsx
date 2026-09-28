@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Alert, type AlertButton } from 'react-native';
+import { Alert, Text, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -147,10 +147,15 @@ function Root() {
   );
 }
 
+function PreviewStandIn() {
+  return <Text>preview</Text>;
+}
+
 const app = {
   _layout: Root,
   '(tabs)/(account)/_layout': () => <Stack />,
   '(tabs)/(account)/account/profile': ProfileScreen,
+  '(tabs)/(account)/account/profile/preview': PreviewStandIn,
 };
 
 const open = (query = '') => renderRouter(app, { initialUrl: `/account/profile${query}` });
@@ -242,6 +247,14 @@ describe('the profile', () => {
     open();
     expect(await screen.findByText(ar.app.profile.saveFirst)).toBeTruthy();
     expect(screen.queryByText(ar.cv.gapsTitle)).toBeNull();
+    // Nothing to preview until there is a card.
+    expect(screen.queryByRole('button', { name: ar.dashboard.profilePreview })).toBeNull();
+  });
+
+  it('opens the card as companies see it, one tap from the form', async () => {
+    const result = open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.profilePreview }));
+    await waitFor(() => expect(result.getPathname()).toBe('/account/profile/preview'));
   });
 
   it('says how many companies looked, once somebody has', async () => {

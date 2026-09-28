@@ -52,8 +52,6 @@ export function FilterSheet({
 }) {
   const t = useTranslations();
   const locale = useLocale();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const [draft, setDraft] = useState(filters);
   const [open, setOpen] = useState(visible);
 
@@ -66,6 +64,150 @@ export function FilterSheet({
   const query = boardQuery(draft);
   const total = useBoardTotal(query, visible);
   const count = sheetFilterCount(draft);
+
+  return (
+    <FilterSheetFrame
+      visible={visible}
+      onClose={onClose}
+      onClear={count > 0 ? () => setDraft(clearSheetFilters(draft)) : null}
+      applyLabel={
+        total.data === undefined
+          ? t('filters.showResults')
+          : t.markup('jobs.showResultsCount', { count: formatNumber(total.data, locale), ...markupTags })
+      }
+      onApply={() => onApply(draft)}
+    >
+      <FilterGroup title={t('filters.leadsSource')}>
+        {LEADS_SOURCES.map((value) => (
+          <Chip
+            key={value}
+            label={t(`leadsSource.${value}`)}
+            selected={draft.leadsSources.includes(value)}
+            onPress={() => setDraft({ ...draft, leadsSources: toggled(draft.leadsSources, value) })}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title={t('filters.hasBasicSalary')} single>
+        <Chip label={t('filters.any')} selected={draft.hasBasicSalary === null} onPress={() => setDraft({ ...draft, hasBasicSalary: null })} />
+        <Chip
+          label={t('filters.hasBasicSalaryYes')}
+          selected={draft.hasBasicSalary === true}
+          onPress={() => setDraft({ ...draft, hasBasicSalary: true })}
+        />
+        <Chip
+          label={t('filters.hasBasicSalaryNo')}
+          selected={draft.hasBasicSalary === false}
+          onPress={() => setDraft({ ...draft, hasBasicSalary: false })}
+        />
+      </FilterGroup>
+
+      <FilterGroup title={t('filters.minSalary')} single>
+        <Chip label={t('filters.any')} selected={draft.minSalary === null} onPress={() => setDraft({ ...draft, minSalary: null })} />
+        {MIN_SALARY_STEPS.map((value) => (
+          <PayChip key={value} value={value} selected={draft.minSalary === value} onPress={() => setDraft({ ...draft, minSalary: value })} />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title={t('filters.commissionType')}>
+        {COMMISSION_TYPES.map((value) => (
+          <Chip
+            key={value}
+            label={t(`commissionType.${value}`)}
+            selected={draft.commissionTypes.includes(value)}
+            onPress={() => setDraft({ ...draft, commissionTypes: toggled(draft.commissionTypes, value) })}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title={t('filters.posted')} single>
+        <Chip label={t('filters.any')} selected={draft.postedWithin === null} onPress={() => setDraft({ ...draft, postedWithin: null })} />
+        {POSTED_WITHIN_DAYS.map((days) => (
+          <Chip
+            key={days}
+            label={t('filters.postedWithin', { days })}
+            selected={draft.postedWithin === days}
+            onPress={() => setDraft({ ...draft, postedWithin: days })}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title={t('filters.track')}>
+        {JOB_TRACKS.map((value) => (
+          <Chip
+            key={value}
+            label={t(`track.${value}`)}
+            selected={draft.tracks.includes(value)}
+            onPress={() => setDraft({ ...draft, tracks: toggled(draft.tracks, value) })}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title={t('filters.companyType')}>
+        {COMPANY_TYPES.map((value) => (
+          <Chip
+            key={value}
+            label={t(`companyType.${value}`)}
+            selected={draft.companyTypes.includes(value)}
+            onPress={() => setDraft({ ...draft, companyTypes: toggled(draft.companyTypes, value) })}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title={t('filters.experienceBand')}>
+        {EXPERIENCE_BANDS.map((value) => (
+          <Chip
+            key={value}
+            label={t(`experienceBand.${value}`)}
+            selected={draft.experienceBands.includes(value)}
+            onPress={() => setDraft({ ...draft, experienceBands: toggled(draft.experienceBands, value) })}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title={t('filters.employmentType')}>
+        {EMPLOYMENT_TYPES.map((value) => (
+          <Chip
+            key={value}
+            label={t(`employmentType.${value}`)}
+            selected={draft.employmentTypes.includes(value)}
+            onPress={() => setDraft({ ...draft, employmentTypes: toggled(draft.employmentTypes, value) })}
+          />
+        ))}
+      </FilterGroup>
+
+      <DistrictChoices
+        selected={draft.districtSlugs}
+        onToggle={(slug) => setDraft({ ...draft, districtSlugs: toggled(draft.districtSlugs, slug) })}
+      />
+    </FilterSheetFrame>
+  );
+}
+
+/**
+ * The sheet itself, shared by the board and the consultant directory: a close
+ * button, the title, "clear" when there is something to clear; the groups;
+ * and one button at the bottom that says what applying comes to.
+ */
+export function FilterSheetFrame({
+  visible,
+  onClose,
+  onClear,
+  applyLabel,
+  onApply,
+  children,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  /** Null when nothing is chosen. */
+  onClear: (() => void) | null;
+  applyLabel: string;
+  onApply: () => void;
+  children: ReactNode;
+}) {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -95,117 +237,11 @@ export function FilterSheet({
             {t('jobs.filters')}
           </Text>
           <View style={{ minWidth: hitTarget, alignItems: 'flex-end' }}>
-            {count > 0 ? (
-              <Button label={t('jobs.clearFilters')} variant="ghost" size="sm" onPress={() => setDraft(clearSheetFilters(draft))} />
-            ) : null}
+            {onClear ? <Button label={t('jobs.clearFilters')} variant="ghost" size="sm" onPress={onClear} /> : null}
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: space[4], gap: space[6] }}>
-          <Group title={t('filters.leadsSource')}>
-            {LEADS_SOURCES.map((value) => (
-              <Chip
-                key={value}
-                label={t(`leadsSource.${value}`)}
-                selected={draft.leadsSources.includes(value)}
-                onPress={() => setDraft({ ...draft, leadsSources: toggled(draft.leadsSources, value) })}
-              />
-            ))}
-          </Group>
-
-          <Group title={t('filters.hasBasicSalary')} single>
-            <Chip label={t('filters.any')} selected={draft.hasBasicSalary === null} onPress={() => setDraft({ ...draft, hasBasicSalary: null })} />
-            <Chip
-              label={t('filters.hasBasicSalaryYes')}
-              selected={draft.hasBasicSalary === true}
-              onPress={() => setDraft({ ...draft, hasBasicSalary: true })}
-            />
-            <Chip
-              label={t('filters.hasBasicSalaryNo')}
-              selected={draft.hasBasicSalary === false}
-              onPress={() => setDraft({ ...draft, hasBasicSalary: false })}
-            />
-          </Group>
-
-          <Group title={t('filters.minSalary')} single>
-            <Chip label={t('filters.any')} selected={draft.minSalary === null} onPress={() => setDraft({ ...draft, minSalary: null })} />
-            {MIN_SALARY_STEPS.map((value) => (
-              <PayChip key={value} value={value} selected={draft.minSalary === value} onPress={() => setDraft({ ...draft, minSalary: value })} />
-            ))}
-          </Group>
-
-          <Group title={t('filters.commissionType')}>
-            {COMMISSION_TYPES.map((value) => (
-              <Chip
-                key={value}
-                label={t(`commissionType.${value}`)}
-                selected={draft.commissionTypes.includes(value)}
-                onPress={() => setDraft({ ...draft, commissionTypes: toggled(draft.commissionTypes, value) })}
-              />
-            ))}
-          </Group>
-
-          <Group title={t('filters.posted')} single>
-            <Chip label={t('filters.any')} selected={draft.postedWithin === null} onPress={() => setDraft({ ...draft, postedWithin: null })} />
-            {POSTED_WITHIN_DAYS.map((days) => (
-              <Chip
-                key={days}
-                label={t('filters.postedWithin', { days })}
-                selected={draft.postedWithin === days}
-                onPress={() => setDraft({ ...draft, postedWithin: days })}
-              />
-            ))}
-          </Group>
-
-          <Group title={t('filters.track')}>
-            {JOB_TRACKS.map((value) => (
-              <Chip
-                key={value}
-                label={t(`track.${value}`)}
-                selected={draft.tracks.includes(value)}
-                onPress={() => setDraft({ ...draft, tracks: toggled(draft.tracks, value) })}
-              />
-            ))}
-          </Group>
-
-          <Group title={t('filters.companyType')}>
-            {COMPANY_TYPES.map((value) => (
-              <Chip
-                key={value}
-                label={t(`companyType.${value}`)}
-                selected={draft.companyTypes.includes(value)}
-                onPress={() => setDraft({ ...draft, companyTypes: toggled(draft.companyTypes, value) })}
-              />
-            ))}
-          </Group>
-
-          <Group title={t('filters.experienceBand')}>
-            {EXPERIENCE_BANDS.map((value) => (
-              <Chip
-                key={value}
-                label={t(`experienceBand.${value}`)}
-                selected={draft.experienceBands.includes(value)}
-                onPress={() => setDraft({ ...draft, experienceBands: toggled(draft.experienceBands, value) })}
-              />
-            ))}
-          </Group>
-
-          <Group title={t('filters.employmentType')}>
-            {EMPLOYMENT_TYPES.map((value) => (
-              <Chip
-                key={value}
-                label={t(`employmentType.${value}`)}
-                selected={draft.employmentTypes.includes(value)}
-                onPress={() => setDraft({ ...draft, employmentTypes: toggled(draft.employmentTypes, value) })}
-              />
-            ))}
-          </Group>
-
-          <Districts
-            selected={draft.districtSlugs}
-            onToggle={(slug) => setDraft({ ...draft, districtSlugs: toggled(draft.districtSlugs, slug) })}
-          />
-        </ScrollView>
+        <ScrollView contentContainerStyle={{ padding: space[4], gap: space[6] }}>{children}</ScrollView>
 
         <View
           style={{
@@ -216,22 +252,14 @@ export function FilterSheet({
             borderTopColor: colors.border,
           }}
         >
-          <Button
-            label={
-              total.data === undefined
-                ? t('filters.showResults')
-                : t.markup('jobs.showResultsCount', { count: formatNumber(total.data, locale), ...markupTags })
-            }
-            size="lg"
-            onPress={() => onApply(draft)}
-          />
+          <Button label={applyLabel} size="lg" onPress={onApply} />
         </View>
       </View>
     </Modal>
   );
 }
 
-function Group({ title, single = false, children }: { title: string; single?: boolean; children: ReactNode }) {
+export function FilterGroup({ title, single = false, children }: { title: string; single?: boolean; children: ReactNode }) {
   return (
     <View style={{ gap: space[2] }}>
       <Text variant="small" weight="semibold" accessibilityRole="header">
@@ -255,7 +283,7 @@ function PayChip({ value, selected, onPress }: { value: number; selected: boolea
 }
 
 /** The districts under their governorates, as the website groups them. */
-function Districts({ selected, onToggle }: { selected: string[]; onToggle: (slug: string) => void }) {
+export function DistrictChoices({ selected, onToggle }: { selected: string[]; onToggle: (slug: string) => void }) {
   const t = useTranslations('filters');
   const locale = useLocale();
   const districts = useDistricts();

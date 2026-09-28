@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Linking } from 'react-native';
+import { Linking, Text } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
@@ -162,11 +162,16 @@ function Root() {
   );
 }
 
+function ConsultantStandIn() {
+  return <Text>consultant</Text>;
+}
+
 const app = {
   _layout: Root,
   '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
   '(tabs)/(listings,applicants)/employer/jobs/[id]/applicants': PipelineScreen,
   '(tabs)/(applicants)/employer/applicants/index': InboxScreen,
+  '(tabs)/(listings,applicants)/agents/[slug]': ConsultantStandIn,
 };
 
 const input = (path: string, index = 0) => (server.asked(path)[index]?.body as { input: unknown } | undefined)?.input;
@@ -267,6 +272,20 @@ describe("a listing's applicants", () => {
     renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.downloadCv}: سارة عادل` }));
     expect(await screen.findByText(ar.app.applicants.cvLimit)).toBeTruthy();
+  });
+
+  it("opens an applicant's full profile from their card, for a company that may read the directory", async () => {
+    const result = renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByHintText(ar.agents.viewProfile));
+    await waitFor(() => expect(result.getPathname()).toBe('/agents/sara-a1b2'));
+  });
+
+  it('offers no way into the directory to an employer still waiting for approval', async () => {
+    server.on('/rest/v1/profiles', [{ ...employer, approval_status: 'pending' }]);
+    await rememberActor({ userId: USER_ID, profile: { role: 'employer', approval_status: 'pending' }, company: null });
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText('مستشارة مبيعات أولية')).toBeTruthy();
+    expect(screen.queryByHintText(ar.agents.viewProfile)).toBeNull();
   });
 
   it("is not found when the listing is not the company's", async () => {

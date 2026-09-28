@@ -11,6 +11,7 @@ import {
   saveAvatar,
   updateNotificationPreferences,
 } from '@/lib/actions/account';
+import { recordAgentView } from '@/lib/agent-views';
 import { revealAgentContact } from '@/lib/actions/agent-contact';
 import { saveAgentProfile } from '@/lib/actions/agent-profile';
 import { submitAppeal } from '@/lib/actions/appeals';
@@ -100,6 +101,9 @@ const deleteCvSchema = z.object({
 });
 
 const seenSchema = z.object({ ids: z.array(uuid).min(1).max(200) });
+
+/** A consultant's handle: the slug, or the id a locked card is opened by — getAgentCard()'s rule. */
+const AGENT_HANDLE = z.string().regex(/^(?:[a-z0-9][a-z0-9-]{0,118}|[0-9a-f-]{36})$/);
 
 export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   // Account
@@ -191,6 +195,18 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   // Employer: consultant directory
   revealAgentContact: { run: (input) => revealAgentContact(input) },
   toggleSavedAgent: { run: positional(z.string(), 'agentId', toggleSavedAgent) },
+  recordAgentView: {
+    run: async (input) => {
+      // A slug or an id, as the profile page passes either; anything else is
+      // not a profile. Everything else is record_agent_view()'s to decide —
+      // which company, whether it is the owner's own look — and it refuses
+      // silently, so this answers ok either way, as the page does.
+      const parsed = AGENT_HANDLE.safeParse(record(input).slug);
+      if (!parsed.success) return invalid;
+      await recordAgentView(parsed.data);
+      return { ok: true };
+    },
+  },
 
   // Notifications
   openNotification: {

@@ -107,6 +107,18 @@ export default function ProfileScreen() {
       >
         <Text tone="mutedForeground">{t('dashboard.profileLede')}</Text>
 
+        {/* The result of everything below, one tap away: the card as companies see it, with who sees what. */}
+        {agent ? (
+          <View style={{ alignItems: 'flex-start' }}>
+            <Button
+              label={t('dashboard.profilePreview')}
+              variant="outline"
+              icon={<Eye size={16} color={colors.foreground} />}
+              onPress={() => router.push('/account/profile/preview')}
+            />
+          </View>
+        ) : null}
+
         {/* Sent here from the consultant directory, which is not a candidate's to browse. */}
         {notice === 'directory' ? (
           <Notice tone="muted" icon={<Info size={16} color={colors.primary} />} title={t('agents.deniedNotice')} />

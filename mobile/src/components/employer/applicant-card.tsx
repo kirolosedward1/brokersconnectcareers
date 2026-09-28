@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Linking, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
+import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Download, FileX2, MessageCircle } from 'lucide-react-native';
 import { formatDate, formatEgp, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
+import { canBrowseAgentDirectory } from '@/lib/permissions';
 import type { ApplicationNoteRow, ApplicationStatus } from '@/lib/supabase/database.types';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
 import { ApplicantNotes } from '~/components/employer/applicant-notes';
@@ -12,6 +14,7 @@ import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
+import { ForwardChevron } from '~/components/ui/icons';
 import { Select } from '~/components/ui/select';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
@@ -24,6 +27,7 @@ import {
   type Applicant,
 } from '~/features/employer/applicants';
 import { ApiError } from '~/lib/api';
+import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 
@@ -58,6 +62,7 @@ export function ApplicantCard({
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const { actor } = useSession();
   const move = useSetApplicationStatus();
 
   const [status, setStatus] = useState<ApplicationStatus>(applicant.status);
@@ -70,6 +75,10 @@ export function ApplicantCard({
   const candidate = applicant.candidate;
   const profile = candidate?.agent_profiles ?? null;
   const name = candidate?.full_name ?? '—';
+  const openProfile =
+    profile && canBrowseAgentDirectory(actor)
+      ? () => router.push({ pathname: '/agents/[slug]', params: { slug: profile.slug } })
+      : null;
   const headline = profile ? localized(locale, profile.headline_ar, profile.headline_en) : '';
 
   const save = (next: ApplicationStatus, decisionNote: string) => {
@@ -132,35 +141,53 @@ export function ApplicantCard({
       </View>
 
       {profile ? (
-        <View style={{ gap: 2, paddingStart: space[3], borderStartWidth: 2, borderStartColor: colors.border }}>
-          {headline ? (
-            <Text variant="small" weight="medium">
-              {headline}
-            </Text>
-          ) : null}
-          <Text variant="caption" tone="mutedForeground">
-            {[
-              t('agents.yearsExperience', { count: profile.years_experience }),
-              profile.tracks.length ? formatList(profile.tracks.map((track) => t(`track.${track}`)), locale) : null,
-              districtNames.length ? formatList(districtNames, locale) : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </Text>
-          {/* Self-reported, as the directory says on the profile itself. */}
-          {profile.units_closed != null || profile.volume_egp != null ? (
-            <Text variant="caption" weight="medium">
+        <Pressable
+          // The whole panel is the way to the full profile, for a company that may read the directory.
+          disabled={!openProfile}
+          onPress={openProfile ?? undefined}
+          accessibilityRole={openProfile ? 'link' : undefined}
+          // What it says is read as it is; what pressing does is the hint.
+          accessibilityHint={openProfile ? t('agents.viewProfile') : undefined}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space[2],
+            paddingStart: space[3],
+            borderStartWidth: 2,
+            borderStartColor: pressed ? colors.primary : colors.border,
+          })}
+        >
+          <View style={{ flex: 1, gap: 2 }}>
+            {headline ? (
+              <Text variant="small" weight="medium">
+                {headline}
+              </Text>
+            ) : null}
+            <Text variant="caption" tone="mutedForeground">
               {[
-                profile.units_closed != null
-                  ? t('agents.unitsClosedShort', { count: formatNumber(profile.units_closed, locale) })
-                  : null,
-                profile.volume_egp != null ? `${formatEgp(profile.volume_egp, locale)} ${t('common.egp')}` : null,
+                t('agents.yearsExperience', { count: profile.years_experience }),
+                profile.tracks.length ? formatList(profile.tracks.map((track) => t(`track.${track}`)), locale) : null,
+                districtNames.length ? formatList(districtNames, locale) : null,
               ]
                 .filter(Boolean)
-                .join('   ')}
+                .join(' · ')}
             </Text>
-          ) : null}
-        </View>
+            {/* Self-reported, as the directory says on the profile itself. */}
+            {profile.units_closed != null || profile.volume_egp != null ? (
+              <Text variant="caption" weight="medium">
+                {[
+                  profile.units_closed != null
+                    ? t('agents.unitsClosedShort', { count: formatNumber(profile.units_closed, locale) })
+                    : null,
+                  profile.volume_egp != null ? `${formatEgp(profile.volume_egp, locale)} ${t('common.egp')}` : null,
+                ]
+                  .filter(Boolean)
+                  .join('   ')}
+              </Text>
+            ) : null}
+          </View>
+          {openProfile ? <ForwardChevron size={18} color={colors.mutedForeground} /> : null}
+        </Pressable>
       ) : (
         <Text
           variant="caption"

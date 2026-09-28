@@ -6,8 +6,9 @@ import { useStackOptions } from '~/components/navigation/stack-options';
  *
  * A listing and a company page are reachable from every tab — the home feed,
  * the board, a company's own roles, an application, a bookmark, an employer's
- * own listings — and so are the bell's feed and the companies directory (a
- * candidate has no Companies tab, an employer no board), so their screens
+ * own listings — and so are the bell's feed, the companies directory (a
+ * candidate has no Companies tab, an employer no board) and a consultant's
+ * page (from the directory, the shortlist or an applicant), so their screens
  * live here, in the group every tab expands from.
  * Pushing /jobs/<slug> from the home tab stays in the home tab, with Back to
  * the home screen, rather than jumping to the board.
@@ -28,6 +29,7 @@ export const unstable_settings = {
   account: { anchor: 'account/index' },
   listings: { anchor: 'employer/jobs/index' },
   applicants: { anchor: 'employer/applicants/index' },
+  consultants: { anchor: 'agents/index' },
 };
 
 export default function TabStack() {

@@ -47,6 +47,9 @@ function TabBar() {
       <Tabs.Protected guard={tabs.includes('applicants')}>
         <Tabs.Screen name="(applicants)" />
       </Tabs.Protected>
+      <Tabs.Protected guard={tabs.includes('consultants')}>
+        <Tabs.Screen name="(consultants)" />
+      </Tabs.Protected>
       <Tabs.Screen name="(account)" />
     </Tabs>
   );
@@ -63,6 +66,7 @@ const tree = {
   [`${SHARED}/companies/[slug]`]: screen('company'),
   [`${SHARED}/companies/index`]: screen('directory'),
   [`${SHARED}/notifications`]: screen('notifications'),
+  [`${SHARED}/agents/[slug]`]: screen('consultant'),
   '(tabs)/(home)/index': screen('home'),
   '(tabs)/(jobs)/jobs/index': screen('board'),
   '(tabs)/(applications)/dashboard/applications/index': screen('applications'),
@@ -70,9 +74,12 @@ const tree = {
   '(tabs)/(listings)/employer/jobs/index': screen('listings'),
   '(tabs)/(listings,applicants)/employer/jobs/[id]/applicants': screen('pipeline'),
   '(tabs)/(applicants)/employer/applicants/index': screen('inbox'),
+  '(tabs)/(consultants)/agents/index': screen('consultants'),
+  '(tabs)/(consultants)/employer/talent': screen('shortlist'),
   '(tabs)/(account)/account/index': screen('account'),
   '(tabs)/(account)/account/delete': screen('delete'),
   '(tabs)/(account)/account/profile': screen('profile'),
+  '(tabs)/(account)/account/profile/preview': screen('preview'),
   '(tabs)/(account)/employer/company': screen('company'),
   '(tabs)/(account)/employer/billing': screen('billing'),
   '(auth)/sign-in/index': screen('sign-in'),
@@ -230,6 +237,62 @@ describe("an employer's tab bar", () => {
   it("sends a candidate who follows an employer's link home", () => {
     actor = candidate;
     expect(open('https://www.brokersconnect.net/employer/jobs').getSegments()).toEqual(['(tabs)', '(home)']);
+  });
+});
+
+describe('the consultant directory', () => {
+  it('opens the directory from a link in Consultants, filters and all', () => {
+    actor = employer;
+    const result = open('https://www.brokersconnect.net/agents?track=resale');
+    expect(result.getSegments()).toEqual(['(tabs)', '(consultants)', 'agents']);
+    expect(result.getSearchParams()).toEqual({ track: 'resale' });
+  });
+
+  it('puts the directory under a profile opened from a link', () => {
+    actor = employer;
+    const result = open('https://www.brokersconnect.net/agents/mona-ali');
+    expect(result.getSegments()).toEqual(['(tabs)', '(consultants)', 'agents', '[slug]']);
+    act(() => router.back());
+    expect(result.getSegments()).toEqual(['(tabs)', '(consultants)', 'agents']);
+  });
+
+  it('opens the shortlist over the directory, and a profile from it', () => {
+    actor = employer;
+    const result = open('/agents');
+    act(() => router.push('/employer/talent'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(consultants)', 'employer', 'talent']);
+    act(() => router.push('/agents/mona-ali'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(consultants)', 'agents', '[slug]']);
+    act(() => router.back());
+    act(() => router.back());
+    expect(result.getSegments()).toEqual(['(tabs)', '(consultants)', 'agents']);
+  });
+
+  it("opens an applicant's profile inside Applicants, with the inbox under it", () => {
+    actor = employer;
+    const result = open('/employer/applicants');
+    act(() => router.push('/agents/mona-ali'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(applicants)', 'agents', '[slug]']);
+    act(() => router.back());
+    expect(result.getSegments()).toEqual(['(tabs)', '(applicants)', 'employer', 'applicants']);
+  });
+
+  it('has no directory for an employer still waiting for approval', () => {
+    actor = {
+      userId: '55555555-5555-4555-8555-555555555555',
+      profile: { role: 'employer', approval_status: 'pending' },
+      company: null,
+    };
+    expect(open('https://www.brokersconnect.net/agents').getSegments()).toEqual(['(tabs)', '(home)']);
+  });
+
+  it("sends a candidate to their own profile, from where their card's preview opens in Account", () => {
+    actor = candidate;
+    const result = open('https://www.brokersconnect.net/agents/mona-ali');
+    expect(result.getSegments()).toEqual(['(tabs)', '(account)', 'account', 'profile']);
+    expect(result.getSearchParams()).toEqual({ notice: 'directory' });
+    act(() => router.push('/account/profile/preview'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(account)', 'account', 'profile', 'preview']);
   });
 });
 

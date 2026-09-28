@@ -37,14 +37,15 @@ function useCompany() {
 /**
  * The papers (a company admin's to read) and the roster. A colleague's name
  * is often unreadable — profiles are private — and the roster then says
- * nothing for it, as the website does.
+ * nothing for it, as the website does. `enabled: false` when a screen needs
+ * it only in some states (the directory, to know who may verify).
  */
-export function useCompanyPage() {
+export function useCompanyPage({ enabled = true }: { enabled?: boolean } = {}) {
   const company = useCompany();
   const userId = useSession().session?.user.id ?? null;
   return useQuery({
     queryKey: ['employer', 'company', company?.id ?? null],
-    enabled: Boolean(company && userId),
+    enabled: enabled && Boolean(company && userId),
     queryFn: async (): Promise<CompanyPage> => {
       const id = company?.id as string;
       const [documents, roster] = await Promise.all([

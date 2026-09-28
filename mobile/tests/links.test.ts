@@ -17,6 +17,12 @@ const employer: Actor = {
   company: { id: '33333333-3333-4333-8333-333333333333', verification_status: 'verified' },
 };
 const newcomer: Actor = { userId: '44444444-4444-4444-8444-444444444444', profile: null, company: null };
+/** An employer still waiting for approval: their console, not yet the directory. */
+const waiting: Actor = {
+  userId: '55555555-5555-4555-8555-555555555555',
+  profile: { role: 'employer', approval_status: 'pending' },
+  company: { id: '66666666-6666-4666-8666-666666666666', verification_status: 'unverified' },
+};
 
 describe('webPathToAppPath', () => {
   it.each([
@@ -178,6 +184,44 @@ describe('who a link is for', () => {
     expect(routeInside('/dashboard/applications', null)).toBe('/sign-in?next=%2Fdashboard%2Fapplications');
     // What is not a page of ours is not followed.
     expect(routeInside('https://evil.example/jobs', candidate)).toBe('/');
+  });
+});
+
+describe('the consultant directory', () => {
+  it('is a tab for an employer the directory answers, and for nobody else', () => {
+    expect(tabsFor(employer)).toEqual(['home', 'listings', 'applicants', 'consultants', 'account']);
+    expect(tabsFor(waiting)).not.toContain('consultants');
+    expect(tabsFor(candidate)).not.toContain('consultants');
+    expect(tabsFor(null)).not.toContain('consultants');
+  });
+
+  it('opens a link to it, a profile or the shortlist in the Consultants tab', () => {
+    expect(routeFromOutside('https://www.brokersconnect.net/agents?track=resale', employer)).toBe(
+      '/(consultants)/agents?track=resale',
+    );
+    expect(routeFromOutside('https://www.brokersconnect.net/en/agents/mona-ali', employer)).toBe(
+      '/(consultants)/agents/mona-ali',
+    );
+    expect(routeFromOutside('https://www.brokersconnect.net/employer/talent', employer)).toBe(
+      '/(consultants)/employer/talent',
+    );
+  });
+
+  it('opens a profile inside the tab the reader is using', () => {
+    expect(routeInside('/agents/mona-ali', employer)).toBe('/agents/mona-ali');
+  });
+
+  it('sends an employer still waiting for approval to their console, as the website does', () => {
+    expect(routeFromOutside('/agents', waiting)).toBe('/');
+    expect(routeFromOutside('/agents/mona-ali', waiting)).toBe('/');
+    // Their own console's page, in a tab they do not have yet.
+    expect(routeFromOutside('/employer/talent', waiting)).toBe('/');
+    expect(routeInside('/employer/talent', waiting)).toBe('/');
+  });
+
+  it('asks somebody signed out to sign in first, and sends a candidate to their own profile', () => {
+    expect(routeFromOutside('/agents?q=sales', null)).toBe('/sign-in?next=%2Fagents%3Fq%3Dsales');
+    expect(routeInside('/agents/mona-ali', candidate)).toBe('/account/profile?notice=directory');
   });
 });
 

@@ -294,6 +294,8 @@ export type MobileActions = {
   // Employer: the consultant directory
   revealAgentContact: { input: { handle: string; locale: 'ar' | 'en' }; output: ContactRevealResult };
   toggleSavedAgent: { input: { agentId: string }; output: ActionResult<{ saved: boolean }> };
+  /** A company opened a profile; record_agent_view() decides whether it counts. Always ok. */
+  recordAgentView: { input: { slug: string }; output: ActionResult };
 
   // Notifications
   openNotification: { input: { id: string }; output: ActionResult<NotificationDestination> };
