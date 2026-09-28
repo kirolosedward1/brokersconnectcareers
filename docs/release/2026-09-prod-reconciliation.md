@@ -46,6 +46,15 @@ is `scripts/release/fixtures/production-ledger-2026-09-28.json`):
   | 327 | The moderation console's signals; suspension reasons made private |
   | 328 | Appeals: a second look at a decision |
 
+- **The iOS app's branch (PR #29) adds two more**, so once it merges there are
+  **31**: **329**, the phones that receive pushes and the queue they are sent
+  from, and **330**, the account-deletion request a company owner can file.
+  Both are safe before or after the code (their `-- safety: ships-with-code`
+  lines): until they run, the app's push registration fails quietly and an
+  owner's deletion request gets the page's old words; nothing else changes.
+  The minute push sweep also needs two Vault secrets set by hand
+  (`docs/mobile.md`, Pushes).
+
 - **Production ran five files ahead of `main`'s order**: 203, 204, 316, 317 and
   318 were applied on 2026-09-27, before `main` placed 068–202 and 300–314 ahead
   of them. So applying the missing files now runs them in a different order
@@ -79,7 +88,8 @@ file: drop the constraint just before 307, and put it back exactly as 317 wrote
 it just after. With it, **all 29 files apply, the result is identical to
 `main`, and the seed and demo data load.** (Re-run after merging 325–328: they
 need nothing of their own. 325 only adds enum values, in a transaction of its
-own, so they are committed before 326–328 use them.)
+own, so they are committed before 326–328 use them. Re-run on 2026-09-28 with
+the app's 329 and 330: all 31 apply, and the result is identical.)
 
 `pnpm test:release` (in `pnpm check`) keeps this true: it rebuilds production's
 order from the snapshot and runs the real `apply` command against it over a
@@ -165,9 +175,9 @@ Only on the owner's go-ahead.
    ```
 
    Alternatively, with the Supabase connector and an explicit go-ahead, the same
-   29 files can be applied one `apply_migration` call each, under their file's
-   name (307 with its adjustment), which production's name-matched ledger
-   already expects.
+   files (29, or 31 once the app's branch is in `main`) can be applied one
+   `apply_migration` call each, under their file's name (307 with its
+   adjustment), which production's name-matched ledger already expects.
 
 **After**
 
