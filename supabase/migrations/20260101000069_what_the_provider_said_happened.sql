@@ -1,5 +1,12 @@
 -- =============================================================================
--- 68 — What the provider said happened, and who that is allowed to silence
+-- 69 — What the provider said happened, and who that is allowed to silence
+--
+-- Renumbered from 68, which the search migration merged under the same day.
+-- Two files with one version cannot both be recorded (the ledger's version is
+-- its primary key) and the schema suite refused the pair, which stopped every
+-- database suite behind it. This one was the later of the two, and no
+-- database had applied it: production's ledger carries neither 068 as of
+-- 2026-09-28. The application order is unchanged — search still runs first.
 --
 -- The delivery webhook existed and had never recorded anything. Production ran
 -- without RESEND_WEBHOOK_SECRET, the endpoint answered every callback 503 as

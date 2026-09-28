@@ -66,7 +66,9 @@ let started = false;
 const report = reporter();
 
 try {
-  pgCmd('initdb', ['-D', data, '-A', 'trust', '-U', 'postgres', '--no-sync']);
+  // UTF8 like Supabase, whatever the machine's locale: under SQL_ASCII the
+  // migrations' normalize() calls refuse to run at all.
+  pgCmd('initdb', ['-D', data, '-A', 'trust', '-U', 'postgres', '-E', 'UTF8', '--locale=C', '--no-sync']);
   pgCmd('pg_ctl', ['-D', data, '-o', `-p ${port} -k ${dir} -c listen_addresses=127.0.0.1`, '-w', 'start', '-l', join(dir, 'log')]);
   started = true;
 

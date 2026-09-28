@@ -554,6 +554,24 @@ function changedOutsideMigrations(mergeBase) {
     .filter((path) => /^src\//.test(path) || path === 'vercel.json');
 }
 
+/**
+ * Files moved to a new version after they reached main, each because two
+ * migrations had merged under one version. The rename rule below exists so a
+ * file production ran keeps saying what it ran; these are the exceptions,
+ * allowed only because no database had applied the old name.
+ *
+ *   068 → 069  what_the_provider_said_happened: merged the same day as 068's
+ *              search migration. Production's ledger carried neither 068 on
+ *              2026-09-28, so the later of the two moved to the free 069 and
+ *              the application order stayed the same.
+ *
+ * Frozen like LEGACY: a clash from now on is caught by the version rule
+ * before it merges, and is renumbered on its branch.
+ */
+const RENUMBERED = {
+  '20260101000068_what_the_provider_said_happened.sql': '20260101000069_what_the_provider_said_happened.sql',
+};
+
 function lint(options) {
   const errors = [];
   const reports = [];
@@ -587,13 +605,21 @@ function lint(options) {
 
     for (const file of atFork) {
       if (!files.includes(file)) {
+        if (Object.hasOwn(RENUMBERED, file) && files.includes(RENUMBERED[file])) continue;
         errors.push({ file, message: `deleted or renamed, but ${options.base} has it — it may already be applied` });
       } else if (blobAt(mergeBase, file) !== blobLocal(file)) {
         errors.push({ file, message: `edited after it reached ${options.base} — add a new migration instead; this file must keep saying what production ran` });
       }
     }
 
-    const branchAdded = valid.filter((file) => !atFork.has(file));
+    // A renumbered file is the same migration the base already has under its
+    // old name, not a new one: it is not held to the new-migration rules.
+    const moved = new Set(
+      Object.entries(RENUMBERED)
+        .filter(([from]) => atFork.has(from))
+        .map(([, to]) => to),
+    );
+    const branchAdded = valid.filter((file) => !atFork.has(file) && !moved.has(file));
     if (!options.all) added = branchAdded;
 
     const tipMax = [...atTip].filter((file) => NAME.test(file)).sort().at(-1);
