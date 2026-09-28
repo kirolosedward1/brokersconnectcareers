@@ -258,7 +258,7 @@ report.section('a suspended company stays off the board by every path');
   report.check('and records how many it took',
     r.value?.audit?.metadata.listings_taken_down === r.value?.n, JSON.stringify(r.value?.audit));
 
-  await db.exec(`update companies set suspended_at = now(), suspension_reason = 'test' where id = '${rowad}'`);
+  await db.exec(`update companies set suspended_at = now() where id = '${rowad}'`);
 
   const resubmit = await as(employerVerified,
     `update jobs set status = 'pending_review' where id = '${draftJob}'`);
@@ -427,7 +427,9 @@ report.section('reports reach companies and consultants, and cannot be forged');
     JSON.stringify(handled.value?.rows));
 
   const late = await session(admin, async (q) => {
-    await q(`update companies set suspended_at = now(), suspension_reason = 'قبلها' where id = '${hub}'`);
+    // The reason lives in company_moderation since migration 327; the column
+    // on companies is public, so it stays empty.
+    await q(`update companies set suspended_at = now() where id = '${hub}'`);
     const [{ r }] = await q(`select admin_moderate_reports('company', '${hub}', 'resolved', 'متأخر', true) as r`);
     return r;
   });

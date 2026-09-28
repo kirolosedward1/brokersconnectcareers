@@ -5,13 +5,14 @@ import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { AdminTable, FilterTabs, PageHeader, Pager, SearchForm, type Column } from '@/components/admin/kit';
 import { JobStatusBadge } from '@/components/admin/badges';
+import { FlagCount } from '@/components/admin/safety';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { mustPage } from '@/lib/admin/read';
+import { must, mustPage } from '@/lib/admin/read';
 import { PAGE_SIZE, UUID_RE, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
 import { likeNeedle } from '@/lib/search/needle';
 import { formatDate, formatNumber } from '@/lib/utils';
-import type { JobStatus } from '@/lib/supabase/database.types';
+import type { JobStatus, SafetyFlag } from '@/lib/supabase/database.types';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = asLocale((await params).locale);
@@ -27,6 +28,10 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
  */
 const VIEWS = [
   'pending',
+  // Waiting for review, and the listing's own text carries a high-weight
+  // flag (migration 327): money asked of the candidate, ID or bank details,
+  // a link that hides where it goes. For a closer look, not a verdict.
+  'flagged',
   'live',
   'expiring',
   'quiet',
@@ -83,6 +88,14 @@ export default async function AdminJobsPage({
   ].filter(Boolean);
 
   const supabase = await createClient();
+
+  // The flagged view is the waiting queue narrowed to what the database's
+  // patterns flag, which only it can compute (the patterns never leave it).
+  const flaggedIds =
+    view === 'flagged'
+      ? must(await supabase.rpc('admin_flagged_pending_jobs', { p_limit: 500 }), 'loading flagged listings').data ?? []
+      : [];
+
   let query = supabase
     .from('jobs')
     .select(`id, title_ar, title_en, status, is_featured, expires_at, published_at, created_at, ${embeds.join(', ')}`, {
@@ -92,6 +105,13 @@ export default async function AdminJobsPage({
   switch (view) {
     case 'pending':
       query = query.eq('status', 'pending_review').order('created_at', { ascending: true });
+      break;
+    case 'flagged':
+      query = query
+        .eq('status', 'pending_review')
+        // An empty list still has to match nothing rather than everything.
+        .in('id', flaggedIds.length ? flaggedIds : ['00000000-0000-0000-0000-000000000000'])
+        .order('created_at', { ascending: true });
       break;
     case 'live':
       query = query.eq('status', 'active').gt('expires_at', now).order('published_at', { ascending: false });
@@ -134,6 +154,16 @@ export default async function AdminJobsPage({
   const current = { q, status: view === 'pending' ? undefined : view, company: companyId };
   const read = await mustPage(await query, 'loading listings', locale, hrefWith('/admin/jobs', current, {}));
   const rows = read.data as unknown as JobListRow[];
+
+  // What each waiting listing says that a moderator should look at twice.
+  const flags = new Map<string, SafetyFlag[]>();
+  if ((view === 'pending' || view === 'flagged') && rows.length) {
+    const signals = must(
+      await supabase.rpc('admin_job_signals', { p_jobs: rows.map((row) => row.id) }),
+      'loading listing flags',
+    ).data;
+    for (const row of signals ?? []) flags.set(row.job_id, row.flags);
+  }
 
   const t = await getTranslations('admin');
   const waitingDays = (since: string) => Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000));
@@ -182,6 +212,7 @@ export default async function AdminJobsPage({
         <span className="inline-flex flex-wrap items-center justify-end gap-1">
           <JobStatusBadge status={row.status} expiresAt={row.expires_at} />
           {row.is_featured ? <Star className="size-3.5 text-warning" aria-label={t('featured')} /> : null}
+          <FlagCount flags={flags.get(row.id) ?? []} locale={locale} />
           {row.open_reports?.length ? (
             <Badge variant="destructive">
               <Flag aria-hidden />

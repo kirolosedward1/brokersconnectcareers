@@ -11,6 +11,7 @@ import { DocumentLink } from '@/components/admin/document-link';
 import { NoteForm } from '@/components/admin/note-form';
 import { ApprovalBadge, JobStatusBadge, ReportStatusBadge, VerificationBadge } from '@/components/admin/badges';
 import { Facts, Num, PageHeader, Section, Trail } from '@/components/admin/kit';
+import { CompanySignalList, SafetyFlags } from '@/components/admin/safety';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { must } from '@/lib/admin/read';
@@ -85,7 +86,7 @@ export default async function AdminCompanyPage({
   ).data as (CompanyRow & { district: { name_ar: string; name_en: string } | null }) | null;
   if (!company) notFound();
 
-  const [documents, members, jobs, reports, jobReports, audit, notes] = await Promise.all([
+  const [documents, members, jobs, reports, jobReports, audit, notes, moderation, signals] = await Promise.all([
     supabase.from('company_documents').select('*').eq('company_id', id).order('created_at', { ascending: false }),
     supabase
       .from('company_members')
@@ -111,6 +112,10 @@ export default async function AdminCompanyPage({
       .in('status', ['open', 'investigating']),
     supabase.from('admin_audit_log').select('*').eq('target_type', 'company').eq('target_id', id).order('created_at', { ascending: false }).limit(50),
     supabase.from('moderation_notes').select('*').eq('target_type', 'company').eq('target_id', id).order('created_at', { ascending: false }).limit(50),
+    // The suspension reason lives here since migration 327; the companies row
+    // is readable by anybody, so it no longer carries it.
+    supabase.from('company_moderation').select('suspension_reason').eq('company_id', id).maybeSingle(),
+    supabase.rpc('admin_company_signals', { p_companies: [id] }),
   ]);
 
   const docs = must(documents, 'loading documents').data as CompanyDocumentRow[];
@@ -120,6 +125,8 @@ export default async function AdminCompanyPage({
   const openJobReports = must(jobReports, 'counting listing reports').count;
   const trail = must(audit, 'loading the record').data as AdminAuditRow[];
   const noteRows = must(notes, 'loading notes').data as ModerationNoteRow[];
+  const suspensionReason = moderation.data?.suspension_reason ?? null;
+  const review = (must(signals, 'loading review signals').data ?? [])[0];
 
   const t = await getTranslations('admin');
   const tEmployer = await getTranslations('employer');
@@ -154,7 +161,7 @@ export default async function AdminCompanyPage({
       {suspended ? (
         <p role="status" className="rounded-xl border border-destructive/40 bg-destructive-muted px-4 py-3 text-sm text-destructive">
           {t('companySuspendedBanner', { date: formatDate(company.suspended_at!, locale) })}
-          {company.suspension_reason ? ` «${company.suspension_reason}»` : null}
+          {suspensionReason ? ` «${suspensionReason}»` : null}
         </p>
       ) : null}
 
@@ -297,6 +304,15 @@ export default async function AdminCompanyPage({
         </div>
 
         <aside className="order-first space-y-5 lg:order-none">
+          {/* What the company says about itself and what it has been doing
+              that deserves a second look. Facts for review, never verdicts. */}
+          <Section title={t('safetyHeading')}>
+            <div className="space-y-3">
+              <SafetyFlags flags={review?.flags ?? []} empty />
+              <CompanySignalList signals={review?.signals ?? null} locale={locale} empty />
+            </div>
+          </Section>
+
           <Section title={t('verification.title')}>
             <div className="flex flex-wrap gap-2">
               {status !== 'verified' ? (

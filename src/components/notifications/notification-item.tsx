@@ -1,17 +1,22 @@
 import { getTranslations } from 'next-intl/server';
 import {
   BadgeCheck,
+  Ban,
   Bell,
   CalendarClock,
   CalendarX2,
+  CirclePause,
   CircleSlash,
   Eye,
+  EyeOff,
   FileCheck2,
   FileWarning,
   FileX2,
   KeyRound,
   LifeBuoy,
+  Scale,
   Send,
+  ShieldCheck,
   UserCheck,
   UserMinus,
   UserRound,
@@ -46,6 +51,13 @@ const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }
   profile_visibility_changed: Eye,
   password_changed: KeyRound,
   support_replied: LifeBuoy,
+  report_reviewed: ShieldCheck,
+  company_suspended: Ban,
+  company_restored: BadgeCheck,
+  profile_restricted: EyeOff,
+  profile_restored: Eye,
+  account_held: CirclePause,
+  appeal_decided: Scale,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -66,6 +78,13 @@ const TONES: Record<NotificationKind, string> = {
   // "look at this".
   password_changed: 'bg-warning-muted text-warning',
   support_replied: 'bg-primary/10 text-primary',
+  report_reviewed: 'bg-primary/10 text-primary',
+  company_suspended: 'bg-destructive-muted text-destructive',
+  company_restored: 'bg-success-muted text-success',
+  profile_restricted: 'bg-destructive-muted text-destructive',
+  profile_restored: 'bg-success-muted text-success',
+  account_held: 'bg-warning-muted text-warning',
+  appeal_decided: 'bg-primary/10 text-primary',
 };
 
 export async function NotificationItem({
@@ -98,8 +117,8 @@ export async function NotificationItem({
     localized(locale, payload.title_ar, payload.title_en) ||
     localized(locale, payload.name_ar, payload.name_en);
 
-  // Most kinds are one sentence with the subject in it; these three carry a
-  // second fact the sentence has to say.
+  // Most kinds are one sentence with the subject in it; these carry a second
+  // fact the sentence has to say.
   const title = (() => {
     if (kind === 'application_moved') {
       return t('applicationMoved', {
@@ -112,6 +131,13 @@ export async function NotificationItem({
     }
     if (kind === 'profile_visibility_changed' && payload.visibility) {
       return t('profileVisibilityChanged', { visibility: tVisibility(payload.visibility as never) });
+    }
+    // Whether a report led to action — never what the action was.
+    if (kind === 'report_reviewed') {
+      return t(payload.outcome === 'actioned' ? 'reportActioned' : 'reportNoBreach', { subject });
+    }
+    if (kind === 'appeal_decided') {
+      return t(payload.outcome === 'overturned' ? 'appealOverturned' : 'appealUpheld', { subject });
     }
     return known ? t(kind, { subject }) : t('generic');
   })();

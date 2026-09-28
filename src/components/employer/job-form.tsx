@@ -250,6 +250,10 @@ export function JobForm({
           setStep(3);
           return;
         }
+        if (result.error === 'standing' || result.error === 'company_suspended') {
+          setErrors({ form: tEmployer(result.error === 'standing' ? 'standingBlocked' : 'companySuspendedBlocked') });
+          return;
+        }
         if (result.error === 'duplicate_listing') {
           // The third copy of one title in one district (migration 306). The
           // wizard warned about the second; this one the database refuses.
@@ -536,6 +540,7 @@ export function JobForm({
             <Field
               label={t('descriptionAr')}
               htmlFor="descriptionAr"
+              hint={t('descriptionRules')}
               error={errors.descriptionAr ? tValidation('required') : undefined}
             >
               <Textarea

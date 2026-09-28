@@ -75,9 +75,11 @@ export function AccountSettings({
       setError(
         result.error === 'owns_company'
           ? t('deleteBlockedCompany')
-          : result.error === 'unavailable'
-            ? t('deleteUnavailable')
-            : tCommon('errorBody'),
+          : result.error === 'under_review'
+            ? t('deleteBlockedSuspended')
+            : result.error === 'unavailable'
+              ? t('deleteUnavailable')
+              : tCommon('errorBody'),
       );
     });
   }

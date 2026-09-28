@@ -265,6 +265,8 @@ export type AdminSummary = {
   queue_total: number;
   queue_over_24h: number;
   reports_open: number;
+  /** Migration 328. Absent before it. */
+  appeals_open?: number;
   companies_pending: number;
   /** Employer accounts between signing up and being allowed to post. */
   accounts_pending: number;
@@ -317,7 +319,16 @@ export type NotificationKind =
   | 'profile_visibility_changed'
   | 'password_changed'
   // Migration 200: support answered a request (written by 201's answer function).
-  | 'support_replied';
+  | 'support_replied'
+  // Moderation (migration 325): the decision's subject is told, and so is
+  // whoever reported or appealed.
+  | 'report_reviewed'
+  | 'company_suspended'
+  | 'company_restored'
+  | 'profile_restricted'
+  | 'profile_restored'
+  | 'account_held'
+  | 'appeal_decided';
 
 /**
  * The payload holds data, never a rendered sentence — the site is read in two
@@ -349,6 +360,11 @@ export type NotificationRow = {
     /** support_replied: the request's quotable reference and topic. */
     reference?: string;
     topic?: string;
+    /** report_reviewed: what the report was about, and whether it led to action. */
+    target_type?: ReportTargetType;
+    outcome?: 'actioned' | 'reviewed' | 'upheld' | 'overturned';
+    /** appeal_decided: what the appeal was about. */
+    subject_type?: AppealSubjectType;
   };
   href: string | null;
   read_at: string | null;
@@ -591,7 +607,31 @@ export type SavedJobRow = Timestamped & {
   job_id: string;
 };
 
-/** Exactly one of job_id, company_id and agent_id is set. */
+/**
+ * What a report was about, as it stood when it was filed (migration 326).
+ * Written by the database, never by the reporter.
+ */
+export type ReportSnapshot = {
+  label_ar?: string;
+  label_en?: string | null;
+  slug?: string;
+  status?: string;
+  company_id?: string;
+  company_name_ar?: string;
+  company_name_en?: string | null;
+  website?: string | null;
+  user_id?: string;
+  excerpt?: string | null;
+};
+
+export type ReportSource = 'user' | 'system';
+/** From the reason alone: 3 fraud or harm alleged, 2 misleading or offensive, 1 quality. */
+export type ReportSeverity = 1 | 2 | 3;
+
+/**
+ * At most one of job_id, company_id and agent_id is set — none once the
+ * target has been deleted, when target_type/target_id still say what it was.
+ */
 export type ReportRow = Timestamped & {
   id: string;
   job_id: string | null;
@@ -604,6 +644,147 @@ export type ReportRow = Timestamped & {
   resolved: boolean;
   resolved_by: string | null;
   resolved_at: string | null;
+  /** Migration 326; optional so code can run before it. */
+  target_type?: ReportTargetType;
+  target_id?: string;
+  target_snapshot?: ReportSnapshot;
+  source?: ReportSource;
+  abusive?: boolean;
+  severity?: ReportSeverity;
+};
+
+/** One reported thing and every open report about it (admin_report_cases). */
+export type AdminReportCase = {
+  target_type: ReportTargetType;
+  target_id: string;
+  label_ar: string | null;
+  label_en: string | null;
+  company_id: string | null;
+  company_name_ar: string | null;
+  company_name_en: string | null;
+  /** The target as it is now: a job status, suspended/listed, restricted/visibility, or deleted. */
+  target_state: string;
+  reports: number;
+  reporters: number;
+  open_reports: number;
+  investigating_reports: number;
+  system_flags: number;
+  max_severity: ReportSeverity;
+  reasons: ReportReason[];
+  first_at: string;
+  last_at: string;
+  fresh_reporters: number;
+  noisy_reporters: number;
+  employer_reporters: number;
+  report_ids: string[];
+  total_count: number;
+};
+
+/** A report with what a moderator needs to weigh the person who sent it (admin_report_rows). */
+export type AdminReportDetail = {
+  id: string;
+  target_type: ReportTargetType;
+  target_id: string;
+  target_live: boolean;
+  reason: ReportReason;
+  severity: ReportSeverity;
+  detail: string | null;
+  status: ReportStatus;
+  source: ReportSource;
+  abusive: boolean;
+  created_at: string;
+  resolved_at: string | null;
+  target_snapshot: ReportSnapshot;
+  reporter_id: string | null;
+  reporter_name: string | null;
+  reporter_role: UserRole | null;
+  reporter_since: string | null;
+  reporter_company_ar: string | null;
+  reporter_company_en: string | null;
+  reporter_filed: number;
+  reporter_dismissed: number;
+  reporter_abusive: number;
+  reporter_restricted: boolean;
+  total_count: number;
+};
+
+/** A text flag (migration 327): what raised it, and how much it weighs. */
+export type SafetyFlag = {
+  flag:
+    | 'asks_for_money'
+    | 'asks_for_documents'
+    | 'shortened_link'
+    | 'telegram_link'
+    | 'form_link'
+    | 'suspicious_link'
+    | 'whatsapp_link'
+    | 'external_link'
+    | 'phone_in_text'
+    | 'email_in_text'
+    | 'impersonation';
+  weight: 'high' | 'low';
+  evidence?: string;
+  kind?: 'developer' | 'company';
+};
+
+export type SignalCompanyRef = { id: string; name_ar: string; name_en: string | null; suspended: boolean };
+
+/** A company signal (migration 327). Each is a fact for review, never a verdict. */
+export type CompanySignal =
+  | { signal: 'mass_posting'; day: number; week: number }
+  | { signal: 'rejections'; count: number }
+  | { signal: 'duplicate_listings'; count: number }
+  | { signal: 'copied_listings'; companies: SignalCompanyRef[] }
+  | { signal: 'reported'; reporters: number; reports: number }
+  | { signal: 'company_text'; flags: SafetyFlag[] }
+  | { signal: 'flagged_listings'; count: number }
+  | { signal: 'shared_phone'; companies: SignalCompanyRef[] }
+  | { signal: 'phone_of_suspended_account'; count: number }
+  | { signal: 'shared_website'; site: string; companies: SignalCompanyRef[] };
+
+export type CompanySignals = {
+  signals: CompanySignal[];
+  facts: { new?: boolean; verified?: boolean; suspended?: boolean };
+};
+
+export type AppealSubjectType = 'job' | 'company' | 'account' | 'agent';
+export type AppealStatus = 'open' | 'upheld' | 'overturned';
+
+/** One message about one decision, and one answer (migration 328). */
+export type AppealRow = {
+  id: string;
+  subject_type: AppealSubjectType;
+  subject_id: string;
+  appellant_id: string | null;
+  message: string;
+  decision_snapshot: {
+    status?: string;
+    note?: string | null;
+    label_ar?: string | null;
+    label_en?: string | null;
+    suspended_at?: string;
+    restricted_at?: string;
+    company_id?: string;
+  };
+  status: AppealStatus;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+  created_at: string;
+};
+
+/** What the page offers about one decision (my_appeal_state, migration 328). */
+export type AppealState = {
+  appealable: boolean;
+  open: { id: string; created_at: string } | null;
+  last: { status: Exclude<AppealStatus, 'open'>; decided_at: string; note: string | null } | null;
+};
+
+/** A company's suspension reason, readable by its members and admins only (migration 327). */
+export type CompanyModerationRow = {
+  company_id: string;
+  suspension_reason: string | null;
+  updated_at: string;
 };
 
 /** One move of an application (migration 42). Written only by a trigger. */
@@ -1022,6 +1203,15 @@ export type Database = {
       admin_audit_log: Table<AdminAuditRow, never>;
       /** Written through admin_add_note(). */
       moderation_notes: Table<ModerationNoteRow, never>;
+      /** Admin-only, written through admin_set_reporting_restriction(). */
+      reporting_restrictions: Table<
+        { user_id: string; reason: string; restricted_by: string | null; created_at: string },
+        never
+      >;
+      /** Written through submit_appeal() and admin_decide_appeal() only. */
+      moderation_appeals: Table<AppealRow, never>;
+      /** Written by admin_set_company_suspension() only. */
+      company_moderation: Table<CompanyModerationRow, never>;
       email_suppressions: Table<
         EmailSuppressionRow,
         { email: string; reason: SuppressionReason; created_at?: string }
@@ -1221,6 +1411,71 @@ export type Database = {
         Args: { p_target_type: AuditTargetType; p_target_id: string; p_body: string };
         Returns: number;
       };
+      /** Moderation (migrations 326–328). Each checks is_admin() itself. */
+      admin_close_reports: {
+        Args: {
+          p_reports: string[];
+          p_status: Exclude<ReportStatus, 'open'>;
+          p_note?: string | null;
+          p_abusive?: boolean;
+        };
+        Returns: number;
+      };
+      admin_set_reporting_restriction: {
+        Args: { p_user: string; p_restrict: boolean; p_reason: string };
+        Returns: undefined;
+      };
+      admin_report_cases: {
+        Args: {
+          p_view?: 'new' | 'under_review';
+          p_type?: ReportTargetType | null;
+          p_reason?: ReportReason | null;
+          p_min_severity?: number | null;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_min_reporters?: number | null;
+          p_target?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: AdminReportCase[];
+      };
+      admin_report_rows: {
+        Args: {
+          p_ids?: string[] | null;
+          p_status?: ReportStatus | null;
+          p_type?: ReportTargetType | null;
+          p_reason?: ReportReason | null;
+          p_min_severity?: number | null;
+          p_from?: string | null;
+          p_to?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: AdminReportDetail[];
+      };
+      admin_job_signals: {
+        Args: { p_jobs: string[] };
+        Returns: { job_id: string; flags: SafetyFlag[]; company_id: string; company_signals: CompanySignals }[];
+      };
+      admin_company_signals: {
+        Args: { p_companies: string[] };
+        Returns: { company_id: string; flags: SafetyFlag[]; signals: CompanySignals }[];
+      };
+      admin_flagged_pending_jobs: { Args: { p_limit?: number }; Returns: string[] };
+      admin_decide_appeal: {
+        Args: { p_appeal: string; p_overturn: boolean; p_note?: string | null };
+        Returns: Exclude<AppealStatus, 'open'>;
+      };
+      submit_appeal: {
+        Args: { p_subject_type: AppealSubjectType; p_subject_id: string; p_message: string };
+        Returns: string;
+      };
+      my_appeal_state: {
+        Args: { p_subject_type: AppealSubjectType; p_subject_id: string };
+        Returns: AppealState;
+      };
+      my_account_note: { Args: Empty; Returns: string | null };
       admin_reveal_contact: {
         Args: { p_user: string; p_reason: string };
         Returns: { email: string | null; whatsapp_phone: string }[];

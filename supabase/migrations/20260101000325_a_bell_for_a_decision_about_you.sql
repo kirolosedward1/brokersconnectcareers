@@ -1,0 +1,29 @@
+-- =============================================================================
+-- 325 — A bell for a decision about you
+--
+-- The console can suspend a company, restrict a consultant's profile, put an
+-- account on hold and close somebody's report — and the person each decision
+-- is about heard nothing. A suspended company found out by having the listing
+-- form refuse it; a consultant found their profile missing from the
+-- directory; the candidate who reported a fake advert never learned whether
+-- anybody read it.
+--
+-- These are the kinds the moderation migrations write (326–328). They are
+-- added on their own because Postgres cannot use an enum value in the same
+-- transaction that created it — the pattern migrations 20 and 21 set.
+--
+-- Numbered after everything on main (324), which by now includes the two
+-- branches this one used to carry: the data lifecycle (203–204) and the
+-- operations console (316–320).
+-- =============================================================================
+
+-- rollback: forward-fix only — Postgres cannot remove a value from an enum; an unused value is harmless, and nothing writes these until 326–328
+-- safety: ships-with-code — safe in either order on its own: a new notification kind changes nothing until 326–328 write one
+
+alter type notification_kind add value if not exists 'report_reviewed';     -- reporter: we looked at it
+alter type notification_kind add value if not exists 'company_suspended';   -- company members
+alter type notification_kind add value if not exists 'company_restored';    -- company members
+alter type notification_kind add value if not exists 'profile_restricted';  -- consultant
+alter type notification_kind add value if not exists 'profile_restored';    -- consultant
+alter type notification_kind add value if not exists 'account_held';        -- the account holder
+alter type notification_kind add value if not exists 'appeal_decided';      -- whoever appealed

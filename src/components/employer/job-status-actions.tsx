@@ -45,7 +45,11 @@ export function JobStatusActions({
             ? t('postCapBlocked')
             : result.error === 'invalid_transition'
               ? t('listingMoved')
-              : tCommon('errorBody'),
+              : result.error === 'standing'
+                ? t('standingBlocked')
+                : result.error === 'company_suspended'
+                  ? t('companySuspendedBlocked')
+                  : tCommon('errorBody'),
         );
         return;
       }

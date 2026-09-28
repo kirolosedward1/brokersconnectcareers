@@ -170,6 +170,12 @@ export default async function AppLayout({
         badge: adminCounts?.reports_open,
       },
       {
+        href: '/admin/appeals',
+        label: tAdmin('appeals'),
+        icon: 'appeals',
+        badge: adminCounts?.appeals_open,
+      },
+      {
         href: '/admin/users',
         label: tAdmin('users'),
         icon: 'users',
