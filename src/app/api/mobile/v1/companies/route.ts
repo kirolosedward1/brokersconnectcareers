@@ -1,6 +1,7 @@
 import { publicRead } from '@/lib/mobile-api/http';
 import { queryCompanies } from '@/lib/queries/companies';
 import { getDistrictBySlug } from '@/lib/queries/taxonomy';
+import type { CompanyListResponse } from '@/lib/mobile-api/reads';
 
 /**
  * GET /api/mobile/v1/companies?q=&district=<slug>&verified=1&page= — the
@@ -19,5 +20,11 @@ export const GET = publicRead(async (request) => {
   const districtId = district ? (await getDistrictBySlug(district))?.id : undefined;
   const page = Math.min(500, Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1));
 
-  return queryCompanies({ q, districtId, verifiedOnly: params.get('verified') === '1', page });
+  const result: CompanyListResponse = await queryCompanies({
+    q,
+    districtId,
+    verifiedOnly: params.get('verified') === '1',
+    page,
+  });
+  return result;
 });

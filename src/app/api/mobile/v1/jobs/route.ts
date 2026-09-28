@@ -3,6 +3,7 @@ import { activeFilterList, JOBS_PER_PAGE, parseJobFilters } from '@/lib/job-filt
 import { countJobs, queryJobs } from '@/lib/queries/jobs';
 import { getCompanyBySlug } from '@/lib/queries/companies';
 import { createPublicClient } from '@/lib/supabase/public';
+import type { JobBoardResponse } from '@/lib/mobile-api/reads';
 
 /**
  * GET /api/mobile/v1/jobs?<the /jobs query string> — the job board.
@@ -64,5 +65,5 @@ export const GET = publicRead(async (request) => {
           verification_status: company.verification_status,
         }
       : null,
-  };
+  } satisfies JobBoardResponse;
 });

@@ -5,13 +5,11 @@ import { queryWords } from '@/lib/search/arabic';
 import { logFailure } from '@/lib/observe';
 import type { CompanyRow, DistrictRow, VerificationStatus } from '@/lib/supabase/database.types';
 import { LIST_SELECT, type JobListItem } from './jobs';
+import type { CompanyListItem, CompanyProfile } from '@/lib/read-types';
 
 export const COMPANIES_PER_PAGE = 24;
 
-export type CompanyListItem = CompanyRow & {
-  district: DistrictRow | null;
-  open_roles: { count: number }[];
-};
+export type { CompanyListItem, CompanyProfile } from '@/lib/read-types';
 
 export async function queryCompanies({
   q,
@@ -157,7 +155,6 @@ export async function queryCompanies({
   };
 }
 
-export type CompanyProfile = CompanyRow & { district: DistrictRow | null };
 
 /**
  * Cached per request: `generateMetadata`, the page body, and the banner the

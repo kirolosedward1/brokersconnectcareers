@@ -3,6 +3,7 @@ import { getViewer } from '@/lib/auth';
 import { canBrowseAgentDirectory } from '@/lib/permissions';
 import { mobileJson, searchParamsOf, withMobileAuth } from '@/lib/mobile-api/http';
 import { parseAgentFilters, queryAgents } from '@/lib/queries/agents';
+import type { AgentDirectoryResponse } from '@/lib/mobile-api/reads';
 
 /**
  * GET /api/mobile/v1/agents?q=&track=&district=&availability=&years=&page= —
@@ -22,5 +23,6 @@ export const GET = withMobileAuth(async (request: NextRequest) => {
   const viewer = await getViewer();
   if (!canBrowseAgentDirectory(viewer)) return mobileJson({ error: 'directory_denied' }, { status: 403 });
 
-  return mobileJson(await queryAgents(parseAgentFilters(searchParamsOf(request))));
+  const result: AgentDirectoryResponse = await queryAgents(parseAgentFilters(searchParamsOf(request)));
+  return mobileJson(result);
 });

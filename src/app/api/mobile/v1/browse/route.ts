@@ -1,5 +1,6 @@
 import { publicRead } from '@/lib/mobile-api/http';
 import { getBrowseCounts } from '@/lib/queries/browse';
+import type { BrowseResponse } from '@/lib/mobile-api/reads';
 
 /**
  * GET /api/mobile/v1/browse — the counts the home screen browses by: live
@@ -11,4 +12,4 @@ import { getBrowseCounts } from '@/lib/queries/browse';
  */
 export const dynamic = 'force-dynamic';
 
-export const GET = publicRead(async () => getBrowseCounts());
+export const GET = publicRead(async (): Promise<BrowseResponse> => getBrowseCounts());

@@ -1,5 +1,6 @@
 import { mobileJson, publicRead } from '@/lib/mobile-api/http';
 import { getCompanyBySlug, getCompanyOpenJobs } from '@/lib/queries/companies';
+import type { CompanyPageResponse } from '@/lib/mobile-api/reads';
 
 /**
  * GET /api/mobile/v1/companies/<slug> — a company's public page and its live
@@ -39,5 +40,5 @@ export const GET = publicRead<Context>(async (_request, { params }) => {
     },
     jobs,
     total,
-  };
+  } satisfies CompanyPageResponse;
 });

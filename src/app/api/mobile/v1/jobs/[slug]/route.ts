@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { mobileJson, withMobileAuth } from '@/lib/mobile-api/http';
-import { getJobBySlug, getSimilarJobs } from '@/lib/queries/jobs';
+import { getJobBySlug, getSimilarJobs, salaryReference } from '@/lib/queries/jobs';
+import type { JobDetailResponse } from '@/lib/mobile-api/reads';
 
 /**
  * GET /api/mobile/v1/jobs/<slug> — one listing, as its reader may see it.
@@ -25,8 +26,13 @@ export const GET = withMobileAuth<Context>(
     const job = await getJobBySlug(slug);
     if (!job) return mobileJson({ error: 'not_found' }, { status: 404 });
 
-    const similar = await getSimilarJobs(job);
-    return mobileJson({ job, similar });
+    // The page's own pair of reads, side by side as there: roles like this
+    // one, and what listings like it pay (null below five of them).
+    const [similar, reference] = await Promise.all([
+      getSimilarJobs(job),
+      salaryReference(job.track, job.district.governorate_id),
+    ]);
+    return mobileJson({ job, similar, reference } satisfies JobDetailResponse);
   },
   { optional: true },
 );

@@ -2,6 +2,7 @@ import { mobileJson, publicRead } from '@/lib/mobile-api/http';
 import { getLandingFacts } from '@/lib/queries/browse';
 import { getDistrictBySlug } from '@/lib/queries/taxonomy';
 import { parseLandingSlug } from '@/lib/taxonomy';
+import type { LandingResponse } from '@/lib/mobile-api/reads';
 
 /**
  * GET /api/mobile/v1/landing/<track>-<district> — the facts a track-in-a-district
@@ -30,5 +31,5 @@ export const GET = publicRead<Context>(async (_request, { params }) => {
       name_en: district.name_en,
     },
     facts: await getLandingFacts(parsed.track, district.id),
-  };
+  } satisfies LandingResponse;
 });

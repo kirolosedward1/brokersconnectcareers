@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { enabledProviders } from '@/lib/auth-providers';
 import { BILLING_ENABLED, configuredValue } from '@/lib/env';
 import { ENGLISH_ENABLED } from '@/lib/locale';
+import type { MobileConfig } from '@/lib/mobile-api/reads';
 
 /**
  * GET /api/mobile/v1/config — what the app needs to know before its first
@@ -27,7 +28,7 @@ export async function GET() {
       providers,
       englishEnabled: ENGLISH_ENABLED,
       billingEnabled: BILLING_ENABLED,
-    },
+    } satisfies MobileConfig,
     { headers: { 'cache-control': 'public, s-maxage=300, stale-while-revalidate=600' } },
   );
 }
