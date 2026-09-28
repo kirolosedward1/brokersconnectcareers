@@ -44,6 +44,9 @@ function TabBar() {
       <Tabs.Protected guard={tabs.includes('listings')}>
         <Tabs.Screen name="(listings)" />
       </Tabs.Protected>
+      <Tabs.Protected guard={tabs.includes('applicants')}>
+        <Tabs.Screen name="(applicants)" />
+      </Tabs.Protected>
       <Tabs.Screen name="(account)" />
     </Tabs>
   );
@@ -65,6 +68,8 @@ const tree = {
   '(tabs)/(applications)/dashboard/applications/index': screen('applications'),
   '(tabs)/(saved)/dashboard/saved/index': screen('saved'),
   '(tabs)/(listings)/employer/jobs/index': screen('listings'),
+  '(tabs)/(listings,applicants)/employer/jobs/[id]/applicants': screen('pipeline'),
+  '(tabs)/(applicants)/employer/applicants/index': screen('inbox'),
   '(tabs)/(account)/account/index': screen('account'),
   '(tabs)/(account)/account/delete': screen('delete'),
   '(tabs)/(account)/account/profile': screen('profile'),
@@ -184,6 +189,12 @@ describe("an employer's tab bar", () => {
   it.each([
     ['https://www.brokersconnect.net/employer', ['(tabs)', '(home)']],
     ['https://www.brokersconnect.net/employer/jobs', ['(tabs)', '(listings)', 'employer', 'jobs']],
+    // Where a new applicant's notification points.
+    [
+      'https://www.brokersconnect.net/employer/jobs/5b0c7d1e-0000-4000-8000-000000000301/applicants',
+      ['(tabs)', '(listings)', 'employer', 'jobs', '[id]', 'applicants'],
+    ],
+    ['https://www.brokersconnect.net/employer/applicants?stage=new', ['(tabs)', '(applicants)', 'employer', 'applicants']],
     // No board for an employer: a listing opens at home, the board itself is home.
     ['https://www.brokersconnect.net/jobs/sales-a1b2', ['(tabs)', '(home)', 'jobs', '[slug]']],
     ['https://www.brokersconnect.net/jobs?track=primary', ['(tabs)', '(home)']],
@@ -200,6 +211,15 @@ describe("an employer's tab bar", () => {
     expect(result.getSegments()).toEqual(['(tabs)', '(listings)', 'jobs', '[slug]']);
     act(() => router.back());
     expect(result.getSegments()).toEqual(['(tabs)', '(listings)', 'employer', 'jobs']);
+  });
+
+  it("opens a listing's applicants from the inbox inside Applicants, with the inbox under it", () => {
+    actor = employer;
+    const result = open('/employer/applicants');
+    act(() => router.push('/employer/jobs/5b0c7d1e-0000-4000-8000-000000000301/applicants'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(applicants)', 'employer', 'jobs', '[id]', 'applicants']);
+    act(() => router.back());
+    expect(result.getSegments()).toEqual(['(tabs)', '(applicants)', 'employer', 'applicants']);
   });
 
   it("sends a candidate who follows an employer's link home", () => {

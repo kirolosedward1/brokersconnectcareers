@@ -27,6 +27,7 @@ export const unstable_settings = {
   saved: { anchor: 'dashboard/saved/index' },
   account: { anchor: 'account/index' },
   listings: { anchor: 'employer/jobs/index' },
+  applicants: { anchor: 'employer/applicants/index' },
 };
 
 export default function TabStack() {

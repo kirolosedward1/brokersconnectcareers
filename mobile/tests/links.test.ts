@@ -94,6 +94,7 @@ describe('inOwnTab', () => {
     const tabs = tabsFor(employer);
     expect(inOwnTab('/employer/jobs', tabs)).toBe('/(listings)/employer/jobs');
     expect(inOwnTab('/employer/jobs/abc/edit', tabs)).toBe('/(listings)/employer/jobs/abc/edit');
+    expect(inOwnTab('/employer/applicants?stage=new', tabs)).toBe('/(applicants)/employer/applicants?stage=new');
     expect(inOwnTab('/employer/company', tabs)).toBe('/(account)/employer/company');
     expect(inOwnTab('/employer/billing', tabs)).toBe('/(account)/employer/billing');
     expect(inOwnTab('/jobs/sales-a1b2', tabs)).toBe('/(home)/jobs/sales-a1b2');

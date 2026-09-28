@@ -9,8 +9,8 @@ import { useTheme } from '~/theme/provider';
  * src/lib/permissions.ts). Signed out, it is the public site: home, the board,
  * the companies — and the account, where signing in starts. A candidate has
  * their console instead of the directory: applications and saved. An
- * employer has theirs: listings, applicants and the consultant directory,
- * with the overview at home and the company in the account.
+ * employer has theirs: listings and applicants, with the overview at home
+ * and the company in the account.
  *
  * A tab left out is `hidden`, which takes its screens out of the app for that
  * person altogether; links are routed with the same list (links.ts), so none

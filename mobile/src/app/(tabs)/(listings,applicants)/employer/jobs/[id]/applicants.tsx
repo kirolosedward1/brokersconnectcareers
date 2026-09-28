@@ -1,0 +1,135 @@
+import { Pressable, ScrollView, View } from 'react-native';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useLocale, useTranslations } from 'use-intl';
+import { localized } from '@/lib/locale';
+import { isSuspended } from '@/lib/permissions';
+import { ApplicantCard } from '~/components/employer/applicant-card';
+import { useApplicantContext } from '~/components/employer/applicant-context';
+import { Badge } from '~/components/ui/badge';
+import { Button } from '~/components/ui/button';
+import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
+import { Text } from '~/components/ui/text';
+import {
+  APPLICANTS_CAP,
+  STAGES,
+  useApplicantNotes,
+  useListingApplicants,
+  useMarkSeen,
+} from '~/features/employer/applicants';
+import { markupTags } from '~/i18n/rich';
+import { useSession } from '~/lib/session';
+import { useTheme } from '~/theme/provider';
+import { hitTarget, radius, space } from '~/theme/tokens';
+
+/**
+ * One listing's applicants — the website's /employer/jobs/<id>/applicants:
+ * the newest two hundred, grouped by where they stand, in the pipeline's
+ * order. Each is stamped as seen once it is on screen. Open from the listing
+ * console, from a notification about new applicants, and from the inbox.
+ */
+export default function ListingApplicantsScreen() {
+  const t = useTranslations();
+  const locale = useLocale();
+  const { colors } = useTheme();
+  const { id: raw } = useLocalSearchParams<{ id: string }>();
+  const id = typeof raw === 'string' ? raw : '';
+  const { session, viewer, actor } = useSession();
+  const pipeline = useListingApplicants(id);
+  const applicants = pipeline.data?.applicants;
+  const notes = useApplicantNotes((applicants ?? []).map((row) => row.id));
+  const context = useApplicantContext();
+  useMarkSeen(applicants);
+
+  const job = pipeline.data?.job ?? null;
+  const title = job ? localized(locale, job.title_ar, job.title_en) : t('employer.jobs');
+  const header = <Stack.Screen options={{ title }} />;
+
+  let body: React.ReactNode;
+  if (!session || !viewer?.profile) body = <LoadingState />;
+  else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (!viewer.company) body = <NotFoundState />;
+  else if (pipeline.isPending) body = <LoadingState />;
+  else if (pipeline.isError) body = <ErrorState error={pipeline.error} onRetry={() => pipeline.refetch()} />;
+  else if (!pipeline.data || !job) body = <NotFoundState />;
+  else if (pipeline.data.applicants.length === 0) {
+    body = (
+      <EmptyState
+        title={t('employer.noApplicants')}
+        body={t('employer.noApplicantsHint')}
+        action={
+          <View style={{ gap: space[2], alignSelf: 'stretch' }}>
+            <Button
+              label={t('employer.viewListing')}
+              variant="outline"
+              onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
+            />
+            <Button label={t('employer.allApplicants')} variant="ghost" onPress={() => router.navigate('/employer/applicants' as never)} />
+          </View>
+        }
+      />
+    );
+  } else {
+    const { total } = pipeline.data;
+    const rows = pipeline.data.applicants;
+    body = (
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
+      >
+        <Text tone="mutedForeground">{t.markup('employer.pipelineCount', { count: total, ...markupTags })}</Text>
+
+        {total > rows.length ? (
+          <View style={{ gap: space[1], padding: space[3], borderRadius: radius.lg, backgroundColor: colors.muted }}>
+            <Text variant="small">{t.markup('employer.applicantsCapped', { count: APPLICANTS_CAP, ...markupTags })}</Text>
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => router.navigate({ pathname: '/employer/applicants', params: { job: job.id } } as never)}
+              style={{ minHeight: hitTarget - 8, justifyContent: 'center' }}
+            >
+              <Text variant="small" weight="medium" tone="primary">
+                {t('employer.allApplicants')}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {STAGES.map((stage) => {
+          const inStage = rows.filter((row) => row.status === stage);
+          if (!inStage.length) return null;
+          return (
+            <View key={stage} style={{ gap: space[3] }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
+                <Text weight="semibold" accessibilityRole="header">
+                  {t(`applicationStatus.${stage}`)}
+                </Text>
+                <Badge label={String(inStage.length)} />
+              </View>
+              {inStage.map((row) => (
+                <ApplicantCard
+                  key={row.id}
+                  applicant={row}
+                  jobTitle={title}
+                  companyName={context.companyName}
+                  districtNames={context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
+                  notes={notes.data?.byApplication[row.id] ?? []}
+                  authors={notes.data?.authors ?? {}}
+                  viewerId={context.viewerId}
+                />
+              ))}
+            </View>
+          );
+        })}
+      </ScrollView>
+    );
+  }
+
+  return (
+    <>
+      {header}
+      {body}
+    </>
+  );
+}
