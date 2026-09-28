@@ -121,6 +121,15 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   right after a sign-in waits the same way (`open-path.ts`, `PendingPath`), so
   it is never asked of a tab bar not yet drawn for the account. A website page
   the app has no screen for offers to open it in the in-app browser.
+- **A candidate's Home** is their overview, the website's `/dashboard`: where
+  the account stands when it is held or suspended (`my_account_note`, with the
+  appeal panel), the one next action by the website's rule (a reply, else a
+  profile under 60%), the `candidate_summary` figures — each a way to where it
+  can be changed — the latest three applications, and three roles from the
+  board's first page ranked by `rankJobs` with the reasons named (nothing
+  already applied to, and newest-first said to be only that). A read that
+  failed never says "start here". Then the ways into the board and the
+  directory, which a candidate's tab bar has no tab for.
 - **Saved.** Bookmarks, saved searches and follows are the website's rows and
   actions (`toggleSavedJob`, `saveSearch`, `setSearchAlerts`,
   `deleteSavedSearch`, `followCompany` / `unfollowCompany`): offered to a

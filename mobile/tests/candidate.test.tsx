@@ -64,6 +64,7 @@ const JOB = {
 function application(overrides: Partial<CandidateApplication> = {}): CandidateApplication {
   return {
     id: 'a0000000-0000-4000-8000-000000000001',
+    job_id: 'b0000000-0000-4000-8000-000000000001',
     status: 'new',
     created_at: '2026-09-20T10:00:00Z',
     decision_note: null,

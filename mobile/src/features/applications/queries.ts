@@ -21,6 +21,7 @@ export function canWithdraw(status: ApplicationStatus): boolean {
 
 export type CandidateApplication = {
   id: string;
+  job_id: string;
   status: ApplicationStatus;
   created_at: string;
   decision_note: string | null;
@@ -38,7 +39,8 @@ export type CandidateApplication = {
 
 /**
  * Every application this candidate has made, newest first — the website's
- * /dashboard/applications read, column for column. Scoped to the candidate
+ * /dashboard/applications read, column for column (and the job's id, which
+ * the Home tab's suggestions leave out). Scoped to the candidate
  * explicitly, with row-level security still behind it: the policies alone are
  * an OR no index can serve.
  */
@@ -54,7 +56,7 @@ export function useMyApplications() {
         .from('applications')
         .select(
           `
-          id, status, created_at, decision_note, employer_viewed_at,
+          id, job_id, status, created_at, decision_note, employer_viewed_at,
           job:jobs (
             slug, status, expires_at, title_ar, title_en,
             company:companies (name_ar, name_en, slug),
