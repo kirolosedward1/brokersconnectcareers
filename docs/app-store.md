@@ -102,8 +102,8 @@ Then, in the notes:
 ## Before the first submission (the owner)
 
 - Apple Developer Program membership (an organisation needs a D-U-N-S
-  number) and an Expo account; `npx eas-cli@latest init`, and `EAS_PROJECT_ID`
-  set for builds.
+  number) and an Expo account; `npx eas-cli@latest init`, and the project id
+  it prints written into `mobile/app.config.ts` (docs/mobile.md, Releasing).
 - An APNs key uploaded with `npx eas-cli@latest credentials`.
 - The Sign in with Apple key and Services ID, and the Apple provider on in
   Supabase (docs/mobile.md, Configuration).

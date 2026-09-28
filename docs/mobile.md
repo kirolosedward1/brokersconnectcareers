@@ -435,8 +435,10 @@ distribution) and `production` (App Store, build number incremented remotely).
 Before the first build:
 
 - an Apple Developer Program membership (an organisation needs a D-U-N-S number)
-  and an Expo account; `npx eas-cli@latest init` then writes the project id
-  (set it as `EAS_PROJECT_ID` for builds: push tokens are issued for it);
+  and an Expo account; `npx eas-cli@latest init` prints the project id, which
+  goes into `mobile/app.config.ts` (`EAS_PROJECT_ID`, in place of null). Push
+  tokens are issued for it, and the build server reads that file again, so an
+  id set only in a local shell leaves a build that cannot register for pushes;
 - an APNs key for pushes, uploaded with `npx eas-cli@latest credentials`
   (Expo sends to Apple with it);
 - confirm the bundle identifier `net.brokersconnect.app` — it cannot change once

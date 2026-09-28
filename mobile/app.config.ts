@@ -15,6 +15,15 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? 'https://www.brokersconnect.net';
 const SITE_HOST = new URL(SITE_URL).host;
 
+/**
+ * The EAS project's id: `npx eas-cli@latest init` prints it, and it goes here
+ * in place of null. It is not a secret. Push tokens are issued for it, and the
+ * build server reads this file again, so an id kept only in a local shell
+ * never reaches a build. EAS_PROJECT_ID overrides it, for a fork's own project.
+ */
+const EAS_PROJECT_ID: string | null = null;
+const easProjectId = process.env.EAS_PROJECT_ID || EAS_PROJECT_ID;
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Brokers Connect',
@@ -135,7 +144,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     ...config.extra,
-    // Set by `eas init` (EAS_PROJECT_ID in the environment, or written here).
-    eas: process.env.EAS_PROJECT_ID ? { projectId: process.env.EAS_PROJECT_ID } : undefined,
+    eas: easProjectId ? { projectId: easProjectId } : undefined,
   },
 });
