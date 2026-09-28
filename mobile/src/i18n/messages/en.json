@@ -64,5 +64,12 @@
   "applications": {
     "withdrawTitle": "Withdraw your application to “{title}”?",
     "withdrawBody": "The company will no longer see it. This cannot be undone."
+  },
+  "apply": {
+    "pickCv": "Choose a file",
+    "pickAnother": "Choose another file",
+    "profileCv": "The CV on your profile",
+    "useProfileCv": "Use the CV on your profile",
+    "removeCv": "Remove the file"
   }
 }

@@ -51,6 +51,7 @@ const tree = {
   '(tabs)/_layout': TabBar,
   [`${SHARED}/_layout`]: { default: () => <Stack />, unstable_settings },
   [`${SHARED}/jobs/[slug]`]: screen('job'),
+  [`${SHARED}/jobs/[slug]/apply`]: screen('apply'),
   [`${SHARED}/companies/[slug]`]: screen('company'),
   [`${SHARED}/companies/index`]: screen('directory'),
   [`${SHARED}/notifications`]: screen('notifications'),
@@ -88,6 +89,8 @@ describe('links from the website', () => {
     ['https://www.brokersconnect.net/', ['(tabs)', '(home)']],
     ['https://www.brokersconnect.net/jobs?track=primary', ['(tabs)', '(jobs)', 'jobs']],
     ['https://www.brokersconnect.net/jobs/sales-a1b2?src=share', ['(tabs)', '(jobs)', 'jobs', '[slug]']],
+    // The website's sign-in comes back to the form with this; it asks who is applying itself.
+    ['https://www.brokersconnect.net/jobs/sales-a1b2/apply', ['(tabs)', '(jobs)', 'jobs', '[slug]', 'apply']],
     ['https://www.brokersconnect.net/companies', ['(tabs)', '(companies)', 'companies']],
     ['https://www.brokersconnect.net/en/companies/nile', ['(tabs)', '(companies)', 'companies', '[slug]']],
     ['https://www.brokersconnect.net/blog/how-commission-works', ['+not-found']],

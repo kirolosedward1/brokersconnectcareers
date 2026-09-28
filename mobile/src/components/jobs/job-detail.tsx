@@ -7,6 +7,7 @@ import type { JobDetailResponse } from '@/lib/mobile-api/reads';
 import { formatDate, formatNumber } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
+import { isApproved, isCandidate } from '@/lib/permissions';
 import { withShareSource } from '@/lib/share-source';
 import { buildLandingSlug } from '@/lib/taxonomy';
 import { CompanyLogo } from '~/components/companies/company-logo';
@@ -55,7 +56,7 @@ export function JobDetail({
   const tLanding = useTranslations('landing');
   const tApply = useTranslations('apply');
   const { colors } = useTheme();
-  const { viewer } = useSession();
+  const { session, viewer, actor } = useSession();
 
   const open = jobIsLive(job);
   const title = localized(locale, job.title_ar, job.title_en);
@@ -191,12 +192,31 @@ export function JobDetail({
             </Text>
           </Card>
         ) : applied ? (
-          <Card>
+          <Card style={{ gap: space[3] }}>
             <Text variant="small" weight="medium" tone="success">
               {tApply('alreadyApplied')}
             </Text>
+            <Button label={tApply('viewApplications')} variant="outline" onPress={() => router.navigate('/dashboard/applications')} />
           </Card>
-        ) : null}
+        ) : isCandidate(actor) && !isApproved(actor) ? (
+          // The database would refuse the application; say why before the form.
+          <Card style={{ gap: space[1] }}>
+            <Text weight="semibold">{tApply('suspendedTitle')}</Text>
+            <Text variant="small" tone="mutedForeground">
+              {tApply('suspendedBody')}
+            </Text>
+          </Card>
+        ) : (
+          <Button
+            label={t('apply')}
+            size="lg"
+            onPress={() =>
+              session
+                ? router.push({ pathname: '/jobs/[slug]/apply', params: { slug: job.slug } })
+                : router.push({ pathname: '/sign-in', params: { next: `/jobs/${job.slug}/apply` } })
+            }
+          />
+        )}
 
         {/* A bookmark is a candidate's; somebody signed out is sent to sign in. */}
         <SaveJobButton jobId={job.id} slug={job.slug} />

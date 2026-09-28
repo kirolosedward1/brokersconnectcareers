@@ -13,7 +13,13 @@
  * So the browser's answer is trusted when it gives one, and the extension
  * decides when it does not. The buckets still enforce their lists: this only
  * names a file the browser failed to, it cannot make a PDF out of anything.
+ *
+ * Only a name and a reported type are read, so the mobile app's picked
+ * documents (a name and a MIME type, no File) are named by the same rules.
  */
+
+/** What these rules read of a file: a browser File, or a picked document's name and type. */
+export type NamedFile = { name: string; type: string };
 const BY_EXTENSION: Record<string, string> = {
   pdf: 'application/pdf',
   doc: 'application/msword',
@@ -40,7 +46,7 @@ const EXTENSION_BY_TYPE: Record<string, string> = {
   'image/webp': 'webp',
 };
 
-export function fileType(file: File): string {
+export function fileType(file: NamedFile): string {
   const reported = file.type.toLowerCase();
   if (reported && reported !== 'application/octet-stream') return ALIASES[reported] ?? reported;
 
@@ -55,6 +61,6 @@ export function fileType(file: File): string {
  * over `image:1000012345` with no extension at all, which used to become the
  * storage path's suffix verbatim.
  */
-export function fileExtension(file: File, fallback: string): string {
+export function fileExtension(file: NamedFile, fallback: string): string {
   return EXTENSION_BY_TYPE[fileType(file)] ?? fallback;
 }

@@ -64,5 +64,12 @@
   "applications": {
     "withdrawTitle": "تسحب طلبك على «{title}»؟",
     "withdrawBody": "الطلب هيتشال من عند الشركة، ومفيش رجوع في الخطوة دي."
+  },
+  "apply": {
+    "pickCv": "اختار ملف",
+    "pickAnother": "اختار ملف تاني",
+    "profileCv": "السيرة الذاتية اللي على ملفك",
+    "useProfileCv": "استخدم السيرة اللي على ملفك",
+    "removeCv": "شيل الملف"
   }
 }

@@ -127,6 +127,15 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   candidate and, as a way into an account, to somebody signed out; shown at
   once and put back if the server refuses. A follow is a saved search with
   one filter, so the ten-row cap and the weekly email are shared.
+- **Applying** is `/jobs/<slug>/apply`, the website's path, so a sign-in that
+  began with "apply" comes back to it. The page shows the website's states in
+  its order (closed, signed out, not a candidate, held or suspended — told
+  before the form, since the database would refuse them — already applied,
+  read rather than guessed) and then the form. A CV is either the one on the
+  candidate's profile or a PDF/Word file picked on the phone and uploaded to
+  `cvs/<uid>/<uuid>.<ext>` first (the file's type from `src/lib/file-type.ts`);
+  `applyToJob` then sniffs it, and any refusal takes the upload back out. The
+  confirmation offers two more roles ranked by `rankJobs`.
 - **The bell** sits at the end of each tab's first screen with the unread
   count, read like everything else about the person straight from Supabase.
   Its feed pages by `(created_at, id)` as the website's does, marks read up to

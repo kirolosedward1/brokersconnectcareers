@@ -28,7 +28,13 @@ export function fakeServer() {
     }
     requests.push({ method, url, body });
 
-    const handler = routes.get(`${method} ${url.pathname}`) ?? routes.get(url.pathname);
+    const handler =
+      routes.get(`${method} ${url.pathname}`) ??
+      routes.get(url.pathname) ??
+      // `METHOD /prefix/*` answers every path under the prefix (an upload's random name).
+      [...routes.entries()].find(
+        ([route]) => route.endsWith('*') && `${method} ${url.pathname}`.startsWith(route.slice(0, -1)),
+      )?.[1];
     if (!handler) return new Response(JSON.stringify({ error: 'not_found' }), { status: 404 });
     const answer = handler(url, init);
     const { status, body: payload, headers } =
@@ -44,7 +50,10 @@ export function fakeServer() {
   return {
     fetch,
     requests,
-    /** `path` or `METHOD path`, answered with a fixture or a function of the request. */
+    /**
+     * `path` or `METHOD path`, answered with a fixture or a function of the
+     * request; `METHOD /prefix/*` answers everything under the prefix.
+     */
     on(route: string, handler: Handler | object) {
       routes.set(route, typeof handler === 'function' ? (handler as Handler) : () => handler);
     },
