@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Alert, type AlertButton } from 'react-native';
+import { Alert, RefreshControl, type AlertButton } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -197,6 +197,68 @@ describe("the company's page, for a company admin", () => {
     expect(await screen.findByText(ar.employer.companyMoved)).toBeTruthy();
   });
 
+  it('keeps what is typed when a logo or a paper moves the version, and saves it on the new one', async () => {
+    // What the database does on each: the row changes, and bump_version() moves the version.
+    server.on('POST /api/mobile/v1/actions/uploadImage', () => {
+      company = { ...(company as CompanyRow), logo_url: 'https://example/logo.webp', version: 4 };
+      return { ok: true, data: { url: 'https://example/logo.webp' } };
+    });
+    server.on('POST /api/mobile/v1/actions/recordCompanyDocument', () => {
+      // company_review_state(): a paper in moves an unverified company to pending (migration 44).
+      company = { ...(company as CompanyRow), verification_status: 'pending', version: 5 };
+      return { ok: true };
+    });
+    server.on('POST /api/mobile/v1/actions/saveCompany', () => {
+      company = { ...(company as CompanyRow), about_ar: typed, version: 6 };
+      return { ok: true, data: { id: baseCompany.id } };
+    });
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///library/logo.png', width: 600, height: 300 }],
+    } as ImagePicker.ImagePickerResult);
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///cache/card.pdf', name: 'card.pdf', mimeType: 'application/pdf', size: 4096, lastModified: 0 }],
+    } as DocumentPicker.DocumentPickerResult);
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    const typed = 'نبذة جديدة لسه ما اتحفظتش';
+    fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), typed);
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.logoUpload }));
+    // The viewer is read again, with the logo, at version 4.
+    expect(await screen.findByRole('button', { name: `${ar.common.delete}: ${ar.employer.logo}` })).toBeTruthy();
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
+
+    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.taxCard}` }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/recordCompanyDocument')).toHaveLength(1));
+    // Read again at version 5; the form is the one it was.
+    await waitFor(() => expect(server.asked('/rest/v1/companies')).toHaveLength(3));
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
+
+    fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/saveCompany')).toMatchObject({ aboutAr: typed }));
+    expect([4, 5]).toContain(input('/api/mobile/v1/actions/saveCompany')?.version);
+    // Its own save coming back at version 6 leaves the form, and the word that it saved, where they are.
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+    await waitFor(() => expect(server.asked('/rest/v1/companies')).toHaveLength(4));
+    await waitFor(() => expect(screen.getByText(ar.common.saveSuccess)).toBeTruthy());
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
+  });
+
+  it("shows a colleague's version once the save it overtook is refused", async () => {
+    server.on('POST /api/mobile/v1/actions/saveCompany', () => ({ ok: false, error: 'stale' }));
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), 'ما كتبته أنا');
+    // A colleague saves in between.
+    company = { ...(company as CompanyRow), about_ar: 'ما كتبه الزميل', version: 4 };
+    fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
+
+    expect(await screen.findByText(ar.employer.companyMoved)).toBeTruthy();
+    expect(input('/api/mobile/v1/actions/saveCompany')).toMatchObject({ version: 3 });
+    await waitFor(() => expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe('ما كتبه الزميل'));
+  });
+
   it('refuses an address that is not http(s) before sending anything', async () => {
     renderRouter(app, { initialUrl: '/employer/company' });
     fireEvent.changeText(await screen.findByLabelText(ar.companies.website), 'javascript:alert(1)');
@@ -275,6 +337,47 @@ describe("the company's page, for a recruiter", () => {
     expect(screen.queryByLabelText(ar.companies.nameAr) === null).toBe(true);
     expect(screen.queryByText(ar.employer.verification) === null).toBe(true);
     expect(screen.queryByLabelText(ar.employer.teamEmail) === null).toBe(true);
+  });
+});
+
+describe('a company that could not be read', () => {
+  it('is never offered the form that makes one, which would overwrite it', async () => {
+    // The membership call drops; it is a POST, so nothing retries it underneath.
+    server.on('POST /rest/v1/rpc/my_company_id', () => {
+      throw new TypeError('Network request failed');
+    });
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    expect(await screen.findByText(ar.app.offline.title)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.companies.nameAr)).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.employer.createCompanyFirst })).toBeNull();
+
+    server.on('POST /rest/v1/rpc/my_company_id', () => baseCompany.id);
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
+    await waitFor(() => expect(screen.getByLabelText(ar.companies.nameAr).props.value).toBe(baseCompany.name_ar));
+    expect(server.asked('/api/mobile/v1/actions/saveCompany')).toHaveLength(0);
+  });
+
+  it('keeps the page, and what is typed on it, when a read in the background fails', async () => {
+    renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), 'نص بكتبه');
+
+    let failed = 0;
+    server.on('/rest/v1/profiles', () => {
+      failed += 1;
+      throw new TypeError('Network request failed');
+    });
+    await act(async () => {
+      await screen.UNSAFE_getByType(RefreshControl).props.onRefresh();
+    });
+    await waitFor(() => expect(failed).toBe(1));
+    // Let the failed read land: TanStack tells the screens on a timer (fake, under renderRouter).
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe('نص بكتبه');
+    expect(screen.queryByText(ar.app.offline.title)).toBeNull();
   });
 });
 

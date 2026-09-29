@@ -33,7 +33,7 @@ export default function ProfilePreviewScreen() {
       </>
     );
   }
-  if (profile.isError) {
+  if (profile.isError && !profile.data) {
     return (
       <>
         {header}

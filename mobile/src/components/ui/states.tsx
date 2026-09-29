@@ -1,7 +1,7 @@
 import { ActivityIndicator, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { ApiError } from '~/lib/api';
+import { ApiError, noAnswer } from '~/lib/api';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
@@ -51,7 +51,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
   const status = error instanceof ApiError ? error.status : -1;
 
   const [title, body] =
-    status === 0
+    noAnswer(error)
       ? [t('app.offline.title'), t('app.offline.body')]
       : status === 503
         ? [t('app.unavailable.title'), t('app.unavailable.body')]

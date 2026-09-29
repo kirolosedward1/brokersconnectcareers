@@ -63,7 +63,9 @@ export default function ApplyScreen() {
       </>
     );
   }
-  if (job.isError) {
+  // A failed re-read in the background must not take the form away: only a
+  // first read that failed is an error page (TanStack keeps the data beside the error).
+  if (job.isError && !job.data) {
     return (
       <>
         {header}
@@ -144,7 +146,7 @@ function Apply({ job }: { job: JobDetail }) {
   }
 
   if (context.isPending) return <LoadingState />;
-  if (context.isError) return <ErrorState error={context.error} onRetry={() => context.refetch()} />;
+  if (context.isError && !context.data) return <ErrorState error={context.error} onRetry={() => context.refetch()} />;
 
   if (context.data.existing) {
     return (

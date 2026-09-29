@@ -5,7 +5,7 @@ import type { ApplyInput } from '@/lib/mobile-api/contract';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
 import { CvUploadFailed, removeCv, uploadCv, type PickedCv } from '~/features/cv/files';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
-import { callAction, getJson } from '~/lib/api';
+import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -18,7 +18,9 @@ import { supabase } from '~/lib/supabase';
  * not bytes — and the website's action then reads its first bytes and refuses
  * anything that is not really a PDF or a Word file. Every refusal after the
  * upload takes the file back out, so nothing sits in the bucket with nothing
- * pointing at it. A CV already on the candidate's profile can be sent instead:
+ * pointing at it — but a call that got no answer leaves it where it is, since
+ * the application may have gone in with it, and asks the database whether it
+ * did. A CV already on the candidate's profile can be sent instead:
  * it is in the same folder, and withdrawing never deletes a file the profile
  * still uses.
  */
@@ -67,6 +69,17 @@ export function useApplyContext(jobId: string | null) {
   });
 }
 
+/** Whether this candidate's application to the listing is in; a read that fails is "not known to be". */
+async function applied(jobId: string, candidateId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('applications')
+    .select('id')
+    .eq('job_id', jobId)
+    .eq('candidate_id', candidateId)
+    .maybeSingle();
+  return !error && Boolean(data);
+}
+
 export function useApplyToJob() {
   const queryClient = useQueryClient();
   const userId = useSession().session?.user.id ?? null;
@@ -86,7 +99,15 @@ export function useApplyToJob() {
       try {
         result = await callAction('applyToJob', { ...input, cvPath });
       } catch (error) {
-        if (uploaded) await removeCv(uploaded);
+        if (refusedAtTheDoor(error)) {
+          if (uploaded) await removeCv(uploaded);
+          throw error;
+        }
+        // No answer: the application may have gone in and only the answer been
+        // lost. What the database holds decides, and the file stays either way —
+        // it may be the one the application points at, and the storage clean-up
+        // takes one that nothing points at after a day.
+        if (await applied(input.jobId, userId)) return;
         throw error;
       }
       if (!result.ok) {
@@ -99,6 +120,10 @@ export function useApplyToJob() {
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       queryClient.invalidateQueries({ queryKey: ['jobs', 'applied'] });
       queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      // The website's action keeps the name and number typed here on the account
+      // too; the profile form starts from the account's, and would put the old
+      // ones back on its next save.
+      queryClient.invalidateQueries({ queryKey: ['viewer'] });
     },
   });
 }

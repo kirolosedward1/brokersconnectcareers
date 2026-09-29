@@ -187,6 +187,67 @@ describe('the form', () => {
     await waitFor(() => expect(bodyOf('/storage/v1/object/cvs')).toEqual({ prefixes: [path] }));
   });
 
+  it('keeps the CV when the answer is lost, and confirms once the database says the application went in', async () => {
+    server.on('GET /rest/v1/agent_profiles', []);
+    let recorded = false;
+    server.on('GET /rest/v1/applications', () => (recorded ? [{ id: 'a-1', created_at: '2026-09-29T10:00:00Z' }] : []));
+    // The website writes the application, and its answer never reaches the
+    // phone: the app suspended in the background, a lift, Wi-Fi to mobile data.
+    server.on('POST /api/mobile/v1/actions/applyToJob', () => {
+      recorded = true;
+      throw new TypeError('Network request failed');
+    });
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
+    await signedIn();
+    renderRouter(app, { initialUrl: APPLY });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
+    expect(await screen.findByText('cv.pdf')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+
+    expect(await screen.findByText(ar.apply.success)).toBeTruthy();
+    expect(uploads()).toHaveLength(1);
+    expect(server.asked('/storage/v1/object/cvs')).toHaveLength(0);
+  });
+
+  it('keeps the CV when neither the answer nor the database can be reached, and says it did not go through', async () => {
+    server.on('GET /rest/v1/agent_profiles', []);
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
+    await signedIn();
+    renderRouter(app, { initialUrl: APPLY });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
+    expect(await screen.findByText('cv.pdf')).toBeTruthy();
+    server.on('POST /api/mobile/v1/actions/applyToJob', () => {
+      throw new TypeError('Network request failed');
+    });
+    server.on('GET /rest/v1/applications', () => {
+      throw new TypeError('Network request failed');
+    });
+    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    // The form is still there, with the file, for another try.
+    expect(screen.getByText('cv.pdf')).toBeTruthy();
+    expect(server.asked('/storage/v1/object/cvs')).toHaveLength(0);
+  });
+
+  it('takes the CV back out when the website turns the request away before the action runs', async () => {
+    server.on('GET /rest/v1/agent_profiles', []);
+    server.on('POST /api/mobile/v1/actions/applyToJob', { status: 413, body: { error: 'too_large' } });
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
+    await signedIn();
+    renderRouter(app, { initialUrl: APPLY });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
+    expect(await screen.findByText('cv.pdf')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    const path = uploads()[0].url.pathname.replace('/storage/v1/object/cvs/', '');
+    await waitFor(() => expect(bodyOf('/storage/v1/object/cvs')).toEqual({ prefixes: [path] }));
+  });
+
   it('refuses a file that is too big, or is not a CV, before anything is sent', async () => {
     server.on('GET /rest/v1/agent_profiles', []);
     await signedIn();

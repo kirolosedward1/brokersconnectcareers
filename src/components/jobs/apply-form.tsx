@@ -144,8 +144,13 @@ export function ApplyForm({
           the upload, so removing it needs no privilege the browser did not
           already have. A failure here is not worth reporting: the person is
           already being told the application did not go through.
+
+          Except when no answer came back at all ('network'): the application
+          may have gone in with this file and only the answer been lost, and
+          taking the file out would leave it pointing at nothing. The storage
+          clean-up removes a file nothing points at after a day.
         */
-        if (cvPath) {
+        if (cvPath && result.error !== 'network') {
           await createClient().storage.from(CV_BUCKET).remove([cvPath]);
         }
 

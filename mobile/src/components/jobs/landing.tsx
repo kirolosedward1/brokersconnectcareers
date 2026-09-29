@@ -40,7 +40,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const hasBoard = useHasBoard();
 
   if (landing.isPending) return <LoadingState />;
-  if (landing.isError) {
+  if (landing.isError && !landing.data) {
     return <ErrorState error={landing.error} onRetry={() => landing.refetch()} />;
   }
 

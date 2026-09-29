@@ -24,6 +24,16 @@ export default function JobOrLandingScreen() {
   if (parsed && landing.data) {
     return <TrackDistrictLanding slug={slug} track={parsed.track} districtSlug={parsed.districtSlug} />;
   }
+  // Only "no such district" makes it a listing's address; a landing that could
+  // not be read is not a listing that does not exist.
+  if (parsed && landing.isError && !(landing.error instanceof ApiError && landing.error.status === 404)) {
+    return (
+      <>
+        <Stack.Screen options={{ title: '' }} />
+        <ErrorState error={landing.error} onRetry={() => landing.refetch()} />
+      </>
+    );
+  }
   return <Job slug={slug} />;
 }
 
@@ -31,7 +41,8 @@ function Job({ slug }: { slug: string }) {
   const job = useJob(slug);
 
   if (job.isPending) return <Loading />;
-  if (job.isError) {
+  // A failed re-read keeps what is on screen; only a first read that failed is an error page.
+  if (job.isError && !job.data) {
     return (
       <>
         <Stack.Screen options={{ title: '' }} />

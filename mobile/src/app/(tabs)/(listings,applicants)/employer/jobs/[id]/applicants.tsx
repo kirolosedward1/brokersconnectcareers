@@ -50,7 +50,7 @@ export default function ListingApplicantsScreen() {
   else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) body = <NotFoundState />;
   else if (pipeline.isPending) body = <LoadingState />;
-  else if (pipeline.isError) body = <ErrorState error={pipeline.error} onRetry={() => pipeline.refetch()} />;
+  else if (pipeline.isError && !pipeline.data) body = <ErrorState error={pipeline.error} onRetry={() => pipeline.refetch()} />;
   else if (!pipeline.data || !job) body = <NotFoundState />;
   else if (pipeline.data.applicants.length === 0) {
     body = (

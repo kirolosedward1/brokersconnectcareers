@@ -74,7 +74,7 @@ export default function ListingsScreen() {
     );
   } else if (listings.isPending) {
     body = <LoadingState />;
-  } else if (listings.isError) {
+  } else if (listings.isError && !listings.data) {
     // Never "post your first listing" to a company whose listings could not be read.
     body = <ErrorState error={listings.error} onRetry={() => listings.refetch()} />;
   } else {

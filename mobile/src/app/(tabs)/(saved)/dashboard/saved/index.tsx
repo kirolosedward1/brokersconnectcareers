@@ -47,7 +47,7 @@ export default function SavedScreen() {
     );
   } else if (jobs.isPending || searches.isPending) {
     body = <LoadingState />;
-  } else if (jobs.isError || searches.isError) {
+  } else if ((jobs.isError && !jobs.data) || (searches.isError && !searches.data)) {
     body = (
       <ErrorState
         error={jobs.error ?? searches.error}

@@ -39,7 +39,7 @@ export default function CompanyScreen() {
   else if (!canAccessEmployerArea(actor)) body = <EmptyState title={t('common.notFound')} body={t('common.notFoundBody')} />;
   else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (company && page.isPending) body = <LoadingState />;
-  else if (company && page.isError) body = <ErrorState error={page.error} onRetry={() => page.refetch()} />;
+  else if (company && page.isError && !page.data) body = <ErrorState error={page.error} onRetry={() => page.refetch()} />;
   else {
     const isAdmin = page.data?.isAdmin ?? false;
     body = (
@@ -69,8 +69,8 @@ export default function CompanyScreen() {
             logoUrl={company.logo_url}
           />
         ) : null}
-        {/* Keyed on the version: a save (or a colleague's, read on refresh) starts the form from what is stored. */}
-        {isAdmin || !company ? <CompanyForm key={company ? `${company.id}:${company.version}` : 'new'} company={company} /> : null}
+        {/* Keyed on the company, not its version: a logo or a paper moves the version, and must not wipe what is being typed. */}
+        {isAdmin || !company ? <CompanyForm key={company?.id ?? 'new'} company={company} /> : null}
         {company && isAdmin ? (
           <VerificationPanel companyId={company.id} status={company.verification_status} documents={page.data?.documents ?? []} />
         ) : null}

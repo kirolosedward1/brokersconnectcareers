@@ -42,6 +42,8 @@ type SessionState = {
   session: Session | null;
   viewer: Viewer | null;
   viewerLoading: boolean;
+  /** Why the viewer is unreadable, when it is: offline reads as offline. */
+  viewerError: unknown;
   actor: Actor;
   /**
    * The account has an authenticator and this session has not used it yet
@@ -53,15 +55,26 @@ type SessionState = {
 
 const SessionContext = createContext<SessionState | null>(null);
 
+/**
+ * Throws when any part could not be read. A read that failed is not "no
+ * profile" or "no company": answered as those, it sent an employer whose
+ * company call dropped to the create-company form, and a failed re-read in the
+ * background swapped a half-typed form for the loading screen. Thrown, the
+ * query keeps the last good answer, and only a first read with nothing to keep
+ * becomes the unreadable viewer (below).
+ */
 export async function loadViewer(session: Session): Promise<Viewer> {
   const user = session.user;
   const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+  if (error) throw error;
 
   let company: CompanyRow | null = null;
   if (profile?.role === 'employer' || profile?.role === 'admin') {
-    const { data: companyId } = await supabase.rpc('my_company_id');
+    const { data: companyId, error: membershipError } = await supabase.rpc('my_company_id');
+    if (membershipError) throw membershipError;
     if (companyId) {
-      const { data } = await supabase.from('companies').select('*').eq('id', companyId).maybeSingle();
+      const { data, error: companyError } = await supabase.from('companies').select('*').eq('id', companyId).maybeSingle();
+      if (companyError) throw companyError;
       company = (data as CompanyRow | null) ?? null;
     }
   }
@@ -71,8 +84,13 @@ export async function loadViewer(session: Session): Promise<Viewer> {
     email: user.email ?? null,
     profile: (profile as ProfileRow | null) ?? null,
     company,
-    profileUnreadable: Boolean(error),
+    profileUnreadable: false,
   };
+}
+
+/** The viewer for a session whose first read failed: kept apart from one with no profile, as the website does. */
+function unreadableViewer(session: Session): Viewer {
+  return { userId: session.user.id, email: session.user.email ?? null, profile: null, company: null, profileUnreadable: true };
 }
 
 /**
@@ -175,7 +193,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [known]);
 
   const value = useMemo<SessionState>(() => {
-    const viewer = session ? (viewerQuery.data ?? null) : null;
+    // A failed re-read keeps the last answer (TanStack keeps `data` beside the error).
+    const viewer = session
+      ? (viewerQuery.data ?? (viewerQuery.isError ? unreadableViewer(session) : null))
+      : null;
 
     let actor: Actor = null;
     if (viewer && !viewer.profileUnreadable) {
@@ -193,6 +214,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       session,
       viewer,
       viewerLoading: Boolean(session) && viewerQuery.isPending,
+      viewerError: viewer?.profileUnreadable ? viewerQuery.error : null,
       actor,
       secondFactorDue: Boolean(session) && factorDue,
       refreshViewer: () => fetchViewer(queryClient),

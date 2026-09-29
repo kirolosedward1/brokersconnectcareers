@@ -44,7 +44,7 @@ export default function CompanyScreen() {
     );
   }
 
-  if (page.isError) {
+  if (page.isError && !page.data) {
     return (
       <>
         <Stack.Screen options={{ title: '' }} />

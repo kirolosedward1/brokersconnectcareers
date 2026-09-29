@@ -99,9 +99,20 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
   // themselves a second, empty company instead of editing the one they belong
   // to. Membership finds the company they are actually in; RLS decides whether
   // they may change it.
-  const { data: existing } = await supabase.rpc('my_company_id');
+  const { data: existing, error: membershipUnread } = await supabase.rpc('my_company_id');
+  // Unread is not "no company": creating one here would make a second company.
+  if (membershipUnread) return { ok: false, error: 'failed' };
 
   if (existing) {
+    /*
+      An update always carries the version its form was loaded at. One without
+      is a create form, sent by somebody whose company the page failed to read
+      (a dropped request on a phone): written as an update it replaced the
+      about text, the website, the size and the district with the empty
+      fields of that form. Refused as stale, it asks for the page again.
+    */
+    if (!parsed.data.version) return { ok: false, error: 'stale' };
+
     /*
       The slug is deliberately not regenerated on rename — it is a public URL
       that other sites may already link to.
@@ -113,7 +124,7 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
     */
     const update = (values: typeof withoutType) => {
       const query = supabase.from('companies').update(values).eq('id', existing);
-      return (parsed.data.version ? query.eq('version', parsed.data.version) : query).select('id');
+      return query.eq('version', parsed.data.version as number).select('id');
     };
 
     const { data: saved, error } = await retryWithoutType(await update(payload), () =>
@@ -132,7 +143,7 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
         .select('version')
         .eq('id', existing)
         .maybeSingle();
-      const moved = parsed.data.version != null && now != null && now.version !== parsed.data.version;
+      const moved = now != null && now.version !== parsed.data.version;
       return { ok: false, error: moved ? 'stale' : 'forbidden' };
     }
 

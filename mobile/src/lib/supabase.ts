@@ -19,6 +19,13 @@ import { encryptedSessionStorage } from './session-storage';
  * which is what Supabase recommends for React Native.
  */
 export const supabase = createClient<Database>(env.supabaseUrl, env.supabaseKey, {
+  /*
+    Reads give up after 20 s, and are not retried here: TanStack Query already
+    tries a failed read three times, and postgrest-js's own three retries (1, 2
+    and 4 s apart) inside each of those kept an offline screen spinning for
+    about 24 s before it said anything.
+  */
+  db: { timeout: 20_000, retry: false },
   auth: {
     storage: encryptedSessionStorage,
     autoRefreshToken: true,

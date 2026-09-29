@@ -40,7 +40,7 @@ export default function BillingScreen() {
   else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!company) body = <EmptyState title={t('employer.createCompanyFirst')} body={t('employer.createCompanyFirstBody')} />;
   else if (billing.isPending) body = <LoadingState />;
-  else if (billing.isError) body = <ErrorState error={billing.error} onRetry={() => billing.refetch()} />;
+  else if (billing.isError && !billing.data) body = <ErrorState error={billing.error} onRetry={() => billing.refetch()} />;
   else {
     const claimed = billing.data.claimedThisMonth || claim.data === true;
     body = (

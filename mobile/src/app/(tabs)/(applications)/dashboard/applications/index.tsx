@@ -43,7 +43,7 @@ export default function ApplicationsScreen() {
     );
   } else if (applications.isPending) {
     body = <LoadingState />;
-  } else if (applications.isError) {
+  } else if (applications.isError && !applications.data) {
     // Never "you have not applied" for a read that failed.
     body = <ErrorState error={applications.error} onRetry={() => applications.refetch()} />;
   } else {

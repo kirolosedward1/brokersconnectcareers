@@ -9,7 +9,7 @@ import type {
   CandidateSummary,
 } from '@/lib/supabase/database.types';
 import { CvUploadFailed, removeCv, uploadCv, type PickedCv } from '~/features/cv/files';
-import { callAction } from '~/lib/api';
+import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -144,7 +144,11 @@ export function useSaveAgentProfile() {
       try {
         result = await callAction('saveAgentProfile', { ...input, cvPath: uploaded, removeCv: cv.kind === 'remove' });
       } catch (error) {
-        if (uploaded) await removeCv(uploaded);
+        // Only a refusal at the door proves the profile was not saved with the
+        // new file; with no answer it may have been, and taking the file out
+        // would leave the profile pointing at nothing. One that nothing points
+        // at is taken by the storage clean-up after a day.
+        if (uploaded && refusedAtTheDoor(error)) await removeCv(uploaded);
         throw error;
       }
       if (!result.ok) {

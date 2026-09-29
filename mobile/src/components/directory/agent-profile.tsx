@@ -65,7 +65,7 @@ export function AgentProfile({ handle }: { handle: string }) {
       </>
     );
   }
-  if (page.isError) {
+  if (page.isError && !page.data) {
     return (
       <>
         {header}

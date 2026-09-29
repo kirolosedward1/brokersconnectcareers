@@ -73,7 +73,8 @@ export default function ProfileScreen() {
       </>
     );
   }
-  if (profile.isError) {
+  // A failed re-read keeps the form (and the entry being typed in its sheet); only a first read that failed is an error page.
+  if (profile.isError && !profile.data) {
     return (
       <>
         {header}
@@ -161,7 +162,7 @@ export default function ProfileScreen() {
         {agent ? (
           <>
             <RecordForm key={agent.id} agent={agent} completeness={completeness} />
-            {cv.isError ? (
+            {cv.isError && !cv.data ? (
               <ErrorState error={cv.error} onRetry={() => cv.refetch()} />
             ) : cv.data ? (
               <CvSections agentId={agent.id} sections={cv.data} />

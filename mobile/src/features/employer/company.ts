@@ -8,7 +8,7 @@ import { canAccessEmployerArea } from '@/lib/permissions';
 import type { CompanyDocumentRow, CompanyMemberRole, OrderRow } from '@/lib/supabase/database.types';
 import { uuid } from '@/lib/uuid';
 import { formFile, PhotoRefused, type PickedPhoto } from '~/features/account/settings';
-import { callAction } from '~/lib/api';
+import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -100,6 +100,12 @@ export function useSaveCompany() {
       queryClient.invalidateQueries({ queryKey: ['viewer'] });
       queryClient.invalidateQueries({ queryKey: ['employer'] });
     },
+    // A colleague's save got there first: read theirs, which the form then shows.
+    onError: (error) => {
+      if (error instanceof CompanyRefused && error.reason === 'stale') {
+        queryClient.invalidateQueries({ queryKey: ['viewer'] });
+      }
+    },
   });
 }
 
@@ -159,7 +165,8 @@ export class DocumentRefused extends Error {
  * A verification paper: the bytes to `company-documents/<company>/<type>-<uuid>.<ext>`
  * (a company admin's folder, fewer than twenty files), then the website's
  * recordCompanyDocument, which reads what arrived and records it for review.
- * Refused, the upload is taken back out.
+ * Refused, the upload is taken back out; with no answer it stays, and the
+ * database says whether the paper went in.
  */
 export function useUploadDocument(companyId: string) {
   const queryClient = useQueryClient();
@@ -172,10 +179,29 @@ export function useUploadDocument(companyId: string) {
       const { error } = await storage.upload(path, bytes, { upsert: false, contentType: document.type });
       if (error) throw new DocumentRefused('failed');
 
-      const result = await callAction('recordCompanyDocument', { companyId, docType, storagePath: path }).catch(() => null);
-      if (!result?.ok) {
+      let result: Awaited<ReturnType<typeof callAction<'recordCompanyDocument'>>>;
+      try {
+        result = await callAction('recordCompanyDocument', { companyId, docType, storagePath: path });
+      } catch (error) {
+        if (refusedAtTheDoor(error)) {
+          await storage.remove([path]).catch(() => {});
+          throw new DocumentRefused('failed');
+        }
+        // No answer: the paper may have been recorded and only the answer lost,
+        // so the file stays (the storage clean-up takes one nothing points at
+        // after a day) and the database says whether it went in.
+        const { data, error: unread } = await supabase
+          .from('company_documents')
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('storage_path', path)
+          .maybeSingle();
+        if (!unread && data) return;
+        throw new DocumentRefused('failed');
+      }
+      if (!result.ok) {
         await storage.remove([path]).catch(() => {});
-        throw new DocumentRefused(result && !result.ok && result.error === 'file_type' ? 'fileType' : 'failed');
+        throw new DocumentRefused(result.error === 'file_type' ? 'fileType' : 'failed');
       }
     },
     onSuccess: () => {
