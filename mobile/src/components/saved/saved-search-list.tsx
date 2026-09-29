@@ -96,6 +96,7 @@ function SavedSearchItem({ row }: { row: SavedSearchRow }) {
         accessibilityState={{ selected: row.alerts, disabled: pending }}
         disabled={pending}
         onPress={() => alerts.mutate({ id: row.id, alerts: !row.alerts })}
+        hitSlop={6}
         style={{
           flexDirection: 'row',
           alignItems: 'center',

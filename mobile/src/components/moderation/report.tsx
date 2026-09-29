@@ -129,6 +129,18 @@ function ReportSheet({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  // Each opening starts empty — no reason chosen for the reader, no refusal
+  // left over from the last time — as the filter sheet starts from the board.
+  const [shown, setShown] = useState(visible);
+  if (visible !== shown) {
+    setShown(visible);
+    if (visible) {
+      setReason(null);
+      setDetail('');
+      setError(null);
+    }
+  }
+
   async function submit() {
     if (pending) return;
     if (!reason) {

@@ -31,8 +31,10 @@ const searchesKey = (candidateId: string | null) => ['saved', 'searches', candid
  * Every listing this candidate has bookmarked, as ids — what a card's bookmark
  * reads. One small read for the whole app rather than one per screen, so a
  * bookmark set on the board is already set on the listing and in Saved.
+ * `known` is false until they have been read: the website's action is a
+ * toggle, so a bookmark pressed before then could take one off.
  */
-export function useSavedJobIds(): Set<string> {
+export function useSavedJobIds(): { ids: Set<string>; known: boolean } {
   const candidateId = useCandidateId();
   const { data } = useQuery({
     queryKey: idsKey(candidateId),
@@ -47,7 +49,8 @@ export function useSavedJobIds(): Set<string> {
       return (rows ?? []).map((row) => row.job_id as string);
     },
   });
-  return new Set(data ?? []);
+  // Nobody to read them for (signed out): nothing is saved, and that is known.
+  return { ids: new Set(data ?? []), known: !candidateId || data !== undefined };
 }
 
 /**
@@ -106,7 +109,11 @@ export function useToggleSavedJob() {
     // The server's answer is the truth: it toggles what it has, not what the screen showed.
     onSuccess: (saved, { jobId }) => set(jobId, saved),
     onError: (_error, { jobId, saved }) => set(jobId, saved),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['saved', 'jobs'] }),
+    onSettled: () => {
+      // Home counts what is saved (candidate_summary).
+      void queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      return queryClient.invalidateQueries({ queryKey: ['saved', 'jobs'] });
+    },
   });
 }
 
@@ -154,6 +161,8 @@ export function useSetSearchAlerts() {
     },
     onMutate: ({ id, alerts }) => cache.edit((rows) => rows.map((row) => (row.id === id ? { ...row, alerts } : row))),
     onError: (_error, _input, restore) => restore?.(),
+    // Home counts the alerts that are on (candidate_summary).
+    onSettled: () => void cache.queryClient.invalidateQueries({ queryKey: ['candidate'] }),
   });
 }
 
@@ -167,7 +176,10 @@ export function useDeleteSavedSearch() {
     },
     onMutate: ({ id }) => cache.edit((rows) => rows.filter((row) => row.id !== id)),
     onError: (_error, _input, restore) => restore?.(),
-    onSettled: () => cache.queryClient.invalidateQueries({ queryKey: cache.key }),
+    onSettled: () => {
+      void cache.queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      return cache.queryClient.invalidateQueries({ queryKey: cache.key });
+    },
   });
 }
 
@@ -193,7 +205,10 @@ export function useSaveSearch() {
       const result = await callAction('saveSearch', input);
       if (!result.ok) throw new SaveRefused(refusal(result.error));
     },
-    onSettled: () => cache.queryClient.invalidateQueries({ queryKey: cache.key }),
+    onSettled: () => {
+      void cache.queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      return cache.queryClient.invalidateQueries({ queryKey: cache.key });
+    },
   });
 }
 
@@ -239,6 +254,9 @@ export function useToggleFollow(slug: string, label: string) {
           : rows.filter((row) => row.query !== query),
       ),
     onError: (_error, _input, restore) => restore?.(),
-    onSettled: () => cache.queryClient.invalidateQueries({ queryKey: cache.key }),
+    onSettled: () => {
+      void cache.queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      return cache.queryClient.invalidateQueries({ queryKey: cache.key });
+    },
   });
 }

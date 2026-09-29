@@ -63,6 +63,7 @@ export function ApplicantNotes({
         accessibilityState={{ expanded: open }}
         accessibilityHint={t('employer.notesHint')}
         onPress={() => setChosen(!open)}
+        hitSlop={{ top: 4, bottom: 4 }}
         style={{ minHeight: hitTarget - 8, flexDirection: 'row', alignItems: 'center', gap: space[1] }}
       >
         <Lock size={14} color={colors.mutedForeground} />
@@ -99,6 +100,7 @@ export function ApplicantNotes({
                         onError: () => setError(t('common.errorBody')),
                       })
                     }
+                    hitSlop={{ top: 6, bottom: 6, left: 8, right: 8 }}
                     style={{ minHeight: hitTarget - 12, flexDirection: 'row', alignItems: 'center', gap: 2 }}
                   >
                     <Trash2 size={12} color={colors.destructive} />

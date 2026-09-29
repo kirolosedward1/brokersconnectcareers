@@ -381,6 +381,15 @@ describe('a company that could not be read', () => {
   });
 });
 
+describe('nobody signed in', () => {
+  it('asks to sign in on the company and billing pages, rather than waiting for an account that is not coming', async () => {
+    await supabase.auth.signOut({ scope: 'local' });
+    renderRouter(app, { initialUrl: '/employer/company' });
+    expect(await screen.findByRole('button', { name: ar.nav.signIn })).toBeTruthy();
+    expect(screen.queryByLabelText(ar.common.loading)).toBeNull();
+  });
+});
+
 describe('an employer without a company', () => {
   it('makes one from the same form', async () => {
     company = null;

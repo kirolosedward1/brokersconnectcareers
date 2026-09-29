@@ -787,6 +787,23 @@ describe('reporting', () => {
     expect(server.asked('/api/mobile/v1/actions/reportTarget')).toHaveLength(0);
   });
 
+  it('starts empty each time it is opened: no reason left chosen, no refusal left over', async () => {
+    server.on('POST /api/mobile/v1/actions/reportTarget', () => {
+      throw new TypeError('Network request failed');
+    });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/companies/nile-brokers' });
+    await press(ar.companies.report);
+    fireEvent.press(await reasonNamed('scam'));
+    await press(ar.report.send);
+    expect(await screen.findByText(ar.report.network)).toBeTruthy();
+    await press(ar.common.close);
+
+    await press(ar.companies.report);
+    expect((await reasonNamed('scam')).props.accessibilityState).toMatchObject({ checked: false });
+    expect(screen.queryByText(ar.report.network)).toBeNull();
+  });
+
   it.each([
     ['already_reported', 'alreadyReported'],
     ['burst_limit', 'burstLimit'],

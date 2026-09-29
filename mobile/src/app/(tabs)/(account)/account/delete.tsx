@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, Linking, ScrollView, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
+import { SignedOut } from '~/components/navigation/signed-out';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
@@ -100,6 +101,16 @@ export default function DeleteAccountScreen() {
     await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
     router.back();
     Alert.alert(t('app.account.deleted'));
+  }
+
+  // Reached from a link with nobody signed in: there is no account here to delete.
+  if (!session) {
+    return (
+      <>
+        <Stack.Screen options={{ title: t('account.deleteTitle') }} />
+        <SignedOut next="/account/delete" />
+      </>
+    );
   }
 
   return (

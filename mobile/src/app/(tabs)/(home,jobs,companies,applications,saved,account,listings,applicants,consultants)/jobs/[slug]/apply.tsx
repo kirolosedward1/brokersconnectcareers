@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2, FileText, Paperclip, ShieldCheck, X } from 'lucide-react-native';
 import { formatDate } from '@/lib/format';
@@ -92,7 +92,19 @@ function Apply({ job }: { job: JobDetail }) {
   const { session, viewer, actor } = useSession();
   const context = useApplyContext(isCandidate(actor) ? job.id : null);
   const hasBoard = useHasBoard();
+  const navigation = useNavigation();
   const [sentAt, setSentAt] = useState<Date | null>(null);
+
+  // The buttons that name the listing lead to it: back, when this page was
+  // opened from it; otherwise (a link, a sign-in that came back here) the
+  // listing in place of this page, not whatever the tab had underneath.
+  const toListing = () => {
+    const routes = navigation.getState()?.routes ?? [];
+    const below = routes.length > 1 ? routes[routes.length - 2] : null;
+    const params = (below?.params ?? {}) as { slug?: string };
+    if (below?.name === 'jobs/[slug]' && params.slug?.toLowerCase() === job.slug) router.back();
+    else router.replace({ pathname: '/jobs/[slug]', params: { slug: job.slug } });
+  };
 
   const title = localized(locale, job.title_ar, job.title_en);
 
@@ -129,7 +141,7 @@ function Apply({ job }: { job: JobDetail }) {
     return (
       <EmptyState
         title={t('apply.employerCannotApply')}
-        action={<Button label={title} variant="outline" onPress={() => router.back()} />}
+        action={<Button label={title} variant="outline" onPress={toListing} />}
       />
     );
   }
@@ -140,7 +152,7 @@ function Apply({ job }: { job: JobDetail }) {
       <EmptyState
         title={t('apply.suspendedTitle')}
         body={t('apply.suspendedBody')}
-        action={<Button label={title} variant="outline" onPress={() => router.back()} />}
+        action={<Button label={title} variant="outline" onPress={toListing} />}
       />
     );
   }
@@ -155,7 +167,7 @@ function Apply({ job }: { job: JobDetail }) {
         action={
           <View style={{ gap: space[2], alignItems: 'center' }}>
             <Button label={t('apply.viewApplications')} onPress={() => router.navigate('/dashboard/applications')} />
-            <Button label={title} variant="outline" onPress={() => router.back()} />
+            <Button label={title} variant="outline" onPress={toListing} />
           </View>
         }
       />

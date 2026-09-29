@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { Actor } from '@/lib/permissions';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -302,6 +302,27 @@ describe('who gets the form', () => {
     renderRouter(app, { initialUrl: APPLY });
     expect(await screen.findByText(ar.apply.alreadyApplied)).toBeTruthy();
     expect(screen.getByRole('button', { name: ar.apply.viewApplications })).toBeTruthy();
+  });
+
+  it('leads to the listing from its title when opened from a link, not to what the tab had underneath', async () => {
+    server.on('GET /rest/v1/applications', [{ id: 'a-1', created_at: '2026-09-20T10:00:00Z' }]);
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: APPLY });
+    fireEvent.press(await screen.findByRole('button', { name: listing.title_ar }));
+    await waitFor(() => expect(result.getPathname()).toBe(`/jobs/${listing.slug}`));
+  });
+
+  it('goes back to the listing it was opened from', async () => {
+    server.on('GET /rest/v1/applications', [{ id: 'a-1', created_at: '2026-09-20T10:00:00Z' }]);
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
+    await waitFor(() => expect(result.getPathname()).toBe(APPLY));
+    fireEvent.press(await screen.findByRole('button', { name: listing.title_ar }));
+    await waitFor(() => expect(result.getPathname()).toBe(`/jobs/${listing.slug}`));
+    // Back from the listing leaves the tab, rather than returning to the apply page.
+    act(() => router.back());
+    expect(result.getPathname()).not.toBe(APPLY);
   });
 
   it('tells a candidate the database would refuse why, before they type anything', async () => {

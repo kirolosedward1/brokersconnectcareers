@@ -8,6 +8,7 @@ import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Notice } from '~/components/ui/notice';
+import { SignedOut } from '~/components/navigation/signed-out';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
@@ -35,7 +36,8 @@ export default function BillingScreen() {
   const header = <Stack.Screen options={{ title: t('billing.title') }} />;
 
   let body: React.ReactNode;
-  if (!session || !viewer?.profile) body = <ViewerPending />;
+  if (!session) body = <SignedOut next="/employer/billing" />;
+  else if (!viewer?.profile) body = <ViewerPending />;
   else if (!canAccessEmployerArea(actor)) body = <EmptyState title={t('common.notFound')} body={t('common.notFoundBody')} />;
   else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!company) body = <EmptyState title={t('employer.createCompanyFirst')} body={t('employer.createCompanyFirstBody')} />;

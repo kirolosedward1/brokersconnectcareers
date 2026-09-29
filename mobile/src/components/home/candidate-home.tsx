@@ -84,6 +84,10 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
+      // An appeal is typed on Home: its Send takes the first tap, and the field is lifted above the keyboard.
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
       contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
     >

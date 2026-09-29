@@ -88,6 +88,7 @@ export default function ListingApplicantsScreen() {
             <Pressable
               accessibilityRole="link"
               onPress={() => router.navigate({ pathname: '/employer/applicants', params: { job: job.id } } as never)}
+              hitSlop={{ top: 4, bottom: 4 }}
               style={{ minHeight: hitTarget - 8, justifyContent: 'center' }}
             >
               <Text variant="small" weight="medium" tone="primary">

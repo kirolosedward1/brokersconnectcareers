@@ -16,7 +16,12 @@ function useEmployerId(): string | null {
   return canAccessEmployerArea(actor) ? (session?.user.id ?? null) : null;
 }
 
-/** employer_summary(): the figures, the next action and the setup checklist all read this. */
+/**
+ * employer_summary(): the figures, the next action and the setup checklist
+ * all read this. A read that failed is an error, not "no company": answered
+ * as null, it told an employer with a company to complete one, with nothing
+ * to retry.
+ */
 export function useEmployerSummary() {
   const userId = useEmployerId();
   return useQuery({
@@ -24,7 +29,8 @@ export function useEmployerSummary() {
     enabled: Boolean(userId),
     queryFn: async () => {
       const { data, error } = await supabase.rpc('employer_summary');
-      return error ? null : ((data as EmployerSummary | null) ?? null);
+      if (error) throw error;
+      return (data as EmployerSummary | null) ?? null;
     },
   });
 }

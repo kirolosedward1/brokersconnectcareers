@@ -14,8 +14,10 @@ import { StatStrip } from '~/components/dashboard/stat-strip';
 import { TrendBars } from '~/components/dashboard/trend-bars';
 import { SetupChecklist } from '~/components/employer/setup-checklist';
 import { Button } from '~/components/ui/button';
+import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { useEmployerSummary, useEmployerTrend } from '~/features/employer/overview';
+import { noAnswer } from '~/lib/api';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
@@ -68,6 +70,13 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
   let body: React.ReactNode;
   if (summary.isPending) {
     body = <ActivityIndicator color={colors.primary} accessibilityLabel={t('common.loading')} />;
+  } else if (summary.isError && !summary.data) {
+    body = (
+      <View style={{ gap: space[3], alignItems: 'flex-start' }}>
+        <Notice tone="destructive">{noAnswer(summary.error) ? t('app.offline.body') : t('common.errorBody')}</Notice>
+        <Button label={t('common.retry')} variant="outline" size="sm" onPress={() => summary.refetch()} />
+      </View>
+    );
   } else if (!s || !s.has_company) {
     body = isSuspended(actor) ? null : (
       <View
@@ -199,6 +208,10 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
+      // An appeal is typed on Home: its Send takes the first tap, and the field is lifted above the keyboard.
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
       refreshControl={
         <RefreshControl refreshing={summary.isRefetching || trend.isRefetching} onRefresh={refresh} tintColor={colors.primary} />
       }

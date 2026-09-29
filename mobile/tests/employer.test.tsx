@@ -224,6 +224,18 @@ describe("an employer's home", () => {
     await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs/new'));
   });
 
+  it('says the figures could not be read, with a retry — never "create your company" to one that has one', async () => {
+    server.on('POST /rest/v1/rpc/employer_summary', { status: 503, body: { code: 'PGRST002', message: 'Could not query the database for the schema cache' } });
+    await signIn();
+    renderRouter(app, { initialUrl: '/' });
+
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    expect(screen.queryByText(ar.dashboard.emptyEmployerTitle)).toBeNull();
+    server.on('POST /rest/v1/rpc/employer_summary', () => summary());
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
+    expect(await screen.findByText(ar.dashboard.trendApplicationsTitle)).toBeTruthy();
+  });
+
   it('asks for the company first when there is none', async () => {
     company = null;
     server.on('POST /rest/v1/rpc/employer_summary', { has_company: false });
