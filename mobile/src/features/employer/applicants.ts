@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsFocused } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { canAccessEmployerArea } from '@/lib/permissions';
+import { clean } from '@/lib/security/sanitize';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -11,7 +12,7 @@ import type {
   JobTrack,
 } from '@/lib/supabase/database.types';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
-import { callAction, getJson } from '~/lib/api';
+import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -295,11 +296,39 @@ export function useSetApplicationStatus() {
   });
 }
 
+/**
+ * The note this person just sent, if the database has it: their words, as the
+ * website stores them, written after every note the card had shown (`after`,
+ * the newest id it knew). Null when it is not there, or cannot be read.
+ */
+async function noteWritten(input: { applicationId: string; body: string; after: number }, authorId: string) {
+  const { data, error } = await supabase
+    .from('application_notes')
+    .select('*')
+    .eq('application_id', input.applicationId)
+    .eq('author_id', authorId)
+    .gt('id', input.after)
+    .order('id', { ascending: false })
+    .limit(10);
+  if (error) return null;
+  const words = clean(input.body, true);
+  return ((data ?? []) as ApplicationNoteRow[]).find((note) => note.body === words) ?? null;
+}
+
 export function useAddNote() {
   const queryClient = useQueryClient();
+  const authorId = useSession().session?.user.id ?? null;
   return useMutation({
-    mutationFn: async (input: { applicationId: string; body: string }) => {
-      const result = await callAction('addApplicationNote', input);
+    mutationFn: async (input: { applicationId: string; body: string; after: number }) => {
+      const result = await callAction('addApplicationNote', { applicationId: input.applicationId, body: input.body }).catch(
+        async (error: unknown) => {
+          // No answer: the note may be in, and only the answer lost — sent again,
+          // it was written twice. What the database holds decides.
+          const written = !refusedAtTheDoor(error) && authorId ? await noteWritten(input, authorId) : null;
+          if (written) return { ok: true as const, data: { note: written } };
+          throw error;
+        },
+      );
       if (!result.ok) throw new Error(result.error);
       return result.data?.note ?? null;
     },

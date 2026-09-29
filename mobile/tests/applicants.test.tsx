@@ -250,6 +250,35 @@ describe("a listing's applicants", () => {
     await waitFor(() => expect(input('/api/mobile/v1/actions/deleteApplicationNote')).toEqual({ id: 1 }));
   });
 
+  it('writes a note once when its answer is lost, and says so when it did not go in', async () => {
+    let written: ApplicationNoteRow[] = [];
+    server.on('GET /rest/v1/application_notes', () => [...notes, ...written]);
+    // The website stores the note, and its answer never reaches the phone.
+    server.on('POST /api/mobile/v1/actions/addApplicationNote', () => {
+      written = [{ id: 3, application_id: sara.id, author_id: USER_ID, body: 'اتفقنا على مقابلة.', created_at: '2026-09-29T10:00:00Z' }];
+      throw new TypeError('Network request failed');
+    });
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText('كلّمتها، هترد الخميس.')).toBeTruthy();
+
+    fireEvent.changeText(screen.getAllByLabelText(ar.employer.notesTitle)[0], 'اتفقنا على مقابلة.');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.employer.notesAdd })[0]);
+    // Asked of the database, it is there: the box empties, with nothing to send again.
+    await waitFor(() => expect(screen.getAllByLabelText(ar.employer.notesTitle)[0].props.value).toBe(''));
+    expect(await screen.findByText('اتفقنا على مقابلة.')).toBeTruthy();
+    expect(server.asked('/api/mobile/v1/actions/addApplicationNote')).toHaveLength(1);
+    expect(screen.queryByText(ar.app.offline.body)).toBeNull();
+
+    // Not there: the words stay for another try, and the reason is the connection.
+    server.on('POST /api/mobile/v1/actions/addApplicationNote', () => {
+      throw new TypeError('Network request failed');
+    });
+    fireEvent.changeText(screen.getAllByLabelText(ar.employer.notesTitle)[0], 'نكلمها تاني الأسبوع الجاي.');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.employer.notesAdd })[0]);
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+    expect(screen.getAllByLabelText(ar.employer.notesTitle)[0].props.value).toBe('نكلمها تاني الأسبوع الجاي.');
+  });
+
   it('opens the CV through the website, and WhatsApp with the opener written', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
     renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });

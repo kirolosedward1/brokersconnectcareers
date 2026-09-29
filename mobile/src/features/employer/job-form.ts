@@ -12,8 +12,9 @@ import type {
   SalaryReferenceRow,
 } from '@/lib/supabase/database.types';
 import { westernDigits } from '@/lib/search/arabic';
+import { clean } from '@/lib/security/sanitize';
 import { wholeNumber } from '~/components/profile/fields';
-import { callAction } from '~/lib/api';
+import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -236,12 +237,62 @@ export class JobSaveRefused extends Error {
   }
 }
 
+/**
+ * Whether the stored listing already says what this edit says, as the
+ * website stores it (its text cleaned, as saveJob cleans it), in a state the
+ * save could have left it in. Asked when an edit's answer was lost, and when
+ * an edit is refused as stale: the edit sent again after a lost answer found
+ * its own first save and read it as a colleague's. False when it cannot be read.
+ */
+async function storedAsSent(input: JobInput & { id: string }): Promise<boolean> {
+  const [stored, tagged] = await Promise.all([
+    supabase.from('jobs').select('*').eq('id', input.id).maybeSingle(),
+    supabase.from('job_developers').select('developer_id').eq('job_id', input.id),
+  ]);
+  if (stored.error || tagged.error || !stored.data) return false;
+  const job = stored.data as JobRow;
+  const text = (value: string | null | undefined, multiline = false) => clean(value, multiline) || null;
+  const set = (values: readonly (string | number)[]) => JSON.stringify([...values].map(String).sort());
+  const commission = input.commissionType === 'percentage' ? (input.commissionValue ?? null) : null;
+  return (
+    // A live listing keeps its status (the database decides); any other goes where the button said.
+    (job.status === 'active' || job.status === (input.submit ? 'pending_review' : 'draft')) &&
+    job.title_ar === clean(input.titleAr) &&
+    job.title_en === text(input.titleEn) &&
+    job.track === input.track &&
+    job.employment_type === input.employmentType &&
+    job.experience_band === input.experienceBand &&
+    job.seats === input.seats &&
+    job.district_id === input.districtId &&
+    job.basic_salary_min === (input.basicSalaryMin ?? null) &&
+    job.basic_salary_max === (input.basicSalaryMax ?? null) &&
+    job.commission_type === input.commissionType &&
+    (job.commission_value == null ? commission === null : Number(job.commission_value) === commission) &&
+    job.commission_note_ar === text(input.commissionNoteAr) &&
+    job.leads_source === input.leadsSource &&
+    set(job.benefits ?? []) === set(input.benefits) &&
+    job.description_ar === clean(input.descriptionAr, true) &&
+    job.description_en === text(input.descriptionEn, true) &&
+    job.requirements_ar === text(input.requirementsAr, true) &&
+    set((tagged.data ?? []).map((row) => row.developer_id as number)) === set(input.developerIds)
+  );
+}
+
 export function useSaveJob() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: JobInput) => {
-      const result = await callAction('saveJob', input);
-      if (!result.ok) throw new JobSaveRefused(result.error, result.fieldErrors);
+      const edit = input.id ? { ...input, id: input.id } : null;
+      const result = await callAction('saveJob', input).catch(async (error: unknown) => {
+        // An edit with no answer may be in. A new listing needs no such look:
+        // its idempotency key makes the one sent again the same listing.
+        if (edit && !refusedAtTheDoor(error) && (await storedAsSent(edit))) return { ok: true as const, data: { id: edit.id } };
+        throw error;
+      });
+      if (!result.ok) {
+        if (result.error === 'stale' && edit && (await storedAsSent(edit))) return edit.id;
+        throw new JobSaveRefused(result.error, result.fieldErrors);
+      }
       return result.data?.id ?? null;
     },
     // Not waited for: the wizard closes on its own save, and while every

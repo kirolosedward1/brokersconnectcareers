@@ -8,6 +8,7 @@ import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useAddNote, useDeleteNote } from '~/features/employer/applicants';
+import { ApiError } from '~/lib/api';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
 
@@ -45,11 +46,13 @@ export function ApplicantNotes({
     if (!body) return;
     setError(null);
     add.mutate(
-      { applicationId, body },
+      // The newest note shown, so a lost answer can be told from a note that never went in.
+      { applicationId, body, after: notes.reduce((newest, note) => Math.max(newest, note.id), 0) },
       {
         // Cleared only once the server has it: a box that empties and then fails has taken a sentence away.
         onSuccess: () => setDraft(''),
-        onError: () => setError(t('common.errorBody')),
+        onError: (failure) =>
+          setError(failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody')),
       },
     );
   };

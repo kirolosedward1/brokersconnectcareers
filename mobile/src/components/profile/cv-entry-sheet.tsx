@@ -16,6 +16,7 @@ import { Select } from '~/components/ui/select';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { SaveRefused, useSaveCvEntry, type CvSection } from '~/features/profile/queries';
+import { ApiError } from '~/lib/api';
 import { useConfirmDiscard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
@@ -118,7 +119,7 @@ function EntryForm({
     // Named, not a computed key, which the React Compiler does not compile.
     if (fields?.ended) return setErrors({ ended: t('app.profile.endBeforeStart') });
     if (fields?.expires) return setErrors({ expires: t('app.profile.endBeforeStart') });
-    setErrors({ form: t('common.errorBody') });
+    setErrors({ form: failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody') });
   };
   const done = { onSuccess: onClose, onError };
 

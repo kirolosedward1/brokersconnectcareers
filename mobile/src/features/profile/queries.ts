@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AgentProfileInput, MobileActions } from '@/lib/mobile-api/contract';
 import { canAccessCandidateArea } from '@/lib/permissions';
+import { clean } from '@/lib/security/sanitize';
 import type {
   AgentCertificationRow,
   AgentEducationRow,
@@ -188,17 +189,59 @@ export type CvEntryInput =
   | { section: 'education'; input: MobileActions['saveEducation']['input'] }
   | { section: 'certification'; input: MobileActions['saveCertification']['input'] };
 
+/**
+ * Whether the profile already holds this new entry, as the website stores it:
+ * the same company, role and start; the same school, degree and year; the
+ * same certificate, issuer and date. Asked when the answer to adding it was
+ * lost — sent again, it went in twice. False when it cannot be read.
+ */
+async function entryStored(entry: CvEntryInput): Promise<boolean> {
+  const [table, fields]: [string, Record<string, string | number | null>] =
+    entry.section === 'experience'
+      ? [
+          'agent_experience',
+          { company_name: clean(entry.input.companyName), title: clean(entry.input.title), started: entry.input.started },
+        ]
+      : entry.section === 'education'
+        ? [
+            'agent_education',
+            {
+              institution: clean(entry.input.institution),
+              degree: clean(entry.input.degree) || null,
+              graduated: entry.input.graduated ?? null,
+            },
+          ]
+        : [
+            'agent_certifications',
+            { name: clean(entry.input.name), issuer: clean(entry.input.issuer) || null, issued: entry.input.issued || null },
+          ];
+  let query = supabase.from(table as 'agent_experience').select('id').eq('agent_id', entry.input.agentId);
+  for (const [column, value] of Object.entries(fields)) {
+    query = value === null ? query.is(column as never, null) : query.eq(column as never, value as never);
+  }
+  const { data, error } = await query.limit(1);
+  return !error && Boolean(data?.length);
+}
+
+function sendCvEntry(entry: CvEntryInput) {
+  return entry.section === 'experience'
+    ? callAction('saveExperience', entry.input)
+    : entry.section === 'education'
+      ? callAction('saveEducation', entry.input)
+      : callAction('saveCertification', entry.input);
+}
+
 /** Add a CV entry, or change one (the website's actions take an id for that). */
 export function useSaveCvEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (entry: CvEntryInput) => {
-      const result =
-        entry.section === 'experience'
-          ? await callAction('saveExperience', entry.input)
-          : entry.section === 'education'
-            ? await callAction('saveEducation', entry.input)
-            : await callAction('saveCertification', entry.input);
+      const result = await sendCvEntry(entry).catch(async (error: unknown) => {
+        // A new entry with no answer may be in, and only the answer lost: the
+        // database decides. A change sent again changes nothing twice.
+        if (!entry.input.id && !refusedAtTheDoor(error) && (await entryStored(entry))) return { ok: true as const };
+        throw error;
+      });
       if (!result.ok) throw new SaveRefused(result.error, result.fieldErrors);
     },
     onSuccess: () => {

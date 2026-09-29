@@ -318,11 +318,54 @@ describe('a listing on the board', () => {
   });
 
   it("says so when a colleague saved it first, rather than overwriting their work", async () => {
-    server.on('POST /api/mobile/v1/actions/saveJob', { ok: false, error: 'stale' });
+    let theirs = false;
+    // A colleague's save lands first, with a title of their own.
+    server.on('GET /rest/v1/jobs', () => [theirs ? { ...liveJob, version: 5, title_ar: 'مستشار مبيعات أول' } : liveJob]);
+    server.on('POST /api/mobile/v1/actions/saveJob', () => {
+      theirs = true;
+      return { ok: false, error: 'stale' };
+    });
     renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobForm.review }));
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
     expect(await screen.findByText(ar.employer.listingMoved)).toBeTruthy();
+  });
+
+  it('takes an edit whose answer was lost for saved when the listing says what it sent', async () => {
+    let stored = liveJob;
+    server.on('GET /rest/v1/jobs', () => [stored]);
+    // The website saves the edit, and its answer never reaches the phone.
+    server.on('POST /api/mobile/v1/actions/saveJob', (_url: URL, init?: RequestInit) => {
+      const { input } = JSON.parse(String(init?.body)) as { input: { titleAr: string } };
+      // Stored as the website stores a title: its spaces collapsed.
+      stored = { ...liveJob, version: 5, title_ar: input.titleAr.replace(/\s+/g, ' ').trim() };
+      throw new TypeError('Network request failed');
+    });
+    const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات  للمشروعات ');
+    fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+
+    // Read back, it holds this edit: saved, once, and the wizard closes.
+    await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    expect(saved()).toHaveLength(1);
+  });
+
+  it('takes a refusal as stale for saved when it was this edit, sent again after its answer was lost', async () => {
+    let stored = liveJob;
+    server.on('GET /rest/v1/jobs', () => [stored]);
+    server.on('POST /api/mobile/v1/actions/saveJob', (_url: URL, init?: RequestInit) => {
+      const { input } = JSON.parse(String(init?.body)) as { input: { titleAr: string } };
+      // The first went in; this one found the version it was built from gone.
+      stored = { ...liveJob, version: 5, title_ar: input.titleAr };
+      return { ok: false, error: 'stale' };
+    });
+    const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات للمشروعات');
+    fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+    await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    expect(screen.queryByText(ar.employer.listingMoved)).toBeNull();
   });
 
   it("is not found when it is not the company's", async () => {

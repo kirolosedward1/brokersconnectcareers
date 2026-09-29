@@ -307,6 +307,41 @@ describe('the CV sections', () => {
     );
   });
 
+  it('adds a job once when the answer is lost, and keeps the sheet when it did not go in', async () => {
+    let stored = [job];
+    // What the table holds, by the company named in the question.
+    server.on('GET /rest/v1/agent_experience', (url: URL) => {
+      const company = url.searchParams.get('company_name');
+      return company ? stored.filter((row) => `eq.${row.company_name}` === company) : stored;
+    });
+    server.on('POST /api/mobile/v1/actions/saveExperience', () => {
+      stored = [...stored, { ...job, id: '0e000000-0000-4000-8000-000000000002', company_name: 'سيتي سكيب', title: 'مدير مبيعات', started: '2023-05-01' }];
+      throw new TypeError('Network request failed');
+    });
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.company), '  سيتي سكيب ');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+
+    // The database has it: the sheet closes, and nothing is sent twice.
+    await waitFor(() => expect(screen.queryByLabelText(ar.cv.company)).toBeNull());
+    expect(server.asked('/api/mobile/v1/actions/saveExperience')).toHaveLength(1);
+
+    // One that did not go in stays in the sheet, with the reason.
+    server.on('POST /api/mobile/v1/actions/saveExperience', () => {
+      throw new TypeError('Network request failed');
+    });
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'بالم هيلز');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مستشار مبيعات');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2022-01');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+    expect(screen.getByLabelText(ar.cv.company).props.value).toBe('بالم هيلز');
+  });
+
   it('edits an entry without moving a date nobody touched', async () => {
     open();
     fireEvent.press(await screen.findByRole('button', { name: `${ar.app.profile.edit}: ${job.title} · ${job.company_name}` }));
