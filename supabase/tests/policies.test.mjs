@@ -2886,6 +2886,43 @@ report.section('a shortlist that outlives one listing');
     values ('${alRowad}', '${openCard}', '${employerUnverified}') returning agent_id`);
   report.check("nor into another company's shortlist",
     !r7.ok, r7.ok ? 'insert was allowed' : r7.error);
+
+  /*
+    A pending employer is outside the directory (migration 322), and so outside
+    the shortlist: saving a consultant by id was a way round the gate, and the
+    name came back through saved_agent_cards() (migration 331). Their company,
+    Skyline, is verified — which is what used to open a gated card to them.
+  */
+  const skyline = (
+    await db.query(`select company_id from company_members where user_id = '${employerPending}' limit 1`)
+  ).rows[0]?.company_id;
+  const gatedStranger = (
+    await db.query(`
+      select a.id from agent_profiles a
+       where a.visibility = 'verified_employers_only'
+         and not exists (
+           select 1 from applications ap join jobs j on j.id = ap.job_id
+            where ap.candidate_id = a.user_id and j.company_id = '${skyline}')
+       limit 1`)
+  ).rows[0]?.id;
+  for (const [what, agent] of [['a gated', gatedStranger], ['a public', openCard]]) {
+    const saved = await as(employerPending, `
+      insert into saved_agents (company_id, agent_id, saved_by)
+      values ('${skyline}', '${agent}', '${employerPending}') returning agent_id`);
+    report.check(`a pending employer shortlists nobody from the directory: ${what} consultant`,
+      Boolean(skyline && agent) && !saved.ok, saved.ok ? 'insert was allowed' : saved.error);
+  }
+
+  // One saved before the account went back to pending reads back unnamed.
+  await db.exec(`insert into saved_agents (company_id, agent_id, saved_by)
+                 values ('${skyline}', '${gatedStranger}', '${employerPending}') on conflict do nothing`);
+  const pendingCards = await as(employerPending,
+    `select is_unlocked, full_name, avatar_url from saved_agent_cards() where id = '${gatedStranger}'`);
+  await db.exec(`delete from saved_agents where company_id = '${skyline}' and agent_id = '${gatedStranger}'`);
+  report.check('and a card it saved earlier comes back without the name',
+    pendingCards.ok && pendingCards.rows.length === 1 && pendingCards.rows[0].is_unlocked === false &&
+      pendingCards.rows[0].full_name === null && pendingCards.rows[0].avatar_url === null,
+    pendingCards.error ?? JSON.stringify(pendingCards.rows));
 }
 
 report.section('a shortlist is not a copy of the directory');

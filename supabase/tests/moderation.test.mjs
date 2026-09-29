@@ -845,6 +845,19 @@ report.section('appeals: one message about one decision, and one answer');
 
   // Upheld, then a second appeal too soon.
   await db.exec(`update moderation_appeals set status = 'upheld', decided_at = now() - interval '2 days', decision_note = 'مازال مكرراً' where id = '${appealId}'`);
+
+  // The answer, to the company it is about and to nobody else (migration 331):
+  // the function is SECURITY DEFINER, so the table's read policy does not
+  // stand behind it.
+  const ownAnswer = await as(employerVerified, `select my_appeal_state('job', '${job}') as s`);
+  report.check('the company reads the answer to its appeal, with the note',
+    ownAnswer.rows?.[0]?.s?.last?.note === 'مازال مكرراً', JSON.stringify(ownAnswer.rows?.[0] ?? ownAnswer.error));
+  for (const [who, id] of [['another company', employerUnverified], ['a candidate', candidate3]]) {
+    const other = await as(id, `select my_appeal_state('job', '${job}') as s`);
+    report.check(`${who} reads neither the answer nor its note`,
+      other.ok && other.rows[0]?.s?.last === null && other.rows[0]?.s?.open === null && other.rows[0]?.s?.appealable === false,
+      JSON.stringify(other.rows?.[0] ?? other.error));
+  }
   const soon = await as(employerVerified, `select submit_appeal('job', '${job}', 'نطلب مراجعة جديدة لنفس الإعلان')`);
   report.check('a week passes before the same decision is appealed again', !soon.ok && /appeal_too_soon|not_appealable/.test(soon.error ?? ''), soon.error);
 
