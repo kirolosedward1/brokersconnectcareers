@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Alert, Text, type AlertButton } from 'react-native';
+import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, render, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { ChipGroup } from '~/components/profile/fields';
 import type { DistrictRow, JobRow, ProfileRow } from '@/lib/supabase/database.types';
 import { decimalNumber, initialValues, MAX_DEVELOPERS, problemsOn, stepOf } from '~/features/employer/job-form';
@@ -245,6 +245,24 @@ describe('a new listing', () => {
 
     expect(await screen.findByText(ar.employer.duplicateListingBlocked)).toBeTruthy();
     expect(screen.getByLabelText(ar.jobForm.titleAr)).toBeTruthy();
+  });
+});
+
+describe('leaving the wizard', () => {
+  it('asks before a half-written listing is thrown away, and goes when told to', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const result = renderRouter(app, { initialUrl: '/employer/jobs' });
+    act(() => router.push('/employer/jobs/new'));
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+
+    act(() => router.back());
+    expect(alert).toHaveBeenCalledWith(ar.app.leave.title, ar.app.leave.body, expect.any(Array));
+    expect(result.getPathname()).toBe('/employer/jobs/new');
+
+    const leave = (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive');
+    act(() => leave?.onPress?.());
+    await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    alert.mockRestore();
   });
 });
 

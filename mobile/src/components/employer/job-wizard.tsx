@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
@@ -44,6 +44,7 @@ import {
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
+import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, radius, space } from '~/theme/tokens';
 
@@ -72,6 +73,16 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   const [idempotencyKey] = useState(() => uuid());
   const [step, setStep] = useState(0);
   const [draft, setValues] = useState<JobValues>(() => initialValues(job, developerIds, null));
+  // Leaving with something typed asks first; once saved, the wizard closes itself.
+  const [opened] = useState(() => JSON.stringify(initialValues(job, developerIds, null)));
+  const [saved, setSaved] = useState(false);
+  useLeaveGuard(!saved && JSON.stringify(draft) !== opened);
+  useEffect(() => {
+    if (saved) {
+      if (router.canGoBack()) router.back();
+      else router.replace('/employer/jobs' as never);
+    }
+  }, [saved]);
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [similar, setSimilar] = useState<{ id: string; title: string; seats: number } | null>(null);
   const [reference, setReference] = useState<SalaryReferenceRow | null>(null);
@@ -136,7 +147,8 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     }
     setErrors({});
     save.mutate(toJobInput(values, { id: job?.id, version: job?.version, idempotencyKey, submit: publish }), {
-      onSuccess: () => (router.canGoBack() ? router.back() : router.replace('/employer/jobs' as never)),
+      // Closed once the guard has stood down (the effect above), not from here.
+      onSuccess: () => setSaved(true),
       onError: (failure) => {
         if (failure instanceof ApiError && failure.status === 0) return refuse(t('app.offline.body'));
         const reason = failure instanceof JobSaveRefused ? failure.reason : 'failed';

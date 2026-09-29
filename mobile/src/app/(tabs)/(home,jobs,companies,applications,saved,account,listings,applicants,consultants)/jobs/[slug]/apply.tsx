@@ -31,6 +31,7 @@ import { pickCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
 import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
+import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, radius, space } from '~/theme/tokens';
@@ -213,6 +214,8 @@ function ApplyForm({
   // The CV already on the profile goes with it unless the candidate says otherwise.
   const [attachment, setAttachment] = useState<Attachment>(profileCv ? { kind: 'profile', path: profileCv } : null);
   const [errors, setErrors] = useState<Errors>({});
+  // Leaving with a note written or a file picked asks first (the form goes once it is sent).
+  useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file');
 
   const title = localized(locale, job.title_ar, job.title_en);
   const company = localized(locale, job.company.name_ar, job.company.name_en);

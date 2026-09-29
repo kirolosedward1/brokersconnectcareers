@@ -110,5 +110,11 @@
     "turnOn": "Turn on notifications",
     "notNow": "Not now",
     "unavailable": "Notifications on this phone aren't available in this version of the app yet. Everything new still reaches you in the bell, and by email if you have that on."
+  },
+  "leave": {
+    "title": "Leave without saving?",
+    "body": "What you typed here has not been saved, and will be lost.",
+    "stay": "Keep editing",
+    "discard": "Leave"
   }
 }

@@ -22,6 +22,7 @@ import { pickCv } from '~/features/cv/files';
 import { toggled } from '~/features/jobs/filters';
 import { SaveRefused, useSaveAgentProfile, type CvChange } from '~/features/profile/queries';
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
+import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, radius, space } from '~/theme/tokens';
 import { ChipGroup, wholeNumber } from './fields';
@@ -71,6 +72,15 @@ export function ProfileForm({
   const [cv, setCv] = useState<CvChange>({ kind: 'keep' });
   const [errors, setErrors] = useState<Errors>({});
 
+  // What the form held when it was filled or last saved: leaving with anything else asks first.
+  const snapshot = (cvKind: CvChange['kind']) =>
+    JSON.stringify([
+      fullName, whatsapp, visibility, availability, years, headlineAr, headlineEn, tracks, districtIds, developerChoice, languages, cvKind,
+    ]);
+  const typedNow = snapshot(cv.kind);
+  const [savedAs, setSavedAs] = useState(typedNow);
+  useLeaveGuard(typedNow !== savedAs);
+
   const hasCv = Boolean(agent?.cv_path);
 
   const chooseCv = async () => {
@@ -96,6 +106,8 @@ export function ProfileForm({
     }
 
     setErrors({});
+    // What the form holds once this is saved (a picked file is then the one on file).
+    const sending = snapshot('keep');
     save.mutate(
       {
         input: {
@@ -115,7 +127,10 @@ export function ProfileForm({
       },
       {
         // The picked file has been saved: a second save must not upload it again.
-        onSuccess: () => setCv({ kind: 'keep' }),
+        onSuccess: () => {
+          setCv({ kind: 'keep' });
+          setSavedAs(sending);
+        },
         onError: (failure) => {
           const reason = failure instanceof SaveRefused ? failure.reason : 'failed';
           const fields = failure instanceof SaveRefused ? failure.fieldErrors : undefined;

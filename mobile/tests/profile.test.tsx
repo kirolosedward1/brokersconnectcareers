@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Alert, Text, type AlertButton } from 'react-native';
+import { Alert, Modal, Text, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -332,6 +332,27 @@ describe('the CV sections', () => {
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
     expect(await screen.findByText(ar.app.profile.endBeforeStart)).toBeTruthy();
     expect(server.asked('/api/mobile/v1/actions/saveExperience')).toHaveLength(0);
+  });
+
+  it('asks before an entry typed into the sheet is thrown away, by its X or by pulling the sheet down', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    // Nothing typed: it simply closes.
+    fireEvent.press(await screen.findByRole('button', { name: ar.common.close }));
+    expect(alert).not.toHaveBeenCalled();
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'سيتي سكيب');
+    // The sheet pulled down: iOS asks the modal to close.
+    const sheet = screen.UNSAFE_getAllByType(Modal).find((modal) => modal.props.visible);
+    act(() => sheet?.props.onRequestClose());
+    expect(alert).toHaveBeenCalledWith(ar.app.leave.title, ar.app.leave.body, expect.any(Array));
+    // Kept: the sheet and what was typed are still there.
+    const stay = (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'cancel');
+    act(() => stay?.onPress?.());
+    expect(screen.getByLabelText(ar.cv.company).props.value).toBe('سيتي سكيب');
+    alert.mockRestore();
   });
 
   it('deletes an entry after asking', async () => {

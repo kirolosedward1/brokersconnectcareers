@@ -14,6 +14,7 @@ import { TextField } from '~/components/ui/text-field';
 import { CompanyRefused, useSaveCompany } from '~/features/employer/company';
 import { useDistricts } from '~/features/taxonomy';
 import { ApiError } from '~/lib/api';
+import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 
@@ -87,6 +88,10 @@ export function CompanyForm({ company }: { company: CompanyRow | null }) {
   // The row the fields were filled from, and whether the next version to arrive is to be taken over whole.
   const [loaded, setLoaded] = useState(company);
   const [takeNext, setTakeNext] = useState(false);
+
+  // Leaving with the profile changed and not saved asks first.
+  const typedNow: Fields = { nameAr, nameEn, aboutAr, aboutEn, site, companyType, headcount, districtId };
+  useLeaveGuard(!takeNext && !sameFields(typedNow, fieldsOf(loaded)));
 
   if (company && loaded && company.version !== loaded.version) {
     const typed: Fields = { nameAr, nameEn, aboutAr, aboutEn, site, companyType, headcount, districtId };

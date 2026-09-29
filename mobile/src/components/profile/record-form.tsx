@@ -10,6 +10,7 @@ import { Field } from '~/components/ui/field';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useSaveRecord } from '~/features/profile/queries';
+import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 import { wholeNumber } from './fields';
@@ -31,6 +32,11 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
   const [volume, setVolume] = useState(agent.volume_egp == null ? '' : String(agent.volume_egp));
   const [invalid, setInvalid] = useState(false);
 
+  // Leaving with the record changed and not saved asks first.
+  const typedNow = JSON.stringify([summary, units, volume]);
+  const [savedAs, setSavedAs] = useState(typedNow);
+  useLeaveGuard(typedNow !== savedAs);
+
   const percent = completeness ?? 0;
 
   const submit = () => {
@@ -42,7 +48,8 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
       return;
     }
     setInvalid(false);
-    save.mutate({ summaryAr: summary.trim() || null, unitsClosed, volumeEgp });
+    const sending = typedNow;
+    save.mutate({ summaryAr: summary.trim() || null, unitsClosed, volumeEgp }, { onSuccess: () => setSavedAs(sending) });
   };
 
   return (

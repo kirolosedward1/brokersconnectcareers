@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { X } from 'lucide-react-native';
@@ -16,6 +16,7 @@ import { Select } from '~/components/ui/select';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { SaveRefused, useSaveCvEntry, type CvSection } from '~/features/profile/queries';
+import { useConfirmDiscard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
 import { dateOf, monthOf, wholeNumber } from './fields';
@@ -31,10 +32,26 @@ export type CvEntry =
  * typed hostage. Dates are a year and a month, as the entries show them.
  */
 export function CvEntrySheet({ agentId, entry, onClose }: { agentId: string; entry: CvEntry | null; onClose: () => void }) {
+  // Whether the form has been typed in: the sheet pulled down asks first then.
+  const dirty = useRef(false);
+  const onDirty = useCallback((value: boolean) => {
+    dirty.current = value;
+  }, []);
+  const confirm = useConfirmDiscard();
+  const close = () => (dirty.current ? confirm(onClose) : onClose());
   return (
-    <Modal visible={entry !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={entry !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
       {/* A fresh form for every entry opened. */}
-      {entry ? <EntryForm key={`${entry.section}:${entry.row?.id ?? 'new'}`} agentId={agentId} entry={entry} onClose={onClose} /> : null}
+      {entry ? (
+        <EntryForm
+          key={`${entry.section}:${entry.row?.id ?? 'new'}`}
+          agentId={agentId}
+          entry={entry}
+          onClose={onClose}
+          onRequestClose={close}
+          onDirty={onDirty}
+        />
+      ) : null}
     </Modal>
   );
 }
@@ -45,7 +62,21 @@ const TITLE: Record<CvSection, { add: string; section: string }> = {
   certification: { add: 'addCertification', section: 'certifications' },
 };
 
-function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntry; onClose: () => void }) {
+function EntryForm({
+  agentId,
+  entry,
+  onClose,
+  onRequestClose,
+  onDirty,
+}: {
+  agentId: string;
+  entry: CvEntry;
+  /** Closes the sheet: after a save. */
+  onClose: () => void;
+  /** Asks first when something was typed: the X, the sheet pulled down. */
+  onRequestClose: () => void;
+  onDirty: (dirty: boolean) => void;
+}) {
   const t = useTranslations();
   const { colors } = useTheme();
   const save = useSaveCvEntry();
@@ -70,6 +101,12 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
   const [issued, setIssued] = useState(monthOf(certification?.issued));
   const [expires, setExpires] = useState(monthOf(certification?.expires));
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const typed = JSON.stringify([companyName, title, track, started, ended, highlights, institution, degree, field, graduated, name, issuer, issued, expires]);
+  const [opened] = useState(typed);
+  useEffect(() => {
+    onDirty(typed !== opened);
+  }, [onDirty, typed, opened]);
 
   const required = t('validation.required');
   const badMonth = t('app.profile.monthInvalid');
@@ -185,7 +222,7 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('common.close')}
-          onPress={onClose}
+          onPress={onRequestClose}
           style={{ width: hitTarget, height: hitTarget, alignItems: 'center', justifyContent: 'center' }}
         >
           <X size={20} color={colors.foreground} />
