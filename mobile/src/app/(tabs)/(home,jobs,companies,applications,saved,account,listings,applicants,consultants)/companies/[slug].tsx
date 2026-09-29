@@ -1,7 +1,7 @@
 import { Linking, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { BadgeCheck, Globe, MapPin, Users } from 'lucide-react-native';
+import { BadgeCheck, Globe, MapPin, Users } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
 import { safeHttpUrl } from '@/lib/security/sanitize';
 import { CompanyLogo } from '~/components/companies/company-logo';

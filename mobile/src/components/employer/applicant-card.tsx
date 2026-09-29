@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Download, FileX2, MessageCircle } from 'lucide-react-native';
+import { Download, FileX2, MessageCircle } from '~/components/ui/lucide';
 import { formatDate, formatEgp, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { canBrowseAgentDirectory } from '@/lib/permissions';

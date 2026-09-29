@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { CheckCircle2 } from 'lucide-react-native';
+import { CheckCircle2 } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
 import { safeHttpUrl } from '@/lib/security/sanitize';
 import type { CompanyRow, CompanyType, HeadcountBand } from '@/lib/supabase/database.types';

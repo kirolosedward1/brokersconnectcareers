@@ -1,7 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Bell } from 'lucide-react-native';
+import { Bell } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import { Text } from '~/components/ui/text';
 import { useUnreadCount } from '~/features/notifications/queries';

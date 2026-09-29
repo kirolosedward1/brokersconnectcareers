@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { ImageUp, Trash2 } from 'lucide-react-native';
+import { ImageUp, Trash2 } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { PhotoRefused, pickPhoto, useRemovePhoto, useUploadPhoto } from '~/features/account/settings';

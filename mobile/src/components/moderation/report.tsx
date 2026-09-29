@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
-import { EyeOff, Flag, ShieldCheck, X } from 'lucide-react-native';
+import { EyeOff, Flag, ShieldCheck, X } from '~/components/ui/lucide';
 import type { ReportInput } from '@/lib/mobile-api/contract';
 import type { ReportReason } from '@/lib/supabase/database.types';
 import { AGENT_REPORT_REASONS, COMPANY_REPORT_REASONS, REPORT_REASONS } from '@/lib/taxonomy';

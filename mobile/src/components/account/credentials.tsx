@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { Check, KeyRound, Mail } from 'lucide-react-native';
+import { Check, KeyRound, Mail } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';

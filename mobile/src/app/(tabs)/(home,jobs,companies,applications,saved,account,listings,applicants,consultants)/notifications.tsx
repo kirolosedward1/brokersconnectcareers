@@ -4,7 +4,7 @@ import { router, Stack, useLocalSearchParams, useNavigation, type Href } from 'e
 import { FlashList } from '@shopify/flash-list';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
-import { CheckCheck } from 'lucide-react-native';
+import { CheckCheck } from '~/components/ui/lucide';
 import { canAccessCandidateArea } from '@/lib/permissions';
 import type { NotificationRow } from '@/lib/supabase/database.types';
 import { NotificationItem } from '~/components/notifications/notification-item';

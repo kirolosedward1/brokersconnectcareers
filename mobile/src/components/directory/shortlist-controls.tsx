@@ -1,6 +1,6 @@
 import { Pressable } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { UserRoundCheck, UserRoundPlus } from 'lucide-react-native';
+import { UserRoundCheck, UserRoundPlus } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { useShortlistedIds, useToggleShortlist } from '~/features/directory/queries';
 import { useTheme } from '~/theme/provider';

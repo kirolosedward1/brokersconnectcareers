@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native';
-import { TrendingDown, TrendingUp } from 'lucide-react-native';
+import { TrendingDown, TrendingUp } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';

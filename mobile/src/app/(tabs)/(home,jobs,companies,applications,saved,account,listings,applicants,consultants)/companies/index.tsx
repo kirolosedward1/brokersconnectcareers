@@ -4,7 +4,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import type { SearchBarCommands } from 'react-native-screens';
-import { BadgeCheck, Briefcase, MapPin } from 'lucide-react-native';
+import { BadgeCheck, Briefcase, MapPin } from '~/components/ui/lucide';
 import type { CompanyListItem } from '@/lib/read-types';
 import { formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';

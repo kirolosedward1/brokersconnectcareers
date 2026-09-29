@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Check, Scale, TriangleAlert } from 'lucide-react-native';
+import { Check, Scale, TriangleAlert } from '~/components/ui/lucide';
 import { formatEgp, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { JobRow, SalaryReferenceRow } from '@/lib/supabase/database.types';

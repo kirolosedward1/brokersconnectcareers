@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, type Href } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Briefcase, Building2, Check, Search, Users } from 'lucide-react-native';
+import { Briefcase, Building2, Check, Search, Users } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { CandidateHome } from '~/components/home/candidate-home';

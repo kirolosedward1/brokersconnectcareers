@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { RefreshControl, ScrollView, Share, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, Share2, Users } from 'lucide-react-native';
+import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, Share2, Users } from '~/components/ui/lucide';
 import type { JobDetailResponse } from '@/lib/mobile-api/reads';
 import { formatDate, formatNumber } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';

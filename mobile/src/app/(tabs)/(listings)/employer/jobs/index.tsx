@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { Archive, BriefcaseBusiness, Eye, MapPin, Pencil, Plus, RotateCcw, Users } from 'lucide-react-native';
+import { Archive, BriefcaseBusiness, Eye, MapPin, Pencil, Plus, RotateCcw, Users } from '~/components/ui/lucide';
 import { formatDate, formatNumber } from '@/lib/format';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { Banknote, HandCoins, Scale, Sparkles, Target } from 'lucide-react-native';
+import { Banknote, HandCoins, Scale, Sparkles, Target } from '~/components/ui/lucide';
 import type { JobRow, SalaryReferenceRow } from '@/lib/supabase/database.types';
 import { formatEgp } from '@/lib/format';
 import { Badge } from '~/components/ui/badge';

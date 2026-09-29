@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { Download, Eye, MessageCircle } from 'lucide-react-native';
+import { Download, Eye, MessageCircle } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { openAgentCv, RevealRefused, useRevealContact, type RevealedContact } from '~/features/directory/queries';

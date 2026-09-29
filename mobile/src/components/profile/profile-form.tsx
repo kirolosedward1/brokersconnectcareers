@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { CheckCircle2, Eye, EyeOff, FileText, Paperclip, ShieldCheck, Trash2, X } from 'lucide-react-native';
+import { CheckCircle2, Eye, EyeOff, FileText, Paperclip, ShieldCheck, Trash2, X } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
 import { isValidPhone, normalisePhone } from '@/lib/phone';
 import type {

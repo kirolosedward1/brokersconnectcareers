@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActionSheetIOS, Alert, Platform, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { CheckCircle2, FileCheck2, Upload } from 'lucide-react-native';
+import { CheckCircle2, FileCheck2, Upload } from '~/components/ui/lucide';
 import type { CompanyDocumentRow, VerificationStatus } from '@/lib/supabase/database.types';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';

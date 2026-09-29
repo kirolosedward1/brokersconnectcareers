@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { X } from 'lucide-react-native';
+import { X } from '~/components/ui/lucide';
 import type {
   AgentCertificationRow,
   AgentEducationRow,

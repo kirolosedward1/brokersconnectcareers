@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { Award, Briefcase, GraduationCap, Quote } from 'lucide-react-native';
+import { Award, Briefcase, GraduationCap, Quote } from '~/components/ui/lucide';
 import { formatEgp, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { DistrictRow } from '@/lib/supabase/database.types';

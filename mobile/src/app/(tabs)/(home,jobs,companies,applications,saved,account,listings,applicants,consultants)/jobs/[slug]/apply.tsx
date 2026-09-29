@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { CheckCircle2, FileText, Paperclip, ShieldCheck, X } from 'lucide-react-native';
+import { CheckCircle2, FileText, Paperclip, ShieldCheck, X } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
 import type { JobDetail } from '@/lib/job-list';
 import { jobIsLive } from '@/lib/job-state';

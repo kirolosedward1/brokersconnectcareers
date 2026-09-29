@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Briefcase, CircleDot, Lock, MapPin, UserRound } from 'lucide-react-native';
+import { Briefcase, CircleDot, Lock, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { AgentCardRow, DistrictRow, JobTrack } from '@/lib/supabase/database.types';

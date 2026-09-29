@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { Mail } from 'lucide-react-native';
+import { Mail } from '~/components/ui/lucide';
 import { AuthHeading, AuthScroll, AuthSwitch } from '~/components/auth/auth-scroll';
 import { CaptchaStatus, captchaBlocks } from '~/components/auth/captcha-status';
 import { Button } from '~/components/ui/button';

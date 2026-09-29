@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Search, ShieldCheck } from 'lucide-react-native';
+import { Search, ShieldCheck } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { isSuspended } from '@/lib/permissions';

@@ -1,7 +1,7 @@
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Gift } from 'lucide-react-native';
+import { Gift } from '~/components/ui/lucide';
 import { formatDate, formatEgp, formatNumber } from '@/lib/format';
 import { canAccessEmployerArea, isSuspended } from '@/lib/permissions';
 import { Badge } from '~/components/ui/badge';

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Lock, MapPin, ShieldCheck, UserRound } from 'lucide-react-native';
+import { Lock, MapPin, ShieldCheck, UserRound } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
 import { canShortlistAgents, canViewAgentProfile } from '@/lib/permissions';
 import type { DistrictRow } from '@/lib/supabase/database.types';

@@ -16,7 +16,7 @@ import {
   ShieldCheck,
   Trash2,
   UserRound,
-} from 'lucide-react-native';
+} from '~/components/ui/lucide';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { PhotoControls } from '~/components/account/photo-controls';
 import { HeaderBell } from '~/components/notifications/header-bell';

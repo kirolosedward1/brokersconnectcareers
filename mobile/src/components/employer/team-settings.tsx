@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { ShieldCheck, UserPlus, UserRound, X } from 'lucide-react-native';
+import { ShieldCheck, UserPlus, UserRound, X } from '~/components/ui/lucide';
 import type { CompanyMemberRole } from '@/lib/supabase/database.types';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';

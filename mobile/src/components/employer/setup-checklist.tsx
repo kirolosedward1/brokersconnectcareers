@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { Check, CircleDashed, Clock } from 'lucide-react-native';
+import { Check, CircleDashed, Clock } from '~/components/ui/lucide';
 import type { CompanyRow } from '@/lib/supabase/database.types';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';

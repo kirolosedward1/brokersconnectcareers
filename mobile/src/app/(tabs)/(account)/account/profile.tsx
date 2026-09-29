@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { Eye, Info } from 'lucide-react-native';
+import { Eye, Info } from '~/components/ui/lucide';
 import { canAccessCandidateArea } from '@/lib/permissions';
 import { AppealPanel } from '~/components/moderation/appeal-panel';
 import { CvSections } from '~/components/profile/cv-sections';

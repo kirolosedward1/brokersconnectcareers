@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { Lock } from 'lucide-react-native';
+import { Lock } from '~/components/ui/lucide';
 import { formatDate, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { canBrowseAgentDirectory, canShortlistAgents } from '@/lib/permissions';

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
-import { X } from 'lucide-react-native';
+import { X } from '~/components/ui/lucide';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 import { Text } from './text';

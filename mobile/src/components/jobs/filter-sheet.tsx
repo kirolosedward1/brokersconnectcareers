@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale, useTranslations } from 'use-intl';
-import { X } from 'lucide-react-native';
+import { X } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import type { JobFilters } from '@/lib/job-filters';
 import { localized } from '@/lib/locale';

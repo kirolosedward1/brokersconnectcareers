@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import type { AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
-import { MailCheck, RefreshCw } from 'lucide-react-native';
+import { MailCheck, RefreshCw } from '~/components/ui/lucide';
 import { AuthHeading, AuthScroll, AuthSwitch } from '~/components/auth/auth-scroll';
 import { CaptchaStatus, captchaBlocks } from '~/components/auth/captcha-status';
 import { SocialSignIn } from '~/components/auth/social-sign-in';

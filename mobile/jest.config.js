@@ -52,9 +52,11 @@ module.exports = {
   resolver: '<rootDir>/jest.resolver.js',
   setupFiles: ['<rootDir>/tests/setup.ts'],
   moduleNameMapper: {
-    // Its React Native entry is an .mjs file, which Jest's transform does not
-    // pick up; the CommonJS build draws the same icons.
+    // Its React Native entries are .mjs files, which Jest's transform does not
+    // pick up; the CommonJS build draws the same icons (the app imports each
+    // from its own module: src/components/ui/lucide.ts).
     '^lucide-react-native$': '<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js',
+    '^lucide-react-native/icons/(.*)$': '<rootDir>/node_modules/lucide-react-native/dist/cjs/icons/$1.js',
   },
   transformIgnorePatterns: [
     `/node_modules/(?!(${esmPackages.join('|')}))`,

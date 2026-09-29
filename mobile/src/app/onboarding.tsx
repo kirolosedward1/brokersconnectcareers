@@ -4,7 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocale, useTranslations } from 'use-intl';
-import { Briefcase, Check, MailCheck, Search } from 'lucide-react-native';
+import { Briefcase, Check, MailCheck, Search } from '~/components/ui/lucide';
 import type { OnboardingInput } from '@/lib/mobile-api/contract';
 import { localized, type Locale } from '@/lib/locale';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';

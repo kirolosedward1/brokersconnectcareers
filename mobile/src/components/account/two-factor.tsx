@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Linking, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
-import { Check, ExternalLink, ShieldCheck, ShieldOff } from 'lucide-react-native';
+import { Check, ExternalLink, ShieldCheck, ShieldOff } from '~/components/ui/lucide';
 import { westernDigits } from '@/lib/search/arabic';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';

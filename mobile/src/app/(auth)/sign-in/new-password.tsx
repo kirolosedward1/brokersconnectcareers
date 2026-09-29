@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { router } from 'expo-router';
 import { isAuthRetryableFetchError, type AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
-import { Check } from 'lucide-react-native';
+import { Check } from '~/components/ui/lucide';
 import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';

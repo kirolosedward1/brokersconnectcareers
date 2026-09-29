@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2, Eye, MapPin } from 'lucide-react-native';
+import { Building2, Eye, MapPin } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';

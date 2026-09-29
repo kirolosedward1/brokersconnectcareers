@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { SlidersHorizontal } from 'lucide-react-native';
+import { SlidersHorizontal } from '~/components/ui/lucide';
 import type { SearchBarCommands } from 'react-native-screens';
 import {
   activeFilterList,

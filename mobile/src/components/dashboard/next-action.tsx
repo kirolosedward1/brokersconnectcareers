@@ -7,7 +7,7 @@ import {
   RotateCcw,
   UserRound,
   type LucideIcon,
-} from 'lucide-react-native';
+} from '~/components/ui/lucide';
 import type { NextActionKind } from '@/lib/next-action';
 import { ForwardChevron } from '~/components/ui/icons';
 import { Text } from '~/components/ui/text';

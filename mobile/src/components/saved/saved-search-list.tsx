@@ -1,7 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { Bell, BellOff, Building2, Search, Trash2 } from 'lucide-react-native';
+import { Bell, BellOff, Building2, Search, Trash2 } from '~/components/ui/lucide';
 import { followedCompany } from '@/lib/saved-search';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
 import { Text } from '~/components/ui/text';

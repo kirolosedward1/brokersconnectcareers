@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { BellPlus, BellRing, Bookmark, BookmarkCheck, Check } from 'lucide-react-native';
+import { BellPlus, BellRing, Bookmark, BookmarkCheck, Check } from '~/components/ui/lucide';
 import { canSaveJobs } from '@/lib/permissions';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';

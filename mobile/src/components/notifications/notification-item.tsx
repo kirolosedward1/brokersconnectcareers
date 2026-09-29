@@ -23,7 +23,7 @@ import {
   UserMinus,
   UserRound,
   type LucideProps,
-} from 'lucide-react-native';
+} from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
 import { isKnownNotificationKind, notificationTitle, type Translate } from '@/lib/notifications/title';
 import type { NotificationKind, NotificationRow } from '@/lib/supabase/database.types';

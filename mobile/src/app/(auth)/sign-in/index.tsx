@@ -3,7 +3,7 @@ import { View, type TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import type { AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
-import { RefreshCw } from 'lucide-react-native';
+import { RefreshCw } from '~/components/ui/lucide';
 import type { AuthFriction } from '@/lib/mobile-api/contract';
 import { AuthHeading, AuthScroll, AuthSwitch } from '~/components/auth/auth-scroll';
 import { CaptchaStatus, captchaBlocks } from '~/components/auth/captcha-status';

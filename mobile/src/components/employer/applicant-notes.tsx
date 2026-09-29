@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { ChevronDown, ChevronUp, Lock, Trash2 } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Lock, Trash2 } from '~/components/ui/lucide';
 import { formatDate, formatNumber } from '@/lib/format';
 import type { ApplicationNoteRow } from '@/lib/supabase/database.types';
 import { Button } from '~/components/ui/button';

@@ -1,5 +1,5 @@
 import { I18nManager } from 'react-native';
-import { ChevronLeft, ChevronRight, SendHorizontal, type LucideProps } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, SendHorizontal, type LucideProps } from './lucide';
 
 /**
  * "Onward" and "back" as the reading direction has them — the website's

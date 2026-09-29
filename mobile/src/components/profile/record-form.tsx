@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2, TrendingUp } from 'lucide-react-native';
+import { Building2, TrendingUp } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import type { AgentProfileRow } from '@/lib/supabase/database.types';
 import { Button } from '~/components/ui/button';

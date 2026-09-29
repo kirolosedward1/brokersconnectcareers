@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { BadgeCheck, CircleSlash, MapPin, Star, Target } from 'lucide-react-native';
+import { BadgeCheck, CircleSlash, MapPin, Star, Target } from '~/components/ui/lucide';
 import type { JobListItem } from '@/lib/job-list';
 import { formatList, formatNumber, formatRelativeDay } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';

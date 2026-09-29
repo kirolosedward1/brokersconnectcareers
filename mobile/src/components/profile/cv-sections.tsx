@@ -1,7 +1,7 @@
 import { useState, type ComponentType } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { Award, Briefcase, GraduationCap, Pencil, Plus, Trash2, type LucideProps } from 'lucide-react-native';
+import { Award, Briefcase, GraduationCap, Pencil, Plus, Trash2, type LucideProps } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Notice } from '~/components/ui/notice';

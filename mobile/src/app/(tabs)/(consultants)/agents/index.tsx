@@ -4,7 +4,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import type { SearchBarCommands } from 'react-native-screens';
-import { ShieldCheck, SlidersHorizontal, UserRoundCheck } from 'lucide-react-native';
+import { ShieldCheck, SlidersHorizontal, UserRoundCheck } from '~/components/ui/lucide';
 import { EMPTY_AGENT_FILTERS, parseAgentFilters, type AgentFilters } from '@/lib/agent-filters';
 import { formatNumber } from '@/lib/format';
 import { canBrowseAgentDirectory, canShortlistAgents, hasVerifiedCompany, isAdmin } from '@/lib/permissions';

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FlatList, Modal, Pressable, View } from 'react-native';
-import { Check, ChevronDown, X } from 'lucide-react-native';
+import { Check, ChevronDown, X } from '~/components/ui/lucide';
 import { useTranslations } from 'use-intl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '~/theme/provider';

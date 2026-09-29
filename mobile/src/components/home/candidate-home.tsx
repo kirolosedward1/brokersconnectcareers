@@ -2,7 +2,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from '
 import { router, type Href } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2 } from 'lucide-react-native';
+import { Building2 } from '~/components/ui/lucide';
 import { formatDate, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { ProfileRow } from '@/lib/supabase/database.types';

@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { BellRing } from 'lucide-react-native';
+import { BellRing } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Text } from '~/components/ui/text';
