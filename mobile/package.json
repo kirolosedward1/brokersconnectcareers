@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "start": "expo start",
+    "start:go": "expo start --go",
     "ios": "expo start --ios",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tests",
     "lint": "eslint .",

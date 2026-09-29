@@ -145,5 +145,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     ...config.extra,
     eas: easProjectId ? { projectId: easProjectId } : undefined,
+    // Right to left in Expo Go, which reads these from the manifest
+    // (expo-manifests: supportsRTL, forcesRTL); a build of the app gets the
+    // same from the expo-localization plugin above.
+    supportsRTL: true,
+    forcesRTL: true,
   },
 });

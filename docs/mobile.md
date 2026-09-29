@@ -383,10 +383,34 @@ reports promptly.
 cd mobile
 pnpm install
 cp .env.example .env
-pnpm start          # needs a development build, see mobile/README.md
+pnpm start:go       # for the Expo Go app, below
+pnpm start          # for a development build, see mobile/README.md
 pnpm check          # typecheck, lint, the shared-code guard, Jest
 pnpm export:ios     # bundle for iOS with Metro and Hermes
 ```
+
+### Trying it in Expo Go
+
+The quickest way onto a phone, with no Apple developer account: install Expo Go
+from the App Store, run `pnpm start:go` on a computer on the same Wi-Fi as the
+iPhone, and scan the QR code it prints with the iPhone's camera
+(`pnpm start:go --tunnel` when the two are not on the same network). Right to
+left comes from `extra.forcesRTL` in `app.config.ts`, which Expo Go reads from
+the manifest.
+
+Expo Go runs the app as itself, not as `net.brokersconnect.app`, so a few
+things need a development build instead:
+
+- Sign in with Apple: Apple issues the token to Expo Go. Email and password,
+  and Google, work.
+- Push notifications, which need the EAS project and a build.
+- Links that open the app (universal links and `brokersconnect://`).
+- The version on the Account screen, and the one the update gate compares, is
+  Expo Go's own.
+
+The app talks to production (the values in `.env`), so it works once the
+website and database carry what it relies on: the release in
+`docs/release/2026-09-prod-reconciliation.md`.
 
 The Jest suites cover the pure helpers, routing (where each kind of link lands
 and where Back goes), the real screens rendered against fixtures typed with the

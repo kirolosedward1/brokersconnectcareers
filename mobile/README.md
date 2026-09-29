@@ -13,11 +13,13 @@ How it fits together, what it shares with the website and how it is released:
 cd mobile
 pnpm install
 cp .env.example .env        # production's public values; point at staging if you have one
-pnpm start                  # then open it in a development build (see below)
+pnpm start:go               # then scan the QR code with the iPhone's camera, in Expo Go
 ```
 
-The app uses native modules Expo Go does not include (secure storage, native
-tabs, the development client), so it runs in a **development build**:
+Expo Go (free, from the App Store) is the quickest way to try it. What it
+cannot do — Sign in with Apple, pushes, links that open the app — is listed in
+`docs/mobile.md` ("Trying it in Expo Go"); for those, the app runs in a
+**development build**:
 
 ```bash
 npx eas-cli@latest build --profile development-simulator --platform ios   # for the iOS Simulator

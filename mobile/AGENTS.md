@@ -20,6 +20,7 @@ This project is its own pnpm root (`pnpm-workspace.yaml`, `nodeLinker: hoisted`)
 npx expo install <package>  # ALWAYS use instead of pnpm add for runtime packages — resolves SDK-compatible versions
                             # (EXPO_OFFLINE=1 when expo.dev is unreachable)
 pnpm start                  # the dev server, for a development build
+pnpm start:go               # the same, for the Expo Go app (docs/mobile.md, "Trying it in Expo Go")
 pnpm check                  # typecheck + lint + shared-code guard + Jest — run before declaring anything done
 pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept everything
 ```
