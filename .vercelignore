@@ -1,3 +1,7 @@
 # The Expo app. It is built by EAS, not Vercel, and the website never imports
 # from it (the app imports from the website, not the other way round).
-mobile/
+#
+# Anchored with the leading slash: a bare `mobile/` matches a directory of that
+# name at any depth, which took src/app/api/mobile/ — the app's whole API —
+# out of every deployment.
+/mobile/

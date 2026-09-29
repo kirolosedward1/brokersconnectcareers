@@ -10,7 +10,19 @@ packages:
   - '.'
 
 # Build-script approvals, as at the root: both ship prebuilt binaries and only
-# fall back to compiling, which is harmless.
+# fall back to compiling, which is harmless. onlyBuiltDependencies is pnpm 10's
+# list (CI's); allowBuilds is pnpm 11's and later, which fail the install
+# (ERR_PNPM_IGNORED_BUILDS) on any build script not approved here.
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - unrs-resolver
+
+allowBuilds:
+  '@parcel/watcher': true
+  unrs-resolver: true
+
+# No package younger than a day. pnpm 12 applies this by default and refuses a
+# lockfile holding one (ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION); written here,
+# pnpm 10 resolves the same way, so `npx expo install` never records a version
+# that a newer pnpm then rejects.
+minimumReleaseAge: 1440

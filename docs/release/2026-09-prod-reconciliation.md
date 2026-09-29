@@ -1,9 +1,9 @@
 # Bringing production up to `main` — September 2026
 
-**State:** prepared, rehearsed, and checked against production itself on
-2026-09-29 (read-only, [below](#verified-against-production-2026-09-29));
-**nothing has been applied to production.** Applying it needs the owner's
-go-ahead, a backup, and the steps under [The release window](#the-release-window).
+**State: applied to production on 2026-09-29**, on the owner's go-ahead, after
+the read-only checks [below](#verified-against-production-2026-09-29). Production
+now matches `main` object for object; how it was done and what was checked is
+under [Applied, 2026-09-29](#applied-2026-09-29).
 
 ## Where production stands
 
@@ -122,11 +122,13 @@ Read-only, through the Supabase connector:
   not reproduce.
 - **The data preflight** is 0 on every line, blocking and informational.
 - **Size**: 17 accounts, about 24 MB, two stored files.
-- **Scheduling**: pg_cron and Vault are installed, pg_net is not, and no Vault
-  secret is set. The one job is 204's `brokersconnect-lifecycle-maintenance`
-  (hourly, at minute 7), which is plain SQL. 329's minute push sweep therefore
-  stays unscheduled in the database until pg_net and its two secrets exist;
-  pushes still go out from the actions' flush and from Vercel's `/api/cron/push`.
+- **Scheduling**: pg_cron and Vault were installed, pg_net was not, and no
+  Vault secret is set. The one job was 204's
+  `brokersconnect-lifecycle-maintenance` (hourly, at minute 7), which is plain
+  SQL. 329 installs pg_net itself where Supabase offers it and schedules the
+  minute push sweep, which does nothing until its two Vault secrets are set;
+  until then pushes go out from the actions' flush and from Vercel's
+  `/api/cron/push`.
 
 ## Data preflight
 
@@ -162,6 +164,35 @@ production.
 - Refuses a ledger with drift, the transaction pooler (port 6543) and a second
   concurrent run (advisory lock). Each file waits at most five seconds for a
   lock, so the site's traffic is never queued behind a migration.
+
+## Applied, 2026-09-29
+
+PR #29 merged into `main` (2a86853) and Vercel deployed it; the 31 files went
+to production right after, through the Supabase connector:
+
+- **Backup first**: `backup_2026_09_29` holds a copy of every `public` table,
+  row counts checked against the originals, in a schema the API does not serve.
+  Drop it once the release has settled.
+- **No SQL re-typed**: pg_net (which 329 installs anyway) let the database
+  fetch each file from GitHub at 2a86853; each one's md5 was checked against
+  the file here before anything ran.
+- **Applied as `pnpm db:apply` does**: one transaction per file, in file order,
+  a five-second lock timeout, 307 with its adjustment, and the ledger row with
+  the file's own version and every statement run. A helper function did this,
+  refusing a file out of order or twice; it was rehearsed on the rebuild of the
+  snapshot first, and dropped afterwards. Two calls lost their reply to the
+  connector (a gateway 502); the ledger showed neither had applied, and each
+  was run again.
+- **Checked**: the ledger holds 109 rows (the 31 under their own versions);
+  the fingerprint equals a fresh build of `main` in every kind (423 columns, 295
+  constraints, 226 functions, 207 indexes, 109 policies, 104 triggers, 52 RLS
+  switches, 15 enums, 4 buckets); function grants equal it too, but for
+  `is_undeliverable_domain`, still the stricter on production; the cron jobs
+  are the lifecycle job and 329's push sweep; the security advisors report no
+  errors.
+- **Found on the way**: `.vercelignore` said `mobile/`, which matches a
+  directory of that name at any depth and so took `src/app/api/mobile/` — the
+  app's API — out of every deployment. Now `/mobile/`.
 
 ## The release window
 
