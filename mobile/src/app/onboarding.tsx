@@ -25,6 +25,7 @@ import { useDistricts } from '~/features/taxonomy';
 import { callAction } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
+import { useHoldBack } from '~/lib/use-hold-back';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -49,6 +50,7 @@ export default function OnboardingScreen() {
   const { ready, session, viewer } = useSession();
   const land = useLand();
   const close = useCloseFlow();
+  useHoldBack();
 
   // Nothing to ask: signed out in the meantime, or onboarded already (in
   // another tab, on the website) — the website's onboarding page redirects
@@ -174,7 +176,7 @@ function OnboardingForm({
   const openSitePage = (path: string) => WebBrowser.openBrowserAsync(`${env.siteUrl}${path}`).catch(() => {});
 
   return (
-    <AuthScroll>
+    <AuthScroll bare>
       <View style={{ height: space[8] }} />
 
       {intent.confirmed ? (

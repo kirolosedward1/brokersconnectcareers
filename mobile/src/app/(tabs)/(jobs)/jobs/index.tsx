@@ -77,6 +77,9 @@ export default function BoardScreen() {
   useEffect(() => {
     searchBar.current?.setText(filters.q);
   }, [filters.q]);
+  const clearSearch = () => {
+    if (filters.q) apply({ ...filters, q: '' });
+  };
 
   const header = (
     <Stack.Screen
@@ -91,9 +94,9 @@ export default function BoardScreen() {
           autoCapitalize: 'none',
           tintColor: colors.primary,
           onSearchButtonPress: (event) => apply({ ...filters, q: event.nativeEvent.text.trim().slice(0, 120) }),
-          onCancelButtonPress: () => {
-            if (filters.q) apply({ ...filters, q: '' });
-          },
+          // Leaving the search drops it: Cancel on iOS, the field's close on Android.
+          onCancelButtonPress: clearSearch,
+          onClose: clearSearch,
         },
       }}
     />

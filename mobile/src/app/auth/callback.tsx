@@ -50,7 +50,7 @@ export default function OAuthCallbackScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <AuthScroll>
+        <AuthScroll bare>
           <View style={{ height: space[8] }} />
           <AuthHeading title={t('common.error')} body={t('common.errorBody')} />
           <Button label={t('common.close')} variant="outline" onPress={close} />

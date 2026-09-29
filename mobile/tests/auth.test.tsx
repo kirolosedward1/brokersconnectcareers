@@ -1,4 +1,4 @@
-import { Alert, Text } from 'react-native';
+import { Alert, BackHandler, Platform, Text } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
@@ -22,6 +22,7 @@ import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import * as DeleteAccountScreen from '../src/app/(tabs)/(account)/account/delete';
 import * as ConfirmScreen from '../src/app/auth/confirm';
 import * as CallbackScreen from '../src/app/auth/callback';
+import { redirectSystemPath } from '../src/app/+native-intent';
 import * as MfaScreen from '../src/app/mfa';
 import * as OnboardingScreen from '../src/app/onboarding';
 import {
@@ -512,6 +513,28 @@ describe('the second factor', () => {
     expect(server.asked(`/auth/v1/factors/${totpFactor.id}/challenge`)).toHaveLength(0);
   });
 
+  it('keeps what was typed on Android’s Back, which does nothing here', async () => {
+    // Android's BackHandler: the newest listener first, until one takes the press.
+    const listeners: Parameters<typeof BackHandler.addEventListener>[1][] = [];
+    const add = jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_event, listener) => {
+      listeners.push(listener);
+      return { remove: () => void listeners.splice(listeners.indexOf(listener), 1) };
+    });
+    user = authUser({ factors: [totpFactor] });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123');
+
+    act(() => void [...listeners].reverse().some((listener) => listener({} as never)));
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    // Not closed and opened again by the session gate: the same screen, with the same digits.
+    expect(screen.getByLabelText(ar.account.mfaCode).props.value).toBe('123');
+    add.mockRestore();
+  });
+
   it('can be walked away from only by signing out', async () => {
     user = authUser({ factors: [totpFactor] });
     await signedIn();
@@ -569,6 +592,27 @@ describe('one-tap sign-in', () => {
     expect(returnTo).toBe('brokersconnect://auth/callback');
     const exchange = server.asked('/auth/v1/token').find((request) => request.url.searchParams.get('grant_type') === 'pkce');
     expect(exchange?.body).toMatchObject({ auth_code: 'google-code' });
+  });
+
+  it('Google on Android: the return also arrives as a link, and the code is exchanged once', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: false } }));
+    const back = 'brokersconnect://auth/callback?code=google-code';
+    let opened: string | null = 'not asked';
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockImplementation(async () => {
+      // What expo-router does with a link the system hands the app.
+      opened = await redirectSystemPath({ path: back, initial: false });
+      if (opened) act(() => router.navigate(opened as never));
+      return { type: 'success', url: back };
+    });
+    renderRouter(app, { initialUrl: '/account' });
+    await press(ar.nav.signIn);
+    await press(ar.auth.continueWithGoogle);
+
+    expect(await screen.findByText(profile.full_name)).toBeTruthy();
+    expect(opened).toBeNull();
+    const exchanges = server.asked('/auth/v1/token').filter((request) => request.url.searchParams.get('grant_type') === 'pkce');
+    expect(exchanges).toHaveLength(1);
+    expect(screen.queryByText(ar.common.errorBody)).toBeNull();
   });
 
   it('Google: closing the browser is not an error', async () => {
@@ -701,6 +745,31 @@ describe('deleting the account', () => {
     await waitFor(() =>
       expect(bodyOf('/api/mobile/v1/actions/deleteMyAccount')).toEqual({ input: { appleAuthorizationCode: 'fresh-code' } }),
     );
+  });
+
+  it('deletes an account made with Apple on Android as the website does, where there is no Apple sheet to ask', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    jest.mocked(AppleAuthentication.signInAsync).mockClear();
+    try {
+      user = authUser({
+        app_metadata: { provider: 'apple', providers: ['apple'] },
+        identities: [{ id: 'apple-user', user_id: USER_ID, provider: 'apple', identity_data: {} }],
+      });
+      await signedIn();
+      renderRouter(app, { initialUrl: '/account/delete' });
+      fireEvent.changeText(
+        await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`),
+        ar.account.deleteConfirmWord,
+      );
+      expect(screen.queryByText(ar.app.account.deleteApple)).toBeNull();
+      await press(ar.account.deleteCta);
+
+      await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/deleteMyAccount')).toEqual({ input: {} }));
+      expect(AppleAuthentication.signInAsync).not.toHaveBeenCalled();
+      await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
+    } finally {
+      os.restore();
+    }
   });
 
   it("is refused while a suspension stands, in the website's words", async () => {

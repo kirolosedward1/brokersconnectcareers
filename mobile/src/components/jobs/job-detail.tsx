@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { RefreshControl, ScrollView, Share, View } from 'react-native';
+import { Platform, RefreshControl, ScrollView, Share, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, Share2, Users } from '~/components/ui/lucide';
@@ -79,8 +79,11 @@ export function JobDetail({
     callAction('recordJobView', { slug: job.slug }).catch(() => {});
   }, [open, job.slug]);
 
-  const share = () =>
-    Share.share({ message: title, url: withShareSource(`${env.siteUrl}/jobs/${job.slug}`) }).catch(() => {});
+  const share = () => {
+    const url = withShareSource(`${env.siteUrl}/jobs/${job.slug}`);
+    // `url` is iOS's alone: Android shares the message, so there the link goes inside it.
+    Share.share(Platform.OS === 'ios' ? { message: title, url } : { message: `${title}\n${url}` }).catch(() => {});
+  };
 
   return (
     <>

@@ -120,6 +120,17 @@ describe('the board', () => {
     await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
   });
 
+  it('drops the words searched when the search is left, by Cancel on iOS or the close on Android', async () => {
+    for (const leave of ['onCancelButtonPress', 'onClose'] as const) {
+      const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?q=villa&track=primary' });
+      await screen.findByText(listing.title_ar);
+      const bar = screen.UNSAFE_root.find((node) => node.props.placeholder === 'مثال: استشاري عقاري' && Boolean(node.props[leave]));
+      act(() => bar.props[leave]({ nativeEvent: {} }));
+      await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
+      result.unmount();
+    }
+  });
+
   it('offers the one filter to drop when nothing matches', async () => {
     server.on('/api/mobile/v1/jobs', board([], { relaxations: [{ key: 'district-new-cairo', count: 4 }] }));
     const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?district=new-cairo&track=primary' });

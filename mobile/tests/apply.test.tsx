@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Text } from 'react-native';
+import { Platform, Share, Text } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -8,6 +8,7 @@ import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testi
 import type { Actor } from '@/lib/permissions';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { catalogues, I18nProvider } from '~/i18n/provider';
+import { env } from '~/lib/env';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -345,5 +346,25 @@ describe('who gets the form', () => {
     const result = renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
     await waitFor(() => expect(result.getPathname()).toBe(APPLY));
+  });
+});
+
+describe('sharing a listing', () => {
+  const url = `${env.siteUrl}/jobs/${listing.slug}?src=share`;
+  afterEach(() => jest.restoreAllMocks());
+
+  it('hands iOS the link as a link', async () => {
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.share }));
+    expect(share).toHaveBeenCalledWith({ message: listing.title_ar, url });
+  });
+
+  it('puts the link inside the message on Android, which shares the message alone', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.share }));
+    expect(share).toHaveBeenCalledWith({ message: `${listing.title_ar}\n${url}` });
   });
 });

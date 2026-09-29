@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
+import { Platform, ScrollView, Text } from 'react-native';
 import { Image } from 'expo-image';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { AuthScroll } from '~/components/auth/auth-scroll';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { Avatar } from '~/components/ui/avatar';
 import { PageFooter } from '~/components/ui/page-footer';
@@ -64,5 +67,35 @@ describe('the end of a list', () => {
     expect(screen.getByText(ar.app.offline.body)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
     expect(query.fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('a sign-in page', () => {
+  // A phone with a status bar and a navigation bar the app is drawn under.
+  const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 24, bottom: 48, left: 0, right: 0 } };
+  const padding = (bare: boolean) => {
+    render(
+      <SafeAreaProvider initialMetrics={metrics}>
+        <AuthScroll bare={bare}>
+          <Text>…</Text>
+        </AuthScroll>
+      </SafeAreaProvider>,
+    );
+    const { paddingTop, paddingBottom } = screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle;
+    return { paddingTop, paddingBottom };
+  };
+
+  it('leaves the bars to iOS, which keeps a scroll view clear of them itself', () => {
+    expect(padding(true)).toEqual({ paddingTop: 16, paddingBottom: 40 });
+  });
+
+  it('keeps clear of them on Android, drawn edge to edge — of the status bar where there is no header', () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    try {
+      expect(padding(true)).toEqual({ paddingTop: 16 + 24, paddingBottom: 40 + 48 });
+      expect(padding(false)).toEqual({ paddingTop: 16, paddingBottom: 40 + 48 });
+    } finally {
+      os.restore();
+    }
   });
 });

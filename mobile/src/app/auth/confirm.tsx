@@ -81,7 +81,7 @@ export default function ConfirmLinkScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <AuthScroll>
+        <AuthScroll bare>
           <View style={{ height: space[8] }} />
           <AuthHeading title={t('app.offline.title')} body={t('app.offline.body')} />
           <Button label={t('common.retry')} onPress={() => void verify()} />
@@ -95,7 +95,7 @@ export default function ConfirmLinkScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <AuthScroll>
+        <AuthScroll bare>
           <View style={{ height: space[8] }} />
           <AuthHeading title={t('common.error')} body={t('auth.linkExpired')} />
           <Button
@@ -112,7 +112,7 @@ export default function ConfirmLinkScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <AuthScroll>
+        <AuthScroll bare>
           <View style={{ height: space[8] }} />
           <AuthHeading
             title={t('app.auth.switchTitle')}

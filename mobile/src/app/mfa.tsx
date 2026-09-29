@@ -13,6 +13,7 @@ import { intentFromParams } from '~/features/auth/intent';
 import { useCloseFlow, useLand } from '~/features/auth/land';
 import { signOutHere } from '~/features/push/device';
 import { supabase } from '~/lib/supabase';
+import { useHoldBack } from '~/lib/use-hold-back';
 import { space } from '~/theme/tokens';
 
 /**
@@ -31,6 +32,7 @@ export default function SecondFactorScreen() {
   const intent = intentFromParams(params);
   const land = useLand();
   const close = useCloseFlow();
+  useHoldBack();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -89,7 +91,7 @@ export default function SecondFactorScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-      <AuthScroll>
+      <AuthScroll bare>
         <View style={{ height: space[8] }} />
         <AuthHeading title={t('account.mfaTitle')} body={t('account.mfaChallengeBody')} />
         <View style={{ gap: space[4] }}>

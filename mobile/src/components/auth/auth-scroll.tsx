@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Platform, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space } from '~/theme/tokens';
 import { Text } from '~/components/ui/text';
 
@@ -7,15 +8,28 @@ import { Text } from '~/components/ui/text';
  * The page every sign-in screen sits on: scrolls with the keyboard up, keeps
  * taps on buttons while a field is focused, and gives the form the website's
  * narrow column.
+ *
+ * Clear of the system's bars on both platforms. iOS keeps a scroll view clear
+ * of them by itself (contentInsetAdjustmentBehavior); Android draws the app
+ * edge to edge and does not, so there the page leaves room for the navigation
+ * bar, and — on a `bare` screen, drawn without a header — for the status bar,
+ * which the heading sat under.
  */
-export function AuthScroll({ children }: { children: ReactNode }) {
+export function AuthScroll({ children, bare = false }: { children: ReactNode; bare?: boolean }) {
+  const insets = useSafeAreaInsets();
+  const android = Platform.OS === 'android';
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[5] }}
+      contentContainerStyle={{
+        padding: space[4],
+        paddingTop: space[4] + (android && bare ? insets.top : 0),
+        paddingBottom: space[10] + (android ? insets.bottom : 0),
+        gap: space[5],
+      }}
     >
       {children}
     </ScrollView>

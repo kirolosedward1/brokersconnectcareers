@@ -4,6 +4,7 @@ import { parseActor, rememberActor } from '~/lib/last-actor';
 import { appPathFor, inOwnTab, isPublicPath, routeFromOutside, routeInside, webPathToAppPath } from '~/lib/links';
 import { takePendingPath } from '~/lib/open-path';
 import { tabsFor } from '~/lib/tabs';
+import { awaitingOAuthReturn } from '~/features/auth/oauth-return';
 import { redirectSystemPath } from '../src/app/+native-intent';
 
 const candidate: Actor = {
@@ -277,6 +278,20 @@ describe('a link that opens the app', () => {
     await rememberActor(null);
     expect(await redirectSystemPath({ path: '/notifications', initial: true })).toBeNull();
     expect(takePendingPath()).toBe('/notifications');
+  });
+
+  it('leaves Google’s return to the sign-in screen waiting for it, and opens it when none is', async () => {
+    const back = 'brokersconnect://auth/callback?code=abc';
+    let finish = () => {};
+    const signIn = awaitingOAuthReturn(() => new Promise<void>((resolve) => (finish = resolve)));
+    // Android hands the browser's return to the app as a link too: the screen waiting has it already.
+    expect(await redirectSystemPath({ path: back, initial: false })).toBeNull();
+    // Any other link still opens.
+    expect(await redirectSystemPath({ path: 'https://www.brokersconnect.net/jobs/abc', initial: false })).toBe('/(jobs)/jobs/abc');
+    finish();
+    await signIn;
+    // Nothing waiting (the app was closed meanwhile): the callback screen finishes the sign-in.
+    expect(await redirectSystemPath({ path: back, initial: true })).toBe('/auth/callback?code=abc');
   });
 
   it('knows which pages are public', () => {

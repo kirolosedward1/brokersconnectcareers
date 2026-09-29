@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Linking, ScrollView, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { SignedOut } from '~/components/navigation/signed-out';
@@ -47,6 +47,10 @@ export default function DeleteAccountScreen() {
   const signsInWithApple =
     (user?.identities ?? []).some((identity) => identity.provider === 'apple') ||
     ((user?.app_metadata?.providers as string[] | undefined) ?? []).includes('apple');
+  // Apple's sheet exists on iOS alone. On Android the account goes as the
+  // website deletes it, without the code: asking for one there always failed,
+  // and the account could not be deleted at all.
+  const asksApple = signsInWithApple && Platform.OS === 'ios';
   const supportEmail = config.data?.supportEmail ?? null;
 
   // An owner asks instead (requestAccountDeletion); one already asked sees their reference.
@@ -69,7 +73,7 @@ export default function DeleteAccountScreen() {
     setPending(true);
 
     let appleCode: string | undefined;
-    if (signsInWithApple) {
+    if (asksApple) {
       const code = await appleAuthorizationCode();
       if (!code) {
         setPending(false);
@@ -155,7 +159,7 @@ export default function DeleteAccountScreen() {
           </View>
         ) : (
           <View style={{ gap: space[4] }}>
-            {signsInWithApple ? <Notice tone="muted">{t('app.account.deleteApple')}</Notice> : null}
+            {asksApple ? <Notice tone="muted">{t('app.account.deleteApple')}</Notice> : null}
 
             <Field label={confirmLabel}>
               <TextField
