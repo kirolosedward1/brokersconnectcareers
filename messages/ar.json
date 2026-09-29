@@ -137,7 +137,7 @@
     "postedWithin": "{days, plural, =1 {آخر 24 ساعة} few {آخر # أيام} other {آخر # يوم}}"
   },
   "track": {
-    "primary": "بيع أول",
+    "primary": "عقارات قيد الإنشاء",
     "resale": "إعادة بيع",
     "rental": "إيجارات",
     "commercial": "عقارات تجارية",
