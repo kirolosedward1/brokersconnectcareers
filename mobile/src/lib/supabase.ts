@@ -18,7 +18,39 @@ import { encryptedSessionStorage } from './session-storage';
  * (session-storage.ts) and refreshed only while the app is in the foreground,
  * which is what Supabase recommends for React Native.
  */
+
+/** Where supabase-js keeps the session — its own default name, spelled out so the app can look for it. */
+export const SESSION_KEY = `sb-${new URL(env.supabaseUrl).hostname.split('.')[0]}-auth-token`;
+
+const DATA_PATHS = ['/rest/v1/', '/storage/v1/'];
+
+/**
+ * Every request the client makes, except a read of the database or of
+ * storage that would go out as nobody while somebody is signed in here.
+ *
+ * supabase-js sends the publishable key in place of the person's token
+ * whenever it has no usable session — a refresh that failed (offline, the
+ * auth service down, the pause it takes after a failure) — and row-level
+ * security then answers as it would a stranger: no profile, which sent an
+ * established account to onboarding, and no applications, no saved jobs,
+ * nothing, as though that were the truth. Refused here as a request with no
+ * answer, it reads as offline and is tried again once the session is back.
+ */
+async function signedInFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  const path = url.startsWith(env.supabaseUrl) ? url.slice(env.supabaseUrl.length) : '';
+  if (
+    DATA_PATHS.some((prefix) => path.startsWith(prefix)) &&
+    new Headers(init?.headers).get('authorization') === `Bearer ${env.supabaseKey}` &&
+    (await encryptedSessionStorage.getItem(SESSION_KEY))
+  ) {
+    throw new TypeError('Network request failed: the session could not be refreshed');
+  }
+  return fetch(input, init);
+}
+
 export const supabase = createClient<Database>(env.supabaseUrl, env.supabaseKey, {
+  global: { fetch: signedInFetch },
   /*
     Reads give up after 20 s, and are not retried here: TanStack Query already
     tries a failed read three times, and postgrest-js's own three retries (1, 2

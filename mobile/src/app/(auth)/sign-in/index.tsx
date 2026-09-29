@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { View } from 'react-native';
+import { useRef, useState } from 'react';
+import { View, type TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import type { AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
 import { RefreshCw } from 'lucide-react-native';
 import type { AuthFriction } from '@/lib/mobile-api/contract';
@@ -45,7 +46,8 @@ export default function SignInScreen() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [unconfirmed, setUnconfirmed] = useState(false);
-  const [resent, setResent] = useState<'sent' | 'wait' | null>(null);
+  const [resent, setResent] = useState<'sent' | 'wait' | 'offline' | null>(null);
+  const passwordField = useRef<TextInput>(null);
   const [pausedUntil, setPausedUntil] = useState(0);
 
   const busy = pending;
@@ -66,11 +68,14 @@ export default function SignInScreen() {
 
     const address = email.trim();
     setPending(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: address,
-      password,
-      options: captcha.token ? { captchaToken: captcha.token } : undefined,
-    });
+    const { error: signInError } = await supabase.auth
+      .signInWithPassword({
+        email: address,
+        password,
+        options: captcha.token ? { captchaToken: captcha.token } : undefined,
+      })
+      // Thrown rather than answered (the phone's storage failing): said, and the button freed.
+      .catch((failure: unknown) => ({ error: failure as AuthError }));
     // Spent either way: Supabase takes one token per attempt.
     captcha.renew();
 
@@ -86,7 +91,7 @@ export default function SignInScreen() {
       return;
     }
 
-    await land(intent);
+    await land(intent).catch(() => setError(t('common.errorBody')));
     setPending(false);
   }
 
@@ -100,7 +105,8 @@ export default function SignInScreen() {
     }).catch(() => null);
     captcha.renew();
     setPending(false);
-    setResent(result?.ok ? 'sent' : 'wait');
+    // No answer is not "wait a moment": it is offline.
+    setResent(result === null ? 'offline' : result.ok ? 'sent' : 'wait');
   }
 
   async function afterProvider(outcome: ProviderOutcome) {
@@ -130,11 +136,14 @@ export default function SignInScreen() {
             autoComplete="email"
             textContentType="username"
             returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => passwordField.current?.focus()}
           />
         </Field>
 
         <Field label={t('auth.password')}>
           <TextField
+            ref={passwordField}
             value={password}
             onChangeText={setPassword}
             accessibilityLabel={t('auth.password')}
@@ -173,6 +182,10 @@ export default function SignInScreen() {
             ) : resent === 'wait' ? (
               <Text variant="small" tone="destructive">
                 {t('auth.resendWait')}
+              </Text>
+            ) : resent === 'offline' ? (
+              <Text variant="small" tone="destructive">
+                {t('app.offline.body')}
               </Text>
             ) : null}
             <Button

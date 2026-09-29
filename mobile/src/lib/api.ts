@@ -4,7 +4,7 @@ import {
   type MobileActionName,
   type MobileActionOutput,
 } from '@/lib/mobile-api/contract';
-import { isAuthRetryableFetchError } from '@supabase/supabase-js';
+import { isAuthApiError, isAuthRetryableFetchError, isAuthSessionMissingError } from '@supabase/supabase-js';
 import { env } from './env';
 import { supabase } from './supabase';
 
@@ -64,6 +64,13 @@ export function noAnswer(error: unknown): boolean {
   );
 }
 
+/** The auth server said no to a refresh: the session cannot be continued. */
+function refreshRefused(error: unknown): boolean {
+  if (!error) return true;
+  if (isAuthSessionMissingError(error)) return true;
+  return isAuthApiError(error) && [400, 401, 403].includes(error.status ?? 0);
+}
+
 async function currentToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
@@ -100,9 +107,16 @@ async function send(path: string, init: RequestInit, withToken: boolean): Promis
     if (response.status === 401 && token) {
       const { data, error } = await supabase.auth.refreshSession();
       if (error || !data.session) {
-        // No answer from the auth service is not a refusal: signing out here
-        // wiped every screen, half-typed forms included, over a dropped connection.
-        if (isAuthRetryableFetchError(error)) throw new ApiError(0, 'offline');
+        // Only a refusal ends the session here: the refresh token is spent or
+        // revoked, or the session is gone. No answer, a rate limit (carriers
+        // put many phones behind one address) or a failing auth service is
+        // not one — signing out over it wiped every screen, half-typed forms
+        // included.
+        if (!refreshRefused(error)) {
+          throw isAuthRetryableFetchError(error)
+            ? new ApiError(0, 'offline')
+            : new ApiError(error?.status === 429 ? 429 : 503, error?.status === 429 ? 'rate_limited' : 'unavailable');
+        }
         await supabase.auth.signOut({ scope: 'local' });
         throw new ApiError(401, 'unauthenticated');
       }

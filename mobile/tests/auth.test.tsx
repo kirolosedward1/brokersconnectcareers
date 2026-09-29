@@ -1,5 +1,5 @@
 import { Alert, Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { router, Stack, Tabs } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -473,6 +473,43 @@ describe('the second factor', () => {
       code: '123456',
       challenge_id: 'challenge-1',
     });
+  });
+
+  it('takes the code typed with Arabic-Indic digits, as an Arabic keyboard types it', async () => {
+    user = authUser({ factors: [totpFactor] });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '١٢٣٤٥٦');
+    await press(ar.account.mfaVerify);
+    await waitFor(() =>
+      expect(server.asked(`/auth/v1/factors/${totpFactor.id}/verify`).at(-1)?.body).toMatchObject({ code: '123456' }),
+    );
+    expect(screen.queryByText(ar.account.mfaCodeInvalid)).toBeNull();
+  });
+
+  it('lets the person in when the authenticator was removed elsewhere, instead of asking over and over', async () => {
+    user = authUser({ factors: [totpFactor] });
+    await signedIn();
+    // Removed on the website since: the auth server's account has none, and a refreshed session says so.
+    user = authUser();
+    const pushes: unknown[] = [];
+    const push = router.push.bind(router);
+    jest.spyOn(router, 'push').mockImplementation((...args: Parameters<typeof router.push>) => {
+      pushes.push(args[0]);
+      return push(...args);
+    });
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
+    // A while later, so the refreshed session is a new one (the clock stands still under renderRouter).
+    act(() => jest.setSystemTime(Date.now() + 60_000));
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+    await press(ar.account.mfaVerify);
+
+    expect(await screen.findByText('home screen')).toBeTruthy();
+    // Asked once, at launch; not again once the answer was that there is nothing to ask.
+    expect(pushes.filter((path) => path === '/mfa')).toHaveLength(1);
+    expect(server.asked(`/auth/v1/factors/${totpFactor.id}/challenge`)).toHaveLength(0);
   });
 
   it('can be walked away from only by signing out', async () => {

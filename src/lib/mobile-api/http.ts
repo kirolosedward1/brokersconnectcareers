@@ -1,9 +1,9 @@
 import 'server-only';
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient as createSupabaseClient, isAuthApiError } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { env } from '@/lib/env';
 import { logFailure } from '@/lib/observe';
-import { challenge, readBearer } from './bearer';
+import { challenge, readBearer, tokenRefused } from './bearer';
 import { runAsMobile, type MobileSession } from './context';
 
 /**
@@ -43,10 +43,8 @@ async function verify(jwt: string): Promise<{ session: NonNullable<MobileSession
   try {
     const { data, error } = await verifier.auth.getUser(jwt);
     if (data?.user && !error) return { session: { jwt, user: data.user } };
-    if (!error || (isAuthApiError(error) && error.status >= 400 && error.status < 500)) {
-      return { refused: unauthorized('invalid_token') };
-    }
-    logFailure('mobile-api', 'the auth server did not answer a token check', { status: error.status });
+    if (tokenRefused(error)) return { refused: unauthorized('invalid_token') };
+    logFailure('mobile-api', 'the auth server did not answer a token check', { status: error?.status });
   } catch (error) {
     logFailure('mobile-api', 'the auth server did not answer a token check', {
       detail: error instanceof Error ? error.message : 'unknown',

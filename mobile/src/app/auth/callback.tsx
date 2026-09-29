@@ -32,15 +32,18 @@ export default function OAuthCallbackScreen() {
     if (!ready || started.current) return;
     started.current = true;
     if (session && !params.code) {
-      void land(NO_INTENT);
+      void land(NO_INTENT).catch(() => setFailed(true));
       return;
     }
     const query = new URLSearchParams(params).toString();
-    void completeOAuth(`${OAUTH_REDIRECT}?${query}`).then(async (outcome) => {
-      if (outcome.ok) await land(NO_INTENT);
-      else if (outcome.cancelled) close();
-      else setFailed(true);
-    });
+    void completeOAuth(`${OAUTH_REDIRECT}?${query}`)
+      .then(async (outcome) => {
+        if (outcome.ok) await land(NO_INTENT);
+        else if (outcome.cancelled) close();
+        else setFailed(true);
+      })
+      // Thrown rather than answered: said, never a spinner that does not end.
+      .catch(() => setFailed(true));
   }, [ready, session, params, land, close]);
 
   if (failed) {

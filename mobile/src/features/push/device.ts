@@ -6,7 +6,8 @@ import * as Notifications from 'expo-notifications';
 import { useQuery } from '@tanstack/react-query';
 import { callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
-import { supabase } from '~/lib/supabase';
+import { encryptedSessionStorage } from '~/lib/session-storage';
+import { SESSION_KEY, supabase } from '~/lib/supabase';
 
 /**
  * This phone's part in pushes (docs/mobile.md, "Pushes"). The website sends
@@ -148,12 +149,21 @@ const FORGET_TIMEOUT_MS = 4000;
  * Sign out on this phone, having first told the database to stop sending
  * this person's pushes here (best effort: offline, the sign-out still
  * happens, and the phone stops listening for pushes — see PushBridge).
+ *
+ * Signing out always works. supabase-js first tries to refresh an expired
+ * session, and offline that fails and the sign-out with it — the session
+ * kept, no SIGNED_OUT, the button doing nothing on a phone somebody may be
+ * handing on. Then the stored session is taken out by hand, and signing out
+ * again, with nothing stored, needs no network and says so.
  */
 export async function signOutHere(): Promise<void> {
   await Promise.race([
     forgetThisPhone().catch(() => {}),
     new Promise((resolve) => setTimeout(resolve, FORGET_TIMEOUT_MS)),
   ]);
+  const { error } = await supabase.auth.signOut({ scope: 'local' }).catch((failure: unknown) => ({ error: failure }));
+  if (!error) return;
+  await encryptedSessionStorage.removeItem(SESSION_KEY).catch(() => {});
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
 }
 

@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import { isAuthApiError, isAuthRetryableFetchError, isAuthSessionMissingError, type Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Actor } from '@/lib/permissions';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
 import { readLastActor, rememberActor } from './last-actor';
-import { supabase } from './supabase';
+import { encryptedSessionStorage } from './session-storage';
+import { SESSION_KEY, supabase } from './supabase';
 
 /**
  * Who is using the app — the website's getViewer(), on the phone.
@@ -68,6 +69,18 @@ export async function loadViewer(session: Session): Promise<Viewer> {
   const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
   if (error) throw error;
 
+  if (!profile) {
+    // "No profile" sends somebody to onboarding, so it is believed only from
+    // the auth server: the account is there, and this is its session. A
+    // deleted account's token outlives it; so it is signed out here.
+    const { data: checked, error: userError } = await supabase.auth.getUser();
+    if (isAuthSessionMissingError(userError) || (isAuthApiError(userError) && [401, 403].includes(userError.status ?? 0))) {
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    }
+    if (userError) throw userError;
+    if (checked.user?.id !== user.id) throw new Error('the session changed while the account was read');
+  }
+
   let company: CompanyRow | null = null;
   if (profile?.role === 'employer' || profile?.role === 'admin') {
     const { data: companyId, error: membershipError } = await supabase.rpc('my_company_id');
@@ -118,6 +131,23 @@ export function actorOf(viewer: Viewer): Actor {
   };
 }
 
+/**
+ * The session as stored on this phone, read without the network: whether
+ * somebody is signed in here is known at once, even when their access token
+ * has expired and cannot be refreshed yet (offline at launch, after an hour
+ * away), which supabase-js's own answer waits on for up to half a minute.
+ */
+async function storedSession(): Promise<Session | null> {
+  const raw = await encryptedSessionStorage.getItem(SESSION_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Session;
+    return parsed?.user?.id ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 /** aal1 on an account that could prove aal2. Read from the session's own token; no request. */
 export async function secondFactorDue(): Promise<boolean> {
   const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -133,21 +163,54 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      setSession(data.session);
+    // Whose data the cache holds, so that only a different person signing in clears it.
+    let lastUser: string | null = null;
+    // Who is signed in here, from the phone's own storage: the app is ready at
+    // once, and stays signed in while supabase-js tries to refresh.
+    storedSession().then((stored) => {
+      if (!active || !stored) return;
+      lastUser = lastUser ?? stored.user.id;
+      setSession((current) => current ?? stored);
       setReady(true);
     });
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!active) return;
+        // Not answered is not signed out: a refresh that could not reach the
+        // auth server keeps the stored session, and the next refresh (every
+        // half minute in the foreground) brings a usable one.
+        if (data.session || !isAuthRetryableFetchError(error)) setSession(data.session);
+        setReady(true);
+      })
+      // The session storage failing is no reason to wait forever.
+      .catch(() => {
+        if (active) setReady(true);
+      });
     // Local only, so the first frame waits on nothing but the phone's storage.
     readLastActor().then((actor) => {
       if (active) setRemembered((current) => (current.loaded ? current : { loaded: true, actor }));
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, next) => {
+      // The first answer is getSession's, above: an INITIAL_SESSION without a
+      // session is the same failed refresh, not a sign-out.
+      if (event === 'INITIAL_SESSION') {
+        if (next) setSession(next);
+        lastUser = next?.user.id ?? lastUser;
+        return;
+      }
       setSession(next);
-      // Someone else's data must not be on screen for a frame after a switch.
-      if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+      // Someone else's data must not be on screen for a frame after a switch —
+      // a switch, not the same person signing in again.
+      const nextUser = next?.user.id ?? null;
+      if (event === 'SIGNED_OUT' || (event === 'SIGNED_IN' && nextUser !== lastUser)) {
         queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'taxonomy' });
+      }
+      lastUser = nextUser;
+      // A usable token again: whatever failed while there was none is read again.
+      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+        queryClient.invalidateQueries({ predicate: (query) => query.state.status === 'error' });
       }
       if (event === 'SIGNED_OUT') {
         setRemembered({ loaded: true, actor: null });

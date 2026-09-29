@@ -55,6 +55,7 @@ export default function AccountScreen() {
   const config = useMobileConfig();
   const supportEmail = config.data?.supportEmail ?? null;
   const [exporting, setExporting] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const version = appVersion() ?? '';
 
   const themes: { value: ThemePreference; label: string }[] = [
@@ -244,7 +245,11 @@ export default function AccountScreen() {
             <Row
               icon={<LogOut size={18} color={colors.foreground} />}
               label={t('nav.signOut')}
-              onPress={() => signOutHere()}
+              busy={signingOut}
+              onPress={() => {
+                setSigningOut(true);
+                signOutHere().then(() => setSigningOut(false));
+              }}
             />
           ) : null}
           {session ? (
@@ -272,16 +277,21 @@ function Row({
   label,
   onPress,
   destructive = false,
+  busy = false,
 }: {
   icon: ReactNode;
   label: string;
   onPress: () => void;
   destructive?: boolean;
+  /** Its action is under way: said, and not started twice. */
+  busy?: boolean;
 }) {
   const { colors } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ busy, disabled: busy }}
+      disabled={busy}
       onPress={onPress}
       style={({ pressed }) => ({
         minHeight: hitTarget + 8,
@@ -298,7 +308,7 @@ function Row({
       <Text tone={destructive ? 'destructive' : 'foreground'} style={{ flex: 1 }}>
         {label}
       </Text>
-      <ForwardChevron size={18} color={colors.mutedForeground} />
+      {busy ? <ActivityIndicator color={colors.mutedForeground} /> : <ForwardChevron size={18} color={colors.mutedForeground} />}
     </Pressable>
   );
 }

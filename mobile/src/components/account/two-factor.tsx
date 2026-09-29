@@ -4,6 +4,7 @@ import { SvgXml } from 'react-native-svg';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
 import { Check, ExternalLink, ShieldCheck, ShieldOff } from 'lucide-react-native';
+import { westernDigits } from '@/lib/search/arabic';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
@@ -53,7 +54,8 @@ export function TwoFactorSettings() {
   };
 
   const verify = async () => {
-    const digits = code.replace(/\s+/g, '');
+    // Typed on an Arabic keyboard, the number pad gives Arabic-Indic digits.
+    const digits = westernDigits(code).replace(/\s+/g, '');
     if (!/^\d{6}$/.test(digits)) {
       setError(t('account.mfaCodeInvalid'));
       return;

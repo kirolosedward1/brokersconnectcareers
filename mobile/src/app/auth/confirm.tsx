@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
 import { asConfirmType, confirmDestination, isTokenHash } from '@/lib/auth/confirm-link';
 import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
@@ -39,7 +40,8 @@ export default function ConfirmLinkScreen() {
   const tokenHash = isTokenHash(params.token_hash) ? params.token_hash : null;
   const valid = Boolean(type && tokenHash);
 
-  const [state, setState] = useState<'idle' | 'verifying' | 'failed'>(valid ? 'idle' : 'failed');
+  // 'offline': no answer — the link may well still be good, so it is not called expired.
+  const [state, setState] = useState<'idle' | 'verifying' | 'failed' | 'offline'>(valid ? 'idle' : 'failed');
   const started = useRef(false);
   // A new address is confirmed by the account it belongs to, which is the one
   // signed in: nothing to ask. Any other link while signed in asks first.
@@ -48,9 +50,11 @@ export default function ConfirmLinkScreen() {
   const verify = useCallback(async () => {
     if (!type || !tokenHash) return;
     setState('verifying');
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+    const { error } = await supabase.auth
+      .verifyOtp({ type, token_hash: tokenHash })
+      .catch((failure: unknown) => ({ error: failure }));
     if (error) {
-      setState('failed');
+      setState(isAuthRetryableFetchError(error) ? 'offline' : 'failed');
       return;
     }
 
@@ -72,6 +76,20 @@ export default function ConfirmLinkScreen() {
     started.current = true;
     void verify();
   }, [ready, valid, ask, verify]);
+
+  if (state === 'offline') {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <AuthScroll>
+          <View style={{ height: space[8] }} />
+          <AuthHeading title={t('app.offline.title')} body={t('app.offline.body')} />
+          <Button label={t('common.retry')} onPress={() => void verify()} />
+          <Button label={t('common.close')} variant="ghost" onPress={close} />
+        </AuthScroll>
+      </>
+    );
+  }
 
   if (state === 'failed') {
     return (

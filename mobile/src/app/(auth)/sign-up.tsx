@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import type { AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
 import { MailCheck, RefreshCw } from 'lucide-react-native';
 import { AuthHeading, AuthScroll, AuthSwitch } from '~/components/auth/auth-scroll';
@@ -50,7 +51,7 @@ export default function SignUpScreen() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
-  const [resent, setResent] = useState<'sent' | 'wait' | null>(null);
+  const [resent, setResent] = useState<'sent' | 'wait' | 'offline' | null>(null);
 
   async function submit() {
     setError(null);
@@ -65,15 +66,18 @@ export default function SignUpScreen() {
 
     const address = email.trim();
     setPending(true);
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: address,
-      password,
-      options: {
-        emailRedirectTo: `${env.siteUrl}${confirmationPath(intent)}`,
-        ...(intent.role ? { data: { role: intent.role } } : {}),
-        ...(captcha.token ? { captchaToken: captcha.token } : {}),
-      },
-    });
+    const { data, error: signUpError } = await supabase.auth
+      .signUp({
+        email: address,
+        password,
+        options: {
+          emailRedirectTo: `${env.siteUrl}${confirmationPath(intent)}`,
+          ...(intent.role ? { data: { role: intent.role } } : {}),
+          ...(captcha.token ? { captchaToken: captcha.token } : {}),
+        },
+      })
+      // Thrown rather than answered (the phone's storage failing): said, and the button freed.
+      .catch((failure: unknown) => ({ data: { session: null, user: null }, error: failure as AuthError }));
     captcha.renew();
 
     if (signUpError) {
@@ -88,7 +92,7 @@ export default function SignUpScreen() {
       return;
     }
 
-    await land(intent);
+    await land(intent).catch(() => setError(t('common.errorBody')));
     setPending(false);
   }
 
@@ -103,7 +107,8 @@ export default function SignUpScreen() {
     }).catch(() => null);
     captcha.renew();
     setPending(false);
-    setResent(result?.ok ? 'sent' : 'wait');
+    // No answer is not "wait a moment": it is offline.
+    setResent(result === null ? 'offline' : result.ok ? 'sent' : 'wait');
   }
 
   async function afterProvider(outcome: ProviderOutcome) {
@@ -139,6 +144,10 @@ export default function SignUpScreen() {
         ) : resent === 'wait' ? (
           <Text variant="small" tone="destructive" accessibilityRole="alert">
             {t('auth.resendWait')}
+          </Text>
+        ) : resent === 'offline' ? (
+          <Text variant="small" tone="destructive" accessibilityRole="alert">
+            {t('app.offline.body')}
           </Text>
         ) : null}
 
