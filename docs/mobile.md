@@ -407,10 +407,14 @@ tunnel needs the login too. The iOS Simulator does not ask.
 Expo Go runs the app as itself, not as `net.brokersconnect.app`, so a few
 things need a development build instead:
 
-- Sign in with Apple: Apple issues the token to Expo Go. Email and password,
-  and Google, work.
-- Push notifications, which need the EAS project and a build.
-- Links that open the app (universal links and `brokersconnect://`).
+- Sign in with Apple: Apple issues the token to Expo Go, so the app does not
+  show the button there. Email and password, and Google, work.
+- Push notifications, which need the EAS project (`EAS_PROJECT_ID` in
+  `app.config.ts`) and a build. Until a build has a project, the app offers
+  none: no prompt on Home, and a sentence in place of the switch under
+  Account → Notifications (`pushAvailable()` in `src/features/push/device.ts`).
+- Links that open the app (universal links and `brokersconnect://`). Expo
+  Go's own `exp://…/--/<path>` links do open the page they name.
 - The version on the Account screen, and the one the update gate compares, is
   Expo Go's own.
 
@@ -418,12 +422,26 @@ The app talks to production (the values in `.env`), so it works once the
 website and database carry what it relies on: the release in
 `docs/release/2026-09-prod-reconciliation.md`.
 
-The Jest suites run on the phone's Intl, not Node's: `tests/setup.ts` forces
-the formatjs polyfills the app loads on Hermes (`src/lib/intl-polyfills.ts`),
-with the same few locales, because a formatter that worked in Node once threw
-on every job card on the phone. `tests/intl.test.ts` runs each shared
-formatter, and each catalogue message with a number, plural, choice or date,
-on both Intls and requires the same text. The suites cover the pure helpers,
+The Jest suites run as close to the phone as Node allows, because code that
+passed them has failed on the phone twice:
+
+- The phone's Intl: `tests/setup.ts` forces the formatjs polyfills the app
+  loads on Hermes (`src/lib/intl-polyfills.ts`), with the same few locales. A
+  formatter that worked in Node threw on every job card on the phone.
+  `tests/intl.test.ts` runs each shared formatter, and each catalogue message
+  with a number, plural, choice or date, on both Intls and requires the same
+  text.
+- The phone's engine: the setup removes what Node has and Hermes lacks
+  (`toSorted`, `Object.groupBy`, `Map.groupBy`, `Array.fromAsync`, iterator
+  helpers, `ArrayBuffer#transfer`).
+- The phone's compiler: `jest.config.js` has babel-preset-expo run React
+  Compiler, as Metro does for the app.
+- The phone's fetch: Expo replaces it with its own, which builds a multipart
+  body with rules of its own. Tests that upload put the form the app sent
+  through Expo's conversion (`tests/multipart.ts`); photos and logos once
+  passed every test and failed on every phone.
+
+The suites cover the pure helpers,
 routing (where each kind of link lands and where Back goes), the real screens
 rendered against fixtures typed with the API's own shapes, and every sign-in
 path (`tests/auth.test.tsx`) run through the

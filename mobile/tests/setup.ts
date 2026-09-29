@@ -19,6 +19,24 @@ import { installIntlPolyfills } from '~/lib/intl-polyfills';
 };
 installIntlPolyfills({ force: true });
 
+// And without the built-ins Node has and Hermes, the phone's engine, does not
+// (checked against Hermes V1, which React Native 0.86 runs): code using one
+// would pass every test here and throw on the phone. structuredClone is
+// missing from Hermes too, but Expo installs it (expo/src/winter).
+const hermesLacks: [object, string][] = [
+  [Array.prototype, 'toSorted'],
+  [Array, 'fromAsync'],
+  [Object, 'groupBy'],
+  [Map, 'groupBy'],
+  [ArrayBuffer.prototype, 'transfer'],
+  [globalThis, 'Iterator'],
+];
+const iteratorPrototype = Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())) as object;
+for (const helper of ['map', 'filter', 'take', 'drop', 'flatMap', 'reduce', 'toArray', 'forEach', 'some', 'every', 'find']) {
+  hermesLacks.push([iteratorPrototype, helper]);
+}
+for (const [owner, name] of hermesLacks) delete (owner as Record<string, unknown>)[name];
+
 jest.mock('@react-native-async-storage/async-storage', () =>
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories cannot import.
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
