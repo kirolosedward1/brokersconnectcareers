@@ -398,6 +398,12 @@ iPhone, and scan the QR code it prints with the iPhone's camera
 left comes from `extra.forcesRTL` in `app.config.ts`, which Expo Go reads from
 the manifest.
 
+Sign in first, on both sides, to the same Expo account (a free one will do):
+`npx expo login` on the computer, and the account icon in Expo Go's top corner
+on the phone. An iPhone's Expo Go opens a project from a computer only then, and
+otherwise stops at "You need to be signed in to Expo Go and Expo CLI"; the
+tunnel needs the login too. The iOS Simulator does not ask.
+
 Expo Go runs the app as itself, not as `net.brokersconnect.app`, so a few
 things need a development build instead:
 
@@ -412,9 +418,15 @@ The app talks to production (the values in `.env`), so it works once the
 website and database carry what it relies on: the release in
 `docs/release/2026-09-prod-reconciliation.md`.
 
-The Jest suites cover the pure helpers, routing (where each kind of link lands
-and where Back goes), the real screens rendered against fixtures typed with the
-API's own shapes, and every sign-in path (`tests/auth.test.tsx`) run through the
+The Jest suites run on the phone's Intl, not Node's: `tests/setup.ts` forces
+the formatjs polyfills the app loads on Hermes (`src/lib/intl-polyfills.ts`),
+with the same few locales, because a formatter that worked in Node once threw
+on every job card on the phone. `tests/intl.test.ts` runs each shared
+formatter, and each catalogue message with a number, plural, choice or date,
+on both Intls and requires the same text. The suites cover the pure helpers,
+routing (where each kind of link lands and where Back goes), the real screens
+rendered against fixtures typed with the API's own shapes, and every sign-in
+path (`tests/auth.test.tsx`) run through the
 real supabase-js client against a stand-in for Supabase Auth: what GoTrue is
 sent, what the website's actions are asked, and where each flow leaves the
 person. On the website side, `pnpm test:mobile-api` covers the
