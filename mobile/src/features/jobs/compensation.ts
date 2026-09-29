@@ -1,6 +1,6 @@
 import { useTranslations } from 'use-intl';
 import type { JobRow } from '@/lib/supabase/database.types';
-import { formatEgp } from '@/lib/format';
+import { formatEgp, formatRate } from '@/lib/format';
 import { markupTags } from '~/i18n/rich';
 
 type Pay = Pick<JobRow, 'basic_salary_min' | 'basic_salary_max' | 'commission_type' | 'commission_value'>;
@@ -32,10 +32,7 @@ export function useCompensationText() {
 
     commission(job: Pay, locale: string): string {
       if (job.commission_type === 'percentage' && job.commission_value != null) {
-        const value = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', {
-          maximumFractionDigits: 2,
-        }).format(job.commission_value);
-        return t.markup('commissionPercent', { value, ...markupTags });
+        return t.markup('commissionPercent', { value: formatRate(job.commission_value, locale), ...markupTags });
       }
       return tCommission(job.commission_type);
     },

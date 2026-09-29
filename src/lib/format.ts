@@ -18,12 +18,41 @@
  */
 const NUMBER_LOCALE = (locale: string) => (locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB');
 
+/**
+ * Each formatter is made once, the first time it is asked for, and kept.
+ *
+ * Making one is most of what formatting costs on the phone, whose Intl is the
+ * formatjs polyfill: a job card writes a date, a salary and "3 days ago", and
+ * that took ten milliseconds a card on Hermes while a list scrolled — six with
+ * the formatters kept. A formatter never changes once made, and there are few
+ * of them: two locales, a handful of options. Keyed by the locale tag each is
+ * made with, so any other `locale` shares the English ones.
+ */
+const formatters = new Map<string, unknown>();
+
+function formatter<T>(key: string, make: () => T): T {
+  let made = formatters.get(key) as T | undefined;
+  if (made === undefined) {
+    made = make();
+    formatters.set(key, made);
+  }
+  return made;
+}
+
 export function formatNumber(value: number, locale: string): string {
-  return new Intl.NumberFormat(NUMBER_LOCALE(locale)).format(value);
+  const tag = NUMBER_LOCALE(locale);
+  return formatter(`number ${tag}`, () => new Intl.NumberFormat(tag)).format(value);
 }
 
 export function formatEgp(value: number, locale: string): string {
-  return new Intl.NumberFormat(NUMBER_LOCALE(locale), { maximumFractionDigits: 0 }).format(value);
+  const tag = NUMBER_LOCALE(locale);
+  return formatter(`egp ${tag}`, () => new Intl.NumberFormat(tag, { maximumFractionDigits: 0 })).format(value);
+}
+
+/** A rate, "2.5" — keeps up to two decimals, where money keeps none. */
+export function formatRate(value: number, locale: string): string {
+  const tag = NUMBER_LOCALE(locale);
+  return formatter(`rate ${tag}`, () => new Intl.NumberFormat(tag, { maximumFractionDigits: 2 })).format(value);
 }
 
 /**
@@ -60,12 +89,11 @@ function readDate(value: string | Date): Date | null {
 export function formatDate(value: string | Date, locale: string): string {
   const date = readDate(value);
   if (!date) return '';
-  const parts = new Intl.DateTimeFormat(NUMBER_LOCALE(locale), {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'Africa/Cairo',
-  }).formatToParts(date);
+  const tag = NUMBER_LOCALE(locale);
+  const parts = formatter(
+    `date ${tag}`,
+    () => new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Africa/Cairo' }),
+  ).formatToParts(date);
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((item) => item.type === type)?.value ?? '';
   return `${part('day')} ${part('month')} ${part('year')}`;
@@ -92,19 +120,32 @@ export function formatDate(value: string | Date, locale: string): string {
  * polyfills.ts), which carries English but not Canadian English, so on the
  * phone the answer came in US order, "09/29/2026", the day count was NaN, and
  * every job card threw.
+ *
+ * In the reader's own locale, whose digits are Western like every formatter's
+ * here: it was American English, made as the module loaded, and on the phone
+ * that cost ninety milliseconds at launch before the first Arabic formatter
+ * paid the same again; made in Arabic, the next Arabic one is almost free.
+ *
+ * Each answer is kept for its second, because reading the parts is the slow
+ * step on the phone and every card in a list asks about the same "now". A
+ * clock moves by whole seconds, so every instant of one second falls on one day.
  */
-const CAIRO_DAY = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'Africa/Cairo',
-  year: 'numeric',
-  month: 'numeric',
-  day: 'numeric',
-});
+const cairoDays = new Map<number, number>();
 
-function cairoDayNumber(date: Date): number {
-  const parts = CAIRO_DAY.formatToParts(date);
+function cairoDayNumber(date: Date, tag: string): number {
+  const second = Math.floor(date.getTime() / 1000);
+  const known = cairoDays.get(second);
+  if (known !== undefined) return known;
+  const parts = formatter(
+    `day ${tag}`,
+    () => new Intl.DateTimeFormat(tag, { timeZone: 'Africa/Cairo', year: 'numeric', month: 'numeric', day: 'numeric' }),
+  ).formatToParts(date);
   const part = (type: 'year' | 'month' | 'day') =>
     Number(parts.find((item) => item.type === type)?.value);
-  return Date.UTC(part('year'), part('month') - 1, part('day')) / 86_400_000;
+  const day = Date.UTC(part('year'), part('month') - 1, part('day')) / 86_400_000;
+  if (cairoDays.size >= 500) cairoDays.clear();
+  cairoDays.set(second, day);
+  return day;
 }
 
 export function formatRelativeDay(
@@ -114,12 +155,13 @@ export function formatRelativeDay(
 ): string {
   const date = readDate(value);
   if (!date) return '';
-  const days = cairoDayNumber(now) - cairoDayNumber(date);
+  const tag = NUMBER_LOCALE(locale);
+  const days = cairoDayNumber(now, tag) - cairoDayNumber(date, tag);
 
   // Written so that a day count that is not a number also becomes the date.
   if (!(days >= 0 && days <= 30)) return formatDayMonth(date, locale);
 
-  return new Intl.RelativeTimeFormat(NUMBER_LOCALE(locale), { numeric: 'auto' }).format(
+  return formatter(`relative ${tag}`, () => new Intl.RelativeTimeFormat(tag, { numeric: 'auto' })).format(
     -days,
     'day',
   );
@@ -129,12 +171,12 @@ export function formatRelativeDay(
 export function formatDayMonth(value: string | Date, locale: string): string {
   const date = readDate(value);
   if (!date) return '';
-  return new Intl.DateTimeFormat(NUMBER_LOCALE(locale), {
-    day: 'numeric',
-    month: 'short',
+  const tag = NUMBER_LOCALE(locale);
+  return formatter(
+    `day-month ${tag}`,
     // Cairo's calendar, for the reason given on formatDate.
-    timeZone: 'Africa/Cairo',
-  }).format(date);
+    () => new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'short', timeZone: 'Africa/Cairo' }),
+  ).format(date);
 }
 
 /**

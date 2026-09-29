@@ -55,7 +55,14 @@ export function installIntlPolyfills({ force = false }: { force?: boolean } = {}
     require('@formatjs/intl-datetimeformat/locale-data/ar.js');
     require('@formatjs/intl-datetimeformat/locale-data/en.js');
     require('@formatjs/intl-datetimeformat/locale-data/en-GB.js');
-    // Africa/Cairo is in the golden set; the whole database is not needed.
-    require('@formatjs/intl-datetimeformat/add-golden-tz.js');
+    // Cairo's zone alone. Every date is written in Cairo's calendar — the
+    // shared formatters and the catalogue's dates alike (TIME_ZONE in
+    // ../i18n/provider.tsx) — and the polyfill's smallest set of zones, its
+    // "golden" 246, was 800 KB unpacked at every launch. ./cairo-tz.json is
+    // that set's own Cairo entry (scripts/cairo-tz.mjs). A formatter asked for
+    // any other zone would write UTC, or refuse the name; none is asked.
+    (Intl.DateTimeFormat as unknown as { __addTZData: (data: unknown) => void }).__addTZData(
+      require('./cairo-tz.json'),
+    );
   }
 }

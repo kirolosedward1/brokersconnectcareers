@@ -73,6 +73,48 @@ it('keeps the website’s own Intl aside for the comparison', () => {
   expect(nodeIntl?.DateTimeFormat).not.toBe(Intl.DateTimeFormat);
 });
 
+describe('the time zones the phone carries', () => {
+  // When this fails after an upgrade of @formatjs/intl-datetimeformat, run `node scripts/cairo-tz.mjs`.
+  it('are Cairo’s alone, exactly as the polyfill ships it', () => {
+    // The package's file hands its data to the polyfill; it is caught on the way.
+    const polyfill = Intl.DateTimeFormat as unknown as { __addTZData: (data: unknown) => void };
+    const add = polyfill.__addTZData;
+    let golden = { zones: [] as string[] };
+    polyfill.__addTZData = (data) => void (golden = data as typeof golden);
+    try {
+      jest.isolateModules(() => require('@formatjs/intl-datetimeformat/add-golden-tz.js'));
+    } finally {
+      polyfill.__addTZData = add;
+    }
+    expect(golden.zones.length).toBeGreaterThan(100);
+    expect(require('~/lib/cairo-tz.json')).toEqual({
+      ...golden,
+      zones: golden.zones.filter((zone) => zone.startsWith('Africa/Cairo|')),
+    });
+  });
+
+  it('write Cairo’s time on both sides of each change of clocks', () => {
+    const cairo = (tz: typeof Intl) =>
+      new tz.DateTimeFormat('en-GB', { timeZone: 'Africa/Cairo', dateStyle: 'short', timeStyle: 'long' });
+    const phone = cairo(Intl);
+    const website = cairo(nodeIntl as typeof Intl);
+    // Hour by hour through the weeks summer time begins and ends this year and next.
+    const weeks = [Date.UTC(2026, 3, 20), Date.UTC(2026, 9, 26), Date.UTC(2027, 3, 26), Date.UTC(2027, 9, 25)];
+    const differ: string[] = [];
+    for (const start of weeks) {
+      for (let t = start; t < start + 7 * 86_400_000; t += 3_600_000) {
+        const at = new Date(t);
+        if (phone.format(at) !== website.format(at)) differ.push(`${at.toISOString()}: ${phone.format(at)} / ${website.format(at)}`);
+      }
+    }
+    expect(differ).toEqual([]);
+  });
+
+  it('write UTC where no zone is named', () => {
+    expect(new Intl.DateTimeFormat('en-GB', { timeStyle: 'short' }).format(new Date(Date.UTC(2026, 0, 1, 10)))).toBe('10:00');
+  });
+});
+
 describe('the shared formatters', () => {
   const format = load<Format>('@/lib/format');
   const now = new Date('2026-09-29T09:00:00Z');
@@ -100,13 +142,13 @@ describe('the shared formatters', () => {
     '2026-09-28 10:00:00+00',
     'not a date',
   ];
-  const numbers = [0, 7, 1234, 1234567.5, -2500];
+  const numbers = [0, 7, 2.5, 1.125, 1234, 1234567.5, -2500];
 
   it('write the same on the phone as on the website', () => {
     const cases: Case[] = [];
     for (const locale of ['ar', 'en']) {
       for (const n of numbers) {
-        for (const fn of ['formatNumber', 'formatEgp'] as const) {
+        for (const fn of ['formatNumber', 'formatEgp', 'formatRate'] as const) {
           cases.push({ label: `${fn}(${n}, ${locale})`, website: () => format.website[fn](n, locale), phone: () => format.phone[fn](n, locale) });
         }
       }
