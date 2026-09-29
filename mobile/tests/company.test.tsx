@@ -16,6 +16,7 @@ import * as BillingScreen from '../src/app/(tabs)/(account)/employer/billing';
 import * as CompanyScreen from '../src/app/(tabs)/(account)/employer/company';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
+import { phoneFormData, sentBody } from './multipart';
 import { fakeServer } from './server';
 
 /*
@@ -50,11 +51,19 @@ jest.mock('expo-image-manipulator', () => {
 });
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
 jest.mock('expo-file-system', () => ({
-  File: jest.fn().mockImplementation(() => ({ size: 120_000, arrayBuffer: async () => new ArrayBuffer(4096) })),
+  // As expo-file-system's File: a name, a type from the extension, and its own bytes.
+  File: jest.fn().mockImplementation((...parts: string[]) => {
+    const name = parts.join('/').split('/').at(-1) ?? '';
+    return {
+      name,
+      type: name.endsWith('.png') ? 'image/png' : '',
+      size: 120_000,
+      arrayBuffer: async () => new ArrayBuffer(4096),
+      bytes: async () => new TextEncoder().encode(`the bytes of ${name}`),
+    };
+  }),
 }));
 
-const NativeFormData = jest.requireActual('react-native/Libraries/Network/FormData').default;
-type Part = { fieldName: string; string?: string; uri?: string; name?: string; type?: string };
 
 const ar = catalogues.ar;
 const server = fakeServer();
@@ -70,7 +79,7 @@ let documents: CompanyDocumentRow[];
 
 beforeAll(() => {
   globalThis.fetch = server.fetch as unknown as typeof fetch;
-  globalThis.FormData = NativeFormData;
+  globalThis.FormData = phoneFormData();
 });
 
 beforeEach(async () => {
@@ -207,10 +216,13 @@ describe("the company's page, for a company admin", () => {
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/uploadImage')).toHaveLength(1));
     // Not cropped: a logo keeps its shape.
     expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: false }));
-    const parts = (server.asked('/api/mobile/v1/actions/uploadImage')[0].body as { getParts: () => Part[] }).getParts();
-    expect(parts.find((part) => part.fieldName === 'kind')?.string).toBe('logo');
-    expect(parts.find((part) => part.fieldName === 'companyId')?.string).toBe(baseCompany.id);
-    expect(parts.find((part) => part.fieldName === 'file')).toMatchObject({ name: 'logo.png', type: 'image/png' });
+    // The request as Expo's fetch builds it on the phone: the logo's own bytes.
+    const sent = await sentBody(server.asked('/api/mobile/v1/actions/uploadImage')[0].body);
+    expect(sent).toContain('content-disposition: form-data; name="kind"\r\n\r\nlogo\r\n');
+    expect(sent).toContain(`content-disposition: form-data; name="companyId"\r\n\r\n${baseCompany.id}\r\n`);
+    expect(sent).toContain(
+      'content-disposition: form-data; name="file"; filename="logo.png"\r\ncontent-type: image/png\r\n\r\nthe bytes of logo.png\r\n',
+    );
   });
 
   it("uploads a paper to the company's folder, and takes it back out when the website refuses it", async () => {

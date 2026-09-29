@@ -16,6 +16,7 @@ import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import * as EmailsScreen from '../src/app/(tabs)/(account)/account/emails';
 import * as SecurityScreen from '../src/app/(tabs)/(account)/account/security';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID, type AuthUser } from './auth-fixtures';
+import { phoneFormData, sentBody } from './multipart';
 import { fakeServer } from './server';
 
 /*
@@ -55,8 +56,13 @@ jest.mock('expo-file-system', () => ({
   Paths: { cache: 'file:///cache' },
   File: jest.fn().mockImplementation((...parts: string[]) => {
     const uri = parts.join('/');
+    const name = uri.split('/').at(-1) ?? '';
     return {
       uri,
+      // As expo-file-system's File: a name, a type from the extension, and its own bytes.
+      name,
+      type: name.endsWith('.jpg') ? 'image/jpeg' : '',
+      bytes: async () => new TextEncoder().encode(`the bytes of ${name}`),
       size: 250_000,
       exists: false,
       create: jest.fn(),
@@ -69,9 +75,6 @@ jest.mock('expo-file-system', () => ({
 }));
 jest.mock('expo-sharing', () => ({ shareAsync: jest.fn(async () => {}) }));
 
-// React Native's own FormData, whose file parts are `{ uri, name, type }` as a phone sends them.
-const NativeFormData = jest.requireActual('react-native/Libraries/Network/FormData').default;
-type Part = { fieldName: string; string?: string; uri?: string; name?: string; type?: string };
 
 const ar = catalogues.ar;
 const server = fakeServer();
@@ -83,7 +86,7 @@ let me: ProfileRow;
 
 beforeAll(() => {
   globalThis.fetch = server.fetch as unknown as typeof fetch;
-  globalThis.FormData = NativeFormData;
+  globalThis.FormData = phoneFormData();
 });
 
 beforeEach(async () => {
@@ -210,13 +213,12 @@ describe('the photo', () => {
 
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/uploadImage')).toHaveLength(1));
     expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: true, aspect: [1, 1] }));
-    const parts = (bodyOf('/api/mobile/v1/actions/uploadImage') as { getParts: () => Part[] }).getParts();
-    expect(parts.find((part) => part.fieldName === 'kind')?.string).toBe('avatar');
-    expect(parts.find((part) => part.fieldName === 'file')).toMatchObject({
-      uri: 'file:///cache/manipulated.jpg',
-      name: 'photo.jpg',
-      type: 'image/jpeg',
-    });
+    // The request as Expo's fetch builds it on the phone: the picture's own bytes.
+    const sent = await sentBody(bodyOf('/api/mobile/v1/actions/uploadImage'));
+    expect(sent).toContain('content-disposition: form-data; name="kind"\r\n\r\navatar\r\n');
+    expect(sent).toContain(
+      'content-disposition: form-data; name="file"; filename="manipulated.jpg"\r\ncontent-type: image/jpeg\r\n\r\nthe bytes of manipulated.jpg\r\n',
+    );
     // The profile is read again, and now offers to replace the photo.
     expect(await screen.findByRole('button', { name: ar.account.photoReplace })).toBeTruthy();
   });
