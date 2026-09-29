@@ -1,8 +1,9 @@
 # Bringing production up to `main` — September 2026
 
-**State:** prepared and rehearsed; **nothing has been applied to production.**
-Applying it needs the owner's go-ahead, a backup, and the steps under
-[The release window](#the-release-window).
+**State:** prepared, rehearsed, and checked against production itself on
+2026-09-29 (read-only, [below](#verified-against-production-2026-09-29));
+**nothing has been applied to production.** Applying it needs the owner's
+go-ahead, a backup, and the steps under [The release window](#the-release-window).
 
 ## Where production stands
 
@@ -95,20 +96,37 @@ the app's 329 and 330: all 31 apply, and the result is identical.)
 order from the snapshot and runs the real `apply` command against it over a
 socket, so a new migration that would not apply to production fails CI.
 
-### Not yet verified
+### Verified against production (2026-09-29)
 
-Two things need production itself, read-only:
+Read-only, through the Supabase connector:
 
-- **The five early files are what production ran.** 316–318 were renumbered and
-  rebased when they merged. Their stored text is in
-  `supabase_migrations.schema_migrations.statements`; export it
-  (`select version, name, statements from supabase_migrations.schema_migrations`)
-  and pass it as `--statements`, and the rehearsal replays what was stored
-  instead of the file.
-- **The rebuild is production.** Run `scripts/dr/fingerprint.sql` on
-  production and pass the rows as `--fingerprint`; the rehearsal then says
-  whether its starting point matches, object for object, before anything is
-  applied on top.
+- **The ledger has not moved** since the snapshot: the same 78 rows, the last
+  applied on 2026-09-27.
+- **The rebuild is production.** `scripts/dr/fingerprint.sql` on production
+  and on the rebuild of the snapshot agree kind by kind — the md5 of each
+  kind's sorted `name=hash` list is the same for buckets (4), columns (274),
+  constraints (184), enums (15), functions (124), indexes (135), policies (93),
+  RLS switches (34) and triggers (60). The five early rows stored shorter text
+  than their files (re-typed without the comments), and it built the same
+  objects, so it needs no replaying. Both sides are read under Supabase's
+  search path (`"$user", public, extensions`): outside it, a definition names
+  pg_trgm's operator class as `extensions.gin_trgm_ops`, and five indexes would
+  differ in print only. `fingerprint()` in the rehearsal does this, so
+  `--fingerprint` rows taken on production compare cleanly.
+- **Grants**, which the fingerprint leaves out, agree too, with production the
+  stricter wherever they differ. EXECUTE matches function for function except
+  `is_undeliverable_domain(text)`: production's `refuse_reserved_domains` row
+  revokes it from `public`, `anon` and `authenticated`, and its file (029) does
+  not. Only definer functions call it, so either way is safe. Table grants
+  differ by Supabase's platform defaults, which the in-process database does
+  not reproduce.
+- **The data preflight** is 0 on every line, blocking and informational.
+- **Size**: 17 accounts, about 24 MB, two stored files.
+- **Scheduling**: pg_cron and Vault are installed, pg_net is not, and no Vault
+  secret is set. The one job is 204's `brokersconnect-lifecycle-maintenance`
+  (hourly, at minute 7), which is plain SQL. 329's minute push sweep therefore
+  stays unscheduled in the database until pg_net and its two secrets exist;
+  pushes still go out from the actions' flush and from Vercel's `/api/cron/push`.
 
 ## Data preflight
 
@@ -151,20 +169,27 @@ Only on the owner's go-ahead.
 
 **Before**
 
-1. Run the preflight on production; the blocking counts must be 0.
-2. Export the ledger's statements and production's fingerprint (both
-   read-only, above) and run
-   `pnpm db:rehearse:ledger --ledger … --statements … --fingerprint …`. It must
-   pass *with a verified starting point*.
-3. Confirm which commit Vercel is serving and the Vercel plan (the hourly
-   housekeeping cron needs Pro), and set `SUPABASE_SERVICE_ROLE_KEY` on Vercel
-   — the background jobs and the storage sweep need it.
+1. Run the preflight on production; the blocking counts must be 0. (Done
+   2026-09-29: all 0.)
+2. Check that the rebuild is production — the fingerprint, and the ledger
+   against the snapshot. (Done 2026-09-29, above; re-check on the day if the
+   ledger has moved.)
+3. Confirm which commit Vercel is serving and the Vercel plan (`main`'s crons
+   run every ten minutes, and the app's push cron every five), and set
+   `SUPABASE_SERVICE_ROLE_KEY` on Vercel — the background jobs and the storage
+   sweep need it. Vercel builds this branch's previews without complaint.
 
 **In the window**
 
 4. Back up: `pnpm dr:backup <directory outside the repo>` (pg_dump 17 or newer,
    over the **session pooler** URI — the direct host is IPv6-only on the Free
-   plan) and `pnpm dr:storage:backup`. No backup, no migration.
+   plan) and `pnpm dr:storage:backup`. No backup, no migration. Through the
+   connector alone, the fallback is a copy of every `public` table inside the
+   database (`create table backup_2026_09_29.<table> as table public.<table>`,
+   in a schema the API does not serve): it guards against a migration that
+   mangles rows, which is the risk here, not against losing the project. The
+   migrations touch no stored files. Drop the schema once the release has
+   settled.
 5. Deploy `main` to Vercel.
 6. Immediately apply. 305 moves two columns the old code reads and the new code
    reads from their new place, so code and schema must not be left apart:

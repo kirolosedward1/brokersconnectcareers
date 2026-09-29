@@ -110,8 +110,18 @@ export async function runStep(db, step, sql) {
   }
 }
 
+/**
+ * Read under Supabase's search path. A definition names anything outside the
+ * search path with its schema — an index over pg_trgm's operator class reads
+ * `extensions.gin_trgm_ops` — and Supabase's roles search `"$user", public,
+ * extensions`, so a fingerprint taken on production matches a rebuild only
+ * when both are read the same way.
+ */
 export async function fingerprint(db) {
-  const { rows } = await db.query(FINGERPRINT);
+  const rows = await db.transaction(async (tx) => {
+    await tx.exec('set local search_path = "$user", public, extensions');
+    return (await tx.query(FINGERPRINT)).rows;
+  });
   return new Map(rows.map((row) => [`${row.kind} ${row.name}`, row.hash]));
 }
 
