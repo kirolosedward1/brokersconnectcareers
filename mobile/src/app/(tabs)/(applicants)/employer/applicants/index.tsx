@@ -27,6 +27,7 @@ import {
 } from '~/features/employer/applicants';
 import { markupTags } from '~/i18n/rich';
 import { useSession } from '~/lib/session';
+import { useVisited } from '~/lib/use-visited';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, radius, space } from '~/theme/tokens';
 
@@ -45,7 +46,9 @@ export default function InboxScreen() {
   const params = useLocalSearchParams();
   const filters = parseInboxFilters(params);
   const { session, viewer, actor } = useSession();
-  const inbox = useInbox(filters);
+  // Drawn at launch behind Home by the tab bar: read once the tab is opened.
+  const visited = useVisited();
+  const inbox = useInbox(filters, { enabled: visited });
   const rows = inbox.data?.rows;
   const notes = useApplicantNotes((rows ?? []).map((row) => row.id));
   const context = useApplicantContext();
@@ -147,7 +150,12 @@ export default function InboxScreen() {
         </View>
 
         {/* Where they stand, counted under the same filters. */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space[2] }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ gap: space[2] }}
+        >
           <Chip
             label={`${t('filters.any')} (${formatNumber(inbox.data?.any ?? 0, locale)})`}
             selected={!filters.stage}
@@ -165,7 +173,7 @@ export default function InboxScreen() {
 
         {inbox.isPending ? (
           <LoadingState />
-        ) : inbox.isError ? (
+        ) : inbox.isError && !inbox.data ? (
           <ErrorState error={inbox.error} onRetry={() => inbox.refetch()} />
         ) : !rows?.length ? (
           <View
@@ -193,6 +201,7 @@ export default function InboxScreen() {
                     <Pressable
                       accessibilityRole="link"
                       onPress={() => router.push(`/employer/jobs/${row.job?.id}/applicants` as never)}
+                      hitSlop={{ top: 6, bottom: 6 }}
                       style={{ minHeight: hitTarget - 12, justifyContent: 'center' }}
                     >
                       <Text variant="small" weight="medium" tone="primary">

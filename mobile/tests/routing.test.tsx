@@ -277,7 +277,7 @@ describe('the consultant directory', () => {
     expect(result.getSegments()).toEqual(['(tabs)', '(applicants)', 'employer', 'applicants']);
   });
 
-  it('has no directory for an employer still waiting for approval', () => {
+  it('sends an employer still waiting for approval home from a link to the directory, as the website does', () => {
     actor = {
       userId: '55555555-5555-4555-8555-555555555555',
       profile: { role: 'employer', approval_status: 'pending' },

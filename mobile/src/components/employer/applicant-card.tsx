@@ -65,9 +65,21 @@ export function ApplicantCard({
   const { actor } = useSession();
   const move = useSetApplicationStatus();
 
-  const [status, setStatus] = useState<ApplicationStatus>(applicant.status);
-  const [reason, setReason] = useState(applicant.decision_note ?? '');
-  const [savedReason, setSavedReason] = useState(applicant.decision_note ?? '');
+  // The stage and reason shown are the stored ones, read afresh with every
+  // refresh, except while a move of this card's is on its way. A copy taken
+  // once went stale when the stage moved elsewhere (the pipeline, a
+  // colleague), and every move from the card was then refused as a colleague's.
+  const [pending, setPending] = useState<{ status: ApplicationStatus; reason: string } | null>(null);
+  const status = pending?.status ?? applicant.status;
+  const storedReason = applicant.decision_note ?? '';
+  const savedReason = pending?.reason ?? storedReason;
+  // The reason being typed follows the stored one for as long as nobody has typed in it.
+  const [reasonFrom, setReasonFrom] = useState(storedReason);
+  const [reason, setReason] = useState(storedReason);
+  if (storedReason !== reasonFrom) {
+    if (reason === reasonFrom) setReason(storedReason);
+    setReasonFrom(storedReason);
+  }
   const [conflict, setConflict] = useState(false);
   const [cvError, setCvError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
@@ -82,42 +94,39 @@ export function ApplicantCard({
   const headline = profile ? localized(locale, profile.headline_ar, profile.headline_en) : '';
 
   const save = (next: ApplicationStatus, decisionNote: string) => {
-    const before = { status, reason: savedReason };
-    setStatus(next);
-    setSavedReason(decisionNote);
+    const from = status;
+    setPending({ status: next, reason: decisionNote });
     setConflict(false);
     move.mutate(
-      { applicationId: applicant.id, status: next, decisionNote, from: before.status },
+      { applicationId: applicant.id, status: next, decisionNote, from },
       {
+        // Settled once the stages have been read again (the hook waits for that), so what shows next is stored.
+        onSettled: () => setPending(null),
         onError: (failure) => {
-          setStatus(before.status);
-          setSavedReason(before.reason);
-          setReason(before.reason);
+          setReason(savedReason);
           if (failure instanceof MovedAlready) setConflict(true);
         },
       },
     );
   };
 
-  const openCv = async () => {
+  const openCv = () => {
     setCvError(null);
     setOpening(true);
-    try {
-      await openApplicationCv(applicant.id);
-    } catch (failure) {
-      const code = failure instanceof ApiError ? failure.status : -1;
-      setCvError(
-        code === 429
-          ? t('app.applicants.cvLimit')
-          : code === 404
-            ? t('employer.noCv')
-            : code === 0
-              ? t('app.offline.body')
-              : t('common.errorBody'),
-      );
-    } finally {
-      setOpening(false);
-    }
+    openApplicationCv(applicant.id)
+      .catch((failure: unknown) => {
+        const code = failure instanceof ApiError ? failure.status : -1;
+        setCvError(
+          code === 429
+            ? t('app.applicants.cvLimit')
+            : code === 404
+              ? t('employer.noCv')
+              : code === 0
+                ? t('app.offline.body')
+                : t('common.errorBody'),
+        );
+      })
+      .then(() => setOpening(false));
   };
 
   const facts = [

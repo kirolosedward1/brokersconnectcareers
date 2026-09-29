@@ -46,7 +46,7 @@ export function directorySearch(filters: AgentFilters, page = 1): string {
  * company — anonymous until it is verified — so the cache is kept per company
  * and per verification: the day the papers are accepted, the names appear.
  */
-export function useAgentDirectory(filters: AgentFilters) {
+export function useAgentDirectory(filters: AgentFilters, { enabled = true }: { enabled?: boolean } = {}) {
   const { actor } = useSession();
   return useInfiniteQuery({
     queryKey: [
@@ -56,7 +56,7 @@ export function useAgentDirectory(filters: AgentFilters) {
       actor?.company?.verification_status ?? null,
       directorySearch({ ...filters, page: 1 }),
     ],
-    enabled: canBrowseAgentDirectory(actor),
+    enabled: enabled && canBrowseAgentDirectory(actor),
     initialPageParam: 1,
     queryFn: ({ pageParam }) => {
       const search = directorySearch(filters, pageParam);

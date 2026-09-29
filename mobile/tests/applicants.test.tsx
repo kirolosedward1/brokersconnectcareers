@@ -4,7 +4,7 @@ import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { ApplicationNoteRow, ProfileRow } from '@/lib/supabase/database.types';
 import type { Applicant } from '~/features/employer/applicants';
 import { parseInboxFilters } from '~/features/employer/applicants';
@@ -98,12 +98,14 @@ const notes: ApplicationNoteRow[] = [
 ];
 
 let rows: Applicant[];
+let client: QueryClient;
 
 beforeAll(() => {
   globalThis.fetch = server.fetch as unknown as typeof fetch;
 });
 
 beforeEach(async () => {
+  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   rows = [sara, omar];
   jest.mocked(WebBrowser.openBrowserAsync).mockClear();
 
@@ -146,7 +148,6 @@ function Settled({ children }: { children: ReactNode }) {
 }
 
 function Root() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
     <QueryClientProvider client={client}>
       <ThemeProvider>
@@ -308,6 +309,32 @@ describe('the inbox', () => {
     expect(asked?.get('experience_band')).toBeNull();
     expect(screen.getByText(`${ar.applicationStatus.new} (1)`)).toBeTruthy();
     expect(screen.getByText(`${ar.filters.any} (2)`)).toBeTruthy();
+  });
+
+  it('shows the stage as it is stored after a refresh, and moves the applicant on from there', async () => {
+    // The server as it is: a move is refused unless it starts from the stored stage.
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', (_url: URL, init: RequestInit | undefined) => {
+      const move = (JSON.parse(String(init?.body)) as { input: { applicationId: string; status: Applicant['status']; from: string } }).input;
+      const current = rows.find((row) => row.id === move.applicationId);
+      if (!current || current.status !== move.from) return { ok: false, error: 'moved_already' };
+      rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status } : row));
+      return { ok: true };
+    });
+    renderRouter(app, { initialUrl: '/employer/applicants' });
+    expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` })).toBeTruthy();
+
+    // Moved elsewhere — on the listing's pipeline, or by a colleague — and read again here.
+    rows = rows.map((row) => (row.id === sara.id ? { ...row, status: 'shortlisted' } : row));
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['employer', 'applicants'] });
+    });
+    expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.shortlisted}` })).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.shortlisted}` }));
+    fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.interview }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/setApplicationStatus')).toMatchObject({ status: 'interview', from: 'shortlisted' }));
+    expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.interview}` })).toBeTruthy();
+    expect(screen.queryByText(ar.employer.applicantMovedAlready)).toBeNull();
   });
 
   it('searches by name, with LIKE’s own characters taken as typed', async () => {

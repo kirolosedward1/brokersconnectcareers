@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsFocused } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { canAccessEmployerArea } from '@/lib/permissions';
 import type {
@@ -154,11 +155,11 @@ export type Inbox = { rows: Applicant[]; counts: Record<ApplicationStatus, numbe
  * the filters — and, beside it, how many each stage holds under the same
  * filters but any stage, which is what the stage chips count.
  */
-export function useInbox(filters: InboxFilters) {
+export function useInbox(filters: InboxFilters, { enabled = true }: { enabled?: boolean } = {}) {
   const companyId = useCompanyId();
   return useQuery({
     queryKey: ['employer', 'applicants', 'inbox', companyId, filters],
-    enabled: Boolean(companyId),
+    enabled: enabled && Boolean(companyId),
     queryFn: async (): Promise<Inbox> => {
       const narrow = <Q extends { eq: (c: string, v: string) => Q; ilike: (c: string, v: string) => Q }>(query: Q) => {
         let next = query.eq('job.company_id', companyId as string);
@@ -235,10 +236,17 @@ export function useApplicantNotes(applicationIds: string[]) {
  * as it renders them — which is where the candidate's "the company opened it"
  * comes from. Once per applicant per screen, and never in the way: the answer
  * is always ok.
+ *
+ * Only while the screen is the one in front. The native tab bar draws every
+ * tab's first screen at launch, hidden, and a screen left under another keeps
+ * reading: stamped from there, applicants nobody had looked at were told the
+ * company opened their application, at every launch.
  */
 export function useMarkSeen(applicants: Applicant[] | undefined) {
+  const onScreen = useIsFocused();
   const sent = useRef(new Set<string>());
   useEffect(() => {
+    if (!onScreen) return;
     const ids = (applicants ?? [])
       .filter((row) => !row.employer_viewed_at && !sent.current.has(row.id))
       .map((row) => row.id)
@@ -246,7 +254,7 @@ export function useMarkSeen(applicants: Applicant[] | undefined) {
     if (!ids.length) return;
     for (const id of ids) sent.current.add(id);
     void callAction('markApplicantsSeen', { ids }).catch(() => {});
-  }, [applicants]);
+  }, [applicants, onScreen]);
 }
 
 /** A colleague moved this applicant first; their move stands. */
@@ -275,7 +283,15 @@ export function useSetApplicationStatus() {
       });
       if (!result.ok) throw result.error === 'moved_already' ? new MovedAlready() : new Error(result.error);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['employer'] }),
+    // The stages are read again before the move counts as settled, so the card
+    // then shows what is stored (a colleague's move included). The overview's
+    // and the listings' counts follow without holding the button.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['employer', 'summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['employer', 'trend'] });
+      void queryClient.invalidateQueries({ queryKey: ['employer', 'listings'] });
+      return queryClient.invalidateQueries({ queryKey: ['employer', 'applicants'] });
+    },
   });
 }
 

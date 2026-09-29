@@ -9,13 +9,14 @@ import { EMPTY_AGENT_FILTERS, parseAgentFilters, type AgentFilters } from '@/lib
 import { formatNumber } from '@/lib/format';
 import { canBrowseAgentDirectory, canShortlistAgents, hasVerifiedCompany, isAdmin } from '@/lib/permissions';
 import { AgentCard } from '~/components/directory/agent-card';
+import { DirectoryClosed } from '~/components/directory/directory-closed';
 import { DirectoryFilterSheet } from '~/components/directory/directory-filter-sheet';
 import { HeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
 import { ForwardChevron } from '~/components/ui/icons';
-import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
+import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
   activeAgentFilters,
@@ -29,6 +30,7 @@ import { useCompanyPage } from '~/features/employer/company';
 import { useDistricts } from '~/features/taxonomy';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
+import { useVisited } from '~/lib/use-visited';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -50,7 +52,9 @@ export default function DirectoryScreen() {
   const raw = useLocalSearchParams();
   const filters = useMemo(() => parseAgentFilters(raw as Record<string, string | string[] | undefined>), [raw]);
 
-  const directory = useAgentDirectory(filters);
+  // Drawn at launch behind Home by the tab bar: searched once the tab is opened.
+  const visited = useVisited();
+  const directory = useAgentDirectory(filters, { enabled: visited });
   const agents = useMemo(() => flattenAgents(directory.data?.pages), [directory.data]);
   const districts = useDistricts().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
@@ -98,12 +102,12 @@ export default function DirectoryScreen() {
     />
   );
 
-  // Not a reader of the directory (the tab is not theirs; a link was routed elsewhere).
+  // Not a reader of the directory (yet): who it is for.
   if (!canBrowseAgentDirectory(actor)) {
     return (
       <>
         {header}
-        <NotFoundState />
+        <DirectoryClosed />
       </>
     );
   }

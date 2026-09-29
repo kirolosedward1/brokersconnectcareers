@@ -193,9 +193,9 @@ describe('who a link is for', () => {
 });
 
 describe('the consultant directory', () => {
-  it('is a tab for an employer the directory answers, and for nobody else', () => {
+  it("is a tab for every employer and for nobody else: an approval does not change the bar (and redraw every tab)", () => {
     expect(tabsFor(employer)).toEqual(['home', 'listings', 'applicants', 'consultants', 'account']);
-    expect(tabsFor(waiting)).not.toContain('consultants');
+    expect(tabsFor(waiting)).toEqual(tabsFor(employer));
     expect(tabsFor(candidate)).not.toContain('consultants');
     expect(tabsFor(null)).not.toContain('consultants');
   });
@@ -219,9 +219,10 @@ describe('the consultant directory', () => {
   it('sends an employer still waiting for approval to their console, as the website does', () => {
     expect(routeFromOutside('/agents', waiting)).toBe('/');
     expect(routeFromOutside('/agents/mona-ali', waiting)).toBe('/');
-    // Their own console's page, in a tab they do not have yet.
-    expect(routeFromOutside('/employer/talent', waiting)).toBe('/');
-    expect(routeInside('/employer/talent', waiting)).toBe('/');
+    // Their own console's page, which the website opens for any employer: in the
+    // Consultants tab, whose screens say who the directory is for until the approval.
+    expect(routeFromOutside('/employer/talent', waiting)).toBe('/(consultants)/employer/talent');
+    expect(routeInside('/employer/talent', waiting)).toBe('/employer/talent');
   });
 
   it('asks somebody signed out to sign in first, and sends a candidate to their own profile', () => {

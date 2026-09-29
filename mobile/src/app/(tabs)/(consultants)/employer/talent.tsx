@@ -6,9 +6,10 @@ import { useLocale, useTranslations } from 'use-intl';
 import { Lock } from 'lucide-react-native';
 import { formatDate, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
-import { canShortlistAgents } from '@/lib/permissions';
+import { canBrowseAgentDirectory, canShortlistAgents } from '@/lib/permissions';
 import type { DistrictRow, SavedAgentCardRow } from '@/lib/supabase/database.types';
 import { areaLine, CardFacts, Silhouette, TrackPills } from '~/components/directory/agent-card';
+import { DirectoryClosed } from '~/components/directory/directory-closed';
 import { ShortlistIcon, useShortlistToggle } from '~/components/directory/shortlist-controls';
 import { Avatar } from '~/components/ui/avatar';
 import { Button } from '~/components/ui/button';
@@ -53,7 +54,7 @@ export default function ShortlistScreen() {
     return (
       <>
         {header}
-        <NotFoundState />
+        {canBrowseAgentDirectory(actor) ? <NotFoundState /> : <DirectoryClosed />}
       </>
     );
   }
