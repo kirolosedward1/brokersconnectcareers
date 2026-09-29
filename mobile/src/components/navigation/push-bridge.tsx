@@ -6,6 +6,7 @@ import {
   destinationOf,
   forgetThisPhone,
   notificationIdOf,
+  pushAvailable,
   registerThisPhone,
   stopListeningHere,
   usePushState,
@@ -39,7 +40,7 @@ export function PushBridge() {
   const userId = session?.user.id ?? null;
   const hasProfile = Boolean(viewer?.profile);
   const state = usePushState().data;
-  const wanted = Boolean(userId && hasProfile && state?.permission === 'granted' && !state.off);
+  const wanted = Boolean(pushAvailable() && userId && hasProfile && state?.permission === 'granted' && !state.off);
 
   // Register, and again when the token changes.
   useEffect(() => {

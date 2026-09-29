@@ -57,6 +57,11 @@ describe('webPathToAppPath', () => {
     ],
     // Google, back from the authentication browser, if iOS hands it over as a link.
     ['brokersconnect://auth/callback?code=abc', '/auth/callback?code=abc'],
+    // Expo Go's own form while the app runs in it: the screen follows "/--".
+    ['exp://172.20.10.2:8081/--/jobs/abc', '/jobs/abc'],
+    ['exp://172.20.10.2:8081/--/companies/acme?x=1', '/companies/acme?x=1'],
+    ['exp://172.20.10.2:8081', '/'],
+    ['exp://172.20.10.2:8081/--/', '/'],
   ])('%s → %s', (input, expected) => {
     expect(webPathToAppPath(input)).toBe(expected);
   });

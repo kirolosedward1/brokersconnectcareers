@@ -5,7 +5,7 @@ import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Text } from '~/components/ui/text';
 import { usePushControls } from '~/features/push/controls';
-import { usePushState } from '~/features/push/device';
+import { pushAvailable, usePushState } from '~/features/push/device';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 
@@ -20,7 +20,7 @@ export function PushPrompt({ audience }: { audience: 'candidate' | 'employer' })
   const state = usePushState().data;
   const { turnOn, dismissPrompt } = usePushControls();
 
-  if (!state || state.permission !== 'undetermined' || state.off || state.promptDismissed) return null;
+  if (!pushAvailable() || !state || state.permission !== 'undetermined' || state.off || state.promptDismissed) return null;
 
   return (
     <Card style={{ gap: space[3] }}>

@@ -7,7 +7,7 @@ import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { usePushControls } from '~/features/push/controls';
-import { usePushState } from '~/features/push/device';
+import { pushAvailable, usePushState } from '~/features/push/device';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
@@ -35,6 +35,20 @@ export default function AlertsScreen() {
           title={t('app.account.signedOutTitle')}
           action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
         />
+      </>
+    );
+  }
+  // No push project in this build (Expo Go, or before the EAS project exists):
+  // a switch here would turn on nothing.
+  if (!pushAvailable()) {
+    return (
+      <>
+        {header}
+        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: space[4], gap: space[4] }}>
+          <Notice tone="muted">
+            <Text variant="small">{t('app.push.unavailable')}</Text>
+          </Notice>
+        </ScrollView>
       </>
     );
   }

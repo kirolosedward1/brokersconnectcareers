@@ -42,6 +42,19 @@ jest.mock('~/lib/session-storage', () => {
   };
 });
 
+// A build with an EAS project, the only kind that can have a push token. The
+// last cases take it away, as Expo Go and a build before the project exists are.
+const PROJECT = 'b1f0c2d4-0000-4000-8000-000000000001';
+const mockEas: { projectId?: string } = { projectId: PROJECT };
+jest.mock('expo-constants', () => {
+  const actual = jest.requireActual('expo-constants');
+  // A getter defined after the copy: in an object literal, the transform would
+  // read it once, before mockEas exists.
+  const constants = { ...actual.default };
+  Object.defineProperty(constants, 'easConfig', { get: () => mockEas, enumerable: true });
+  return { ...actual, __esModule: true, default: constants };
+});
+
 const ar = catalogues.ar;
 const server = fakeServer();
 const PASSWORD = 'correct-horse';
@@ -310,5 +323,42 @@ describe('the badge', () => {
     unread = 3;
     renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(Notifications.setBadgeCountAsync).toHaveBeenCalledWith(3));
+  });
+});
+
+describe('a build without a push project', () => {
+  beforeEach(() => {
+    delete mockEas.projectId;
+  });
+  afterEach(() => {
+    mockEas.projectId = PROJECT;
+  });
+
+  it('asks nothing on Home', async () => {
+    renderRouter(app, { initialUrl: '/' });
+    await waitFor(() => expect(jest.mocked(Notifications.getPermissionsAsync)).toHaveBeenCalled());
+    await act(async () => {});
+    await act(async () => {});
+    expect(screen.queryByText(ar.app.push.promptTitle)).toBeNull();
+  });
+
+  it('registers nothing, even with the phone allowing it, and leaves its registration alone at sign-out', async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/' });
+    await act(async () => {});
+    await act(async () => {});
+    expect(registered()).toHaveLength(0);
+
+    await act(async () => {
+      await signOutHere();
+    });
+    await waitFor(() => expect(Notifications.setBadgeCountAsync).toHaveBeenLastCalledWith(0));
+    expect(Notifications.unregisterForNotificationsAsync).not.toHaveBeenCalled();
+  });
+
+  it('says so in the account, with no switch that would turn on nothing', async () => {
+    renderRouter(app, { initialUrl: '/account/alerts' });
+    expect(await screen.findByText(ar.app.push.unavailable)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.app.push.switch)).toBeNull();
   });
 });

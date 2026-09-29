@@ -107,6 +107,7 @@
     "promptCandidate": "Turn on notifications and we will tell you as soon as a company answers your application.",
     "promptEmployer": "Turn on notifications and we will tell you as soon as someone applies to your listings.",
     "turnOn": "Turn on notifications",
-    "notNow": "Not now"
+    "notNow": "Not now",
+    "unavailable": "Notifications on this phone aren't available in this version of the app yet. Everything new still reaches you in the bell, and by email if you have that on."
   }
 }

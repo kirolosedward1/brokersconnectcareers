@@ -1,4 +1,5 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '~/lib/supabase';
@@ -39,7 +40,13 @@ function hex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * Sign in with Apple, where it can work: not in Expo Go, which the phone offers
+ * it to but which Apple then issues the token to, under Expo Go's own bundle
+ * id, and Supabase refuses it.
+ */
 export function appleAvailable(): Promise<boolean> {
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return Promise.resolve(false);
   return AppleAuthentication.isAvailableAsync().catch(() => false);
 }
 
