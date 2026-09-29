@@ -55,3 +55,24 @@ Service-role call sites (exhaustive, as of this round): cron routes; email sendi
 - **Proxying auth through our server.** Sign-in/sign-up/reset stay browser→Supabase Auth so that GoTrue's per-IP limits and CAPTCHA apply to the real client and cannot be bypassed by skipping our site.
 - **Per-IP limits in Next middleware.** Vercel functions are stateless and a database round trip per page view is the wrong cost; IP-level limits belong at the Vercel firewall (documented) and, for the directory, in the functions themselves.
 - **Cloudflare.** DNS resolves straight to Vercel (216.150.x.x); there is no Cloudflare zone in front. The edge layer is Vercel's firewall. Turnstile is used because it is free and verified natively by Supabase Auth, and needs no DNS change.
+
+## 6. The iOS app (added with the mobile API, September 2026)
+
+A second client, built from `mobile/` with Expo. It changes no rule in the database and adds one door.
+
+```
+iOS app ──(anon key + user JWT)──► Supabase Auth / PostgREST / Storage     same boundary as the browser
+iOS app ──(Authorization: Bearer <user JWT>)──► /api/mobile/v1/* ──(that JWT)──► PostgREST
+                                                   └── the website's own server actions, unchanged
+```
+
+- **Reads** go straight to PostgREST under the user's JWT, exactly as a browser could, so nothing new is exposed: the app is one more holder of a JWT, which section 1 already assumes anyone can be.
+- **Writes** go through `POST /api/mobile/v1/actions/<name>`, which runs the same server action the website's form runs (`src/lib/mobile-api/registry.ts`). The emails, magic-byte checks, re-encoding, slugs, sanitising and server-side rate counters therefore apply to the app too; bypassing them is no easier than it was.
+- **No cookie is ever a session on a mobile route.** Inside a mobile route, `createClient()` builds the bearer client or the anonymous one and never reads cookies (`src/lib/mobile-api/context.ts`), so a cross-site form post that carries a visitor's cookies reaches these routes signed out. Tokens are verified once per request against Supabase Auth; a refusal is 401, an auth outage 503.
+- **The registry is the allowlist.** Every action the app may call is named there and nothing else is reachable; no admin action and no checkout, which a test pins (`scripts/mobile-api.test.mjs`). An unknown name is 404, a prototype key included.
+- **Public reads** (the board, companies, browse counts) run signed out whatever the request carries and may be cached for a minute; anything viewer-dependent is `no-store`.
+- **The app holds** the publishable key and the site URL, nothing else. Its session is stored encrypted: the AES key in the iOS Keychain (`expo-secure-store`), the ciphertext in app storage.
+- **At the edge**, `/api/mobile/*` is rate-limited with deny, never challenge (a native client cannot answer a challenge), and is exempt from Bot Protection; Attack Challenge Mode cuts the app off for its duration (EDGE_WAF.md).
+- **Email links** land on `/auth/confirm`, which verifies a token hash rather than exchanging a code, so they work on the device and in the app where they are opened. A GET only draws a "Continue" button (mail scanners that open every link cannot spend it); the POST that spends it is refused unless the browser says it came from this site (`Origin` / `Sec-Fetch-Site`), which closes login CSRF — another page cannot sign a visitor into an attacker's account with the attacker's token. The destination is read from the link and passes the same `safeNext` rule as every other redirect.
+- **The Sign in with Apple key** (`APPLE_PRIVATE_KEY`) lives only on the server, where `deleteMyAccount` uses it to revoke a deleting Apple user's grant with a code the app has just obtained from Apple; the code is single-use and short-lived, and nothing Apple returns is stored or logged.
+- **Carrier NAT.** Egyptian mobile carriers put many phones behind one address. Per-IP limits that are right for a browser can refuse a whole neighbourhood of app users, so the app's traffic is limited per account in the database first, and per IP only loosely.

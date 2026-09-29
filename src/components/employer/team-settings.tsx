@@ -78,7 +78,9 @@ export function TeamSettings({
                 ? t('teamNotEmployer')
                 : result.error === 'elsewhere'
                   ? t('teamElsewhere')
-                : result.error === 'rate_limited'
+                : // Both limits are "too many, wait": the hourly additions and the
+                  // daily address look-ups, which was answered as a generic error.
+                  result.error === 'rate_limited' || result.error === 'rate_limit'
                   ? t('teamRateLimited')
                   : tCommon('errorBody'),
         );

@@ -1,4 +1,14 @@
-import { AlertTriangle, ArrowLeft, Clock, FileText, Inbox, RotateCcw, UserRound } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Clock,
+  FileText,
+  Inbox,
+  RotateCcw,
+  UserRound,
+  type LucideIcon,
+} from 'lucide-react';
+import type { NextActionKind } from '@/lib/next-action';
 import { Link } from '@/i18n/navigation';
 
 /**
@@ -38,9 +48,9 @@ const ICONS = {
   verification: AlertTriangle,
   profile: UserRound,
   replies: Inbox,
-} as const;
+} as const satisfies Record<NextActionKind, LucideIcon>;
 
-export type NextActionKind = keyof typeof ICONS;
+export type { NextActionKind };
 
 export function NextAction({
   kind,

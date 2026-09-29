@@ -1,0 +1,16 @@
+# The Expo app is its own pnpm root, separate from the website's install at the
+# repository root (whose pnpm-workspace.yaml lists only itself).
+#
+# Hoisted, not pnpm's default isolated layout: React Native's autolinking and
+# Metro both expect one flat node_modules, and the app pins single copies of
+# React and zod that shared website code must resolve to.
+nodeLinker: hoisted
+
+packages:
+  - '.'
+
+# Build-script approvals, as at the root: both ship prebuilt binaries and only
+# fall back to compiling, which is harmless.
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - unrs-resolver

@@ -6,10 +6,11 @@ import { Download, Loader2, Trash2 } from 'lucide-react';
 
 import { localeHref, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
-import { deleteMyAccount, updateNotificationPreferences } from '@/lib/actions/account';
+import { deleteMyAccount, requestAccountDeletion, updateNotificationPreferences } from '@/lib/actions/account';
 import { reach } from '@/lib/reach';
 import type { ProfileRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
+import { uuid } from '@/lib/uuid';
 
 type Prefs = Pick<
   ProfileRow,
@@ -45,7 +46,35 @@ export function AccountSettings({
   const recoverSession = useSessionRecovery();
   const [deleting, startDeleting] = useTransition();
 
+  /*
+    An employer who owns a company cannot delete the account themselves — the
+    company, its listings and other people's applications would go with it —
+    so they ask, and an operator handles it (requestAccountDeletion). One who
+    turns out not to own it (a recruiter) is shown the ordinary form instead.
+  */
+  const [mode, setMode] = useState<'ask' | 'delete'>(isEmployer ? 'ask' : 'delete');
+  const [requestKey] = useState(uuid);
+  const [requested, setRequested] = useState<string | null>(null);
+  const [asking, startAsking] = useTransition();
+
   const CONFIRM_WORD = t('deleteConfirmWord');
+
+  function onAsk() {
+    setError(null);
+    startAsking(async () => {
+      const result = await reach(requestAccountDeletion({ key: requestKey }));
+      if (recoverSession(result)) return;
+      if (result.ok) {
+        setRequested(result.data?.reference ?? '');
+        return;
+      }
+      if (result.error === 'not_owner') {
+        setMode('delete');
+        return;
+      }
+      setError(result.error === 'rate_limit' ? t('deleteRequestLimited') : tCommon('errorBody'));
+    });
+  }
 
   function toggle(key: keyof Prefs) {
     const next = { ...prefs, [key]: !prefs[key] };
@@ -152,10 +181,21 @@ export function AccountSettings({
       <section className="rounded-xl border border-destructive/30 bg-destructive/[0.03] p-6">
         <h2 className="font-semibold text-destructive">{t('deleteTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {isEmployer ? t('deleteBlockedCompany') : t('deleteBody')}
+          {mode === 'ask' ? t('deleteBlockedCompany') : t('deleteBody')}
         </p>
 
-        {isEmployer ? null : (
+        {mode === 'ask' ? (
+          requested !== null ? (
+            <p role="status" className="mt-4 text-sm font-medium">
+              {t('deleteRequested', { reference: requested })}
+            </p>
+          ) : (
+            <Button type="button" variant="outline" className="mt-4" disabled={asking} onClick={onAsk}>
+              {asking ? <Loader2 className="animate-spin" aria-hidden /> : null}
+              {t('deleteRequestCta')}
+            </Button>
+          )
+        ) : (
           <>
             <label className="mt-4 block text-sm">
               {/*

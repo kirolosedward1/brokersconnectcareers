@@ -31,6 +31,15 @@
  * placeholder is swapped for the variable afterwards. The guard stays as
  * strict as the running application needs it to be, and the check at the
  * bottom is what turned this from a shipped bug into a failed script.
+ *
+ * The links go to /auth/confirm with the token hash, not to GoTrue's own
+ * {{ .ConfirmationURL }}. That URL ends in the code flow, which only works in
+ * the browser that asked for the email; a token hash verifies wherever the
+ * link is opened — on the phone after signing up on a laptop, or in the iOS
+ * app, which opens /auth/confirm as a universal link. `redirect_to` comes last
+ * because it is a whole URL of its own (src/lib/auth/confirm-link.ts reads it
+ * as the rest of the string). Deploy /auth/confirm before pasting these, and
+ * send one test email to see the link arrive whole.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -67,8 +76,18 @@ const c = emailCopy.ar;
  * placeholder that somehow escaped substitution would fail loudly rather than
  * reaching somebody's DNS.
  */
+/** A link to /auth/confirm for one type of email, with GoTrue's variables in it. */
+const confirmLink = (type) =>
+  `${SITE}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=${type}&amp;redirect_to={{ .RedirectTo }}`;
+
 const URL_VARIABLES = {
-  'https://gotrue.invalid/confirmation-url': '{{ .ConfirmationURL }}',
+  // `email` covers both a sign-up confirmation and a magic link, as verifyOtp
+  // names them; the older `signup` and `magiclink` still verify too. No
+  // placeholder may begin with another, or the shorter replaces inside the
+  // longer — /confirm/email once did, inside /confirm/email_change.
+  'https://gotrue.invalid/confirm/address': confirmLink('email'),
+  'https://gotrue.invalid/confirm/recovery': confirmLink('recovery'),
+  'https://gotrue.invalid/confirm/new-address': confirmLink('email_change'),
 };
 
 function substitute(html) {
@@ -79,7 +98,9 @@ function substitute(html) {
   return out;
 }
 
-const CONFIRMATION_URL = 'https://gotrue.invalid/confirmation-url';
+const CONFIRM_EMAIL = 'https://gotrue.invalid/confirm/address';
+const CONFIRM_RECOVERY = 'https://gotrue.invalid/confirm/recovery';
+const CONFIRM_EMAIL_CHANGE = 'https://gotrue.invalid/confirm/new-address';
 
 /** Arabic only. Supabase stores one template per email type, not one per language. */
 const LOCALE = 'ar';
@@ -113,7 +134,7 @@ const TEMPLATES = {
         value:
           'أهلاً بيك في بروكرز كونكت. اضغط الزرار عشان نتأكد إن البريد ده بتاعك ونفعّل الحساب.',
       },
-      { kind: 'button', label: 'تأكيد البريد الإلكتروني', href: CONFIRMATION_URL },
+      { kind: 'button', label: 'تأكيد البريد الإلكتروني', href: CONFIRM_EMAIL },
       {
         kind: 'text',
         value: 'اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.',
@@ -136,7 +157,7 @@ const TEMPLATES = {
         kind: 'text',
         value: 'وصلنا طلب لإعادة تعيين كلمة المرور بتاعت حسابك. اضغط الزرار عشان تحطّ واحدة جديدة.',
       },
-      { kind: 'button', label: 'إعادة تعيين كلمة المرور', href: CONFIRMATION_URL },
+      { kind: 'button', label: 'إعادة تعيين كلمة المرور', href: CONFIRM_RECOVERY },
       { kind: 'text', value: 'اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.' },
       {
         kind: 'security',
@@ -157,7 +178,7 @@ const TEMPLATES = {
         value: 'طلبت تغيير البريد الإلكتروني بتاع حسابك. اضغط الزرار عشان نأكّد العنوان الجديد.',
       },
       { kind: 'facts', rows: [['البريد الجديد', '{{ .NewEmail }}']] },
-      { kind: 'button', label: 'تأكيد البريد الجديد', href: CONFIRMATION_URL },
+      { kind: 'button', label: 'تأكيد البريد الجديد', href: CONFIRM_EMAIL_CHANGE },
       {
         kind: 'security',
         value:
@@ -189,7 +210,7 @@ const TEMPLATES = {
     heading: 'ادخل على حسابك',
     blocks: [
       { kind: 'text', value: 'اضغط الزرار عشان تدخل على حسابك من غير كلمة مرور.' },
-      { kind: 'button', label: 'ادخل على حسابك', href: CONFIRMATION_URL },
+      { kind: 'button', label: 'ادخل على حسابك', href: CONFIRM_EMAIL },
       { kind: 'text', value: 'اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.' },
       {
         kind: 'security',
@@ -242,6 +263,24 @@ for (const item of written) {
   for (const placeholder of Object.keys(URL_VARIABLES)) {
     if (item.html.includes(placeholder)) {
       console.error(`  BROKEN  ${item.file}: ${placeholder} was never substituted`);
+      broken += 1;
+    }
+  }
+}
+
+// Every link-carrying template sends people to /auth/confirm, with the token
+// hash, and with redirect_to as the last parameter — the route reads it as the
+// rest of the string, so anything after it would be read as part of it.
+for (const item of written) {
+  const hrefs = [...item.html.matchAll(/href="([^"]*auth\/confirm[^"]*)"/g)].map((match) => match[1]);
+  if (item.name === 'reauthentication') continue; // a code, not a link
+  if (!hrefs.length) {
+    console.error(`  BROKEN  ${item.file}: no /auth/confirm link`);
+    broken += 1;
+  }
+  for (const href of hrefs) {
+    if (!href.includes('token_hash={{ .TokenHash }}') || !href.endsWith('redirect_to={{ .RedirectTo }}')) {
+      console.error(`  BROKEN  ${item.file}: ${href} is not token_hash … redirect_to last`);
       broken += 1;
     }
   }

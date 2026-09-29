@@ -9,9 +9,9 @@ Principles, from the brief: search engines are never blocked; ordinary page view
 | Ruleset | Action |
 |---|---|
 | OWASP Core Rule Set (Vercel managed) | **Log** for one week, then **Deny** for the SQLi / XSS / RCE / LFI groups; leave the generic-attack group on Log if it flags Arabic query strings |
-| Bot Protection | On, **Challenge** unverified bots on `/agents*`, `/api/*` and `/sign-*`; **allow** verified bots (Googlebot, Bingbot) everywhere |
+| Bot Protection | On, **Challenge** unverified bots on `/agents*`, `/api/*` and `/sign-*` — **except `/api/mobile/*` and `/.well-known/*`**; **allow** verified bots (Googlebot, Bingbot) everywhere. The iOS app calls `/api/mobile/*` from a native HTTP client that cannot solve a challenge, and Apple's CDN fetches `/.well-known/apple-app-site-association`; a challenge on either is an outage for every app user, not friction |
 | AI bots | Deny on `/agents*` |
-| Attack Challenge Mode | Off by default; the on-call person turns it on during a volumetric attack (it challenges every visitor for the duration) |
+| Attack Challenge Mode | Off by default; the on-call person turns it on during a volumetric attack (it challenges every visitor for the duration). **While it is on, the iOS app cannot reach the API** and shows its "service unavailable" state — a deliberate trade during an attack, to be said out loud when it is switched on |
 
 ## 2. Rate-limit rules (Custom rules → Rate limit)
 
@@ -27,6 +27,7 @@ Keyed on IP unless stated. Windows are fixed. `Challenge` shows a Vercel interst
 | 6 | webhooks | path starts with `/api/email/webhook` or `/api/paymob/webhook` | 120 req / 1 min | Deny | Both verify signatures; this bounds the CPU spent verifying garbage. |
 | 7 | server actions | method POST and header `next-action` present | 90 req / 1 min | Challenge | Every form on the site. Filling a form ninety times a minute is not a person. |
 | 8 | health | path is `/api/health` | 30 req / 1 min | Deny | It makes a real database round trip. |
+| 9 | mobile api | path starts with `/api/mobile/` | 600 req / 1 min | Deny | The app's door. Deny rather than challenge, because a native client cannot answer a challenge. Loose because Egyptian mobile carriers put many phones behind one address (carrier NAT): one user makes a few dozen calls a minute at most, and the per-account limits in the database do the real work. Raise it before lowering anything else if app users in one city start seeing 403s. |
 
 ## 3. Custom rules (Custom rules → Conditions)
 

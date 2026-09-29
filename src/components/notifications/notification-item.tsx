@@ -22,7 +22,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { openNotification } from '@/lib/actions/notifications';
-import { localized } from '@/i18n/routing';
+import { isKnownNotificationKind, notificationTitle, type Translate } from '@/lib/notifications/title';
 import { formatDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import type { NotificationKind, NotificationRow } from '@/lib/supabase/database.types';
@@ -98,8 +98,7 @@ export async function NotificationItem({
   compact?: boolean;
 }) {
   const t = await getTranslations('notifications');
-  const tStatus = await getTranslations('applicationStatus');
-  const tVisibility = await getTranslations('visibility');
+  const tRoot = await getTranslations();
 
   const { kind, payload } = notification;
   /*
@@ -109,38 +108,12 @@ export async function NotificationItem({
     support_replied did exactly that — and a lookup that returned undefined
     made every page with a header throw for that reader.
   */
-  const known = kind in ICONS;
+  const known = isKnownNotificationKind(kind);
   const Icon = known ? ICONS[kind] : Bell;
   const tone = known ? TONES[kind] : 'bg-muted text-muted-foreground';
 
-  const subject =
-    localized(locale, payload.title_ar, payload.title_en) ||
-    localized(locale, payload.name_ar, payload.name_en);
-
-  // Most kinds are one sentence with the subject in it; these carry a second
-  // fact the sentence has to say.
-  const title = (() => {
-    if (kind === 'application_moved') {
-      return t('applicationMoved', {
-        title: subject,
-        status: payload.status ? tStatus(payload.status as never) : '',
-      });
-    }
-    if (kind === 'application_received' && (payload.count ?? 1) > 1) {
-      return t('applicationReceivedMany', { subject, count: payload.count ?? 1 });
-    }
-    if (kind === 'profile_visibility_changed' && payload.visibility) {
-      return t('profileVisibilityChanged', { visibility: tVisibility(payload.visibility as never) });
-    }
-    // Whether a report led to action — never what the action was.
-    if (kind === 'report_reviewed') {
-      return t(payload.outcome === 'actioned' ? 'reportActioned' : 'reportNoBreach', { subject });
-    }
-    if (kind === 'appeal_decided') {
-      return t(payload.outcome === 'overturned' ? 'appealOverturned' : 'appealUpheld', { subject });
-    }
-    return known ? t(kind, { subject }) : t('generic');
-  })();
+  // The sentence itself is shared with the mobile app and push delivery.
+  const title = notificationTitle(notification, locale, tRoot as unknown as Translate);
 
   const body = payload.note || null;
   const unread = !notification.read_at;

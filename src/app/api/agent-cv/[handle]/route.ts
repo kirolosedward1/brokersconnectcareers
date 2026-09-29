@@ -5,6 +5,7 @@ import { rateLimit, policyFor } from '@/lib/security/rate-limit';
 import { recordSecurityEvent } from '@/lib/security/events';
 import { retryAfter } from '@/lib/security/request';
 import { logFailure } from '@/lib/observe';
+import { wantsJson, withOptionalBearer } from '@/lib/mobile-api/http';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ const HANDLE = /^(?:[a-z0-9][a-z0-9-]{0,118}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}
  * stranger is not owed; the signed-in page already told the entitled reader
  * what it could.
  */
-export async function GET(
+async function handle(
   request: NextRequest,
   { params }: { params: Promise<{ handle: string }> },
 ) {
@@ -63,8 +64,16 @@ export async function GET(
   const url = await signedUrl(CV_BUCKET, row.cv_path, 300);
   if (!url) return NextResponse.json({ error: 'unavailable' }, { status: 500 });
 
+  // The app opens the file in its own viewer, so it asks for the link itself.
+  if (wantsJson(request)) {
+    return NextResponse.json({ url }, { headers: { 'cache-control': 'no-store, private' } });
+  }
+
   return NextResponse.redirect(url, { headers: { 'cache-control': 'no-store, private' } });
 }
+
+/* The website's cookie, or the mobile app's bearer token — never both. */
+export const GET = withOptionalBearer(handle);
 
 function notFound() {
   return NextResponse.json({ error: 'not_found' }, { status: 404, headers: { 'cache-control': 'no-store' } });

@@ -6,9 +6,9 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { logFailure } from '@/lib/observe';
 
-export type ActionResult<T = undefined> =
-  | { ok: true; data?: T }
-  | { ok: false; error: string; fieldErrors?: Record<string, string> };
+import type { ActionResult } from '@/lib/action-result';
+
+export type { ActionResult };
 
 const jobIdSchema = z.string().uuid();
 

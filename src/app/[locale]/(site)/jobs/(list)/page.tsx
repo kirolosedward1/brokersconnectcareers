@@ -27,6 +27,7 @@ import {
   type SearchParams,
 } from '@/lib/queries/jobs';
 import { formatNumber } from '@/lib/utils';
+import { activeFilterList, type ActiveFilter as SharedActiveFilter } from '@/lib/job-filters';
 
 export async function generateMetadata({
   params,
@@ -199,83 +200,45 @@ export default async function JobsPage({
   const governorate = governorates.find((item) => item.slug === filters.governorateSlug);
 
   type ActiveFilter = { key: string; label: string; href: string; without: Partial<typeof filters> };
-  const chip = (key: string, label: string, without: Partial<typeof filters>): ActiveFilter => ({
-    key,
-    label,
-    without,
-    href: buildHref(1, without),
-  });
 
-  const activeFilters: ActiveFilter[] = [
-    ...(filters.q ? [chip('q', `«${filters.q}»`, { q: '' })] : []),
-    ...filters.tracks.map((value) =>
-      chip(`track-${value}`, tTrack(value), {
-        tracks: filters.tracks.filter((item) => item !== value),
-      }),
-    ),
-    ...filters.districtSlugs.map((value) =>
-      chip(`district-${value}`, districtLabel(value), {
-        districtSlugs: filters.districtSlugs.filter((item) => item !== value),
-      }),
-    ),
-    ...(filters.governorateSlug
-      ? [
-          chip(
-            'gov',
-            governorate
-              ? localized(locale, governorate.name_ar, governorate.name_en)
-              : filters.governorateSlug,
-            { governorateSlug: null },
-          ),
-        ]
-      : []),
-    ...filters.companyTypes.map((value) =>
-      chip(`ctype-${value}`, tCompanyType(value), {
-        companyTypes: filters.companyTypes.filter((item) => item !== value),
-      }),
-    ),
-    ...filters.leadsSources.map((value) =>
-      chip(`leads-${value}`, tLeads(`${value}_short`), {
-        leadsSources: filters.leadsSources.filter((item) => item !== value),
-      }),
-    ),
-    ...(filters.hasBasicSalary === null
-      ? []
-      : [
-          chip(
-            'salary',
-            tFilters(filters.hasBasicSalary ? 'hasBasicSalaryYes' : 'hasBasicSalaryNo'),
-            { hasBasicSalary: null },
-          ),
-        ]),
-    ...(filters.minSalary
-      ? [
-          chip(
-            'pay',
-            tFilters('minSalaryAtLeast', { amount: formatNumber(filters.minSalary, locale) }),
-            { minSalary: null },
-          ),
-        ]
-      : []),
-    ...filters.commissionTypes.map((value) =>
-      chip(`comm-${value}`, tCommission(value), {
-        commissionTypes: filters.commissionTypes.filter((item) => item !== value),
-      }),
-    ),
-    ...(filters.postedWithin
-      ? [chip('posted', tFilters('postedWithin', { days: filters.postedWithin }), { postedWithin: null })]
-      : []),
-    ...filters.experienceBands.map((value) =>
-      chip(`exp-${value}`, tExp(value), {
-        experienceBands: filters.experienceBands.filter((item) => item !== value),
-      }),
-    ),
-    ...filters.employmentTypes.map((value) =>
-      chip(`type-${value}`, tType(value), {
-        employmentTypes: filters.employmentTypes.filter((item) => item !== value),
-      }),
-    ),
-  ];
+  // The list and its order are shared with the mobile app (activeFilterList);
+  // only the words are the page's.
+  const labelFor = (filter: SharedActiveFilter): string => {
+    const value = String(filter.value);
+    switch (filter.kind) {
+      case 'q':
+        return `«${value}»`;
+      case 'track':
+        return tTrack(value as never);
+      case 'district':
+        return districtLabel(value);
+      case 'gov':
+        return governorate ? localized(locale, governorate.name_ar, governorate.name_en) : value;
+      case 'ctype':
+        return tCompanyType(value as never);
+      case 'leads':
+        return tLeads(`${value}_short` as never);
+      case 'salary':
+        return tFilters(filter.value ? 'hasBasicSalaryYes' : 'hasBasicSalaryNo');
+      case 'pay':
+        return tFilters('minSalaryAtLeast', { amount: formatNumber(Number(filter.value), locale) });
+      case 'comm':
+        return tCommission(value as never);
+      case 'posted':
+        return tFilters('postedWithin', { days: Number(filter.value) });
+      case 'exp':
+        return tExp(value as never);
+      case 'type':
+        return tType(value as never);
+    }
+  };
+
+  const activeFilters: ActiveFilter[] = activeFilterList(filters).map((filter) => ({
+    key: filter.key,
+    label: labelFor(filter),
+    without: filter.without,
+    href: buildHref(1, filter.without),
+  }));
 
   /*
     Nothing matched: which single filter is in the way.

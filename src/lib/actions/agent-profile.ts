@@ -28,6 +28,8 @@ const schema = z.object({
   availability: z.enum(AVAILABILITIES),
   visibility: z.enum(['public', 'verified_employers_only', 'hidden']),
   cvPath: z.string().trim().max(512).optional().nullable(),
+  /** Take the CV off the profile. A new cvPath wins over this. */
+  removeCv: z.boolean().optional(),
 });
 
 /**
@@ -89,8 +91,14 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
     languages: parsed.data.languages,
     availability: parsed.data.availability,
     visibility: parsed.data.visibility,
-    // An empty cvPath from the form means "unchanged", not "remove".
-    cv_path: parsed.data.cvPath || existing?.cv_path || null,
+    /*
+      An empty cvPath means "unchanged" — unless removing was asked for, which
+      the form offered and this used to ignore, so a CV "removed" stayed on
+      the profile. Only the column is cleared: the file itself may still be
+      the CV an application was sent with (the app can send the profile's),
+      and those are the applications' to keep.
+    */
+    cv_path: parsed.data.cvPath || (parsed.data.removeCv ? null : existing?.cv_path) || null,
   };
 
   let agentId = existing?.id;

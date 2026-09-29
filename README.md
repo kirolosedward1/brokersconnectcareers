@@ -197,7 +197,9 @@ arguments and have no runtime imports, so their tests run under plain
 | `pnpm test:security` | The hardening round's rules alone (audit trail, reveal, limits, MFA, storage) |
 | `pnpm test:security-libs` | Byte recognition, text sanitising, href and secret checks |
 | `pnpm test:notifications` | Notification idempotency, read state, paging, role-safe links and channel isolation (see `docs/notifications.md`) |
-| `pnpm db:push:url` | Applies migrations + taxonomies over `DATABASE_URL` (no CLI, no Docker) |
+| `pnpm db:push:url` | Applies migrations + taxonomies over `DATABASE_URL` (no CLI, no Docker) — **an empty database only**; it re-runs everything |
+| `pnpm db:apply` | Applies only what a database with data is missing, reading its own ledger (dry run unless `--execute`; production needs `--confirm`) — see `docs/release/2026-09-prod-reconciliation.md` |
+| `pnpm db:rehearse:ledger` | Rehearses `db:apply` against a ledger in throwaway Postgres and compares the result with a fresh build |
 | `pnpm db:seed:demo` | Creates demo accounts via the Auth admin API + sample listings |
 | `pnpm doctor` | Preflight: env, REST, schema, storage, auth |
 | `pnpm db:rehearse` | Runs the setup scripts against a throwaway wire-protocol Postgres |

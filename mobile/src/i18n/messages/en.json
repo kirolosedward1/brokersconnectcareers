@@ -1,0 +1,112 @@
+{
+  "tabs": {
+    "home": "Home",
+    "companies": "Companies",
+    "saved": "Saved",
+    "account": "Account",
+    "applicants": "Applicants",
+    "consultants": "Consultants"
+  },
+  "offline": {
+    "title": "No internet connection",
+    "body": "Check that your phone is online and try again."
+  },
+  "unavailable": {
+    "title": "The service is unavailable right now",
+    "body": "Try again in a little while. Nothing you saved has been lost."
+  },
+  "update": {
+    "title": "A newer version of the app is available",
+    "body": "Update the app from the App Store to keep using it.",
+    "cta": "Update the app"
+  },
+  "account": {
+    "signedOutTitle": "Sign in to your account",
+    "signedOutBody": "Apply for jobs, follow your applications and keep what you like — all from your phone.",
+    "signedInAs": "Signed in as {email}",
+    "adminOnWeb": "Admin tools are on the website only, not in the app.",
+    "openWebsite": "Open the website",
+    "appearance": "App appearance",
+    "contact": "Contact us",
+    "deleteApple": "We will ask you to confirm with Apple, so the app is disconnected from your Apple ID too.",
+    "deleteAppleFailed": "We could not confirm with Apple. Try again.",
+    "deleted": "Your account has been deleted.",
+    "version": "Version {version}",
+    "security": "Sign-in and security",
+    "oauthOnlyApple": "This account signs in with Apple, so there is no password to change.",
+    "mfaOpenApp": "Open in your authenticator app",
+    "mfaNoApp": "No authenticator app on this phone opened it. Enter the key below in yours.",
+    "mfaDisableConfirm": "Turn off two-step verification?",
+    "mfaDisableBody": "Signing in will ask for your password only.",
+    "exportLimit": "You have downloaded a copy of your data several times today. Try again tomorrow."
+  },
+  "jobs": {
+    "loadMore": "Load more",
+    "endOfList": "That is every matching job."
+  },
+  "auth": {
+    "forCompanies": "Register your company",
+    "captchaChecking": "Checking your connection is secure…",
+    "captchaPrompt": "Tap the box so we know you are not a program, then continue.",
+    "captchaFailed": "We could not load the security check. Check your connection and try again.",
+    "captchaRetry": "Load the check again",
+    "verifying": "Checking your link…",
+    "switchTitle": "You are signed in with another account",
+    "switchBody": "You are signed in as {email}. This link signs you in with the account the email was sent to instead.",
+    "switchContinue": "Continue with that account",
+    "switchCancel": "Stay in my account",
+    "mfaSignOut": "I do not have the code — sign out"
+  },
+  "onboarding": {
+    "terms": "I agree to the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>.",
+    "termsRequired": "Agree to the Terms of use to continue.",
+    "choose": "Choose"
+  },
+  "moderation": {
+    "hide": "Hide this company",
+    "hideTitle": "Hide {company}?",
+    "hideBody": "You will not see its listings in the app on this phone again. You can bring it back from the company's page at any time.",
+    "hideConfirm": "Hide it",
+    "hidden": "You have hidden this company, so its listings do not appear for you in the app.",
+    "unhide": "Show this company again"
+  },
+  "applications": {
+    "withdrawTitle": "Withdraw your application to “{title}”?",
+    "withdrawBody": "The company will no longer see it. This cannot be undone."
+  },
+  "apply": {
+    "pickCv": "Choose a file",
+    "pickAnother": "Choose another file",
+    "profileCv": "The CV on your profile",
+    "useProfileCv": "Use the CV on your profile",
+    "removeCv": "Remove the file"
+  },
+  "profile": {
+    "edit": "Edit",
+    "saveFirst": "Save your profile first; then you can add your experience, education and certificates.",
+    "yearsInvalid": "Enter a number from 0 to 60.",
+    "numberInvalid": "Enter a whole number.",
+    "monthHint": "Year and month",
+    "monthInvalid": "Write the year and month like this: 2024-03",
+    "endedHint": "Leave it empty if you still work there",
+    "endBeforeStart": "The end date must come after the start.",
+    "yearInvalid": "Enter a year between 1950 and 2100."
+  },
+  "applicants": {
+    "cvLimit": "You have opened a lot of CVs this hour. Try again shortly."
+  },
+  "push": {
+    "title": "Notifications on this phone",
+    "switch": "Notify me on this phone",
+    "hintCandidate": "When a company opens or answers your application — everything the bell tells you, as it happens.",
+    "hintEmployer": "When someone applies to one of your listings — everything the bell tells you, as it happens.",
+    "denied": "Notifications for Brokers Connect are turned off in your phone’s settings.",
+    "openSettings": "Open Settings",
+    "failed": "We could not turn notifications on. Try again.",
+    "promptTitle": "Hear about it the moment it happens",
+    "promptCandidate": "Turn on notifications and we will tell you as soon as a company answers your application.",
+    "promptEmployer": "Turn on notifications and we will tell you as soon as someone applies to your listings.",
+    "turnOn": "Turn on notifications",
+    "notNow": "Not now"
+  }
+}

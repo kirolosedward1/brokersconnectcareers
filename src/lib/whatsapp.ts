@@ -1,4 +1,4 @@
-import type { Locale } from '@/i18n/routing';
+import type { Locale } from '@/lib/locale';
 
 /**
  * Pre-filled Arabic opener for the employer -> candidate WhatsApp deep link.
@@ -33,4 +33,14 @@ export function employerToAgentOpener(params: {
   }
 
   return `أهلاً ${agentName}، معك ${companyName}. شفنا ملفك في دليل المسوقين وعندنا فرصة ممكن تناسبك.`;
+}
+
+/**
+ * Contact in this market is WhatsApp, not email. wa.me wants a bare
+ * international number with no `+` and no separators.
+ */
+export function whatsappLink(phone: string, message?: string): string {
+  const digits = phone.replace(/\D/g, '');
+  const query = message ? `?text=${encodeURIComponent(message)}` : '';
+  return `https://wa.me/${digits}${query}`;
 }

@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "Brokers Connect",
+    "NSPhotoLibraryUsageDescription": "Your photos are used to choose your profile photo or your company's logo; nothing is uploaded except what you pick.",
+    "NSCameraUsageDescription": "The camera is used to take your profile photo or photograph your company's documents."
+  }
+}

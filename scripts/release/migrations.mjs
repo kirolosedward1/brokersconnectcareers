@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
- * Migration safety: one tool, three questions.
+ * Migration safety: one tool, four questions.
  *
  *   pnpm db:lint                is every migration this branch adds safe to ship?
  *   pnpm db:new <what_it_does>  the next free number, with the header filled in
  *   pnpm db:ledger              does a database's applied history match main?
+ *   pnpm db:apply               bring a database's history up to this checkout
+ *                               (dry run unless --execute; see apply() below)
  *
  * Why it exists. On 2026-09-27 eight branches each carried a migration numbered
  * 068, and five migrations from two of them were applied to production before
@@ -554,6 +556,24 @@ function changedOutsideMigrations(mergeBase) {
     .filter((path) => /^src\//.test(path) || path === 'vercel.json');
 }
 
+/**
+ * Files moved to a new version after they reached main, each because two
+ * migrations had merged under one version. The rename rule below exists so a
+ * file production ran keeps saying what it ran; these are the exceptions,
+ * allowed only because no database had applied the old name.
+ *
+ *   068 → 069  what_the_provider_said_happened: merged the same day as 068's
+ *              search migration. Production's ledger carried neither 068 on
+ *              2026-09-28, so the later of the two moved to the free 069 and
+ *              the application order stayed the same.
+ *
+ * Frozen like LEGACY: a clash from now on is caught by the version rule
+ * before it merges, and is renumbered on its branch.
+ */
+const RENUMBERED = {
+  '20260101000068_what_the_provider_said_happened.sql': '20260101000069_what_the_provider_said_happened.sql',
+};
+
 function lint(options) {
   const errors = [];
   const reports = [];
@@ -587,13 +607,21 @@ function lint(options) {
 
     for (const file of atFork) {
       if (!files.includes(file)) {
+        if (Object.hasOwn(RENUMBERED, file) && files.includes(RENUMBERED[file])) continue;
         errors.push({ file, message: `deleted or renamed, but ${options.base} has it — it may already be applied` });
       } else if (blobAt(mergeBase, file) !== blobLocal(file)) {
         errors.push({ file, message: `edited after it reached ${options.base} — add a new migration instead; this file must keep saying what production ran` });
       }
     }
 
-    const branchAdded = valid.filter((file) => !atFork.has(file));
+    // A renumbered file is the same migration the base already has under its
+    // old name, not a new one: it is not held to the new-migration rules.
+    const moved = new Set(
+      Object.entries(RENUMBERED)
+        .filter(([from]) => atFork.has(from))
+        .map(([, to]) => to),
+    );
+    const branchAdded = valid.filter((file) => !atFork.has(file) && !moved.has(file));
     if (!options.all) added = branchAdded;
 
     const tipMax = [...atTip].filter((file) => NAME.test(file)).sort().at(-1);
@@ -821,7 +849,58 @@ const LEGACY = {
  *
  *   026  verified 2026-09-27: company-logos allows png, jpeg and webp only.
  */
-const UNRECORDED = ['20260101000026_no_svg_logos'];
+export const UNRECORDED = ['20260101000026_no_svg_logos'];
+
+/**
+ * The steps that bring a database from its ledger to this checkout: every
+ * pending file, in file order, each in its own transaction with its ledger row
+ * (what `apply` runs, and scripts/release/rehearse.mjs runs first).
+ *
+ * `ranAhead` lists the files the database ran before a pending file that main
+ * orders ahead of them — production ran 203, 204 and 316–318 before main's
+ * 068–202 and 300–314. Where that order changes the result, an ADJUSTMENTS
+ * entry puts it right for the one object concerned. The rehearsal is what
+ * proves nothing else depends on the order: it compares the reconciled
+ * database with a fresh build of main, object by object.
+ */
+export function reconciliationPlan(rows, repoFiles) {
+  const files = repoFiles.filter((file) => NAME.test(file)).sort();
+  const { matched } = reconcile(rows, files);
+  const stems = files.map((file) => file.replace(/\.sql$/, ''));
+  const pending = stems.filter((stem) => !matched.has(stem));
+  return {
+    steps: pending.map((stem) => ({
+      stem,
+      before: ADJUSTMENTS[stem]?.before ?? null,
+      after: ADJUSTMENTS[stem]?.after ?? null,
+    })),
+    ranAhead: stems.filter((stem) => matched.has(stem) && pending.some((other) => other < stem)),
+  };
+}
+
+/**
+ * SQL run in a pending file's own transaction, just before or just after it,
+ * where the database's history makes the file collide with something already
+ * there. Frozen per file. Each is recorded in the ledger row's statements
+ * beside the file, so the ledger still says exactly what ran.
+ */
+export const ADJUSTMENTS = {
+  /*
+    307 adds reports_detail_length (not valid; `detail is null or length(detail)
+    <= 1000`), and 317 later drops it and adds its own (validated; `length(detail)
+    <= 1000`), which is what main ends with. Production ran 317 first, so 307's
+    add collides with 317's constraint. It is dropped just before 307 and put
+    back, as 317 wrote it, just after — ending where main ends. The rehearsal
+    found this, and found it to be the only object whose final form depends on
+    the order.
+  */
+  '20260101000307_a_row_says_what_the_server_said': {
+    before: 'alter table reports drop constraint if exists reports_detail_length;',
+    after:
+      'alter table reports drop constraint if exists reports_detail_length;\n' +
+      'alter table reports add constraint reports_detail_length check (length(detail) <= 1000);',
+  },
+};
 
 async function loadLedger(options) {
   if (options.fromFile) {
@@ -852,12 +931,20 @@ async function loadLedger(options) {
   return null;
 }
 
-export function reconcile(rows, repoFiles) {
+/**
+ * Which file each ledger row is, in the ledger's own order: a stem, `null` for
+ * a historical entry that has no file (LEGACY), or `undefined` for a row no
+ * file accounts for (drift). A row matches by version, then by the historical
+ * name it was applied under, then by the name part of a file.
+ *
+ * In row order because the order is information: it is the order the database
+ * ran them in, which scripts/release/rehearse.mjs replays.
+ */
+export function resolveLedger(rows, repoFiles) {
   const stems = repoFiles.map((file) => file.replace(/\.sql$/, ''));
   const byVersion = new Map(stems.map((stem) => [stem.slice(0, 14), stem]));
-  const matched = new Set();
-  const drift = [];
-  const known = [];
+  const seen = new Set();
+  const entries = [];
 
   for (const row of rows) {
     const name = String(row.name ?? '');
@@ -865,8 +952,21 @@ export function reconcile(rows, repoFiles) {
     if (byVersion.has(String(row.version))) stem = byVersion.get(String(row.version));
     else if (Object.hasOwn(LEGACY, name)) stem = LEGACY[name];
     else if (stems.includes(name)) stem = name;
-    else stem = stems.find((candidate) => candidate.slice(15) === name && !matched.has(candidate)) ?? stems.find((candidate) => candidate.slice(15) === name);
+    else stem = stems.find((candidate) => candidate.slice(15) === name && !seen.has(candidate)) ?? stems.find((candidate) => candidate.slice(15) === name);
 
+    if (stem) seen.add(stem);
+    entries.push({ row, stem });
+  }
+  return entries;
+}
+
+export function reconcile(rows, repoFiles) {
+  const stems = repoFiles.map((file) => file.replace(/\.sql$/, ''));
+  const matched = new Set();
+  const drift = [];
+  const known = [];
+
+  for (const { row, stem } of resolveLedger(rows, repoFiles)) {
     if (stem === null) known.push(row);
     else if (stem === undefined) drift.push(row);
     else matched.add(stem);
@@ -934,6 +1034,127 @@ async function ledger(options) {
 }
 
 // ---------------------------------------------------------------------------
+// apply
+// ---------------------------------------------------------------------------
+
+/** Held for the whole apply, so two cannot interleave on one database. */
+const APPLY_LOCK = 7_426_001;
+
+/**
+ * Applies what a database is missing, and nothing else.
+ *
+ *   TARGET_DATABASE_URL=postgresql://… pnpm db:apply            # the plan, applied to nothing
+ *   TARGET_DATABASE_URL=postgresql://… pnpm db:apply --execute  # and then for real
+ *
+ * Reads the database's own ledger, works out the pending files with
+ * reconcile(), and runs reconciliationPlan(): each pending file in file order,
+ * with its ADJUSTMENTS, in its own transaction together with its ledger row —
+ * so a failure leaves the database on the last file that fully succeeded, and
+ * the ledger always says exactly what ran. It stops at the first failure.
+ *
+ * This replaces `pnpm db:push:url` for any database that already has data:
+ * that script re-runs every migration, then seed.sql, then the API grants.
+ *
+ * Refused: a ledger with drift (the database runs something no file here
+ * explains — merge it first); the transaction pooler (port 6543), which cannot
+ * hold a transaction open around DDL; production without `--confirm <ref>`.
+ * Each file waits at most five seconds for a lock rather than queueing the
+ * site's traffic behind it; a timeout rolls that file back and stops.
+ *
+ * Rehearse first: node scripts/release/rehearse.mjs --ledger <ledger.json>.
+ */
+async function apply(options) {
+  const url = process.env.TARGET_DATABASE_URL;
+  if (!url) {
+    console.error(
+      'Set TARGET_DATABASE_URL to the database to bring up to date — the direct connection or the\n' +
+        'session pooler (port 5432), never the transaction pooler (6543).',
+    );
+    process.exit(2);
+  }
+  if (/:6543(\/|$)/.test(url)) {
+    console.error('That is the transaction pooler (port 6543). Use the session pooler or the direct connection.');
+    process.exit(2);
+  }
+  const production = url.includes(PRODUCTION_REF);
+
+  const { default: pg } = await import('pg');
+  const client = new pg.Client({ connectionString: url, ssl: url.includes('supabase.') ? { rejectUnauthorized: false } : undefined });
+  await client.connect();
+
+  try {
+    const { rows } = await client.query('select version, name from supabase_migrations.schema_migrations order by version');
+    const files = localFiles().filter((file) => NAME.test(file));
+    const { drift } = reconcile(rows, files);
+    const plan = reconciliationPlan(rows, files);
+
+    console.log(`apply: ${production ? 'PRODUCTION' : new URL(url).hostname} — ${rows.length} ledger rows, ${files.length} files here`);
+    if (drift.length) {
+      console.error(`\n  refused: ${drift.length} ledger row(s) no file here explains:`);
+      for (const row of drift) console.error(`    ${row.version}  ${row.name}`);
+      process.exitCode = 1;
+      return;
+    }
+    if (!plan.steps.length) {
+      console.log('  nothing pending: the database has every migration here');
+      return;
+    }
+    if (plan.ranAhead.length) {
+      console.log(`  ran ahead of main's order: ${plan.ranAhead.join(', ')}`);
+    }
+    console.log(`\n  ${plan.steps.length} to apply, in this order:`);
+    for (const step of plan.steps) {
+      console.log(`    ${step.stem}${step.before || step.after ? '   (with its adjustment — see ADJUSTMENTS)' : ''}`);
+    }
+
+    if (!options.execute) {
+      console.log('\n  dry run: nothing was applied. Run again with --execute to apply.');
+      return;
+    }
+    if (production && options.confirm !== PRODUCTION_REF) {
+      console.error(`\n  refused: this is production. Take a backup, then add --confirm ${PRODUCTION_REF}.`);
+      process.exitCode = 1;
+      return;
+    }
+
+    const { rows: lock } = await client.query('select pg_try_advisory_lock($1) as held', [APPLY_LOCK]);
+    if (!lock[0].held) {
+      console.error('\n  refused: another apply is running against this database.');
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log('');
+    for (const step of plan.steps) {
+      const sql = readLocal(`${step.stem}.sql`);
+      const statements = [step.before, sql, step.after].filter(Boolean);
+      process.stdout.write(`  ${step.stem} … `);
+      try {
+        await client.query('begin');
+        await client.query("set local lock_timeout = '5s'");
+        for (const statement of statements) await client.query(statement);
+        await client.query(
+          'insert into supabase_migrations.schema_migrations (version, name, statements) values ($1, $2, $3)',
+          [step.stem.slice(0, 14), step.stem.slice(15), statements],
+        );
+        await client.query('commit');
+        console.log('ok');
+      } catch (error) {
+        await client.query('rollback').catch(() => {});
+        console.log('FAILED');
+        console.error(`\n  ${error.message}${error.hint ? `\n  hint: ${error.hint}` : ''}`);
+        console.error('\n  Rolled back. Everything before it is applied and recorded; nothing after it ran.');
+        process.exitCode = 1;
+        return;
+      }
+    }
+    console.log(`\n  applied ${plan.steps.length}. Check with: pnpm db:ledger (then pnpm dr:drift, pnpm doctor).`);
+  } finally {
+    await client.end();
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
   const options = { positional: [], fetch: true };
@@ -947,6 +1168,8 @@ function parseArgs(argv) {
     else if (arg === '--strict') options.strict = true;
     else if (arg === '--no-fetch') options.fetch = false;
     else if (arg === '--no-base') options.noBase = true;
+    else if (arg === '--execute') options.execute = true;
+    else if (arg === '--confirm') options.confirm = argv[++i];
     else options.positional.push(arg);
   }
   return options;
@@ -970,8 +1193,13 @@ if (isMain) {
     create(options.positional, options);
   } else if (command === 'ledger') {
     await ledger(options);
+  } else if (command === 'apply') {
+    await apply(options);
   } else {
-    console.error('usage: migrations.mjs lint [--base <ref>] [--all] | new <slug> | ledger [--from-file f] [--ref r] [--base <ref>] [--strict]');
+    console.error(
+      'usage: migrations.mjs lint [--base <ref>] [--all] | new <slug> | ledger [--from-file f] [--ref r] [--base <ref>] [--strict]\n' +
+        '       migrations.mjs apply [--execute [--confirm <production ref>]]   (TARGET_DATABASE_URL)',
+    );
     process.exit(2);
   }
 }

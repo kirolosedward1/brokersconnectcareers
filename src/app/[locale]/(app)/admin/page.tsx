@@ -8,8 +8,62 @@ import { PageHeader, SearchForm, Section, auditLabel } from '@/components/admin/
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { must } from '@/lib/admin/read';
+import { logFailure } from '@/lib/observe';
 import { formatDate, formatNumber } from '@/lib/utils';
-import type { AdminOverview, AdminTrend } from '@/lib/supabase/database.types';
+import type { AdminOverview, AdminTrend, SupportRequestRow } from '@/lib/supabase/database.types';
+import { CloseDeletionRequestButton } from '@/components/admin/close-deletion-request-button';
+
+type Client = Awaited<ReturnType<typeof createClient>>;
+
+type DeletionRequest = {
+  id: string;
+  reference: string;
+  created_at: string;
+  user_id: string | null;
+  name: string | null;
+  company: { id: string; name: string } | null;
+};
+
+/**
+ * Company owners asking for their account to be deleted (migration 330),
+ * open ones oldest first — the order they should be answered in. Read under
+ * the admin's own session: migration 201's policy lets an admin read every
+ * support request, and the profiles and companies beside them.
+ *
+ * A failed read is logged and shows none, rather than failing the overview
+ * every other queue is on: the requests stay open until somebody closes them,
+ * so the next load lists them. A missing name or company shows the account id
+ * in its place.
+ */
+async function deletionRequests(supabase: Client): Promise<DeletionRequest[]> {
+  const { data: requests, error } = await supabase
+    .from('support_requests')
+    .select('id, reference, created_at, user_id')
+    .eq('topic', 'account_deletion')
+    .eq('status', 'open')
+    .order('created_at', { ascending: true })
+    .limit(50);
+  if (error) {
+    logFailure('admin', 'could not read the account deletion requests', { code: error.code });
+    return [];
+  }
+  const rows = (requests ?? []) as Pick<SupportRequestRow, 'id' | 'reference' | 'created_at' | 'user_id'>[];
+  const userIds = rows.map((row) => row.user_id).filter((id): id is string => Boolean(id));
+  if (!userIds.length) return rows.map((row) => ({ ...row, name: null, company: null }));
+
+  const [people, companies] = await Promise.all([
+    supabase.from('profiles').select('id, full_name').in('id', userIds),
+    supabase.from('companies').select('id, name_ar, owner_id').in('owner_id', userIds),
+  ]);
+  return rows.map((row) => {
+    const company = (companies.data ?? []).find((item) => item.owner_id === row.user_id);
+    return {
+      ...row,
+      name: (people.data ?? []).find((person) => person.id === row.user_id)?.full_name ?? null,
+      company: company ? { id: company.id, name: company.name_ar } : null,
+    };
+  });
+}
 
 export async function generateMetadata({
   params,
@@ -42,9 +96,10 @@ export default async function AdminOverviewPage({
   await requireAdmin(locale);
 
   const supabase = await createClient();
-  const [overview, { data: trendData }] = await Promise.all([
+  const [overview, { data: trendData }, deletions] = await Promise.all([
     supabase.rpc('admin_overview'),
     supabase.rpc('admin_trend'),
+    deletionRequests(supabase),
   ]);
   const o = must(overview, 'loading the admin overview').data as AdminOverview;
   const trend = (trendData ?? null) as AdminTrend | null;
@@ -104,6 +159,41 @@ export default async function AdminOverviewPage({
           ]}
         />
       </div>
+
+      {/* Only while there is one: an owner waiting on us is a person, not a figure. */}
+      {deletions.length ? (
+        <Section title={tAdmin('deletionRequests')}>
+          <p className="text-sm text-muted-foreground">{tAdmin('deletionRequestsLede')}</p>
+          <ul className="mt-3 divide-y divide-border">
+            {deletions.map((request) => (
+              <li key={request.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 text-sm">
+                <span className="numeral text-xs text-muted-foreground" dir="ltr">
+                  {request.reference}
+                </span>
+                <span className="text-xs text-muted-foreground">{formatDate(request.created_at, locale)}</span>
+                <span className="min-w-0 flex-1">
+                  {request.user_id ? (
+                    <Link href={`/admin/users/${request.user_id}`} className="font-medium text-primary hover:underline">
+                      {request.name ?? request.user_id}
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground">{tAdmin('deletionRequestAccountGone')}</span>
+                  )}
+                  {request.company ? (
+                    <>
+                      {' · '}
+                      <Link href={`/admin/companies/${request.company.id}`} className="hover:underline">
+                        {request.company.name}
+                      </Link>
+                    </>
+                  ) : null}
+                </span>
+                <CloseDeletionRequestButton requestId={request.id} />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
 
       <div className="space-y-2">
         <h2 className="text-xs font-semibold text-muted-foreground">{tAdmin('marketplace')}</h2>

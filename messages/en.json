@@ -275,6 +275,7 @@
     "email": "Email",
     "password": "Password",
     "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
     "or": "or",
     "noAccount": "No account yet?",
     "hasAccount": "Already have an account?",
@@ -327,7 +328,17 @@
     "applyingToCompany": "at {company} — sign in and finish; you will not start over.",
     "slowDown": "Wait {seconds, plural, one {a second} other {# seconds}} and try again.",
     "challengeHint": "After several attempts we check you are not a script. Complete the verification above and try again.",
-    "applyingToCompanySignUp": "at {company} — create your account and we will bring you back to this job to finish."
+    "applyingToCompanySignUp": "at {company} — create your account and we will bring you back to this job to finish.",
+    "confirm": {
+      "titleEmail": "Confirm your email",
+      "titleRecovery": "Reset your password",
+      "titleEmailChange": "Confirm your new email",
+      "titleInvite": "Accept the invitation",
+      "titleMagiclink": "Sign in to your account",
+      "body": "Press Continue to pick up where you left off.",
+      "continue": "Continue",
+      "why": "This step keeps the link safe from email scanners that open it before you do."
+    }
   },
   "onboarding": {
     "title": "Finish your profile",
@@ -1197,7 +1208,11 @@
     "reportingUnban": "Allow reporting again",
     "reportingBanBody": "They can no longer file reports; everything else about the account is unchanged. When they try, they are told reporting is unavailable on their account — not why.",
     "reportingUnbanBody": "They can file reports again, under the same limits as everyone.",
-    "reportingBanReason": "Why (kept on the record, sent to nobody)"
+    "reportingBanReason": "Why (kept on the record, sent to nobody)",
+    "deletionRequests": "Account deletion requests",
+    "deletionRequestsLede": "Company owners asking to leave. Deleting the account would delete the company, its listings and the applications to them: agree what happens to the company, do it, then close the request.",
+    "deletionRequestClose": "Close request",
+    "deletionRequestAccountGone": "Account already deleted"
   },
   "reportReason": {
     "fake_listing": "Fake listing",
@@ -1498,7 +1513,10 @@
     "mfaRequiredBanner": "Admin accounts must set up two-step verification before the admin console opens.",
     "mfaChallengeBanner": "Confirm with a code from your authenticator app so the admin console opens in this session.",
     "mfaCodeInvalid": "That code is not right. Try the new number in the app.",
-    "deleteBlockedSuspended": "Your account is suspended, so it can’t be deleted from here while the decision stands. You can ask for the suspension to be reviewed from your dashboard, or contact us and we’ll close the account once the case is done."
+    "deleteBlockedSuspended": "Your account is suspended, so it can’t be deleted from here while the decision stands. You can ask for the suspension to be reviewed from your dashboard, or contact us and we’ll close the account once the case is done.",
+    "deleteRequestCta": "Ask us to delete it",
+    "deleteRequested": "We have your request (reference {reference}). We will write to you within 7 days to agree what happens to the company, and your account is deleted within 30 days.",
+    "deleteRequestLimited": "You have sent several requests today, and we have them. There is no need to send another."
   },
   "savedSearch": {
     "cta": "Alert me",

@@ -10,6 +10,8 @@ import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
 import { isOwnedPath } from '@/lib/security/files';
 import { publish } from '@/lib/notifications/events';
+import { revokeWithAuthorizationCode } from '@/lib/apple/revoke';
+import { logFailure } from '@/lib/observe';
 
 /**
  * Deleting your own account.
@@ -28,8 +30,22 @@ import { publish } from '@/lib/notifications/events';
  * That is not a refusal of the erasure right. It is a refusal to let one
  * person erase several other people at the same time, which the right never
  * covered.
+ *
+ * An account that signs in with Apple is also disconnected from Apple, when
+ * the caller brings a fresh authorization code (the iOS app asks Apple for one
+ * just before calling this — App Store Guideline 5.1.1(v)). A code Apple
+ * refuses stops the deletion with `apple_reauth_required`, so the app can ask
+ * again; Apple not answering does not keep somebody's account alive, and is
+ * logged instead. The website, which has no such code, deletes as before.
  */
-export async function deleteMyAccount(): Promise<ActionResult> {
+const deleteSchema = z
+  .object({ appleAuthorizationCode: z.string().trim().min(10).max(2048).optional() })
+  .nullish();
+
+export async function deleteMyAccount(input?: unknown): Promise<ActionResult> {
+  const parsed = deleteSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
   const supabase = await createClient();
 
   const {
@@ -92,6 +108,16 @@ export async function deleteMyAccount(): Promise<ActionResult> {
     looking at; a person asking to be deleted is owed the prompt removal of
     their CV, which nobody else is looking at.
   */
+  const appleCode = parsed.data?.appleAuthorizationCode;
+  const signsInWithApple =
+    (user.identities ?? []).some((identity) => identity.provider === 'apple') ||
+    (user.app_metadata?.providers as string[] | undefined)?.includes('apple') === true;
+  if (signsInWithApple && appleCode) {
+    const outcome = await revokeWithAuthorizationCode(appleCode);
+    if (outcome === 'invalid_code') return { ok: false, error: 'apple_reauth_required' };
+    if (outcome !== 'revoked') logFailure('account', 'could not revoke the Sign in with Apple grant', { outcome });
+  }
+
   const { error } = await admin.auth.admin.deleteUser(user.id);
   if (error) return { ok: false, error: error.message };
 
@@ -114,6 +140,61 @@ export async function deleteMyAccount(): Promise<ActionResult> {
   return { ok: true };
 }
 
+/**
+ * An owner asking for their account to be deleted.
+ *
+ * deleteMyAccount refuses an owner (owns_company): the cascade would take the
+ * company with the account — its listings, and the applications other people
+ * sent to them. This is how they ask instead, from the account page or the
+ * app: a support request under its own topic (migration 330), which the admin
+ * console's overview lists until an operator has decided what happens to the
+ * company, done it, and closed the request. The reference is the owner's to
+ * quote. A retry with the same key is the same request, not a second one.
+ *
+ * Only for an owner — anybody else deletes their account themselves, at once,
+ * and a request would only make them wait.
+ */
+const deletionRequestSchema = z.object({
+  key: z.string().uuid(),
+  client: z.string().trim().max(120).optional(),
+});
+
+export async function requestAccountDeletion(input: unknown): Promise<ActionResult<{ reference: string }>> {
+  const parsed = deletionRequestSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('id, name_ar')
+    .eq('owner_id', user.id)
+    .maybeSingle();
+  if (!company) return { ok: false, error: 'not_owner' };
+
+  const { data: reference, error } = await supabase.rpc('submit_support_request', {
+    p_key: parsed.data.key,
+    p_topic: 'account_deletion',
+    // For the operator who picks it up: which company, and why it is not a button.
+    p_message: `طلب حذف حساب من مالك شركة «${company.name_ar}» (${company.id}). حذف الحساب هيحذف الشركة وإعلاناتها وطلبات التقديم عليها، فمصير الشركة يتقرر الأول.`,
+    p_route: '/dashboard/account',
+    p_client: parsed.data.client ?? null,
+  });
+
+  if (error || typeof reference !== 'string') {
+    if (error?.message.includes('support_rate_limit')) return { ok: false, error: 'rate_limit' };
+    // A database migration 330 has not reached: the topic is not known there yet.
+    if (error?.message.includes('invalid_topic')) return { ok: false, error: 'unavailable' };
+    logFailure('account', 'could not file an account deletion request', { code: error?.code ?? 'no_reference' });
+    return { ok: false, error: 'failed' };
+  }
+
+  return { ok: true, data: { reference } };
+}
 
 /**
  * Tell the account holder their password changed.

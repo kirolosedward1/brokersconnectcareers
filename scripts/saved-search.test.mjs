@@ -38,11 +38,10 @@ const { companySlugOrNull } = await import('../src/lib/search/company-slug.ts');
 /**
  * The empty filter set, spelled out here rather than imported.
  *
- * EMPTY_FILTERS lives in queries/jobs.ts, which pulls in the server client and
- * `server-only` and therefore cannot be imported into a node script. Written
- * out instead — and if a filter is ever added to the model without appearing
- * here, the round-trip assertions below stop proving what they claim, so the
- * last test in this file checks the two agree.
+ * Written out rather than imported so each assertion reads on its own — and
+ * if a filter is ever added to the model without appearing here, the
+ * round-trip assertions below stop proving what they claim, so the last test
+ * in this file checks this against the real EMPTY_FILTERS in job-filters.ts.
  */
 const NONE = {
   q: '',
@@ -151,16 +150,16 @@ console.log('\n— the stand-in filter set still matches the real one');
     Everything above canonicalises a hand-written NONE. If the filter model
     grows a key that NONE does not carry, `toCanonicalQuery` would read
     undefined for it, emit nothing, and every assertion above would still be
-    green while saying nothing about the real thing. So read the real
-    EMPTY_FILTERS out of the source — it cannot be imported, but it can be
-    looked at.
+    green while saying nothing about the real thing. The model now lives in
+    job-filters.ts, which imports nothing server-side, so the real
+    EMPTY_FILTERS is compared whole — every key and every default.
   */
-  const { readFileSync } = await import('node:fs');
-  const source = readFileSync(new URL('../src/lib/queries/jobs.ts', import.meta.url), 'utf8');
-  const block = source.slice(source.indexOf('export const EMPTY_FILTERS'));
-  const keys = [...block.slice(0, block.indexOf('};')).matchAll(/^\s{2}(\w+):/gm)].map((m) => m[1]);
+  const { register } = await import('node:module');
+  register('../supabase/tests/alias-hooks.mjs', import.meta.url);
+  const { EMPTY_FILTERS } = await import('../src/lib/job-filters.ts');
 
-  is('every key of EMPTY_FILTERS', keys.sort(), Object.keys(NONE).sort());
+  is('every key of EMPTY_FILTERS', Object.keys(EMPTY_FILTERS).sort(), Object.keys(NONE).sort());
+  is('and every default', EMPTY_FILTERS, NONE);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

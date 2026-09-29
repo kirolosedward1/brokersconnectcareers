@@ -1,0 +1,314 @@
+import type { ReactNode } from 'react';
+import { Linking, Text } from 'react-native';
+import { Stack } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import type { ProfileRow } from '@/lib/supabase/database.types';
+import { PendingPath } from '~/components/navigation/pending-path';
+import { PushBridge } from '~/components/navigation/push-bridge';
+import { PushPrompt } from '~/components/push/push-prompt';
+import { signOutHere } from '~/features/push/device';
+import { catalogues, I18nProvider } from '~/i18n/provider';
+import { rememberActor } from '~/lib/last-actor';
+import { SessionProvider, useSession } from '~/lib/session';
+import { supabase } from '~/lib/supabase';
+import { ThemeProvider } from '~/theme/provider';
+import * as AlertsScreen from '../src/app/(tabs)/(account)/account/alerts';
+import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
+import { fakeServer } from './server';
+
+/*
+  Pushes on the phone: asking with a reason and registering this phone for
+  the person signed in, turning them off here, what a tapped push opens
+  (the one that launched the app, and one tapped while it runs), forgetting
+  the phone at sign-out, and the badge — against stand-ins for the system's
+  notifications, Supabase and the website.
+*/
+
+jest.mock('~/lib/session-storage', () => {
+  const store = new Map<string, string>();
+  return {
+    encryptedSessionStorage: {
+      getItem: async (key: string) => store.get(key) ?? null,
+      setItem: async (key: string, value: string) => {
+        store.set(key, value);
+      },
+      removeItem: async (key: string) => {
+        store.delete(key);
+      },
+    },
+  };
+});
+
+const ar = catalogues.ar;
+const server = fakeServer();
+const PASSWORD = 'correct-horse';
+const user = authUser();
+const TOKEN = 'ExponentPushToken[test-token-0001]';
+const NOTIFICATION = 'n0000000-0000-4000-8000-000000000001';
+
+const granted = { status: 'granted', granted: true, canAskAgain: true, expires: 'never' };
+const denied = { status: 'denied', granted: false, canAskAgain: false, expires: 'never' };
+
+let me: ProfileRow;
+let unread: number;
+
+const warnings: string[] = [];
+beforeAll(() => {
+  globalThis.fetch = server.fetch as unknown as typeof fetch;
+  jest.spyOn(console, 'warn').mockImplementation((...args) => {
+    warnings.push(args.map(String).join(' '));
+  });
+});
+
+afterEach(() => {
+  expect(warnings.filter((warning) => warning.includes('[i18n]'))).toEqual([]);
+  warnings.length = 0;
+});
+
+beforeEach(async () => {
+  me = { ...profile };
+  unread = 0;
+  jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue({
+    status: 'undetermined',
+    granted: false,
+    canAskAgain: true,
+    expires: 'never',
+  } as never);
+  jest.mocked(Notifications.requestPermissionsAsync).mockResolvedValue(granted as never);
+  jest.mocked(Notifications.getLastNotificationResponse).mockReturnValue(null);
+  jest.mocked(Notifications.addNotificationResponseReceivedListener).mockClear();
+  jest.mocked(Notifications.unregisterForNotificationsAsync).mockClear();
+  jest.mocked(Notifications.setBadgeCountAsync).mockClear();
+  jest.mocked(Notifications.clearLastNotificationResponse).mockClear();
+
+  server.on('GET /api/mobile/v1/config', mobileConfig());
+  server.on('POST /auth/v1/token', () => authSession(user));
+  server.on('POST /auth/v1/logout', {});
+  server.on('/rest/v1/profiles', () => [me]);
+  server.on('HEAD /rest/v1/notifications', () => ({ body: null, headers: { 'content-range': `*/${unread}` } }));
+  server.on('POST /rest/v1/rpc/register_push_device', () => 'd0000000-0000-4000-8000-000000000001');
+  server.on('POST /rest/v1/rpc/unregister_push_device', () => null);
+  server.on('POST /api/mobile/v1/actions/openNotification', { ok: true, data: { href: '/dashboard/applications' } });
+
+  await supabase.auth.signOut({ scope: 'local' });
+  await AsyncStorage.clear();
+  const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: PASSWORD });
+  expect(error).toBeNull();
+  await rememberActor({ userId: USER_ID, profile: { role: 'candidate', approval_status: 'approved' }, company: null });
+  server.requests.length = 0;
+});
+
+function Settled({ children }: { children: ReactNode }) {
+  return useSession().settled ? children : null;
+}
+
+/** The app's root as far as pushes need it: the stack, the pending page, and the bridge. */
+function Root() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  return (
+    <QueryClientProvider client={client}>
+      <ThemeProvider>
+        <I18nProvider>
+          <SessionProvider>
+            <Settled>
+              <Stack screenOptions={{ headerShown: false }} />
+              <PendingPath />
+              <PushBridge />
+            </Settled>
+          </SessionProvider>
+        </I18nProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
+
+function Home() {
+  return <PushPrompt audience="candidate" />;
+}
+
+function Applications() {
+  return <Text>applications</Text>;
+}
+
+function Feed() {
+  return <Text>feed</Text>;
+}
+
+function SignIn() {
+  return <Text>sign-in</Text>;
+}
+
+const app = {
+  _layout: Root,
+  index: Home,
+  'dashboard/applications/index': Applications,
+  notifications: Feed,
+  'sign-in/index': SignIn,
+  'account/alerts': AlertsScreen,
+};
+
+const registered = () => server.asked('/rest/v1/rpc/register_push_device').map((request) => request.body);
+
+describe('asking, with a reason', () => {
+  it('asks the phone only when pressed, then registers this phone for the person signed in', async () => {
+    renderRouter(app, { initialUrl: '/' });
+
+    expect(await screen.findByText(ar.app.push.promptTitle)).toBeTruthy();
+    expect(screen.getByText(ar.app.push.promptCandidate)).toBeTruthy();
+    // Nothing asked of the phone, nothing registered, until somebody says yes.
+    expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+    expect(registered()).toHaveLength(0);
+
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    fireEvent.press(screen.getByRole('button', { name: ar.app.push.turnOn }));
+
+    await waitFor(() => expect(registered()[0]).toEqual({ p_token: TOKEN, p_platform: 'ios', p_locale: 'ar', p_app_version: '1.0.0' }));
+    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle) === null).toBe(true));
+  });
+
+  it('puts the prompt away for good on "not now"', async () => {
+    const first = renderRouter(app, { initialUrl: '/' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.push.notNow }));
+    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle) === null).toBe(true));
+    first.unmount();
+
+    // Read again from scratch — the phone's answer and the choice kept here — and still away.
+    const reads = jest.mocked(Notifications.getPermissionsAsync).mock.calls.length;
+    renderRouter(app, { initialUrl: '/' });
+    await waitFor(() => expect(jest.mocked(Notifications.getPermissionsAsync).mock.calls.length).toBeGreaterThan(reads));
+    await act(async () => {});
+    await act(async () => {});
+    expect(screen.queryByText(ar.app.push.promptTitle)).toBeNull();
+    expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('registers nothing when the phone says no', async () => {
+    jest.mocked(Notifications.requestPermissionsAsync).mockResolvedValue(denied as never);
+    renderRouter(app, { initialUrl: '/' });
+    const turnOn = await screen.findByRole('button', { name: ar.app.push.turnOn });
+
+    // The system's question, answered no: from now on the phone says denied.
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(denied as never);
+    fireEvent.press(turnOn);
+    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle) === null).toBe(true));
+    expect(registered()).toHaveLength(0);
+  });
+});
+
+describe('this phone, registered', () => {
+  it('registers at launch for somebody who allowed it', async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/' });
+    await waitFor(() => expect(registered()).toHaveLength(1));
+  });
+
+  it('is turned off and on from the account, the database told each time', async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+    await waitFor(() => expect(registered()).toHaveLength(1));
+
+    const toggle = await screen.findByLabelText(ar.app.push.switch);
+    expect(toggle.props.value).toBe(true);
+    fireEvent(toggle, 'valueChange', false);
+    await waitFor(() =>
+      expect(server.asked('/rest/v1/rpc/unregister_push_device')[0]?.body).toEqual({ p_token: TOKEN }),
+    );
+    await waitFor(() => expect(screen.getByLabelText(ar.app.push.switch).props.value).toBe(false));
+
+    fireEvent(screen.getByLabelText(ar.app.push.switch), 'valueChange', true);
+    await waitFor(() => expect(registered()).toHaveLength(2));
+    await waitFor(() => expect(screen.getByLabelText(ar.app.push.switch).props.value).toBe(true));
+  });
+
+  it("says when the phone's settings have them off, with the way there", async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(denied as never);
+    const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    expect(await screen.findByText(ar.app.push.denied)).toBeTruthy();
+    expect(screen.getByLabelText(ar.app.push.switch).props.disabled).toBe(true);
+    fireEvent.press(screen.getByRole('button', { name: ar.app.push.openSettings }));
+    expect(openSettings).toHaveBeenCalled();
+    openSettings.mockRestore();
+  });
+});
+
+describe('a tapped push', () => {
+  const response = (notificationId: string) =>
+    ({
+      actionIdentifier: Notifications.DEFAULT_ACTION_IDENTIFIER,
+      notification: { request: { content: { data: { notificationId } } } },
+    }) as unknown as Notifications.NotificationResponse;
+
+  it('that launched the app opens where the website says the notification leads', async () => {
+    jest.mocked(Notifications.getLastNotificationResponse).mockReturnValue(response(NOTIFICATION));
+    const result = renderRouter(app, { initialUrl: '/' });
+
+    await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
+    expect((server.asked('/api/mobile/v1/actions/openNotification')[0]?.body as { input: unknown }).input).toEqual({
+      id: NOTIFICATION,
+    });
+    // Opened once: the system's record of it is cleared.
+    expect(Notifications.clearLastNotificationResponse).toHaveBeenCalled();
+  });
+
+  it('while the app runs opens the same way, and the feed when the link has gone', async () => {
+    const result = renderRouter(app, { initialUrl: '/' });
+    await screen.findByText(ar.app.push.promptTitle);
+    const listener = jest.mocked(Notifications.addNotificationResponseReceivedListener).mock.calls.at(-1)?.[0];
+
+    server.on('POST /api/mobile/v1/actions/openNotification', { ok: true, data: { fallback: '/notifications?link=gone' } });
+    act(() => listener?.(response(NOTIFICATION)));
+    await waitFor(() => expect(result.getPathname()).toBe('/notifications'));
+  });
+
+  it('asks somebody signed out to sign in, and comes back to the feed', async () => {
+    await supabase.auth.signOut({ scope: 'local' });
+    await rememberActor(null);
+    jest.mocked(Notifications.getLastNotificationResponse).mockReturnValue(response(NOTIFICATION));
+    const result = renderRouter(app, { initialUrl: '/' });
+
+    await waitFor(() => expect(result.getPathname()).toBe('/sign-in'));
+    expect(result.getSearchParams()).toEqual({ next: '/notifications' });
+    expect(server.asked('/api/mobile/v1/actions/openNotification')).toHaveLength(0);
+  });
+});
+
+describe('signing out', () => {
+  it('tells the database to forget this phone first, then stops listening on it', async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/' });
+    await waitFor(() => expect(registered()).toHaveLength(1));
+
+    await act(async () => {
+      await signOutHere();
+    });
+    const order = server.requests.map((request) => request.url.pathname);
+    expect(order.indexOf('/rest/v1/rpc/unregister_push_device')).toBeGreaterThan(-1);
+    expect(order.indexOf('/rest/v1/rpc/unregister_push_device')).toBeLessThan(order.indexOf('/auth/v1/logout'));
+    await waitFor(() => expect(Notifications.unregisterForNotificationsAsync).toHaveBeenCalled());
+    expect(Notifications.setBadgeCountAsync).toHaveBeenLastCalledWith(0);
+  });
+
+  it('stops listening on the phone when the session ends elsewhere', async () => {
+    renderRouter(app, { initialUrl: '/' });
+    await screen.findByText(ar.app.push.promptTitle);
+
+    // A refresh the auth server refused: the session is gone before the phone could say anything.
+    await act(async () => {
+      await supabase.auth.signOut({ scope: 'local' });
+    });
+    await waitFor(() => expect(Notifications.unregisterForNotificationsAsync).toHaveBeenCalled());
+  });
+});
+
+describe('the badge', () => {
+  it("is the bell's unread count", async () => {
+    unread = 3;
+    renderRouter(app, { initialUrl: '/' });
+    await waitFor(() => expect(Notifications.setBadgeCountAsync).toHaveBeenCalledWith(3));
+  });
+});

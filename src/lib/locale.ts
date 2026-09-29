@@ -1,0 +1,89 @@
+/**
+ * The locale facts, with nothing framework-shaped in them.
+ *
+ * These lived in `src/i18n/routing.ts` beside `defineRouting`, which ties the
+ * file to next-intl. The mobile app needs the same answers — which locales
+ * exist, whether English is published, which column to show — and cannot load
+ * next-intl's router to get them. `routing.ts` re-exports everything here, so
+ * no import on the web changed.
+ *
+ * Pure, and importing nothing.
+ */
+
+export const locales = ['ar', 'en'] as const;
+export type Locale = (typeof locales)[number];
+
+export const defaultLocale: Locale = 'ar';
+
+/**
+ * English is built and translated but not published yet.
+ *
+ * Flipping this to `true` restores the whole English side: the locale switcher
+ * reappears, /en stops redirecting, hreflang pairs come back, and the sitemap
+ * emits both languages. Nothing about the English copy was removed — only its
+ * routes are closed.
+ */
+export const ENGLISH_ENABLED = false;
+
+/** The locales actually served right now. */
+export const activeLocales: readonly Locale[] = ENGLISH_ENABLED ? locales : ['ar'];
+
+/**
+ * Narrows the raw `params.locale` a route receives into our Locale union.
+ *
+ * Next's generated route types declare params as `Promise<{ locale: string }>`,
+ * so a page cannot declare the narrower union directly. This validates rather
+ * than casts: middleware and the root layout have already rejected unknown
+ * locales, and anything that somehow slipped past falls back to Arabic instead
+ * of propagating an impossible value.
+ */
+export function asLocale(value: string): Locale {
+  return (activeLocales as readonly string[]).includes(value) ? (value as Locale) : defaultLocale;
+}
+
+export function dirOf(locale: string): 'rtl' | 'ltr' {
+  return locale === 'ar' ? 'rtl' : 'ltr';
+}
+
+/**
+ * Canonical URL and hreflang for one path, in one place — so closing the
+ * English side does not mean hunting through every generateMetadata.
+ */
+export function alternatesFor(path: string, locale: string) {
+  if (!ENGLISH_ENABLED) {
+    // One published language means one canonical and no alternates: an
+    // hreflang pointing at a redirect is worse than none at all.
+    return { canonical: path };
+  }
+
+  return {
+    canonical: locale === defaultLocale ? path : `/${locale}${path}`,
+    languages: { ar: path, en: `/en${path}`, 'x-default': path } as Record<string, string>,
+  };
+}
+
+/**
+ * A path as a real URL, prefixed the way `localePrefix: 'as-needed'` prefixes.
+ *
+ * next-intl's router does this for every ordinary link, and it is the right
+ * tool for every ordinary link. This exists for the one navigation that must
+ * not go through the client router at all — landing somebody after sign-in,
+ * where the browser has to fetch the page fresh so the server sees the new
+ * session cookie.
+ */
+export function localeHref(locale: string, path: string): string {
+  return locale === defaultLocale ? path : `/${locale}${path}`;
+}
+
+/**
+ * Arabic is required on every content table, English is optional. Fall back to
+ * Arabic whenever the English column is null — never show an empty field.
+ */
+export function localized(
+  locale: string,
+  ar: string | null | undefined,
+  en: string | null | undefined,
+): string {
+  if (locale === 'en') return (en?.trim() || ar?.trim()) ?? '';
+  return (ar?.trim() || en?.trim()) ?? '';
+}

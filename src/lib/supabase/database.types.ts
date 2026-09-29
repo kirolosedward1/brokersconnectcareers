@@ -560,6 +560,88 @@ export type LeasedEmailRow = {
   lock_token: string;
 };
 
+/** Somebody asking for help, or an owner asking for their account to be deleted (migrations 201, 330). */
+export type SupportRequestTopic =
+  | 'login'
+  | 'verification_email'
+  | 'apply'
+  | 'cv_upload'
+  | 'company_verification'
+  | 'job_not_published'
+  | 'profile_visibility'
+  | 'directory_access'
+  | 'account_deletion'
+  | 'other';
+
+export type SupportRequestRow = {
+  id: string;
+  reference: string;
+  request_key: string;
+  user_id: string | null;
+  role: 'candidate' | 'employer' | 'admin' | 'onboarding' | null;
+  contact_email: string | null;
+  topic: SupportRequestTopic;
+  message: string;
+  error_reference: string | null;
+  route: string | null;
+  client: string | null;
+  locale: 'ar' | 'en' | null;
+  release: string | null;
+  status: 'open' | 'answered' | 'closed';
+  reply: string | null;
+  replied_by: string | null;
+  replied_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** A phone signed in with the app (migration 329). Written through register_push_device only. */
+export type PushDeviceRow = {
+  id: string;
+  user_id: string;
+  token: string;
+  platform: 'ios' | 'android';
+  locale: 'ar' | 'en';
+  app_version: string | null;
+  created_at: string;
+  last_seen_at: string;
+  disabled_at: string | null;
+  disabled_reason: string | null;
+};
+
+export type PushOutboxRow = {
+  id: number;
+  notification_id: string;
+  user_id: string;
+  status: 'queued' | 'sent' | 'skipped' | 'failed';
+  attempts: number;
+  leases: number;
+  next_attempt_at: string;
+  lease_until: string | null;
+  lock_token: string | null;
+  created_at: string;
+  settled_at: string | null;
+  detail: string | null;
+};
+
+export type PushTicketRow = {
+  ticket_id: string;
+  device_id: string;
+  outbox_id: number | null;
+  created_at: string;
+};
+
+/** What lease_due_pushes() hands the sender: the row and the token that proves it holds it. */
+export type LeasedPushRow = {
+  id: number;
+  notification_id: string;
+  user_id: string;
+  attempts: number;
+  lock_token: string;
+};
+
+export type SettlePushOutcome = 'sent' | 'skipped' | 'retry' | 'failed';
+
 export type OutboxOverview = {
   /** Eligible for a retry right now. */
   due: number;
@@ -1198,6 +1280,14 @@ export type Database = {
       email_log: Table<EmailLogRow, never>;
       /** Scheduled-job runs. RLS on, no policies: service role and admin functions only. */
       job_runs: Table<JobRunRow, never>;
+      /** Its owner reads it; register_push_device / unregister_push_device write it; the sender disables it. */
+      push_devices: Table<PushDeviceRow, never>;
+      /** Read by its sender and by admins; written only through submit_support_request(), answered through admin_answer_support_request(). */
+      support_requests: Table<SupportRequestRow, never>;
+      /** Queued by the notifications trigger; RLS on, no policies: the sender (service role) only. */
+      push_outbox: Table<PushOutboxRow, never>;
+      /** Expo tickets awaiting their receipts; the sender (service role) only. */
+      push_tickets: Table<PushTicketRow, Pick<PushTicketRow, 'ticket_id' | 'device_id'> & Partial<PushTicketRow>>;
       application_events: Table<ApplicationEventRow, never>;
       /** No Insertable: admin_audit() is the only writer, and it is not callable from the API. */
       admin_audit_log: Table<AdminAuditRow, never>;
@@ -1645,6 +1735,44 @@ export type Database = {
       };
       /** Dead-letters rows past the retry window or leased too often. Returns how many. */
       reap_email_outbox: { Args: Empty; Returns: number };
+      /** The sender's lease on due pushes (migration 329); service role only. */
+      lease_due_pushes: {
+        Args: { p_limit?: number; p_lease_seconds?: number };
+        Returns: LeasedPushRow[];
+      };
+      /** Only the lease holder can settle: false when the token no longer matches. */
+      settle_push: {
+        Args: { p_id: number; p_lock_token: string; p_outcome: SettlePushOutcome; p_detail?: string | null };
+        Returns: boolean;
+      };
+      /** Settled pushes after 30 days and tickets after two. Returns how many rows went. */
+      prune_push_outbox: { Args: { p_limit?: number }; Returns: number };
+      /** The signed-in caller's phone; moves the token to them if another account had it. */
+      register_push_device: {
+        Args: { p_token: string; p_platform: 'ios' | 'android'; p_locale?: 'ar' | 'en'; p_app_version?: string | null };
+        Returns: string;
+      };
+      unregister_push_device: { Args: { p_token: string }; Returns: undefined };
+      /** A help request, or an owner's deletion request; the answer is its reference. Retried with the same key, the same one. */
+      submit_support_request: {
+        Args: {
+          p_key: string;
+          p_topic: SupportRequestTopic;
+          p_message: string;
+          p_error_reference?: string | null;
+          p_contact_email?: string | null;
+          p_route?: string | null;
+          p_client?: string | null;
+          p_locale?: string | null;
+          p_release?: string | null;
+        };
+        Returns: string;
+      };
+      /** Admin only. Writes the reply (ringing the sender's bell once) and the status. */
+      admin_answer_support_request: {
+        Args: { p_id: string; p_reply: string | null; p_status: 'open' | 'answered' | 'closed' };
+        Returns: string;
+      };
       /** Admin only. Puts one dead-lettered row back in the queue for one more attempt. */
       requeue_email: { Args: { p_id: string }; Returns: boolean };
       /** Admin only. */

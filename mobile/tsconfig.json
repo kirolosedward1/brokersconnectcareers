@@ -1,0 +1,33 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": [
+        "../src/*"
+      ],
+      "~/*": [
+        "./src/*"
+      ],
+      "zod": [
+        "./node_modules/zod"
+      ]
+    }
+  },
+  "//": "`@/` means exactly what it means on the website — ../src — because the website's shared modules import each other that way, and the app imports them (only from src/lib; scripts/check-shared.mjs enforces it). The app's own code is `~/`. zod is pinned to this project's copy so a shared schema and the app's form resolver use one instance.",
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "babel.config.js",
+    "metro.config.js",
+    "jest.config.js",
+    "android",
+    "ios",
+    "tests"
+  ]
+}

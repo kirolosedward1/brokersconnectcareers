@@ -171,7 +171,7 @@ The migration linter checks ordering, uniqueness, rollback instructions and safe
 
 ### The five actions that flip the verdict
 
-1. **Deploy this branch with its migrations in one window**: `DATABASE_URL=<direct> pnpm db:push:url` (303–313), then the Vercel deploy. Migration 305 moves two columns the old code reads, so do not leave them apart. Take a manual backup first (`RUNBOOKS.md` §C).
+1. **Deploy this branch with its migrations in one window**: the Vercel deploy, then `pnpm db:apply` for what production is missing (303–313 among them; `docs/release/2026-09-prod-reconciliation.md` — never `db:push:url` against production, which re-runs everything). Migration 305 moves two columns the old code reads, so do not leave them apart. Take a manual backup first (`RUNBOOKS.md` §C).
 2. **Set on Vercel** (Production and Preview): `SECURITY_SALT`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`; redeploy. **Then** in Supabase: Authentication → Attack Protection → CAPTCHA = Turnstile with the same secret; Multi-factor → TOTP enabled; rate limits and password policy per `SUPABASE_SETTINGS.md`. Each admin enrols at `/dashboard/account`.
 3. **Apply the firewall**: `scripts/vercel-firewall.mjs` with a token that has the team scope, then turn on Bot Protection and the managed ruleset in Log mode for a week.
 4. **Alerts and backups**: the four pages and the daily glance in `RUNBOOKS.md` §D; enable PITR and storage versioning.

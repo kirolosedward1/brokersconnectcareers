@@ -1,0 +1,68 @@
+# The website's own checks, on every pull request and every push to main.
+#
+# Until now `pnpm check` was run by hand, and main went red without anybody
+# noticing: two migrations merged under one version, the schema suite refused
+# the pair, and every database suite chained behind it stopped running. The
+# mobile app now calls the website's server actions through /api/mobile/v1,
+# so a change that breaks that contract has to fail somewhere visible.
+#
+# `pnpm check` runs the typecheck, the message catalogue checks and every
+# suite, including the database ones against an in-process Postgres (PGlite)
+# and the concurrency ones against the runner's own Postgres binaries. The
+# build runs with placeholder Supabase values: it needs no database, and a
+# route that cannot be built is exactly what this should catch.
+#
+# No secrets are used. The repository is public.
+name: Web
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'mobile/**'
+      - '.github/workflows/mobile.yml'
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'mobile/**'
+      - '.github/workflows/mobile.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The migration lint compares against the base branch's history.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migration lint
+        run: node scripts/release/migrations.mjs lint --base origin/${{ github.base_ref || 'main' }}
+        if: github.event_name == 'pull_request'
+
+      - run: pnpm check
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_SITE_URL: https://www.brokersconnect.net

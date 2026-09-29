@@ -4,6 +4,7 @@ import { raise } from './error';
 import { createPublicClient } from '@/lib/supabase/public';
 import { COMPANY_TYPES, JOB_TRACKS } from '@/lib/taxonomy';
 import type { CompanyType, JobTrack } from '@/lib/supabase/database.types';
+import type { BrowseCounts, LandingFacts } from '@/lib/read-types';
 
 /**
  * How many live listings sit behind each way of browsing the board.
@@ -27,24 +28,7 @@ import type { CompanyType, JobTrack } from '@/lib/supabase/database.types';
  * is looking — a listing approved a minute ago that the home page has not
  * heard of. Per-request only, so two sections asking share one read.
  */
-export type BrowseCounts = {
-  /** Every live listing, which is also what an unfiltered board reports. */
-  total: number;
-  tracks: { track: JobTrack; count: number }[];
-  districts: { districtId: number; count: number }[];
-  /**
-   * Null when the database does not record a company's type — before the
-   * migration that adds it has been applied. The module then draws two groups
-   * instead of three, rather than failing or guessing a type from a name.
-   */
-  companyTypes: { type: CompanyType; count: number }[] | null;
-  /**
-   * Live listings per track x district pair, most first. These are exactly
-   * the landing pages that have something on them — what the sitemap
-   * advertises and what the internal links between landings prefer.
-   */
-  pairs: { track: JobTrack; districtId: number; count: number }[];
-};
+export type { BrowseCounts } from '@/lib/read-types';
 
 /**
  * Rows per request. Supabase's API answers at most 1,000 rows however many
@@ -219,13 +203,7 @@ function tally(rows: Row[], typed: boolean, total: number): BrowseCounts {
  * are on the page, never an estimate. A figure with nothing under it is left
  * out by the caller rather than shown as zero.
  */
-export type LandingFacts = {
-  listings: number;
-  companies: number;
-  withBasicSalary: number;
-  salaryFloor: number | null;
-  salaryCeiling: number | null;
-};
+export type { LandingFacts } from '@/lib/read-types';
 
 export const getLandingFacts = cache(async function getLandingFacts(
   track: JobTrack,

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 import { retryAfter } from '@/lib/security/request';
+import { withOptionalBearer } from '@/lib/mobile-api/http';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic';
  * JSON rather than PDF because the right is to a copy in a machine-readable
  * form, and a PDF of a table is not that.
  */
-export async function GET() {
+async function handle() {
   const supabase = await createClient();
 
   const {
@@ -78,3 +79,6 @@ export async function GET() {
     },
   });
 }
+
+/* The website's cookie, or the mobile app's bearer token — never both. */
+export const GET = withOptionalBearer(handle);

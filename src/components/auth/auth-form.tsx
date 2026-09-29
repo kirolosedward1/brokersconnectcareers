@@ -15,6 +15,7 @@ import { safeNext } from '@/lib/safe-next';
 import { Turnstile, turnstileEnabled } from '@/components/security/turnstile';
 import { reportAuthOutcome, type AuthFriction } from '@/lib/actions/security';
 import { reach } from '@/lib/reach';
+import { knownAuthError } from '@/lib/auth/errors';
 
 /**
  * Google's mark, inline.
@@ -36,60 +37,24 @@ function GoogleMark() {
 }
 
 /**
- * Supabase speaks English, and this page does not.
- *
- * Every auth failure was reaching the reader as whatever string GoTrue
- * returned — "Invalid login credentials" on an otherwise Arabic sign-in form.
- * The same class of bug as an untranslated status enum, and worse placed: it
- * lands on the one screen where somebody is already unsure whether they did
- * something wrong.
- *
- * Matched on substrings rather than codes because GoTrue's error codes are not
- * stable across versions and its messages have been. Anything unrecognised
- * falls through to the generic line rather than to English — a reader is
- * better served by "something went wrong" in their own language than by a
- * precise sentence in one they may not read.
+ * Apple's mark, inline for the same reason as Google's, in the text colour —
+ * Apple's guidelines allow the mark black on white (the outline button) and
+ * white on black, which is what the text colour already is in each theme.
  */
-type Mapped = { namespace: 'auth' | 'validation'; key: string };
-
-/**
- * GoTrue's own error codes, which are stable across versions and do not change
- * with the server's language. Matched first.
- *
- * The message regexes below were the only thing here, and they are English
- * prose from another team's codebase — a rewording upstream silently turns a
- * precise message into "something went wrong". Live testing found one already:
- * a rejected domain answers `Email address "x@y" is invalid`, which matches
- * neither /unable to validate email/ nor /invalid format/, so a mistyped
- * address produced the generic error instead of "check your email address".
- */
-const AUTH_ERROR_CODES: Record<string, Mapped> = {
-  invalid_credentials: { namespace: 'auth', key: 'errBadCredentials' },
-  user_already_exists: { namespace: 'auth', key: 'errEmailTaken' },
-  email_exists: { namespace: 'auth', key: 'errEmailTaken' },
-  email_not_confirmed: { namespace: 'auth', key: 'errEmailUnconfirmed' },
-  over_request_rate_limit: { namespace: 'auth', key: 'errTooMany' },
-  over_email_send_rate_limit: { namespace: 'auth', key: 'errTooMany' },
-  email_address_invalid: { namespace: 'validation', key: 'invalidEmail' },
-  validation_failed: { namespace: 'validation', key: 'invalidEmail' },
-  weak_password: { namespace: 'validation', key: 'passwordShort' },
-};
-
-/** Kept as the fallback, for older servers and errors that carry no code. */
-const AUTH_ERRORS: { match: RegExp; namespace: 'auth' | 'validation'; key: string }[] = [
-  { match: /invalid login credentials/i, namespace: 'auth', key: 'errBadCredentials' },
-  { match: /already registered|already been registered|user already exists/i, namespace: 'auth', key: 'errEmailTaken' },
-  { match: /email not confirmed|confirm your email/i, namespace: 'auth', key: 'errEmailUnconfirmed' },
-  { match: /for security purposes|rate limit|too many requests/i, namespace: 'auth', key: 'errTooMany' },
-  { match: /unable to validate email|invalid format|address .* is invalid/i, namespace: 'validation', key: 'invalidEmail' },
-  { match: /password should be at least/i, namespace: 'validation', key: 'passwordShort' },
-];
+function AppleMark() {
+  return (
+    <svg viewBox="0 0 384 512" className="size-4 shrink-0" aria-hidden focusable="false" fill="currentColor">
+      <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
+    </svg>
+  );
+}
 
 export function AuthForm({
   mode,
   locale,
   audience,
   googleEnabled = false,
+  appleEnabled = false,
 }: {
   mode: 'sign-in' | 'sign-up';
   locale: Locale;
@@ -105,6 +70,11 @@ export function AuthForm({
    * whole life returning "provider is not enabled".
    */
   googleEnabled?: boolean;
+  /**
+   * The same question for Sign in with Apple — which an account made in the
+   * iOS app may be all it has, so the website has to offer it too.
+   */
+  appleEnabled?: boolean;
 }) {
   const t = useTranslations('auth');
   const tValidation = useTranslations('validation');
@@ -117,14 +87,11 @@ export function AuthForm({
    * read first and the prose only consulted when there is none.
    */
   const readable = (error: { message: string; code?: string } | string) => {
-    const message = typeof error === 'string' ? error : error.message;
-    const code = typeof error === 'string' ? undefined : error.code;
-
-    const known =
-      (code ? AUTH_ERROR_CODES[code] : undefined) ??
-      AUTH_ERRORS.find((entry) => entry.match.test(message));
+    const known = knownAuthError(error);
 
     if (!known) {
+      const message = typeof error === 'string' ? error : error.message;
+      const code = typeof error === 'string' ? undefined : error.code;
       // Unmapped, so the user gets the generic line — but the detail stays in
       // the console, because the alternative is an error nobody can diagnose.
       console.warn('[auth] unmapped error', { code, message });
@@ -363,14 +330,14 @@ export function AuthForm({
     });
   }
 
-  function signInWithGoogle() {
+  function signInWith(provider: 'google' | 'apple') {
     startTransition(async () => {
       const callback = new URL('/auth/callback', window.location.origin);
       if (next) callback.searchParams.set('next', next);
       else if (audience) callback.searchParams.set('next', onboardingHref);
 
       const { error: oauthError } = await createClient().auth.signInWithOAuth({
-        provider: 'google',
+        provider,
         options: { redirectTo: callback.toString() },
       });
       if (oauthError) setError(oauthError.message);
@@ -439,21 +406,38 @@ export function AuthForm({
 
   return (
     <div className="space-y-5">
-      {googleEnabled ? (
+      {googleEnabled || appleEnabled ? (
         <>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            size="lg"
-            onClick={signInWithGoogle}
-            disabled={pending}
-          >
-            <GoogleMark />
-            {t('continueWithGoogle')}
-          </Button>
+          <div className="space-y-2">
+            {appleEnabled ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                size="lg"
+                onClick={() => signInWith('apple')}
+                disabled={pending}
+              >
+                <AppleMark />
+                {t('continueWithApple')}
+              </Button>
+            ) : null}
+            {googleEnabled ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                size="lg"
+                onClick={() => signInWith('google')}
+                disabled={pending}
+              >
+                <GoogleMark />
+                {t('continueWithGoogle')}
+              </Button>
+            ) : null}
+          </div>
 
-          {/* The separator belongs to the button. Without one there is nothing
+          {/* The separator belongs to the buttons. Without one there is nothing
               above the form for "or" to separate it from. */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
