@@ -26,7 +26,8 @@ const DATA_PATHS = ['/rest/v1/', '/storage/v1/'];
 
 /**
  * Every request the client makes, except a read of the database or of
- * storage that would go out as nobody while somebody is signed in here.
+ * storage that would go out as nobody while somebody is signed in here; and
+ * with a refresh the auth service asks to wait for read as no answer.
  *
  * supabase-js sends the publishable key in place of the person's token
  * whenever it has no usable session — a refresh that failed (offline, the
@@ -35,6 +36,14 @@ const DATA_PATHS = ['/rest/v1/', '/storage/v1/'];
  * established account to onboarding, and no applications, no saved jobs,
  * nothing, as though that were the truth. Refused here as a request with no
  * answer, it reads as offline and is tried again once the session is back.
+ *
+ * The auth service answers 429 to a refresh when an address has asked too
+ * often — and Egypt's carriers put many phones behind one address. auth-js
+ * takes any such answer as the session refused and, once the access token has
+ * run out (every launch after an hour away), deletes it: signed out for being
+ * one of many. Then, as no answer, the session is kept and the refresh tried
+ * again, as when offline. While the access token still works, auth-js keeps
+ * the session itself, and the 429 is passed on to be said as it is.
  */
 async function signedInFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
@@ -46,7 +55,25 @@ async function signedInFetch(input: RequestInfo | URL, init?: RequestInit): Prom
   ) {
     throw new TypeError('Network request failed: the session could not be refreshed');
   }
-  return fetch(input, init);
+  const response = await fetch(input, init);
+  if (
+    response.status === 429 &&
+    path.startsWith('/auth/v1/token?') &&
+    path.includes('grant_type=refresh_token') &&
+    accessTokenExpired(await encryptedSessionStorage.getItem(SESSION_KEY))
+  ) {
+    throw new TypeError('Network request failed: the auth service asked to wait');
+  }
+  return response;
+}
+
+function accessTokenExpired(stored: string | null): boolean {
+  try {
+    const expiresAt = (JSON.parse(stored ?? 'null') as { expires_at?: number } | null)?.expires_at;
+    return typeof expiresAt === 'number' && expiresAt * 1000 <= Date.now();
+  } catch {
+    return false;
+  }
 }
 
 export const supabase = createClient<Database>(env.supabaseUrl, env.supabaseKey, {

@@ -114,6 +114,21 @@ describe('a call the website refuses for its token', () => {
     expect(store().has(SESSION_KEY)).toBe(true);
   });
 
+  it('keeps the session at launch when the refresh is rate-limited, once the access token has run out', async () => {
+    const { supabase, SESSION_KEY } = fresh();
+    // Opened the next morning: the access token expired overnight, and only a refresh can bring it back.
+    store().set(SESSION_KEY, JSON.stringify(expired()));
+    network(refused(() => json({ code: 429, error_code: 'over_request_rate_limit', msg: 'Request rate limit reached' }, 429)));
+
+    const loading = supabase.auth.getSession();
+    await jest.advanceTimersByTimeAsync(60_000);
+    const { error } = await loading;
+
+    // Not a refusal of the session: kept, and tried again as when offline.
+    expect(store().has(SESSION_KEY)).toBe(true);
+    expect(error === null || error.name === 'AuthRetryableFetchError').toBe(true);
+  });
+
   it('signs out when the refresh is refused: the session is over', async () => {
     const { SESSION_KEY, callAction } = fresh();
     store().set(SESSION_KEY, JSON.stringify(authSession(authUser())));
