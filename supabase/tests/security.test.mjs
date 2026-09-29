@@ -353,6 +353,26 @@ report.section('309 — a bucket is not a drive');
   await db.exec(`delete from storage.objects where bucket_id = 'company-documents' and name like '${verifiedCompany}/%'`);
   await db.exec(`delete from storage.objects where bucket_id = 'cvs' and name like '${candidate}/%'`);
 
+  // 332: the cap counts the files nothing points at. An application sent with
+  // its own CV keeps that file, and from the twenty-first such application
+  // the upload used to be refused.
+  await db.exec(`insert into applications (job_id, candidate_id) values ('${liveJob}', '${candidate}') on conflict do nothing`);
+  for (let i = 0; i < 20; i += 1) {
+    await db.exec(`insert into storage.objects (bucket_id, name) values ('cvs', '${candidate}/file-${i}.pdf')`);
+  }
+  await db.exec(`update applications set cv_path = '${candidate}/file-0.pdf' where job_id = '${liveJob}' and candidate_id = '${candidate}'`);
+  const withOneInUse = await as(candidate, `insert into storage.objects (bucket_id, name) values ('cvs', '${candidate}/file-20.pdf') returning id`);
+  report.check('a CV an application points at does not count against the cap', withOneInUse.ok, withOneInUse.error);
+  await db.exec(`insert into storage.objects (bucket_id, name) values ('cvs', '${candidate}/file-20.pdf')`);
+  const twentyLoose = await as(candidate, `insert into storage.objects (bucket_id, name) values ('cvs', '${candidate}/file-21.pdf') returning id`);
+  report.check('twenty files nothing points at still stop the next', !twentyLoose.ok, twentyLoose.ok ? 'insert was allowed' : '');
+  const loose = await as(candidate, `select public.storage_folder_loose_count('cvs', '${candidate}') as n`);
+  report.check('a person counts their own loose files', loose.ok && loose.rows[0].n === 20, JSON.stringify(loose.rows[0] ?? loose.error));
+  const looseTheirs = await as(publicAgent, `select public.storage_folder_loose_count('cvs', '${candidate}') as n`);
+  report.check('nobody else counts them', looseTheirs.ok && looseTheirs.rows[0].n === 0, JSON.stringify(looseTheirs.rows[0] ?? looseTheirs.error));
+  await db.exec(`update applications set cv_path = null where job_id = '${liveJob}' and candidate_id = '${candidate}'`);
+  await db.exec(`delete from storage.objects where bucket_id = 'cvs' and name like '${candidate}/%'`);
+
   await db.exec(`insert into storage.objects (bucket_id, name) values ('avatars', '${candidate}/photo.webp')`);
   const listing = await as(null, `select name from storage.objects where bucket_id = 'avatars'`, 'anon');
   report.check('the public buckets no longer list to the world', listing.ok && listing.rows.length === 0, JSON.stringify(listing.rows));

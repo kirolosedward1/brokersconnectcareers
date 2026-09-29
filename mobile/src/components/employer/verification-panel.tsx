@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, View } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { CheckCircle2, FileCheck2, Upload } from 'lucide-react-native';
 import type { CompanyDocumentRow, VerificationStatus } from '@/lib/supabase/database.types';
@@ -8,7 +8,14 @@ import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
-import { DocumentRefused, pickDocument, useUploadDocument, type DocType } from '~/features/employer/company';
+import {
+  DocumentRefused,
+  pickDocument,
+  pickDocumentPhoto,
+  useUploadDocument,
+  type DocType,
+  type DocumentSource,
+} from '~/features/employer/company';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -42,11 +49,38 @@ export function VerificationPanel({
     );
   }
 
+  /** Where the paper is: photographed now, in the library, or a file — the phone's own chooser. */
+  const askSource = (): Promise<DocumentSource | null> =>
+    new Promise((resolve) => {
+      const choices: [DocumentSource, string][] = [
+        ['camera', t('app.company.docCamera')],
+        ['library', t('app.company.docPhotos')],
+        ['file', t('app.company.docFile')],
+      ];
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          { title: t('app.company.docFrom'), options: [...choices.map(([, label]) => label), t('common.cancel')], cancelButtonIndex: choices.length },
+          (index) => resolve(choices[index]?.[0] ?? null),
+        );
+      } else {
+        Alert.alert(
+          t('app.company.docFrom'),
+          undefined,
+          choices.map(([source, label]) => ({ text: label, onPress: () => resolve(source) })),
+          { cancelable: true, onDismiss: () => resolve(null) },
+        );
+      }
+    });
+
   const send = async (docType: DocType) => {
     setError(null);
-    const picked = await pickDocument().catch(() => null);
+    const source = await askSource();
+    if (!source) return;
+    const picked = await (source === 'file' ? pickDocument() : pickDocumentPhoto(source)).catch(() => null);
     if (!picked) return;
-    if ('problem' in picked) return setError(t(`validation.${picked.problem}`));
+    if ('problem' in picked) {
+      return setError(picked.problem === 'camera' ? t('app.company.cameraDenied') : t(`validation.${picked.problem}`));
+    }
     setSending(docType);
     upload.mutate(
       { docType, document: picked.document },

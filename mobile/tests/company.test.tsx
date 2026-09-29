@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import { Alert, RefreshControl, type AlertButton } from 'react-native';
+import { ActionSheetIOS, Alert, RefreshControl, type AlertButton } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
+import { ImageManipulator } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
@@ -40,7 +41,11 @@ jest.mock('~/lib/session-storage', () => {
     },
   };
 });
-jest.mock('expo-image-picker', () => ({ launchImageLibraryAsync: jest.fn() }));
+jest.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: jest.fn(),
+  launchCameraAsync: jest.fn(),
+  requestCameraPermissionsAsync: jest.fn(async () => ({ granted: true })),
+}));
 jest.mock('expo-image-manipulator', () => {
   type MockContext = { resize: () => MockContext; renderAsync: () => Promise<{ saveAsync: () => Promise<{ uri: string }> }> };
   const context: MockContext = {
@@ -74,6 +79,8 @@ const employer: ProfileRow = { ...profile, role: 'employer', full_name: 'أحم�
 const baseCompany: CompanyRow = { ...ownedCompany, verification_status: 'unverified', version: 3 };
 
 let company: CompanyRow | null;
+/** The chooser's answer for a paper: 0 camera, 1 photo library, 2 a file, 3 cancel. */
+let paperFrom = 2;
 let role: 'admin' | 'recruiter';
 let documents: CompanyDocumentRow[];
 
@@ -101,6 +108,9 @@ beforeEach(async () => {
   ];
   jest.mocked(ImagePicker.launchImageLibraryAsync).mockReset();
   jest.mocked(DocumentPicker.getDocumentAsync).mockReset();
+  // Where a paper comes from, as the phone's own chooser answers: a file, unless a case says otherwise.
+  paperFrom = 2;
+  jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation((_options, choose) => choose(paperFrom));
 
   server.on('GET /api/mobile/v1/config', mobileConfig());
   server.on('POST /auth/v1/token', () => authSession(user));
@@ -304,6 +314,33 @@ describe("the company's page, for a company admin", () => {
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.taxCard}` }));
     expect(await screen.findByText(ar.validation.fileType)).toBeTruthy();
     await waitFor(() => expect(server.asked('/storage/v1/object/company-documents')).toHaveLength(1));
+  });
+
+  it('takes a paper photographed, or from the library, as a JPEG — not only a file from Files', async () => {
+    paperFrom = 1;
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///library/IMG_0042.HEIC', width: 4032, height: 3024 }],
+    } as ImagePicker.ImagePickerResult);
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.commercialRegister}` }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/recordCompanyDocument')).toBeTruthy());
+    expect(String(input('/api/mobile/v1/actions/recordCompanyDocument')?.storagePath)).toMatch(
+      new RegExp(`^${baseCompany.id}/commercial_register-[0-9a-f-]{36}\\.jpg$`),
+    );
+    expect(DocumentPicker.getDocumentAsync).not.toHaveBeenCalled();
+    expect(ImageManipulator.manipulate).toHaveBeenCalledWith('file:///library/IMG_0042.HEIC');
+  });
+
+  it('says how to allow the camera when the phone refuses it', async () => {
+    paperFrom = 0;
+    jest.mocked(ImagePicker.requestCameraPermissionsAsync).mockResolvedValueOnce({ granted: false } as ImagePicker.CameraPermissionResponse);
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.taxCard}` }));
+    expect(await screen.findByText(ar.app.company.cameraDenied)).toBeTruthy();
+    expect(ImagePicker.launchCameraAsync).not.toHaveBeenCalled();
   });
 
   it("adds a colleague, says the website's word when it cannot, and takes one off after asking", async () => {

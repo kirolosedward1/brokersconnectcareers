@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import { COMPANY_DOCS_BUCKET } from '@/lib/buckets';
 import { fileExtension, fileType } from '@/lib/file-type';
@@ -152,6 +154,46 @@ export async function pickDocument(): Promise<{ document: PickedDocument } | { p
   if (!DOCUMENT_TYPES.includes(type)) return { problem: 'fileType' };
   if ((asset.size ?? 0) > MAX_DOCUMENT_BYTES) return { problem: 'fileTooLarge' };
   return { document: { uri: asset.uri, name: asset.name, type } };
+}
+
+/** Where a paper comes from: a picture taken now, one in the library, or a file. */
+export type DocumentSource = 'camera' | 'library' | 'file';
+
+/**
+ * The longest side a photographed paper keeps: legible, and far under the
+ * website's 10 MB once a phone's photo (12 to 48 megapixels) is re-encoded.
+ */
+const DOCUMENT_EDGE = 2400;
+
+/**
+ * A paper as a photo — taken now, or from the library — which is how most
+ * people have their commercial register on a phone. The file picker alone
+ * showed only Files, where an iPhone's photos (HEIC, which the website does
+ * not take) were greyed out anyway. Re-encoded as a JPEG, as the logo and the
+ * photo are; null when cancelled.
+ */
+export async function pickDocumentPhoto(
+  source: 'camera' | 'library',
+): Promise<{ document: PickedDocument } | { problem: 'fileTooLarge' | 'camera' } | null> {
+  if (source === 'camera') {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) return { problem: 'camera' };
+  }
+  const options = { mediaTypes: ['images'] as ImagePicker.MediaType[], allowsEditing: false, quality: 1 };
+  const result =
+    source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
+  const asset = result.canceled ? null : result.assets[0];
+  if (!asset) return null;
+
+  const context = ImageManipulator.manipulate(asset.uri);
+  const long = Math.max(asset.width, asset.height);
+  const sized =
+    long > DOCUMENT_EDGE
+      ? context.resize(asset.width >= asset.height ? { width: DOCUMENT_EDGE } : { height: DOCUMENT_EDGE })
+      : context;
+  const saved = await (await sized.renderAsync()).saveAsync({ format: SaveFormat.JPEG, compress: 0.85 });
+  if (new File(saved.uri).size > MAX_DOCUMENT_BYTES) return { problem: 'fileTooLarge' };
+  return { document: { uri: saved.uri, name: 'document.jpg', type: 'image/jpeg' } };
 }
 
 export class DocumentRefused extends Error {
