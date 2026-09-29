@@ -26,7 +26,8 @@ export function ApplicantNotes({
   viewerId,
 }: {
   applicationId: string;
-  notes: ApplicationNoteRow[];
+  /** Undefined until the company's notes have been read. */
+  notes: ApplicationNoteRow[] | undefined;
   authors: Record<string, string>;
   viewerId: string | null;
 }) {
@@ -35,9 +36,10 @@ export function ApplicantNotes({
   const { colors } = useTheme();
   const add = useAddNote();
   const remove = useDeleteNote();
+  const shown = notes ?? [];
   // Open while there are notes, until somebody says otherwise — they arrive after the card does.
   const [chosen, setChosen] = useState<boolean | null>(null);
-  const open = chosen ?? notes.length > 0;
+  const open = chosen ?? shown.length > 0;
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -46,8 +48,8 @@ export function ApplicantNotes({
     if (!body) return;
     setError(null);
     add.mutate(
-      // The newest note shown, so a lost answer can be told from a note that never went in.
-      { applicationId, body, after: notes.reduce((newest, note) => Math.max(newest, note.id), 0) },
+      // The newest note shown, so a lost answer can be told from a note that never went in; none while unread.
+      { applicationId, body, after: notes ? notes.reduce((newest, note) => Math.max(newest, note.id), 0) : null },
       {
         // Cleared only once the server has it: a box that empties and then fails has taken a sentence away.
         onSuccess: () => setDraft(''),
@@ -73,9 +75,9 @@ export function ApplicantNotes({
         <Text variant="small" weight="medium" tone="mutedForeground">
           {t('employer.notesTitle')}
         </Text>
-        {notes.length ? (
+        {shown.length ? (
           <Text variant="caption" weight="medium" style={{ paddingHorizontal: 6, borderRadius: 4, backgroundColor: colors.muted }}>
-            {formatNumber(notes.length, locale)}
+            {formatNumber(shown.length, locale)}
           </Text>
         ) : null}
         <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }} numberOfLines={1}>
@@ -86,7 +88,7 @@ export function ApplicantNotes({
 
       {open ? (
         <View style={{ gap: space[2] }}>
-          {notes.map((note) => (
+          {shown.map((note) => (
             <View key={note.id} style={{ gap: 2, paddingStart: space[3], borderStartWidth: 2, borderStartColor: colors.border }}>
               <Text variant="small">{note.body}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>

@@ -214,7 +214,7 @@ export default function InboxScreen() {
                     jobTitle={jobTitle}
                     companyName={context.companyName}
                     districtNames={context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
-                    notes={notes.data?.byApplication[row.id] ?? []}
+                    notes={notes.data ? (notes.data.byApplication[row.id] ?? []) : undefined}
                     authors={notes.data?.authors ?? {}}
                     viewerId={context.viewerId}
                   />

@@ -55,7 +55,8 @@ export function ApplicantCard({
   jobTitle: string;
   companyName: string;
   districtNames: string[];
-  notes: ApplicationNoteRow[];
+  /** Undefined until the company's notes have been read. */
+  notes: ApplicationNoteRow[] | undefined;
   authors: Record<string, string>;
   viewerId: string | null;
 }) {

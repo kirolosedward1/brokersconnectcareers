@@ -314,8 +314,24 @@ describe('the CV sections', () => {
       const company = url.searchParams.get('company_name');
       return company ? stored.filter((row) => `eq.${row.company_name}` === company) : stored;
     });
-    server.on('POST /api/mobile/v1/actions/saveExperience', () => {
-      stored = [...stored, { ...job, id: '0e000000-0000-4000-8000-000000000002', company_name: 'سيتي سكيب', title: 'مدير مبيعات', started: '2023-05-01' }];
+    // The website stores what was sent, cleaned, and its answer never reaches the phone.
+    server.on('POST /api/mobile/v1/actions/saveExperience', (_url: URL, init?: RequestInit) => {
+      const { input } = JSON.parse(String(init?.body)) as {
+        input: { companyName: string; title: string; track: null; started: string; ended: null; highlights: null };
+      };
+      stored = [
+        ...stored,
+        {
+          ...job,
+          id: '0e000000-0000-4000-8000-000000000002',
+          company_name: input.companyName.trim(),
+          title: input.title.trim(),
+          track: input.track,
+          started: input.started,
+          ended: input.ended,
+          highlights: input.highlights,
+        },
+      ];
       throw new TypeError('Network request failed');
     });
     open();
@@ -340,6 +356,25 @@ describe('the CV sections', () => {
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
     expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
     expect(screen.getByLabelText(ar.cv.company).props.value).toBe('بالم هيلز');
+  });
+
+  it('does not take an entry that was already there for the one whose answer was lost', async () => {
+    // Cairo University is on the profile already, for another field of study.
+    const law = { id: '0f000000-0000-4000-8000-000000000001', agent_id: AGENT_ID, institution: 'جامعة القاهرة', degree: null, field: 'تجارة', graduated: null, sort_order: 0, created_at: '2026-09-01T10:00:00Z' };
+    server.on('GET /rest/v1/agent_education', (url: URL) =>
+      url.searchParams.get('institution') === `eq.${law.institution}` || !url.searchParams.get('institution') ? [law] : [],
+    );
+    // The website refuses with a server error and writes nothing.
+    server.on('POST /api/mobile/v1/actions/saveEducation', { status: 500, body: { error: 'failed' } });
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addEducation }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.institution), 'جامعة القاهرة');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.field), 'حقوق');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+
+    // Not saved, and not said to be: the sheet stays with what was typed.
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    expect(screen.getByLabelText(ar.cv.field).props.value).toBe('حقوق');
   });
 
   it('edits an entry without moving a date nobody touched', async () => {

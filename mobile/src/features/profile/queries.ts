@@ -190,37 +190,59 @@ export type CvEntryInput =
   | { section: 'certification'; input: MobileActions['saveCertification']['input'] };
 
 /**
- * Whether the profile already holds this new entry, as the website stores it:
- * the same company, role and start; the same school, degree and year; the
- * same certificate, issuer and date. Asked when the answer to adding it was
- * lost — sent again, it went in twice. False when it cannot be read.
+ * Whether the profile now holds this new entry, as the website stores it —
+ * every field the form sent, cleaned as the website cleans them — and it is
+ * not one of the entries the profile held before it was sent (`known`). Asked
+ * when the answer to adding it was lost: sent again, it went in twice. False
+ * when it cannot be read.
  */
-async function entryStored(entry: CvEntryInput): Promise<boolean> {
-  const [table, fields]: [string, Record<string, string | number | null>] =
+async function entryStored(entry: CvEntryInput, known: ReadonlySet<string>): Promise<boolean> {
+  const text = (value: string | null | undefined, multiline = false) => clean(value, multiline) || null;
+  const [table, key, expected]: [string, string, Record<string, string | number | null>] =
     entry.section === 'experience'
       ? [
           'agent_experience',
-          { company_name: clean(entry.input.companyName), title: clean(entry.input.title), started: entry.input.started },
+          'company_name',
+          {
+            company_name: clean(entry.input.companyName),
+            title: clean(entry.input.title),
+            track: entry.input.track ?? null,
+            district_id: entry.input.districtId ?? null,
+            started: entry.input.started,
+            ended: entry.input.ended || null,
+            highlights: text(entry.input.highlights, true),
+          },
         ]
       : entry.section === 'education'
         ? [
             'agent_education',
+            'institution',
             {
               institution: clean(entry.input.institution),
-              degree: clean(entry.input.degree) || null,
+              degree: text(entry.input.degree),
+              field: text(entry.input.field),
               graduated: entry.input.graduated ?? null,
             },
           ]
         : [
             'agent_certifications',
-            { name: clean(entry.input.name), issuer: clean(entry.input.issuer) || null, issued: entry.input.issued || null },
+            'name',
+            {
+              name: clean(entry.input.name),
+              issuer: text(entry.input.issuer),
+              issued: entry.input.issued || null,
+              expires: entry.input.expires || null,
+            },
           ];
-  let query = supabase.from(table as 'agent_experience').select('id').eq('agent_id', entry.input.agentId);
-  for (const [column, value] of Object.entries(fields)) {
-    query = value === null ? query.is(column as never, null) : query.eq(column as never, value as never);
-  }
-  const { data, error } = await query.limit(1);
-  return !error && Boolean(data?.length);
+  const { data, error } = await supabase
+    .from(table as 'agent_experience')
+    .select('*')
+    .eq('agent_id', entry.input.agentId)
+    .eq(key as never, expected[key] as never);
+  if (error) return false;
+  return ((data ?? []) as unknown as Record<string, unknown>[]).some(
+    (row) => !known.has(String(row.id)) && Object.entries(expected).every(([column, value]) => (row[column] ?? null) === value),
+  );
 }
 
 function sendCvEntry(entry: CvEntryInput) {
@@ -236,10 +258,15 @@ export function useSaveCvEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (entry: CvEntryInput) => {
+      // The section's entries as the profile showed them before this one was sent; unknown while unread.
+      const before = queryClient.getQueryData<CvSections>(['profile', 'cv', entry.input.agentId]);
+      const known = before ? new Set((before[LIST[entry.section]] as { id: string }[]).map((row) => row.id)) : null;
       const result = await sendCvEntry(entry).catch(async (error: unknown) => {
         // A new entry with no answer may be in, and only the answer lost: the
         // database decides. A change sent again changes nothing twice.
-        if (!entry.input.id && !refusedAtTheDoor(error) && (await entryStored(entry))) return { ok: true as const };
+        if (!entry.input.id && known && !refusedAtTheDoor(error) && (await entryStored(entry, known))) {
+          return { ok: true as const };
+        }
         throw error;
       });
       if (!result.ok) throw new SaveRefused(result.error, result.fieldErrors);

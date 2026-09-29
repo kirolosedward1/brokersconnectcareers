@@ -118,15 +118,37 @@ describe('a call the website refuses for its token', () => {
     const { supabase, SESSION_KEY } = fresh();
     // Opened the next morning: the access token expired overnight, and only a refresh can bring it back.
     store().set(SESSION_KEY, JSON.stringify(expired()));
-    network(refused(() => json({ code: 429, error_code: 'over_request_rate_limit', msg: 'Request rate limit reached' }, 429)));
+    let limited = true;
+    network(
+      refused(() =>
+        limited
+          ? new Response(JSON.stringify({ code: 429, error_code: 'over_request_rate_limit', msg: 'Request rate limit reached' }), {
+              status: 429,
+              headers: { 'content-type': 'application/json', 'retry-after': '60' },
+            })
+          : json(authSession(authUser())),
+      ),
+    );
+    const refreshes = () => sent.filter((request) => request.path === '/auth/v1/token').length;
 
     const loading = supabase.auth.getSession();
-    await jest.advanceTimersByTimeAsync(60_000);
+    await jest.advanceTimersByTimeAsync(59_000);
     const { error } = await loading;
 
     // Not a refusal of the session: kept, and tried again as when offline.
     expect(store().has(SESSION_KEY)).toBe(true);
     expect(error === null || error.name === 'AuthRetryableFetchError').toBe(true);
+    // Asked once: auth-js's own retries are answered here until the minute asked for has passed.
+    expect(refreshes()).toBe(1);
+
+    // The limit lifts: once the minute has passed, a refresh goes out again and the session comes back.
+    limited = false;
+    await jest.advanceTimersByTimeAsync(62_000);
+    const again = supabase.auth.getSession();
+    await jest.advanceTimersByTimeAsync(1_000);
+    const { data } = await again;
+    expect(refreshes()).toBeGreaterThan(1);
+    expect((data.session?.expires_at ?? 0) * 1000).toBeGreaterThan(Date.now());
   });
 
   it('signs out when the refresh is refused: the session is over', async () => {

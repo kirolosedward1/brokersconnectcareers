@@ -267,7 +267,10 @@ async function storedAsSent(input: JobInput & { id: string }): Promise<boolean> 
     job.basic_salary_min === (input.basicSalaryMin ?? null) &&
     job.basic_salary_max === (input.basicSalaryMax ?? null) &&
     job.commission_type === input.commissionType &&
-    (job.commission_value == null ? commission === null : Number(job.commission_value) === commission) &&
+    // The column keeps two decimals (numeric(5,2)): a rate sent as 2.555 is stored as 2.56.
+    (job.commission_value == null
+      ? commission === null
+      : commission !== null && Math.abs(Number(job.commission_value) - commission) <= 0.005 + 1e-9) &&
     job.commission_note_ar === text(input.commissionNoteAr) &&
     job.leads_source === input.leadsSource &&
     set(job.benefits ?? []) === set(input.benefits) &&

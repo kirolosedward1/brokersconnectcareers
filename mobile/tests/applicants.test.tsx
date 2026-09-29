@@ -279,6 +279,28 @@ describe("a listing's applicants", () => {
     expect(screen.getAllByLabelText(ar.employer.notesTitle)[0].props.value).toBe('نكلمها تاني الأسبوع الجاي.');
   });
 
+  it('does not take an older note in the same words for the new one while the notes are unread', async () => {
+    let reads = 0;
+    // The card's notes could not be read; a later read shows last week's note in the same words.
+    server.on('GET /rest/v1/application_notes', () => {
+      reads += 1;
+      if (reads === 1) return { status: 500, body: { message: 'upstream unavailable' } };
+      return [{ id: 7, application_id: sara.id, author_id: USER_ID, body: 'لم يرد.', created_at: '2026-09-21T10:00:00Z' }];
+    });
+    server.on('POST /api/mobile/v1/actions/addApplicationNote', () => {
+      throw new TypeError('Network request failed');
+    });
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText('سارة عادل')).toBeTruthy();
+    fireEvent.press(screen.getAllByRole('button', { name: new RegExp(ar.employer.notesTitle) })[0]);
+
+    fireEvent.changeText(screen.getAllByLabelText(ar.employer.notesTitle)[0], 'لم يرد.');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.employer.notesAdd })[0]);
+    // Not in, as far as anybody can tell: the words stay, and the reason is said.
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+    expect(screen.getAllByLabelText(ar.employer.notesTitle)[0].props.value).toBe('لم يرد.');
+  });
+
   it('opens the CV through the website, and WhatsApp with the opener written', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
     renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });

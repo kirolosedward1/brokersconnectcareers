@@ -319,12 +319,16 @@ export function useAddNote() {
   const queryClient = useQueryClient();
   const authorId = useSession().session?.user.id ?? null;
   return useMutation({
-    mutationFn: async (input: { applicationId: string; body: string; after: number }) => {
+    // `after`: the newest note the card showed, or null while its notes were unread — then an
+    // older note in the same words could not be told from this one, and nothing is looked for.
+    mutationFn: async (input: { applicationId: string; body: string; after: number | null }) => {
+      const { after } = input;
       const result = await callAction('addApplicationNote', { applicationId: input.applicationId, body: input.body }).catch(
         async (error: unknown) => {
           // No answer: the note may be in, and only the answer lost — sent again,
           // it was written twice. What the database holds decides.
-          const written = !refusedAtTheDoor(error) && authorId ? await noteWritten(input, authorId) : null;
+          const written =
+            !refusedAtTheDoor(error) && authorId && after !== null ? await noteWritten({ ...input, after }, authorId) : null;
           if (written) return { ok: true as const, data: { note: written } };
           throw error;
         },

@@ -351,6 +351,24 @@ describe('a listing on the board', () => {
     expect(saved()).toHaveLength(1);
   });
 
+  it('knows its own edit when the database has rounded the rate it sent to two decimals', async () => {
+    let stored = liveJob;
+    server.on('GET /rest/v1/jobs', () => [stored]);
+    server.on('POST /api/mobile/v1/actions/saveJob', () => {
+      // The column is numeric(5,2): Postgres stores the 2.555 sent as 2.56.
+      stored = { ...liveJob, version: 5, commission_value: 2.56 };
+      throw new TypeError('Network request failed');
+    });
+    const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    await screen.findByLabelText(ar.jobForm.titleAr);
+    next();
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.commissionValue), '2.555');
+    fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+    await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    expect(saved()[0]).toMatchObject({ commissionValue: 2.555 });
+  });
+
   it('takes a refusal as stale for saved when it was this edit, sent again after its answer was lost', async () => {
     let stored = liveJob;
     server.on('GET /rest/v1/jobs', () => [stored]);

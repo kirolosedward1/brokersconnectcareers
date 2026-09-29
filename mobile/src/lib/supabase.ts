@@ -44,7 +44,14 @@ const DATA_PATHS = ['/rest/v1/', '/storage/v1/'];
  * one of many. Then, as no answer, the session is kept and the refresh tried
  * again, as when offline. While the access token still works, auth-js keeps
  * the session itself, and the 429 is passed on to be said as it is.
+ *
+ * No answer is tried again by auth-js seven more times within half a minute,
+ * so the wait asked for (Retry-After, or a minute) is kept here: until it has
+ * passed, a refresh is answered as no answer without being sent. Sent, each
+ * phone behind that one address asked eight times as often as it was told to.
  */
+let refreshHeldUntil = 0;
+
 async function signedInFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   const path = url.startsWith(env.supabaseUrl) ? url.slice(env.supabaseUrl.length) : '';
@@ -55,16 +62,23 @@ async function signedInFetch(input: RequestInfo | URL, init?: RequestInit): Prom
   ) {
     throw new TypeError('Network request failed: the session could not be refreshed');
   }
+  const refresh = path.startsWith('/auth/v1/token?') && path.includes('grant_type=refresh_token');
+  if (refresh && Date.now() < refreshHeldUntil) {
+    throw new TypeError('Network request failed: the auth service asked to wait');
+  }
   const response = await fetch(input, init);
-  if (
-    response.status === 429 &&
-    path.startsWith('/auth/v1/token?') &&
-    path.includes('grant_type=refresh_token') &&
-    accessTokenExpired(await encryptedSessionStorage.getItem(SESSION_KEY))
-  ) {
+  if (refresh && response.status === 429 && accessTokenExpired(await encryptedSessionStorage.getItem(SESSION_KEY))) {
+    refreshHeldUntil = Date.now() + waitAskedFor(response.headers.get('retry-after'));
     throw new TypeError('Network request failed: the auth service asked to wait');
   }
   return response;
+}
+
+/** Retry-After in milliseconds — seconds or a date — between a second and ten minutes; a minute when unsaid. */
+function waitAskedFor(header: string | null): number {
+  const seconds = header === null || header.trim() === '' ? NaN : Number(header);
+  const wait = Number.isFinite(seconds) ? seconds * 1000 : header ? Date.parse(header) - Date.now() : NaN;
+  return Math.min(Math.max(Number.isFinite(wait) ? wait : 60_000, 1_000), 600_000);
 }
 
 function accessTokenExpired(stored: string | null): boolean {
