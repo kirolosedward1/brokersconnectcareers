@@ -2,6 +2,23 @@
   Native modules a unit test cannot reach, replaced with their published
   in-memory stand-ins. Loaded before every test file (jest.config.js).
 */
+import { installIntlPolyfills } from '~/lib/intl-polyfills';
+
+// Format as the phone does. Node's own Intl knows every locale; the phone runs
+// the formatjs polyfills with the few the app loads, and a formatter that
+// worked in Node threw on the phone (src/lib/format.ts, formatRelativeDay).
+// Node's own is kept aside for tests/intl.test.ts, which compares the two.
+(globalThis as { nodeIntl?: typeof Intl }).nodeIntl = {
+  ...Intl,
+  DateTimeFormat: Intl.DateTimeFormat,
+  NumberFormat: Intl.NumberFormat,
+  PluralRules: Intl.PluralRules,
+  RelativeTimeFormat: Intl.RelativeTimeFormat,
+  Locale: Intl.Locale,
+  getCanonicalLocales: Intl.getCanonicalLocales,
+};
+installIntlPolyfills({ force: true });
+
 jest.mock('@react-native-async-storage/async-storage', () =>
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories cannot import.
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
