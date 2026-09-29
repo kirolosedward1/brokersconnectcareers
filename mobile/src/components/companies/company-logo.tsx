@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '~/theme/provider';
@@ -34,8 +35,10 @@ export function CompanyLogo({
   const { colors } = useTheme();
   const px = SIZES[size];
   const corner = size === 'sm' ? radius.lg : radius.xl;
+  // A logo that does not load (gone, offline) is the letter, not a blank white tile.
+  const [failedLogo, setFailedLogo] = useState<string | null>(null);
 
-  if (logoUrl) {
+  if (logoUrl && failedLogo !== logoUrl) {
     return (
       <View
         style={{
@@ -49,7 +52,14 @@ export function CompanyLogo({
           padding: 4,
         }}
       >
-        <Image source={{ uri: logoUrl }} contentFit="contain" style={{ flex: 1 }} accessible={false} />
+        <Image
+          source={{ uri: logoUrl }}
+          recyclingKey={logoUrl}
+          contentFit="contain"
+          style={{ flex: 1 }}
+          onError={() => setFailedLogo(logoUrl)}
+          accessible={false}
+        />
       </View>
     );
   }

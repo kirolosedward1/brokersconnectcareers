@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
@@ -13,6 +13,7 @@ import { DirectoryClosed } from '~/components/directory/directory-closed';
 import { DirectoryFilterSheet } from '~/components/directory/directory-filter-sheet';
 import { HeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
+import { PageFooter } from '~/components/ui/page-footer';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
 import { ForwardChevron } from '~/components/ui/icons';
@@ -164,13 +165,7 @@ export default function DirectoryScreen() {
             }
           />
         }
-        ListFooterComponent={
-          directory.isFetchingNextPage ? (
-            <View style={{ paddingTop: space[4] }}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
-          ) : null
-        }
+        ListFooterComponent={<PageFooter query={directory} />}
         onEndReached={() => {
           if (directory.hasNextPage && !directory.isFetchingNextPage) directory.fetchNextPage();
         }}

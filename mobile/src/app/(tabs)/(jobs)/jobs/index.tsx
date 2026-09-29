@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
+import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
@@ -18,6 +18,7 @@ import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
 import { HeaderBell } from '~/components/notifications/header-bell';
+import { PageFooter } from '~/components/ui/page-footer';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { FilterSheet } from '~/components/jobs/filter-sheet';
 import { JobCard } from '~/components/jobs/job-card';
@@ -140,6 +141,9 @@ export default function BoardScreen() {
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
+        // The saved search is named in a field on the board: its Save must save on the first tap.
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
         ListHeaderComponent={
           <BoardHeader filters={filters} first={first} apply={apply} onFilters={openFilters} hasResults={jobs.length > 0} />
@@ -147,7 +151,7 @@ export default function BoardScreen() {
         ListEmptyComponent={<EmptyBoard filters={filters} first={first} apply={apply} />}
         ListFooterComponent={
           <BoardFooter
-            loadingMore={board.isFetchingNextPage}
+            paging={board}
             ended={!board.hasNextPage && jobs.length > 0}
             unfiltered={countActiveFilters(filters) === 0}
           />
@@ -361,15 +365,22 @@ function useSearchLabel(filters: JobFilters, first: JobBoardResponse | undefined
   return parts.join(' · ') || t('jobs.title');
 }
 
-function BoardFooter({ loadingMore, ended, unfiltered }: { loadingMore: boolean; ended: boolean; unfiltered: boolean }) {
+function BoardFooter({
+  paging,
+  ended,
+  unfiltered,
+}: {
+  paging: ComponentProps<typeof PageFooter>['query'];
+  ended: boolean;
+  unfiltered: boolean;
+}) {
   const t = useTranslations('app.jobs');
-  const { colors } = useTheme();
   const counts = useBrowseCounts();
   const districts = useDistricts();
 
   return (
     <View style={{ paddingTop: space[4] }}>
-      {loadingMore ? <ActivityIndicator color={colors.primary} /> : null}
+      <PageFooter query={paging} />
       {ended ? (
         <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
           {t('endOfList')}

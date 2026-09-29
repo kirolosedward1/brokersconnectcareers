@@ -264,6 +264,7 @@ export function ProfileForm({
         options={districts.map((district) => ({ value: district.id, label: localized(locale, district.name_ar, district.name_en) }))}
         selected={districtIds}
         onToggle={(value) => setDistrictIds((current) => toggled(current, value))}
+        max={20}
       />
 
       <ChipGroup
@@ -275,6 +276,7 @@ export function ProfileForm({
         }))}
         selected={developerChoice}
         onToggle={(value) => setDeveloperChoice((current) => toggled(current, value))}
+        max={30}
       />
 
       <ChipGroup

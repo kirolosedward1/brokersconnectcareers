@@ -108,6 +108,12 @@ export function useTransitionJob() {
         throw new TransitionRefused((NAMED as readonly string[]).includes(result.error) ? (result.error as TransitionRefusal) : 'failed');
       }
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['employer'] }),
+    // The listings are read again before the move counts as settled, so the
+    // row shows its stored status; the overview's counts follow without holding the button.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['employer'], predicate: (query) => query.queryKey[1] !== 'listings' });
+      void queryClient.invalidateQueries({ queryKey: ['jobs', 'detail'] });
+      return queryClient.invalidateQueries({ queryKey: ['employer', 'listings'] });
+    },
   });
 }

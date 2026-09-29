@@ -199,13 +199,17 @@ export function notificationIdOf(response: Notifications.NotificationResponse | 
 /**
  * Where a tapped push leads — the website's openNotification, as the bell's
  * feed asks it: it marks the notification read and decides whether its link
- * is still one this person may follow. Anything else opens the feed, where the
- * notification is.
+ * is still one this person may follow. A link that is not (gone, no longer
+ * theirs) opens the feed with the reason, which the feed says, as it does for
+ * a tap in the bell; anything else opens the feed, where the notification is.
  */
 export async function destinationOf(notificationId: string): Promise<string> {
   try {
     const result = await callAction('openNotification', { id: notificationId });
     if (result.ok && result.data && 'href' in result.data) return result.data.href;
+    if (result.ok && result.data && 'fallback' in result.data && result.data.fallback.startsWith('/notifications')) {
+      return result.data.fallback;
+    }
   } catch {
     // Offline, or the website down: the feed, which says so itself.
   }

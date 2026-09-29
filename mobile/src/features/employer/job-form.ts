@@ -46,6 +46,9 @@ export type JobValues = {
 };
 
 /** The website's defaults for a new listing, and a stored one as the form shows it. */
+/** The most developers the website's saveJob takes (its schema's `developerIds` limit). */
+export const MAX_DEVELOPERS = 30;
+
 export function initialValues(job: JobRow | null, developerIds: number[], firstDistrict: number | null): JobValues {
   return {
     titleAr: job?.title_ar ?? '',
@@ -241,6 +244,13 @@ export function useSaveJob() {
       if (!result.ok) throw new JobSaveRefused(result.error, result.fieldErrors);
       return result.data?.id ?? null;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employer'] }),
+    // Not waited for: the wizard closes on its own save, and while every
+    // employer screen was read again first, the edited listing came back at its
+    // new version and the wizard it keyed was drawn anew — at step 1 — instead
+    // of closing. The listing's public page is read again too.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['employer'] });
+      void queryClient.invalidateQueries({ queryKey: ['jobs', 'detail'] });
+    },
   });
 }

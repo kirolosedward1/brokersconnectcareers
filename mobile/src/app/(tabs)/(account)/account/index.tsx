@@ -68,20 +68,19 @@ export default function AccountScreen() {
   const role = viewer?.profile?.role;
 
   // The portability right: the website's export, handed to the share sheet.
-  const exportData = async () => {
+  // A promise chain, not try/finally, which the React Compiler does not compile.
+  const exportData = () => {
     if (!session || exporting) return;
     setExporting(true);
-    try {
-      await shareMyData(session.user.id, t('account.exportTitle'));
-    } catch (failure) {
-      const status = failure instanceof ApiError ? failure.status : -1;
-      Alert.alert(
-        t('account.exportTitle'),
-        status === 429 ? t('app.account.exportLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'),
-      );
-    } finally {
-      setExporting(false);
-    }
+    shareMyData(session.user.id, t('account.exportTitle'))
+      .catch((failure: unknown) => {
+        const status = failure instanceof ApiError ? failure.status : -1;
+        Alert.alert(
+          t('account.exportTitle'),
+          status === 429 ? t('app.account.exportLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'),
+        );
+      })
+      .then(() => setExporting(false));
   };
 
   return (

@@ -276,6 +276,8 @@ describe('a tapped push', () => {
     server.on('POST /api/mobile/v1/actions/openNotification', { ok: true, data: { fallback: '/notifications?link=gone' } });
     act(() => listener?.(response(NOTIFICATION)));
     await waitFor(() => expect(result.getPathname()).toBe('/notifications'));
+    // With the reason, which the feed says as it does for a tap in the bell.
+    expect(result.getSearchParams()).toEqual({ link: 'gone' });
   });
 
   it('asks somebody signed out to sign in, and comes back to the feed', async () => {

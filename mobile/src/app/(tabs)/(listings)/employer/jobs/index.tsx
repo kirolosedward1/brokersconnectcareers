@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { Archive, BriefcaseBusiness, Eye, MapPin, Pencil, Plus, RotateCcw, SendHorizontal, Users } from 'lucide-react-native';
+import { Archive, BriefcaseBusiness, Eye, MapPin, Pencil, Plus, RotateCcw, Users } from 'lucide-react-native';
 import { formatDate, formatNumber } from '@/lib/format';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -14,6 +14,8 @@ import { HeaderBell } from '~/components/notifications/header-bell';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
+import { PageFooter } from '~/components/ui/page-footer';
+import { SendForward } from '~/components/ui/icons';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
@@ -84,9 +86,15 @@ export default function ListingsScreen() {
       <FlashList
         data={rows}
         keyExtractor={(row) => row.id}
-        renderItem={({ item }) => <ListingRow listing={item} />}
+        // Keyed on the listing: the list reuses a row's component for another
+        // listing as it scrolls, and a half-typed appeal or an error must not go with it.
+        renderItem={({ item }) => <ListingRow key={item.id} listing={item} />}
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
+        // The appeal is typed in a row: the first tap on Send must send, not only close the keyboard.
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
         ListHeaderComponent={
           <View style={{ gap: space[3], marginBottom: space[4] }}>
@@ -118,6 +126,7 @@ export default function ListingsScreen() {
             <Button label={t('employer.newJob')} onPress={newJob} />
           </View>
         }
+        ListFooterComponent={<PageFooter query={listings} />}
         onEndReached={() => {
           if (listings.hasNextPage && !listings.isFetchingNextPage) listings.fetchNextPage();
         }}
@@ -283,7 +292,7 @@ function StatusActions({ jobId, status, title }: { jobId: string; status: JobSta
         accessibilityLabel={`${t('employer.submitForReview')}: ${title}`}
         variant="secondary"
         size="sm"
-        icon={<SendHorizontal size={16} color={colors.primary} />}
+        icon={<SendForward size={16} color={colors.primary} />}
         loading={move.isPending}
         onPress={() => go('pending_review')}
       />

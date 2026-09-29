@@ -3,9 +3,11 @@ import { Text } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { fireEvent, render, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { ChipGroup } from '~/components/profile/fields';
 import type { DistrictRow, JobRow, ProfileRow } from '@/lib/supabase/database.types';
-import { decimalNumber, initialValues, problemsOn, stepOf } from '~/features/employer/job-form';
+import { decimalNumber, initialValues, MAX_DEVELOPERS, problemsOn, stepOf } from '~/features/employer/job-form';
+import { useEmployerSummary } from '~/features/employer/overview';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -81,6 +83,7 @@ beforeEach(async () => {
   });
   server.on('POST /api/mobile/v1/actions/salaryReferenceFor', { ok: true, data: { reference: { sample: 6, low: 8000, high: 14000 } } });
   server.on('POST /api/mobile/v1/actions/saveJob', { ok: true, data: { id: 'j-new' } });
+  server.on('POST /rest/v1/rpc/employer_summary', { jobs_live: 1 });
 
   await supabase.auth.signOut({ scope: 'local' });
   await AsyncStorage.clear();
@@ -116,6 +119,8 @@ function Root() {
 }
 
 function Console() {
+  // As the real console: its figures are read, and read again after every save.
+  useEmployerSummary();
   return <Text>the console</Text>;
 }
 
@@ -258,6 +263,41 @@ describe('a listing on the board', () => {
     await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
   });
 
+  it('closes once saved, without waiting for every employer figure to be read again', async () => {
+    let saves = 0;
+    // Read again after the save, the listing comes back at its new version.
+    server.on('GET /rest/v1/jobs', () => [{ ...liveJob, version: saves ? 5 : 4 }]);
+    server.on('POST /rest/v1/rpc/employer_summary', { jobs_live: 1 });
+    server.on('POST /api/mobile/v1/actions/saveJob', () => {
+      saves += 1;
+      return { ok: true, data: { id: liveJob.id } };
+    });
+    // The console's figures take their time after the save, as a slow answer does.
+    let letGo: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      letGo = resolve;
+    });
+    const plain = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes('/rpc/employer_summary') && saves) await held;
+      return plain(input, init);
+    }) as typeof fetch;
+
+    try {
+      const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+      fireEvent.press(await screen.findByRole('button', { name: ar.jobForm.review }));
+      fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+
+      await waitFor(() => expect(saves).toBe(1));
+      await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+      expect(screen.queryByLabelText(ar.jobForm.titleAr)).toBeNull();
+    } finally {
+      letGo();
+      globalThis.fetch = plain;
+    }
+  });
+
   it("says so when a colleague saved it first, rather than overwriting their work", async () => {
     server.on('POST /api/mobile/v1/actions/saveJob', { ok: false, error: 'stale' });
     renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
@@ -299,5 +339,30 @@ describe('the rules each step keeps', () => {
   it('sends a refusal back to the earliest step it names', () => {
     expect(stepOf(['descriptionAr', 'basicSalaryMax'])).toBe(1);
     expect(stepOf(['form'])).toBeNull();
+  });
+});
+
+describe('a list with a limit', () => {
+  it('takes no more than the website does, and says so, rather than being refused in silence', () => {
+    const options = Array.from({ length: MAX_DEVELOPERS + 1 }, (_, index) => ({ value: index + 1, label: `مطور ${index + 1}` }));
+    const chosen = options.slice(0, MAX_DEVELOPERS).map((option) => option.value);
+    const toggled: number[] = [];
+    render(
+      <ThemeProvider>
+        <I18nProvider>
+          <ChipGroup legend="المطورين" options={options} selected={chosen} onToggle={(value) => toggled.push(value)} max={MAX_DEVELOPERS} />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+
+    const last = screen.getByRole('button', { name: `مطور ${MAX_DEVELOPERS + 1}` });
+    expect(last.props.accessibilityState).toMatchObject({ disabled: true });
+    fireEvent.press(last);
+    expect(toggled).toEqual([]);
+    // One already chosen can still be let go.
+    fireEvent.press(screen.getByRole('button', { name: 'مطور 1' }));
+    expect(toggled).toEqual([1]);
+    // The limit is said under the list.
+    expect(screen.getByText(new RegExp(`^${ar.app.profile.chooseUpTo.split('<v>')[0]}`))).toBeTruthy();
   });
 });

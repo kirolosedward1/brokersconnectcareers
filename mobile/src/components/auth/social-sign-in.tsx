@@ -49,13 +49,16 @@ export function SocialSignIn({
   const google = Boolean(config.data?.providers.google);
   if (!apple && !google) return null;
 
-  const run = async (provider: () => Promise<ProviderOutcome>) => {
+  // A promise chain, not try/finally, which the React Compiler does not compile.
+  const run = (provider: () => Promise<ProviderOutcome>) => {
     onBusy(true);
-    try {
-      await onOutcome(await provider());
-    } finally {
-      onBusy(false);
-    }
+    const done = () => onBusy(false);
+    return provider()
+      .then(onOutcome)
+      .then(done, (failure: unknown) => {
+        done();
+        throw failure;
+      });
   };
 
   return (

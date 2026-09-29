@@ -93,17 +93,16 @@ export function CvButton({ handle }: { handle: string }) {
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const open = async () => {
+  // A promise chain, not try/finally, which the React Compiler does not compile.
+  const open = () => {
     setError(null);
     setOpening(true);
-    try {
-      await openAgentCv(handle);
-    } catch (failure) {
-      const status = failure instanceof ApiError ? failure.status : -1;
-      setError(status === 429 ? t('app.applicants.cvLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'));
-    } finally {
-      setOpening(false);
-    }
+    openAgentCv(handle)
+      .catch((failure: unknown) => {
+        const status = failure instanceof ApiError ? failure.status : -1;
+        setError(status === 429 ? t('app.applicants.cvLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'));
+      })
+      .then(() => setOpening(false));
   };
 
   return (

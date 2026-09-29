@@ -33,15 +33,24 @@ export function Avatar({
   seed?: string;
   size?: keyof typeof SIZES;
 }) {
-  const [failed, setFailed] = useState(false);
   const px = SIZES[size];
   const photo = trustedAvatarUrl(src, env.supabaseUrl);
+  // Which photo failed, not whether one did: a list reuses this component for
+  // other people as it scrolls, and a failure must not follow the row.
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   const shape = { width: px, height: px, borderRadius: px / 2, overflow: 'hidden' as const };
 
-  if (photo && !failed) {
+  if (photo && failedPhoto !== photo) {
     return (
       <View accessible={false} style={shape}>
-        <Image source={{ uri: photo }} contentFit="cover" style={{ flex: 1 }} onError={() => setFailed(true)} accessible={false} />
+        <Image
+          source={{ uri: photo }}
+          recyclingKey={photo}
+          contentFit="cover"
+          style={{ flex: 1 }}
+          onError={() => setFailedPhoto(photo)}
+          accessible={false}
+        />
       </View>
     );
   }

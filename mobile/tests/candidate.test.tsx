@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Alert, Text, View, type AlertButton } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
@@ -259,6 +259,25 @@ describe('the feed', () => {
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);
     expect(bodyOf('/api/mobile/v1/actions/openNotification')).toEqual({ input: { id: feed[0].id } });
+  });
+
+  it('goes back to the page the bell was opened from when that is where it leads, rather than a second copy', async () => {
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: '/dashboard/applications' });
+    await waitFor(() => expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']));
+    act(() => router.push('/notifications'));
+    fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
+
+    await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
+    // One screen in the tab: Back does not show the feed again.
+    act(() => router.back());
+    expect(result.getPathname()).not.toBe('/notifications');
+  });
+
+  it('says why when a tapped push opened it for a page that is gone', async () => {
+    await signedIn();
+    renderRouter(app, { initialUrl: '/notifications?link=gone' });
+    expect(await screen.findByText(ar.notifications.linkGone)).toBeTruthy();
   });
 
   it('says so when the page a notification pointed at is gone', async () => {

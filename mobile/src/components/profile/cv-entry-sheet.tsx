@@ -78,9 +78,9 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
     const reason = failure instanceof SaveRefused ? failure.reason : 'failed';
     const fields = failure instanceof SaveRefused ? failure.fieldErrors : undefined;
     if (reason === 'cap') return setErrors({ form: t('cv.capReached') });
-    if (fields?.ended || fields?.expires) {
-      return setErrors({ [fields.ended ? 'ended' : 'expires']: t('app.profile.endBeforeStart') });
-    }
+    // Named, not a computed key, which the React Compiler does not compile.
+    if (fields?.ended) return setErrors({ ended: t('app.profile.endBeforeStart') });
+    if (fields?.expires) return setErrors({ expires: t('app.profile.endBeforeStart') });
     setErrors({ form: t('common.errorBody') });
   };
   const done = { onSuccess: onClose, onError };

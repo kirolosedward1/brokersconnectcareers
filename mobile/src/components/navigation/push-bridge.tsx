@@ -58,10 +58,14 @@ export function PushBridge() {
     if (off) forgetThisPhone().catch(() => {});
   }, [off, userId]);
 
-  // Arriving while the app is open: the bell's count and feed are stale now.
+  // Arriving while the app is open: the bell's count and feed are stale now,
+  // and so may the account be — an approval or a suspension is told this way,
+  // and the screens that depend on it (the directory, the standing notice)
+  // follow without waiting for the app to come back from the background.
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener(() => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['viewer'] });
     });
     return () => subscription.remove();
   }, [queryClient]);
@@ -95,6 +99,7 @@ export function PushBridge() {
     destinationOf(id).then((href) => {
       openWhenReady(href);
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['viewer'] });
     });
   }, [tapped, known, userId, queryClient]);
 

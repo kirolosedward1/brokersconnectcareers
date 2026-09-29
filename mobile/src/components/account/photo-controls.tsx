@@ -34,17 +34,16 @@ export function PhotoControls({ hasPhoto }: { hasPhoto: boolean }) {
         : t('common.errorBody');
   };
 
-  const choose = async () => {
+  // Promise chains, not try/finally, which the React Compiler does not compile.
+  const choose = () => {
     setError(null);
     setPicking(true);
-    try {
-      const photo = await pickPhoto();
-      if (photo) upload.mutate(photo, { onError: (failure) => setError(explain(failure)) });
-    } catch (failure) {
-      setError(explain(failure));
-    } finally {
-      setPicking(false);
-    }
+    pickPhoto()
+      .then((photo) => {
+        if (photo) upload.mutate(photo, { onError: (failure) => setError(explain(failure)) });
+      })
+      .catch((failure: unknown) => setError(explain(failure)))
+      .then(() => setPicking(false));
   };
 
   const confirmRemove = () =>

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
@@ -13,6 +13,7 @@ import { DirectoryClosed } from '~/components/directory/directory-closed';
 import { ShortlistIcon, useShortlistToggle } from '~/components/directory/shortlist-controls';
 import { Avatar } from '~/components/ui/avatar';
 import { Button } from '~/components/ui/button';
+import { PageFooter } from '~/components/ui/page-footer';
 import { Card } from '~/components/ui/card';
 import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
@@ -34,7 +35,6 @@ import { space } from '~/theme/tokens';
  */
 export default function ShortlistScreen() {
   const t = useTranslations();
-  const { colors } = useTheme();
   const { actor } = useSession();
   const shortlist = useShortlist();
   const ids = useShortlistedIds().data;
@@ -104,13 +104,7 @@ export default function ShortlistScreen() {
             action={<Button label={t('nav.agents')} variant="outline" onPress={() => router.dismissTo('/agents')} />}
           />
         }
-        ListFooterComponent={
-          shortlist.isFetchingNextPage ? (
-            <View style={{ paddingTop: space[4] }}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
-          ) : null
-        }
+        ListFooterComponent={<PageFooter query={shortlist} />}
         onEndReached={() => {
           if (shortlist.hasNextPage && !shortlist.isFetchingNextPage) shortlist.fetchNextPage();
         }}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
@@ -11,6 +11,7 @@ import { localized } from '@/lib/locale';
 import { HeaderBell } from '~/components/notifications/header-bell';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { Button } from '~/components/ui/button';
+import { PageFooter } from '~/components/ui/page-footer';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
@@ -166,13 +167,7 @@ export default function CompaniesScreen() {
             }
           />
         }
-        ListFooterComponent={
-          directory.isFetchingNextPage ? (
-            <View style={{ paddingTop: space[4] }}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
-          ) : null
-        }
+        ListFooterComponent={<PageFooter query={directory} />}
         onEndReached={() => {
           if (directory.hasNextPage && !directory.isFetchingNextPage) directory.fetchNextPage();
         }}

@@ -1,7 +1,9 @@
 import { ScrollView, View } from 'react-native';
+import { useTranslations } from 'use-intl';
 import { westernDigits } from '@/lib/search/arabic';
 import { Chip } from '~/components/ui/chip';
 import { Text } from '~/components/ui/text';
+import { markupTags } from '~/i18n/rich';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -17,6 +19,7 @@ export function ChipGroup<T extends string | number>({
   selected,
   onToggle,
   scroll = false,
+  max,
 }: {
   legend: string;
   options: { value: T; label: string }[];
@@ -24,18 +27,30 @@ export function ChipGroup<T extends string | number>({
   onToggle: (value: T) => void;
   /** A long list (districts, developers) in a box of its own height, as on the website. */
   scroll?: boolean;
+  /**
+   * The most the website's schema takes. Past it the save was refused with
+   * nothing to say which list was too long; now the rest wait until one is
+   * let go, and the limit is said under the list.
+   */
+  max?: number;
 }) {
+  const t = useTranslations();
   const { colors } = useTheme();
+  const full = max != null && selected.length >= max;
   const chips = (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-      {options.map((option) => (
-        <Chip
-          key={String(option.value)}
-          label={option.label}
-          selected={selected.includes(option.value)}
-          onPress={() => onToggle(option.value)}
-        />
-      ))}
+      {options.map((option) => {
+        const on = selected.includes(option.value);
+        return (
+          <Chip
+            key={String(option.value)}
+            label={option.label}
+            selected={on}
+            disabled={full && !on}
+            onPress={() => onToggle(option.value)}
+          />
+        );
+      })}
     </View>
   );
 
@@ -46,13 +61,18 @@ export function ChipGroup<T extends string | number>({
       </Text>
       {scroll ? (
         <View style={{ maxHeight: 224, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border }}>
-          <ScrollView nestedScrollEnabled contentContainerStyle={{ padding: space[3] }}>
+          <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: space[3] }}>
             {chips}
           </ScrollView>
         </View>
       ) : (
         chips
       )}
+      {max != null && (full || options.length > max) ? (
+        <Text variant="caption" tone={full ? 'foreground' : 'mutedForeground'} accessibilityLiveRegion="polite">
+          {t.markup('app.profile.chooseUpTo', { count: max, ...markupTags })}
+        </Text>
+      ) : null}
     </View>
   );
 }

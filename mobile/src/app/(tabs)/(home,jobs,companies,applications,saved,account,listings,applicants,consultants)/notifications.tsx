@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, RefreshControl, View } from 'react-native';
-import { router, Stack, type Href } from 'expo-router';
+import { RefreshControl, View } from 'react-native';
+import { router, Stack, useLocalSearchParams, useNavigation, type Href } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
@@ -10,6 +10,7 @@ import type { NotificationRow } from '@/lib/supabase/database.types';
 import { NotificationItem } from '~/components/notifications/notification-item';
 import { Button } from '~/components/ui/button';
 import { Notice } from '~/components/ui/notice';
+import { PageFooter } from '~/components/ui/page-footer';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { markReadLocally, useMarkAllRead, useNotificationFeed, useUnreadCount } from '~/features/notifications/queries';
@@ -20,6 +21,21 @@ import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 
 type LinkNotice = 'gone' | 'unavailable' | 'failed' | null;
+
+const linkNotice = (reason: unknown): LinkNotice => (reason === 'gone' || reason === 'unavailable' ? reason : null);
+
+/** The address of a screen in a stack, from its route: `dashboard/applications/index` is /dashboard/applications. */
+function pathOfRoute(route: { name: string; params?: object }): string {
+  const params = (route.params ?? {}) as Record<string, unknown>;
+  const segments = route.name
+    .split('/')
+    .filter((segment) => segment !== 'index' && !/^\(.*\)$/.test(segment))
+    .map((segment) => {
+      const dynamic = /^\[(.+)\]$/.exec(segment);
+      return dynamic ? String(params[dynamic[1]] ?? '') : segment;
+    });
+  return `/${segments.join('/')}`;
+}
 
 /**
  * The bell's feed — the website's /notifications: newest first, a page at a
@@ -40,37 +56,45 @@ export default function NotificationsScreen() {
   const feed = useNotificationFeed();
   const unread = useUnreadCount().data ?? 0;
   const markAll = useMarkAllRead();
+  const navigation = useNavigation();
+  // A tapped push whose link is gone opens here with the reason in the address.
+  const { link } = useLocalSearchParams<{ link?: string }>();
   const [opening, setOpening] = useState<string | null>(null);
-  const [notice, setNotice] = useState<LinkNotice>(null);
+  const [notice, setNotice] = useState<LinkNotice>(() => linkNotice(link));
 
   const rows = feed.data?.pages.flatMap((page) => page.rows) ?? [];
   // "Mark all read" is bounded by the newest row this screen has shown.
   const newestShown = rows[0]?.created_at ?? null;
 
-  const open = async (row: NotificationRow) => {
+  const follow = (href: string) => {
+    const target = routeInside(href, actor);
+    // The page the bell was opened from, when that is where the notification
+    // leads: back to it, rather than a second copy of it on top of the feed.
+    const routes = navigation.getState()?.routes ?? [];
+    const below = routes.length > 1 ? routes[routes.length - 2] : null;
+    if (below && pathOfRoute(below) === target) router.back();
+    else router.navigate(target as Href);
+  };
+
+  const open = (row: NotificationRow) => {
     if (!userId || opening) return;
     setOpening(row.id);
     setNotice(null);
     markReadLocally(queryClient, userId, row.id);
-    try {
-      const result = await callAction('openNotification', { id: row.id });
-      const destination = result.ok ? result.data : undefined;
-      if (!destination) {
-        setNotice('failed');
-        return;
-      }
-      if ('href' in destination) {
-        router.navigate(routeInside(destination.href, actor) as Href);
-        return;
-      }
-      const reason = new URL(destination.fallback, 'https://app.invalid').searchParams.get('link');
-      setNotice(reason === 'gone' || reason === 'unavailable' ? reason : null);
-    } catch {
-      setNotice('failed');
-    } finally {
-      setOpening(null);
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    }
+    callAction('openNotification', { id: row.id })
+      .then((result) => {
+        const destination = result.ok ? result.data : undefined;
+        if (!destination) return setNotice('failed');
+        if ('href' in destination) return follow(destination.href);
+        setNotice(linkNotice(new URL(destination.fallback, 'https://app.invalid').searchParams.get('link')));
+      })
+      .catch(() => setNotice('failed'))
+      .then(() => {
+        setOpening(null);
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        // What a notification says has often changed the account itself: an approval, a suspension.
+        queryClient.invalidateQueries({ queryKey: ['viewer'] });
+      });
   };
 
   const header = (
@@ -140,9 +164,7 @@ export default function NotificationsScreen() {
           if (feed.hasNextPage && !feed.isFetchingNextPage) feed.fetchNextPage();
         }}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={
-          feed.isFetchingNextPage ? <ActivityIndicator color={colors.primary} style={{ marginTop: space[4] }} /> : null
-        }
+        ListFooterComponent={<PageFooter query={feed} />}
         refreshControl={
           <RefreshControl
             refreshing={feed.isRefetching && !feed.isFetchingNextPage}

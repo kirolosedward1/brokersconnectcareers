@@ -20,6 +20,7 @@ export function Chip({
   onPress,
   removable = false,
   selected = false,
+  disabled = false,
   accessibilityLabel,
   icon,
 }: {
@@ -27,6 +28,8 @@ export function Chip({
   onPress: () => void;
   removable?: boolean;
   selected?: boolean;
+  /** Not choosable now (a list at its limit), and said so to VoiceOver. */
+  disabled?: boolean;
   accessibilityLabel?: string;
   icon?: ReactNode;
 }) {
@@ -36,11 +39,13 @@ export function Chip({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={removable ? undefined : { selected }}
+      accessibilityState={removable ? undefined : { selected, disabled }}
       accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
+      disabled={disabled}
       hitSlop={4}
       style={({ pressed }) => ({
+        opacity: disabled ? 0.45 : 1,
         minHeight: 36,
         flexDirection: 'row',
         alignItems: 'center',

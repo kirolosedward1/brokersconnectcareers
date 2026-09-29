@@ -29,8 +29,10 @@ export default function EditJobScreen() {
   else if (!editable.data) body = <NotFoundState />;
   else {
     body = (
+      // Keyed on the listing, not its version: a new version (its own save, a
+      // moderator's decision) must not start the wizard again over what is typed.
       <JobWizard
-        key={`${editable.data.job.id}:${editable.data.job.version}`}
+        key={editable.data.job.id}
         job={editable.data.job}
         developerIds={editable.data.developerIds}
       />
