@@ -94,6 +94,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    // Drawing over other apps, which the template asks for and the app never
+    // does; Google Play reviews it as a sensitive permission.
+    blockedPermissions: ['android.permission.SYSTEM_ALERT_WINDOW'],
   },
   plugins: [
     'expo-router',
@@ -106,7 +109,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         dark: { backgroundColor: '#0B0F19', image: './assets/images/splash-icon.png' },
       },
     ],
-    'expo-secure-store',
+    // The session key sits in the keychain without a biometric gate, so no
+    // Face ID purpose string (the plugin's default is an English one).
+    ['expo-secure-store', { faceIDPermission: false }],
     ['expo-localization', { supportsRTL: true, forcesRTL: true }],
     'expo-web-browser',
     'expo-font',
