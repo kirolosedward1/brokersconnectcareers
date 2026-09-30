@@ -11,6 +11,7 @@ import type {
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
+import { KeyboardRoom } from '~/components/ui/keyboard-room';
 import { Notice } from '~/components/ui/notice';
 import { Select } from '~/components/ui/select';
 import { Text } from '~/components/ui/text';
@@ -42,17 +43,19 @@ export function CvEntrySheet({ agentId, entry, onClose }: { agentId: string; ent
   const close = () => (dirty.current ? confirm(onClose) : onClose());
   return (
     <Modal visible={entry !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
-      {/* A fresh form for every entry opened. */}
-      {entry ? (
-        <EntryForm
-          key={`${entry.section}:${entry.row?.id ?? 'new'}`}
-          agentId={agentId}
-          entry={entry}
-          onClose={onClose}
-          onRequestClose={close}
-          onDirty={onDirty}
-        />
-      ) : null}
+      <KeyboardRoom>
+        {/* A fresh form for every entry opened. */}
+        {entry ? (
+          <EntryForm
+            key={`${entry.section}:${entry.row?.id ?? 'new'}`}
+            agentId={agentId}
+            entry={entry}
+            onClose={onClose}
+            onRequestClose={close}
+            onDirty={onDirty}
+          />
+        ) : null}
+      </KeyboardRoom>
     </Modal>
   );
 }

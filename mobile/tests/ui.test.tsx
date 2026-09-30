@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react';
-import { Platform, ScrollView, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Stack } from 'expo-router';
+import { renderRouter } from 'expo-router/testing-library';
+import TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
 import { AuthScroll } from '~/components/auth/auth-scroll';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { Avatar } from '~/components/ui/avatar';
+import { KeyboardRoom, roomForScreen } from '~/components/ui/keyboard-room';
 import { PageFooter } from '~/components/ui/page-footer';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { ApiError } from '~/lib/api';
@@ -97,5 +101,77 @@ describe('a sign-in page', () => {
     } finally {
       os.restore();
     }
+  });
+});
+
+describe('the keyboard', () => {
+  it('leaves iOS to its scroll views, which make room themselves', () => {
+    render(
+      <KeyboardRoom>
+        <Text>a form</Text>
+      </KeyboardRoom>,
+    );
+    expect(screen.UNSAFE_queryByType(KeyboardAvoidingView)).toBeNull();
+  });
+
+  it('takes the part of the screen it covers off the bottom on Android, drawn edge to edge', () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    try {
+      render(
+        <KeyboardRoom>
+          <Text>a form</Text>
+        </KeyboardRoom>,
+      );
+      expect(screen.UNSAFE_getByType(KeyboardAvoidingView).props.behavior).toBe('padding');
+      expect(screen.getByText('a form')).toBeTruthy();
+    } finally {
+      os.restore();
+    }
+  });
+});
+
+describe('where the keyboard is given room', () => {
+  // The root stack as the app has it, and the tabs' own stack; a plain stack stands in for the tab bar.
+  const app = {
+    _layout: () => (
+      <ThemeProvider>
+        <Stack screenOptions={{ headerShown: false }} screenLayout={roomForScreen} />
+      </ThemeProvider>
+    ),
+    '(tabs)/_layout': () => <Stack screenOptions={{ headerShown: false }} />,
+    '(tabs)/(jobs)/_layout': TabStack,
+    '(tabs)/(jobs)/jobs/index': () => <Text>the board</Text>,
+    '(auth)/sign-in': () => <Text>sign in</Text>,
+  };
+  const rooms = () => screen.UNSAFE_queryAllByType(KeyboardAvoidingView).length;
+
+  afterEach(() => jest.useRealTimers());
+
+  it('on Android, once for a tab, above its tab bar: the keyboard covers the bar rather than lifting it', () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    try {
+      renderRouter(app, { initialUrl: '/jobs' });
+      expect(screen.getByText('the board')).toBeTruthy();
+      expect(rooms()).toBe(1);
+    } finally {
+      os.restore();
+    }
+  });
+
+  it('on Android, once for a sheet of the root stack', () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    try {
+      renderRouter(app, { initialUrl: '/sign-in' });
+      expect(screen.getByText('sign in')).toBeTruthy();
+      expect(rooms()).toBe(1);
+    } finally {
+      os.restore();
+    }
+  });
+
+  it('nowhere on iOS', () => {
+    renderRouter(app, { initialUrl: '/jobs' });
+    expect(screen.getByText('the board')).toBeTruthy();
+    expect(rooms()).toBe(0);
   });
 });

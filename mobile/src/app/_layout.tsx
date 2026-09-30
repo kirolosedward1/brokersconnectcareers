@@ -15,6 +15,7 @@ import { PendingPath } from '~/components/navigation/pending-path';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
+import { roomForScreen } from '~/components/ui/keyboard-room';
 import { I18nProvider } from '~/i18n/provider';
 import { persistOptions, queryClient } from '~/lib/query';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -80,7 +81,7 @@ function AppStack() {
 
   return (
     <UpdateGate>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack screenOptions={{ headerShown: false }} screenLayout={roomForScreen}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
         <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />

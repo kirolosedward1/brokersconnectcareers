@@ -20,33 +20,40 @@ import type { MobileConfig } from '@/lib/mobile-api/reads';
  *                     of a deletion only the team can finish.
  *   appStoreUrl       the app's App Store page, where "update the app" leads
  *                     (MOBILE_APP_STORE_URL); null until the app is listed.
+ *   minAndroidAppVersion, playStoreUrl
+ *                     the same two for Android, whose builds are numbered and
+ *                     released apart (MOBILE_MIN_ANDROID_APP_VERSION, falling
+ *                     back to the iPhone's; MOBILE_PLAY_STORE_URL).
  */
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const providers = await enabledProviders();
+  const minAppVersion = configuredValue(process.env.MOBILE_MIN_APP_VERSION) ?? '1.0.0';
 
   return NextResponse.json(
     {
-      minAppVersion: configuredValue(process.env.MOBILE_MIN_APP_VERSION) ?? '1.0.0',
+      minAppVersion,
       turnstileSiteKey: configuredValue(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) ?? null,
       providers,
       englishEnabled: ENGLISH_ENABLED,
       billingEnabled: BILLING_ENABLED,
       supportEmail: configuredValue(env.supportEmail) ?? null,
-      appStoreUrl: appStoreUrl(),
+      appStoreUrl: storeUrl(process.env.MOBILE_APP_STORE_URL, 'apps.apple.com'),
+      minAndroidAppVersion: configuredValue(process.env.MOBILE_MIN_ANDROID_APP_VERSION) ?? minAppVersion,
+      playStoreUrl: storeUrl(process.env.MOBILE_PLAY_STORE_URL, 'play.google.com'),
     } satisfies MobileConfig,
     { headers: { 'cache-control': 'public, s-maxage=300, stale-while-revalidate=600' } },
   );
 }
 
-/** Only an https address on Apple's own host: this is opened on people's phones. */
-function appStoreUrl(): string | null {
-  const value = configuredValue(process.env.MOBILE_APP_STORE_URL);
+/** Only an https address on the store's own host: this is opened on people's phones. */
+function storeUrl(raw: string | undefined, host: 'apps.apple.com' | 'play.google.com'): string | null {
+  const value = configuredValue(raw);
   if (!value) return null;
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' && url.hostname === 'apps.apple.com' ? url.toString() : null;
+    return url.protocol === 'https:' && url.hostname === host ? url.toString() : null;
   } catch {
     return null;
   }

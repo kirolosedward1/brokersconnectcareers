@@ -16,6 +16,32 @@ const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? 'https://www.brokersconnect
 const SITE_HOST = new URL(SITE_URL).host;
 
 /**
+ * The website's pages the app has screens for, which Android opens in the app
+ * (App Links) — the list the iOS file names (src/lib/apple/app-site-association.ts,
+ * OPEN_IN_THE_APP; a test keeps the two together), under /en too for the day
+ * English is published. A section is its own page and the pages under it
+ * (`/jobs`, `/jobs/…`), never whatever begins the same: /employers is the
+ * website's page for companies, not the employer's console.
+ * Android verifies them against the site's /.well-known/assetlinks.json,
+ * which names this package and its signing certificate (ANDROID_CERT_SHA256 on
+ * the website); until then they open in the browser.
+ */
+const APP_LINK_PATHS = [
+  '/jobs',
+  '/jobs/*',
+  '/companies',
+  '/companies/*',
+  '/agents',
+  '/agents/*',
+  '/notifications',
+  '/dashboard',
+  '/dashboard/*',
+  '/employer',
+  '/employer/*',
+  '/auth/confirm',
+];
+
+/**
  * The EAS project's id: `npx eas-cli@latest init` prints it, and it goes here
  * in place of null. It is not a secret. Push tokens are issued for it, and the
  * build server reads this file again, so an id kept only in a local shell
@@ -94,9 +120,28 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        category: ['BROWSABLE', 'DEFAULT'],
+        data: ['', '/en'].flatMap((locale) =>
+          APP_LINK_PATHS.map((path) =>
+            path.endsWith('/*')
+              ? { scheme: 'https', host: SITE_HOST, pathPrefix: `${locale}${path.slice(0, -1)}` }
+              : { scheme: 'https', host: SITE_HOST, path: `${locale}${path}` },
+          ),
+        ),
+      },
+    ],
     // Drawing over other apps, which the template asks for and the app never
     // does; Google Play reviews it as a sensitive permission.
     blockedPermissions: ['android.permission.SYSTEM_ALERT_WINDOW'],
+    // Firebase's google-services.json, without which Android has no push token:
+    // an EAS file variable (GOOGLE_SERVICES_JSON, a path to it on the build
+    // server) — not committed, the repository is public. Unset, the Android app
+    // does not offer pushes (pushAvailable, src/features/push/device.ts).
+    googleServicesFile: process.env.GOOGLE_SERVICES_JSON || undefined,
   },
   plugins: [
     'expo-router',

@@ -1,4 +1,4 @@
-import { Linking, Text } from 'react-native';
+import { Linking, Platform, Text } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { UpdateGate } from '~/components/navigation/update-gate';
@@ -85,6 +85,38 @@ describe('the gate', () => {
     await settle();
     expect(screen.getByText('the app')).toBeTruthy();
     expect(screen.queryByText(ar.app.update.title)).toBeNull();
+  });
+
+  it('holds Android to its own floor, and leads to the Play Store rather than the App Store', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    const play = 'https://play.google.com/store/apps/details?id=net.brokersconnect.app';
+    server.on(
+      'GET /api/mobile/v1/config',
+      mobileConfig({
+        minAppVersion: '1.0.0',
+        appStoreUrl: 'https://apps.apple.com/app/brokers-connect/id000000000',
+        minAndroidAppVersion: '1.3.0',
+        playStoreUrl: play,
+      }),
+    );
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    try {
+      gate();
+      expect(await screen.findByText(ar.app.update.title)).toBeTruthy();
+      fireEvent.press(screen.getByRole('button', { name: ar.app.update.cta }));
+      expect(openURL).toHaveBeenCalledWith(play);
+    } finally {
+      openURL.mockRestore();
+      os.restore();
+    }
+  });
+
+  it("does not hold an iPhone to Android's floor", async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ minAppVersion: '1.0.0', minAndroidAppVersion: '1.3.0' }));
+    gate();
+    await waitFor(() => expect(server.asked('/api/mobile/v1/config').length).toBeGreaterThan(0));
+    await settle();
+    expect(screen.getByText('the app')).toBeTruthy();
   });
 
   it('never locks anybody out because the question could not be asked', async () => {

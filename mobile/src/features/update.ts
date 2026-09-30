@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Application from 'expo-application';
 import { useMobileConfig } from '~/features/config';
@@ -28,9 +29,16 @@ export function appVersion(): string | null {
   return Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? null;
 }
 
+/**
+ * Each platform against its own floor and its own store: Android's builds are
+ * released apart from the iPhone's, and the App Store is no use on Android.
+ * A website that does not yet say Android's floor gives the iPhone's.
+ */
 export function useUpdateRequired(): { required: boolean; storeUrl: string | null } {
   const config = useMobileConfig().data;
   const version = appVersion();
-  const required = Boolean(config && version && isOlderThan(version, config.minAppVersion));
-  return { required, storeUrl: config?.appStoreUrl ?? null };
+  const android = Platform.OS === 'android';
+  const minimum = android ? (config?.minAndroidAppVersion ?? config?.minAppVersion) : config?.minAppVersion;
+  const required = Boolean(minimum && version && isOlderThan(version, minimum));
+  return { required, storeUrl: (android ? config?.playStoreUrl : config?.appStoreUrl) ?? null };
 }

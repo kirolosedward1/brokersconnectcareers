@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Linking, Text } from 'react-native';
+import { Linking, Platform, Text } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
@@ -9,7 +10,7 @@ import type { ProfileRow } from '@/lib/supabase/database.types';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { PushPrompt } from '~/components/push/push-prompt';
-import { signOutHere } from '~/features/push/device';
+import { pushAvailable, signOutHere } from '~/features/push/device';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -325,6 +326,23 @@ describe('the badge', () => {
     unread = 3;
     renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(Notifications.setBadgeCountAsync).toHaveBeenCalledWith(3));
+  });
+});
+
+describe('Android', () => {
+  it('offers pushes only to a build that has Firebase, where its token comes from', () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    const config = Constants.expoConfig as { android?: { googleServicesFile?: string } };
+    const before = config.android;
+    try {
+      config.android = {};
+      expect(pushAvailable()).toBe(false);
+      config.android = { googleServicesFile: './google-services.json' };
+      expect(pushAvailable()).toBe(true);
+    } finally {
+      config.android = before;
+      os.restore();
+    }
   });
 });
 

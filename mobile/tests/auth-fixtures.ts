@@ -108,6 +108,8 @@ export function mobileConfig(overrides: Partial<MobileConfig> = {}): MobileConfi
     billingEnabled: false,
     supportEmail: 'help@brokersconnect.net',
     appStoreUrl: null,
+    minAndroidAppVersion: '1.0.0',
+    playStoreUrl: null,
     ...overrides,
   };
 }

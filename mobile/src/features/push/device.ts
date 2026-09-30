@@ -66,13 +66,16 @@ if (Platform.OS === 'android') {
  *
  * Expo's push service issues one only for an EAS project (app.config.ts,
  * extra.eas.projectId), and none is set up yet; Expo Go running this project
- * has none either. Without one, the phone could be asked and say yes, the
- * token would never come, and the switch would read "on" for nothing. So
- * pushes are not offered: no prompt on Home, a sentence in the account
- * instead of the switch, and nothing registered or unregistered.
+ * has none either. On Android the token comes through Firebase as well, which
+ * a build has only when it was given google-services.json (app.config.ts,
+ * android.googleServicesFile). Without them, the phone could be asked and say
+ * yes, the token would never come, and the switch would read "on" for
+ * nothing. So pushes are not offered: no prompt on Home, a sentence in the
+ * account instead of the switch, and nothing registered or unregistered.
  */
 export function pushAvailable(): boolean {
-  return Boolean(Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId);
+  const project = Boolean(Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId);
+  return project && (Platform.OS !== 'android' || Boolean(Constants.expoConfig?.android?.googleServicesFile));
 }
 
 /** Whether the phone lets the app notify: provisional and ephemeral count as yes. */

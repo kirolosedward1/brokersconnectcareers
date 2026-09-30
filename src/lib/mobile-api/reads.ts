@@ -24,8 +24,15 @@ export type MobileConfig = {
   billingEnabled: boolean;
   /** SUPPORT_EMAIL, the address the website's footer offers; null while unset. */
   supportEmail: string | null;
-  /** MOBILE_APP_STORE_URL, where "update the app" leads; null until the app is listed. */
+  /** MOBILE_APP_STORE_URL, where "update the app" leads on an iPhone; null until the app is listed. */
   appStoreUrl: string | null;
+  /**
+   * The Android app's own floor (MOBILE_MIN_ANDROID_APP_VERSION): its builds
+   * are numbered and released apart from the iPhone's. minAppVersion when unset.
+   */
+  minAndroidAppVersion: string;
+  /** MOBILE_PLAY_STORE_URL, where "update the app" leads on Android; null until the app is listed. */
+  playStoreUrl: string | null;
 };
 
 /** GET /jobs */

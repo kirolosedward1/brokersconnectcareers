@@ -18,7 +18,8 @@ import { activeLocales, defaultLocale } from '@/lib/locale';
 
 const STAY_ON_THE_WEB = ['/auth/callback*', '/api/*', '/unsubscribe*', '/admin', '/admin/*'];
 
-const OPEN_IN_THE_APP = [
+/** The sections the app has screens for. Android names the same ones, as prefixes (mobile/app.config.ts). */
+export const OPEN_IN_THE_APP = [
   '/jobs',
   '/jobs/*',
   '/companies',

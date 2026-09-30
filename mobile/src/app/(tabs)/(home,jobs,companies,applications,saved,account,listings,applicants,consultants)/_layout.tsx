@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { useStackOptions } from '~/components/navigation/stack-options';
+import { KeyboardRoom } from '~/components/ui/keyboard-room';
 
 /**
  * One stack per tab, shared by all of them.
@@ -33,5 +34,10 @@ export const unstable_settings = {
 };
 
 export default function TabStack() {
-  return <Stack screenOptions={useStackOptions()} />;
+  // Above the tab bar, which the keyboard covers on Android (src/components/ui/keyboard-room.tsx).
+  return (
+    <KeyboardRoom>
+      <Stack screenOptions={useStackOptions()} />
+    </KeyboardRoom>
+  );
 }
