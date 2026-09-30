@@ -10,7 +10,7 @@ import type {
   SavedAgentCardRow,
 } from '@/lib/supabase/database.types';
 import type { CvSections } from '~/features/profile/queries';
-import { callAction, getJson } from '~/lib/api';
+import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -132,11 +132,26 @@ export function useShortlistedIds() {
   });
 }
 
+/** Whether the consultant is on the company's shortlist now, as the database says; null when that cannot be read. */
+async function shortlistedNow(companyId: string, agentId: string): Promise<boolean | null> {
+  const { data, error } = await supabase
+    .from('saved_agents')
+    .select('agent_id')
+    .eq('company_id', companyId)
+    .eq('agent_id', agentId)
+    .limit(1);
+  return error ? null : Boolean(data?.length);
+}
+
 /**
  * Keep a consultant, or let them go — the website's toggleSavedAgent, shown
  * at once. A refusal (the list is full, or the card is no longer open to the
  * company) puts the control back without a word, as the website does: the
  * second is a fact about the consultant's own settings.
+ *
+ * `saved` is where the control stood when pressed. With no answer the
+ * shortlist is read: the website's action is a toggle, and the same press
+ * sent again would undo one that went in.
  */
 export function useToggleShortlist() {
   const queryClient = useQueryClient();
@@ -144,12 +159,17 @@ export function useToggleShortlist() {
   const key = ['directory', 'shortlisted', companyId];
 
   return useMutation({
-    mutationFn: async (agentId: string) => {
-      const result = await callAction('toggleSavedAgent', { agentId });
+    mutationFn: async ({ agentId, saved }: { agentId: string; saved: boolean }) => {
+      const result = await callAction('toggleSavedAgent', { agentId }).catch(async (error: unknown) => {
+        if (!refusedAtTheDoor(error) && companyId && (await shortlistedNow(companyId, agentId)) === !saved) {
+          return { ok: true as const, data: { saved: !saved } };
+        }
+        throw error;
+      });
       if (!result.ok) throw new Error(result.error);
       return { agentId, saved: Boolean(result.data?.saved) };
     },
-    onMutate: async (agentId) => {
+    onMutate: async ({ agentId }) => {
       await queryClient.cancelQueries({ queryKey: key });
       const before = queryClient.getQueryData<string[]>(key);
       queryClient.setQueryData<string[]>(key, (ids = []) =>
@@ -166,7 +186,11 @@ export function useToggleShortlist() {
         saved ? (ids.includes(agentId) ? ids : [...ids, agentId]) : ids.filter((id) => id !== agentId),
       );
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['directory', 'shortlist'] }),
+    onSettled: (_result, error) => {
+      // Not known how it ended: the shortlist is read again rather than guessed.
+      if (error) void queryClient.invalidateQueries({ queryKey: key });
+      return queryClient.invalidateQueries({ queryKey: ['directory', 'shortlist'] });
+    },
   });
 }
 

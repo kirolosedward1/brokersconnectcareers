@@ -84,15 +84,34 @@ describe('signing out', () => {
       events.push(event);
     });
 
-    const done = signOutHere();
-    // supabase-js tries to refresh first, backing off for about half a minute.
-    await jest.advanceTimersByTimeAsync(60_000);
+    let finished = false;
+    const done = signOutHere().then(() => {
+      finished = true;
+    });
+    // Not the half minute supabase-js spends retrying a refresh: a few seconds for the phone, a few for the sign-out.
+    await jest.advanceTimersByTimeAsync(8_000);
+    expect(finished).toBe(true);
     await done;
 
     expect(store().has(SESSION_KEY)).toBe(false);
     expect(events).toContain('SIGNED_OUT');
     const { data } = await supabase.auth.getSession();
     expect(data.session).toBeNull();
+  });
+});
+
+describe('signing out, online', () => {
+  it('still tells the auth service, once a refresh has brought the session back', async () => {
+    const { SESSION_KEY, signOutHere } = fresh();
+    store().set(SESSION_KEY, JSON.stringify(expired()));
+    network((url) => (url.pathname === '/auth/v1/token' ? json(authSession(authUser())) : json({})));
+
+    const done = signOutHere();
+    await jest.advanceTimersByTimeAsync(5_000);
+    await done;
+
+    expect(store().has(SESSION_KEY)).toBe(false);
+    expect(sent.some((request) => request.path === '/auth/v1/logout')).toBe(true);
   });
 });
 

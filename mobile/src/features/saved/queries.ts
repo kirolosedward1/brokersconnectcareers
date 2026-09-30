@@ -3,7 +3,7 @@ import { LIST_SELECT, type JobListItem } from '@/lib/job-list';
 import { canSaveJobs } from '@/lib/permissions';
 import { followQuery } from '@/lib/saved-search';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
-import { callAction } from '~/lib/api';
+import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -85,6 +85,17 @@ export function useSavedJobs() {
   });
 }
 
+/** Whether the listing is bookmarked now, as the database says; null when that cannot be read. */
+async function savedNow(candidateId: string, jobId: string): Promise<boolean | null> {
+  const { data, error } = await supabase
+    .from('saved_jobs')
+    .select('job_id')
+    .eq('candidate_id', candidateId)
+    .eq('job_id', jobId)
+    .limit(1);
+  return error ? null : Boolean(data?.length);
+}
+
 /** Bookmark a listing, or take the bookmark off — the website's toggleSavedJob. */
 export function useToggleSavedJob() {
   const queryClient = useQueryClient();
@@ -97,8 +108,16 @@ export function useToggleSavedJob() {
     );
 
   return useMutation({
-    mutationFn: async ({ jobId }: { jobId: string; saved: boolean }) => {
-      const result = await callAction('toggleSavedJob', { jobId });
+    mutationFn: async ({ jobId, saved }: { jobId: string; saved: boolean }) => {
+      const result = await callAction('toggleSavedJob', { jobId }).catch(async (error: unknown) => {
+        // No answer: the bookmark may have changed. The website's action is a
+        // toggle, so the same tap sent again would put it back; the database
+        // says where it stands, and a change that went in is the answer.
+        if (!refusedAtTheDoor(error) && candidateId && (await savedNow(candidateId, jobId)) === !saved) {
+          return { ok: true as const, data: { saved: !saved } };
+        }
+        throw error;
+      });
       if (!result.ok || !result.data) throw new Error(result.ok ? 'failed' : result.error);
       return result.data.saved;
     },
@@ -109,9 +128,11 @@ export function useToggleSavedJob() {
     // The server's answer is the truth: it toggles what it has, not what the screen showed.
     onSuccess: (saved, { jobId }) => set(jobId, saved),
     onError: (_error, { jobId, saved }) => set(jobId, saved),
-    onSettled: () => {
+    onSettled: (_saved, error) => {
       // Home counts what is saved (candidate_summary).
       void queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      // Not known how it ended: the bookmarks are read again rather than guessed.
+      if (error) void queryClient.invalidateQueries({ queryKey: key });
       return queryClient.invalidateQueries({ queryKey: ['saved', 'jobs'] });
     },
   });

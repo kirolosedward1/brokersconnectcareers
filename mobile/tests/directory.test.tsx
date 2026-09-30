@@ -241,6 +241,12 @@ const app = {
 
 const input = (path: string, index = 0) => (server.asked(path)[index]?.body as { input: Record<string, unknown> } | undefined)?.input;
 
+/** A shortlist control once the shortlist has been read: until then it waits, since the website toggles. */
+async function ready(name: string) {
+  await waitFor(() => expect(screen.getAllByRole('button', { name })[0].props.accessibilityState?.busy).toBeFalsy());
+  return screen.getAllByRole('button', { name });
+}
+
 describe('the directory, for a verified company', () => {
   it('shows the cards as the database answers them: named when open, anonymous and locked when not', async () => {
     renderRouter(app, { initialUrl: '/agents' });
@@ -258,7 +264,8 @@ describe('the directory, for a verified company', () => {
   it('keeps a consultant from the card, and offers it only on an open one', async () => {
     renderRouter(app, { initialUrl: '/agents' });
 
-    const keep = await screen.findAllByRole('button', { name: ar.agents.shortlistAdd });
+    await screen.findAllByRole('button', { name: ar.agents.shortlistAdd });
+    const keep = await ready(ar.agents.shortlistAdd);
     // One open card, one locked: the locked one cannot be kept.
     expect(keep).toHaveLength(1);
     fireEvent.press(keep[0]);
@@ -377,7 +384,8 @@ describe("a consultant's page", () => {
   it('keeps the consultant from the page, and puts the button back when the website refuses', async () => {
     renderRouter(app, { initialUrl: '/agents/mona-ali' });
 
-    fireEvent.press(await screen.findByRole('button', { name: ar.agents.shortlistAdd }));
+    await screen.findByRole('button', { name: ar.agents.shortlistAdd });
+    fireEvent.press((await ready(ar.agents.shortlistAdd))[0]);
     expect(await screen.findByRole('button', { name: ar.agents.shortlistRemove })).toBeTruthy();
 
     server.on('POST /api/mobile/v1/actions/toggleSavedAgent', { ok: false, error: 'not_allowed' });
@@ -385,6 +393,54 @@ describe("a consultant's page", () => {
     fireEvent.press(screen.getByRole('button', { name: ar.agents.shortlistRemove }));
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/toggleSavedAgent')).toHaveLength(2));
     expect(await screen.findByRole('button', { name: ar.agents.shortlistRemove })).toBeTruthy();
+  });
+
+  it('keeps a consultant whose answer was lost, rather than putting the button back for a second press to undo', async () => {
+    let pressed = false;
+    server.on('GET /rest/v1/saved_agents', (url: URL) => {
+      // The one consultant asked about, or the whole shortlist — which, after the press, cannot be read.
+      const one = url.searchParams.get('agent_id')?.replace(/^eq\./, '');
+      if (pressed && !one) return { status: 503, body: { message: 'upstream unavailable' } };
+      return kept.filter((id) => !one || id === one).map((agent_id) => ({ agent_id }));
+    });
+    server.on('POST /api/mobile/v1/actions/toggleSavedAgent', (_url: URL, init?: RequestInit) => {
+      pressed = true;
+      kept = [...kept, (JSON.parse(String(init?.body)) as { input: { agentId: string } }).input.agentId];
+      throw new TypeError('Network request failed');
+    });
+    renderRouter(app, { initialUrl: '/agents/mona-ali' });
+
+    await screen.findByRole('button', { name: ar.agents.shortlistAdd });
+    fireEvent.press((await ready(ar.agents.shortlistAdd))[0]);
+    // Read back, the consultant is on it: kept, and not sent twice.
+    expect(await screen.findByRole('button', { name: ar.agents.shortlistRemove })).toBeTruthy();
+    await ready(ar.agents.shortlistRemove);
+    expect(server.asked('/api/mobile/v1/actions/toggleSavedAgent')).toHaveLength(1);
+  });
+
+  it('waits for the shortlist before offering to change it: the website toggles', async () => {
+    // The shortlist takes its time; the consultant is on it already.
+    kept = [mona.id];
+    let letGo: () => void = () => {};
+    const held = new Promise<void>((resolve) => (letGo = resolve));
+    const plain = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes('/rest/v1/saved_agents')) await held;
+      return plain(input, init);
+    }) as typeof fetch;
+    try {
+      renderRouter(app, { initialUrl: '/agents/mona-ali' });
+      const button = await screen.findByRole('button', { name: ar.agents.shortlistAdd });
+      expect(button.props.accessibilityState?.busy).toBe(true);
+      fireEvent.press(button);
+      expect(server.asked('/api/mobile/v1/actions/toggleSavedAgent')).toHaveLength(0);
+      letGo();
+      expect(await screen.findByRole('button', { name: ar.agents.shortlistRemove })).toBeTruthy();
+    } finally {
+      letGo();
+      globalThis.fetch = plain;
+    }
   });
 
   it('shows a locked card without a name or a way to make contact, and the way to open it', async () => {

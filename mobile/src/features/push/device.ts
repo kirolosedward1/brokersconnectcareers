@@ -144,6 +144,7 @@ export async function stopListeningHere(): Promise<void> {
 
 /** Give up waiting after this long: signing out must never hang on the network. */
 const FORGET_TIMEOUT_MS = 4000;
+const SIGN_OUT_TIMEOUT_MS = 3000;
 
 /**
  * Sign out on this phone, having first told the database to stop sending
@@ -155,13 +156,23 @@ const FORGET_TIMEOUT_MS = 4000;
  * kept, no SIGNED_OUT, the button doing nothing on a phone somebody may be
  * handing on. Then the stored session is taken out by hand, and signing out
  * again, with nothing stored, needs no network and says so.
+ *
+ * Nor does it wait out supabase-js's retries. With an access token that has
+ * run out and no connection (or the auth service asking to wait), the
+ * refresh it needs first was retried for half a minute; the sign-out is given
+ * a few seconds, and then the stored session is taken out by hand as above.
+ * A refresh answered after that is discarded by supabase-js, which will not
+ * write over a session removed while its refresh was on the way.
  */
 export async function signOutHere(): Promise<void> {
   await Promise.race([
     forgetThisPhone().catch(() => {}),
     new Promise((resolve) => setTimeout(resolve, FORGET_TIMEOUT_MS)),
   ]);
-  const { error } = await supabase.auth.signOut({ scope: 'local' }).catch((failure: unknown) => ({ error: failure }));
+  const { error } = await Promise.race([
+    supabase.auth.signOut({ scope: 'local' }).catch((failure: unknown) => ({ error: failure })),
+    new Promise<{ error: string }>((resolve) => setTimeout(() => resolve({ error: 'no answer' }), SIGN_OUT_TIMEOUT_MS)),
+  ]);
   if (!error) return;
   await encryptedSessionStorage.removeItem(SESSION_KEY).catch(() => {});
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
