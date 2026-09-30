@@ -451,6 +451,34 @@ person. On the website side, `pnpm test:mobile-api` covers the
 bearer handling and the registry, and `pnpm smoke:mobile-api` runs the endpoints
 against a local production build.
 
+### On a phone, before a release
+
+The tests run the app's code, not the phone: what only a real phone shows is
+checked by hand, on a development build (`eas.json`, `development`) against
+production, with QA accounts made for it — never the demo accounts.
+
+- Signed out: the board's results match the website's for the same filters; a
+  listing, a company, sharing a listing.
+- Sign up with email: the confirmation email's link opens the app and leads to
+  onboarding; Sign in with Apple, and with Google (the browser comes back to
+  the app signed in, with no error behind it).
+- Candidate: apply with a CV from Files; the employer sees the applicant and
+  opens the CV; both emails arrive; the candidate sees "opened".
+- Employer: move an applicant — the candidate gets the push and the email;
+  post a listing — it waits for review; add a note on a weak connection.
+- Pushes: allow them from the prompt on Home, get one with the app closed,
+  tap it; the icon's number follows the bell; sign out — no more arrive.
+- Offline (airplane mode): the screens say so rather than spin; signing out
+  still works, in a few seconds.
+- Arabic on the phone: numbers, prices and "days ago" read as on the website.
+- A link to a listing on the website, tapped in Mail or WhatsApp, opens the
+  app (once `APPLE_APP_ID` is set).
+- Delete a QA account from the app; for one made with Apple, Apple's
+  "Sign in with Apple" list no longer shows the app.
+- On Android as well, when it ships: every form's lowest field stays above the
+  keyboard, Back on onboarding and the second factor stays put, and the tab
+  icons show.
+
 ## Configuration
 
 The app is built with three public values (`mobile/.env.example`, and `eas.json`
@@ -463,6 +491,9 @@ On the website (Vercel):
 | --- | --- |
 | `MOBILE_MIN_APP_VERSION` | The lowest app version `/api/mobile/v1/config` accepts; below it the app asks to be updated. |
 | `MOBILE_APP_STORE_URL` | The app's App Store page (`https://apps.apple.com/...` only), where the "update the app" screen leads; unset until the app is listed. |
+| `MOBILE_MIN_ANDROID_APP_VERSION` | The same floor for the Android app, whose builds are numbered apart; `MOBILE_MIN_APP_VERSION` when unset. |
+| `MOBILE_PLAY_STORE_URL` | The app's Play Store page (`https://play.google.com/...` only), where the Android app's "update the app" screen leads. |
+| `ANDROID_CERT_SHA256` | The Android signing certificate's SHA-256 fingerprint (`AB:CD:…`, from `eas credentials` or the Play Console's app signing page; several, comma-separated). Serves `/.well-known/assetlinks.json`, so links to the site open the Android app. |
 | `APPLE_APP_ID` | `TEAMID.net.brokersconnect.app` — serves the universal-link file. |
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_CLIENT_ID` | The Sign in with Apple key (`.p8`, newlines escaped) and the app's bundle id, used to revoke an Apple user's grant when they delete their account from the app (`src/lib/apple/revoke.ts`). Secret. |
 | `SUPPORT_EMAIL` | Already the footer's contact address; the app offers it too (`/api/mobile/v1/config`), beside a company owner's in-app deletion request. |
@@ -497,9 +528,12 @@ Before the first build:
   (Expo sends to Apple with it);
 - confirm the bundle identifier `net.brokersconnect.app` — it cannot change once
   the app is on the App Store;
-- real Privacy Policy and Terms pages on the website (the App Store requires a
-  privacy policy URL);
+- the privacy policy's section on the app (`content/legal/privacy.ar.md`)
+  reviewed — the App Store requires a privacy policy URL;
 - a 1024-pixel app icon.
+
+The whole list, in order, with the website's keys and Android's, is in
+`docs/app-store.md` ("Before the first submission").
 
 The native iOS build is also compiled in CI on `main` (`ios-build` in
 `.github/workflows/mobile.yml`), so a config plugin or native dependency that

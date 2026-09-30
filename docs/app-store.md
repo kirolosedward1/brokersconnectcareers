@@ -16,7 +16,7 @@ code settles.
 | Bundle ID | `net.brokersconnect.app` — permanent once submitted |
 | Primary language | Arabic (the app is right to left, Arabic only while the website's `ENGLISH_ENABLED` is off) |
 | Category | **decide** — Business (job boards and professional directories sit there) |
-| Privacy policy URL | `https://www.brokersconnect.net/privacy` — it must have real content before submission |
+| Privacy policy URL | `https://www.brokersconnect.net/privacy` (`content/legal/privacy.ar.md`); its section on the phone app — pushes, camera and photos, Apple, what stays on the phone — is new and wants the owner's legal review |
 | Support URL | the website, or a page with `SUPPORT_EMAIL` on it |
 | Price | Free. The app sells nothing (`/employer/billing` is read-only; see Guideline 3.1.1 below) |
 
@@ -101,16 +101,53 @@ Then, in the notes:
 
 ## Before the first submission (the owner)
 
-- Apple Developer Program membership (an organisation needs a D-U-N-S
-  number) and an Expo account; `npx eas-cli@latest init`, and the project id
-  it prints written into `mobile/app.config.ts` (docs/mobile.md, Releasing).
-- An APNs key uploaded with `npx eas-cli@latest credentials`.
-- The Sign in with Apple key and Services ID, and the Apple provider on in
-  Supabase (docs/mobile.md, Configuration).
-- A 1024-pixel app icon (only a 450-pixel mark exists today).
-- Real Privacy Policy and Terms pages on the website.
-- The two review accounts above.
-- Screenshots for the required iPhone sizes, in Arabic.
-- After the listing exists: `MOBILE_APP_STORE_URL` on Vercel, so the
-  "update the app" screen can link to it, and `MOBILE_MIN_APP_VERSION` raised
-  only when an older build must stop.
+In this order; each needs an account, a secret or a decision only the owner
+has.
+
+1. **The website's server keys on Vercel** (production), then a redeploy.
+   `SUPABASE_SERVICE_ROLE_KEY` first: without it account deletion answers
+   "unavailable", CV and document links do not open, team invites, view
+   counts, the crons, emails and pushes do nothing — in the app and on the
+   website alike. Then `RESEND_API_KEY` and `RESEND_FROM` (emails),
+   `CRON_SECRET`, `SECURITY_SALT`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` with
+   `TURNSTILE_SECRET_KEY` if Supabase Auth asks for a CAPTCHA, and the app's
+   own (`docs/mobile.md`, Configuration): `APPLE_APP_ID`, the four `APPLE_*`
+   revocation values, `EXPO_ACCESS_TOKEN` if enhanced push security is on.
+   All are set in Vercel → the project → Settings → Environment Variables,
+   for Production.
+2. **The two Vault secrets** for the push sweep, by hand in the SQL editor
+   (`docs/mobile.md`, Pushes).
+3. **Merge the app's pull request** into `main` (Vercel deploys it), then
+   apply the migrations it brings, 331 and 332, from your computer:
+   `pnpm db:apply --execute --confirm hiwdhicwsohbipxzazmb` with
+   `TARGET_DATABASE_URL` set to the session pooler. Both only add; the dry run
+   (without `--execute`) lists them first.
+4. **Apple and Expo:** Apple Developer Program membership (an organisation
+   needs a D-U-N-S number) and an Expo account; `npx eas-cli@latest init`, and
+   the project id it prints written into `mobile/app.config.ts`
+   (docs/mobile.md, Releasing); an APNs key uploaded with
+   `npx eas-cli@latest credentials`; the Sign in with Apple key and Services
+   ID, and the Apple provider on in Supabase (docs/mobile.md, Configuration).
+5. **A 1024-pixel app icon** (only a 450-pixel mark exists today) and the
+   splash image.
+6. **The privacy policy's app section reviewed** (the Terms need no change for
+   the app), and the two review accounts above.
+7. **A development build on a real iPhone** against production, through the
+   checklist in `docs/mobile.md` ("On a phone, before a release"), with QA
+   accounts — never the demo ones.
+8. Screenshots for the required iPhone sizes, in Arabic.
+9. After the listing exists: `MOBILE_APP_STORE_URL` on Vercel, so the
+   "update the app" screen can link to it, and `MOBILE_MIN_APP_VERSION` raised
+   only when an older build must stop.
+
+### Android, when it ships
+
+- Firebase: a project with the Android app `net.brokersconnect.app`; its
+  `google-services.json` as an EAS file variable `GOOGLE_SERVICES_JSON` (not
+  committed — the repository is public), and its FCM V1 service-account key
+  uploaded with `npx eas-cli@latest credentials`. Until both, the Android app
+  does not offer pushes.
+- `ANDROID_CERT_SHA256` on Vercel — the signing certificate's fingerprint, from
+  `eas credentials` or the Play Console — so links to the site open the app.
+- After the listing exists: `MOBILE_PLAY_STORE_URL`, and
+  `MOBILE_MIN_ANDROID_APP_VERSION` when an Android build must stop.
