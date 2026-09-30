@@ -296,9 +296,16 @@ async function main() {
   // -------------------------------------------------------------------------
   report.section('a manual close racing expiry ends closed');
   {
+    // Listings whose owners may edit them (jobs_update_owner: an approved
+    // employer). The seed also has a live listing of an employer still
+    // awaiting approval, whose close touches nothing; ids are random, so
+    // without this the race failed whenever that listing came first.
     const { rows: live } = await setup.query(
-      `select j.id, c.owner_id from jobs j join companies c on c.id = j.company_id
-        where j.status = 'active' order by j.id limit 2`,
+      `select j.id, c.owner_id from jobs j
+         join companies c on c.id = j.company_id
+         join profiles p on p.id = c.owner_id
+        where j.status = 'active' and p.role = 'employer' and p.approval_status = 'approved'
+        order by j.id limit 2`,
     );
     const [closeFirst, expireFirst] = live;
     await setup.query(`update jobs set expires_at = now() - interval '1 minute' where id = $1`, [closeFirst.id]);
