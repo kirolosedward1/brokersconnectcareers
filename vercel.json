@@ -14,6 +14,10 @@
       "schedule": "0 6-11 * * 1"
     },
     {
+      "path": "/api/cron/new-jobs",
+      "schedule": "17 7 * * *"
+    },
+    {
       "path": "/api/cron/email-retry",
       "schedule": "*/10 * * * *"
     },

@@ -36,7 +36,7 @@ export async function generateMetadata({
  * matching, is exactly that absence, and it is the most important thing this
  * page can show. So the expected set is the spine and the database fills it.
  */
-const EXPECTED_JOBS = ['expire-jobs', 'email-retry', 'daily-digest', 'job-alerts'];
+const EXPECTED_JOBS = ['expire-jobs', 'email-retry', 'daily-digest', 'job-alerts', 'new-jobs'];
 
 const VARIANT: Record<JobRunStatus, 'default' | 'primary' | 'success' | 'destructive' | 'outline'> = {
   running: 'primary',

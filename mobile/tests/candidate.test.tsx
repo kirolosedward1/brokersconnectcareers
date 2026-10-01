@@ -188,6 +188,7 @@ const app = {
   [`${SHARED}/_layout`]: TabStack,
   [`${SHARED}/notifications`]: NotificationsScreen,
   [`${SHARED}/jobs/[slug]`]: () => <Text>listing page</Text>,
+  [`${SHARED}/companies/[slug]`]: () => <Text>company page</Text>,
   '(tabs)/(home)/index': () => (
     <View>
       <Text>home screen</Text>
@@ -258,6 +259,25 @@ describe('the feed', () => {
 
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);
+    expect(bodyOf('/api/mobile/v1/actions/openNotification')).toEqual({ input: { id: feed[0].id } });
+  });
+
+  it("tells of a followed company's new listings as the website does, and opens the company", async () => {
+    feed = [
+      notification({
+        id: 'n0000000-0000-4000-8000-000000000003',
+        kind: 'new_jobs',
+        payload: { count: 2, source: 'follow', slug: 'nile-brokers', name_ar: 'النيل للوساطة', name_en: null },
+        href: '/companies/nile-brokers',
+      }),
+    ];
+    server.on('POST /api/mobile/v1/actions/openNotification', { ok: true, data: { href: '/companies/nile-brokers' } });
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: '/notifications' });
+
+    fireEvent.press(await screen.findByText('النيل للوساطة نزّلت وظيفتين جداد'));
+    await waitFor(() => expect(result.getPathname()).toBe('/companies/nile-brokers'));
+    expect(screen.getByText('company page')).toBeTruthy();
     expect(bodyOf('/api/mobile/v1/actions/openNotification')).toEqual({ input: { id: feed[0].id } });
   });
 

@@ -328,7 +328,10 @@ export type NotificationKind =
   | 'profile_restricted'
   | 'profile_restored'
   | 'account_held'
-  | 'appeal_decided';
+  | 'appeal_decided'
+  // Migrations 333–334: the day's new listings from a person's saved searches
+  // and followed companies (/api/cron/new-jobs).
+  | 'new_jobs';
 
 /**
  * The payload holds data, never a rendered sentence — the site is read in two
@@ -365,6 +368,10 @@ export type NotificationRow = {
     outcome?: 'actioned' | 'reviewed' | 'upheld' | 'overturned';
     /** appeal_decided: what the appeal was about. */
     subject_type?: AppealSubjectType;
+    /** new_jobs: what found the listings — one followed company, one search, or several. */
+    source?: 'follow' | 'search' | 'mixed';
+    /** new_jobs: the saved search's own name, when one search found them. */
+    label?: string;
   };
   href: string | null;
   read_at: string | null;
@@ -466,6 +473,8 @@ export type SavedSearchRow = Timestamped & {
    * Job-written only, same guard as last_sent_at.
    */
   last_checked_at: string | null;
+  /** The daily new-jobs job's own cursor (migration 334), apart from the weekly email's. Job-written only. */
+  bell_checked_at: string | null;
 };
 
 export type EmailStatus =
@@ -1753,6 +1762,11 @@ export type Database = {
         Returns: string;
       };
       unregister_push_device: { Args: { p_token: string }; Returns: undefined };
+      /** The day's new-jobs notification (migration 334): its id, or null when today's exists or the person is not a candidate. Service role. */
+      record_new_jobs_notification: {
+        Args: { p_user: string; p_payload: NotificationRow['payload']; p_href: string };
+        Returns: string | null;
+      };
       /** A help request, or an owner's deletion request; the answer is its reference. Retried with the same key, the same one. */
       submit_support_request: {
         Args: {

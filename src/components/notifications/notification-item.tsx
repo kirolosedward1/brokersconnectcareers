@@ -3,6 +3,7 @@ import {
   BadgeCheck,
   Ban,
   Bell,
+  Briefcase,
   CalendarClock,
   CalendarX2,
   CirclePause,
@@ -58,6 +59,7 @@ const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }
   profile_restored: Eye,
   account_held: CirclePause,
   appeal_decided: Scale,
+  new_jobs: Briefcase,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -85,6 +87,7 @@ const TONES: Record<NotificationKind, string> = {
   profile_restored: 'bg-success-muted text-success',
   account_held: 'bg-warning-muted text-warning',
   appeal_decided: 'bg-primary/10 text-primary',
+  new_jobs: 'bg-primary/10 text-primary',
 };
 
 export async function NotificationItem({

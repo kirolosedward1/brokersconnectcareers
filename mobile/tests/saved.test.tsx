@@ -59,6 +59,7 @@ function search(overrides: Partial<SavedSearchRow> = {}): SavedSearchRow {
     created_at: '2026-09-20T10:00:00Z',
     last_sent_at: null,
     last_checked_at: null,
+    bell_checked_at: null,
     ...overrides,
   };
 }

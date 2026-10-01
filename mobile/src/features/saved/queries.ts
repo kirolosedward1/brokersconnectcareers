@@ -269,6 +269,7 @@ export function useToggleFollow(slug: string, label: string) {
                 created_at: new Date().toISOString(),
                 last_sent_at: null,
                 last_checked_at: null,
+                bell_checked_at: null,
               },
               ...rows,
             ]

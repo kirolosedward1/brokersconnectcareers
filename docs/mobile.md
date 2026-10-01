@@ -300,6 +300,13 @@ A push is a second delivery of a bell notification, never a different one
   listing are one push, as they are one row in the bell — only for people with
   a phone, and it can never fail the notification. The expiry notices the
   night sweep writes wait until nine in Cairo.
+- **New listings.** Once a day (`/api/cron/new-jobs`, 07:17 UTC: nine or ten
+  in Cairo), every saved search with alerts on — a followed company is one —
+  runs through the board's own query, and what was published since it was
+  last looked at, less what the person applied to, becomes one bell
+  notification for the day (`new_jobs`, migrations 333–334,
+  `src/lib/new-jobs.ts`): naming the one search or company that found it, or
+  counting. It reaches the phone like any other. The Monday email is unchanged.
 - **What is sent.** The bell's own sentence (`notificationTitle`) in the
   phone's language, the unread count as the badge, and the notification's id —
   never the free-text note, which is not for a lock screen. Opening it asks the

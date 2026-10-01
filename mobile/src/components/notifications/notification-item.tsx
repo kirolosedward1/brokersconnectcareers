@@ -5,6 +5,7 @@ import {
   BadgeCheck,
   Ban,
   Bell,
+  Briefcase,
   CalendarClock,
   CalendarX2,
   CirclePause,
@@ -61,6 +62,7 @@ const ICONS: Record<NotificationKind, ComponentType<LucideProps>> = {
   profile_restored: Eye,
   account_held: CirclePause,
   appeal_decided: Scale,
+  new_jobs: Briefcase,
 };
 
 type Tone = 'success' | 'primary' | 'muted' | 'destructive' | 'warning';
@@ -89,6 +91,7 @@ const TONES: Record<NotificationKind, Tone> = {
   profile_restored: 'success',
   account_held: 'warning',
   appeal_decided: 'primary',
+  new_jobs: 'primary',
 };
 
 function toneColors(tone: Tone, colors: Colors): { background: string; foreground: string } {

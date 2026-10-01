@@ -71,6 +71,8 @@ const KINDS = [
   'profile_restored',
   'account_held',
   'appeal_decided',
+  // The day's new listings (migrations 333–334).
+  'new_jobs',
 ];
 
 const payload = {
@@ -141,6 +143,32 @@ for (const locale of ['ar', 'en']) {
       !say('appeal_decided', 'upheld').includes('MISSING:') &&
       notifications.appealUpheld.length > 0,
   );
+}
+
+console.log('\n— new listings name what found them, and count them');
+for (const locale of ['ar', 'en']) {
+  const { t, missing } = translator(locale);
+  const say = (extra) => notificationTitle({ kind: 'new_jobs', payload: { ...extra } }, locale, t);
+  const follow = (count) => say({ count, source: 'follow', name_ar: 'شركة النيل', name_en: 'Nile Co' });
+  const search = (count) => say({ count, source: 'search', label: 'مبيعات التجمع' });
+  const mixed = (count) => say({ count, source: 'mixed' });
+  const company = locale === 'ar' ? 'شركة النيل' : 'Nile Co';
+
+  ok(`${locale}: a followed company is named`, follow(1).includes(company), follow(1));
+  ok(`${locale}: a search is named by its label`, search(1).includes('مبيعات التجمع'), search(1));
+  ok(`${locale}: several are counted, without a name`, !mixed(5).includes(company) && /5|٥/.test(mixed(5)), mixed(5));
+  // Arabic says one, two, three to ten, and eleven and up differently; English one and many.
+  const counts = locale === 'ar' ? [1, 2, 3, 11] : [1, 2];
+  const forms = counts.map((count) => follow(count).replace(/[0-9٠-٩]+/g, '#'));
+  ok(`${locale}: each plural form of the count reads differently`, new Set(forms).size === counts.length, forms.join(' | '));
+  ok(`${locale}: one is said in words, not as a digit`, !/[0-9٠-٩]/.test(follow(1)), follow(1));
+  ok(
+    `${locale}: a follow without the company's name is still a sentence`,
+    say({ count: 2, source: 'follow' }) === mixed(2),
+    say({ count: 2, source: 'follow' }),
+  );
+  ok(`${locale}: a count that is missing reads as one`, say({ source: 'mixed' }) === mixed(1), say({ source: 'mixed' }));
+  ok(`${locale}: no key is missing`, missing.length === 0, missing.join('; '));
 }
 
 console.log('\n— a kind this build does not know reads as the generic notice');

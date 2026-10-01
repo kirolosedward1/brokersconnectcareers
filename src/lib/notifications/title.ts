@@ -44,6 +44,7 @@ const KNOWN: Record<NotificationKind, true> = {
   profile_restored: true,
   account_held: true,
   appeal_decided: true,
+  new_jobs: true,
 };
 
 /**
@@ -97,6 +98,14 @@ export function notificationTitle(
   }
   if (kind === 'appeal_decided') {
     return t(payload.outcome === 'overturned' ? 'notifications.appealOverturned' : 'notifications.appealUpheld', { subject });
+  }
+  // The day's new listings: named after the one followed company or the one
+  // search that found them, counted when several did (src/lib/new-jobs.ts).
+  if (kind === 'new_jobs') {
+    const count = Math.max(1, payload.count ?? 1);
+    if (payload.source === 'follow' && subject) return t('notifications.newJobsCompany', { subject, count });
+    if (payload.source === 'search' && payload.label) return t('notifications.newJobsSearch', { subject: payload.label, count });
+    return t('notifications.newJobsMany', { count });
   }
   return isKnownNotificationKind(kind) ? t(`notifications.${kind}`, { subject }) : t('notifications.generic');
 }

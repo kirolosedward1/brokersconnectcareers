@@ -1639,7 +1639,10 @@
     "account_held": "حسابك مقيّد لحد ما نخلّص مراجعته",
     "appeal_decided": "رديّنا على اعتراضك على {subject}",
     "appealOverturned": "راجعنا اعتراضك على «{subject}» ولغينا القرار",
-    "appealUpheld": "راجعنا اعتراضك على «{subject}»، والقرار زي ما هو"
+    "appealUpheld": "راجعنا اعتراضك على «{subject}»، والقرار زي ما هو",
+    "newJobsSearch": "{count, plural, =1 {وظيفة جديدة} =2 {وظيفتين جداد} few {# وظايف جديدة} other {# وظيفة جديدة}} في بحثك «{subject}»",
+    "newJobsCompany": "{subject} نزّلت {count, plural, =1 {وظيفة جديدة} =2 {وظيفتين جداد} few {# وظايف جديدة} other {# وظيفة جديدة}}",
+    "newJobsMany": "{count, plural, =1 {وظيفة جديدة تناسب} =2 {وظيفتين جداد يناسبوا} few {# وظايف جديدة تناسب} other {# وظيفة جديدة تناسب}} اللي بتدوّر عليه"
   },
   "emailStatus": {
     "queued": "في الطابور",

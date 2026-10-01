@@ -134,7 +134,7 @@ export async function GET(request: Request) {
 
     The allowance is the schedule plus slack for one late or failed run:
     email-retry fires every ten minutes, the two nightly
-    jobs daily, job-alerts on Monday mornings.
+    jobs and new-jobs daily, job-alerts on Monday mornings.
 
     Booleans only, same rule as the rest of this endpoint: no timestamps, no
     error text. And the same 2.5s bound as the key check, because this is
@@ -146,6 +146,7 @@ export async function GET(request: Request) {
     'email-retry': 30 * 60 * 1000,
     'daily-digest': 26 * 60 * 60 * 1000,
     'job-alerts': 8 * 24 * 60 * 60 * 1000,
+    'new-jobs': 26 * 60 * 60 * 1000,
   };
 
   /*

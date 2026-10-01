@@ -1639,7 +1639,10 @@
     "account_held": "Your account is restricted while we review it",
     "appeal_decided": "We answered your appeal about {subject}",
     "appealOverturned": "We reviewed your appeal about “{subject}” and reversed the decision",
-    "appealUpheld": "We reviewed your appeal about “{subject}”; the decision stands"
+    "appealUpheld": "We reviewed your appeal about “{subject}”; the decision stands",
+    "newJobsSearch": "{count, plural, one {A new job matches} other {# new jobs match}} your search “{subject}”",
+    "newJobsCompany": "{subject} posted {count, plural, one {a new job} other {# new jobs}}",
+    "newJobsMany": "{count, plural, one {A new job matches} other {# new jobs match}} your searches and follows"
   },
   "emailStatus": {
     "queued": "Queued",
