@@ -250,6 +250,77 @@ describe('this phone, registered', () => {
   });
 });
 
+describe('what to hear about', () => {
+  const chosen = { push_job_alerts: true, push_applications: true, push_account: true, push_quiet_hours: false };
+  const saves = () => server.asked('/api/mobile/v1/actions/updatePushPreferences').map((request) => request.body);
+
+  it('offers a candidate each kind once pushes are on, and saves all four as one is flipped', async () => {
+    me = { ...profile, ...chosen };
+    server.on('POST /api/mobile/v1/actions/updatePushPreferences', { ok: true });
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    expect(await screen.findByText(ar.app.push.kindsTitle)).toBeTruthy();
+    expect(screen.getByLabelText(ar.app.push.jobAlerts).props.value).toBe(true);
+    expect(screen.getByLabelText(ar.app.push.applicationsCandidate).props.value).toBe(true);
+    expect(screen.getByLabelText(ar.app.push.accountCandidate).props.value).toBe(true);
+    expect(screen.getByLabelText(ar.app.push.quiet).props.value).toBe(false);
+
+    fireEvent(screen.getByLabelText(ar.app.push.jobAlerts), 'valueChange', false);
+    await waitFor(() =>
+      expect(saves()).toEqual([{ input: { ...chosen, push_job_alerts: false } }]),
+    );
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+    expect(screen.getByLabelText(ar.app.push.jobAlerts).props.value).toBe(false);
+
+    fireEvent(screen.getByLabelText(ar.app.push.quiet), 'valueChange', true);
+    await waitFor(() =>
+      expect(saves()[1]).toEqual({ input: { ...chosen, push_job_alerts: false, push_quiet_hours: true } }),
+    );
+  });
+
+  it('puts a switch back when the website refuses it', async () => {
+    me = { ...profile, ...chosen };
+    server.on('POST /api/mobile/v1/actions/updatePushPreferences', { ok: false, error: 'failed' });
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    fireEvent(await screen.findByLabelText(ar.app.push.applicationsCandidate), 'valueChange', false);
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    expect(screen.getByLabelText(ar.app.push.applicationsCandidate).props.value).toBe(true);
+  });
+
+  it('offers an employer applicants and listings, and no new jobs — they keep no saved searches', async () => {
+    me = { ...profile, role: 'employer', ...chosen };
+    // An employer's session also reads their company: none yet is an answer.
+    server.on('POST /rest/v1/rpc/my_company_id', () => null);
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    expect(await screen.findByLabelText(ar.app.push.applicationsEmployer)).toBeTruthy();
+    expect(screen.getByLabelText(ar.app.push.accountEmployer)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.app.push.jobAlerts)).toBeNull();
+  });
+
+  it('offers nothing while the database does not have the switches yet', async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    await screen.findByLabelText(ar.app.push.switch);
+    await waitFor(() => expect(registered()).toHaveLength(1));
+    expect(screen.queryByText(ar.app.push.kindsTitle)).toBeNull();
+  });
+
+  it('offers nothing while pushes are off on this phone', async () => {
+    me = { ...profile, ...chosen };
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(denied as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    expect(await screen.findByText(ar.app.push.denied)).toBeTruthy();
+    expect(screen.queryByText(ar.app.push.kindsTitle)).toBeNull();
+  });
+});
+
 describe('a tapped push', () => {
   const response = (notificationId: string) =>
     ({

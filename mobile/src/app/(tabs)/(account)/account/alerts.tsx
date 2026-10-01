@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Linking, ScrollView, Switch, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
@@ -8,6 +9,7 @@ import { EmptyState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { usePushControls } from '~/features/push/controls';
 import { pushAvailable, usePushState } from '~/features/push/device';
+import { pushPreferencesOf, useSavePushPreferences, type PushPreferences } from '~/features/push/preferences';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
@@ -15,7 +17,9 @@ import { radius, space } from '~/theme/tokens';
 /**
  * Pushes on this phone: on or off for the person signed in, without going to
  * the phone's settings — and when the phone's settings have them off, that
- * said plainly, with the way there. The emails are their own switches
+ * said plainly, with the way there. With them on, which kinds to hear about
+ * and whether to keep the night quiet: the person's choices, for all their
+ * phones (migration 335). The emails are their own switches
  * (/account/emails); a push is a second delivery of the bell, not a third
  * kind of message.
  */
@@ -64,7 +68,9 @@ export default function AlertsScreen() {
   const denied = state.data.permission === 'denied';
   const on = state.data.permission === 'granted' && !state.data.off;
   const pending = turnOn.isPending || turnOff.isPending;
-  const hint = viewer.profile.role === 'employer' ? t('app.push.hintEmployer') : t('app.push.hintCandidate');
+  const employer = viewer.profile.role === 'employer';
+  const hint = employer ? t('app.push.hintEmployer') : t('app.push.hintCandidate');
+  const preferences = pushPreferencesOf(viewer.profile);
 
   return (
     <>
@@ -116,6 +122,8 @@ export default function AlertsScreen() {
           </Notice>
         ) : null}
 
+        {on && preferences ? <Kinds employer={employer} initial={preferences} /> : null}
+
         {turnOn.isError ? (
           <Text variant="small" tone="destructive" accessibilityRole="alert">
             {t('app.push.failed')}
@@ -128,5 +136,99 @@ export default function AlertsScreen() {
         ) : null}
       </ScrollView>
     </>
+  );
+}
+
+/**
+ * Which kinds reach the phones, and quiet hours: saved as each is flipped and
+ * put back if the website refuses, as the email switches are. New listings
+ * are a candidate's only — an employer has no saved searches.
+ */
+function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferences }) {
+  const t = useTranslations('app.push');
+  const tCommon = useTranslations('common');
+  const { colors } = useTheme();
+  const save = useSavePushPreferences();
+  const [prefs, setPrefs] = useState(initial);
+  const [saved, setSaved] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const rows: { key: keyof PushPreferences; label: string; hint: string }[] = [
+    ...(employer ? [] : [{ key: 'push_job_alerts' as const, label: t('jobAlerts'), hint: t('jobAlertsHint') }]),
+    employer
+      ? { key: 'push_applications', label: t('applicationsEmployer'), hint: t('applicationsEmployerHint') }
+      : { key: 'push_applications', label: t('applicationsCandidate'), hint: t('applicationsCandidateHint') },
+    employer
+      ? { key: 'push_account', label: t('accountEmployer'), hint: t('accountEmployerHint') }
+      : { key: 'push_account', label: t('accountCandidate'), hint: t('accountCandidateHint') },
+    { key: 'push_quiet_hours', label: t('quiet'), hint: t('quietHint') },
+  ];
+
+  const flip = (key: keyof PushPreferences) => {
+    const before = prefs;
+    const next = { ...prefs, [key]: !prefs[key] };
+    setPrefs(next);
+    setSaved(false);
+    setFailed(false);
+    save.mutate(next, {
+      onSuccess: () => setSaved(true),
+      onError: () => {
+        setPrefs(before);
+        setFailed(true);
+      },
+    });
+  };
+
+  return (
+    <View style={{ gap: space[3] }}>
+      <View style={{ gap: 2, marginTop: space[2] }}>
+        <Text weight="semibold" accessibilityRole="header">
+          {t('kindsTitle')}
+        </Text>
+        <Text variant="small" tone="mutedForeground">
+          {t('kindsBody')}
+        </Text>
+      </View>
+      {rows.map((row) => (
+        <View
+          key={row.key}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space[3],
+            padding: space[4],
+            borderRadius: radius.xl,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.card,
+          }}
+        >
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text weight="medium">{row.label}</Text>
+            <Text variant="small" tone="mutedForeground">
+              {row.hint}
+            </Text>
+          </View>
+          <Switch
+            value={prefs[row.key]}
+            onValueChange={() => flip(row.key)}
+            disabled={save.isPending}
+            accessibilityLabel={row.label}
+            accessibilityHint={row.hint}
+            trackColor={{ true: colors.primary, false: colors.input }}
+          />
+        </View>
+      ))}
+      {saved ? (
+        <Text variant="small" tone="success" accessibilityLiveRegion="polite">
+          {tCommon('saveSuccess')}
+        </Text>
+      ) : null}
+      {failed ? (
+        <Text variant="small" tone="destructive" accessibilityRole="alert">
+          {tCommon('errorBody')}
+        </Text>
+      ) : null}
+    </View>
   );
 }

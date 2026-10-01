@@ -264,6 +264,41 @@ export async function updateNotificationPreferences(input: unknown): Promise<Act
   return { ok: true };
 }
 
+const pushPreferencesSchema = z.object({
+  push_job_alerts: z.boolean(),
+  push_applications: z.boolean(),
+  push_account: z.boolean(),
+  push_quiet_hours: z.boolean(),
+});
+
+/**
+ * The push switches (migration 335): which kinds reach the person's phones,
+ * and whether the night is kept quiet. The app is the only place they are
+ * shown — the website sends no pushes — but they are the person's, not one
+ * phone's, so they live on the profile beside the email switches and are
+ * written the same way: through the caller's own session, RLS deciding the
+ * row, and a write that touched nothing reported as such.
+ */
+export async function updatePushPreferences(input: unknown): Promise<ActionResult> {
+  const parsed = pushPreferencesSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const { data: saved, error } = await supabase
+    .from('profiles')
+    .update(parsed.data)
+    .eq('id', user.id)
+    .select('id');
+  if (error) return { ok: false, error: 'failed' };
+  if (!saved?.length) return { ok: false, error: 'not_found' };
+  return { ok: true };
+}
+
 const avatarSchema = z.object({
   /** Null clears the photo and goes back to the monogram. */
   storagePath: z.string().trim().max(300).nullable(),

@@ -320,7 +320,13 @@ A push is a second delivery of a bell notification, never a different one
   the person would hear about ("not now" puts it away) — never at launch; the
   Account tab's "Notifications on this phone" (`/account/alerts`) turns them
   off for this person on this phone without the phone's settings, and says so
-  when the phone's settings have them off, with the way there. The phone is
+  when the phone's settings have them off, with the way there. With them on,
+  it also has the person's choices for all their phones (migration 335, on
+  the profile beside the email switches, saved with `updatePushPreferences`):
+  new listings (a candidate's only), applications, and everything else, each
+  on or off, and quiet hours — what comes between 23:00 and 08:00 Cairo time
+  waits until eight; off unless turned on. `enqueue_push` applies them where
+  pushes are queued, so a kind turned off still reaches the bell. The phone is
   registered at every launch for somebody with a profile who allowed it
   (which keeps `last_seen_at` fresh) and again when its token changes.
   Signing out forgets the phone first (`signOutHere`, before the session

@@ -169,6 +169,16 @@ export type MobileActions = {
     };
     output: ActionResult;
   };
+  /** Which kinds reach the person's phones, and quiet hours (migration 335). */
+  updatePushPreferences: {
+    input: {
+      push_job_alerts: boolean;
+      push_applications: boolean;
+      push_account: boolean;
+      push_quiet_hours: boolean;
+    };
+    output: ActionResult;
+  };
   /** `{ storagePath: null }` removes the photo; uploading one is `uploadImage`. */
   saveAvatar: { input: { storagePath: string | null }; output: ActionResult };
   /** Multipart: `kind` (avatar | logo), `file`, and `companyId` for a logo. */

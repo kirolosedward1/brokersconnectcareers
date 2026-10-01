@@ -11,6 +11,7 @@ import {
   requestAccountDeletion,
   saveAvatar,
   updateNotificationPreferences,
+  updatePushPreferences,
 } from '@/lib/actions/account';
 import { recordAgentView } from '@/lib/agent-views';
 import { revealAgentContact } from '@/lib/actions/agent-contact';
@@ -112,6 +113,7 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   requestAccountDeletion: { run: (input) => requestAccountDeletion(input) },
   announcePasswordChange: { run: () => announcePasswordChange() },
   updateNotificationPreferences: { run: (input) => updateNotificationPreferences(input) },
+  updatePushPreferences: { run: (input) => updatePushPreferences(input) },
   saveAvatar: { run: (input) => saveAvatar(input) },
   uploadImage: { run: async (input) => (input instanceof FormData ? uploadImage(input) : invalid) },
 

@@ -67,6 +67,16 @@ export type ProfileRow = Timestamped & {
   /** Employer: batch applicant notices into one daily email. Gated by notify_applications. */
   notify_applicant_digest: boolean;
   /**
+   * Pushes, by kind, for all of the person's phones (migration 335): the day's
+   * new listings, application events, and everything else. The bell has them
+   * either way. Absent until that migration is applied.
+   */
+  push_job_alerts?: boolean;
+  push_applications?: boolean;
+  push_account?: boolean;
+  /** Hold pushes made between 23:00 and 08:00 Cairo time until eight. Off unless turned on. */
+  push_quiet_hours?: boolean;
+  /**
    * Whether this account may act. Candidates arrive approved; companies wait
    * for an admin, because the side that collects CVs and phone numbers is the
    * side worth checking by hand. Separate from company verification, which
