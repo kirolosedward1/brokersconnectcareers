@@ -1468,7 +1468,8 @@
     "kinds": {
       "notify_applications": "New applicant emails",
       "notify_status": "Application and listing status emails",
-      "notify_digest": "Weekly job roundup"
+      "notify_digest": "Weekly job roundup",
+      "notify_profile_nudge": "Profile reminder"
     }
   },
   "legal": {
@@ -1491,6 +1492,8 @@
     "notifyStatusHint": "When a company moves your application, or your listing is reviewed.",
     "notifyDigest": "Weekly job roundup",
     "notifyDigestHint": "What's new from your saved searches and the companies you follow, once a week.",
+    "notifyProfileNudge": "A reminder to finish your profile",
+    "notifyProfileNudgeHint": "One email if your profile is left unfinished after you sign up. Off unless you turn it on.",
     "exportTitle": "A copy of your data",
     "exportBody": "A file with your account, applications and profile, in a format any tool can read.",
     "exportCta": "Download my data",

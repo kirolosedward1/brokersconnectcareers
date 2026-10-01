@@ -85,6 +85,7 @@ export default async function AccountPage({
             notify_status: viewer.profile.notify_status,
             notify_digest: viewer.profile.notify_digest,
             notify_applicant_digest: viewer.profile.notify_applicant_digest,
+            notify_profile_nudge: viewer.profile.notify_profile_nudge,
           }}
         />
       </div>

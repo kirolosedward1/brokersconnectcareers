@@ -53,7 +53,7 @@ connections).
 | **Profile photo** (`avatars`, public) | Browser upload | Replacement queues old path | — | Removed after 7 days (cached pages, emails) if unreferenced | Hard |
 | **Company logo** (`company-logos`, public) | Admin member upload | As above | — | As above | Hard |
 | **Notification** (`notifications`) | Triggers only | User marks read | — | User deletes; read ones pruned after 180 days, unread after 365 | Hard |
-| **Email outbox** (`email_log`) | `claim_email()` | Sweeper / webhook | — | Recipient redacted on account deletion. Row retention **decision required**. | Retained |
+| **Email outbox** (`email_log`) | `claim_email()` | Sweeper / webhook | — | Recipient redacted on account deletion; rows pruned after 180 days (migration 337). | Hard |
 | **Email suppression** | Bounce/complaint webhook | — | — | Kept (about the address, not the account). **Decision required.** | Retained |
 | **Report** (`reports`) | Signed-in user | Admin resolves (`resolved_at` stamped) | — | Reporter nulled on their deletion; resolver nulled on theirs | Retained |
 | **Audit event** (`audit_events`) | Triggers on approval, role, verification, membership, job status, document review, account/company deletion | Never | — | Never pruned (**decision required** on a period) | Retained |
@@ -73,7 +73,7 @@ connections).
 | `storage_grace_private` | 1 day | Operational: signed URLs last 5 minutes |
 | `maintenance_runs` | 90 days | Operational |
 | `storage_gc_done` | 30 days | Operational |
-| `email_log` | **none (kept)** | Decision required |
+| `email_log` | 180 days | Product default (migration 337): long enough to answer "why did I not get it" |
 | `abandoned_signups` | **none (report only)** | Decision required |
 
 Change a period with one statement as an admin, for example
@@ -121,7 +121,7 @@ These are not settled in code. Each one defaults to keeping data.
 
 1. **Company closure.** What happens to a company, its listings and its received applications when the business leaves, or when its owner wants to delete their account? Today both are refused. Options: transfer ownership to another admin member, anonymise the company, or delete once there are no applications.
 2. **Withdrawn and deleted-candidate applications.** Today they are hard-deleted, so the employer loses the record. Should a de-identified tombstone (job, status reached, dates, no person) be kept for the employer's history and reporting? And for how long?
-3. **`email_log` retention.** How long delivery metadata (template, recipient, status) is kept for accounts that still exist.
+3. ~~**`email_log` retention.**~~ Set to 180 days (migration 337); change it with one statement as above.
 4. **`email_suppressions`.** Should a suppression be kept after the account is deleted? It is currently kept, to avoid mailing a dead address again.
 5. **`audit_events` retention**, and whether actor ids are kept after the actor's account is deleted (currently nulled).
 6. **Abandoned signups.** The period after which never-confirmed, never-signed-in, never-onboarded auth accounts are removed. Detection is built; deletion does not run until a period is set.

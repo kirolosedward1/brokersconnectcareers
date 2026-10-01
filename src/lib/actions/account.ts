@@ -231,6 +231,11 @@ const preferencesSchema = z.object({
   notify_status: z.boolean(),
   notify_digest: z.boolean(),
   notify_applicant_digest: z.boolean(),
+  /**
+   * The profile reminder (migration 337). Optional: a form that does not show
+   * it — an older app, a database without the column — leaves it as it is.
+   */
+  notify_profile_nudge: z.boolean().optional(),
 });
 
 /**

@@ -16,7 +16,7 @@
  * Run with: pnpm test:email
  */
 import { createHmac } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTestDb, reporter } from './setup.mjs';
@@ -590,6 +590,58 @@ report.section('every button in every template opens a page that exists');
     }
   }
   report.ok(seen.size >= 10, `found ${seen.size} distinct link targets to check`);
+}
+
+report.section('the two ways out of an optional email');
+{
+  const { unsubscribeLinks } = await import('../../src/lib/email/unsubscribe-link.ts');
+  const token = '9b2f3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+  const links = unsubscribeLinks('https://www.example.test', token, 'notify_digest');
+
+  const page = new URL(links.page);
+  const oneClick = new URL(links.oneClick);
+  report.is(page.pathname, '/unsubscribe', 'the footer link opens the page that asks first');
+  report.is(oneClick.pathname, '/api/unsubscribe', 'the one-click header goes to the endpoint that does it');
+  report.ok(
+    oneClick.searchParams.get('token') === token && oneClick.searchParams.get('kind') === 'notify_digest',
+    'carrying the token and the kind as the endpoint reads them',
+  );
+  report.ok(existsSync(join(ROOT, 'src/app/[locale]/(site)/unsubscribe/page.tsx')), 'the page exists');
+  report.ok(existsSync(join(ROOT, 'src/app/api/unsubscribe/route.ts')), 'and so does the endpoint');
+
+  // RFC 8058: a mail client POSTs `List-Unsubscribe=One-Click` to the header's
+  // address and expects the change made there. The page answers a POST by
+  // rendering itself, so pointing the header at it unsubscribed nobody.
+  const envelope = read('src/lib/email/envelope.ts');
+  report.ok(/unsubscribeUrl:\s*audience\.unsubscribe\?\.oneClick/.test(envelope), 'the List-Unsubscribe header carries the one-click address');
+  report.ok(/href:\s*audience\.unsubscribe\.page/.test(envelope), 'and the footer link the page');
+  const route = read('src/app/api/unsubscribe/route.ts');
+  report.ok(/List-Unsubscribe'\) === 'One-Click'/.test(route) && /searchParams\.get\('token'\)/.test(route),
+    'the endpoint reads a one-click POST and the token from its address');
+}
+
+report.section('the profile reminder is asked for, and the outbox forgets');
+{
+  const column = (await db.query(`select column_default, is_nullable from information_schema.columns
+                                   where table_name = 'profiles' and column_name = 'notify_profile_nudge'`)).rows[0];
+  report.ok(column && /false/.test(column.column_default ?? '') && column.is_nullable === 'NO',
+    'the profile reminder is off unless somebody turns it on');
+
+  const policy = (await db.query(`select days from retention_policies where key = 'email_log'`)).rows[0];
+  report.is(policy?.days, 180, 'the outbox keeps 180 days');
+
+  await db.exec(`
+    insert into email_log (template, recipient, status, created_at)
+      values ('saved_search_digest', 'old-sent@real.example', 'sent', now() - interval '181 days'),
+             ('saved_search_digest', 'old-queued@real.example', 'queued', now() - interval '181 days'),
+             ('saved_search_digest', 'recent@real.example', 'sent', now() - interval '179 days');
+  `);
+  await db.query('select public.prune_email_log(5000)');
+  const left = (await db.query(`select recipient from email_log
+                                 where recipient in ('old-sent@real.example', 'old-queued@real.example', 'recent@real.example')
+                                 order by recipient`)).rows.map((row) => row.recipient);
+  report.is(left.join(','), 'old-queued@real.example,recent@real.example',
+    'a row past the period goes; one still queued, and one inside it, stay');
 }
 
 await db.close?.();

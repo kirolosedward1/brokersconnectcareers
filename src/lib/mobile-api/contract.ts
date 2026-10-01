@@ -170,6 +170,8 @@ export type MobileActions = {
       notify_status: boolean;
       notify_digest: boolean;
       notify_applicant_digest: boolean;
+      /** The profile reminder, off unless turned on (migration 337); sent only when the profile has it. */
+      notify_profile_nudge?: boolean;
     };
     output: ActionResult;
   };

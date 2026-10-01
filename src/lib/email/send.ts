@@ -162,7 +162,9 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
       );
       return {
         outcome: 'failed',
-        error: `${response.status}: ${detail}`.slice(0, 500),
+        // Stored on email_log, which outlives the warning above: the same
+        // reason, the same address taken out.
+        error: `${response.status}: ${withoutAddresses(detail)}`.slice(0, 500),
         // 4xx is the request being wrong and will stay wrong — except 408,
         // 425 and 429, which are about timing. Everything else is worth
         // another go. The rule lives in policy.ts, where it is tested.
@@ -177,6 +179,6 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
     // another go.
     const message_ = error instanceof Error ? error.message : String(error);
     console.warn(`[email] send threw for "${message.subject}":`, message_);
-    return { outcome: 'failed', error: message_.slice(0, 500), retryable: true };
+    return { outcome: 'failed', error: withoutAddresses(message_).slice(0, 500), retryable: true };
   }
 }

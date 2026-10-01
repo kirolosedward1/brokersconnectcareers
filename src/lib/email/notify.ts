@@ -9,6 +9,7 @@ import { followedCompany } from '@/lib/saved-search';
 import { buildEnvelope, type Audience } from './envelope';
 import { deliver } from './service';
 import type { SendOutcome } from './send';
+import { unsubscribeLinks } from './unsubscribe-link';
 
 /**
  * One function per product event.
@@ -37,7 +38,7 @@ import type { SendOutcome } from './send';
  * forever on something that already happened. Everything else is a stream that
  * keeps arriving, and turning a stream off is a reasonable thing to want.
  */
-type Preference = 'notify_applications' | 'notify_status' | 'notify_digest' | null;
+type Preference = 'notify_applications' | 'notify_status' | 'notify_digest' | 'notify_profile_nudge' | null;
 
 type Recipient = {
   userId: string;
@@ -45,8 +46,6 @@ type Recipient = {
   locale: 'ar' | 'en';
   unsubscribeToken: string;
 };
-
-const PREFERENCE_COLUMNS = 'notify_applications, notify_status, notify_digest';
 
 /**
  * A read that failed, as opposed to one that found nothing.
@@ -76,15 +75,24 @@ async function recipient(
   userId: string,
   preference: Preference,
 ): Promise<Recipient | null> {
+  // The whole row rather than a list of switches: a database that has not had
+  // the newest switch's migration yet answers without it, where naming it
+  // would fail every email's read.
   const { data: profile, error: profileError } = await admin
     .from('profiles')
-    .select(`locale, ${PREFERENCE_COLUMNS}`)
+    .select('*')
     .eq('id', userId)
     .maybeSingle();
 
   if (profileError) readFailed('profile', profileError);
   if (!profile) return null;
-  if (preference && (profile as Record<string, unknown>)[preference] === false) return null;
+  if (preference) {
+    const value = (profile as Record<string, unknown>)[preference];
+    // The profile reminder is opt-in (migration 337): only a yes sends it, and
+    // a database without the switch has not asked anybody. Every other switch
+    // is on until turned off.
+    if (preference === 'notify_profile_nudge' ? value !== true : value === false) return null;
+  }
 
   // The token lives on profile_private (migration 305), where no company that
   // reads an applicant's profile can reach it. Service role, as before.
@@ -296,10 +304,11 @@ export async function notifyPasswordChanged(userId: string): Promise<SendOutcome
 export async function notifyProfileIncomplete(userId: string): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
-    // On notify_digest rather than transactional: this is a nudge, not an
-    // answer to anything the person asked for, and it is the closest thing
-    // here to marketing.
-    const to = await recipient(admin, userId, 'notify_digest');
+    // Its own switch, off unless turned on (migration 337): this is a nudge,
+    // not an answer to anything the person asked for, and it is the closest
+    // thing here to marketing. It used to ride on notify_digest, which is on
+    // by default and says "weekly job roundup".
+    const to = await recipient(admin, userId, 'notify_profile_nudge');
     if (!to) return 'skipped';
 
     const t = copyFor(to.locale).profileIncomplete;
@@ -311,7 +320,8 @@ export async function notifyProfileIncomplete(userId: string): Promise<SendOutco
       dedupeKey: `profile_incomplete:${userId}`,
       entity: { type: 'profile', id: userId },
       envelope: buildEnvelope({
-        audience: audienceOf(to, 'notify_digest'),
+        // Its own link turns off the reminder, not the job roundup.
+        audience: audienceOf(to, 'notify_profile_nudge'),
         subject: t.subject,
         preheader: t.preheader,
         heading: t.heading,
@@ -1461,9 +1471,7 @@ function audienceOf(to: Recipient, preference: Preference): Audience {
     // Transactional mail carries no unsubscribe: there is nothing to
     // unsubscribe from, and offering one that would be ignored is worse than
     // offering none.
-    unsubscribe: preference
-      ? `${env.siteUrl}/unsubscribe?token=${to.unsubscribeToken}&kind=${preference}`
-      : undefined,
+    unsubscribe: preference ? unsubscribeLinks(env.siteUrl, to.unsubscribeToken, preference) : undefined,
   };
 }
 

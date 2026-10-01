@@ -50,10 +50,24 @@ product action ──after()──▶ notify.ts ─▶ envelope.ts ─▶ servic
 |---|---|---|---|---|
 | `security` — password changed, visibility changed, account approved/rejected | never | never | **no** | exempt |
 | `transactional` — welcome, receipts, withdrawal, job submitted, company verification, profile ready | never | never | yes | 30/h |
-| `preference` — new applicant, applicant digest, status changes, moderation result, expiry, saved-search/follow digests, profile nudge | RFC 8058 one-click | `notify_applications` / `notify_status` / `notify_digest` | yes | 30/h |
+| `preference` — new applicant, applicant digest, status changes, moderation result, expiry, saved-search/follow digests, profile nudge | RFC 8058 one-click | `notify_applications` / `notify_status` / `notify_digest` / `notify_profile_nudge` | yes | 30/h |
 
 Turning off a marketing-style stream (`notify_digest`) cannot stop a security
 notice: security templates carry no unsubscribe and check no preference.
+
+Every preference email carries two ways out (`unsubscribeLinks`): the footer
+link opens `/unsubscribe`, which asks before it changes anything, so a link
+scanner cannot unsubscribe anybody; the `List-Unsubscribe` header names
+`/api/unsubscribe`, which a mail client's own button POSTs
+`List-Unsubscribe=One-Click` to and which makes the change there and then.
+(Until 2026-10-01 the header named the page, which answers a POST by rendering
+itself: a 200, and nobody unsubscribed.)
+
+The profile nudge is opt-in: `notify_profile_nudge` is off unless the person
+turns it on (migration 337), because it answers nothing they asked for. It
+used to ride on `notify_digest`, which is on by default and labelled as the
+weekly roundup. `email_log` rows, recipient included, are pruned after 180
+days; a provider's failure reason is stored with any address removed.
 
 ## Events supported
 

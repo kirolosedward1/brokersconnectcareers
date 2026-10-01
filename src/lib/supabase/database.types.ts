@@ -66,6 +66,8 @@ export type ProfileRow = Timestamped & {
   notify_digest: boolean;
   /** Employer: batch applicant notices into one daily email. Gated by notify_applications. */
   notify_applicant_digest: boolean;
+  /** Candidate: the one-time "finish your profile" reminder. Off unless turned on (migration 337); absent before it. */
+  notify_profile_nudge?: boolean;
   /**
    * Pushes, by kind, for all of the person's phones (migration 335): the day's
    * new listings, application events, and everything else. The bell has them

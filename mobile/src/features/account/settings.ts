@@ -127,10 +127,10 @@ export function useRemovePhoto() {
 
 export type EmailPreferences = Pick<
   ProfileRow,
-  'notify_applications' | 'notify_status' | 'notify_digest' | 'notify_applicant_digest'
+  'notify_applications' | 'notify_status' | 'notify_digest' | 'notify_applicant_digest' | 'notify_profile_nudge'
 >;
 
-/** All four switches at once, as the website sends them. */
+/** Every switch at once, as the website sends them (the profile reminder only where the profile has it). */
 export function useSaveEmailPreferences() {
   const queryClient = useQueryClient();
   return useMutation({

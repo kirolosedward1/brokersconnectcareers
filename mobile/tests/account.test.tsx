@@ -372,6 +372,35 @@ describe('the emails', () => {
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
   });
 
+  it('offers the profile reminder, off, where the profile has the switch, and sends it with the rest', async () => {
+    me = { ...me, notify_profile_nudge: false };
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/emails' });
+
+    const reminder = await screen.findByLabelText(ar.account.notifyProfileNudge);
+    expect(reminder.props.value).toBe(false);
+    fireEvent(reminder, 'valueChange', true);
+
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/updateNotificationPreferences')).toEqual({
+        input: {
+          notify_applications: true,
+          notify_status: true,
+          notify_digest: true,
+          notify_applicant_digest: false,
+          notify_profile_nudge: true,
+        },
+      }),
+    );
+  });
+
+  it('does not offer the reminder where the database has no such switch yet', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/emails' });
+    expect(await screen.findByLabelText(ar.account.notifyDigest)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.account.notifyProfileNudge)).toBeNull();
+  });
+
   it('puts the switch back when the website refuses', async () => {
     server.on('POST /api/mobile/v1/actions/updateNotificationPreferences', { ok: false, error: 'invalid' });
     await signIn();

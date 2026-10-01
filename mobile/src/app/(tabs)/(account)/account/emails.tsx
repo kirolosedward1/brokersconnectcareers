@@ -53,6 +53,7 @@ export default function EmailsScreen() {
           notify_status: profile.notify_status,
           notify_digest: profile.notify_digest,
           notify_applicant_digest: profile.notify_applicant_digest,
+          notify_profile_nudge: profile.notify_profile_nudge,
         }}
       />
     </>
@@ -78,6 +79,11 @@ function Switches({ employer, initial }: { employer: boolean; initial: EmailPref
       : []),
     { key: 'notify_status', label: t('notifyStatus'), hint: t('notifyStatusHint') },
     ...(employer ? [] : [{ key: 'notify_digest' as const, label: t('notifyDigest'), hint: t('notifyDigestHint') }]),
+    // The profile reminder, off unless turned on — offered only where the
+    // database has the switch (migration 337), as on the website.
+    ...(!employer && typeof initial.notify_profile_nudge === 'boolean'
+      ? [{ key: 'notify_profile_nudge' as const, label: t('notifyProfileNudge'), hint: t('notifyProfileNudgeHint') }]
+      : []),
   ];
 
   const flip = (key: keyof EmailPreferences) => {
@@ -122,7 +128,7 @@ function Switches({ employer, initial }: { employer: boolean; initial: EmailPref
             </Text>
           </View>
           <Switch
-            value={prefs[row.key]}
+            value={Boolean(prefs[row.key])}
             onValueChange={() => flip(row.key)}
             disabled={save.isPending}
             accessibilityLabel={row.label}

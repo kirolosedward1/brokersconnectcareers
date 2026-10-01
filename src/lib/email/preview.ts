@@ -4,6 +4,7 @@ import { copyFor } from './copy';
 import { buildEnvelope } from './envelope';
 import type { Block } from './components';
 import type { Envelope } from './service';
+import { unsubscribeLinks } from './unsubscribe-link';
 
 /**
  * Every template, rendered from fixtures.
@@ -549,7 +550,7 @@ export function renderPreview(
     audience: {
       locale,
       unsubscribe: OPTIONAL_TEMPLATES.has(template)
-        ? `${env.siteUrl}/unsubscribe?token=preview-token&kind=notify_status`
+        ? unsubscribeLinks(env.siteUrl, 'preview-token', 'notify_status')
         : undefined,
     },
     ...parts,
