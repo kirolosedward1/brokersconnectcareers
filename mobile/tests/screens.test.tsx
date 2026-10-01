@@ -26,6 +26,8 @@ import { fakeServer } from './server';
 
 const server = fakeServer();
 
+const SPONSORED_FIRST = 'الإعلانات الممولة بتظهر في الأول، وبعدها الباقي بالترتيب اللي اخترته.';
+
 const warnings: string[] = [];
 beforeAll(() => {
   globalThis.fetch = server.fetch as unknown as typeof fetch;
@@ -82,7 +84,7 @@ const app = {
 describe('home', () => {
   it('leads with the search, the ways in and the newest roles', async () => {
     renderRouter(app, { initialUrl: '/' });
-    expect(await screen.findByText('أفضل منصة لوظائف العقارات في مصر')).toBeTruthy();
+    expect(await screen.findByText('منصة متخصصة لوظائف العقارات في مصر')).toBeTruthy();
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     // The browse index, with the district's name from the taxonomy.
     expect(await screen.findByLabelText('القاهرة الجديدة، وظيفة واحدة')).toBeTruthy();
@@ -104,6 +106,27 @@ describe('the board', () => {
     expect(screen.getByText('نتيجة واحدة')).toBeTruthy();
     // The salary range with each number isolated left to right.
     expect(screen.getByText('⁦10,000⁩ – ⁦15,000⁩ جنيه')).toBeTruthy();
+    // Nothing sponsored on the page, so nothing to explain about the order.
+    expect(screen.queryByText(SPONSORED_FIRST)).toBeNull();
+  });
+
+  it('labels a sponsored listing, and says sponsored listings come first whatever the sort', async () => {
+    server.on('/api/mobile/v1/jobs', board([{ ...listing, is_featured: true }]));
+    renderRouter(app, { initialUrl: '/(jobs)/jobs?sort=salary' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    expect(screen.getByText('إعلان ممول')).toBeTruthy();
+    expect(screen.getByText(SPONSORED_FIRST)).toBeTruthy();
+  });
+
+  it('says "no basic salary", not "commission only", for a listing that has no commission either', async () => {
+    server.on(
+      '/api/mobile/v1/jobs',
+      board([{ ...listing, basic_salary_min: null, basic_salary_max: null, commission_type: 'none', commission_value: null }]),
+    );
+    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    expect(screen.getByText('من غير راتب أساسي')).toBeTruthy();
+    expect(screen.queryByText('عمولة فقط')).toBeNull();
   });
 
   it('asks the server for exactly the filters in the address', async () => {

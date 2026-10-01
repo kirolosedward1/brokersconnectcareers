@@ -280,6 +280,14 @@ function BoardHeader({
         </View>
       ) : null}
 
+      {/* Paid placement pins above every sort (the website's board says the
+          same), so whoever chose "highest salary" is told why the first card
+          may not be. Sponsored listings sit at the top of the first page. */}
+      {first?.jobs.some((job) => job.is_featured) ? (
+        <Text variant="small" tone="mutedForeground">
+          {t('sponsoredFirst')}
+        </Text>
+      ) : null}
     </View>
   );
 }

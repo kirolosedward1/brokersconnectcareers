@@ -5,7 +5,6 @@ import {
   MapPin,
   Search,
   Send,
-  Users,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { localized, type Locale } from "@/i18n/routing";
@@ -59,7 +58,6 @@ export async function SignedInHome({
 
   const featured = jobs.filter((job) => job.is_featured).slice(0, 2);
   const latest = jobs.filter((job) => !featured.includes(job)).slice(0, 6);
-  const openSeats = jobs.reduce((sum, job) => sum + job.seats, 0);
 
   const hiring = role === "employer" || role === "admin";
   const action = locale === "ar" ? "/jobs" : `/${locale}/jobs`;
@@ -150,8 +148,10 @@ export async function SignedInHome({
       ) : null}
 
       {/* The market, in one line rather than a run of dot-separated
-          fragments — two labelled figures read as facts; "15 · وظيفة · 138"
-          reads as a fragment of something else. */}
+          fragments — a labelled figure reads as a fact; "15 · وظيفة · 138"
+          reads as a fragment of something else. Live listings only: an
+          open-seats figure beside it added up the first page of the board and
+          sat next to the board's total as if it were the market's. */}
       <section className="mt-8" aria-labelledby="market-heading">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 id="market-heading" className="text-lg font-semibold">
@@ -166,14 +166,6 @@ export async function SignedInHome({
                 <span className="numeral">{n(total)}</span>
               </dd>
               <span>{t("statJobs")}</span>
-            </div>
-            <div className="inline-flex items-center gap-1.5">
-              <Users className="size-3.5" aria-hidden />
-              <dt className="sr-only">{t("statSeats")}</dt>
-              <dd className="font-semibold text-foreground">
-                <span className="numeral">{n(openSeats)}</span>
-              </dd>
-              <span>{t("statSeats")}</span>
             </div>
           </dl>
         </div>

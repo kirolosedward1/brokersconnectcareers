@@ -174,10 +174,17 @@ const isMissingSearchDocuments = (error: { code?: string } | null) =>
  * exactly this query rather than a second copy of it. Passing the public
  * client there is deliberate: an alert email must never contain a listing the
  * recipient could not see for themselves.
+ *
+ * `pinSponsored: false` drops the paid placement from the order, for the
+ * callers that ask "what is new" rather than show the board — the alerts. A
+ * listing someone paid to pin is labelled as sponsored wherever the board
+ * shows it pinned; an alert has no such label, and "published since you last
+ * heard" is a promise about recency that a pinned listing would break.
  */
 export const queryJobs = cache(async function queryJobs(
   filters: JobFilters,
   client?: SupabaseLikeClient,
+  { pinSponsored = true }: { pinSponsored?: boolean } = {},
 ): Promise<{
   jobs: JobListItem[];
   total: number;
@@ -206,8 +213,10 @@ export const queryJobs = cache(async function queryJobs(
     let query = applyFilters(supabase, filters, resolved, { legacy });
 
     // Featured listings pin to the top of every sort; the paid placement is
-    // worthless if a sort change buries it.
-    query = query.order('is_featured', { ascending: false });
+    // worthless if a sort change buries it. Disclosed where it is shown: each
+    // card carries "Sponsored", and the board says sponsored listings come
+    // first whenever one is on the page.
+    if (pinSponsored) query = query.order('is_featured', { ascending: false });
 
     if (filters.sort === 'salary') {
       query = query.order('basic_salary_max', { ascending: false, nullsFirst: false });

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, type Href } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Briefcase, Building2, Check, Search, Users } from '~/components/ui/lucide';
+import { Briefcase, Building2, Check, Search } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { CandidateHome } from '~/components/home/candidate-home';
@@ -75,7 +75,6 @@ function MarketHome() {
 
   const featured = name ? jobs.filter((job) => job.is_featured).slice(0, 2) : [];
   const latest = jobs.filter((job) => !featured.includes(job)).slice(0, 6);
-  const openSeats = jobs.reduce((sum, job) => sum + job.seats, 0);
 
   const search = () => {
     const words = q.trim();
@@ -164,11 +163,12 @@ function MarketHome() {
             </Pressable>
           </View>
 
-          {/* The market in two labelled figures, for somebody who comes back. */}
+          {/* The market in a labelled figure, for somebody who comes back. Live
+              listings only: an open-seats figure summed the first page and sat
+              beside the board's total as if it were the market's. */}
           {name ? (
             <View style={{ flexDirection: 'row', gap: space[4] }}>
               <Fact icon={<Briefcase size={14} color={colors.mutedForeground} />} value={formatNumber(total, locale)} label={t('home.statJobs')} />
-              <Fact icon={<Users size={14} color={colors.mutedForeground} />} value={formatNumber(openSeats, locale)} label={t('home.statSeats')} />
             </View>
           ) : null}
 

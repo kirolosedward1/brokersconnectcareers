@@ -446,6 +446,13 @@ export default async function JobsPage({
                   be. Visually silent because the count above already says it. */}
               <h2 className="sr-only">{t('resultsCount', { count: total })}</h2>
 
+              {/* Paid placement pins above every sort, so a reader who chose
+                  "highest salary" is told why the first card may not be. Only
+                  when a sponsored listing is on this page. */}
+              {jobs.some((job) => job.is_featured) ? (
+                <p className="mb-2 text-xs text-muted-foreground">{t('sponsoredFirst')}</p>
+              ) : null}
+
               <ul className="space-y-2">
                 {jobs.map((job) => (
                   <li key={job.id}>

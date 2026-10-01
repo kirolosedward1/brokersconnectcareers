@@ -66,8 +66,11 @@ export async function GET(request: NextRequest) {
         },
         board: async (query) => {
           const filters = parseJobFilters(queryParams(query));
-          // Newest first, so everything published since the cursor is on the first page.
-          const { jobs } = await queryJobs({ ...filters, sort: 'newest', page: 1 }, publicClient);
+          // Newest first, so everything published since the cursor is on the first
+          // page — with no sponsored listing pinned above them, as in the email.
+          const { jobs } = await queryJobs({ ...filters, sort: 'newest', page: 1 }, publicClient, {
+            pinSponsored: false,
+          });
           return jobs.map((job) => ({
             id: job.id,
             published_at: job.published_at,

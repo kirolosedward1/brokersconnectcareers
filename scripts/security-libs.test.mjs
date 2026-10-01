@@ -11,6 +11,7 @@
 import { cleanText, clean, safeHttpUrl } from '../src/lib/security/sanitize.ts';
 import { sniffKind, isOwnedPath } from '../src/lib/security/magic.ts';
 import { secretsMatch, bearerToken } from '../src/lib/security/secrets.ts';
+import { isPaymentPage } from '../src/lib/paymob/checkout-url.ts';
 
 let pass = 0;
 let fail = 0;
@@ -71,6 +72,18 @@ console.log('\n— an href');
     check(`refuses ${JSON.stringify(bad)}`, safeHttpUrl(bad) === null, String(safeHttpUrl(bad)));
   }
   check('length is bounded', safeHttpUrl(`https://example.com/${'a'.repeat(300)}`) === null);
+}
+
+console.log('\n— the one page off the site a button may send somebody to');
+{
+  check('Paymob\'s payment page', isPaymentPage('https://accept.paymob.com/api/acceptance/iframes/812345?payment_token=abc'));
+  check('not over plain http', !isPaymentPage('http://accept.paymob.com/api/acceptance/iframes/812345?payment_token=abc'));
+  check('not another host', !isPaymentPage('https://accept.paymob.com.evil.example/api/acceptance/iframes/812345'));
+  check('not a user@host trick', !isPaymentPage('https://accept.paymob.com@evil.example/api/acceptance/iframes/1'));
+  check('not another path on the host', !isPaymentPage('https://accept.paymob.com/api/auth/tokens'));
+  check('not a script', !isPaymentPage('javascript:alert(1)'));
+  check('not protocol-relative', !isPaymentPage('//evil.example/api/acceptance/iframes/1'));
+  check('nor nothing', !isPaymentPage(''));
 }
 
 console.log('\n— what a file is');

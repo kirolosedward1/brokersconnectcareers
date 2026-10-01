@@ -115,12 +115,16 @@ export async function generateMetadata({
     // those hold rich tags for the digits and cannot be read as plain strings.
     const tCommon = await getTranslations({ locale, namespace: 'common' });
 
+    // The card's own cases (SalaryLine): a range, "from", "up to" — which
+    // this used to call "commission only" — or no salary at all.
     const money =
       job.basic_salary_min != null && job.basic_salary_max != null
         ? `${formatEgp(job.basic_salary_min, locale)} – ${formatEgp(job.basic_salary_max, locale)} ${tCommon('egp')} ${tComp('perMonth')}`
         : job.basic_salary_min != null
           ? `${formatEgp(job.basic_salary_min, locale)}+ ${tCommon('egp')} ${tComp('perMonth')}`
-          : tComp('commissionOnly');
+          : job.basic_salary_max != null
+            ? `${tComp('upTo')} ${formatEgp(job.basic_salary_max, locale)} ${tCommon('egp')} ${tComp('perMonth')}`
+            : tComp(job.commission_type === 'none' ? 'noBasicSalary' : 'commissionOnly');
 
     const facts = [money, tLeads(`${job.leads_source}_short`), district].join(' · ');
     const prose = toPlainText(localized(locale, job.description_ar, job.description_en));

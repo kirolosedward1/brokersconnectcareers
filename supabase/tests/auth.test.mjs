@@ -107,7 +107,9 @@ report.section('nothing hands the browser a path it has not checked');
 
   So: two rules, read off the source rather than remembered. Every assign takes
   either a literal path or a value from a file that validates, and there is
-  exactly one definition of what "internal" means.
+  exactly one definition of what "internal" means. The one navigation off the
+  site, the buy button's, validates against the one payment page instead
+  (paymob/checkout-url.ts).
 */
 {
   const { readdirSync: rd, readFileSync: rf } = await import('node:fs');
@@ -136,7 +138,7 @@ report.section('nothing hands the browser a path it has not checked');
       const argument = match[1];
       const literal = /localeHref\(\s*locale\s*,\s*'\/[^']*'\s*\)/.test(argument);
       report.ok(
-        literal || text.includes('safeNext('),
+        literal || text.includes('safeNext(') || text.includes('isPaymentPage('),
         `${file.slice(SRC.length + 1)} validates what it navigates to`,
       );
     }

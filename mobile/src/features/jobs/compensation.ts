@@ -18,7 +18,11 @@ export function useCompensationText() {
   return {
     salary(job: Pay, locale: string): { amount: string; perMonth: string | null } {
       const { basic_salary_min: min, basic_salary_max: max } = job;
-      if (min == null && max == null) return { amount: t('commissionOnly'), perMonth: null };
+      // As the website's: "commission only", unless the listing also says
+      // there is no commission.
+      if (min == null && max == null) {
+        return { amount: t(job.commission_type === 'none' ? 'noBasicSalary' : 'commissionOnly'), perMonth: null };
+      }
 
       const amount =
         min != null && max != null

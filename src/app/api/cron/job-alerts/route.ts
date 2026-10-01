@@ -121,8 +121,13 @@ export async function GET(request: NextRequest) {
             const since = search.last_sent_at ?? firstRunCutoff;
             const filters = parseJobFilters(queryParams(search.query));
 
-            // Newest first, so everything published since the cutoff is at the top.
-            const { jobs } = await queryJobs({ ...filters, sort: 'newest', page: 1 }, publicClient);
+            // Newest first, so everything published since the cutoff is at the top
+            // — and only newest first: no sponsored listing pinned above them,
+            // which would take a place on the page and lead an email that has
+            // no "sponsored" label to give it.
+            const { jobs } = await queryJobs({ ...filters, sort: 'newest', page: 1 }, publicClient, {
+              pinSponsored: false,
+            });
 
             const matches = jobs
               .filter((job) => job.published_at && job.published_at > since)

@@ -3,12 +3,12 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Check, Infinity as InfinityIcon } from 'lucide-react';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { BuyPackButton } from '@/components/employer/buy-pack-button';
 import { ClaimFreePostButton } from '@/components/employer/claim-free-post';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { BILLING_ENABLED } from '@/lib/env';
-import { POST_PACKS } from '@/lib/taxonomy';
+import { PACKS_ON_SALE } from '@/lib/taxonomy';
 import { formatDate, formatEgp, formatNumber } from '@/lib/utils';
 import type { OrderRow } from '@/lib/supabase/database.types';
 
@@ -89,62 +89,58 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
         ) : null}
       </section>
 
-      <section aria-labelledby="packs-heading">
-        <h2 id="packs-heading" className="mb-4 text-lg font-semibold">
-          {t('packs')}
-        </h2>
+      {/* The packs only when they are for sale. While billing is off this
+          was a grid of zeros beside struck-through prices nobody had ever
+          been charged — a discount that does not exist — and "Buy" buttons
+          that did nothing. */}
+      {BILLING_ENABLED ? (
+        <section aria-labelledby="packs-heading">
+          <h2 id="packs-heading" className="mb-4 text-lg font-semibold">
+            {t('packs')}
+          </h2>
 
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {POST_PACKS.map((pack) => (
-            <li
-              key={pack.key}
-              className="flex flex-col rounded-xl border border-border bg-card p-5"
-            >
-              <p className="font-semibold">{t(`packName.${pack.key}`)}</p>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {PACKS_ON_SALE.map((pack) => (
+              <li
+                key={pack.key}
+                className="flex flex-col rounded-xl border border-border bg-card p-5"
+              >
+                <p className="font-semibold">{t(`packName.${pack.key}`)}</p>
 
-              <p className="mt-2 text-2xl font-bold">
-                <span className="numeral">
-                  {BILLING_ENABLED ? formatEgp(pack.priceEgp, locale) : formatEgp(0, locale)}
-                </span>
-                <span className="ms-1 text-sm font-normal text-muted-foreground">
-                  {tCommon('egp')}
-                </span>
-              </p>
-
-              {BILLING_ENABLED ? null : (
-                <p className="mt-1 text-xs text-muted-foreground line-through">
+                <p className="mt-2 text-2xl font-bold">
                   <span className="numeral">{formatEgp(pack.priceEgp, locale)}</span>
-                </p>
-              )}
-
-              <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  {pack.seats === null ? (
-                    <InfinityIcon className="size-3.5 shrink-0" aria-hidden />
-                  ) : (
-                    <Check className="size-3.5 shrink-0" aria-hidden />
-                  )}
-                  <span >
-                    {pack.seats === null
-                      ? t('unlimitedSeats')
-                      : t('seatsUpTo', { count: formatNumber(pack.seats, locale) })}
+                  <span className="ms-1 text-sm font-normal text-muted-foreground">
+                    {tCommon('egp')}
                   </span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="size-3.5 shrink-0" aria-hidden />
-                  {/* Same reason as the expiry line: a phrase, not a
-                       figure. `.numeral` put "يوماً" before the number. */}
-                  <span>{t('days', { count: formatNumber(pack.days, locale) })}</span>
-                </li>
-              </ul>
+                </p>
 
-              <Button className="mt-5" disabled={!BILLING_ENABLED}>
-                {t('buy')}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </section>
+                <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    {pack.seats === null ? (
+                      <InfinityIcon className="size-3.5 shrink-0" aria-hidden />
+                    ) : (
+                      <Check className="size-3.5 shrink-0" aria-hidden />
+                    )}
+                    <span >
+                      {pack.seats === null
+                        ? t('unlimitedSeats')
+                        : t('seatsUpTo', { count: formatNumber(pack.seats, locale) })}
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="size-3.5 shrink-0" aria-hidden />
+                    {/* Same reason as the expiry line: a phrase, not a
+                         figure. `.numeral` put "يوماً" before the number. */}
+                    <span>{t('days', { count: formatNumber(pack.days, locale) })}</span>
+                  </li>
+                </ul>
+
+                <BuyPackButton packKey={pack.key} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {orders.length ? (
         <section aria-labelledby="orders-heading">

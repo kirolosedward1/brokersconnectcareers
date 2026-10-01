@@ -63,6 +63,8 @@ export const CONSOLE_MESSAGES = [
   'appeals',
   'applicationStatus',
   'benefits',
+  // The buy button on the billing page, when billing is on.
+  'billing',
   'commissionType',
   'compensation',
   'cv',

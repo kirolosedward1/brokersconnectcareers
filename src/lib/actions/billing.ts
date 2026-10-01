@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { BILLING_ENABLED } from '@/lib/env';
-import { POST_PACKS } from '@/lib/taxonomy';
+import { PACKS_ON_SALE } from '@/lib/taxonomy';
 import { createCheckout, paymobConfig } from '@/lib/paymob/client';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { policyFor, rateLimit } from '@/lib/security/rate-limit';
@@ -18,7 +18,7 @@ const schema = z.object({
  * Start a purchase.
  *
  * The price is never taken from the request. The client sends a pack key, and
- * the amount, the credits and the seat tier are all read from POST_PACKS on
+ * the amount, the credits and the seat tier are all read from PACKS_ON_SALE on
  * the server — otherwise the cheapest possible attack on this endpoint is to
  * post the same key with a different number attached to it.
  *
@@ -68,8 +68,10 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
     .eq('id', user.id)
     .maybeSingle();
 
-  const pack = POST_PACKS.find((item) => item.key === parsed.data.packKey);
-  if (!pack) return { ok: false, error: 'invalid' };
+  // Only what is on sale: the featured add-on is in the schema because
+  // orders carry its key, but buying it would deliver nothing (PACKS_ON_SALE).
+  const pack = PACKS_ON_SALE.find((item) => item.key === parsed.data.packKey);
+  if (!pack) return { ok: false, error: 'not_available' };
 
   // Every call opens a pending order and three provider round trips. A
   // handful an hour is a company buying credits; more is a loop.
