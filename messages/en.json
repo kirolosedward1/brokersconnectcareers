@@ -267,8 +267,8 @@
     "public": "Visible to all companies",
     "verified_employers_only": "Verified employers only",
     "hidden": "Completely hidden",
-    "publicHint": "Every approved company on the platform sees your name, number and CV.",
-    "verifiedHint": "Unverified companies see an unnamed card. Verified companies see the full profile.",
+    "publicHint": "Every approved company on the platform sees your name and photo, and can ask for your number and CV.",
+    "verifiedHint": "Unverified companies see an unnamed card. Verified companies, and any company you applied to, see the full profile.",
     "hiddenHint": "Your profile does not appear in the directory at all — including to your current employer."
   },
   "auth": {
@@ -362,6 +362,11 @@
     "companyDistrict": "Area",
     "companyHeadcount": "Company size",
     "companyReviewNote": "We review every company before its first listing, and you will be notified when the review is done.",
+    "visibilityQuestion": "Who can see your profile in the consultant directory?",
+    "visibilityHint": "The directory is for companies only; visitors and other job seekers cannot see it. You can change this any time from your profile.",
+    "visibilityRequired": "Choose who can see your profile.",
+    "consent": "I am 18 or older, and I have read and agree to the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>.",
+    "consentRequired": "Confirm you are 18 or older and agree to the Terms and the Privacy policy to continue.",
     "confirmedBanner": "Your email is confirmed — one step and your account is ready.",
     "roleKnownCandidate": "You are registered as a consultant.",
     "roleKnownEmployer": "You are registered as a company."
@@ -434,6 +439,9 @@
     "matchExperience": "years of experience",
     "matchNudge": "This list is not tailored to you yet.",
     "matchNudgeCta": "Add your track and districts and we will order them to fit you",
+    "visibilityAskTitle": "Choose who sees your profile in the consultant directory",
+    "visibilityAskBody": "Your profile is currently “{current}”, which was set before we asked you. Choose what suits you from your profile.",
+    "visibilityAskCta": "Choose visibility",
     "nextApplicantsTitle": "{count, plural, one {# applicant is waiting on you} other {# applicants are waiting on you}}",
     "nextApplicantsBody": "Their status has not moved yet. Move it so they know where they stand.",
     "nextApplicantsCta": "See the applicants",
@@ -492,9 +500,9 @@
     "nextRoles": "Other open roles",
     "nextRolesMatched": "Other roles that fit you",
     "privacyTitle": "Who sees your details",
-    "privacyBody": "Only the company that posted this role sees your name, WhatsApp number, years of experience, and your CV and note if you attach them. Other companies and site visitors see none of it.",
+    "privacyBody": "Only the company that posted this role sees your name and photo, WhatsApp number, years of experience, and your CV and note if you attach them. Other companies and site visitors do not see your application.",
     "privacyProfile": "The name and number you enter here also update your account.",
-    "privacyNote": "This is separate from your directory visibility, and you can withdraw the application at any time from “My applications”.",
+    "privacyNote": "If your consultant directory profile is not hidden, this company also sees it in full — headline, tracks, districts and your sales record — and can ask for your number and CV from it, even if it is not verified. You can withdraw the application at any time from “My applications”.",
     "suspendedTitle": "Your account is suspended",
     "suspendedBody": "You cannot apply to roles until an administrator has reviewed your account."
   },
@@ -1466,7 +1474,11 @@
   "legal": {
     "lastUpdated": "Last updated:",
     "missing": "This document is not available right now",
-    "missingBody": "Please try again shortly."
+    "missingBody": "Please try again shortly.",
+    "updatedTitle": "We have updated our Terms of use and Privacy policy",
+    "updatedBody": "Please read the current <terms>Terms of use</terms> and <privacy>Privacy policy</privacy>. If you agree to them, and you are 18 or older, press “I agree”.",
+    "agree": "I agree",
+    "agreeFailed": "We could not record your agreement. Please try again."
   },
   "account": {
     "title": "Account settings",

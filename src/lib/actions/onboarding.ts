@@ -10,6 +10,7 @@ import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
 import { clean, safeHttpUrl } from '@/lib/security/sanitize';
 import { publish } from '@/lib/notifications/events';
+import { currentPolicyVersions } from '@/lib/legal';
 
 /**
  * A company answers more questions than a consultant does.
@@ -34,9 +35,23 @@ const schema = z
     whatsapp: z.string().trim().min(6).max(24),
     locale: z.enum(['ar', 'en']),
     company: companySchema.optional(),
+    /**
+     * "I am 18 or older, and I have read and agree to the Terms of use and the
+     * Privacy policy." Nothing is created without it, and what was agreed to is
+     * recorded (policy_acceptances, migration 336).
+     */
+    agreed: z.literal(true),
+    /**
+     * Who sees a candidate's card in the consultant directory — asked, with no
+     * answer chosen in advance, never assumed. Ignored for a company.
+     */
+    visibility: z.enum(['public', 'verified_employers_only', 'hidden']).optional(),
   })
   .refine((value) => value.role !== 'employer' || value.company != null, {
     path: ['company'],
+  })
+  .refine((value) => value.role !== 'candidate' || value.visibility != null, {
+    path: ['visibility'],
   });
 
 /**
@@ -63,19 +78,11 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
   if (!user) return { ok: false, error: 'unauthenticated' };
 
   /*
-    The photo the identity provider supplied, or nothing.
-
-    user_metadata is the account's to write — supabase.auth.updateUser({ data })
-    from the browser — so a URL there is a URL the person chose, and it is
-    drawn as an <img> on the applicant card and the public directory. https
-    only, bounded, and only from the providers this platform signs in with;
-    the person can upload a photo of their own afterwards.
+    No photo. The Google account's picture used to be copied onto the profile
+    here, unasked, and from there onto the applicant card and the directory —
+    while the privacy policy said a photo is one "you upload". A photo is
+    something the person adds themselves, from their profile.
   */
-  const suggestedAvatar = safeHttpUrl(user.user_metadata?.avatar_url as string | undefined, 512);
-  const avatarUrl =
-    suggestedAvatar && /^https:\/\/[a-z0-9.-]*googleusercontent\.com\//i.test(suggestedAvatar)
-      ? suggestedAvatar
-      : null;
 
   const { data: inserted, error } = await supabase
     .from('profiles')
@@ -85,7 +92,6 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
       full_name: clean(parsed.data.fullName),
       whatsapp_phone: phone,
       locale: parsed.data.locale,
-      avatar_url: avatarUrl,
     })
     .select('role')
     .maybeSingle();
@@ -126,6 +132,18 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
   }
 
   /*
+    What they agreed to, now that the profile it belongs to exists — the
+    versions this deployment publishes, dated by the database. A failure here
+    does not undo the account: the layouts ask again until it is recorded
+    (getPolicyStatus).
+  */
+  const versions = currentPolicyVersions();
+  await supabase.rpc('record_policy_acceptance', {
+    p_terms_version: versions.terms,
+    p_privacy_version: versions.privacy,
+  });
+
+  /*
     A consultant's directory profile, created here for the same reason the
     company below is.
 
@@ -135,11 +153,13 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
     the seed had a row because the seed script wrote one; the first real signup
     did not, and could not be found by any employer searching the directory.
 
-    Visibility is left at its column default, `verified_employers_only`. So
-    they appear immediately, as an anonymous card — track, districts, years,
-    no name and no number — which is exactly what the profile page promises
-    them, and they can widen or hide it whenever they like. Being listed is not
-    the same as being identified.
+    Visibility is what they answered on the form, with nothing chosen for them
+    in advance: it used to be left at the column default and list everybody,
+    unasked, as an anonymous card to every approved company and a named one to
+    verified companies — while the privacy policy said it happened only if
+    they chose. The choice is dated by the database (migration 336), and a row
+    made without one is hidden, the column's default now. They can change it
+    whenever they like.
 
     A failure here does not fail onboarding, for the same reason the company
     block gives: the account works, and /dashboard/profile can still create it.
@@ -152,10 +172,25 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
       .maybeSingle();
 
     if (!alreadyThere) {
+      const visibility = parsed.data.visibility;
+      const choice = visibility ? { visibility, visibility_chosen_at: new Date().toISOString() } : {};
       await withUniqueSlug<{ id: string }>(
         () => buildAgentSlug(),
-        (slug) =>
-          supabase.from('agent_profiles').insert({ user_id: user.id, slug }).select('id').single(),
+        async (slug) => {
+          const first = await supabase
+            .from('agent_profiles')
+            .insert({ user_id: user.id, slug, ...choice })
+            .select('id')
+            .single();
+          // Code deployed ahead of migration 336: the choice without its date,
+          // rather than no card at all.
+          const stampUnknown =
+            (first.error?.code === 'PGRST204' || first.error?.code === '42703') &&
+            /visibility_chosen_at/.test(first.error.message ?? '');
+          return stampUnknown && visibility
+            ? supabase.from('agent_profiles').insert({ user_id: user.id, slug, visibility }).select('id').single()
+            : first;
+        },
       );
     }
   }

@@ -33,6 +33,12 @@ export type MobileConfig = {
   minAndroidAppVersion: string;
   /** MOBILE_PLAY_STORE_URL, where "update the app" leads on Android; null until the app is listed. */
   playStoreUrl: string | null;
+  /**
+   * The versions of the Terms of use and the Privacy policy a person agrees to
+   * now (their `updated` dates). Compared with the person's latest acceptance
+   * to decide whether to ask again. Absent from a server older than migration 336's code.
+   */
+  policies?: { terms: string; privacy: string };
 };
 
 /** GET /jobs */

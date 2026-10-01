@@ -8,6 +8,7 @@ import { localized } from '@/lib/locale';
 import type { ProfileRow } from '@/lib/supabase/database.types';
 import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
+import { PolicyNotice } from '~/components/legal/policy-notice';
 import { PushPrompt } from '~/components/push/push-prompt';
 import { StatStrip } from '~/components/dashboard/stat-strip';
 import { JobBrowse } from '~/components/home/job-browse';
@@ -25,6 +26,7 @@ import {
   useSuggestions,
   type Suggestion,
 } from '~/features/dashboard/candidate';
+import { useUnchosenVisibility } from '~/features/policies';
 import { useAgentProfile, useCandidateSummary } from '~/features/profile/queries';
 import { useDistricts } from '~/features/taxonomy';
 import { inOwnTab } from '~/lib/links';
@@ -100,6 +102,12 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
       </View>
 
       {profile ? <StandingNotice profile={profile} /> : null}
+
+      {/* The Terms and the Privacy policy as they are now, until agreed to. */}
+      {profile ? <PolicyNotice /> : null}
+
+      {/* Who sees their directory card was decided before onboarding asked. */}
+      {profile ? <VisibilityAsk /> : null}
 
       {/* The phone's question, with its reason, until it has been answered. */}
       {profile ? <PushPrompt audience="candidate" /> : null}
@@ -369,5 +377,26 @@ function SuggestedRole({
         </Text>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * The website's question on /dashboard: a directory card listed before
+ * anybody asked its owner (visibility_chosen_at null, migration 336). Asked
+ * once, until they choose on their profile.
+ */
+function VisibilityAsk() {
+  const t = useTranslations();
+  const current = useUnchosenVisibility(true).data ?? null;
+  if (!current) return null;
+  return (
+    <Notice tone="muted" title={t('dashboard.visibilityAskTitle')}>
+      <View style={{ gap: space[3] }}>
+        <Text variant="small">{t('dashboard.visibilityAskBody', { current: t(`visibility.${current}`) })}</Text>
+        <View style={{ alignItems: 'flex-start' }}>
+          <Button label={t('dashboard.visibilityAskCta')} size="sm" onPress={() => router.navigate('/account/profile')} />
+        </View>
+      </View>
+    </Notice>
   );
 }

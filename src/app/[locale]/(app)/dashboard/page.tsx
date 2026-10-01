@@ -76,8 +76,15 @@ export default async function DashboardOverviewPage({
    * every figure was a link to somewhere else, which is a page that exists to
    * be left.
    */
-  const [{ data }, { data: recent }, { data: mine }, openRoles, { data: agent }, districts] =
-    await Promise.all([
+  const [
+    { data },
+    { data: recent },
+    { data: mine },
+    openRoles,
+    { data: agent },
+    districts,
+    { data: choice, error: choiceError },
+  ] = await Promise.all([
     supabase.rpc('candidate_summary'),
     /*
       Both application reads are scoped to this candidate explicitly, with
@@ -130,7 +137,20 @@ export default async function DashboardOverviewPage({
       .eq('user_id', viewer.profile.id)
       .maybeSingle(),
     optional(getDistricts(), []),
+    /*
+      Whether the owner ever chose who sees their card (migration 336). Its own
+      read, so a database without the column costs this question and not the
+      ranking above; a read that fails asks nothing.
+    */
+    supabase
+      .from('agent_profiles')
+      .select('visibility, visibility_chosen_at')
+      .eq('user_id', viewer.profile.id)
+      .maybeSingle(),
   ]);
+
+  // A card listed before anybody asked: the owner is asked now.
+  const askVisibility = !choiceError && choice != null && choice.visibility_chosen_at === null;
 
   const s = (data ?? null) as CandidateSummary | null;
   const applications = (recent ?? []) as unknown as RecentApplication[];
@@ -186,6 +206,7 @@ export default async function DashboardOverviewPage({
   const tJobs = await getTranslations('jobs');
   const tStatus = await getTranslations('applicationStatus');
   const tTrack = await getTranslations('track');
+  const tVisibility = await getTranslations('visibility');
   const n = (value: number) => formatNumber(value, locale);
 
   return (
@@ -201,6 +222,25 @@ export default async function DashboardOverviewPage({
           and a way to ask for a second look — not left to discover it when
           the apply button refuses. */}
       <StandingNotice profile={viewer.profile} company={null} />
+
+      {/* Who sees their card was decided for them before onboarding asked;
+          it is theirs to decide, so they are asked once, here. */}
+      {askVisibility && choice ? (
+        <section
+          aria-labelledby="visibility-ask"
+          className="rounded-xl border border-primary/20 bg-primary/[0.04] p-4"
+        >
+          <p id="visibility-ask" className="font-medium">
+            {t('visibilityAskTitle')}
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            {t('visibilityAskBody', { current: tVisibility(choice.visibility) })}
+          </p>
+          <Button asChild size="sm" className="mt-3">
+            <Link href="/dashboard/profile">{t('visibilityAskCta')}</Link>
+          </Button>
+        </section>
+      ) : null}
 
       {/*
         The candidate's one next action, same rule as the employer's: an

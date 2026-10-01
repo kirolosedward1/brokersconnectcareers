@@ -460,6 +460,12 @@ export type AgentProfileRow = Timestamped & {
   units_closed: number | null;
   /** Self-reported closed value in EGP. The platform does not verify it. */
   volume_egp: number | null;
+  /**
+   * When the owner last chose who sees the card, on the database's clock
+   * (migration 336). Null for a card made before anybody was asked. Send any
+   * value to mark an explicit choice; the database replaces it with now().
+   */
+  visibility_chosen_at?: string | null;
   /** Set by an admin (migration 317); pins visibility to hidden until lifted. */
   restricted_at?: string | null;
   restriction_reason?: string | null;
@@ -615,6 +621,16 @@ export type SupportRequestRow = {
 };
 
 /** A phone signed in with the app (migration 329). Written through register_push_device only. */
+/** One agreement to the Terms of use and the Privacy policy (migration 336). Written by record_policy_acceptance() only. */
+export type PolicyAcceptanceRow = {
+  id: number;
+  user_id: string;
+  /** The documents' `updated` dates (content/legal/*.ar.md). */
+  terms_version: string;
+  privacy_version: string;
+  accepted_at: string;
+};
+
 export type PushDeviceRow = {
   id: string;
   user_id: string;
@@ -1301,6 +1317,7 @@ export type Database = {
       job_runs: Table<JobRunRow, never>;
       /** Its owner reads it; register_push_device / unregister_push_device write it; the sender disables it. */
       push_devices: Table<PushDeviceRow, never>;
+      policy_acceptances: Table<PolicyAcceptanceRow, never>;
       /** Read by its sender and by admins; written only through submit_support_request(), answered through admin_answer_support_request(). */
       support_requests: Table<SupportRequestRow, never>;
       /** Queued by the notifications trigger; RLS on, no policies: the sender (service role) only. */
@@ -1772,6 +1789,8 @@ export type Database = {
         Returns: string;
       };
       unregister_push_device: { Args: { p_token: string }; Returns: undefined };
+      /** The caller agreeing to these versions of the Terms and the Privacy policy (migration 336). Once per pair. */
+      record_policy_acceptance: { Args: { p_terms_version: string; p_privacy_version: string }; Returns: undefined };
       /** The day's new-jobs notification (migration 334): its id, or null when today's exists or the person is not a candidate. Service role. */
       record_new_jobs_notification: {
         Args: { p_user: string; p_payload: NotificationRow['payload']; p_href: string };

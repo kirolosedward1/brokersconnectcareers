@@ -4,11 +4,11 @@ import type { Session } from '@supabase/supabase-js';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocale, useTranslations } from 'use-intl';
-import { Briefcase, Check, MailCheck, Search } from '~/components/ui/lucide';
+import { BadgeCheck, Briefcase, Check, Eye, EyeOff, MailCheck, Search } from '~/components/ui/lucide';
 import type { OnboardingInput } from '@/lib/mobile-api/contract';
 import { localized, type Locale } from '@/lib/locale';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
-import type { HeadcountBand } from '@/lib/supabase/database.types';
+import type { AgentVisibility, HeadcountBand } from '@/lib/supabase/database.types';
 import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
 import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
@@ -125,13 +125,18 @@ function OnboardingForm({
   const [headcount, setHeadcount] = useState<HeadcountBand | null>(null);
   const [profileLocale, setProfileLocale] = useState<Locale>(locale);
   const [agreed, setAgreed] = useState(false);
+  // Who sees a candidate's directory card: nothing chosen in advance.
+  const [visibility, setVisibility] = useState<AgentVisibility | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
 
   async function submit() {
     setErrors({});
-    if (!agreed) {
-      setErrors({ terms: t('app.onboarding.termsRequired') });
+    const missing: Record<string, string> = {};
+    if (role === 'candidate' && !visibility) missing.visibility = t('onboarding.visibilityRequired');
+    if (!agreed) missing.terms = t('onboarding.consentRequired');
+    if (Object.keys(missing).length) {
+      setErrors(missing);
       return;
     }
 
@@ -140,6 +145,8 @@ function OnboardingForm({
       fullName,
       whatsapp,
       locale: profileLocale,
+      agreed: true,
+      visibility: role === 'candidate' ? (visibility ?? undefined) : undefined,
       company:
         role === 'employer'
           ? {
@@ -162,6 +169,8 @@ function OnboardingForm({
               ...(fields.fullName ? { fullName: t('validation.required') } : {}),
               ...(fields.whatsapp ? { whatsapp: t('validation.invalidPhone') } : {}),
               ...(fields.company ? { company: t('validation.required') } : {}),
+              ...(fields.visibility ? { visibility: t('onboarding.visibilityRequired') } : {}),
+              ...(fields.agreed ? { terms: t('onboarding.consentRequired') } : {}),
               ...(fields.role || fields.locale ? { form: t('common.errorBody') } : {}),
             }
           : { form: t('common.errorBody') },
@@ -319,6 +328,40 @@ function OnboardingForm({
           </View>
         ) : null}
 
+        {/* Who sees a consultant's card in the directory: asked, with nothing
+            chosen for them — the website's question (migration 336). */}
+        {role === 'candidate' ? (
+          <View style={{ gap: space[2] }} accessibilityRole="radiogroup" accessibilityLabel={t('onboarding.visibilityQuestion')}>
+            <Text variant="small" weight="medium">
+              {t('onboarding.visibilityQuestion')}
+            </Text>
+            <Text variant="caption" tone="mutedForeground">
+              {t('onboarding.visibilityHint')}
+            </Text>
+            {(
+              [
+                ['public', 'publicHint', Eye],
+                ['verified_employers_only', 'verifiedHint', BadgeCheck],
+                ['hidden', 'hiddenHint', EyeOff],
+              ] as const
+            ).map(([value, hint, Icon]) => (
+              <RoleCard
+                key={value}
+                selected={visibility === value}
+                onPress={() => setVisibility(value)}
+                icon={<Icon size={20} color={visibility === value ? colors.primary : colors.mutedForeground} />}
+                title={t(`visibility.${value}`)}
+                hint={t(`visibility.${hint}`)}
+              />
+            ))}
+            {errors.visibility ? (
+              <Text variant="caption" tone="destructive" accessibilityRole="alert">
+                {errors.visibility}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Each language in its own name: this picks the language of the emails,
             and somebody who cannot read the current one has to find theirs. */}
         <Field label={t('onboarding.locale')}>
@@ -350,7 +393,7 @@ function OnboardingForm({
             {agreed ? <Check size={16} color={colors.primaryForeground} /> : null}
           </View>
           <Text variant="small" style={{ flex: 1 }}>
-            {t.rich('app.onboarding.terms', {
+            {t.rich('onboarding.consent', {
               terms: (chunks: ReactNode) => (
                 <Text variant="small" weight="semibold" tone="primary" onPress={() => openSitePage('/terms')} suppressHighlighting>
                   {chunks}

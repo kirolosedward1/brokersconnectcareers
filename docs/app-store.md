@@ -41,10 +41,12 @@ for tracking, advertising, or third-party marketing.
 | Search history | Search history | saved searches and followed companies |
 | Identifiers | User ID | the account id |
 | Identifiers | Device ID | the push token registered for the phone (`push_devices`); the random install id `expo-updates` sends to Expo with each update check (not linked to the account) |
-| Other data | Other data types | work history, education, certifications and the sales record on a consultant's profile |
+| Other data | Other data types | work history, education, certifications and the sales record on a consultant's profile; the record of which versions of the Terms and the Privacy policy the person agreed to, and when (`policy_acceptances`) |
+| Usage data | Product interaction | a company opening a consultant's profile (`agent_profile_views`, kept 60 days, shown to the consultant as a count) and asking for a consultant's number or CV (`agent_contact_reveals`, used for the daily limits) |
 
 Not collected: location, contacts, browsing history, purchases, financial
-info, health, sensitive info, diagnostics, usage data.
+info, health, sensitive info, diagnostics. No analytics or advertising SDK is
+in the app, and nothing is used to track people across apps or websites.
 
 ## Guidelines that apply, and how the app meets them
 
@@ -60,8 +62,10 @@ info, health, sensitive info, diagnostics, usage data.
   shows both once the Apple provider is on in Supabase).
 - **1.2 user-generated content.** Listings, companies and consultant profiles
   can be reported (`reportTarget`), a company can be hidden on the phone, the
-  Terms are agreed to at sign-up, and reports reach the moderation console on
-  the website.
+  Terms and the Privacy policy are agreed to at onboarding — an unticked box,
+  with the person confirming they are 18 or older, recorded with the versions
+  agreed to (`policy_acceptances`, migration 336) — and reports reach the
+  moderation console on the website.
 - **3.1.1 payments.** Nothing is sold in the app; billing shows credits and
   orders read-only, and the website's checkout is off.
 - **Export compliance.** `ITSAppUsesNonExemptEncryption` is false
@@ -72,10 +76,14 @@ info, health, sensitive info, diagnostics, usage data.
 
 ## Age rating
 
-**decide** — the questionnaire's answers the code suggests: no violence,
-sexual content, gambling, drugs or medical content; user-generated content
-exists and is moderated; the in-app browser opens the website's own pages.
-That usually comes to 4+; answer "unrestricted web access" as no.
+**18+.** The Terms and the Privacy policy limit the service to people aged 18
+and over, and onboarding asks for that confirmation, so the store listing must
+not offer the app to children: choose the 18+ age rating (in App Store
+Connect's age-rating questionnaire, set the minimum age to 18 / the "18+"
+rating where offered, rather than the 4+ the content questions alone would give).
+The content answers: no violence, sexual content, gambling, drugs or medical
+content; user-generated content exists and is moderated; the in-app browser
+opens the website's own pages ("unrestricted web access": no).
 
 ## Review notes (template)
 

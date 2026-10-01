@@ -43,6 +43,7 @@ import {
 import { findSimilarListing, salaryReferenceFor, saveJob, transitionJob } from '@/lib/actions/employer-jobs';
 import { recordJobView, toggleSavedJob } from '@/lib/actions/jobs';
 import { completeOnboarding } from '@/lib/actions/onboarding';
+import { acceptPolicies } from '@/lib/actions/policies';
 import { reportTarget } from '@/lib/actions/reports';
 import {
   deleteSavedSearch,
@@ -131,8 +132,9 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
     },
   },
 
-  // Onboarding
+  // Onboarding, and agreeing again when the Terms or the Privacy policy change
   completeOnboarding: { run: (input) => completeOnboarding(input) },
+  acceptPolicies: { run: () => acceptPolicies() },
 
   // Candidate
   applyToJob: { run: (input) => applyToJob(input) },

@@ -9,6 +9,7 @@ import { CandidateHome } from '~/components/home/candidate-home';
 import { EmployerHome } from '~/components/home/employer-home';
 import { JobBrowse } from '~/components/home/job-browse';
 import { HeaderBell } from '~/components/notifications/header-bell';
+import { PolicyNotice } from '~/components/legal/policy-notice';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
 import { ForwardChevron } from '~/components/ui/icons';
@@ -118,6 +119,9 @@ function MarketHome() {
             </Text>
           </View>
         )}
+
+        {/* The Terms and the Privacy policy as they are now, until agreed to. */}
+        {name ? <PolicyNotice /> : null}
 
         <TextField
           value={q}

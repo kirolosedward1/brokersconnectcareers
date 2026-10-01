@@ -8,6 +8,7 @@ import type { Locale } from '@/i18n/routing';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input, Select } from '@/components/ui/field';
 import { localeHref, localized } from '@/i18n/routing';
+import { Link } from '@/i18n/navigation';
 import { safeNext } from '@/lib/safe-next';
 import { cn } from '@/lib/utils';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
@@ -15,6 +16,13 @@ import { completeOnboarding } from '@/lib/actions/onboarding';
 import { reach } from '@/lib/reach';
 import type { DistrictRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
+
+/** Who may see a candidate's directory card, from most open to closed; nothing is chosen in advance. */
+const VISIBILITIES = [
+  ['public', 'publicHint'],
+  ['verified_employers_only', 'verifiedHint'],
+  ['hidden', 'hiddenHint'],
+] as const;
 
 export function OnboardingForm({
   locale,
@@ -35,6 +43,7 @@ export function OnboardingForm({
   const tValidation = useTranslations('validation');
   const tCommon = useTranslations('common');
   const tHeadcount = useTranslations('companies.headcountBand');
+  const tVisibility = useTranslations('visibility');
   const [role, setRole] = useState<'candidate' | 'employer'>(defaultRole ?? 'candidate');
   /*
     Somebody who came through the "شركة عقارات" door has answered this
@@ -57,6 +66,9 @@ export function OnboardingForm({
         fullName: String(form.get('fullName') ?? ''),
         whatsapp: String(form.get('whatsapp') ?? ''),
         locale: String(form.get('locale') ?? locale),
+        // Checked or not, as it was: the server refuses anything but a yes.
+        agreed: form.get('agreed') === 'on',
+        visibility: role === 'candidate' ? String(form.get('visibility') ?? '') || undefined : undefined,
         company:
           role === 'employer'
             ? {
@@ -170,6 +182,43 @@ export function OnboardingForm({
         />
       </Field>
 
+      {/* Who sees a consultant's card in the directory: asked here, with no
+          answer chosen for them, because listing somebody is not a default
+          (migration 336). Changeable any time from their profile. */}
+      {role === 'candidate' ? (
+        <fieldset className="space-y-2" aria-describedby="visibility-hint">
+          <legend className="text-sm font-medium">{t('visibilityQuestion')}</legend>
+          <p id="visibility-hint" className="text-xs leading-relaxed text-muted-foreground">
+            {t('visibilityHint')}
+          </p>
+          {VISIBILITIES.map(([value, hint]) => (
+            <label
+              key={value}
+              className="flex cursor-pointer items-start gap-3 rounded-xl border border-input p-3 has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+            >
+              <input
+                type="radio"
+                name="visibility"
+                value={value}
+                required
+                className="mt-1 size-4 shrink-0 accent-primary"
+              />
+              <span>
+                <span className="block text-sm font-medium">{tVisibility(value)}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                  {tVisibility(hint)}
+                </span>
+              </span>
+            </label>
+          ))}
+          {errors.visibility ? (
+            <p role="alert" className="text-sm text-destructive">
+              {t('visibilityRequired')}
+            </p>
+          ) : null}
+        </fieldset>
+      ) : null}
+
       {/* Only for a company, and only the fields a reviewer needs. The account
           is held for review, and a row carrying an email and nothing else
           gives whoever opens the queue nothing to decide on. */}
@@ -239,6 +288,39 @@ export function OnboardingForm({
           <option value="en">English</option>
         </Select>
       </Field>
+
+      {/* Agreement, and age, before anything is created — recorded with the
+          versions agreed to (policy_acceptances). Unticked until ticked. */}
+      <div>
+        <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed">
+          <input
+            type="checkbox"
+            name="agreed"
+            required
+            aria-describedby={errors.agreed ? 'agreed-error' : undefined}
+            className="mt-1 size-4 shrink-0 accent-primary"
+          />
+          <span>
+            {t.rich('consent', {
+              terms: (chunks) => (
+                <Link href="/terms" target="_blank" className="font-medium text-primary underline-offset-4 hover:underline">
+                  {chunks}
+                </Link>
+              ),
+              privacy: (chunks) => (
+                <Link href="/privacy" target="_blank" className="font-medium text-primary underline-offset-4 hover:underline">
+                  {chunks}
+                </Link>
+              ),
+            })}
+          </span>
+        </label>
+        {errors.agreed ? (
+          <p id="agreed-error" role="alert" className="mt-1 text-sm text-destructive">
+            {t('consentRequired')}
+          </p>
+        ) : null}
+      </div>
 
       {errors.form ? (
         <p role="alert" className="text-sm text-destructive">

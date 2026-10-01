@@ -80,6 +80,10 @@ export type OnboardingInput = {
     headcountBand?: Nullable<HeadcountBand>;
     districtId?: Nullable<number>;
   };
+  /** 18 or older, and agrees to the Terms of use and the Privacy policy. Nothing is created without it. */
+  agreed: true;
+  /** Who sees a candidate's directory card: asked, never assumed. Required for a candidate. */
+  visibility?: AgentVisibility;
 };
 
 export type AgentProfileInput = {
@@ -197,6 +201,8 @@ export type MobileActions = {
 
   // Onboarding
   completeOnboarding: { input: OnboardingInput; output: ActionResult<{ role: string }> };
+  /** Agreeing to the Terms and the Privacy policy as published now (an account made before they were recorded, or since changed). */
+  acceptPolicies: { input: undefined; output: ActionResult };
 
   // Candidate: applying and the pipeline they can see
   applyToJob: { input: ApplyInput; output: ActionResult };

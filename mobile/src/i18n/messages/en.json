@@ -58,8 +58,6 @@
     "mfaSignOut": "I do not have the code — sign out"
   },
   "onboarding": {
-    "terms": "I agree to the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>.",
-    "termsRequired": "Agree to the Terms of use to continue.",
     "choose": "Choose"
   },
   "moderation": {

@@ -70,3 +70,25 @@ function read(slug: LegalSlug, locale: Locale): LegalDoc | null {
 export function getLegalDoc(slug: LegalSlug, locale: Locale): LegalDoc | null {
   return read(slug, locale) ?? read(slug, locale === 'ar' ? 'en' : 'ar');
 }
+
+/**
+ * The versions a person agrees to: each document's `updated` date, from the
+ * Arabic text, which is the one that prevails. Recorded with every acceptance
+ * (policy_acceptances, migration 336) and compared against the latest one to
+ * decide whether somebody has agreed to what is published now.
+ *
+ * Read once per server process: the files only change with a deploy.
+ */
+let versions: { terms: string; privacy: string } | null = null;
+
+export function currentPolicyVersions(): { terms: string; privacy: string } {
+  if (!versions) {
+    const terms = read('terms', 'ar')?.updated ?? '';
+    const privacy = read('privacy', 'ar')?.updated ?? '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(terms) || !/^\d{4}-\d{2}-\d{2}$/.test(privacy)) {
+      throw new Error('content/legal: terms.ar.md and privacy.ar.md each need `updated: YYYY-MM-DD`');
+    }
+    versions = { terms, privacy };
+  }
+  return versions;
+}

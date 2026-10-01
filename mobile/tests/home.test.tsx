@@ -315,3 +315,74 @@ describe("a candidate's home", () => {
     expect(screen.getByText(ar.standing.suspendedBodyCandidate)).toBeTruthy();
   });
 });
+
+describe('the Terms and the Privacy policy', () => {
+  const versions = { terms: '2026-10-01', privacy: '2026-10-01' };
+
+  it('asks somebody who never agreed, and records the agreement through the website', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ policies: versions }));
+    let accepted: { terms_version: string; privacy_version: string }[] = [];
+    server.on('GET /rest/v1/policy_acceptances', () => accepted);
+    server.on('POST /api/mobile/v1/actions/acceptPolicies', () => {
+      accepted = [{ terms_version: versions.terms, privacy_version: versions.privacy }];
+      return { ok: true };
+    });
+    await signIn();
+    open();
+
+    expect(await screen.findByText(ar.legal.updatedTitle)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.legal.agree }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/acceptPolicies')).toHaveLength(1));
+    // The versions are the website's to record, never the phone's.
+    expect(server.asked('/api/mobile/v1/actions/acceptPolicies')[0].body).toEqual({ input: null });
+    await waitFor(() => expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull());
+  });
+
+  it('asks again when a document has changed since', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ policies: { terms: '2026-12-01', privacy: '2026-10-01' } }));
+    server.on('GET /rest/v1/policy_acceptances', [{ terms_version: '2026-10-01', privacy_version: '2026-10-01' }]);
+    await signIn();
+    open();
+    expect(await screen.findByText(ar.legal.updatedTitle)).toBeTruthy();
+  });
+
+  it('asks nothing of somebody who agreed to what is current', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ policies: versions }));
+    server.on('GET /rest/v1/policy_acceptances', [{ terms_version: versions.terms, privacy_version: versions.privacy }]);
+    await signIn();
+    open();
+    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    await waitFor(() => expect(server.asked('/rest/v1/policy_acceptances')).toHaveLength(1));
+    expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
+  });
+
+  it('asks nothing when the website does not say what is current, and does not look', async () => {
+    await signIn();
+    open();
+    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
+    expect(server.asked('/rest/v1/policy_acceptances')).toHaveLength(0);
+  });
+});
+
+describe('a directory card nobody asked about', () => {
+  it('asks a candidate whose card was listed before onboarding asked, and leads to the profile', async () => {
+    server.on('GET /rest/v1/agent_profiles', [{ ...agent, visibility_chosen_at: null }]);
+    await signIn();
+    open();
+
+    expect(await screen.findByText(ar.dashboard.visibilityAskTitle)).toBeTruthy();
+    expect(screen.getByText(ar.dashboard.visibilityAskBody.replace('{current}', ar.visibility.verified_employers_only))).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.dashboard.visibilityAskCta }));
+    expect(await screen.findByText('the profile')).toBeTruthy();
+  });
+
+  it('says nothing once they have chosen', async () => {
+    server.on('GET /rest/v1/agent_profiles', [{ ...agent, visibility_chosen_at: '2026-10-01T10:00:00Z' }]);
+    await signIn();
+    open();
+    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    await waitFor(() => expect(server.asked('/rest/v1/agent_profiles').length).toBeGreaterThan(0));
+    expect(screen.queryByText(ar.dashboard.visibilityAskTitle)).toBeNull();
+  });
+});

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { enabledProviders } from '@/lib/auth-providers';
 import { BILLING_ENABLED, configuredValue, env } from '@/lib/env';
 import { ENGLISH_ENABLED } from '@/lib/locale';
+import { currentPolicyVersions } from '@/lib/legal';
 import type { MobileConfig } from '@/lib/mobile-api/reads';
 
 /**
@@ -24,6 +25,8 @@ import type { MobileConfig } from '@/lib/mobile-api/reads';
  *                     the same two for Android, whose builds are numbered and
  *                     released apart (MOBILE_MIN_ANDROID_APP_VERSION, falling
  *                     back to the iPhone's; MOBILE_PLAY_STORE_URL).
+ *   policies          the Terms' and the Privacy policy's current versions,
+ *                     which a person's latest agreement has to name.
  */
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +45,7 @@ export async function GET() {
       appStoreUrl: storeUrl(process.env.MOBILE_APP_STORE_URL, 'apps.apple.com'),
       minAndroidAppVersion: configuredValue(process.env.MOBILE_MIN_ANDROID_APP_VERSION) ?? minAppVersion,
       playStoreUrl: storeUrl(process.env.MOBILE_PLAY_STORE_URL, 'play.google.com'),
+      policies: currentPolicyVersions(),
     } satisfies MobileConfig,
     { headers: { 'cache-control': 'public, s-maxage=300, stale-while-revalidate=600' } },
   );

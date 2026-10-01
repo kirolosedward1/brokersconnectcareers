@@ -400,22 +400,35 @@ describe('onboarding', () => {
     expect(screen.getByDisplayValue('sara')).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.fullName), 'سارة عادل');
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
+    // Who sees the directory card is asked, one choice among three, with none made for them.
+    expect(screen.getByLabelText(ar.onboarding.visibilityQuestion).props.accessibilityRole).toBe('radiogroup');
+    const hidden = screen.getByRole('radio', { name: `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}` });
+    expect(screen.getAllByRole('radio').filter((radio) => radio.props.accessibilityState?.checked).length).toBe(1); // the role only
+    fireEvent.press(hidden);
     fireEvent.press(screen.getByRole('checkbox'));
     await press(ar.onboarding.submit);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     expect(bodyOf('/api/mobile/v1/actions/completeOnboarding')).toEqual({
-      input: { role: 'candidate', fullName: 'سارة عادل', whatsapp: '01001234567', locale: 'ar' },
+      input: {
+        role: 'candidate',
+        fullName: 'سارة عادل',
+        whatsapp: '01001234567',
+        locale: 'ar',
+        agreed: true,
+        visibility: 'hidden',
+      },
     });
   });
 
-  it('asks for the Terms before anything is created', async () => {
+  it('asks for the agreement, the age and the directory choice before anything is created', async () => {
     profileRow = null;
     await signedIn();
     renderRouter(app, { initialUrl: '/onboarding' });
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01001234567');
     await press(ar.onboarding.submit);
-    expect(await screen.findByText(ar.app.onboarding.termsRequired)).toBeTruthy();
+    expect(await screen.findByText(ar.onboarding.consentRequired)).toBeTruthy();
+    expect(screen.getByText(ar.onboarding.visibilityRequired)).toBeTruthy();
     expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
   });
 
@@ -443,6 +456,7 @@ describe('onboarding', () => {
         fullName: 'sara',
         whatsapp: '12',
         locale: 'ar',
+        agreed: true,
         company: { nameAr: 'نايل بروكرز', website: null, headcountBand: null, districtId: null },
       },
     });

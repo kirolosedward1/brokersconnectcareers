@@ -6,6 +6,7 @@ import { asLocale } from '@/i18n/routing';
 import { CONSOLE_MESSAGES, PUBLIC_MESSAGES, pick } from '@/i18n/client-messages';
 import { AppShell, type AppNavGroup } from '@/components/dashboard/app-shell';
 import { MailOffBanner } from '@/components/admin/mail-off-banner';
+import { PolicyNotice } from '@/components/legal/policy-notice';
 import { NotificationMenu } from '@/components/notifications/notification-menu';
 import { createClient } from '@/lib/supabase/server';
 import { optional } from '@/lib/queries/error';
@@ -245,6 +246,9 @@ export default async function AppLayout({
       {/* Admins only: a platform that cannot send email should say so on every
           console page, not only the one page about email. */}
       {showAdmin ? <MailOffBanner /> : null}
+
+      {/* The Terms and the Privacy policy as they are now, until agreed to. */}
+      <PolicyNotice inset />
 
       {suspended ? (
         <div

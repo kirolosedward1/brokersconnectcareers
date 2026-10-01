@@ -58,8 +58,6 @@
     "mfaSignOut": "مش معايا الكود — اخرج من الحساب"
   },
   "onboarding": {
-    "terms": "موافق على <terms>شروط الاستخدام</terms> و<privacy>سياسة الخصوصية</privacy>.",
-    "termsRequired": "لازم توافق على شروط الاستخدام عشان تكمّل.",
     "choose": "اختار"
   },
   "moderation": {
