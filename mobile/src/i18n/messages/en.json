@@ -135,5 +135,8 @@
     "docPhotos": "A photo from your library",
     "docFile": "A file (PDF or image)",
     "cameraDenied": "Allow the camera for this app in Settings to photograph the paper."
+  },
+  "licenses": {
+    "intro": "This app is built on open-source software, written by many people and published for anyone to use. Here is every package in it, with its version, its licence and its copyright holders, and at the end the text of each licence."
   }
 }

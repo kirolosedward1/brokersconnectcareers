@@ -1739,5 +1739,20 @@
     "companySuspended": "Your company is suspended, so ask for a review of the company’s suspension instead.",
     "unavailable": "Appeals aren’t available yet. Please contact us.",
     "network": "We couldn’t send it. Check your connection and try again."
+  },
+  "licenses": {
+    "title": "Open-source licences",
+    "intro": "The website and the mobile app are built on open-source software, written by many people and published for anyone to use. Here is every package we use, with its version and its copyright holders, grouped by licence, and at the end the text of each licence.",
+    "packages": "{count, plural, one {1 package} other {# packages}}",
+    "website": "The website",
+    "assets": "The font and the icons",
+    "assetsBody": "The typeface the website and the app are set in, and the icons they use.",
+    "app": "The mobile app",
+    "appBody": "Names and versions only here; the app itself lists each package’s copyright holders.",
+    "showApp": "Show the app’s packages",
+    "texts": "Licence texts",
+    "textsBody": "Each licence appears here once, as one of the packages under it ships it.",
+    "textFrom": "As shipped with <v>{source}</v>",
+    "noText": "None of the packages ships this licence’s text. <link>The official text is on SPDX</link>."
   }
 }
