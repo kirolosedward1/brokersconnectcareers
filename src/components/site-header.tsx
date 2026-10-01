@@ -65,7 +65,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           aria-label={t('jobs')}
           className="grid size-11 place-items-center justify-self-start rounded-lg transition-colors hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15 md:hidden"
         >
-          <Search className="size-4" />
+          <Search className="size-4" aria-hidden />
         </Link>
 
         <Link href="/" className="flex min-h-11 shrink-0 items-center justify-self-center">
@@ -96,7 +96,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           {role === 'admin' ? (
             <Button asChild variant="ghost" className={`hidden lg:inline-flex ${ghostOnFilm}`}>
               <Link href="/admin">
-                <ShieldCheck /> {t('admin')}
+                <ShieldCheck aria-hidden /> {t('admin')}
               </Link>
             </Button>
           ) : null}
@@ -108,7 +108,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               {role === 'admin' ? null : (
                 <Button asChild variant="ghost" className={`hidden lg:inline-flex ${ghostOnFilm}`}>
                   <Link href={dashboardHref}>
-                    {hiring ? <Users /> : <LayoutDashboard />}
+                    {hiring ? <Users aria-hidden /> : <LayoutDashboard aria-hidden />}
                     {hiring ? t('employerArea') : t('dashboard')}
                   </Link>
                 </Button>

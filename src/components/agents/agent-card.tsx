@@ -68,7 +68,7 @@ export function AgentCard({
             aria-hidden
             className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-muted ring-2 ring-primary/10 sm:size-16"
           >
-            <UserRound className="size-5 text-muted-foreground sm:size-7" />
+            <UserRound className="size-5 text-muted-foreground sm:size-7" aria-hidden />
           </span>
         )}
 
@@ -78,7 +78,7 @@ export function AgentCard({
               <bdi>{agent.is_unlocked && agent.full_name ? agent.full_name : t('anonymous')}</bdi>
             </Link>
             {agent.is_unlocked ? null : (
-              <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-label={t('locked')} />
+              <Lock className="size-3.5 shrink-0 text-muted-foreground" role="img" aria-label={t('locked')} />
             )}
           </h3>
 

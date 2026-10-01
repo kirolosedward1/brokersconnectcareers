@@ -267,7 +267,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                     title={t('approveListingTitle')}
                     body={t('approveListingBody')}
                     variant="success"
-                    icon={<Check />}
+                    icon={<Check aria-hidden />}
                   />
                   <ConfirmAction
                     lever={{ do: 'job', jobId: job.id, action: 'request_changes' }}
@@ -276,7 +276,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                     body={t('requestChangesListingBody')}
                     reason="required"
                     reasonLabel={t('reasonToCompany')}
-                    icon={<FilePen />}
+                    icon={<FilePen aria-hidden />}
                   />
                   <ConfirmAction
                     lever={{ do: 'job', jobId: job.id, action: 'reject' }}
@@ -286,7 +286,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                     reason="required"
                     reasonLabel={t('reasonToCompany')}
                     variant="destructive"
-                    icon={<X />}
+                    icon={<X aria-hidden />}
                   />
                 </>
               ) : null}
@@ -300,7 +300,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                   reason="required"
                   reasonLabel={t('reasonToCompany')}
                   variant="destructive"
-                  icon={<EyeOff />}
+                  icon={<EyeOff aria-hidden />}
                 />
               ) : null}
 
@@ -311,7 +311,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                   title={t('closeListing')}
                   body={t('closeListingBody')}
                   reason="required"
-                  icon={<Lock />}
+                  icon={<Lock aria-hidden />}
                 />
               ) : null}
 
@@ -322,7 +322,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                   title={t('restoreListing')}
                   body={t('restoreListingBody')}
                   variant="success"
-                  icon={<RotateCcw />}
+                  icon={<RotateCcw aria-hidden />}
                 />
               ) : null}
 
@@ -333,7 +333,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                   title={job.is_featured ? t('unfeature') : t('feature')}
                   body={job.is_featured ? undefined : t('featureBody')}
                   variant="ghost"
-                  icon={job.is_featured ? <StarOff /> : <Star />}
+                  icon={job.is_featured ? <StarOff aria-hidden /> : <Star aria-hidden />}
                 />
               ) : null}
 

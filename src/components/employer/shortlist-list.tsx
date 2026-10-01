@@ -78,7 +78,7 @@ export function ShortlistList({ rows: fromServer }: { rows: ShortlistRow[] }) {
                   aria-hidden
                   className="grid size-16 shrink-0 place-items-center rounded-full bg-muted"
                 >
-                  <UserRound className="size-7 text-muted-foreground" />
+                  <UserRound className="size-7 text-muted-foreground" aria-hidden />
                 </span>
               )}
 
@@ -104,6 +104,7 @@ export function ShortlistList({ rows: fromServer }: { rows: ShortlistRow[] }) {
                   {row.isListed && !row.isUnlocked ? (
                     <Lock
                       className="size-3.5 shrink-0 text-muted-foreground"
+                      role="img"
                       aria-label={tAgents('locked')}
                     />
                   ) : null}

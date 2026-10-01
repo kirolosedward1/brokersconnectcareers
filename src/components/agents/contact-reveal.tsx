@@ -74,7 +74,7 @@ export function ContactReveal({
         {hasCv && revealed.hasCv ? (
           <Button asChild variant="outline" size="lg">
             <a href={`/api/agent-cv/${encodeURIComponent(handle)}`} target="_blank" rel="noopener noreferrer">
-              <Download />
+              <Download aria-hidden />
               {t('downloadCv')}
             </a>
           </Button>
@@ -86,7 +86,7 @@ export function ContactReveal({
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Button type="button" size="lg" onClick={reveal} disabled={pending}>
-        <Eye />
+        <Eye aria-hidden />
         {pending ? tCommon('loading') : t('revealContact')}
       </Button>
       {message ? (

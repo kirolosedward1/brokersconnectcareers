@@ -125,13 +125,16 @@ export function TaxonomyAdd({ kind, governorates }: { kind: TaxonomyKind; govern
         });
       }}
     >
+      {/* Named as the rename row's fields are: a placeholder is not a label,
+          and it is gone the moment somebody starts typing. */}
       <div className="grid gap-2 sm:grid-cols-4">
-        <Input value={ar} onChange={(e) => setAr(e.target.value)} placeholder={t('nameAr')} maxLength={80} required />
-        <Input value={en} onChange={(e) => setEn(e.target.value)} placeholder={t('nameEn')} maxLength={80} dir="ltr" required />
+        <Input value={ar} onChange={(e) => setAr(e.target.value)} placeholder={t('nameAr')} aria-label={t('nameAr')} maxLength={80} required />
+        <Input value={en} onChange={(e) => setEn(e.target.value)} placeholder={t('nameEn')} aria-label={t('nameEn')} maxLength={80} dir="ltr" required />
         <Input
           value={slug}
           onChange={(e) => setSlug(e.target.value.toLowerCase())}
           placeholder={t('slugPlaceholder')}
+          aria-label={t('colSlug')}
           maxLength={60}
           dir="ltr"
           pattern="[a-z0-9]+(-[a-z0-9]+)*"

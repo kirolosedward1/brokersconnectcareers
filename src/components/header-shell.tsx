@@ -67,8 +67,10 @@ export function HeaderShell({
       className={cn(
         'group/header z-40 transition-colors duration-150',
         overHero ? 'fixed inset-x-0 top-0' : 'sticky top-0',
+        // On the film the focus ring is white, as it is in the hero below:
+        // the brand blue is all but invisible against it.
         floating
-          ? 'border-b border-transparent bg-transparent text-white'
+          ? 'border-b border-transparent bg-transparent text-white [--ring:white]'
           // Solid, not translucent. A blurred header over a scrolling list of
           // job cards means the type behind it shows through the type in it.
           : 'border-b border-border/70 bg-background shadow-xs',

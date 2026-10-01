@@ -149,7 +149,7 @@ export default async function AdminTaxonomyPage({
                       title={t('deleteEntryTitle', { name: row.name_ar })}
                       body={t('deleteEntryBody')}
                       variant="ghost"
-                      icon={<Trash2 />}
+                      icon={<Trash2 aria-hidden />}
                     />
                   )}
                 </div>

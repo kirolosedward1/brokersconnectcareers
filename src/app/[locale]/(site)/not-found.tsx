@@ -52,7 +52,7 @@ export default async function NotFound() {
             name="q"
             placeholder={tHome('searchPlaceholder')}
             aria-label={tHome('searchPlaceholder')}
-            className="h-12 w-full rounded-lg border border-border bg-card px-4 ps-11 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
+            className="h-12 w-full rounded-lg border border-input bg-card px-4 ps-11 text-base outline-hidden placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
           />
         </div>
         <Button type="submit" size="lg" className="shrink-0 px-8">

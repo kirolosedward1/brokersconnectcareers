@@ -428,7 +428,7 @@ export default async function AllApplicantsPage({
             defaultValue={query_}
             maxLength={80}
             placeholder={t('searchApplicantsPlaceholder')}
-            className="h-11 w-full rounded-lg border border-input bg-card ps-9 pe-3 text-sm transition-colors placeholder:text-muted-foreground hover:border-border focus-visible:border-ring focus-visible:outline-none"
+            className="h-11 w-full rounded-lg border border-input bg-card ps-9 pe-3 text-sm transition-colors placeholder:text-muted-foreground hover:border-muted-foreground focus-visible:border-ring"
           />
         </div>
 

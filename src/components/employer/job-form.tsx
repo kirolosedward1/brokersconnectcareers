@@ -334,7 +334,7 @@ export function JobForm({
                       : 'text-muted-foreground',
                 )}
               >
-                <span className="numeral">{index < step ? <Check className="size-3.5" /> : index + 1}</span>
+                <span className="numeral">{index < step ? <Check className="size-3.5" aria-hidden /> : index + 1}</span>
                 {t(name)}
               </button>
             </li>
@@ -735,14 +735,14 @@ export function JobForm({
             onClick={() => setStep((current) => Math.max(0, current - 1))}
             disabled={step === 0}
           >
-            <ArrowLeft className="rtl-flip" />
+            <ArrowLeft className="rtl-flip" aria-hidden />
             {t('back')}
           </Button>
 
           {step < STEPS.length - 1 ? (
             <SubmitButton>
               {t('next')}
-              <ArrowRight className="rtl-flip" />
+              <ArrowRight className="rtl-flip" aria-hidden />
             </SubmitButton>
           ) : null}
         </div>

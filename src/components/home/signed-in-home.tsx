@@ -74,7 +74,7 @@ export async function SignedInHome({
         <Button asChild variant="outline">
           <Link href={hiring ? "/employer" : "/dashboard"}>
             {hiring ? tNav("employerArea") : tNav("dashboard")}
-            <ArrowRight className="rtl-flip" />
+            <ArrowRight className="rtl-flip" aria-hidden />
           </Link>
         </Button>
       </header>
@@ -83,11 +83,16 @@ export async function SignedInHome({
           a job to apply to — they get their own strip instead, and the market
           feed below it stays, because what else is running is worth knowing
           when you are writing a listing. A plain GET form, so it works before
-          any JavaScript loads. */}
+          any JavaScript loads.
+
+          The bar's edge is the text field's edge, which has none of its own,
+          so it is drawn in --input (3.4:1) rather than --border (1.35:1). The
+          select gets the same edge: its muted fill alone was 1.1:1 against
+          the bar. */}
       {hiring ? null : (
         <form
           action={action}
-          className="mt-5 rounded-xl border border-border bg-card p-1.5"
+          className="mt-5 rounded-xl border border-input bg-card p-1.5"
         >
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative flex-1">
@@ -100,7 +105,7 @@ export async function SignedInHome({
                 name="q"
                 placeholder={t("searchPlaceholder")}
                 aria-label={t("searchPlaceholder")}
-                className="h-11 w-full rounded-lg border-0 bg-transparent px-4 ps-11 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
+                className="h-11 w-full rounded-lg border-0 bg-transparent px-4 ps-11 text-base outline-hidden placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
 
@@ -113,7 +118,7 @@ export async function SignedInHome({
                 name="district"
                 aria-label={t("byDistrict")}
                 defaultValue=""
-                className="h-11 w-full appearance-none rounded-lg border-0 bg-muted px-4 ps-11 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="h-11 w-full appearance-none rounded-lg border border-input bg-muted px-4 ps-11 text-base outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <option value="">{tFilters("any")}</option>
                 {districts.slice(0, 12).map((district) => (
@@ -136,12 +141,12 @@ export async function SignedInHome({
           <p className="me-auto text-sm font-medium">{t("hiringStrip")}</p>
           <Button asChild variant="outline">
             <Link href="/employer/jobs">
-              <Briefcase /> {t("hiringJobs")}
+              <Briefcase aria-hidden /> {t("hiringJobs")}
             </Link>
           </Button>
           <Button asChild>
             <Link href="/employer/jobs/new">
-              <Send /> {tNav("postJob")}
+              <Send aria-hidden /> {tNav("postJob")}
             </Link>
           </Button>
         </section>
@@ -210,7 +215,7 @@ export async function SignedInHome({
           <Button asChild variant="outline">
             <Link href="/jobs">
               {t("browseAll")}
-              <ArrowRight className="rtl-flip" />
+              <ArrowRight className="rtl-flip" aria-hidden />
             </Link>
           </Button>
         </div>

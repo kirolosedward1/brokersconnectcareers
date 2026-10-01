@@ -86,7 +86,7 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
       <div className="mx-auto max-w-2xl px-4 py-14">
         <Button asChild variant="ghost" className="mb-8 -ms-3">
           <Link href="/blog">
-            <ArrowLeft className="rtl-flip" />
+            <ArrowLeft className="rtl-flip" aria-hidden />
             {t('backToBlog')}
           </Link>
         </Button>

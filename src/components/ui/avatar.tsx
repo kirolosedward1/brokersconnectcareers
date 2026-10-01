@@ -95,14 +95,17 @@ export function Avatar({
   }
 
   // One lightness for both themes: the chip paints its own ground, so it does
-  // not borrow the page's and does not need a dark variant.
+  // not borrow the page's and does not need a dark variant. A shade darker for
+  // the two cyan hues, where white at 0.55 is 4.40:1 and 4.49:1 — just short
+  // of AA. The app's HUES carry the same two values.
   const hue = hueFor(seed || name);
+  const lightness = hue === 190 || hue === 215 ? 0.54 : 0.55;
 
   return (
     <span
       aria-hidden
       className={`${shape} text-white ${className ?? ''}`}
-      style={{ backgroundColor: `oklch(0.55 0.12 ${hue})` }}
+      style={{ backgroundColor: `oklch(${lightness} 0.12 ${hue})` }}
     >
       {initialOf(name)}
     </span>

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { localized } from '@/i18n/routing';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Button } from '@/components/ui/button';
-import { Field, Input, Select, Textarea } from '@/components/ui/field';
+import { Field, fieldMessageId, Input, Select, Textarea } from '@/components/ui/field';
 import { cn, uuid } from '@/lib/utils';
 import { fileExtension, fileType } from '@/lib/file-type';
 import { createClient } from '@/lib/supabase/client';
@@ -36,6 +36,8 @@ const VISIBILITY_ICON: Record<AgentVisibility, React.ReactNode> = {
   verified_employers_only: <ShieldCheck className="size-4" aria-hidden />,
   hidden: <EyeOff className="size-4" aria-hidden />,
 };
+
+const VISIBILITIES: AgentVisibility[] = ['public', 'verified_employers_only', 'hidden'];
 
 export function AgentProfileForm({
   locale,
@@ -73,6 +75,26 @@ export function AgentProfileForm({
   const [visibility, setVisibility] = useState<AgentVisibility>(
     agent?.visibility ?? 'verified_employers_only',
   );
+  const visibilityRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  /*
+    One choice of three, so a radio group: one stop in the tab order, and the
+    arrows move the choice, as the footer's theme switch does. These were
+    toggle buttons, announced as three switches that could each be on. Under
+    RTL the left arrow is the next option, because that is where it sits.
+  */
+  function onVisibilityKey(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
+    const rtl = document.documentElement.dir === 'rtl';
+    const forward = event.key === 'ArrowDown' || event.key === (rtl ? 'ArrowLeft' : 'ArrowRight');
+    const backward = event.key === 'ArrowUp' || event.key === (rtl ? 'ArrowRight' : 'ArrowLeft');
+    if (!forward && !backward) return;
+
+    event.preventDefault();
+    const next = (index + (forward ? 1 : -1) + VISIBILITIES.length) % VISIBILITIES.length;
+    setVisibility(VISIBILITIES[next]);
+    visibilityRefs.current[next]?.focus();
+  }
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -235,15 +257,21 @@ export function AgentProfileForm({
 
         {/* Visibility comes first, before anything is filled in — the reader
             needs to know who will see this before they write it. */}
-        <fieldset>
+        <fieldset role="radiogroup">
           <legend className="mb-2 text-sm font-medium">{tAgents('whoSeesProfile')}</legend>
           <div className="grid gap-2 sm:grid-cols-3">
-            {(['public', 'verified_employers_only', 'hidden'] as AgentVisibility[]).map((value) => (
+            {VISIBILITIES.map((value, index) => (
               <button
                 key={value}
+                ref={(node) => {
+                  visibilityRefs.current[index] = node;
+                }}
                 type="button"
+                role="radio"
+                aria-checked={visibility === value}
+                tabIndex={visibility === value ? 0 : -1}
                 onClick={() => setVisibility(value)}
-                aria-pressed={visibility === value}
+                onKeyDown={(event) => onVisibilityKey(event, index)}
                 className={cn(
                   'rounded-lg border p-3 text-start transition-colors',
                   visibility === value
@@ -402,11 +430,15 @@ export function AgentProfileForm({
           ) : (
             <p className="mb-2 text-sm text-muted-foreground">{tAgents('cvNone')}</p>
           )}
+          {/* Not one of Field's own controls, so it reads the hint's or the
+              error's id itself, as Field's Input would. */}
           <input
             ref={fileRef}
             id="cv"
             type="file"
             accept=".pdf,.doc,.docx"
+            aria-describedby={fieldMessageId('cv', { hint: tAgents('cvHint'), error: errors.cv })}
+            aria-invalid={errors.cv ? true : undefined}
             onChange={onPickCv}
             className="block w-full text-sm file:me-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium"
           />

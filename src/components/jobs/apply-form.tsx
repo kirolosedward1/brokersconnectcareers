@@ -6,7 +6,7 @@ import { CheckCircle2, Paperclip, ShieldCheck } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
-import { Field, Input, Select, Textarea } from '@/components/ui/field';
+import { Field, fieldMessageId, Input, Select, Textarea } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
 import { CV_BUCKET } from '@/lib/buckets';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
@@ -280,12 +280,16 @@ export function ApplyForm({
 
       <Field label={t('cv')} hint={t('cvOptional')} htmlFor="cv" error={errors.cv || undefined}>
         <div className="flex items-center gap-3">
+          {/* Not one of Field's own controls, so it reads the hint's or the
+              error's id itself, as Field's Input would. */}
           <input
             ref={fileRef}
             id="cv"
             name="cv"
             type="file"
             accept=".pdf,.doc,.docx"
+            aria-describedby={fieldMessageId('cv', { hint: t('cvOptional'), error: errors.cv })}
+            aria-invalid={errors.cv ? true : undefined}
             onChange={onFileChange}
             className="block w-full text-sm file:me-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium"
           />

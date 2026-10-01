@@ -59,7 +59,7 @@ export function ClaimFreePostButton({ claimed }: { claimed: boolean }) {
           })
         }
       >
-        <Gift />
+        <Gift aria-hidden />
         {t('freePostClaim')}
       </Button>
 

@@ -211,7 +211,7 @@ export default async function AdminJobsPage({
       cell: (row) => (
         <span className="inline-flex flex-wrap items-center justify-end gap-1">
           <JobStatusBadge status={row.status} expiresAt={row.expires_at} />
-          {row.is_featured ? <Star className="size-3.5 text-warning" aria-label={t('featured')} /> : null}
+          {row.is_featured ? <Star className="size-3.5 text-warning" role="img" aria-label={t('featured')} /> : null}
           <FlagCount flags={flags.get(row.id) ?? []} locale={locale} />
           {row.open_reports?.length ? (
             <Badge variant="destructive">

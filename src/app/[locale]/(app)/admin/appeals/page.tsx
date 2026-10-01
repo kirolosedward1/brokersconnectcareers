@@ -179,7 +179,7 @@ export default async function AdminAppealsPage({
                       reason="optional"
                       reasonLabel={t('appealNoteToPerson')}
                       variant="success"
-                      icon={<Undo2 />}
+                      icon={<Undo2 aria-hidden />}
                     />
                     <ConfirmAction
                       lever={{ do: 'appeal', appealId: row.id, overturn: false }}
@@ -189,7 +189,7 @@ export default async function AdminAppealsPage({
                       reason="required"
                       reasonLabel={t('appealNoteToPerson')}
                       variant="outline"
-                      icon={<Gavel />}
+                      icon={<Gavel aria-hidden />}
                     />
                   </div>
                 ) : (

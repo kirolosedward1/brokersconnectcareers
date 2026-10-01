@@ -140,6 +140,9 @@
   --muted: oklch(0.25 0.025 265);
   --muted-foreground: oklch(0.68 0.02 265);
 
+  /* Text on accent is accent-foreground (9.5:1). muted-foreground on it is
+     4.3:1 here, under AA, so the pair is not used; a change that wants it
+     takes this to L 0.30 (4.6:1), and the app's dark accent with it. */
   --accent: oklch(0.32 0.055 205);
   --accent-foreground: oklch(0.9 0.09 199);
 

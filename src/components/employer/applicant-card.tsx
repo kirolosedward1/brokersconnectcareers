@@ -198,8 +198,11 @@ export function ApplicantCard({
       {profile ? (
         <Link
           href={`/agents/${profile.slug}`}
+          // Named by what it shows, with "view profile" as its description:
+          // an aria-label of those two words replaced the visible text, so
+          // every applicant's link had the same name and voice control could
+          // not reach it by what is on screen.
           title={tAgents('viewProfile')}
-          aria-label={tAgents('viewProfile')}
           // A rule down the leading edge, not a box. Inside a card that is
           // already bordered, a second border around the record, a third around
           // the magnifier and a fill behind the note made every applicant four
@@ -213,7 +216,7 @@ export function ApplicantCard({
             panel already looks like — a card you can open — and repeated it
             once per applicant down a list of them. The whole panel is the
             link, so the affordance was never the sentence; it is one mark at
-            the end of the row, named for a screen reader and on hover.
+            the end of the row, described for a screen reader and on hover.
 
             A magnifier rather than an arrow: an arrow says "onward", which is
             true of every link on the page, and what this one actually offers
@@ -269,7 +272,7 @@ export function ApplicantCard({
               'group-hover/profile:bg-primary/5 group-hover/profile:text-primary',
             )}
           >
-            <Search className="size-4" />
+            <Search className="size-4" aria-hidden />
           </span>
         </Link>
       ) : (
@@ -324,7 +327,7 @@ export function ApplicantCard({
           <Button asChild variant="outline" size="sm">
             {/* Route handler mints a 5-minute signed URL per click. */}
             <a href={`/api/cv/${application.id}`} target="_blank" rel="noopener noreferrer">
-              <Download />
+              <Download aria-hidden />
               {t('downloadCv')}
             </a>
           </Button>

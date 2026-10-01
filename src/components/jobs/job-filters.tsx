@@ -141,7 +141,7 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
 
       {activeCount > 0 ? (
         <Button variant="ghost" size="sm" onClick={clearAll} className="w-full justify-start">
-          <X />
+          <X aria-hidden />
           {tJobs('clearFilters')}
           <span className="numeral ms-auto rounded bg-muted px-1.5">{activeCount}</span>
         </Button>

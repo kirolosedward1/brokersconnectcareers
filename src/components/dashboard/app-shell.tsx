@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Activity,
   Bell,
@@ -34,6 +34,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
 import { Avatar } from '@/components/ui/avatar';
+import { useModalLayer } from '@/components/ui/dialog';
 import { dirOf, localeHref, type Locale } from '@/i18n/routing';
 import { LogoMark } from '@/components/logo';
 import { cn } from '@/lib/utils';
@@ -189,14 +190,12 @@ export function AppShell({
   // layout mounted across a route change, so nothing closes it on its own.
   useEffect(() => setOpen(false), [pathname]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open]);
+  // The phone menu is modal, so it behaves as the dialog does: focus moves
+  // into it, Tab stays in it, Escape closes it and focus goes back to the
+  // button that opened it. Only Escape used to work, and Tab walked out of
+  // the drawer into the page it was covering.
+  const drawerRef = useRef<HTMLDivElement>(null);
+  useModalLayer(open, () => setOpen(false), drawerRef);
 
   async function signOut() {
     // Loaded when it is used, as the public header's menu does.
@@ -215,7 +214,9 @@ export function AppShell({
     <div className="flex h-full flex-col gap-4 p-3">
       <Link href="/" className="flex min-h-11 items-center gap-2.5 px-2">
         <LogoMark className="size-8" />
-        {collapsed ? null : <span className="font-semibold">{tNav('dashboard')}</span>}
+        {/* Collapsed, the mark is all that shows and it is alt="", so the
+            name stays for a screen reader as every rail item's does. */}
+        <span className={collapsed ? 'sr-only' : 'font-semibold'}>{tNav('dashboard')}</span>
       </Link>
 
       <nav className="flex-1 space-y-5 overflow-y-auto">
@@ -276,9 +277,12 @@ export function AppShell({
                           <span
                             className={cn(
                               'numeral ms-auto rounded-full px-1.5 text-xs font-semibold leading-5',
+                              // The Badge's own primary and destructive fills.
+                              // The deeper tints held the count to 4.2:1, and
+                              // a see-through red fell further on hover.
                               active
-                                ? 'bg-primary/15 text-primary'
-                                : 'bg-destructive/12 text-destructive',
+                                ? 'bg-primary/10 text-primary'
+                                : 'bg-destructive-muted text-destructive',
                             )}
                           >
                             {waiting > 99 ? '99+' : waiting}
@@ -327,23 +331,32 @@ export function AppShell({
       {/* Phone overlay */}
       {open ? (
         <>
-          <button
-            type="button"
-            aria-label={tNav('menu')}
+          {/* A tap outside closes it, as the gesture everybody tries first.
+              Not a button: Escape and the close button inside already do
+              this, and a second stop named like the menu's own was noise. */}
+          <div
+            aria-hidden
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden"
           />
-          <aside className="fixed inset-y-0 start-0 z-50 w-72 border-e border-border bg-card lg:hidden">
+          <div
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={tNav('menu')}
+            className="fixed inset-y-0 start-0 z-50 w-72 border-e border-border bg-card lg:hidden"
+          >
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label={tNav('menu')}
+              aria-label={tNav('closeMenu')}
+              data-layer-close
               className="absolute end-2 top-2 grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
             >
               <X className="size-5" aria-hidden />
             </button>
             {rail}
-          </aside>
+          </div>
         </>
       ) : null}
 

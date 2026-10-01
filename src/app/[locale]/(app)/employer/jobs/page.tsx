@@ -147,7 +147,7 @@ export default async function EmployerJobsPage({
         </div>
         <Button asChild className="self-start">
           <Link href="/employer/jobs/new">
-            <Plus />
+            <Plus aria-hidden />
             {t('newJob')}
           </Link>
         </Button>

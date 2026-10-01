@@ -323,7 +323,7 @@ export default async function AdminCompanyPage({
                   body={docs.some((d) => d.status === 'pending') ? t('verifyCompanyBody') : t('verifyWithoutPapers')}
                   reason="optional"
                   variant="success"
-                  icon={<BadgeCheck />}
+                  icon={<BadgeCheck aria-hidden />}
                 />
               ) : null}
               {status === 'pending' ? (
@@ -334,7 +334,7 @@ export default async function AdminCompanyPage({
                   body={t('requestChangesCompanyBody')}
                   reason="required"
                   reasonLabel={t('reasonToCompany')}
-                  icon={<FilePen />}
+                  icon={<FilePen aria-hidden />}
                 />
               ) : null}
               {status === 'pending' || status === 'unverified' ? (
@@ -346,7 +346,7 @@ export default async function AdminCompanyPage({
                   reason="required"
                   reasonLabel={t('reasonToCompany')}
                   variant="destructive"
-                  icon={<X />}
+                  icon={<X aria-hidden />}
                 />
               ) : null}
               {status === 'verified' ? (
@@ -357,7 +357,7 @@ export default async function AdminCompanyPage({
                   body={t('revokeVerificationBody')}
                   reason="required"
                   variant="destructive"
-                  icon={<ShieldOff />}
+                  icon={<ShieldOff aria-hidden />}
                 />
               ) : null}
             </div>
@@ -375,7 +375,7 @@ export default async function AdminCompanyPage({
                 body={t('restoreCompanyBody')}
                 reason="required"
                 variant="success"
-                icon={<RotateCcw />}
+                icon={<RotateCcw aria-hidden />}
               />
             ) : (
               <ConfirmAction
@@ -386,7 +386,7 @@ export default async function AdminCompanyPage({
                 reason="required"
                 reasonLabel={t('reasonToCompany')}
                 variant="destructive"
-                icon={<Ban />}
+                icon={<Ban aria-hidden />}
               />
             )}
           </Section>
