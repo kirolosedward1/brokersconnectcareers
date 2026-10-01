@@ -8,15 +8,19 @@ import {
   Building2,
   Download,
   ExternalLink,
+  FileText,
+  Lock,
   LogOut,
   Mail,
   MailCheck,
   Receipt,
+  Scale,
   ShieldAlert,
   ShieldCheck,
   Trash2,
   UserRound,
 } from '~/components/ui/lucide';
+import { OPERATOR } from '@/lib/business';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { PhotoControls } from '~/components/account/photo-controls';
 import { HeaderBell } from '~/components/notifications/header-bell';
@@ -53,7 +57,9 @@ export default function AccountScreen() {
   const { colors, preference, setPreference } = useTheme();
   const { ready, session, viewer, actor } = useSession();
   const config = useMobileConfig();
-  const supportEmail = config.data?.supportEmail ?? null;
+  // The website's own fallback (its footer and the config route): the
+  // operator's published address when no support inbox is set.
+  const supportEmail = config.data?.supportEmail || OPERATOR.email;
   const [exporting, setExporting] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const version = appVersion() ?? '';
@@ -267,14 +273,58 @@ export default function AccountScreen() {
           ) : null}
         </View>
 
-        {version ? (
-          <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
-            {t('app.account.version', { version })}
+        {/* One tap away, signed in or not, as the store and the law expect of
+            an app: the policies a person agrees to, the notices owed to the
+            software it is made of, and who runs it. */}
+        <View style={{ gap: space[2] }}>
+          <Text variant="small" weight="semibold" tone="mutedForeground" accessibilityRole="header">
+            {t('footer.about')}
           </Text>
-        ) : null}
+          <View
+            style={{
+              borderRadius: radius.xl,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+              overflow: 'hidden',
+            }}
+          >
+            <Row
+              icon={<Lock size={18} color={colors.foreground} />}
+              label={t('footer.privacy')}
+              onPress={() => openSitePage('/privacy')}
+            />
+            <Row
+              icon={<FileText size={18} color={colors.foreground} />}
+              label={t('footer.terms')}
+              onPress={() => openSitePage('/terms')}
+            />
+            <Row
+              icon={<Scale size={18} color={colors.foreground} />}
+              label={t('licenses.title')}
+              onPress={() => router.push('/account/licenses')}
+            />
+          </View>
+        </View>
+
+        <View style={{ gap: space[1] }}>
+          <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
+            {t('footer.operatedBy', { name: OPERATOR.name })}
+          </Text>
+          {version ? (
+            <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
+              {t('app.account.version', { version })}
+            </Text>
+          ) : null}
+        </View>
       </ScrollView>
     </>
   );
+}
+
+/** A page of the website, in the in-app browser: the policies live there, in one copy. */
+function openSitePage(path: '/privacy' | '/terms') {
+  WebBrowser.openBrowserAsync(`${env.siteUrl}${path}`).catch(() => {});
 }
 
 function Row({

@@ -18,7 +18,6 @@ import { hitTarget, radius, space } from '~/theme/tokens';
 const REFUSAL_COPY = {
   no_account: 'teamNoAccount',
   already_member: 'teamAlreadyMember',
-  not_employer: 'teamNotEmployer',
   rate_limited: 'teamRateLimited',
 } as const;
 

@@ -255,7 +255,7 @@ export function useUploadDocument(companyId: string) {
 }
 
 /** The team refusals the website has words for; anything else is the generic line. */
-export type MemberRefusal = 'no_account' | 'already_member' | 'not_employer' | 'rate_limited' | 'failed';
+export type MemberRefusal = 'no_account' | 'already_member' | 'rate_limited' | 'failed';
 
 export class MemberRefused extends Error {
   constructor(readonly reason: MemberRefusal) {
@@ -275,12 +275,16 @@ export function useAddMember() {
     mutationFn: async (input: { email: string; role: CompanyMemberRole }) => {
       const result = await callAction('addCompanyMember', input);
       if (!result.ok) {
+        // A consultant's address is "no company account", as the website now
+        // answers it; a server from before that still says not_employer.
         const reason: MemberRefusal =
           result.error === 'rate_limit' || result.error === 'rate_limited'
             ? 'rate_limited'
-            : result.error === 'no_account' || result.error === 'already_member' || result.error === 'not_employer'
-              ? result.error
-              : 'failed';
+            : result.error === 'no_account' || result.error === 'not_employer'
+              ? 'no_account'
+              : result.error === 'already_member'
+                ? 'already_member'
+                : 'failed';
         throw new MemberRefused(reason);
       }
     },

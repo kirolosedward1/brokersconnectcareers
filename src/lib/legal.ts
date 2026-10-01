@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { marked } from 'marked';
 import type { Locale } from '@/i18n/routing';
+import { POLICY_VERSIONS } from '@/lib/policy-versions';
 
 /**
  * Legal documents, kept as markdown files rather than as components.
@@ -16,16 +17,25 @@ import type { Locale } from '@/i18n/routing';
  * winning when the English one is missing.
  */
 
+// Read at request time: the pages' functions carry these files because
+// next.config.ts says so (outputFileTracingIncludes), not because Next saw them.
 const LEGAL_DIR = join(process.cwd(), 'content', 'legal');
 
 export type LegalDoc = {
   slug: LegalSlug;
+  /** The language of the file that was read, which is not always the one asked for. */
+  lang: Locale;
   title: string;
   updated: string;
   html: string;
 };
 
-export const LEGAL_SLUGS = ['privacy', 'terms'] as const;
+/**
+ * Every document, each a page at `/<slug>` (src/app/[locale]/(site)/<slug>)
+ * with an Arabic file and an English one. scripts/legal.test.mjs holds the
+ * three together: a slug without its page or either file fails the check.
+ */
+export const LEGAL_SLUGS = ['privacy', 'terms', 'cookies', 'refunds', 'account-deletion'] as const;
 export type LegalSlug = (typeof LEGAL_SLUGS)[number];
 
 /** `key: value` lines above a `---`, the same subset the blog parses. */
@@ -61,6 +71,7 @@ function read(slug: LegalSlug, locale: Locale): LegalDoc | null {
   const { data, body } = parseFrontmatter(raw);
   return {
     slug,
+    lang: locale,
     title: data.title ?? '',
     updated: data.updated ?? '',
     html: marked.parse(body, { async: false }) as string,
@@ -72,23 +83,10 @@ export function getLegalDoc(slug: LegalSlug, locale: Locale): LegalDoc | null {
 }
 
 /**
- * The versions a person agrees to: each document's `updated` date, from the
- * Arabic text, which is the one that prevails. Recorded with every acceptance
- * (policy_acceptances, migration 336) and compared against the latest one to
- * decide whether somebody has agreed to what is published now.
- *
- * Read once per server process: the files only change with a deploy.
+ * The versions a person agrees to: each document's `updated` date. A constant
+ * in lib/policy-versions.ts, not a read of the files — see there for why — and
+ * held equal to the documents by scripts/legal.test.mjs.
  */
-let versions: { terms: string; privacy: string } | null = null;
-
 export function currentPolicyVersions(): { terms: string; privacy: string } {
-  if (!versions) {
-    const terms = read('terms', 'ar')?.updated ?? '';
-    const privacy = read('privacy', 'ar')?.updated ?? '';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(terms) || !/^\d{4}-\d{2}-\d{2}$/.test(privacy)) {
-      throw new Error('content/legal: terms.ar.md and privacy.ar.md each need `updated: YYYY-MM-DD`');
-    }
-    versions = { terms, privacy };
-  }
-  return versions;
+  return POLICY_VERSIONS;
 }

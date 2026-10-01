@@ -552,6 +552,26 @@ export function AuthForm({
         </SubmitButton>
       </form>
 
+      {/* Where the address is first asked for, the policy that says what
+          happens to it. Agreement itself is the checkbox at onboarding, the
+          one step every way in — email, Google, Apple — goes through. */}
+      {mode === 'sign-up' ? (
+        <p className="text-center text-xs leading-relaxed text-muted-foreground">
+          {t.rich('signUpNotice', {
+            terms: (chunks) => (
+              <Link href="/terms" target="_blank" className="font-medium text-primary underline-offset-4 hover:underline">
+                {chunks}
+              </Link>
+            ),
+            privacy: (chunks) => (
+              <Link href="/privacy" target="_blank" className="font-medium text-primary underline-offset-4 hover:underline">
+                {chunks}
+              </Link>
+            ),
+          })}
+        </p>
+      ) : null}
+
       {/* Sign-in only. Offering a demo account on the sign-up screen would be
           arguing against the thing that screen exists to do. */}
       {mode === 'sign-in' && DEMO_LOGIN ? (

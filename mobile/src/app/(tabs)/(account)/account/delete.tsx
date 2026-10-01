@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, Linking, Platform, ScrollView, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
+import { OPERATOR } from '@/lib/business';
 import { SignedOut } from '~/components/navigation/signed-out';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
@@ -51,7 +52,8 @@ export default function DeleteAccountScreen() {
   // website deletes it, without the code: asking for one there always failed,
   // and the account could not be deleted at all.
   const asksApple = signsInWithApple && Platform.OS === 'ios';
-  const supportEmail = config.data?.supportEmail ?? null;
+  // Never no way out: the operator's published address when no support inbox is set.
+  const supportEmail = config.data?.supportEmail || OPERATOR.email;
 
   // An owner asks instead (requestAccountDeletion); one already asked sees their reference.
   const existing = useDeletionRequest();

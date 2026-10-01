@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { enabledProviders } from '@/lib/auth-providers';
 import { BILLING_ENABLED, configuredValue, env } from '@/lib/env';
+import { OPERATOR } from '@/lib/business';
 import { ENGLISH_ENABLED } from '@/lib/locale';
 import { currentPolicyVersions } from '@/lib/legal';
 import type { MobileConfig } from '@/lib/mobile-api/reads';
@@ -16,9 +17,11 @@ import type { MobileConfig } from '@/lib/mobile-api/reads';
  *   providers         which one-tap sign-ins the auth server will accept today.
  *   englishEnabled    the website's switch; the app follows it.
  *   billingEnabled    the app never sells anything, but says what is free.
- *   supportEmail      the contact address the website's footer shows, when
- *                     one is set — the app's "contact us" and the way out
- *                     of a deletion only the team can finish.
+ *   supportEmail      the contact address the website's footer shows —
+ *                     SUPPORT_EMAIL when it is set, otherwise the operator's
+ *                     own published address (lib/business.ts) — the app's
+ *                     "contact us" and the way out of a deletion only the
+ *                     team can finish.
  *   appStoreUrl       the app's App Store page, where "update the app" leads
  *                     (MOBILE_APP_STORE_URL); null until the app is listed.
  *   minAndroidAppVersion, playStoreUrl
@@ -41,7 +44,7 @@ export async function GET() {
       providers,
       englishEnabled: ENGLISH_ENABLED,
       billingEnabled: BILLING_ENABLED,
-      supportEmail: configuredValue(env.supportEmail) ?? null,
+      supportEmail: configuredValue(env.supportEmail) ?? OPERATOR.email,
       appStoreUrl: storeUrl(process.env.MOBILE_APP_STORE_URL, 'apps.apple.com'),
       minAndroidAppVersion: configuredValue(process.env.MOBILE_MIN_ANDROID_APP_VERSION) ?? minAppVersion,
       playStoreUrl: storeUrl(process.env.MOBILE_PLAY_STORE_URL, 'play.google.com'),

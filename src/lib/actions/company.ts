@@ -408,7 +408,10 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
 
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_member' };
-    if (error.message.includes('company_member_role')) return { ok: false, error: 'not_employer' };
+    // A consultant's address is answered as no company account at all: "that
+    // email is a consultant's" would tell a company that somebody who chose
+    // to stay hidden from it is on the platform.
+    if (error.message.includes('company_member_role')) return { ok: false, error: 'no_account' };
     // One company per account (migration 307): somebody already on another
     // team is answered the same way as somebody who may not be added.
     return { ok: false, error: 'forbidden' };

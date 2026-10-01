@@ -1,6 +1,6 @@
 import { legalPage } from '@/components/legal/legal-page';
 
-const page = legalPage('terms');
+const page = legalPage('refunds');
 
 export const generateMetadata = page.generateMetadata;
 export default page.LegalPage;

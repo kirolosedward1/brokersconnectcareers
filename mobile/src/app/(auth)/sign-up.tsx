@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import type { AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
 import { MailCheck, RefreshCw } from '~/components/ui/lucide';
@@ -241,9 +242,31 @@ export default function SignUpScreen() {
             {t('app.auth.captchaChecking')}
           </Text>
         ) : null}
+
+        {/* The website's line: where the address is asked for, the policy that
+            says what happens to it. Agreeing is onboarding's checkbox, the one
+            step every way in goes through. */}
+        <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
+          {t.rich('auth.signUpNotice', {
+            terms: (chunks: ReactNode) => (
+              <Text variant="caption" weight="semibold" tone="primary" onPress={() => openSitePage('/terms')} suppressHighlighting accessibilityRole="link">
+                {chunks}
+              </Text>
+            ),
+            privacy: (chunks: ReactNode) => (
+              <Text variant="caption" weight="semibold" tone="primary" onPress={() => openSitePage('/privacy')} suppressHighlighting accessibilityRole="link">
+                {chunks}
+              </Text>
+            ),
+          })}
+        </Text>
       </View>
 
       <AuthSwitch question={t('auth.hasAccount')} action={t('auth.signIn')} onPress={toSignIn} />
     </AuthScroll>
   );
+}
+
+function openSitePage(path: '/terms' | '/privacy') {
+  WebBrowser.openBrowserAsync(`${env.siteUrl}${path}`).catch(() => {});
 }

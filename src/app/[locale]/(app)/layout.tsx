@@ -1,12 +1,13 @@
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
-import { ShieldAlert } from 'lucide-react';
 import { redirect } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { CONSOLE_MESSAGES, PUBLIC_MESSAGES, pick } from '@/i18n/client-messages';
 import { AppShell, type AppNavGroup } from '@/components/dashboard/app-shell';
 import { MailOffBanner } from '@/components/admin/mail-off-banner';
 import { PolicyNotice } from '@/components/legal/policy-notice';
+import { StandingNotice } from '@/components/moderation/standing-notice';
+import { SuspensionGate } from '@/components/moderation/suspension-gate';
 import { NotificationMenu } from '@/components/notifications/notification-menu';
 import { createClient } from '@/lib/supabase/server';
 import { optional } from '@/lib/queries/error';
@@ -250,22 +251,16 @@ export default async function AppLayout({
       {/* The Terms and the Privacy policy as they are now, until agreed to. */}
       <PolicyNotice inset />
 
+      {/* Where a suspended account stands — what happened, the moderator's
+          reason (my_account_note) and the appeal — on every page, and the
+          page itself only where it is still theirs: their settings (a copy of
+          their data, their sign-in) and their notifications. It was a box
+          saying "get in touch" in place of every page, including the two the
+          menu still offered and the dashboard that held the appeal. */}
       {suspended ? (
-        <div
-          role="alert"
-          className="mx-auto max-w-2xl rounded-xl border border-destructive/30 bg-destructive/5 p-6"
-        >
-          <p className="flex items-center gap-2 text-lg font-semibold">
-            <ShieldAlert className="size-5 shrink-0 text-destructive" aria-hidden />
-            {tAccount('suspendedTitle')}
-          </p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            {tAccount('suspendedBody')}
-          </p>
-          {/* The reason is not on the profile row any more (migration 305
-              moved it to profile_private, admin-read); the notification and
-              the email that announced the suspension carry it. */}
-        </div>
+        <SuspensionGate notice={<StandingNotice profile={profile} company={viewer!.company} />}>
+          {children}
+        </SuspensionGate>
       ) : (
         children
       )}

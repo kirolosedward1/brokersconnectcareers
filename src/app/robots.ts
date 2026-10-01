@@ -3,10 +3,17 @@ import { env } from '@/lib/env';
 import { ENGLISH_ENABLED } from '@/i18n/routing';
 
 /**
- * Private surfaces and anything whose URL carries a signed token. `/agents`
- * is a directory of people behind a sign-in since migration 202.
+ * Private surfaces and anything whose URL carries a signed token.
+ *
+ * Not `/agents`, though the directory has been behind a sign-in since
+ * migration 322. Its profile URLs used to carry a consultant's name (migration
+ * 202 renamed them), and some were indexed while profiles were public. A
+ * crawler kept out by robots.txt never sees that they now redirect a visitor
+ * to a noindex sign-in page, so a search engine keeps listing them, name and
+ * all, for good. Let in, it sees the redirect and drops them; the pages
+ * themselves are noindex anyway.
  */
-const PRIVATE = ['/dashboard', '/employer', '/admin', '/notifications', '/onboarding', '/agents', '/auth', '/api'];
+const PRIVATE = ['/dashboard', '/employer', '/admin', '/notifications', '/onboarding', '/auth', '/api'];
 
 /**
  * Query parameters that only ever produce a view of a list page.

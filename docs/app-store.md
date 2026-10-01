@@ -16,8 +16,9 @@ code settles.
 | Bundle ID | `net.brokersconnect.app` — permanent once submitted |
 | Primary language | Arabic (the app is right to left, Arabic only while the website's `ENGLISH_ENABLED` is off) |
 | Category | **decide** — Business (job boards and professional directories sit there) |
-| Privacy policy URL | `https://www.brokersconnect.net/privacy` (`content/legal/privacy.ar.md`); its section on the phone app — pushes, camera and photos, Apple, what stays on the phone — is new and wants the owner's legal review |
-| Support URL | the website, or a page with `SUPPORT_EMAIL` on it |
+| Privacy policy URL | `https://www.brokersconnect.net/privacy` (`content/legal/privacy.ar.md`; the English text is at `/privacy?lang=en`). It, the terms, the cookie page and the account-deletion page want the owner's legal review (`docs/legal.md`) |
+| Account deletion URL | `https://www.brokersconnect.net/account-deletion` — the web page an app store asks for (Google Play requires one): how to delete in the app and on the website, what goes and what stays, and how to ask without signing in |
+| Support URL | the website, or a page with `SUPPORT_EMAIL` on it (the footer and the app's "Contact us" fall back to the operator's published address, `src/lib/business.ts`) |
 | Price | Free. The app sells nothing (`/employer/billing` is read-only; see Guideline 3.1.1 below) |
 
 ## App privacy ("nutrition label")
@@ -142,8 +143,8 @@ has.
    (docs/mobile.md, Over-the-air updates).
 5. **A 1024-pixel app icon** (only a 450-pixel mark exists today) and the
    splash image.
-6. **The privacy policy's app section reviewed** (the Terms need no change for
-   the app), and the two review accounts above.
+6. **The legal pages reviewed by a lawyer** (`docs/legal.md`, "The
+   documents"), and the two review accounts above.
 7. **A development build on a real iPhone** against production, through the
    checklist in `docs/mobile.md` ("On a phone, before a release"), with QA
    accounts — never the demo ones.

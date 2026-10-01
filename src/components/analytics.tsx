@@ -20,6 +20,11 @@ import Script from 'next/script';
  *   NEXT_PUBLIC_ANALYTICS_PROVIDER   plausible | umami
  *   NEXT_PUBLIC_ANALYTICS_SITE       the Plausible domain, or the Umami website id
  *   NEXT_PUBLIC_ANALYTICS_SRC        optional, for a self-hosted instance
+ *
+ * Not before the exclusions in docs/legal.md ("Before visit counting is
+ * switched on"): a consultant's profile URL carries their name, and an
+ * unsubscribe link carries a token, and neither belongs in an analytics
+ * provider's records.
  */
 
 const DEFAULT_SRC = {

@@ -28,10 +28,15 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/sitemap.xml': ['./content/**/*'],
     // The legal pages read their markdown off disk at request time, same as the
-    // blog. Traced explicitly rather than trusted to inference, because these
-    // two are linked from the footer of every page on the site.
-    '/[locale]/(site)/privacy': ['./content/legal/**/*'],
-    '/[locale]/(site)/terms': ['./content/legal/**/*'],
+    // blog, by a name Next cannot work out (`${slug}.${locale}.md`), so it has
+    // to be told. The keys are globs over Next's route names, which drop route
+    // groups and start with /app — '/app/[locale]/privacy' — so the
+    // '/[locale]/(site)/privacy' that stood here (a character class and a
+    // regex group, to picomatch) matched nothing, and a production build
+    // carried no English text and no page but the two Arabic ones the policy
+    // versions happened to name. Every document in lib/legal.ts LEGAL_SLUGS
+    // is named in the key; scripts/legal.test.mjs holds the two together.
+    '/**/{privacy,terms,cookies,refunds,account-deletion}': ['./content/legal/**/*'],
   },
   /**
    * Security headers.

@@ -22,7 +22,7 @@ export type MobileConfig = {
   providers: { google: boolean; apple: boolean };
   englishEnabled: boolean;
   billingEnabled: boolean;
-  /** SUPPORT_EMAIL, the address the website's footer offers; null while unset. */
+  /** The address the website's footer offers: SUPPORT_EMAIL, or the operator's own. Null from a server older than that. */
   supportEmail: string | null;
   /** MOBILE_APP_STORE_URL, where "update the app" leads on an iPhone; null until the app is listed. */
   appStoreUrl: string | null;

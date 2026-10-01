@@ -9,6 +9,7 @@
  * hidden unless its owner says otherwise; the owner choosing is stamped with
  * the database's time, and nobody else changing the card counts as a choice.
  */
+import { readFileSync } from 'node:fs';
 import { createTestDb, runner, reporter, FIXTURES, USERS } from './setup.mjs';
 
 const report = reporter();
@@ -128,6 +129,23 @@ report.section('being listed');
   const resaved = await one(`select visibility_chosen_at from agent_profiles where user_id = '${fresh}'`);
   report.check('the profile form’s save counts, dated now',
     Math.abs(Date.now() - new Date(resaved.visibility_chosen_at).getTime()) < 60_000, String(resaved.visibility_chosen_at));
+}
+
+report.section('a photo somebody uploaded (migration 339)');
+{
+  // A Google photo copied in before onboarding stopped doing it, and a photo
+  // uploaded the ordinary way; then the migration's own statement.
+  await db.exec(`update profiles set avatar_url = 'https://lh3.googleusercontent.com/a/legacy-photo=s96-c' where id = '${publicAgent}'`);
+  const uploaded = `https://example.supabase.co/storage/v1/object/public/avatars/${candidate}/photo.webp`;
+  await db.exec(`update profiles set avatar_url = '${uploaded}' where id = '${candidate}'`);
+  await db.exec(readFileSync(new URL('../migrations/20260101000339_a_photo_somebody_uploaded.sql', import.meta.url), 'utf8'));
+
+  const google = await one(`select avatar_url from profiles where id = '${publicAgent}'`);
+  report.check('a photo that is not one of our files is cleared', google.avatar_url === null, String(google.avatar_url));
+  const own = await one(`select avatar_url from profiles where id = '${candidate}'`);
+  report.check('an uploaded photo stays', own.avatar_url === uploaded, String(own.avatar_url));
+  const queued = await count(`select count(*)::int as n from storage_gc_queue where path like '%legacy-photo%'`);
+  report.check('and nothing that is not ours is queued for deletion', queued === 0);
 }
 
 report.section('it goes with the account');

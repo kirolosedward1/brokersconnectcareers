@@ -20,6 +20,7 @@ import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,s
 import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/companies/[slug]';
 import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import * as DeleteAccountScreen from '../src/app/(tabs)/(account)/account/delete';
+import * as LicensesScreen from '../src/app/(tabs)/(account)/account/licenses';
 import * as ConfirmScreen from '../src/app/auth/confirm';
 import * as CallbackScreen from '../src/app/auth/callback';
 import { redirectSystemPath } from '../src/app/+native-intent';
@@ -188,6 +189,7 @@ const app = {
   '(tabs)/(home)/index': () => <Text>home screen</Text>,
   '(tabs)/(account)/account/index': AccountScreen,
   '(tabs)/(account)/account/delete': DeleteAccountScreen,
+  '(tabs)/(account)/account/licenses': LicensesScreen,
   '(auth)/_layout': AuthLayout,
   '(auth)/sign-in/index': SignInScreen,
   '(auth)/sign-in/forgot': ForgotScreen,
@@ -224,6 +226,19 @@ describe('the Account tab', () => {
     expect(await screen.findByText(ar.app.account.signedOutTitle)).toBeTruthy();
     await press(ar.nav.signIn);
     expect(await screen.findByText(ar.auth.signInTitle)).toBeTruthy();
+  });
+
+  it('keeps the policies, the licences and who runs the app one tap away, signed in or not', async () => {
+    renderRouter(app, { initialUrl: '/account' });
+    expect(await screen.findByText(ar.app.account.signedOutTitle)).toBeTruthy();
+    expect(screen.getByText(ar.footer.operatedBy.replace('{name}', 'Top Suite Digital Marketing'))).toBeTruthy();
+
+    await press(ar.footer.privacy);
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/privacy`);
+    await press(ar.footer.terms);
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/terms`);
+    await press(ar.licenses.title);
+    expect(await screen.findByText(ar.app.licenses.intro)).toBeTruthy();
   });
 
   it('says who is signed in, and signs out of this phone only', async () => {
@@ -374,6 +389,15 @@ describe('creating an account', () => {
 
     await press(ar.auth.resendConfirmation);
     expect(await screen.findByText(ar.auth.resendSent)).toBeTruthy();
+  });
+
+  it('says where the policies are where the address is asked for, and opens them', async () => {
+    renderRouter(app, { initialUrl: '/sign-up' });
+    fireEvent.press(await screen.findByText(ar.footer.privacy));
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/privacy`);
+    fireEvent.press(screen.getByText(ar.footer.terms));
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/terms`);
+    expect(server.asked('/auth/v1/signup')).toHaveLength(0);
   });
 
   it('catches a mistyped password before sending it', async () => {
