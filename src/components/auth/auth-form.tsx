@@ -308,8 +308,10 @@ export function AuthForm({
     RLS confining an account to its own rows is no protection when the rows
     are other people's applications.
   */
-  const DEMO_LOGIN = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true';
-  const DEMO_PASSWORD = 'password123';
+  // The password seed-demo.mjs was given (DEMO_PASSWORD), for a local build
+  // only: it is no longer a constant anybody can read in this repository.
+  const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? '';
+  const DEMO_LOGIN = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true' && DEMO_PASSWORD !== '';
   const DEMO_EMAILS = {
     candidate: 'candidate1@demo.test',
     employer: 'employer1@demo.test',

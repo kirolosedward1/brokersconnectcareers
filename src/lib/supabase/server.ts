@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
+import { SESSION_COOKIE_OPTIONS } from './cookie-options';
 import { env } from '@/lib/env';
 import { createMobileClient, mobileScope } from '@/lib/mobile-api/context';
 import type { Database } from './database.types';
@@ -37,5 +38,6 @@ export async function createClient() {
         }
       },
     },
+    cookieOptions: SESSION_COOKIE_OPTIONS,
   });
 }

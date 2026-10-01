@@ -15,4 +15,8 @@ export const routing = defineRouting({
   // under /en/*.
   localePrefix: 'as-needed',
   localeDetection: false,
+  // No NEXT_LOCALE cookie. With detection off nothing reads it, and the
+  // middleware was writing one on every visit from a browser set to English
+  // — a cookie with no purpose is one more thing to disclose and to keep.
+  localeCookie: false,
 });

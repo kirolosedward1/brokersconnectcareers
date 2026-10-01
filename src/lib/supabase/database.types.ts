@@ -1457,6 +1457,8 @@ export type Database = {
         readers, which answer admins and refuse everybody else.
       */
       run_lifecycle_maintenance: { Args: Empty; Returns: Record<string, unknown> };
+      /** The privacy policy's periods (migration 338): counts per kind, and `errors`. Service role. */
+      run_privacy_retention: { Args: { p_limit?: number }; Returns: Record<string, unknown> };
       claim_storage_gc: {
         Args: { p_limit?: number };
         Returns: { bucket: string; path: string }[];

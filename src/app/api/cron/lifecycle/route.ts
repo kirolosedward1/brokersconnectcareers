@@ -50,6 +50,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // ------------------------------------------------------------ retention --
+  // The privacy policy's periods (migration 338): applications a year after
+  // they were sent, verification papers a year after verification ended, and
+  // the logs. Before the file sweep, so what it releases is queued with the
+  // rest. pg_cron runs the same function daily where the database has it; its
+  // lock lets one of the two run. A database without it answers PGRST202,
+  // which is not a failure.
+  const { data: retention, error: retentionError } = await admin.rpc('run_privacy_retention', { p_limit: 500 });
+  if (retentionError && retentionError.code !== 'PGRST202' && retentionError.code !== '42883') {
+    logFailure('lifecycle', 'retention failed', { code: retentionError.code });
+  }
+
   // ---------------------------------------------------------------- files --
   let removed = 0;
   let failed = 0;
@@ -110,6 +122,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     maintenance,
+    retention: retention ?? null,
     storage: { removed, failed },
     signups_removed: signupsRemoved,
     at: new Date().toISOString(),

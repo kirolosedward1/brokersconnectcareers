@@ -29,6 +29,17 @@ function isKnown(value: string | null): value is ShareSource {
 }
 
 /**
+ * Whether anything is counting visits (components/analytics.tsx). Without it
+ * there is nobody to tell where a visit began, and a value kept on the device
+ * for nobody is storage with no purpose — so nothing is written. The variables
+ * are NEXT_PUBLIC_, inlined into the browser bundle at build.
+ */
+function measuring(): boolean {
+  const provider = process.env.NEXT_PUBLIC_ANALYTICS_PROVIDER;
+  return (provider === 'plausible' || provider === 'umami') && Boolean(process.env.NEXT_PUBLIC_ANALYTICS_SITE);
+}
+
+/**
  * Reads `?src=` from the current URL, remembers it, and takes it back out of
  * the address bar.
  *
@@ -46,7 +57,7 @@ export function rememberShareArrival(): ShareSource | null {
     const src = url.searchParams.get('src');
     if (!isKnown(src)) return null;
 
-    sessionStorage.setItem(KEY, src);
+    if (measuring()) sessionStorage.setItem(KEY, src);
 
     url.searchParams.delete('src');
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);

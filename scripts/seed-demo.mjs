@@ -10,6 +10,7 @@
  *
  * Safe to re-run — existing users are reused and the SQL half is idempotent.
  */
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
@@ -24,7 +25,23 @@ const databaseUrl = require_(
   'Project Settings → Database → Connection string → URI (direct, not the pooler)',
 );
 
-const PASSWORD = 'password123';
+/*
+  Never production. These are shared accounts with one password — one of them
+  an admin — and a live database is where real people's applications are. The
+  project ref is production's own (docs/disaster-recovery.md).
+*/
+const PRODUCTION_REF = 'hiwdhicwsohbipxzazmb';
+if (supabaseUrl.includes(PRODUCTION_REF) || databaseUrl.includes(PRODUCTION_REF)) {
+  console.error('Refusing to seed demo accounts into production. Point the env at a local or staging project.');
+  process.exit(1);
+}
+
+/*
+  A password made for this run, unless DEMO_PASSWORD names one (the local demo
+  login reads NEXT_PUBLIC_DEMO_PASSWORD). It was "password123", published in the
+  README, and the same accounts were seeded into production once.
+*/
+const PASSWORD = process.env.DEMO_PASSWORD || randomBytes(12).toString('base64url');
 
 const DEMO = [
   { key: 'employer1', email: 'employer1@demo.test', name: 'محمد عبد الرحمن' },

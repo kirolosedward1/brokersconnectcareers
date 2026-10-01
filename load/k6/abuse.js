@@ -32,7 +32,7 @@ export function scrapeDirectory() {
 
 /** (2) Opening every consultant's number from one employer account. */
 export function harvestContacts() {
-  const session = signIn('employer1@demo.test', 'password123');
+  const session = signIn('employer1@demo.test', __ENV.DEMO_PASSWORD);
   if (!session) return;
   const url = __ENV.SUPABASE_URL;
   const key = __ENV.SUPABASE_ANON_KEY;
@@ -57,7 +57,7 @@ export function harvestContacts() {
 
 /** (3) Applying to everything in a loop. */
 export function spamApplications() {
-  const session = signIn('candidate1@demo.test', 'password123');
+  const session = signIn('candidate1@demo.test', __ENV.DEMO_PASSWORD);
   if (!session) return;
   const url = __ENV.SUPABASE_URL;
   const key = __ENV.SUPABASE_ANON_KEY;

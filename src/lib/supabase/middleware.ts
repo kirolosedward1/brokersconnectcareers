@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { SESSION_COOKIE_OPTIONS } from './cookie-options';
 import type { User } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
@@ -41,6 +42,7 @@ export async function updateSession(
         }
       },
     },
+    cookieOptions: SESSION_COOKIE_OPTIONS,
   });
 
   try {

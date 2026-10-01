@@ -42,9 +42,9 @@ connections).
 | **Employer profile** | Onboarding as employer (`pending` approval) | As profile | Suspension as above | Blocked while they own a company. A non-owner member may delete freely (membership cascades). | Hard |
 | **Company** (`companies`) | Employer creates; owner auto-added as admin member | Admin members edit; slug immutable; logo replacement queues old file | Unverified ↔ pending ↔ verified/rejected; `verified_at` stamped by trigger | No product path. Owner's account deletion is refused while it exists. Deletion of a company with applied-to listings is refused by the FK. **Decision required** (see below). | — |
 | **Company membership** (`company_members`) | Owner on create; invites | Role change (owner always admin) | — | Removal (not the owner); cascades on member's account deletion. Audited. | Hard |
-| **Verification document** (`company_documents` + private file) | Admin member uploads (`pending`) | Review sets `verified`/`rejected`, `reviewed_at` stamped | — | Owner may withdraw while `pending` → file queued (1-day grace). Reviewed documents are retained. | Hard |
+| **Verification document** (`company_documents` + private file) | Admin member uploads (`pending`) | Review sets `verified`/`rejected`, `reviewed_at` stamped | — | Owner may withdraw while `pending` → file queued (1-day grace). Reviewed documents are kept while the company is verified, and deleted a year after it stopped being (`companies.verification_ended_at`) — or a year after their review if it never was; never while waiting for review (migration 338). | Hard |
 | **Job** (`jobs`) | Draft → pending_review → (moderation) active | Material edit of a live listing → pending_review | **Expired** at `expires_at` (hourly pg_cron + nightly Vercel; reads use the date regardless). **Closed** by employer. **Rejected** by moderation or suspension. All keep their URL (noindex, "closed" state), stay visible to the employer and to applicants, and keep every application. | Only if nobody applied (FK restrict). No product path. | Soft (status) |
-| **Application** (`applications`) | Candidate applies to a live listing (policy checks `expires_at > now()`) | Employer moves status; history in `application_events` | Job expired/closed/rejected: application kept, both sides still see it. Candidate withdraws only while `new`/`shortlisted`. | Withdrawal and candidate account deletion hard-delete the row, its events and notes; CV queued. **Decision required** on tombstones (below). | Hard |
+| **Application** (`applications`) | Candidate applies to a live listing (policy checks `expires_at > now()`) | Employer moves status; history in `application_events` | Job expired/closed/rejected: application kept, both sides still see it. Candidate withdraws only while `new`/`shortlisted`. | Withdrawal and candidate account deletion hard-delete the row, its events and notes; CV queued. Deleted the same way twelve months after it was sent, as the privacy policy says, without telling the company it was withdrawn (migration 338). **Decision required** on tombstones (below). | Hard |
 | **Application history / notes** | Trigger / employer | Notes are append-only | — | With the application. Author/actor nulled on their account deletion. | Hard |
 | **Saved job** | Candidate | — | Job ends: kept (candidate sees it as closed) | Candidate unsaves; cascades on either side | Hard |
 | **Saved search / follow** | Candidate | Candidate | — | Candidate; cascades | Hard |
@@ -74,6 +74,11 @@ connections).
 | `maintenance_runs` | 90 days | Operational |
 | `storage_gc_done` | 30 days | Operational |
 | `email_log` | 180 days | Product default (migration 337): long enough to answer "why did I not get it" |
+| `applications` | 365 days | Already published: "twelve months from the date of application" (migration 338) |
+| `company_documents` | 365 days | Already published: "while verified, and a year after" (migration 338) |
+| `security_events` | 365 days | Product default (migration 338) |
+| `agent_contact_reveals` | 90 days | Product default (migration 338): the daily limits read a day |
+| `rate_limit_hits` | 2 days | Operational (migration 338): the longest window is a day |
 | `abandoned_signups` | **none (report only)** | Decision required |
 
 Change a period with one statement as an admin, for example
@@ -86,6 +91,7 @@ Change a period with one statement as an admin, for example
 | `run_lifecycle_maintenance()` | pg_cron `brokersconnect-lifecycle-maintenance` | `7 * * * *` | Expire listings (500/run), prune notifications/views/email_log (5,000/run), queue orphan files (500/run), prune its own logs |
 | `/api/cron/lifecycle` | Vercel | `23 2 * * *` | Calls the same function (a concurrent call records `skipped`), then deletes claimed files through the Storage API (≤5 × 100), then abandoned signups if a period is set |
 | `/api/cron/expire-jobs` | Vercel | `0 1 * * *` | Unchanged: expiry plus the expiring/expired emails |
+| `run_privacy_retention()` | pg_cron `brokersconnect-privacy-retention`, and `/api/cron/lifecycle` | `37 3 * * *` / nightly | The periods above for applications, verification papers, security events, contact reveals and rate-limit counters; bounded, skip-locked, one run at a time (migration 338) |
 
 Every job:
 - **Bounded.** Each batch has a limit and walks an index.
@@ -125,6 +131,6 @@ These are not settled in code. Each one defaults to keeping data.
 4. **`email_suppressions`.** Should a suppression be kept after the account is deleted? It is currently kept, to avoid mailing a dead address again.
 5. **`audit_events` retention**, and whether actor ids are kept after the actor's account is deleted (currently nulled).
 6. **Abandoned signups.** The period after which never-confirmed, never-signed-in, never-onboarded auth accounts are removed. Detection is built; deletion does not run until a period is set.
-7. **Reviewed verification documents** (commercial register, tax card). How long they are kept after review, especially rejected ones.
+7. ~~**Reviewed verification documents.**~~ A year after the company stopped being verified, or after their review if it never was (migration 338).
 8. **Employer access to applications after a candidate deletes their account.** Today it is cut immediately, because the row cascades.
 9. **Notification periods** (180/365). These are product defaults and need sign-off.
