@@ -11,8 +11,10 @@
     "lint": "eslint .",
     "test": "jest",
     "check:shared": "node scripts/check-shared.mjs",
-    "check": "pnpm typecheck && pnpm lint && pnpm check:shared && pnpm test",
-    "export:ios": "expo export --platform ios --output-dir dist"
+    "check:updates": "node --experimental-strip-types scripts/publish-update.test.mjs",
+    "check": "pnpm typecheck && pnpm lint && pnpm check:shared && pnpm check:updates && pnpm test",
+    "export:ios": "expo export --platform ios --output-dir dist",
+    "ota": "node scripts/publish-update.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/ibm-plex-sans-arabic": "^0.4.2",
@@ -45,6 +47,7 @@
     "expo-image-manipulator": "~57.0.20",
     "expo-image-picker": "~57.0.20",
     "expo-linking": "~57.0.11",
+    "expo-local-authentication": "~57.0.3",
     "expo-localization": "~57.0.2",
     "expo-notifications": "~57.0.21",
     "expo-router": "~57.0.24",
@@ -52,8 +55,10 @@
     "expo-sharing": "~57.0.22",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
+    "expo-store-review": "~57.0.3",
     "expo-symbols": "~57.0.3",
     "expo-system-ui": "~57.0.4",
+    "expo-updates": "~57.0.24",
     "expo-web-browser": "~57.0.3",
     "lucide-react-native": "^1.48.0",
     "react": "19.2.3",

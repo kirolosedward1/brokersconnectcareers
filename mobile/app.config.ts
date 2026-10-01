@@ -50,6 +50,33 @@ const APP_LINK_PATHS = [
 const EAS_PROJECT_ID: string | null = null;
 const easProjectId = process.env.EAS_PROJECT_ID || EAS_PROJECT_ID;
 
+/**
+ * The Face ID purpose string, for the app lock (expo-local-authentication) —
+ * the base language's; the English one is in assets/locales. expo-secure-store
+ * writes the same Info.plist key, so it is handed the same words: whichever
+ * plugin runs last, the prompt says this.
+ */
+const FACE_ID_PURPOSE = 'بنستخدم Face ID عشان تقفل التطبيق وتفتحه، لو انت شغّلت القفل بنفسك.';
+
+/**
+ * Over-the-air updates (EAS Update): JavaScript and images published after a
+ * build reach the phones running it without a new review. Native code cannot
+ * change that way — a new native module still needs a build.
+ *
+ * Each build listens on its profile's channel (eas.json) and takes only
+ * updates made for its own native code: the runtime version is a fingerprint
+ * of this configuration and the native modules, so an update made against
+ * other native code is never offered to it. That fingerprint depends on the
+ * environment this file is evaluated in, which is why updates are published
+ * with scripts/publish-update.mjs and the build profile's own values.
+ *
+ * Without an EAS project there is nowhere to fetch from: updates are off, and
+ * a build runs the code it was built with.
+ */
+const updates = easProjectId
+  ? { url: `https://u.expo.dev/${easProjectId}`, checkAutomatically: 'ON_LOAD' as const, fallbackToCacheTimeout: 0 }
+  : { enabled: false };
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Brokers Connect',
@@ -61,6 +88,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: './assets/images/icon.png',
   scheme: 'brokersconnect',
   userInterfaceStyle: 'automatic',
+  // Checked at launch and downloaded in the background; it runs from the next
+  // launch on, so nobody's screen changes under them (fallbackToCacheTimeout 0).
+  runtimeVersion: { policy: 'fingerprint' },
+  updates,
   ios: {
     // Permanent once the app is on the App Store: confirm before the first build.
     bundleIdentifier: 'net.brokersconnect.app',
@@ -154,9 +185,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         dark: { backgroundColor: '#0B0F19', image: './assets/images/splash-icon.png' },
       },
     ],
-    // The session key sits in the keychain without a biometric gate, so no
-    // Face ID purpose string (the plugin's default is an English one).
-    ['expo-secure-store', { faceIDPermission: false }],
+    // The session key sits in the keychain without a biometric gate. The Face
+    // ID purpose string is the app lock's, given to both plugins because both
+    // write it (the secure store's default is an English sentence).
+    ['expo-secure-store', { faceIDPermission: FACE_ID_PURPOSE }],
+    ['expo-local-authentication', { faceIDPermission: FACE_ID_PURPOSE }],
     ['expo-localization', { supportsRTL: true, forcesRTL: true }],
     'expo-web-browser',
     'expo-font',

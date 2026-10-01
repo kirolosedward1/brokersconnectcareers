@@ -6,7 +6,8 @@
 # runs this as well as the web workflow.
 #
 #   pnpm check      typecheck (app and tests), ESLint, the shared-code guard
-#                   (scripts/check-shared.mjs) and the Jest suites
+#                   (scripts/check-shared.mjs), the update-publishing check
+#                   (scripts/publish-update.test.mjs) and the Jest suites
 #   export:ios      bundles the app for iOS with Metro and Hermes, which is
 #                   what an EAS build does first: an import Metro cannot
 #                   resolve, or a module Hermes cannot compile, fails here

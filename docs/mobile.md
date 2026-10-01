@@ -535,6 +535,40 @@ Before the first build:
 The whole list, in order, with the website's keys and Android's, is in
 `docs/app-store.md` ("Before the first submission").
 
+### Over-the-air updates
+
+A build on the App Store keeps taking new JavaScript and images without
+another review: `expo-updates` asks Expo's update service at launch, downloads
+in the background, and runs the update from the next launch, so nobody's
+screen changes under them (`app.config.ts`, `updates`). Each build listens on
+its profile's channel in `eas.json` (`production`, `preview`); a development
+build loads code from your computer instead. Without an EAS project id updates
+are off, and a build runs the code it was built with.
+
+Publish with the script, never a plain `eas update`:
+
+    cd mobile
+    pnpm run ota production --message "what changed"
+
+A build takes only an update made for its own native code: the runtime
+version is a fingerprint of the configuration as evaluated, and the
+configuration follows the build's environment (the APNs mode follows
+`EAS_BUILD_PROFILE`, the website's host `EXPO_PUBLIC_SITE_URL`). EAS sets
+those from `eas.json` during a build but not when an update is published, so a
+plain `eas update` computes another fingerprint and its update reaches nobody —
+and it bundles whatever Supabase address and key the machine's `.env` holds.
+The script publishes with the profile's own values from `eas.json`, iOS only
+unless `--platform` is given. `scripts/publish-update.test.mjs` (in
+`pnpm check`) checks both, against the real `eas.json` and `app.config.ts`.
+
+What cannot go out this way is anything native: a new native module, a
+permission string, the icon, a config plugin's settings. Those change the
+fingerprint and need a new build (and a review); updates published after it
+go to that build only. So the first App Store build already carries the
+native modules this round's later features need — `expo-store-review` for the
+rating prompt, `expo-local-authentication` for the app lock — and those
+features can follow over the air.
+
 The native iOS build is also compiled in CI on `main` (`ios-build` in
 `.github/workflows/mobile.yml`), so a config plugin or native dependency that
 breaks the build shows up before an EAS build is paid for.

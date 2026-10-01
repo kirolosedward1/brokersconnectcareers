@@ -40,7 +40,7 @@ for tracking, advertising, or third-party marketing.
 | User content | Customer support | help and account-deletion requests (`support_requests`) |
 | Search history | Search history | saved searches and followed companies |
 | Identifiers | User ID | the account id |
-| Identifiers | Device ID | the push token registered for the phone (`push_devices`) |
+| Identifiers | Device ID | the push token registered for the phone (`push_devices`); the random install id `expo-updates` sends to Expo with each update check (not linked to the account) |
 | Other data | Other data types | work history, education, certifications and the sales record on a consultant's profile |
 
 Not collected: location, contacts, browsing history, purchases, financial
@@ -118,16 +118,20 @@ has.
 2. **The two Vault secrets** for the push sweep, by hand in the SQL editor
    (`docs/mobile.md`, Pushes).
 3. **Merge the app's pull request** into `main` (Vercel deploys it), then
-   apply the migrations it brings, 331 and 332, from your computer:
+   apply the migrations still pending, from your computer:
    `pnpm db:apply --execute --confirm hiwdhicwsohbipxzazmb` with
-   `TARGET_DATABASE_URL` set to the session pooler. Both only add; the dry run
-   (without `--execute`) lists them first.
+   `TARGET_DATABASE_URL` set to the session pooler. The dry run (without
+   `--execute`) lists them first. 331 was applied on 2026-09-30, so it lists
+   332 and anything newer.
 4. **Apple and Expo:** Apple Developer Program membership (an organisation
    needs a D-U-N-S number) and an Expo account; `npx eas-cli@latest init`, and
    the project id it prints written into `mobile/app.config.ts`
    (docs/mobile.md, Releasing); an APNs key uploaded with
    `npx eas-cli@latest credentials`; the Sign in with Apple key and Services
    ID, and the Apple provider on in Supabase (docs/mobile.md, Configuration).
+   The build then carries over-the-air updates: later fixes go out with
+   `pnpm run ota production --message "…"` in `mobile/`, without a review
+   (docs/mobile.md, Over-the-air updates).
 5. **A 1024-pixel app icon** (only a 450-pixel mark exists today) and the
    splash image.
 6. **The privacy policy's app section reviewed** (the Terms need no change for
