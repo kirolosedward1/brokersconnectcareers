@@ -9,10 +9,11 @@ import { Text } from './text';
  * A person, as a circle — the website's Avatar: the photo when there is one
  * the site would fetch (its own storage, or a Google picture), otherwise the
  * first letter on a colour derived from a stable seed. The hues are the
- * website's (oklch 0.55 0.12 across the cyan→magenta arc), written as sRGB:
- * never green, amber or red, which mean hired, expiring and rejected beside it.
+ * website's (oklch 0.55 0.12 across the cyan→magenta arc, 0.54 for the two
+ * cyan ones so white on them holds 4.5:1), written as sRGB: never green, amber
+ * or red, which mean hired, expiring and rejected beside it.
  */
-const HUES = ['#506eb7', '#7d5fad', '#985593', '#00829d', '#1479b0', '#008781'];
+const HUES = ['#506eb7', '#7d5fad', '#985593', '#007f9a', '#1479b0', '#00847e'];
 
 function hueFor(seed: string): string {
   let hash = 0;
@@ -55,9 +56,12 @@ export function Avatar({
     );
   }
 
+  // Hidden, letter and all: `accessible={false}` alone leaves the Text inside
+  // to VoiceOver, which read a stray letter before the name beside it.
   return (
     <View
-      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       style={{ ...shape, alignItems: 'center', justifyContent: 'center', backgroundColor: hueFor(seed || name) }}
     >
       <Text weight="bold" variant={size === 'lg' ? 'title' : 'small'} style={{ color: '#FFFFFF' }}>

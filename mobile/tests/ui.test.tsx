@@ -8,17 +8,21 @@ import { renderRouter } from 'expo-router/testing-library';
 import TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
 import { AuthScroll } from '~/components/auth/auth-scroll';
 import { CompanyLogo } from '~/components/companies/company-logo';
+import { SetupChecklist } from '~/components/employer/setup-checklist';
 import { Avatar } from '~/components/ui/avatar';
+import { Chip } from '~/components/ui/chip';
 import { KeyboardRoom, roomForScreen } from '~/components/ui/keyboard-room';
 import { PageFooter } from '~/components/ui/page-footer';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { ApiError } from '~/lib/api';
 import { env } from '~/lib/env';
 import { ThemeProvider } from '~/theme/provider';
+import { company } from './fixtures';
 
 /*
   Small pieces every list uses: a picture that does not load, and the end of
-  a list whose next page did not come.
+  a list whose next page did not come — and what VoiceOver is told of a
+  chip in a single choice and of a company's first steps.
 */
 
 const ar = catalogues.ar;
@@ -34,10 +38,15 @@ function Providers({ children }: { children: ReactNode }) {
 const photo = (name: string) => `${env.supabaseUrl}/storage/v1/object/public/avatars/${name}.webp`;
 
 describe('a picture that does not load', () => {
+  // The letter is drawn, and kept from VoiceOver: the name beside it is what
+  // gets read, and a lone "س" before it was noise.
+  const drawn = { includeHiddenElements: true };
+
   it("is the person's letter — for that photo only, when the list reuses the row for somebody else", () => {
     const view = render(<Avatar name="سارة" src={photo('sara')} />, { wrapper: Providers });
     act(() => screen.UNSAFE_getByType(Image).props.onError());
-    expect(screen.getByText('س')).toBeTruthy();
+    expect(screen.getByText('س', drawn)).toBeTruthy();
+    expect(screen.queryByText('س')).toBeNull();
 
     view.rerender(<Avatar name="عمر" src={photo('omar')} />);
     expect(screen.UNSAFE_getByType(Image).props.source).toEqual({ uri: photo('omar') });
@@ -46,8 +55,47 @@ describe('a picture that does not load', () => {
   it("is the company's letter, not a blank white tile", () => {
     render(<CompanyLogo name="النيل" logoUrl="https://example.com/logo.webp" />, { wrapper: Providers });
     act(() => screen.UNSAFE_getByType(Image).props.onError());
-    expect(screen.getByText('ا')).toBeTruthy();
+    expect(screen.getByText('ا', drawn)).toBeTruthy();
+    expect(screen.queryByText('ا')).toBeNull();
     expect(screen.UNSAFE_queryByType(Image)).toBeNull();
+  });
+
+  it('is a letter VoiceOver does not read when there was never a picture', () => {
+    render(<Avatar name="عمر" />, { wrapper: Providers });
+    expect(screen.getByText('ع', drawn)).toBeTruthy();
+    expect(screen.queryByText('ع')).toBeNull();
+  });
+});
+
+describe('a chip in a single choice', () => {
+  it('is a radio button, checked or not, rather than a selected button', () => {
+    const onPress = jest.fn();
+    const view = render(<Chip label="الأحدث" selected radio onPress={onPress} />, { wrapper: Providers });
+    const chip = screen.getByRole('radio', { name: 'الأحدث' });
+    expect(chip.props.accessibilityState).toMatchObject({ checked: true });
+    expect(chip.props.accessibilityState.selected).toBeUndefined();
+    fireEvent.press(chip);
+    expect(onPress).toHaveBeenCalledTimes(1);
+
+    view.rerender(<Chip label="الأحدث" radio onPress={onPress} />);
+    expect(screen.getByRole('radio', { name: 'الأحدث' }).props.accessibilityState).toMatchObject({ checked: false });
+  });
+
+  it('stays a selected button everywhere else', () => {
+    render(<Chip label="الفلاتر" selected onPress={() => {}} />, { wrapper: Providers });
+    expect(screen.getByRole('button', { name: 'الفلاتر' }).props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.queryByRole('radio')).toBeNull();
+  });
+});
+
+describe("a company's first steps", () => {
+  it('says where each one stands in words, not only with its mark', () => {
+    const papersIn = { ...company, about_ar: 'وساطة عقارية.', logo_url: 'https://example.com/logo.webp', verification_status: 'pending' as const };
+    render(<SetupChecklist company={papersIn} liveJobs={0} pendingJobs={0} draftJobs={0} />, { wrapper: Providers });
+    // Profile filled in, papers with a reviewer, no listing yet.
+    expect(screen.getByLabelText(ar.employer.setupStateDone)).toBeTruthy();
+    expect(screen.getByLabelText(ar.employer.setupStateWaiting)).toBeTruthy();
+    expect(screen.getByLabelText(ar.employer.setupStateTodo)).toBeTruthy();
   });
 });
 

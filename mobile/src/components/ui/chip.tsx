@@ -10,8 +10,11 @@ import { Text } from './text';
  *
  * `removable`: an active filter, tinted in the brand colour with a cross; the
  * whole chip is the target and says what pressing it does ("remove filter X").
- * `selected`: one choice of several (the sort order), with the matching state.
+ * `selected`: one choice of several, with the matching state.
  * Neither: a plain choice, like "without X (n)" on an empty board.
+ * `radio`: one option of a single choice (the sort order, the appearance),
+ * inside a labelled `radiogroup` — a radio button, checked when `selected`,
+ * rather than a button that is selected.
  *
  * At least 36 points tall, with the slop taking the target to 44.
  */
@@ -20,6 +23,7 @@ export function Chip({
   onPress,
   removable = false,
   selected = false,
+  radio = false,
   disabled = false,
   accessibilityLabel,
   icon,
@@ -28,6 +32,7 @@ export function Chip({
   onPress: () => void;
   removable?: boolean;
   selected?: boolean;
+  radio?: boolean;
   /** Not choosable now (a list at its limit), and said so to VoiceOver. */
   disabled?: boolean;
   accessibilityLabel?: string;
@@ -38,8 +43,8 @@ export function Chip({
 
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityState={removable ? undefined : { selected, disabled }}
+      accessibilityRole={radio ? 'radio' : 'button'}
+      accessibilityState={removable ? undefined : radio ? { checked: selected, disabled } : { selected, disabled }}
       accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
       disabled={disabled}

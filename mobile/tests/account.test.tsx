@@ -383,6 +383,22 @@ describe('the emails', () => {
   });
 });
 
+describe('the appearance', () => {
+  it('is one choice of three: radio buttons in a group named for what they set', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account' });
+
+    expect((await screen.findByLabelText(ar.app.account.appearance)).props.accessibilityRole).toBe('radiogroup');
+    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    fireEvent.press(screen.getByRole('radio', { name: ar.theme.dark }));
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: ar.theme.dark }).props.accessibilityState).toMatchObject({ checked: true }),
+    );
+    expect(screen.getByRole('radio', { name: ar.theme.light }).props.accessibilityState).toMatchObject({ checked: false });
+    expect(screen.getByRole('radio', { name: ar.theme.system }).props.accessibilityState).toMatchObject({ checked: false });
+  });
+});
+
 describe('a profile that could not be read', () => {
   it('says so with a way to try again, rather than waiting for ever', async () => {
     let down = true;

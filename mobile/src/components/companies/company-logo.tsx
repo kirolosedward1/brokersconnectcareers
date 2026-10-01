@@ -72,9 +72,12 @@ export function CompanyLogo({
   ];
   const tint = tints[tintIndex(seed || name)];
 
+  // Hidden, letter and all: `accessible={false}` alone leaves the Text inside
+  // to VoiceOver, which read a stray letter before the company's name.
   return (
     <View
-      accessible={false}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       style={{
         width: px,
         height: px,

@@ -218,6 +218,7 @@ function BoardHeader({
               key={sort}
               label={t(sort === 'newest' ? 'sortNewest' : sort === 'salary' ? 'sortSalary' : 'sortSeats')}
               selected={filters.sort === sort}
+              radio
               onPress={() => apply({ ...filters, sort })}
             />
           ))}

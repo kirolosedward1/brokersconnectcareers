@@ -79,7 +79,18 @@ export function SetupChecklist({
 
       {steps.map((step) => (
         <View key={step.key} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3] }}>
+          {/* The mark says where the step stands, so VoiceOver says it too —
+              read before the step, where it sits; the icon alone left a done
+              step and one not begun sounding the same. */}
           <View
+            accessible
+            accessibilityLabel={
+              step.state === 'done'
+                ? t('setupStateDone')
+                : step.state === 'waiting'
+                  ? t('setupStateWaiting')
+                  : t('setupStateTodo')
+            }
             style={{
               width: 24,
               height: 24,

@@ -155,12 +155,17 @@ export default function AccountScreen() {
           <Text variant="small" weight="semibold" tone="mutedForeground">
             {t('app.account.appearance')}
           </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }} accessibilityRole="radiogroup">
+          <View
+            style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}
+            accessibilityRole="radiogroup"
+            accessibilityLabel={t('app.account.appearance')}
+          >
             {themes.map((theme) => (
               <Chip
                 key={theme.value}
                 label={theme.label}
                 selected={preference === theme.value}
+                radio
                 onPress={() => setPreference(theme.value)}
               />
             ))}

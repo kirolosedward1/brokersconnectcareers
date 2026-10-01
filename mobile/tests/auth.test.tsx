@@ -429,6 +429,8 @@ describe('onboarding', () => {
     await signedIn();
     renderRouter(app, { initialUrl: '/onboarding' });
     fireEvent.press(await screen.findByRole('radio', { name: `${ar.onboarding.roleEmployer}. ${ar.onboarding.roleEmployerHint}` }));
+    // The two kinds of account are one choice, named by the question they answer.
+    expect(screen.getByLabelText(ar.onboarding.roleQuestion).props.accessibilityRole).toBe('radiogroup');
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.companyName), 'نايل بروكرز');
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '12');
     fireEvent.press(screen.getByRole('checkbox'));

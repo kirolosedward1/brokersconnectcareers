@@ -204,7 +204,7 @@ function OnboardingForm({
           </Text>
         </View>
       ) : (
-        <View style={{ gap: space[2] }} accessibilityRole="radiogroup">
+        <View style={{ gap: space[2] }} accessibilityRole="radiogroup" accessibilityLabel={t('onboarding.roleQuestion')}>
           <Text variant="small" weight="medium">
             {t('onboarding.roleQuestion')}
           </Text>
