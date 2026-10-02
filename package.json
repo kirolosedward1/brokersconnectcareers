@@ -64,7 +64,7 @@
     "test:auth-confirm": "node --experimental-strip-types scripts/auth-confirm.test.mjs",
     "test:app-links": "node --experimental-strip-types scripts/app-links.test.mjs",
     "test:apple": "node --experimental-strip-types scripts/apple-revoke.test.mjs",
-    "test:release": "node scripts/release/apply.test.mjs",
+    "test:release": "node scripts/release/apply.test.mjs && node scripts/release/rehearse.test.mjs",
     "smoke:mobile-api": "node scripts/mobile-api.smoke.mjs",
     "test:saved": "node --experimental-strip-types scripts/saved-search.test.mjs",
     "test:nextaction": "node --experimental-strip-types scripts/next-action.test.mjs",

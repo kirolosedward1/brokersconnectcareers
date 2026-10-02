@@ -96,6 +96,17 @@ the app's 329 and 330: all 31 apply, and the result is identical.)
 order from the snapshot and runs the real `apply` command against it over a
 socket, so a new migration that would not apply to production fails CI.
 
+**After the release.** Production's ledger now records 068–330 under their own
+versions, and Supabase lists a ledger by version, so those rows come first,
+ahead of everything they ran after. The rehearsal replays a ledger in the order
+the database ran it (`replayOrder`; the run of 2026-09-29 is in `APPLY_RUNS`),
+and each file `apply` ran with the adjustment it ran with. Without that, it
+could not rebuild production at all: 068 met a database with no tables.
+`scripts/release/rehearse.test.mjs` checks it on production's ledger read
+2026-10-02: the rebuild has production's fingerprint in every kind, and 332–343
+apply on top of it and end where `main` does. Without `--ledger` it reads the
+ledger of `TARGET_DATABASE_URL`, as `pnpm db:apply` does, and nothing else.
+
 ### Verified against production (2026-09-29)
 
 Read-only, through the Supabase connector:
