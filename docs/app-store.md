@@ -156,7 +156,14 @@ has.
    checklist in `docs/mobile.md` ("On a phone, before a release"), with QA
    accounts — never the demo ones.
 8. Screenshots for the required iPhone sizes, in Arabic.
-9. After the listing exists: `MOBILE_APP_STORE_URL` on Vercel, so the
+9. **The App Store build**, from `mobile/` on your computer:
+   `npx eas-cli@latest build --platform ios --profile production --auto-submit`.
+   EAS builds it with Xcode 26, which SDK 57 needs, signs it with the
+   credentials it keeps, and uploads it to App Store Connect. The first upload
+   creates the app's record there and asks you to sign in with your Apple ID.
+   After Apple's processing it is in TestFlight: install it on the iPhone
+   from there, then submit it for review with the answers in this file.
+10. After the listing exists: `MOBILE_APP_STORE_URL` on Vercel, so the
    "update the app" screen can link to it, and `MOBILE_MIN_APP_VERSION` raised
    only when an older build must stop.
 
