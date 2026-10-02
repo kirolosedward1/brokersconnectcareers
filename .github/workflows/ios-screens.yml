@@ -1,0 +1,126 @@
+# The App Store screenshots, and a smoke run of the build the store gets.
+# By hand (Actions → iOS screens → Run workflow), and when the flows or this
+# file change in a pull request.
+#
+# The app is built as the App Store gets it — Release, the JavaScript bundled
+# in, nothing served by a development server — and run on iOS simulators in
+# Arabic against the live site: the largest iPhone (the screenshots), the same
+# in the dark appearance and at the largest text size, and the largest iPad,
+# where App Review also opens an iPhone app. mobile/scripts/store-screens.sh
+# says what each pass does; mobile/maestro/ holds the screens, each opened by
+# link, checked for the app's error states, and captured. A crash, an error
+# screen or a screen that never loads fails the run.
+#
+# The screenshots are the run's artifact. The EXPO_PUBLIC_* values are the
+# public ones in mobile/eas.json; no secret is used (the repository is public).
+name: iOS screens
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'mobile/maestro/**'
+      - 'mobile/scripts/store-screens.sh'
+      - '.github/workflows/ios-screens.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-screens-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_PUBLIC_SUPABASE_URL: https://hiwdhicwsohbipxzazmb.supabase.co
+  EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_ghKaq9WMTXgn01IEJuh-EA_LEa9Nlry
+  EXPO_PUBLIC_SITE_URL: https://www.brokersconnect.net
+  # Maestro, pinned: 2.4.0 was the first to run on iOS 26.
+  MAESTRO_VERSION: 2.6.0
+  MAESTRO_CLI_NO_ANALYTICS: '1'
+
+jobs:
+  screens:
+    # Xcode 26, as for the native build in mobile.yml (SDK 57 needs it).
+    runs-on: macos-26
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: mobile/pnpm-lock.yaml
+
+      # Maestro runs on Java.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Xcode
+        run: |
+          xcodebuild -version
+          if ! xcodebuild -version | grep -qE '^Xcode (2[6-9]|[3-9][0-9])\.'; then
+            echo "::error::Expo SDK 57 needs Xcode 26 or later"
+            exit 1
+          fi
+
+      - name: Generate the native project
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install pods
+        run: pod install
+        working-directory: mobile/ios
+
+      # Release: the JavaScript is bundled into the app with Hermes, as in the
+      # App Store build. For the simulator on this Apple-silicon runner only.
+      - name: Build the app in Release for the simulator
+        working-directory: mobile/ios
+        run: |
+          if xcodebuild \
+            -workspace BrokersConnect.xcworkspace \
+            -scheme BrokersConnect \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/derived" \
+            ARCHS=arm64 \
+            CODE_SIGNING_ALLOWED=NO \
+            build > "$RUNNER_TEMP/xcodebuild.log" 2>&1; then
+            tail -n 20 "$RUNNER_TEMP/xcodebuild.log"
+          else
+            grep -nE -A4 'error:|fatal error|Undefined symbol|The following build commands failed' "$RUNNER_TEMP/xcodebuild.log" | head -n 300 || true
+            tail -n 40 "$RUNNER_TEMP/xcodebuild.log"
+            exit 1
+          fi
+          app=$(find "$RUNNER_TEMP/derived/Build/Products/Release-iphonesimulator" -maxdepth 1 -name '*.app' | head -n 1)
+          # The JavaScript bundled in, or the app would wait for a development server.
+          test -n "$app" && ls "$app" | grep -qE '\.(jsbundle|hbc)$' || { echo "::error::no app with its bundle in the build"; exit 1; }
+          echo "APP=$app" >> "$GITHUB_ENV"
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Screens
+        run: scripts/store-screens.sh "$APP" "$RUNNER_TEMP/screens"
+
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-screens
+          path: ${{ runner.temp }}/screens
+          if-no-files-found: warn
+          retention-days: 30

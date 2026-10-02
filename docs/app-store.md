@@ -62,6 +62,28 @@ An App Store name is unique across the store: if «Brokers Connect» or
 `store.config.js` (and `appName` in `eas.json`, for the first submission)
 changes to one that is free.
 
+## Screenshots
+
+`.github/workflows/ios-screens.yml` (Actions → iOS screens → Run workflow)
+builds the app as the App Store gets it — Release, the JavaScript bundled in
+— and runs it on iOS simulators in Arabic against the live site
+(`mobile/scripts/store-screens.sh`, the screens in `mobile/maestro/`). Each
+screen is opened by a link, checked for the app's error, offline, unavailable,
+not-found and update-required states, and captured. A crash, an error screen
+or a screen that never loads fails the run. Its artifact, `ios-screens`, holds:
+
+- `store/1-home.png` … `5-company.png`: Home, the board, a listing, the
+  companies and a company page on the largest iPhone, the 6.9-inch
+  screenshots App Store Connect asks for (the log prints their sizes);
+- `dark/`, `large-text/` and `ipad/`: the same screens in the dark appearance,
+  at the largest accessibility text size and on an iPad (App Review opens an
+  iPhone app on one too), for checking rather than for the store.
+
+They show whatever the live site lists when the workflow runs — its first
+listing and its first company — so run it when production holds the listings
+the store should show. They go into App Store Connect by hand (the 6.9-inch
+slot of each language).
+
 ## App privacy ("nutrition label")
 
 **Tracking: no.** No advertising or analytics SDK, no data shared with data
@@ -190,7 +212,8 @@ has.
 7. **A development build on a real iPhone** against production, through the
    checklist in `docs/mobile.md` ("On a phone, before a release"), with QA
    accounts — never the demo ones.
-8. Screenshots for the required iPhone sizes, in Arabic.
+8. **Screenshots**: run the iOS screens workflow once production holds real
+   listings, and upload its `store` set ("Screenshots" above).
 9. **The App Store build**, from `mobile/` on your computer:
    `npx eas-cli@latest build --platform ios --profile production --auto-submit`.
    EAS builds it with Xcode 26, which SDK 57 needs, signs it with the

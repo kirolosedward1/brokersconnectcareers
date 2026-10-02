@@ -1,0 +1,10 @@
+# Opens the app as someone who has just installed it: nothing stored, nobody
+# signed in, Home on screen.
+appId: net.brokersconnect.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "منصة متخصصة لوظائف العقارات في مصر"
+    timeout: 90000
+- waitForAnimationToEnd

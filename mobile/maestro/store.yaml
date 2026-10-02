@@ -1,0 +1,6 @@
+# The App Store screenshots: the app as installed, light, its five screens.
+appId: net.brokersconnect.app
+name: Store screens
+---
+- runFlow: launch.yaml
+- runFlow: screens.yaml
