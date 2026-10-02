@@ -71,12 +71,10 @@ export default async function AdminCompaniesPage({
   const needle = q ? likeNeedle(q) : '';
   if (needle) query = query.or(`name_ar.ilike.*${needle}*,name_en.ilike.*${needle}*,slug.ilike.*${needle}*`);
 
-  const read = await mustPage(
-    await query,
-    'loading companies',
-    locale,
-    hrefWith('/admin/companies', { q, status: status === 'pending' ? undefined : status }, {}),
-  );
+  const read = await mustPage(await query, 'loading companies', locale, {
+    page,
+    href: (n) => hrefWith('/admin/companies', { q, status: status === 'pending' ? undefined : status }, { page: n }),
+  });
   const rows = read.data as unknown as CompanyListRow[];
 
   const t = await getTranslations('admin');

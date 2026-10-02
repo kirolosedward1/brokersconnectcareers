@@ -162,7 +162,14 @@ export function ApplyForm({
           setErrors({ form: t('rateLimit') });
           return;
         }
-        setErrors(result.fieldErrors ?? { form: tCommon('errorBody') });
+        // The server names a refused CV by its key — 'fileType': the bytes are
+        // no PDF or Word document, whatever the name says — and the field
+        // showed the key itself, in Latin letters under an Arabic form.
+        setErrors(
+          result.fieldErrors
+            ? { ...result.fieldErrors, ...(result.fieldErrors.cv ? { cv: tValidation('fileType') } : {}) }
+            : { form: tCommon('errorBody') },
+        );
         return;
       }
 

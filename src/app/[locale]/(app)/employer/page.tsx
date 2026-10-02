@@ -14,6 +14,7 @@ import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
 import type { EmployerSummary, EmployerTrend } from '@/lib/supabase/database.types';
+import { raise } from '@/lib/queries/error';
 
 export async function generateMetadata({
   params,
@@ -44,10 +45,13 @@ export default async function EmployerOverviewPage({
   const supabase = await createClient();
 
   // Two round trips that do not depend on each other, so they go together.
-  const [{ data }, { data: trendData }] = await Promise.all([
+  const [{ data, error }, { data: trendData }] = await Promise.all([
     supabase.rpc('employer_summary'),
     supabase.rpc('employer_trend'),
   ]);
+  // A summary that failed is not "no company yet": that told an established
+  // employer to set up the company they have run listings from for a year.
+  if (error) raise(error, 'reading the employer summary');
   const s = (data ?? null) as EmployerSummary | null;
   const trend = (trendData ?? null) as EmployerTrend | null;
 

@@ -12,6 +12,7 @@ import { optional, raise } from '@/lib/queries/error';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
+import { UUID_RE } from '@/lib/admin/params';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -79,6 +80,9 @@ export default async function ApplicantsPage({
     row, so an error here is a real failure and belongs in the error
     boundary, where Retry means something.
   */
+  // A truncated link is a page that does not exist, not a database error:
+  // the id is compared with a uuid column, and the cast refused it.
+  if (!UUID_RE.test(id)) notFound();
   const { data: job, error: jobError } = await supabase
     .from('jobs')
     .select('id, slug, title_ar, title_en, status')

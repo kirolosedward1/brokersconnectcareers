@@ -72,6 +72,8 @@
     "previous": "Previous",
     "expired": "This listing has closed",
     "expiredBody": "It is no longer accepting applications. Browse what is open now.",
+    "notPublished": "This listing isn't published",
+    "notPublishedBody": "{status}: it isn't public, and isn't taking applications.",
     "seatsLabel": "{count, plural, one {open seat} other {open seats}}",
     "featured": "Sponsored",
     "sponsoredFirst": "Sponsored listings come first; the rest follow the order you chose.",

@@ -96,7 +96,10 @@ export default async function AdminApplicationsPage({
     job: jobId,
     candidate: candidateId,
   };
-  const read = await mustPage(await query, 'loading applications', locale, hrefWith('/admin/applications', current, {}));
+  const read = await mustPage(await query, 'loading applications', locale, {
+    page,
+    href: (n) => hrefWith('/admin/applications', current, { page: n }),
+  });
   const rows = read.data as unknown as ApplicationListRow[];
 
   const t = await getTranslations('admin');

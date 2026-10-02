@@ -10,6 +10,7 @@ import { CompanyLogo } from '@/components/companies/company-logo';
 import { Button } from '@/components/ui/button';
 import { queryCompanies } from '@/lib/queries/companies';
 import { getDistricts } from '@/lib/queries/taxonomy';
+import { companiesHref } from '@/lib/company-filters';
 
 export async function generateMetadata({
   params,
@@ -159,13 +160,9 @@ export default async function CompaniesPage({
       <Pagination
         page={served}
         pageCount={pageCount}
-        buildHref={(next) => {
-          const search = new URLSearchParams();
-          if (q) search.set('q', q);
-          if (next > 1) search.set('page', String(next));
-          const query = search.toString();
-          return query ? `/companies?${query}` : '/companies';
-        }}
+        buildHref={(next) =>
+          companiesHref({ q, district: districtId ? district : null, verified: verified === '1', page: next })
+        }
       />
     </div>
   );

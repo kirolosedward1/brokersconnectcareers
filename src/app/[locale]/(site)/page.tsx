@@ -4,7 +4,9 @@ import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
 import { Landing } from '@/components/home/landing';
 import { EmployerHome, type EmployerSummary } from '@/components/home/employer-home';
 import { SignedInHome } from '@/components/home/signed-in-home';
-import { getViewer } from '@/lib/auth';
+import { actorOf, getViewer } from '@/lib/auth';
+import { canAccessEmployerArea, homeFor } from '@/lib/permissions';
+import { redirect } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
@@ -52,6 +54,15 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   // expires this week. Fetched instead of the job list, not alongside it — the
   // board query is real work and nothing on their page uses it.
   if (viewer.profile.role === 'employer' || viewer.profile.role === 'admin') {
+    /*
+      Only somebody the employer console takes. An admin with no company has
+      no employer home — everything on it is about the viewer's company — and
+      was offered "complete your company profile" and two buttons that bounced
+      to /admin; this is where a Google sign-in with no `next` lands, too.
+    */
+    const actor = actorOf(viewer);
+    if (!canAccessEmployerArea(actor)) redirect({ href: homeFor(actor), locale });
+
     const supabase = await createClient();
     // The home page must survive the database being unreachable, the same way
     // the landing page does — an empty summary renders the "no company yet"

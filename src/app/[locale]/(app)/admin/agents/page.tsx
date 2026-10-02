@@ -80,7 +80,10 @@ export default async function AdminAgentsPage({
   }
 
   const current = { q, visibility: view === 'all' ? undefined : view };
-  const read = await mustPage(await query, 'loading consultant profiles', locale, hrefWith('/admin/agents', current, {}));
+  const read = await mustPage(await query, 'loading consultant profiles', locale, {
+    page,
+    href: (n) => hrefWith('/admin/agents', current, { page: n }),
+  });
   const rows = read.data as unknown as AgentListRow[];
 
   const t = await getTranslations('admin');

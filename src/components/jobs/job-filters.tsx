@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useId, useMemo, useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Search, X } from 'lucide-react';
@@ -47,6 +47,14 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
+  /*
+    The panel is on the page twice — in the phone's sheet and in the desktop
+    rail, which a phone hides but keeps — and radios outside a form are one
+    group per name across the whole document. Sharing names, each render left
+    the rail's copy holding the choice and the sheet's three groups showing
+    nothing chosen, not even «any», after every tap.
+  */
+  const group = useId();
   const urlKeyword = searchParams.get('q') ?? '';
   const [keyword, setKeyword] = useState(urlKeyword);
 
@@ -162,21 +170,21 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
       <FilterGroup title={t('hasBasicSalary')}>
         <Choice
           type="radio"
-          name="salary"
+          name={`${group}-salary`}
           checked={salary === null}
           onChange={() => setSingle('salary', null)}
           label={t('any')}
         />
         <Choice
           type="radio"
-          name="salary"
+          name={`${group}-salary`}
           checked={salary === 'yes'}
           onChange={() => setSingle('salary', 'yes')}
           label={t('hasBasicSalaryYes')}
         />
         <Choice
           type="radio"
-          name="salary"
+          name={`${group}-salary`}
           checked={salary === 'no'}
           onChange={() => setSingle('salary', 'no')}
           label={t('hasBasicSalaryNo')}
@@ -186,7 +194,7 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
       <FilterGroup title={t('minSalary')}>
         <Choice
           type="radio"
-          name="pay"
+          name={`${group}-pay`}
           checked={pay === null}
           onChange={() => setSingle('pay', null)}
           label={t('any')}
@@ -195,7 +203,7 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
           <Choice
             key={value}
             type="radio"
-            name="pay"
+            name={`${group}-pay`}
             checked={pay === String(value)}
             onChange={() => setSingle('pay', String(value))}
             label={t('minSalaryAtLeast', { amount: formatNumber(value, locale) })}
@@ -218,7 +226,7 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
       <FilterGroup title={t('posted')}>
         <Choice
           type="radio"
-          name="posted"
+          name={`${group}-posted`}
           checked={posted === null}
           onChange={() => setSingle('posted', null)}
           label={t('any')}
@@ -227,7 +235,7 @@ export function JobFilters({ locale, districts, governorates, activeCount }: Pro
           <Choice
             key={days}
             type="radio"
-            name="posted"
+            name={`${group}-posted`}
             checked={posted === String(days)}
             onChange={() => setSingle('posted', String(days))}
             label={t('postedWithin', { days })}

@@ -10,7 +10,7 @@ import { FilterTabs, PageHeader, Pager } from '@/components/admin/kit';
 import { CompanySignalList, SafetyFlags, SeverityBadge } from '@/components/admin/safety';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { must } from '@/lib/admin/read';
+import { leaveAnEmptyPage, must } from '@/lib/admin/read';
 import { cairoDayStart, dayOf, hrefWith, oneOf, pageOf, param, type SearchParams } from '@/lib/admin/params';
 import { formatDate, formatNumber } from '@/lib/utils';
 import type {
@@ -162,6 +162,15 @@ export default async function AdminReportsPage({
     ).data ?? [];
     total = Number(rows[0]?.total_count ?? 0);
   }
+  // Resolving the last case on a later page refreshes that page empty, its
+  // total read as 0 — "nothing waiting" over a page one still full of cases.
+  await leaveAnEmptyPage(locale, {
+    page,
+    rows: grouped ? cases.length : rows.length,
+    total,
+    size: grouped ? CASE_PAGE : CLOSED_PAGE,
+    href: (n) => hrefWith('/admin/reports', current, { page: n }),
+  });
 
   const byId = new Map(rows.map((row) => [row.id, row]));
   const n = (value: number) => formatNumber(value, locale);

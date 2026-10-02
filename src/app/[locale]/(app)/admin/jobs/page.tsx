@@ -152,7 +152,10 @@ export default async function AdminJobsPage({
   }
 
   const current = { q, status: view === 'pending' ? undefined : view, company: companyId };
-  const read = await mustPage(await query, 'loading listings', locale, hrefWith('/admin/jobs', current, {}));
+  const read = await mustPage(await query, 'loading listings', locale, {
+    page,
+    href: (n) => hrefWith('/admin/jobs', current, { page: n }),
+  });
   const rows = read.data as unknown as JobListRow[];
 
   // What each waiting listing says that a moderator should look at twice.

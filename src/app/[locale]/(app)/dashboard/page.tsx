@@ -11,7 +11,7 @@ import { StandingNotice } from '@/components/moderation/standing-notice';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
-import { optional } from '@/lib/queries/error';
+import { optional, raise } from '@/lib/queries/error';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { rankJobs } from '@/lib/match';
 import { formatDate, formatNumber } from '@/lib/utils';
@@ -77,7 +77,7 @@ export default async function DashboardOverviewPage({
    * be left.
    */
   const [
-    { data },
+    { data, error: summaryError },
     { data: recent },
     { data: mine },
     openRoles,
@@ -152,6 +152,9 @@ export default async function DashboardOverviewPage({
   // A card listed before anybody asked: the owner is asked now.
   const askVisibility = !choiceError && choice != null && choice.visibility_chosen_at === null;
 
+  // A summary that failed is not an empty account: "start here" sat above a
+  // list of this candidate's own applications.
+  if (summaryError) raise(summaryError, 'reading the candidate summary');
   const s = (data ?? null) as CandidateSummary | null;
   const applications = (recent ?? []) as unknown as RecentApplication[];
   /**

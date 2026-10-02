@@ -7,14 +7,14 @@ import { JobDetailView } from '@/components/jobs/job-detail-view';
 import { TrackDistrictLanding } from '@/components/jobs/track-district-landing';
 import { JsonLd } from '@/components/json-ld';
 import { jobPostingJsonLd } from '@/lib/seo/job-posting';
-import { jobIsLive } from '@/lib/job-state';
+import { jobIsLive, jobIsPublic } from '@/lib/job-state';
 import { EMPTY_FILTERS, getJobBySlug, queryJobs } from '@/lib/queries/jobs';
 import { buildLandingSlug, parseLandingSlug } from '@/lib/taxonomy';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { getDistrictBySlug, getGovernorates } from '@/lib/queries/taxonomy';
 import { recordJobView } from '@/lib/actions/jobs';
 import { formatEgp, truncate, toPlainText } from '@/lib/utils';
-import type { DistrictRow, JobTrack } from '@/lib/supabase/database.types';
+import type { DistrictRow, JobStatus, JobTrack } from '@/lib/supabase/database.types';
 import type { JobDetail } from '@/lib/queries/jobs';
 
 type Params = { locale: string; slug: string };
@@ -193,6 +193,13 @@ export default async function JobOrLandingPage({ params }: { params: Promise<Par
 
   const job = resolved.job;
   const open = isOpen(job);
+  /*
+    Not open is not always closed. Its company, an admin, and anybody who
+    applied before an edit sent it back to review can read a draft, a listing
+    in review or a rejected one — never published, or not now — and were told
+    "this listing has closed", dated with an expiry still to come.
+  */
+  const published = jobIsPublic(job);
 
   if (open) {
     /*
@@ -248,9 +255,22 @@ export default async function JobOrLandingPage({ params }: { params: Promise<Par
           locale,
         )}
       />
-      {open ? null : <ClosedNotice />}
-      <JobDetailView job={job} locale={locale} open={open} />
+      {open ? null : published ? <ClosedNotice /> : <UnpublishedNotice status={job.status} />}
+      <JobDetailView job={job} locale={locale} open={open} published={published} />
     </>
+  );
+}
+
+async function UnpublishedNotice({ status }: { status: JobStatus }) {
+  const t = await getTranslations('jobs');
+  const tStatus = await getTranslations('jobStatus');
+  return (
+    <div className="border-b border-border bg-muted">
+      <div className="mx-auto max-w-5xl px-4 py-3">
+        <p className="text-sm font-medium">{t('notPublished')}</p>
+        <p className="text-sm text-muted-foreground">{t('notPublishedBody', { status: tStatus(status) })}</p>
+      </div>
+    </div>
   );
 }
 

@@ -53,6 +53,18 @@ type Values = {
 
 const STEPS = ['basics', 'compensation', 'details', 'review'] as const;
 
+/** The refusals a field below shows; any other is said under the button. */
+const SHOWN_ERRORS = [
+  'titleAr',
+  'seats',
+  'basicSalaryMax',
+  'commissionValue',
+  'descriptionAr',
+  'descriptionEn',
+  'requirementsAr',
+  'form',
+];
+
 export function JobForm({
   locale,
   job,
@@ -266,12 +278,20 @@ export function JobForm({
           setStep(3);
           return;
         }
-        setErrors(result.fieldErrors ?? { form: tCommon('errorBody') });
-        // Send the reader back to the step that actually holds the problem.
+        // A refusal no field shows is said under the button: a text with too
+        // many links in the English description or the requirements came back
+        // with nothing on screen, and the button simply re-enabled.
         const keys = Object.keys(result.fieldErrors ?? {});
+        const unshown = keys.some((k) => !SHOWN_ERRORS.includes(k));
+        setErrors(
+          result.fieldErrors
+            ? { ...result.fieldErrors, ...(unshown ? { form: tCommon('errorBody') } : {}) }
+            : { form: tCommon('errorBody') },
+        );
+        // Send the reader back to the step that actually holds the problem.
         if (keys.some((k) => ['titleAr', 'seats', 'districtId'].includes(k))) setStep(0);
         else if (keys.some((k) => k.startsWith('basicSalary') || k.startsWith('commission'))) setStep(1);
-        else if (keys.includes('descriptionAr')) setStep(2);
+        else if (keys.some((k) => ['descriptionAr', 'descriptionEn', 'requirementsAr'].includes(k))) setStep(2);
         return;
       }
 
@@ -541,7 +561,11 @@ export function JobForm({
               label={t('descriptionAr')}
               htmlFor="descriptionAr"
               hint={t('descriptionRules')}
-              error={errors.descriptionAr ? tValidation('required') : undefined}
+              error={
+                errors.descriptionAr
+                  ? tValidation(errors.descriptionAr === 'tooManyLinks' ? 'tooManyLinks' : 'required')
+                  : undefined
+              }
             >
               <Textarea
                 id="descriptionAr"
@@ -553,7 +577,11 @@ export function JobForm({
               />
             </Field>
 
-            <Field label={t('descriptionEn')} htmlFor="descriptionEn">
+            <Field
+              label={t('descriptionEn')}
+              htmlFor="descriptionEn"
+              error={errors.descriptionEn ? tValidation('tooManyLinks') : undefined}
+            >
               <Textarea
                 id="descriptionEn"
                 rows={6}
@@ -564,7 +592,11 @@ export function JobForm({
               />
             </Field>
 
-            <Field label={t('requirementsAr')} htmlFor="requirementsAr">
+            <Field
+              label={t('requirementsAr')}
+              htmlFor="requirementsAr"
+              error={errors.requirementsAr ? tValidation('tooManyLinks') : undefined}
+            >
               <Textarea
                 id="requirementsAr"
                 rows={5}

@@ -78,7 +78,11 @@ export default async function AdminAppealsPage({
       : query.neq('status', 'open').order('decided_at', { ascending: false });
   query = query.order('id').range(from, to);
 
-  const read = await mustPage(await query, 'loading appeals', locale, hrefWith('/admin/appeals', current, {}));
+  const read = await mustPage(await query, 'loading appeals', locale, {
+    page,
+    size: PAGE,
+    href: (n) => hrefWith('/admin/appeals', current, { page: n }),
+  });
   const rows = read.data as unknown as Row[];
 
   const t = await getTranslations('admin');
