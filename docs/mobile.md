@@ -484,6 +484,15 @@ production, with QA accounts made for it — never the demo accounts.
   post a listing — it waits for review; add a note on a weak connection.
 - Pushes: allow them from the prompt on Home, get one with the app closed,
   tap it; the icon's number follows the bell; sign out — no more arrive.
+- Push settings (Account → notifications on this phone): with applications
+  off, a moved applicant reaches the bell but not the lock screen; with quiet
+  hours on, a push made after eleven at night arrives at eight, Cairo time.
+- A saved search with alerts on: the next morning the bell has the day's new
+  listings that match it.
+- Onboarding: "Delete this account" under signing out deletes an account that
+  never finished it, and the app is back at the start.
+- An over-the-air update (`pnpm run ota preview --message "…"` to a preview
+  build): it shows after the app is closed and opened twice.
 - Offline (airplane mode): the screens say so rather than spin; signing out
   still works, in a few seconds.
 - Arabic on the phone: numbers, prices and "days ago" read as on the website.
