@@ -317,7 +317,7 @@ export default async function AdminCompanyPage({
             <div className="flex flex-wrap gap-2">
               {status !== 'verified' ? (
                 <ConfirmAction
-                  lever={{ do: 'company', companyId: company.id, decision: 'verify' }}
+                  lever={{ do: 'company', companyId: company.id, decision: 'verify', version: company.version }}
                   label={t('verify')}
                   title={t('verifyCompanyTitle', { name })}
                   body={docs.some((d) => d.status === 'pending') ? t('verifyCompanyBody') : t('verifyWithoutPapers')}
@@ -328,7 +328,7 @@ export default async function AdminCompanyPage({
               ) : null}
               {status === 'pending' ? (
                 <ConfirmAction
-                  lever={{ do: 'company', companyId: company.id, decision: 'request_changes' }}
+                  lever={{ do: 'company', companyId: company.id, decision: 'request_changes', version: company.version }}
                   label={t('requestChanges')}
                   title={t('requestChanges')}
                   body={t('requestChangesCompanyBody')}
@@ -339,7 +339,7 @@ export default async function AdminCompanyPage({
               ) : null}
               {status === 'pending' || status === 'unverified' ? (
                 <ConfirmAction
-                  lever={{ do: 'company', companyId: company.id, decision: 'reject' }}
+                  lever={{ do: 'company', companyId: company.id, decision: 'reject', version: company.version }}
                   label={t('reject')}
                   title={t('rejectVerification')}
                   body={t('rejectVerificationBody')}

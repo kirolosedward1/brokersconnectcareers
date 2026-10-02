@@ -1507,6 +1507,8 @@ export type Database = {
           p_job: string;
           p_action: 'approve' | 'reject' | 'request_changes' | 'unpublish' | 'close' | 'restore';
           p_reason?: string | null;
+          /** The version the moderator read; a change since is refused (migration 346). */
+          p_version?: number | null;
         };
         Returns: JobStatus;
       };
@@ -1516,9 +1518,13 @@ export type Database = {
           p_company: string;
           p_decision: 'verify' | 'reject' | 'request_changes' | 'revoke';
           p_note?: string | null;
+          /** The version the reviewer read; a change since is refused (migration 346). */
+          p_version?: number | null;
         };
         Returns: VerificationStatus;
       };
+      /** Closes an account deletion request, on the record (migration 346). */
+      admin_close_deletion_request: { Args: { p_id: string }; Returns: string };
       admin_set_company_suspension: {
         Args: { p_company: string; p_suspend: boolean; p_reason: string };
         Returns: number;

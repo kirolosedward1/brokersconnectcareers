@@ -241,35 +241,41 @@ export default async function ApplicantsPage({
           </div>
         </div>
       ) : (
-        <div className="space-y-6">
-          {PIPELINE.map((stage) => {
+        /*
+          One list, the stage headings among the cards, each card keyed by its
+          application. In a box per stage, a card whose stage changed on a
+          refresh — moved from it, or by a colleague — was unmounted from one
+          box and built again in the next, empty: the private note being
+          written and the reason being typed went with it.
+        */
+        <div className="space-y-3">
+          {PIPELINE.flatMap((stage) => {
             const inStage = applications.filter((application) => application.status === stage);
-            if (inStage.length === 0) return null;
+            if (inStage.length === 0) return [];
 
-            return (
-              <section key={stage} aria-labelledby={`stage-${stage}`}>
-                <h2 id={`stage-${stage}`} className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                  {tStatus(stage)}
-                  <Badge className="numeral">{inStage.length}</Badge>
-                </h2>
-                <ul className="space-y-3">
-                  {inStage.map((application) => (
-                    <li key={application.id}>
-                      <ApplicantCard
-                        application={application}
-                        jobTitle={jobTitle}
-                        companyName={companyName}
-                        locale={locale}
-                        notes={notesByApplication.get(application.id) ?? []}
-                        noteAuthors={noteAuthors}
-                        viewerId={viewer.userId}
-                        districtNames={namesFor(application.candidate?.agent_profiles?.district_ids)}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
+            return [
+              <h2
+                key={`stage:${stage}`}
+                id={`stage-${stage}`}
+                className="flex items-center gap-2 pt-3 text-sm font-semibold first:pt-0"
+              >
+                {tStatus(stage)}
+                <Badge className="numeral">{inStage.length}</Badge>
+              </h2>,
+              ...inStage.map((application) => (
+                <ApplicantCard
+                  key={application.id}
+                  application={application}
+                  jobTitle={jobTitle}
+                  companyName={companyName}
+                  locale={locale}
+                  notes={notesByApplication.get(application.id) ?? []}
+                  noteAuthors={noteAuthors}
+                  viewerId={viewer.userId}
+                  districtNames={namesFor(application.candidate?.agent_profiles?.district_ids)}
+                />
+              )),
+            ];
           })}
         </div>
       )}

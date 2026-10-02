@@ -147,7 +147,7 @@ export function ApplicantCard({
   const profile = candidate?.agent_profiles ?? null;
   const headline = profile ? localized(locale, profile.headline_ar, profile.headline_en) : '';
 
-  function save(next: ApplicationStatus, decisionNote: string) {
+  function save(next: ApplicationStatus, decisionNote: string, restoreBox?: string) {
     const previousStatus = status;
     const previousReason = savedReason;
     setStatus(next);
@@ -171,6 +171,8 @@ export function ApplicantCard({
       if (!result.ok) {
         setStatus(previousStatus);
         setSavedReason(previousReason);
+        // A move that emptied the box for the new stage puts back what it showed.
+        if (restoreBox !== undefined) setReason(restoreBox);
         // What they typed stays in the box, and the card says it was not
         // saved. Put back to the stored words, a failed save took their
         // sentence away and the button then read "Saved" over nothing new —
@@ -193,10 +195,22 @@ export function ApplicantCard({
   }
 
   function onStatusChange(event: React.ChangeEvent<HTMLSelectElement>) {
-    // The box is hidden at "new", so whatever it holds there is not on screen
-    // — a sentence typed before a move that failed, or before a colleague's
-    // move back to "new" — and is not sent: the reason the card holds is.
-    save(event.target.value as ApplicationStatus, status === 'new' ? savedReason : reason);
+    /*
+      A reason belongs to the decision it was written for, and the candidate
+      reads it beside that stage. So a move carries a reason only when one was
+      typed for it — words in the box that are not the saved ones. The saved
+      reason stays with its own stage: sent along, a rejection's "not enough
+      experience" reached the candidate again under "shortlisted". And at
+      "new" the box is hidden, so nothing in it is on screen to send.
+    */
+    const typed = status !== 'new' && reason.trim() !== savedReason.trim();
+    if (typed) {
+      save(event.target.value as ApplicationStatus, reason);
+    } else {
+      const shown = reason;
+      setReason('');
+      save(event.target.value as ApplicationStatus, '', shown);
+    }
   }
 
   return (

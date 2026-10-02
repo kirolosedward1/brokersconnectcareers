@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { AVATAR_BUCKET, COMPANY_LOGOS_BUCKET } from '@/lib/buckets';
 import { IMAGE_KINDS, MAX_BYTES, reencodeImage, sniffKind } from '@/lib/security/files';
 import { recordSecurityEvent } from '@/lib/security/events';
+import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 import { uuid } from '@/lib/utils';
 import type { ActionResult } from '@/lib/actions/jobs';
 
@@ -51,6 +52,16 @@ export async function uploadImage(form: FormData): Promise<UploadOutcome> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
+
+  // Each call stores a new public object, kept a week after it is replaced,
+  // and the service role writes it — past the bucket's own cap of twenty a
+  // folder — after a full decode and re-encode. Thirty a day is anybody
+  // choosing a picture; more is a loop filling a public bucket.
+  const limit = await rateLimit(
+    `upload:image:${user.id}`,
+    await policyFor('upload:image:day', { windowSeconds: 86_400, max: 30 }),
+  );
+  if (!limit.allowed) return { ok: false, error: 'rate_limited' };
 
   // Whose folder. For a logo the company must be one the caller administers;
   // asked of the database rather than of the form.

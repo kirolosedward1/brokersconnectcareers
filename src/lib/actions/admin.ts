@@ -106,7 +106,23 @@ const moderateSchema = z.object({
   jobId: z.string().uuid(),
   action: z.enum(JOB_ACTIONS),
   reason,
+  /** The listing's version as the page showed it (migration 346). */
+  version: z.number().int().positive().optional(),
 });
+
+/**
+ * A review lever called with the version the moderator read. A database
+ * migration 346 has not reached does not take the argument (PGRST202), and is
+ * asked again without it — as the lever always was.
+ */
+async function withVersion(
+  call: (version: number | undefined) => PromiseLike<{ error: { code?: string; message?: string } | null }>,
+  version: number | undefined,
+) {
+  const first = await call(version);
+  if (version !== undefined && first.error?.code === 'PGRST202') return call(undefined);
+  return first;
+}
 
 export async function moderateJob(input: unknown): Promise<AdminResult> {
   const parsed = moderateSchema.safeParse(input);
@@ -118,11 +134,16 @@ export async function moderateJob(input: unknown): Promise<AdminResult> {
   const { jobId, action } = parsed.data;
   const note = parsed.data.reason || null;
 
-  const { error } = await supabase.rpc('admin_moderate_job', {
-    p_job: jobId,
-    p_action: action,
-    p_reason: note,
-  });
+  const { error } = await withVersion(
+    (version) =>
+      supabase.rpc('admin_moderate_job', {
+        p_job: jobId,
+        p_action: action,
+        p_reason: note,
+        ...(version !== undefined ? { p_version: version } : {}),
+      }),
+    parsed.data.version,
+  );
   if (error) return { ok: false, error: adminErrorCode(error) };
 
   // The employer has been waiting on this decision. Closing on their behalf
@@ -175,6 +196,8 @@ const reviewSchema = z.object({
   companyId: z.string().uuid(),
   decision: z.enum(['verify', 'reject', 'request_changes', 'revoke']),
   note: reason,
+  /** The company's version as the page showed it (migration 346). */
+  version: z.number().int().positive().optional(),
 });
 
 export async function reviewCompany(input: unknown): Promise<AdminResult> {
@@ -187,11 +210,16 @@ export async function reviewCompany(input: unknown): Promise<AdminResult> {
   const { companyId, decision } = parsed.data;
   const note = parsed.data.note || null;
 
-  const { error } = await supabase.rpc('admin_review_company', {
-    p_company: companyId,
-    p_decision: decision,
-    p_note: note,
-  });
+  const { error } = await withVersion(
+    (version) =>
+      supabase.rpc('admin_review_company', {
+        p_company: companyId,
+        p_decision: decision,
+        p_note: note,
+        ...(version !== undefined ? { p_version: version } : {}),
+      }),
+    parsed.data.version,
+  );
   if (error) return { ok: false, error: adminErrorCode(error) };
 
   // A company waiting on its review has no other way to hear the outcome. A
@@ -593,11 +621,18 @@ export async function closeDeletionRequest(input: unknown): Promise<ActionResult
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
 
-  const { error } = await supabase.rpc('admin_answer_support_request', {
-    p_id: parsed.data.requestId,
-    p_reply: null,
-    p_status: 'closed',
-  });
+  // Closed through the lever that checks it is a deletion request and puts
+  // who closed it on the record (migration 346) — a close with no reply left
+  // replied_by empty, and so nothing said who had. A database the migration
+  // has not reached closes it the old way.
+  let { error } = await supabase.rpc('admin_close_deletion_request', { p_id: parsed.data.requestId });
+  if (error?.code === 'PGRST202') {
+    ({ error } = await supabase.rpc('admin_answer_support_request', {
+      p_id: parsed.data.requestId,
+      p_reply: null,
+      p_status: 'closed',
+    }));
+  }
   if (error) return { ok: false, error: adminErrorCode(error) };
 
   revalidatePath('/admin');

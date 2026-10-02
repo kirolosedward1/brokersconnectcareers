@@ -191,7 +191,11 @@ export function AgentProfileForm({
           each retry left another. Storage RLS confines this account to its own
           folder, which is the same rule that allowed the upload.
         */
-        if (cvPath) {
+        // Not when the answer was lost: the save may still be running on the
+        // server — it checks the file first and writes the profile after — so
+        // nothing points at the file yet when this looks. The apply form keeps
+        // the file the same way; an orphan is cleared by storage clean-up.
+        if (cvPath && result.error !== 'network') {
           // Unless the profile went in with it after all — the row is written
           // before the developer tags, and an answer can be lost on the way
           // back — when this took the file out from under the saved profile.

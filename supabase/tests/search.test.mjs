@@ -471,4 +471,17 @@ report.section('a database seeded before the aliases gets them from migration 34
   report.check('run twice, it adds nothing', (await aliasSet()).length === seeded.length);
 }
 
+report.section('the console finds a name however it is spelled');
+{
+  const { looseArabicNeedle } = await import('../../src/lib/search/needle.ts');
+  report.check('«احمد» leaves the alef open', looseArabicNeedle('احمد') === '_حمد', looseArabicNeedle('احمد'));
+  report.check('a final ى and ة are open too', looseArabicNeedle('مصطفي فاطمه') === 'مصطف_ ف_طم_', looseArabicNeedle('مصطفي فاطمه'));
+  report.check('a wildcard the reader typed is still taken out', looseArabicNeedle('a_b%c') === 'a b c', looseArabicNeedle('a_b%c'));
+  report.check('a term of nothing but open letters is left as typed', looseArabicNeedle('ا') === 'ا');
+  const names = async (needle) =>
+    (await db.query(`select full_name from profiles where full_name ilike $1 order by full_name`, [`%${needle}%`])).rows.map((row) => row.full_name);
+  const found = await names(looseArabicNeedle('احمد محمود'));
+  report.check('and the pattern finds «أحمد محمود» in the database', found.includes('أحمد محمود'), JSON.stringify(found));
+}
+
 process.exit(report.finish() ? 0 : 1);

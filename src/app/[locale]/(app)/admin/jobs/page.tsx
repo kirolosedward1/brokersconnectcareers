@@ -10,7 +10,7 @@ import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { must, mustPage } from '@/lib/admin/read';
 import { PAGE_SIZE, UUID_RE, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
-import { likeNeedle } from '@/lib/search/needle';
+import { looseArabicNeedle } from '@/lib/search/needle';
 import { formatDate, formatNumber } from '@/lib/utils';
 import type { JobStatus, SafetyFlag } from '@/lib/supabase/database.types';
 
@@ -147,7 +147,7 @@ export default async function AdminJobsPage({
   if (q && UUID_RE.test(q)) {
     query = query.eq('id', q);
   } else if (q) {
-    const needle = likeNeedle(q);
+    const needle = looseArabicNeedle(q);
     if (needle) query = query.or(`title_ar.ilike.*${needle}*,title_en.ilike.*${needle}*,slug.ilike.*${needle}*`);
   }
 

@@ -215,6 +215,7 @@ export default async function AdminAgentPage({ params }: { params: Promise<{ loc
                 title={t('restrictProfile')}
                 body={t('restrictProfileBody')}
                 reason="required"
+                reasonLabel={t('reasonToConsultant')}
                 variant="destructive"
                 icon={<ShieldAlert aria-hidden />}
               />

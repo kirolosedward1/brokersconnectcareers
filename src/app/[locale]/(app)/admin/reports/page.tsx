@@ -383,7 +383,9 @@ export default async function AdminReportsPage({
                   title={takeDown[item.target_type].label}
                   body={takeDown[item.target_type].body}
                   reason="required"
-                  reasonLabel={t('reasonToOwner')}
+                  // Who reads it: a listing's company and a company's members get the
+                  // reason with the take-down, a consultant gets it on their profile.
+                  reasonLabel={item.target_type === 'agent' ? t('reasonToConsultant') : t('reasonToCompany')}
                   variant="destructive"
                   icon={takeDown[item.target_type].icon}
                 />

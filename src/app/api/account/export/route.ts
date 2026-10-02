@@ -3,8 +3,15 @@ import { createClient } from '@/lib/supabase/server';
 import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 import { retryAfter } from '@/lib/security/request';
 import { withOptionalBearer } from '@/lib/mobile-api/http';
+import { logFailure } from '@/lib/observe';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * What a database says when it lacks a table or column this release reads:
+ * the section is empty there, not unreadable.
+ */
+const NOT_MIGRATED = new Set(['42P01', 'PGRST205', '42703', 'PGRST204', 'PGRST200']);
 
 /**
  * "Give me a copy of my data" — the portability right, as a JSON download.
@@ -48,9 +55,10 @@ async function handle() {
     private notes about an applicant, a moderator's notes, who viewed a
     profile — and not the platform's own secrets (the unsubscribe token).
 
-    A section that cannot be read comes back empty rather than failing the
-    whole copy: a table a database has not had its migration for yet is a
-    smaller export, not a broken one.
+    A section a database has not had its migration for yet comes back empty:
+    a smaller export, not a broken one. A section that failed for any other
+    reason fails the copy (below) — handed over without it, it read as all
+    there is, to somebody who may delete their account on the strength of it.
   */
   const [
     profile,
@@ -108,6 +116,36 @@ async function handle() {
           .order('created_at', { ascending: false }),
       ])
     : [null, null, null, null, null];
+
+  const unread = Object.entries({
+    profile,
+    agentProfile,
+    applications,
+    savedJobs,
+    savedSearches,
+    company,
+    memberships,
+    notifications,
+    reportsFiled,
+    supportRequests,
+    appeals,
+    pushDevices,
+    agreements,
+    experience,
+    education,
+    certifications,
+    developers,
+    contactRequests,
+  })
+    .filter(([, read]) => read?.error && !NOT_MIGRATED.has(read.error.code ?? ''))
+    .map(([section]) => section);
+  if (unread.length) {
+    logFailure('export', 'a section of the copy could not be read', { sections: unread.join(',') });
+    return NextResponse.json(
+      { error: 'unavailable' },
+      { status: 503, headers: { 'retry-after': '60', 'cache-control': 'no-store' } },
+    );
+  }
 
   /*
     The files themselves, as links that work for an hour: a CV is the

@@ -8,7 +8,7 @@ import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { mustPage } from '@/lib/admin/read';
 import { PAGE_SIZE, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
-import { likeNeedle } from '@/lib/search/needle';
+import { looseArabicNeedle } from '@/lib/search/needle';
 import { formatDate } from '@/lib/utils';
 import type { CompanyRow } from '@/lib/supabase/database.types';
 
@@ -68,7 +68,7 @@ export default async function AdminCompaniesPage({
     if (status === 'pending') query = query.eq('company_documents.status', 'pending');
   }
 
-  const needle = q ? likeNeedle(q) : '';
+  const needle = q ? looseArabicNeedle(q) : '';
   if (needle) query = query.or(`name_ar.ilike.*${needle}*,name_en.ilike.*${needle}*,slug.ilike.*${needle}*`);
 
   const read = await mustPage(await query, 'loading companies', locale, {

@@ -259,6 +259,19 @@ export async function recordCompanyDocument(input: unknown): Promise<ActionResul
     .maybeSingle();
   if (membership?.role !== 'admin') return { ok: false, error: 'forbidden' };
 
+  // A path a recorded paper already names is not checked again. The check
+  // below removes a file that fails it, with the server's own key: called on a
+  // reviewed paper's path — its bytes swapped while it waited — it took the
+  // file the verification was decided on out from under its row, and the
+  // company could upload something else in its place.
+  const { data: named, error: namedError } = await supabase
+    .from('company_documents')
+    .select('id')
+    .eq('storage_path', parsed.data.storagePath)
+    .limit(1);
+  if (namedError) return { ok: false, error: 'failed' };
+  if (named.length) return { ok: false, error: 'invalid_path' };
+
   // A commercial register is a PDF or a photograph, whatever the browser
   // said. Anything else is removed from the bucket before a row names it.
   const verdict = await verifyStoredObject(
