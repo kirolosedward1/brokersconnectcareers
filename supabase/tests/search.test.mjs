@@ -9,6 +9,7 @@
  * this: one corpus through both, asserted equal. Everything after that runs
  * the real query builder against the real documents the triggers write.
  */
+import { readFileSync } from 'node:fs';
 import { createTestDb, reporter, runner, FIXTURES } from './setup.mjs';
 import {
   buildJobQuery,
@@ -426,6 +427,48 @@ report.section('the agent directory searches only what the card shows');
 
   const injected = await search(FIXTURES.employerVerified, "x'' or true --");
   report.check('a keyword is data, not SQL', injected.ok && injected.rows.length === 0, injected.error);
+}
+
+report.section('a database seeded before the aliases gets them from migration 342');
+{
+  // Production's taxonomy was seeded before migration 68 and seed.sql did not
+  // run there again: no aliases at all. 342 carries the seed's rows to it.
+  const aliasSet = async () =>
+    (
+      await db.query(`
+        select coalesce(d.slug, a.track::text) || ' ' || a.alias as row
+          from search_aliases a
+          left join districts d on d.id = a.district_id
+         where a.alias <> 'Tagamo3'
+         order by 1`)
+    ).rows.map((r) => r.row);
+  const seeded = await aliasSet();
+
+  await db.exec(`delete from search_aliases`);
+  report.check('without them, القاهرة الجديدة finds nothing', !(await matches(job, 'القاهرة الجديدة')));
+  report.check('nor does ريسيل', !(await matches(job, 'ريسيل')));
+
+  const migration = readFileSync(
+    new URL('../migrations/20260101000342_the_names_people_search_by.sql', import.meta.url),
+    'utf8',
+  );
+  await db.exec(migration);
+  const restored = await aliasSet();
+  report.check(
+    `342 puts back the seed's ${seeded.length} aliases, and only those`,
+    seeded.length === 25 && JSON.stringify(restored) === JSON.stringify(seeded),
+    JSON.stringify({
+      missing: seeded.filter((row) => !restored.includes(row)),
+      extra: restored.filter((row) => !seeded.includes(row)),
+    }),
+  );
+  report.check(
+    'and the listing is found by them again, without anybody touching it',
+    (await matches(job, 'القاهرة الجديدة')) && (await matches(job, 'ريسيل')),
+  );
+
+  await db.exec(migration);
+  report.check('run twice, it adds nothing', (await aliasSet()).length === seeded.length);
 }
 
 process.exit(report.finish() ? 0 : 1);

@@ -16,9 +16,10 @@ sit on top of both rather than beside them:
   purpose, because rewriting a column on `jobs` would bump `version` and tell
   employers with the listing open that someone else had saved it.
   `search_aliases` holds extra names for a district, governorate or track,
-  keyed by foreign key, seeded in `seed.sql`. **Not yet applied to
-  production**; the board's query falls back to the old search when the table
-  is missing.
+  keyed by foreign key, seeded in `seed.sql`. Production has had the table
+  since 2026-09-29 but none of its rows, since its taxonomy was seeded before
+  them; migration 342 inserts the same rows there. The board's query falls
+  back to the old search when the table is missing.
 - **Branch `moderation-safety` — the admin console (migrations 068–072 there).**
   These are applied to production but **not merged to `main`**. They include
   `/admin/taxonomy` (add, rename, and delete-when-unused for districts,
