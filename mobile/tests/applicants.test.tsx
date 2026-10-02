@@ -226,16 +226,18 @@ describe("a listing's applicants", () => {
     await waitFor(() => expect(input('/api/mobile/v1/actions/markApplicantsSeen')).toEqual({ ids: [sara.id] }));
   });
 
-  it("moves an applicant with the stage the card showed, and the reason it held — and says so when a colleague got there first", async () => {
+  it("moves an applicant with the stage the card showed, and a reason only when one was typed for the move — and says so when a colleague got there first", async () => {
     renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
 
+    // His reason is the shortlist's, written for that stage: it does not ride
+    // along to the next one, where the candidate would read it again.
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.moveTo} (عمر حسن): ${ar.applicationStatus.shortlisted}` }));
     fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.interview }));
     await waitFor(() =>
       expect(input('/api/mobile/v1/actions/setApplicationStatus')).toEqual({
         applicationId: omar.id,
         status: 'interview',
-        decisionNote: 'مقابلة يوم الخميس.',
+        decisionNote: null,
         from: 'shortlisted',
       }),
     );
@@ -246,6 +248,21 @@ describe("a listing's applicants", () => {
     expect(await screen.findByText(ar.employer.applicantMovedAlready)).toBeTruthy();
     // Put back: the card says where it stood.
     expect(screen.getByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` })).toBeTruthy();
+  });
+
+  it('sends a reason typed for a move along with it', async () => {
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.changeText(await screen.findByDisplayValue('مقابلة يوم الخميس.'), 'اتفقنا على مقابلة الأحد.');
+    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.moveTo} (عمر حسن): ${ar.applicationStatus.shortlisted}` }));
+    fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.interview }));
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/setApplicationStatus')).toEqual({
+        applicationId: omar.id,
+        status: 'interview',
+        decisionNote: 'اتفقنا على مقابلة الأحد.',
+        from: 'shortlisted',
+      }),
+    );
   });
 
   it('saves the reason written to the candidate on its own, at the same stage', async () => {
@@ -354,6 +371,42 @@ describe("a listing's applicants", () => {
     expect(screen.queryByText(ar.app.offline.body)).toBeNull();
     expect(screen.queryByText(ar.common.errorBody)).toBeNull();
     expect(server.asked('/api/mobile/v1/actions/setApplicationStatus')).toHaveLength(1);
+  });
+
+  it('takes back "not saved" once the stages, read again, show the move went in', async () => {
+    // The move reaches the database and its answer is lost — and so is every
+    // read for a while, the check that would have found it among them.
+    let offline = true;
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', (_url: URL, init: RequestInit | undefined) => {
+      const move = (JSON.parse(String(init?.body)) as { input: { applicationId: string; status: Applicant['status']; decisionNote: string | null } })
+        .input;
+      rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status, decision_note: move.decisionNote } : row));
+      throw new TypeError('Network request failed');
+    });
+    server.on('GET /rest/v1/applications', (url: URL) => {
+      if (offline) throw new TypeError('Network request failed');
+      const id = url.searchParams.get('id');
+      if (id) return rows.filter((row) => `eq.${row.id}` === id).map((row) => ({ status: row.status, decision_note: row.decision_note }));
+      if (url.searchParams.get('select')?.startsWith('status,')) return rows.map((row) => ({ status: row.status }));
+      return { body: rows, headers: { 'content-range': `0-${rows.length - 1}/${rows.length}` } };
+    });
+    // The card is on screen before the connection goes.
+    offline = false;
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    const button = await screen.findByRole('button', { name: `${ar.employer.moveTo} (عمر حسن): ${ar.applicationStatus.shortlisted}` });
+    offline = true;
+
+    fireEvent.press(button);
+    fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.interview }));
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+
+    // Back online, the stages are read again: the move is there, so the card no longer says it is not.
+    offline = false;
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['employer', 'applicants'] });
+    });
+    expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (عمر حسن): ${ar.applicationStatus.interview}` })).toBeTruthy();
+    expect(screen.queryByText(ar.app.offline.body)).toBeNull();
   });
 
   it('adds a private note, and lets its author take their own back', async () => {

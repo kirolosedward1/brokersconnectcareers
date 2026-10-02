@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'use-intl';
 import { Download, FileX2, MessageCircle } from '~/components/ui/lucide';
 import { formatDate, formatEgp, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
+import { clean } from '@/lib/security/sanitize';
 import { canBrowseAgentDirectory } from '@/lib/permissions';
 import type { ApplicationNoteRow, ApplicationStatus } from '@/lib/supabase/database.types';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
@@ -82,7 +83,18 @@ export function ApplicantCard({
     setReasonFrom(storedReason);
   }
   const [conflict, setConflict] = useState(false);
-  const [failed, setFailed] = useState<string | null>(null);
+  // The move that did not come back, and what was said about it — until the
+  // stages, read again, show the server holding it after all (the answer was
+  // lost, not the move), as the website's card does.
+  const [failed, setFailed] = useState<{ message: string; status: ApplicationStatus; reason: string } | null>(null);
+  if (
+    failed &&
+    !pending &&
+    applicant.status === failed.status &&
+    storedReason === (clean(failed.reason.trim(), true) || '')
+  ) {
+    setFailed(null);
+  }
   const [cvError, setCvError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
 
@@ -95,7 +107,7 @@ export function ApplicantCard({
       : null;
   const headline = profile ? localized(locale, profile.headline_ar, profile.headline_en) : '';
 
-  const save = (next: ApplicationStatus, decisionNote: string) => {
+  const save = (next: ApplicationStatus, decisionNote: string, restoreBox?: string) => {
     const from = status;
     setPending({ status: next, reason: decisionNote });
     setConflict(false);
@@ -110,8 +122,15 @@ export function ApplicantCard({
         // sentence away and the button then read "Saved" over nothing new —
         // the notes below keep a draft the same way.
         onError: (failure) => {
+          // A move that emptied the box for its new stage puts back what it showed.
+          if (restoreBox !== undefined) setReason(restoreBox);
           if (failure instanceof MovedAlready) setConflict(true);
-          else setFailed(failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody'));
+          else
+            setFailed({
+              message: failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody'),
+              status: next,
+              reason: decisionNote,
+            });
         },
       },
     );
@@ -263,11 +282,23 @@ export function ApplicantCard({
           placeholder={t(`applicationStatus.${status}`)}
           required
           options={STAGES.map((value) => ({ value, label: t(`applicationStatus.${value}`) }))}
-          // The box is hidden at "new", so whatever it holds there is not on
-          // screen — a sentence typed before a move that failed, or before a
-          // colleague's move back to "new" — and is not sent: the reason the
-          // card holds is.
-          onChange={(value) => value && value !== status && save(value, status === 'new' ? savedReason : reason)}
+          // A reason belongs to the decision it was written for: a move carries
+          // one only when it was typed for it — words in the box that are not
+          // the saved ones. The saved reason stays with its stage (sent along,
+          // a rejection's reason reached the candidate again under
+          // "shortlisted"), and at "new" the box is hidden, so nothing in it
+          // is on screen to send.
+          onChange={(value) => {
+            if (!value || value === status) return;
+            const typed = status !== 'new' && reason.trim() !== savedReason.trim();
+            if (typed) {
+              save(value, reason);
+            } else {
+              const shown = reason;
+              setReason('');
+              save(value, '', shown);
+            }
+          }}
         />
       </Field>
       {conflict ? (
@@ -276,7 +307,7 @@ export function ApplicantCard({
         </Text>
       ) : failed ? (
         <Text variant="small" tone="destructive" accessibilityRole="alert">
-          {failed}
+          {failed.message}
         </Text>
       ) : null}
 
