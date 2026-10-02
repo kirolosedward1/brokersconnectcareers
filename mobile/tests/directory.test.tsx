@@ -296,7 +296,7 @@ describe('the directory, for a verified company', () => {
     renderRouter(app, { initialUrl: '/agents' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.filters }));
-    fireEvent.press(await screen.findByRole('button', { name: ar.availability.actively_searching }));
+    fireEvent.press(await screen.findByRole('radio', { name: ar.availability.actively_searching }));
     fireEvent.press(screen.getByRole('button', { name: ar.track.rental }));
     fireEvent.press(screen.getByRole('button', { name: newCairo.name_ar }));
     fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${ar.filters.showResults}`) }));

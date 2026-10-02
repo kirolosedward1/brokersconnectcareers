@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Briefcase, Search } from 'lucide-react';
 
@@ -131,6 +131,7 @@ export function OnboardingForm({
         <legend className="mb-3 text-sm font-medium">{t('roleQuestion')}</legend>
         <div className="grid gap-3 sm:grid-cols-2">
           <RoleCard
+            value="candidate"
             selected={role === 'candidate'}
             onSelect={() => setRole('candidate')}
             icon={<Search className="size-5" aria-hidden />}
@@ -138,6 +139,7 @@ export function OnboardingForm({
             hint={t('roleCandidateHint')}
           />
           <RoleCard
+            value="employer"
             selected={role === 'employer'}
             onSelect={() => setRole('employer')}
             icon={<Briefcase className="size-5" aria-hidden />}
@@ -335,34 +337,54 @@ export function OnboardingForm({
   );
 }
 
+/**
+ * One of two answers to "what brings you here", drawn as a card.
+ *
+ * A radio, not a toggle button: it is one choice of two, and a screen reader
+ * should say "1 of 2, selected" and move between them with the arrow keys,
+ * where two pressed-or-not buttons said neither that they belong together nor
+ * that choosing one unchooses the other. The input is hidden; the card is its
+ * label, and shows the focus ring the input would.
+ */
 function RoleCard({
+  value,
   selected,
   onSelect,
   icon,
   title,
   hint,
 }: {
+  value: 'candidate' | 'employer';
   selected: boolean;
   onSelect: () => void;
   icon: React.ReactNode;
   title: string;
   hint: string;
 }) {
+  const hintId = useId();
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
+    <label
       className={cn(
-        'rounded-xl border p-4 text-start transition-colors',
+        'cursor-pointer rounded-xl border p-4 text-start transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
         selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted',
       )}
     >
+      <input
+        type="radio"
+        name="role"
+        value={value}
+        checked={selected}
+        onChange={onSelect}
+        aria-describedby={hintId}
+        className="sr-only"
+      />
       <span className={cn('inline-flex', selected ? 'text-primary' : 'text-muted-foreground')}>
         {icon}
       </span>
       <span className="mt-2 block font-medium">{title}</span>
-      <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{hint}</span>
-    </button>
+      <span id={hintId} className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+        {hint}
+      </span>
+    </label>
   );
 }

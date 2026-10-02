@@ -492,6 +492,47 @@ describe('onboarding', () => {
     renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
   });
+
+  /** The buttons of the last question Alert.alert asked. */
+  const alertButtons = () =>
+    (jest.mocked(Alert.alert).mock.calls.at(-1)?.[2] ?? []) as { text?: string; style?: string; onPress?: () => void }[];
+
+  it('lets an account that changed its mind go, without agreeing to anything first', async () => {
+    profileRow = null;
+    jest.mocked(Alert.alert).mockClear();
+    await signedIn();
+    renderRouter(app, { initialUrl: '/onboarding' });
+    await press(ar.onboarding.leaveDelete);
+
+    // Asked first; nothing goes until the person says so.
+    expect(Alert.alert).toHaveBeenCalledWith(ar.onboarding.leaveDelete, ar.onboarding.leaveConfirm, expect.any(Array));
+    expect(server.asked('/api/mobile/v1/actions/deleteMyAccount')).toHaveLength(0);
+    const yes = alertButtons().find((button) => button.style === 'destructive');
+    expect(yes?.text).toBe(ar.onboarding.leaveConfirmCta);
+    await act(async () => yes?.onPress?.());
+
+    await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/deleteMyAccount')).toEqual({ input: {} }));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
+    expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
+    const { data } = await supabase.auth.getSession();
+    expect(data.session).toBeNull();
+    expect(await screen.findByText('home screen')).toBeTruthy();
+  });
+
+  it('stays, and says so, when the account could not be deleted', async () => {
+    profileRow = null;
+    server.on('POST /api/mobile/v1/actions/deleteMyAccount', { ok: false, error: 'unavailable' });
+    jest.mocked(Alert.alert).mockClear();
+    await signedIn();
+    renderRouter(app, { initialUrl: '/onboarding' });
+    await press(ar.onboarding.leaveDelete);
+    await act(async () => alertButtons().find((button) => button.style === 'destructive')?.onPress?.());
+
+    expect(await screen.findByText(ar.onboarding.leaveFailed)).toBeTruthy();
+    expect(screen.getByText(ar.onboarding.title)).toBeTruthy();
+    const { data } = await supabase.auth.getSession();
+    expect(data.session).not.toBeNull();
+  });
 });
 
 describe('the second factor', () => {

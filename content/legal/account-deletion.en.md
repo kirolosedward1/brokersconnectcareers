@@ -1,6 +1,6 @@
 ---
 title: Deleting your account
-updated: 2026-10-01
+updated: 2026-10-02
 ---
 
 You can delete your Brokers Connect account at any time, on the website or in the app, without writing to anyone. This page explains how, the two cases in which deletion goes through our team, and what is deleted and what is kept.
@@ -11,6 +11,8 @@ You can delete your Brokers Connect account at any time, on the website or in th
 2. Scroll to **Delete account**, type the word asked for to confirm, and press **Delete my account permanently**.
 
 The account is deleted at once, and you are signed out.
+
+If you created an account but never finished setting it up, the page that asks for your details has **Delete this account** at the bottom.
 
 ## In the app
 

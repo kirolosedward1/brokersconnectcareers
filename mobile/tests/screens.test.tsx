@@ -176,9 +176,12 @@ describe('the board', () => {
     }
 
     fireEvent.press(screen.getByRole('button', { name: 'بيع أول' }));
-    fireEvent.press(screen.getByRole('button', { name: 'براتب أساسي' }));
+    // A group that takes one answer is a set of radio buttons: choosing one unchooses "any".
+    fireEvent.press(screen.getByRole('radio', { name: 'براتب أساسي' }));
+    expect(screen.getByRole('radio', { name: 'براتب أساسي' }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByLabelText('راتب أساسي').props.accessibilityRole).toBe('radiogroup');
     fireEvent.press(await screen.findByRole('button', { name: 'القاهرة الجديدة' }));
-    fireEvent.press(screen.getByRole('button', { name: 'آخر 7 أيام' }));
+    fireEvent.press(screen.getByRole('radio', { name: 'آخر 7 أيام' }));
     expect(await screen.findByRole('button', { name: 'شوف النتايج · ⁦7⁩' })).toBeTruthy();
 
     fireEvent.press(screen.getByRole('button', { name: 'شوف النتايج · ⁦7⁩' }));

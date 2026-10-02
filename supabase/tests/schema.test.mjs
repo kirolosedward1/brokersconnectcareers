@@ -42,6 +42,41 @@ report.section('every migration has a version of its own');
   );
 }
 
+report.section('every foreign key has an index behind it');
+{
+  /*
+    A delete on the referenced side looks up the rows that point at it — to
+    cascade, to clear, or to refuse — and with no index on the referencing
+    columns that lookup reads the whole table, once per row deleted. Supabase's
+    performance advisor flags each one (it found three on 2026-10-02, indexed
+    by migration 340); this is the same rule, here, before production has the
+    migration to complain about. An index whose leading columns are the key
+    counts, as the advisor counts it — a partial one included.
+  */
+  const { rows } = await db.query(`
+    select c.conrelid::regclass::text as tbl,
+           (select string_agg(a.attname, ', ' order by k.ord)
+              from unnest(c.conkey) with ordinality k(attnum, ord)
+              join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum) as cols
+      from pg_constraint c
+      join pg_class cl on cl.oid = c.conrelid
+     where c.contype = 'f'
+       and cl.relnamespace = 'public'::regnamespace
+       and not exists (
+         select 1
+           from pg_index i
+          where i.indrelid = c.conrelid
+            and i.indisvalid
+            and (string_to_array(i.indkey::text, ' ')::int2[])[1:array_length(c.conkey, 1)] = c.conkey
+       )
+     order by 1, 2`);
+  report.check(
+    'no foreign key without one',
+    rows.length === 0,
+    rows.map((row) => `${row.tbl} (${row.cols})`).join('; ') + ' — add an index on those columns in a new migration',
+  );
+}
+
 report.section('the schema applies and the taxonomies land');
 for (const [label, sql, expected] of [
   ['governorates', 'select count(*)::int as n from governorates', 7],

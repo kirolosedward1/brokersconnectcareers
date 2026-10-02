@@ -370,7 +370,12 @@
     "consentRequired": "Confirm you are 18 or older and agree to the Terms and the Privacy policy to continue.",
     "confirmedBanner": "Your email is confirmed — one step and your account is ready.",
     "roleKnownCandidate": "You are registered as a consultant.",
-    "roleKnownEmployer": "You are registered as a company."
+    "roleKnownEmployer": "You are registered as a company.",
+    "leaveQuestion": "Changed your mind?",
+    "leaveDelete": "Delete this account",
+    "leaveConfirm": "The account will be deleted for good. This cannot be undone.",
+    "leaveConfirmCta": "Yes, delete it",
+    "leaveFailed": "We could not delete the account just now. Please try again shortly."
   },
   "dashboard": {
     "title": "Dashboard",

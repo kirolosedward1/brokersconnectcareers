@@ -59,6 +59,11 @@
 
   --brand-blue: oklch(0.5221 0.2499 266.6);
   --brand-cyan: oklch(0.8389 0.1153 198.7);
+  /* The brand blue as ink on white, in either theme. The dark theme lightens
+     --brand-blue for dark surfaces, and on a field that stays white (the
+     hero's search bar) that lighter blue is 2.8:1 — too faint for a focus
+     ring. Not redefined below, so dark mode keeps this one. */
+  --brand-blue-ink: oklch(0.5221 0.2499 266.6);
 
   --background: oklch(0.995 0.002 265);
   --foreground: oklch(0.21 0.03 265);
@@ -193,6 +198,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-brand-blue: var(--brand-blue);
+  --color-brand-blue-ink: var(--brand-blue-ink);
   --color-brand-cyan: var(--brand-cyan);
 
   --radius-sm: calc(var(--radius) - 4px);

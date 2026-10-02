@@ -9,8 +9,8 @@
  * file for, a policy version that is not the date the document shows (so
  * nobody is asked to agree to the change), a footer that stops linking a
  * document, the operator's details dropping out of the documents that name
- * them, and something new kept in the browser that the cookie page does not
- * list.
+ * them, a way to delete an account the deletion page describes going missing,
+ * and something new kept in the browser that the cookie page does not list.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -135,6 +135,26 @@ check('the sitemap lists every document', read('src/app/sitemap.ts').includes('L
 const account = read('mobile/src/app/(tabs)/(account)/account/index.tsx');
 for (const target of ["openSitePage('/privacy')", "openSitePage('/terms')", "router.push('/account/licenses')", "t('footer.operatedBy'"]) {
   check(`the app's Account tab has ${target}`, account.includes(target));
+}
+
+console.log('— the way out the account-deletion page promises an unfinished account');
+const leave = read('src/components/auth/leave-onboarding.tsx');
+check(
+  "the website's onboarding page offers deleting the account",
+  read('src/app/[locale]/onboarding/page.tsx').includes('<LeaveOnboarding') && leave.includes('deleteMyAccount()'),
+);
+const appOnboarding = read('mobile/src/app/onboarding.tsx');
+check(
+  "the app's onboarding offers deleting the account",
+  appOnboarding.includes("t('onboarding.leaveDelete')") && appOnboarding.includes('deleteAccountHere('),
+);
+for (const lang of ['ar', 'en']) {
+  const label = JSON.parse(read(`messages/${lang}.json`)).onboarding?.leaveDelete ?? '';
+  check(
+    `account-deletion.${lang}.md names that button as it reads`,
+    Boolean(label) && (docs['account-deletion']?.[lang]?.raw ?? '').includes(`**${label}**`),
+    label,
+  );
 }
 
 console.log('— everything the website keeps in a browser is on the cookie page');

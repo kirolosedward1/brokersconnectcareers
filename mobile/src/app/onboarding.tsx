@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -18,6 +18,7 @@ import { Select } from '~/components/ui/select';
 import { LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
+import { deleteAccountHere, type DeleteRefusal } from '~/features/account/delete';
 import { asRole, intentFromParams, type AuthIntent, type Role } from '~/features/auth/intent';
 import { useCloseFlow, useLand } from '~/features/auth/land';
 import { signOutHere } from '~/features/push/device';
@@ -42,11 +43,13 @@ import { radius, space } from '~/theme/tokens';
  * each other (listings, profiles), and every account agrees to the rules for
  * that — including that abuse is not tolerated — before it can.
  *
- * Shown over everything until it is done; the way out is to sign out.
+ * Shown over everything until it is done; the way out is to sign out, or to
+ * delete the account, as on the website.
  */
 export default function OnboardingScreen() {
   const params = useLocalSearchParams<{ next?: string; role?: string; confirmed?: string }>();
   const intent = intentFromParams(params);
+  const t = useTranslations();
   const { ready, session, viewer } = useSession();
   const land = useLand();
   const close = useCloseFlow();
@@ -85,6 +88,19 @@ export default function OnboardingScreen() {
             await signOutHere();
             close();
           }}
+          onDelete={async () => {
+            // Left before the account goes, so the sign-out at the end of the
+            // deletion does not close the flow a second time underneath us.
+            left.current = true;
+            const refusal = await deleteAccountHere(session.user);
+            if (refusal) {
+              left.current = false;
+              return refusal;
+            }
+            close();
+            Alert.alert(t('app.account.deleted'));
+            return null;
+          }}
         />
       ) : (
         <LoadingState />
@@ -98,11 +114,14 @@ function OnboardingForm({
   intent,
   onDone,
   onSignOut,
+  onDelete,
 }: {
   session: Session;
   intent: AuthIntent;
   onDone: () => Promise<void>;
   onSignOut: () => Promise<void>;
+  /** Deletes the account; null when it is gone, otherwise why not. */
+  onDelete: () => Promise<DeleteRefusal | null>;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -129,6 +148,23 @@ function OnboardingForm({
   const [visibility, setVisibility] = useState<AgentVisibility | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
+
+  function confirmDelete() {
+    Alert.alert(t('onboarding.leaveDelete'), t('onboarding.leaveConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('onboarding.leaveConfirmCta'), style: 'destructive', onPress: () => void remove() },
+    ]);
+  }
+
+  async function remove() {
+    setErrors({});
+    setPending(true);
+    const refusal = await onDelete();
+    if (refusal) {
+      setPending(false);
+      setErrors({ form: refusal === 'apple' ? t('app.account.deleteAppleFailed') : t('onboarding.leaveFailed') });
+    }
+  }
 
   async function submit() {
     setErrors({});
@@ -417,6 +453,9 @@ function OnboardingForm({
 
         <Button label={t('onboarding.submit')} size="lg" loading={pending} onPress={submit} />
         <Button label={t('nav.signOut')} variant="ghost" disabled={pending} onPress={onSignOut} />
+        {/* The website's way out of onboarding: an account that never got past
+            its email address can go without agreeing to anything first. */}
+        <Button label={t('onboarding.leaveDelete')} variant="ghost" disabled={pending} onPress={confirmDelete} />
       </View>
     </AuthScroll>
   );

@@ -89,21 +89,23 @@ export function FilterSheet({
       </FilterGroup>
 
       <FilterGroup title={t('filters.hasBasicSalary')} single>
-        <Chip label={t('filters.any')} selected={draft.hasBasicSalary === null} onPress={() => setDraft({ ...draft, hasBasicSalary: null })} />
+        <Chip label={t('filters.any')} radio selected={draft.hasBasicSalary === null} onPress={() => setDraft({ ...draft, hasBasicSalary: null })} />
         <Chip
           label={t('filters.hasBasicSalaryYes')}
+          radio
           selected={draft.hasBasicSalary === true}
           onPress={() => setDraft({ ...draft, hasBasicSalary: true })}
         />
         <Chip
           label={t('filters.hasBasicSalaryNo')}
+          radio
           selected={draft.hasBasicSalary === false}
           onPress={() => setDraft({ ...draft, hasBasicSalary: false })}
         />
       </FilterGroup>
 
       <FilterGroup title={t('filters.minSalary')} single>
-        <Chip label={t('filters.any')} selected={draft.minSalary === null} onPress={() => setDraft({ ...draft, minSalary: null })} />
+        <Chip label={t('filters.any')} radio selected={draft.minSalary === null} onPress={() => setDraft({ ...draft, minSalary: null })} />
         {MIN_SALARY_STEPS.map((value) => (
           <PayChip key={value} value={value} selected={draft.minSalary === value} onPress={() => setDraft({ ...draft, minSalary: value })} />
         ))}
@@ -121,11 +123,12 @@ export function FilterSheet({
       </FilterGroup>
 
       <FilterGroup title={t('filters.posted')} single>
-        <Chip label={t('filters.any')} selected={draft.postedWithin === null} onPress={() => setDraft({ ...draft, postedWithin: null })} />
+        <Chip label={t('filters.any')} radio selected={draft.postedWithin === null} onPress={() => setDraft({ ...draft, postedWithin: null })} />
         {POSTED_WITHIN_DAYS.map((days) => (
           <Chip
             key={days}
             label={t('filters.postedWithin', { days })}
+            radio
             selected={draft.postedWithin === days}
             onPress={() => setDraft({ ...draft, postedWithin: days })}
           />
@@ -279,7 +282,7 @@ export function FilterGroup({ title, single = false, children }: { title: string
 function PayChip({ value, selected, onPress }: { value: number; selected: boolean; onPress: () => void }) {
   const t = useTranslations('filters');
   const locale = useLocale();
-  return <Chip label={t('minSalaryAtLeast', { amount: formatNumber(value, locale) })} selected={selected} onPress={onPress} />;
+  return <Chip label={t('minSalaryAtLeast', { amount: formatNumber(value, locale) })} radio selected={selected} onPress={onPress} />;
 }
 
 /** The districts under their governorates, as the website groups them. */

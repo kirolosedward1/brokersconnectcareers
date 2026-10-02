@@ -100,9 +100,10 @@ export async function Landing({
         <form action={action} className="mt-7 w-full max-w-3xl">
           {/* Slate-500, not 400, for the placeholder and the two marks: 400
               is 2.6:1 on the white field. On the white bar the focus ring is
-              the brand blue again; HeroShell makes it white for the film, and
-              white on white would be no ring at all. */}
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-0 sm:rounded-xl sm:bg-white sm:p-1.5 sm:[--ring:var(--brand-blue)]">
+              the brand blue again — the ink one, which stays dark in the dark
+              theme, because the bar stays white; HeroShell makes the ring
+              white for the film, and white on white would be no ring at all. */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-0 sm:rounded-xl sm:bg-white sm:p-1.5 sm:[--ring:var(--brand-blue-ink)]">
             <div className="relative flex-1">
               <Search
                 className="pointer-events-none absolute inset-y-0 start-4 my-auto size-4 text-slate-500"
@@ -113,7 +114,7 @@ export async function Landing({
                 name="q"
                 placeholder={t('hero.searchPlaceholder')}
                 aria-label={t('hero.searchLabel')}
-                className="h-12 w-full rounded-lg border-0 bg-white px-4 ps-11 text-base text-slate-900 outline-hidden placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-primary"
+                className="h-12 w-full rounded-lg border-0 bg-white px-4 ps-11 text-base text-slate-900 outline-hidden placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-brand-blue-ink"
               />
             </div>
 
@@ -126,7 +127,7 @@ export async function Landing({
                 name="district"
                 aria-label={t('browse.byDistrict')}
                 defaultValue=""
-                className="h-12 w-full appearance-none rounded-lg border-0 bg-white px-4 ps-11 text-base text-slate-900 outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
+                className="h-12 w-full appearance-none rounded-lg border-0 bg-white px-4 ps-11 text-base text-slate-900 outline-hidden focus-visible:ring-2 focus-visible:ring-brand-blue-ink"
               >
                 <option value="">{tFilters('any')}</option>
                 {districts.slice(0, 12).map((district) => (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, View } from 'react-native';
+import { Alert, Linking, ScrollView, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { OPERATOR } from '@/lib/business';
@@ -9,12 +9,11 @@ import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
+import { asksApple, deleteAccountHere } from '~/features/account/delete';
 import { DeletionRequestRefused, useDeletionRequest, useRequestDeletion } from '~/features/account/settings';
-import { appleAuthorizationCode } from '~/features/auth/providers';
 import { useMobileConfig } from '~/features/config';
-import { ApiError, callAction } from '~/lib/api';
+import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
-import { supabase } from '~/lib/supabase';
 import { space } from '~/theme/tokens';
 
 /**
@@ -45,13 +44,7 @@ export default function DeleteAccountScreen() {
   const confirmLabel = t.markup('account.deleteConfirmLabel', { word, b: (chunks: string) => chunks });
   const ownsCompany = Boolean(viewer?.company && viewer.company.owner_id === viewer.userId);
   const user = session?.user;
-  const signsInWithApple =
-    (user?.identities ?? []).some((identity) => identity.provider === 'apple') ||
-    ((user?.app_metadata?.providers as string[] | undefined) ?? []).includes('apple');
-  // Apple's sheet exists on iOS alone. On Android the account goes as the
-  // website deletes it, without the code: asking for one there always failed,
-  // and the account could not be deleted at all.
-  const asksApple = signsInWithApple && Platform.OS === 'ios';
+  const asksAppleFirst = asksApple(user);
   // Never no way out: the operator's published address when no support inbox is set.
   const supportEmail = config.data?.supportEmail || OPERATOR.email;
 
@@ -74,37 +67,21 @@ export default function DeleteAccountScreen() {
     setError(null);
     setPending(true);
 
-    let appleCode: string | undefined;
-    if (asksApple) {
-      const code = await appleAuthorizationCode();
-      if (!code) {
-        setPending(false);
-        setError(t('app.account.deleteAppleFailed'));
-        return;
-      }
-      appleCode = code;
-    }
-
-    const result = await callAction('deleteMyAccount', appleCode ? { appleAuthorizationCode: appleCode } : {}).catch(
-      () => null,
-    );
-    if (!result?.ok) {
+    const refusal = await deleteAccountHere(user);
+    if (refusal) {
       setPending(false);
-      const code = result && !result.ok ? result.error : null;
       setError(
-        code === 'owns_company'
+        refusal === 'owns_company'
           ? t('account.deleteBlockedCompany')
-          : code === 'under_review'
+          : refusal === 'under_review'
             ? t('account.deleteBlockedSuspended')
-            : code === 'apple_reauth_required'
+            : refusal === 'apple'
               ? t('app.account.deleteAppleFailed')
               : t('account.deleteUnavailable'),
       );
       return;
     }
 
-    // The account no longer exists (its phones went with it); what is left on this phone goes too.
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
     router.back();
     Alert.alert(t('app.account.deleted'));
   }
@@ -161,7 +138,7 @@ export default function DeleteAccountScreen() {
           </View>
         ) : (
           <View style={{ gap: space[4] }}>
-            {asksApple ? <Notice tone="muted">{t('app.account.deleteApple')}</Notice> : null}
+            {asksAppleFirst ? <Notice tone="muted">{t('app.account.deleteApple')}</Notice> : null}
 
             <Field label={confirmLabel}>
               <TextField
