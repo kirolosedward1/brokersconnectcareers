@@ -10,7 +10,7 @@
  * histories, so the two channels cannot drift apart on what "once" means.
  */
 import { createTestDb, reporter, FIXTURES } from './setup.mjs';
-import { stageTelling, tellingSuffix } from '../../src/lib/application-arrival.ts';
+import { isNews, stageTelling, tellingSuffix } from '../../src/lib/application-arrival.ts';
 
 const report = reporter();
 const db = await createTestDb();
@@ -105,6 +105,20 @@ report.section('the email counts a stage the way a candidate hears it');
     'a history that could not be read is the first telling — the old key',
     stageTelling([], 'interview') === 1,
   );
+  report.check(
+    'tidied back to "new" and out again is not news at all, whatever the key',
+    isNews(['new', 'shortlisted', 'new', 'shortlisted'], 'shortlisted') === false,
+  );
+  report.check(
+    'a stage told again after another one is',
+    isNews(['new', 'rejected', 'shortlisted', 'rejected'], 'rejected') === true &&
+      isNews(['new', 'interview'], 'interview') === true &&
+      isNews([], 'interview') === true,
+  );
+  report.check(
+    'nor is a stage the candidate heard before 345 swallowed its second telling',
+    isNews(['rejected', 'shortlisted', 'rejected', 'new', 'rejected'], 'rejected') === false,
+  );
 }
 
 report.section('a stage told a second time reaches the candidate');
@@ -190,7 +204,9 @@ report.section('the bell and the email agree, over random histories');
   const STAGES = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
 
   let agreed = 0;
+  let stepsAgreed = 0;
   const disagreements = [];
+  const stepDisagreements = [];
   for (let walk = 0; walk < 12; walk += 1) {
     const { application } = await freshApplication();
     const history = ['new'];
@@ -199,10 +215,18 @@ report.section('the bell and the email agree, over random histories');
       const current = history.at(-1);
       const choices = STAGES.filter((stage) => stage !== current);
       const status = choices[Math.floor(random() * choices.length)];
+      const rungBefore = (await told(application)).length;
       await move(application, status);
       history.push(status);
-      // What notifyCandidateOfStatus keys this move's email on.
-      if (status !== 'new') emailKeys.add(`${status}${tellingSuffix(stageTelling(history, status))}`);
+      // What notifyCandidateOfStatus decides for this move: whether it is
+      // news at all, and if so the key its email goes out under. Decided from
+      // the history, step by step, not left to a key the outbox may no longer
+      // hold.
+      const emails = status !== 'new' && isNews(history, status);
+      if (emails) emailKeys.add(`${status}${tellingSuffix(stageTelling(history, status))}`);
+      const rang = (await told(application)).length > rungBefore;
+      if (rang === emails) stepsAgreed += 1;
+      else stepDisagreements.push({ history: [...history], rang, emails });
     }
     const bell = new Set(await keys(application));
     const same = bell.size === emailKeys.size && [...bell].every((key) => emailKeys.has(key));
@@ -213,6 +237,11 @@ report.section('the bell and the email agree, over random histories');
     `every history rings the bell with exactly the email's keys (${agreed} of 12)`,
     agreed === 12,
     JSON.stringify(disagreements[0]),
+  );
+  report.check(
+    `and every single move rings the bell exactly when it is emailed (${stepsAgreed} of 240)`,
+    stepsAgreed === 240,
+    JSON.stringify(stepDisagreements[0]),
   );
 }
 

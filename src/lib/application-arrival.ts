@@ -32,3 +32,23 @@ export function stageTelling(history: readonly string[], status: string): number
 export function tellingSuffix(telling: number): string {
   return telling > 1 ? `:${telling}` : '';
 }
+
+/**
+ * Whether this arrival is news to the candidate at all — the bell's rule
+ * (migration 345): not when the last stage they were told before it is this
+ * one. shortlisted → new → shortlisted is an employer tidying the board.
+ *
+ * The bell decides this from the history; the email used to lean on its own
+ * key being held instead, and a key that was not held — pruned after 180
+ * days, never claimed while the candidate had status emails off, or swallowed
+ * before 345 — sent an email for a move the bell treated as nothing.
+ *
+ * `history` as for stageTelling: the arrival being told is its last entry.
+ */
+export function isNews(history: readonly string[], status: string): boolean {
+  const before = history.length > 0 && history[history.length - 1] === status ? history.slice(0, -1) : history;
+  for (let index = before.length - 1; index >= 0; index -= 1) {
+    if (before[index] !== 'new') return before[index] !== status;
+  }
+  return true;
+}

@@ -571,5 +571,18 @@ section('every cron route checks the secret the same way');
   );
 }
 
+section('the weekly alert starts the next week where this one read the board');
+{
+  // A digest covers what was published up to the moment the board was read;
+  // stamped with the moment after the send, a listing published in between
+  // was in neither week.
+  const { readFileSync } = await import('node:fs');
+  const alerts = readFileSync(new URL('../src/app/api/cron/job-alerts/route.ts', import.meta.url), 'utf8');
+  const read = alerts.indexOf('lookedAt = new Date().toISOString()');
+  const board = alerts.indexOf('await queryJobs(');
+  ok('the read time is taken before the board is queried', read !== -1 && board !== -1 && read < board);
+  ok('and is what last_sent_at records', /last_sent_at:\s*lookedAt\b/.test(alerts));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail === 0 ? 0 : 1;

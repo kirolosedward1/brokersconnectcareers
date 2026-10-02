@@ -11,7 +11,7 @@ import { buildEnvelope, type Audience } from './envelope';
 import { deliver } from './service';
 import type { SendOutcome } from './send';
 import { unsubscribeLinks } from './unsubscribe-link';
-import { stageTelling, tellingSuffix } from '@/lib/application-arrival';
+import { isNews, stageTelling, tellingSuffix } from '@/lib/application-arrival';
 
 /**
  * One function per product event.
@@ -164,6 +164,8 @@ type ApplicationForCandidate = {
 };
 
 type JobForOwner = JobBits & {
+  /** Where the listing stands now: a message about a decision checks it still does. */
+  status: string;
   company: { id: string; owner_id: string; name_ar: string } | null;
   /** The moderator's reason, read again when a refusal is retried. */
   rejection_note?: string | null;
@@ -421,7 +423,10 @@ export async function notifyVisibilityChanged(
       .select('visibility_chosen_at')
       .eq('user_id', userId)
       .maybeSingle();
-    if (cardError) readFailed('directory profile', cardError);
+    // 42703: a database migration 336 has not reached has no stamp to key on,
+    // and keys on the day as it did before it. Failing instead lost the
+    // notice for good — it is not retried.
+    if (cardError && cardError.code !== '42703') readFailed('directory profile', cardError);
     const chosenAt = card?.visibility_chosen_at ? Date.parse(card.visibility_chosen_at) : NaN;
     const change = Number.isFinite(chosenAt) ? String(chosenAt) : cairoDay(new Date());
 
@@ -724,7 +729,12 @@ export async function notifyCandidateOfStatus(applicationId: string): Promise<Se
       .eq('application_id', applicationId)
       .order('id', { ascending: true });
     if (historyError) readFailed('application history', historyError);
-    const telling = stageTelling((history ?? []).map((event) => event.to_status), application.status);
+    const stages = (history ?? []).map((event) => event.to_status);
+    // The bell's rule, so the two say the same thing (isNews): an employer
+    // tidying the board back to a stage the candidate was last told is not a
+    // second message, whether or not that message's key is still held.
+    if (!isNews(stages, application.status)) return 'skipped';
+    const telling = stageTelling(stages, application.status);
     const dedupeKey = `status:${applicationId}:${application.status}${tellingSuffix(telling)}`;
     const entity = { type: 'application', id: applicationId } as const;
 
@@ -853,6 +863,9 @@ export async function notifyJobSubmitted(
     const job = await ownedJob(admin, jobId);
     const companyId = job?.company?.id;
     if (!job || !companyId) return 'skipped';
+    // A receipt for a listing waiting in the queue. A retry that finds it
+    // approved, refused or withdrawn since has nothing true left to say.
+    if (job.status !== 'pending_review') return 'skipped';
 
     let recipientId = job.company?.owner_id ?? null;
     if (submittedBy) {
@@ -926,18 +939,27 @@ export async function notifyEmployerOfModeration(
   jobId: string,
   approved: boolean,
   note?: string | null,
+  /** A retry's own member (rebuild.ts): the colleagues it reached are not sent it again. */
+  only?: string | null,
 ): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
     const job = await ownedJob(admin, jobId);
     const companyId = job?.company?.id;
     if (!job || !companyId) return 'skipped';
+    // "Your listing is live" about a listing back in review, or a refusal of
+    // one approved since, is worse than no message: a retry checks the
+    // decision still stands.
+    if (job.status !== (approved ? 'active' : 'rejected')) return 'skipped';
 
     // A retry (rebuild.ts) passes no note: the reason is the listing's own,
     // or the retried refusal said "rejected, edit and resend" and not why.
     const reason = note !== undefined ? note : approved ? null : (job.rejection_note ?? null);
-    return forEachMember(admin, companyId, (memberId) =>
-      oneModerationNotice({ admin, memberId, job, approved, note: reason }),
+    return forEachMember(
+      admin,
+      companyId,
+      (memberId) => oneModerationNotice({ admin, memberId, job, approved, note: reason }),
+      only,
     );
   } catch (error) {
     console.warn('[email] moderation notice failed:', asMessage(error));
@@ -1237,13 +1259,30 @@ export async function notifyAccountDecision(
         ? c.accountRejectedCandidate
         : c.accountRejected;
 
+    /*
+      Keyed on the decision itself: set_account_approval records each one in
+      admin_audit_log, so suspended, restored and suspended again is two
+      suspensions, each told with its own reason. Keyed on the hour, the
+      second within it was skipped. Where the record cannot be read (a
+      database before 316, an outage) the hour is the key still — this notice
+      is not retried, so it must not fail on a read it can do without.
+    */
+    const { data: decision } = await admin
+      .from('admin_audit_log')
+      .select('id')
+      .eq('target_type', 'user')
+      .eq('target_id', userId)
+      .in('action', approved ? ['user.approved', 'user.restored'] : ['user.suspended'])
+      .order('id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const round = decision ? `d${decision.id}` : new Date().toISOString().slice(0, 13);
+
     return deliver({
       template: approved ? 'account_approved' : 'account_rejected',
       to: to.email,
       userId,
-      // Not keyed on the decision alone: an account suspended, restored and
-      // suspended again must say so each time. The timestamp is the run.
-      dedupeKey: `account:${userId}:${approved}:${new Date().toISOString().slice(0, 13)}`,
+      dedupeKey: `account:${userId}:${approved}:${round}`,
       entity: { type: 'profile', id: userId },
       envelope: buildEnvelope({
         audience: audienceOf(to, null),
@@ -1275,17 +1314,25 @@ export async function notifyCompanyVerification(
   companyId: string,
   verified: boolean,
   note?: string | null,
+  /** A retry's own member (rebuild.ts). */
+  only?: string | null,
 ): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
 
     const { data: company, error: companyError } = await admin
       .from('companies')
-      .select('id, slug, name_ar, name_en, owner_id, logo_url, version')
+      .select('id, slug, name_ar, name_en, owner_id, logo_url, version, verification_status')
       .eq('id', companyId)
       .maybeSingle();
     if (companyError) readFailed('company', companyError);
     if (!company) return 'skipped';
+    // The decision must still stand: a refusal retried after the company was
+    // verified, or a verification after it was revoked, is not sent.
+    const standing = verified
+      ? company.verification_status === 'verified'
+      : company.verification_status === 'rejected' || company.verification_status === 'unverified';
+    if (!standing) return 'skipped';
 
     /*
       The decision this message is about, as the console recorded it
@@ -1357,7 +1404,7 @@ export async function notifyCompanyVerification(
           ],
         }),
       });
-    });
+    }, only);
   } catch (error) {
     console.warn('[email] company verification notice failed:', asMessage(error));
     return 'failed';
@@ -1524,11 +1571,16 @@ async function forEachMember(
   admin: ReturnType<typeof createAdminClient>,
   companyId: string,
   send: (memberId: string) => Promise<SendOutcome>,
+  /**
+   * One member only — a retry's own. Rebuilt for everybody, a retry whose key
+   * had moved on (a listing edited since bumps its version) minted new keys
+   * for every colleague, who were sent the message again.
+   */
+  only?: string | null,
 ): Promise<SendOutcome> {
-  const { data: members, error: membersError } = await admin
-    .from('company_members')
-    .select('user_id')
-    .eq('company_id', companyId);
+  let query = admin.from('company_members').select('user_id').eq('company_id', companyId);
+  if (only) query = query.eq('user_id', only);
+  const { data: members, error: membersError } = await query;
   if (membersError) readFailed('members', membersError);
 
   let outcome: SendOutcome = 'skipped';
@@ -1579,7 +1631,7 @@ async function candidateApplication(
 async function ownedJob(admin: ReturnType<typeof createAdminClient>, jobId: string) {
   const { data, error } = await admin
     .from('jobs')
-    .select(`${JOB_FIELDS}, rejection_note, company:companies (id, owner_id, name_ar)`)
+    .select(`${JOB_FIELDS}, status, rejection_note, company:companies (id, owner_id, name_ar)`)
     .eq('id', jobId)
     .maybeSingle();
   if (error) readFailed('listing', error);
