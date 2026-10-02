@@ -8,7 +8,7 @@
  * every application that carried it pointed at nothing. A file the caller's
  * rows already point at is kept; one just uploaded is not.
  */
-const { cvInUse } = await import('../src/lib/cv-in-use.ts');
+const { cvInUse, releaseUnusedCv } = await import('../src/lib/cv-in-use.ts');
 
 let pass = 0;
 let fail = 0;
@@ -43,6 +43,20 @@ is('a file just uploaded is not', await cvInUse(reads(), FRESH), false);
 is('nor is any file, for somebody with no profile yet', await cvInUse(reads({ profileCv: () => ok(null) }), FRESH), false);
 is('a profile read that failed keeps the file', await cvInUse(reads({ profileCv: broken }), FRESH), true);
 is('so does an applications read that failed', await cvInUse(reads({ applicationsWith: broken }), FRESH), true);
+
+console.log('\n— after a save that did not say ok');
+{
+  const removed = [];
+  const remove = async (path) => removed.push(path);
+  is('a file nothing points at is taken back out', await releaseUnusedCv(reads(), remove, FRESH), false);
+  is('(and it was)', removed.join(','), FRESH);
+
+  // The profile row went in with the new file, and the developer tags after it failed.
+  const saved = reads({ profileCv: () => ok({ cv_path: FRESH }) });
+  is('a file the saved profile now points at is kept', await releaseUnusedCv(saved, remove, FRESH), true);
+  is('a file whose use could not be read is kept', await releaseUnusedCv(reads({ profileCv: broken }), remove, FRESH), true);
+  is('(neither was removed)', removed.length, 1);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

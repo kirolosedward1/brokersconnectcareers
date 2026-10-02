@@ -746,4 +746,29 @@ report.section('an avatar is fetched from this site\'s storage or from Google, n
   report.is(trustedAvatarUrl(null, origin), null, 'as is nothing');
 }
 
+report.section('a company logo is fetched from this site\'s logos bucket, nowhere else');
+{
+  const { trustedLogoUrl } = await import('../../src/lib/avatar-url.ts');
+  const origin = 'https://abcdefghijklmnopqrst.supabase.co';
+  const company = 'aaaaaaaa-0000-0000-0000-000000000001';
+  const own = `${origin}/storage/v1/object/public/company-logos/${company}/logo-1.webp`;
+
+  report.is(trustedLogoUrl(own, origin), own, 'the company\'s own upload is fetched');
+  report.is(
+    trustedLogoUrl(`https://tracker.example/storage/v1/object/public/company-logos/${company}/p.png`, origin),
+    null,
+    'the same path on a tracker\'s host is not — migration 344 cannot tell the hosts apart',
+  );
+  report.is(
+    trustedLogoUrl(`https://zzzzzzzzzzzzzzzzzzzz.supabase.co/storage/v1/object/public/company-logos/${company}/logo.webp`, origin),
+    null,
+    'nor another Supabase project\'s',
+  );
+  report.is(trustedLogoUrl(`${origin}/storage/v1/object/public/avatars/x/photo.webp`, origin), null, 'nor another bucket on our own host');
+  report.is(trustedLogoUrl('https://lh3.googleusercontent.com/a/x', origin), null, 'nor Google, which only avatars allow');
+  report.is(trustedLogoUrl(own, undefined), null, 'with no storage origin configured, nothing remote is fetched');
+  report.is(trustedLogoUrl('javascript:alert(1)', origin), null, 'and a script is the initial');
+  report.is(trustedLogoUrl(null, origin), null, 'as is no logo');
+}
+
 process.exitCode = base.finish() ? 0 : 1;

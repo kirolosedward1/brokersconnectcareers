@@ -760,6 +760,16 @@ export function JobForm({
           </div>
         ) : null}
 
+        {/* A refusal sends the reader to the step that holds the problem; one
+            no field there shows (the third listing of a title, a salary over
+            the server's cap) is said here, or it was said only on the review
+            step and the wizard landed on a step with nothing on screen. */}
+        {errors.form && step < STEPS.length - 1 ? (
+          <p role="alert" className="mt-6 text-sm text-destructive">
+            {errors.form}
+          </p>
+        ) : null}
+
         <div className="mt-8 flex justify-between border-t border-border pt-5">
           <Button
             type="button"

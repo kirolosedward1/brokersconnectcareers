@@ -12,6 +12,7 @@ import { cn, uuid } from '@/lib/utils';
 import { fileExtension, fileType } from '@/lib/file-type';
 import { createClient } from '@/lib/supabase/client';
 import { CV_BUCKET } from '@/lib/buckets';
+import { releaseUnusedCv } from '@/lib/cv-in-use';
 import { AVAILABILITIES, JOB_TRACKS } from '@/lib/taxonomy';
 import { saveAgentProfile } from '@/lib/actions/agent-profile';
 import { reach } from '@/lib/reach';
@@ -190,7 +191,20 @@ export function AgentProfileForm({
           each retry left another. Storage RLS confines this account to its own
           folder, which is the same rule that allowed the upload.
         */
-        if (cvPath) await createClient().storage.from(CV_BUCKET).remove([cvPath]);
+        if (cvPath) {
+          // Unless the profile went in with it after all — the row is written
+          // before the developer tags, and an answer can be lost on the way
+          // back — when this took the file out from under the saved profile.
+          const supabase = createClient();
+          await releaseUnusedCv(
+            {
+              profileCv: () => supabase.from('agent_profiles').select('cv_path').eq('cv_path', cvPath).maybeSingle(),
+              applicationsWith: (path) => supabase.from('applications').select('id').eq('cv_path', path).limit(1),
+            },
+            (path) => supabase.storage.from(CV_BUCKET).remove([path]),
+            cvPath,
+          );
+        }
         if (recoverSession(result)) return;
         // The server names a refused CV by its key — 'fileType': the bytes are
         // no PDF or Word document, whatever the name says — and the field

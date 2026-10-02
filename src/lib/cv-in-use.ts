@@ -31,3 +31,21 @@ export async function cvInUse(reads: CvReads, path: string): Promise<boolean> {
   if (profile.error || applications.error) return true;
   return profile.data?.cv_path === path || (applications.data?.length ?? 0) > 0;
 }
+
+/**
+ * After a save that did not say ok, take a CV uploaded for it back out —
+ * unless the caller's rows point at it. A profile save writes the row, CV and
+ * all, before its developer tags, so a refusal from the tags (or an answer
+ * lost on the way back) can follow a save that kept the new file; deleting it
+ * then left the profile pointing at nothing. Returns whether it was kept.
+ */
+export async function releaseUnusedCv(
+  reads: CvReads,
+  remove: (path: string) => PromiseLike<unknown>,
+  path: string,
+): Promise<boolean> {
+  if (await cvInUse(reads, path)) return true;
+  await remove(path);
+  return false;
+}
+

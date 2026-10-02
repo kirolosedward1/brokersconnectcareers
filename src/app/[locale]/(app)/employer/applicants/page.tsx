@@ -332,18 +332,31 @@ export default async function AllApplicantsPage({
     so choosing one left one, and the select vanished with the only sign the
     list was narrowed: the heading still said all applicants, every chip and
     even "clear filters" carried the listing on, and the way back was the
-    sidebar. Drafts are left out; nobody can apply to one.
+    sidebar. Drafts are among them: a listing closed and kept as a draft
+    still has its applicants. And the listing the inbox is narrowed to always
+    is, past the newest 200 too — missing, the select read "all listings"
+    over a narrowed list, and the next Apply dropped the listing unasked.
   */
+  const companyId = viewer.company?.id ?? NO_COMPANY;
+  const listingFilter = jobFilter && UUID.test(jobFilter) ? jobFilter : undefined;
   const { data: listingRows, error: listingsError } = await supabase
     .from('jobs')
     .select('id, title_ar, title_en')
-    .eq('company_id', viewer.company?.id ?? NO_COMPANY)
-    .neq('status', 'draft')
+    .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .limit(200);
   if (listingsError) raise(listingsError, 'listing the company’s listings');
-  const jobs = listingRows ?? [];
-  const listingFilter = jobFilter && UUID.test(jobFilter) ? jobFilter : undefined;
+  let jobs = listingRows ?? [];
+  if (listingFilter && !jobs.some((job) => job.id === listingFilter)) {
+    const { data: chosen, error: chosenError } = await supabase
+      .from('jobs')
+      .select('id, title_ar, title_en')
+      .eq('company_id', companyId)
+      .eq('id', listingFilter)
+      .maybeSingle();
+    if (chosenError) raise(chosenError, 'reading the listing the inbox is narrowed to');
+    if (chosen) jobs = [chosen, ...jobs];
+  }
 
   const t = await getTranslations('employer');
   const tStatus = await getTranslations('applicationStatus');

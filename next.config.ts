@@ -3,6 +3,15 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
+/** The Supabase project's host, from the build's environment; null when unset or unreadable. */
+function storageHost(): string | null {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').hostname || null;
+  } catch {
+    return null;
+  }
+}
+
 const nextConfig: NextConfig = {
   /**
    * `pnpm build` and `pnpm dev` share .next by default, so running a
@@ -180,8 +189,10 @@ const nextConfig: NextConfig = {
 
   images: {
     remotePatterns: [
-      // Supabase Storage public buckets (company logos).
-      { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
+      // Supabase Storage public buckets (company logos) — this project's own
+      // host where it is known at build time, so /_next/image cannot be made
+      // to fetch from another project's storage; any project's otherwise.
+      { protocol: 'https', hostname: storageHost() ?? '*.supabase.co', pathname: '/storage/v1/object/public/**' },
     ],
   },
 };

@@ -14,6 +14,7 @@ import { formatDate, formatEgp, formatList, formatNumber, isoDate, whatsappLink,
 import { employerOpener } from '@/lib/whatsapp';
 import { setApplicationStatus } from '@/lib/actions/applications';
 import { reach } from '@/lib/reach';
+import { clean } from '@/lib/security/sanitize';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -116,7 +117,8 @@ export function ApplicantCard({
   const [reason, setReason] = useState(application.decision_note ?? '');
   const [savedReason, setSavedReason] = useState(application.decision_note ?? '');
   const [conflict, setConflict] = useState(false);
-  const [failed, setFailed] = useState(false);
+  // The save that did not come back, until the server is seen holding it.
+  const [failed, setFailed] = useState<{ status: ApplicationStatus; reason: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
 
@@ -134,6 +136,11 @@ export function ApplicantCard({
     setStatus(application.status);
     setSavedReason(storedReason);
     if (reason === savedReason) setReason(storedReason);
+    // A save with no answer that landed after all: the server holds what was
+    // sent (the reason as it stores it), so it did not fail.
+    if (failed && failed.status === application.status && (clean(failed.reason.trim(), true) || '') === storedReason) {
+      setFailed(null);
+    }
   }
 
   const candidate = application.candidate;
@@ -146,7 +153,7 @@ export function ApplicantCard({
     setStatus(next);
     setSavedReason(decisionNote);
     setConflict(false);
-    setFailed(false);
+    setFailed(null);
 
     startTransition(async () => {
       const result = await reach(setApplicationStatus({
@@ -174,7 +181,7 @@ export function ApplicantCard({
           // server — so re-read rather than describe it from here.
           router.refresh();
         } else {
-          setFailed(true);
+          setFailed({ status: next, reason: decisionNote });
           // No answer: the move may have landed and only the answer been
           // lost, so read what the server holds.
           if (result.error === 'network') router.refresh();
@@ -186,7 +193,10 @@ export function ApplicantCard({
   }
 
   function onStatusChange(event: React.ChangeEvent<HTMLSelectElement>) {
-    save(event.target.value as ApplicationStatus, reason);
+    // The box is hidden at "new", so whatever it holds there is not on screen
+    // — a sentence typed before a move that failed, or before a colleague's
+    // move back to "new" — and is not sent: the reason the card holds is.
+    save(event.target.value as ApplicationStatus, status === 'new' ? savedReason : reason);
   }
 
   return (

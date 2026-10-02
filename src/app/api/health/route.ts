@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/env';
 import { bearerToken, secretsMatch } from '@/lib/security/secrets';
 import { createPublicClient } from '@/lib/supabase/public';
-import { isPlaceholder } from '@/lib/env';
+import { configuredValue, isPlaceholder } from '@/lib/env';
 import { senderProblem } from '@/lib/email/sender';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -38,9 +38,11 @@ export async function GET(request: Request) {
     service-role key is rejected — is for the operator, and it costs a call
     to the Supabase auth admin API on every request, which a public URL must
     not let anyone make at will. The operator sends the cron secret, which
-    every cron route already accepts as the same bearer.
+    every cron route already accepts as the same bearer — and, as they do,
+    never an unedited REPLACE_ME from the import file, which opened this to
+    anybody who read the template.
   */
-  const operator = secretsMatch(bearerToken(request.headers.get('authorization')), env.cronSecret);
+  const operator = secretsMatch(bearerToken(request.headers.get('authorization')), configuredValue(env.cronSecret));
 
   // Configuration first: an unset variable is the failure that looks like a
   // database outage, and the two need telling apart at a glance.

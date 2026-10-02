@@ -2,6 +2,7 @@ import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { AgentVisibility, ApplicationStatus } from '@/lib/supabase/database.types';
 import { env } from '@/lib/env';
+import { trustedLogoUrl } from '@/lib/avatar-url';
 import { localized } from '@/i18n/routing';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { copyFor, localeOf } from './copy';
@@ -404,16 +405,31 @@ export async function notifyVisibilityChanged(
     const c = copyFor(to.locale);
     const t = c.visibilityChanged;
 
+    /*
+      Keyed on the change itself: the database dates each choice the owner
+      makes (visibility_chosen_at, migration 336), so the same change
+      published twice sends one message and every change sends its own.
+      Keyed on the value and the day, a third change in one day back to a
+      setting already told — perhaps by somebody else holding the session —
+      was silent; keyed on the value alone, it was once per setting, ever.
+      The bell keeps its key per day: it is a record, and a feed full of
+      toggles helps nobody. This is the security notice. Not retried, so the
+      stamp read now is the one the change made.
+    */
+    const { data: card, error: cardError } = await admin
+      .from('agent_profiles')
+      .select('visibility_chosen_at')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (cardError) readFailed('directory profile', cardError);
+    const chosenAt = card?.visibility_chosen_at ? Date.parse(card.visibility_chosen_at) : NaN;
+    const change = Number.isFinite(chosenAt) ? String(chosenAt) : cairoDay(new Date());
+
     return deliver({
       template: 'visibility_changed',
       to: to.email,
       userId,
-      // Keyed on the value and the day in Cairo, as the bell is: saving the
-      // form twice on one setting sends one message, and a change on another
-      // day always sends. Keyed on the value alone, the email went out once
-      // per setting, ever — hidden, public, then hidden again a month later,
-      // and the security notice for a change somebody else made never came.
-      dedupeKey: `visibility:${userId}:${visibility}:${cairoDay(new Date())}`,
+      dedupeKey: `visibility:${userId}:${visibility}:${change}`,
       entity: { type: 'profile', id: userId },
       envelope: buildEnvelope({
         audience: audienceOf(to, null),
@@ -698,15 +714,16 @@ export async function notifyCandidateOfStatus(applicationId: string): Promise<Se
       back to "new" and out again, sends one; rejected, reconsidered, then
       rejected again sends the second rejection, which a key on the stage
       alone held back forever. The move is recorded (application_events)
-      before this runs. A history that cannot be read is taken as the first
-      telling — the key this message always had — so at worst a repeat goes
-      unsent, as it always did, and never is a message sent twice.
+      before this runs. A history that cannot be read is a failure, not a
+      first telling: counted as one, a retry of the second rejection found the
+      first's key taken and was cancelled for good (readFailed).
     */
-    const { data: history } = await admin
+    const { data: history, error: historyError } = await admin
       .from('application_events')
       .select('to_status')
       .eq('application_id', applicationId)
       .order('id', { ascending: true });
+    if (historyError) readFailed('application history', historyError);
     const telling = stageTelling((history ?? []).map((event) => event.to_status), application.status);
     const dedupeKey = `status:${applicationId}:${application.status}${tellingSuffix(telling)}`;
     const entity = { type: 'application', id: applicationId } as const;
@@ -1270,20 +1287,30 @@ export async function notifyCompanyVerification(
     if (companyError) readFailed('company', companyError);
     if (!company) return 'skipped';
 
-    // A retry (rebuild.ts) passes no note: the reason is on the paper the
-    // review refused, or the retried refusal arrived without one.
-    let reason = note;
-    if (reason === undefined && !verified) {
-      const { data: refused } = await admin
-        .from('company_documents')
-        .select('review_note')
-        .eq('company_id', companyId)
-        .eq('status', 'rejected')
-        .order('reviewed_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      reason = refused?.review_note ?? null;
-    }
+    /*
+      The decision this message is about, as the console recorded it
+      (admin_review_company writes it to admin_audit_log): its id keys a
+      refusal, and its reason is the one quoted — a retry (rebuild.ts) passes
+      no note. Read from the company's state instead, a retry after the
+      company had moved on (papers sent again, the row's version bumped) was a
+      new key, sent again to members who already had it, and it quoted the
+      newest refused paper — a previous round's note when this refusal had no
+      papers to write its own on.
+    */
+    const { data: decision, error: decisionError } = await admin
+      .from('admin_audit_log')
+      .select('id, reason')
+      .eq('target_type', 'company')
+      .eq('target_id', companyId)
+      .in('action', verified ? ['company.verify'] : ['company.reject', 'company.request_changes'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (decisionError) readFailed('company decision', decisionError);
+    const reason = note !== undefined ? note : (decision?.reason ?? null);
+    // A refusal per decision (each can carry its own reason); a verification
+    // once ever, as the bell's is — a badge that flaps is not news twice.
+    const round = decision ? `d${decision.id}` : `v${company.version}`;
 
     return forEachMember(admin, companyId, async (memberId) => {
       const to = await recipient(admin, memberId, null);
@@ -1297,10 +1324,12 @@ export async function notifyCompanyVerification(
         template: verified ? 'company_verified' : 'company_verification_needed',
         to: to.email,
         userId: memberId,
-        // Per round, as the bell is (its key carries the version): keyed on the
-        // decision alone, a second refusal — new papers, refused again — was
-        // never sent, the first one's key still held.
-        dedupeKey: `company_verification:${companyId}:${verified}:${company.version}:${memberId}`,
+        // A refusal per decision: keyed on the outcome alone, a second refusal
+        // — new papers, refused again — was never sent, the first one's key
+        // still held.
+        dedupeKey: verified
+          ? `company_verification:${companyId}:true:${memberId}`
+          : `company_verification:${companyId}:false:${round}:${memberId}`,
         entity: { type: 'company', id: companyId },
         envelope: buildEnvelope({
           audience: audienceOf(to, null),
@@ -1312,7 +1341,7 @@ export async function notifyCompanyVerification(
             {
               kind: 'company',
               name,
-              logoUrl: company.logo_url,
+              logoUrl: trustedLogoUrl(company.logo_url, process.env.NEXT_PUBLIC_SUPABASE_URL),
               href: `${env.siteUrl}/companies/${company.slug}`,
             },
             ...(!verified && reason

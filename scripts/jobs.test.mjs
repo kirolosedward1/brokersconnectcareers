@@ -561,6 +561,14 @@ section('every cron route checks the secret the same way');
       /runScheduledJob\(|cronAuthorised\(/.test(source) && !/headers\.get\(['"]authorization['"]\)\s*[!=]==/.test(source),
     );
   }
+
+  // The health check answers the operator to the same bearer, and so to the
+  // same rule: the placeholder is no secret.
+  const health = readFileSync(new URL('../src/app/api/health/route.ts', import.meta.url), 'utf8');
+  ok(
+    '/api/health refuses the placeholder too (configuredValue or cronAuthorised)',
+    /secretsMatch\([^;]*configuredValue\(env\.cronSecret\)\)|cronAuthorised\(/.test(health) && !/secretsMatch\([^;]*,\s*env\.cronSecret\)/.test(health),
+  );
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

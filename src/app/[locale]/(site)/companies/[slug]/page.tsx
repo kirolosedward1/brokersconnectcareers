@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/auth';
 import { followQuery } from '@/lib/saved-search';
 import { env } from '@/lib/env';
+import { trustedLogoUrl } from '@/lib/avatar-url';
 import { truncate, toPlainText } from '@/lib/utils';
 
 type Params = { locale: string; slug: string };
@@ -150,7 +151,7 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
           '@type': 'Organization',
           name,
           url: `${env.siteUrl}/companies/${company.slug}`,
-          ...(company.logo_url ? { logo: company.logo_url } : {}),
+          ...(trustedLogoUrl(company.logo_url, process.env.NEXT_PUBLIC_SUPABASE_URL) ? { logo: company.logo_url } : {}),
           ...(websiteHref ? { sameAs: [websiteHref] } : {}),
           ...(about ? { description: toPlainText(about) } : {}),
           address: {
