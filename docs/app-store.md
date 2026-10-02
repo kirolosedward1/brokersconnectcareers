@@ -152,15 +152,41 @@ The content answers: no violence, sexual content, gambling, drugs or medical
 content; user-generated content exists and is moderated; the in-app browser
 opens the website's own pages ("unrestricted web access": no).
 
-## Review notes (template)
+## Review accounts
 
-App Review needs accounts that show the whole app. Create them on production
-(never the seeded demo accounts, which must be rotated — see
-`docs/privacy/AUDIT-2026-09-27.md`):
+App Review signs in, so it needs accounts that show the whole app — never the
+seeded demo accounts, which must be deleted (`docs/privacy/AUDIT-2026-09-27.md`).
+`pnpm review-accounts` (`scripts/review-accounts.mjs`) makes them on the
+project it is pointed at, once that project's migrations are applied:
 
-1. A **candidate** with a completed directory profile and a CV.
-2. An **approved employer** whose company is **verified**, with one live
-   listing that the candidate above has applied to.
+- a **candidate** with a directory profile — hidden from the directory, so no
+  real company finds it — and a CV, who has applied to
+- the one live listing of a **verified company** whose owner, the
+  **employer**, is approved.
+
+Both have agreed to the current Terms and Privacy policy, as onboarding records
+it. Each is labelled as the review's wherever it shows: the company is «حساب
+مراجعة التطبيق», and the listing says it is not a real job. It is on the public
+board while it is live, like every listing, so make the accounts just before
+submitting and take them away once the app is approved:
+
+```bash
+# As for pnpm db:apply: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+# TARGET_DATABASE_URL (the same project). Then two inboxes you read:
+export REVIEW_CANDIDATE_EMAIL=… REVIEW_EMPLOYER_EMAIL=…
+pnpm review-accounts                                                    # what it would do
+pnpm review-accounts --execute --confirm hiwdhicwsohbipxzazmb           # makes them
+pnpm review-accounts --remove --execute --confirm hiwdhicwsohbipxzazmb  # after approval
+```
+
+Making them prints the `APP_REVIEW_*` lines `metadata:push` needs ("The
+listing, as code"); the passwords are kept nowhere else, and running it again
+sets new ones. Both profiles show the operator's number (`src/lib/business.ts`)
+unless `REVIEW_PHONE` names another, so a reviewer who taps WhatsApp reaches
+you, not a stranger. Removing deletes the listing with every application to it
+— someone who applied despite what it says loses that application — then the
+company, the CV and both users. `supabase/review-accounts.sql` is what it
+writes, tested on the real migrations (`pnpm test:review-accounts`).
 
 The candidate is the sign-in App Review is given; the notes, written by
 `mobile/store.config.js` (`reviewNotes`), carry the employer account and say
@@ -208,7 +234,7 @@ has.
 5. **A 1024-pixel app icon** (only a 450-pixel mark exists today) and the
    splash image.
 6. **The legal pages reviewed by a lawyer** (`docs/legal.md`, "The
-   documents"), and the two review accounts above.
+   documents"), and the two review accounts ("Review accounts" above).
 7. **A development build on a real iPhone** against production, through the
    checklist in `docs/mobile.md` ("On a phone, before a release"), with QA
    accounts — never the demo ones.
