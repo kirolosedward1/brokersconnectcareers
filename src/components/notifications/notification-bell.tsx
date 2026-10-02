@@ -113,7 +113,7 @@ export function NotificationBell({
       <summary
         ref={summaryRef}
         aria-label={label}
-        className="relative grid size-11 cursor-pointer list-none place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&::-webkit-details-marker]:hidden"
+        className="relative grid size-11 cursor-pointer list-none place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground group-data-[over-hero]/header:text-white group-data-[over-hero]/header:hover:bg-white/15 group-data-[over-hero]/header:hover:text-white [&::-webkit-details-marker]:hidden"
       >
         {/* The badge hangs off the icon, not off the 44px hit area, or it
             would sit adrift in the corner of an empty box. */}

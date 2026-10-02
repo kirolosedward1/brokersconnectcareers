@@ -72,7 +72,9 @@ export function UserMenu({
         ref={triggerRef}
         variant="ghost"
         size="sm"
-        className="h-11 min-w-11"
+        // Over a landing page's film the header's text is white, and the
+        // ghost hover's pale grey would put it white on white.
+        className="h-11 min-w-11 group-data-[over-hero]/header:hover:bg-white/15"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >

@@ -148,13 +148,22 @@ check(
   "the app's onboarding offers deleting the account",
   appOnboarding.includes("t('onboarding.leaveDelete')") && appOnboarding.includes('deleteAccountHere('),
 );
-for (const lang of ['ar', 'en']) {
+for (const [lang, website, app] of [
+  ['ar', 'على الموقع', 'في التطبيق'],
+  ['en', 'On the website', 'In the app'],
+]) {
   const label = JSON.parse(read(`messages/${lang}.json`)).onboarding?.leaveDelete ?? '';
-  check(
-    `account-deletion.${lang}.md names that button as it reads`,
-    Boolean(label) && (docs['account-deletion']?.[lang]?.raw ?? '').includes(`**${label}**`),
-    label,
-  );
+  const sections = (docs['account-deletion']?.[lang]?.raw ?? '').split(/^## /m);
+  const section = (heading) => sections.find((part) => part.startsWith(`${heading}\n`)) ?? '';
+  // In each place it is found: an unfinished account cannot reach the app's
+  // Account tab, so "open the Account tab" alone is no way out there.
+  for (const heading of [website, app]) {
+    check(
+      `account-deletion.${lang}.md names that button, as it reads, under "${heading}"`,
+      Boolean(label) && section(heading).includes(`**${label}**`),
+      label,
+    );
+  }
 }
 
 console.log('— everything the website keeps in a browser is on the cookie page');

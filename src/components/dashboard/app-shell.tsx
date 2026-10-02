@@ -198,7 +198,9 @@ export function AppShell({
     if (!open) return;
     const wide = window.matchMedia('(min-width: 64rem)');
     const closeIfWide = () => {
-      if (wide.matches) setOpen(false);
+      if (!wide.matches) return;
+      widened.current = true;
+      setOpen(false);
     };
     closeIfWide();
     wide.addEventListener('change', closeIfWide);
@@ -211,6 +213,18 @@ export function AppShell({
   // the drawer into the page it was covering.
   const drawerRef = useRef<HTMLDivElement>(null);
   useModalLayer(open, () => setOpen(false), drawerRef);
+
+  // Closed by the window growing, focus would go back to the button that
+  // opened the drawer — hidden with the phone layout — and fall to <body>,
+  // the top of the page. The rail's own toggle is where the menu is now.
+  // (Every cleanup runs before any effect, so this lands after that one.)
+  const widened = useRef(false);
+  const collapseRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (open || !widened.current) return;
+    widened.current = false;
+    collapseRef.current?.focus();
+  }, [open]);
 
   async function signOut() {
     // Loaded when it is used, as the public header's menu does.
@@ -387,6 +401,7 @@ export function AppShell({
           </button>
 
           <button
+            ref={collapseRef}
             type="button"
             onClick={() => setCollapsed((v) => !v)}
             aria-label={collapsed ? tNav('expandMenu') : tNav('collapseMenu')}

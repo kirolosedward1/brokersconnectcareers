@@ -119,8 +119,9 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               {/* The same bell the console has. An employer reading their own
                   company page is where an application lands, and until now the
                   only place that said so was a screen they had navigated away
-                  from. It never sits on the hero film: HeaderShell floats only
-                  when nobody is signed in, and nobody signed out has a bell. */}
+                  from. On /employers the header floats over the film for
+                  everybody, signed in or not, so the bell, the account menu
+                  and the phone menu each take the film's white there. */}
               <NotificationMenu locale={locale} userId={viewer.userId} />
               <UserMenu
                 name={viewer.profile.full_name}

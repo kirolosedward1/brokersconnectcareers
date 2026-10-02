@@ -344,7 +344,11 @@ export function OnboardingForm({
  * should say "1 of 2, selected" and move between them with the arrow keys,
  * where two pressed-or-not buttons said neither that they belong together nor
  * that choosing one unchooses the other. The input is hidden; the card is its
- * label, and shows the focus ring the input would.
+ * label, and draws the focus the input would — as an outline, which Windows'
+ * high-contrast mode keeps, where a ring is a shadow it drops — and, in that
+ * mode, the chosen card's border in the system's highlight colour, since the
+ * brand's colours are not shown there. Named by its title alone: the hint,
+ * inside the label too, is its description, not a second reading of its name.
  */
 function RoleCard({
   value,
@@ -361,12 +365,15 @@ function RoleCard({
   title: string;
   hint: string;
 }) {
+  const titleId = useId();
   const hintId = useId();
   return (
     <label
       className={cn(
-        'cursor-pointer rounded-xl border p-4 text-start transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
-        selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted',
+        'cursor-pointer rounded-xl border p-4 text-start transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
+        selected
+          ? 'border-primary bg-primary/5 forced-colors:border-2 forced-colors:border-[Highlight]'
+          : 'border-border hover:bg-muted',
       )}
     >
       <input
@@ -375,13 +382,16 @@ function RoleCard({
         value={value}
         checked={selected}
         onChange={onSelect}
+        aria-labelledby={titleId}
         aria-describedby={hintId}
         className="sr-only"
       />
       <span className={cn('inline-flex', selected ? 'text-primary' : 'text-muted-foreground')}>
         {icon}
       </span>
-      <span className="mt-2 block font-medium">{title}</span>
+      <span id={titleId} className="mt-2 block font-medium">
+        {title}
+      </span>
       <span id={hintId} className="mt-1 block text-xs leading-relaxed text-muted-foreground">
         {hint}
       </span>

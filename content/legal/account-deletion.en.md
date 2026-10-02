@@ -19,6 +19,8 @@ If you created an account but never finished setting it up, the page that asks f
 1. Open the **Account** tab, then **Delete account**.
 2. Type the word asked for to confirm and press the delete button. If you sign in with Apple, the app asks you to confirm with Apple once more, and we then ask Apple to remove the link between your Apple account and the app.
 
+If you created an account but never finished setting it up, the screen that asks for your details has **Delete this account** under signing out.
+
 ## If you own a company
 
 A company owner's account is not deleted from the settings directly, because deleting it would delete the company, all its listings, and the applications other people sent to it. Press **Ask us to delete it** on the same screen and you will see a reference number for your request. We contact you by email **within 7 days** to agree what happens to the company, and your account is deleted **within 30 days**.

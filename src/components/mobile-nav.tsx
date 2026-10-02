@@ -65,7 +65,7 @@ export function MobileNav({ label, children }: { label: string; children: React.
     <details ref={ref} className="group relative md:hidden">
       <summary
         ref={summaryRef as React.RefObject<HTMLElement>}
-        className="grid size-11 cursor-pointer list-none place-items-center rounded-lg transition-colors hover:bg-muted [&::-webkit-details-marker]:hidden"
+        className="grid size-11 cursor-pointer list-none place-items-center rounded-lg transition-colors hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15 [&::-webkit-details-marker]:hidden"
         aria-label={label}
       >
         <Menu
