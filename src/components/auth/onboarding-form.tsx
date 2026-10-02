@@ -236,7 +236,12 @@ export function OnboardingForm({
             <Input id="companyName" name="companyName" required maxLength={160} />
           </Field>
 
-          <Field label={t('companyWebsite')} hint={tCommon('optional')} htmlFor="companyWebsite">
+          <Field
+            label={t('companyWebsite')}
+            hint={tCommon('optional')}
+            htmlFor="companyWebsite"
+            error={errors.companyWebsite ? tValidation('invalidUrl') : undefined}
+          >
             <Input
               id="companyWebsite"
               name="companyWebsite"

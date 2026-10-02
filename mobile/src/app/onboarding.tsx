@@ -205,6 +205,7 @@ function OnboardingForm({
               ...(fields.fullName ? { fullName: t('validation.required') } : {}),
               ...(fields.whatsapp ? { whatsapp: t('validation.invalidPhone') } : {}),
               ...(fields.company ? { company: t('validation.required') } : {}),
+              ...(fields.companyWebsite ? { companyWebsite: t('validation.invalidUrl') } : {}),
               ...(fields.visibility ? { visibility: t('onboarding.visibilityRequired') } : {}),
               ...(fields.agreed ? { terms: t('onboarding.consentRequired') } : {}),
               ...(fields.role || fields.locale ? { form: t('common.errorBody') } : {}),
@@ -323,7 +324,7 @@ function OnboardingForm({
                 maxLength={160}
               />
             </Field>
-            <Field label={t('onboarding.companyWebsite')} hint={t('common.optional')}>
+            <Field label={t('onboarding.companyWebsite')} hint={t('common.optional')} error={errors.companyWebsite}>
               <TextField
                 value={companyWebsite}
                 onChangeText={setCompanyWebsite}

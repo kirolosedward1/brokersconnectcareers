@@ -72,6 +72,29 @@ console.log('\n— an href');
     check(`refuses ${JSON.stringify(bad)}`, safeHttpUrl(bad) === null, String(safeHttpUrl(bad)));
   }
   check('length is bounded', safeHttpUrl(`https://example.com/${'a'.repeat(300)}`) === null);
+
+  // An Arabic page name, as people paste it: kept readable, and short enough
+  // for the column (190 after the scheme), where its escaped form was 233.
+  const page = 'https://www.facebook.com/شركة-الرواد-للتسويق-والاستثمار-العقاري';
+  check('an Arabic address is kept as it reads', safeHttpUrl(page) === page, String(safeHttpUrl(page)));
+  check(
+    'and fits the column, which its escaped form did not',
+    /^https?:\/\/[^\s]{1,190}$/i.test(safeHttpUrl(page) ?? '') && new URL(page).toString().length > 198,
+  );
+  check(
+    'an invisible direction mark stays escaped',
+    safeHttpUrl('https://example.com/a\u202Eb') === 'https://example.com/a%E2%80%AEb',
+    String(safeHttpUrl('https://example.com/a\u202Eb')),
+  );
+  check(
+    'so does a space',
+    safeHttpUrl('https://example.com/a b') === 'https://example.com/a%20b',
+    String(safeHttpUrl('https://example.com/a b')),
+  );
+  check(
+    'an address too long for the column even read is refused',
+    safeHttpUrl(`https://example.com/${'م'.repeat(185)}`) === null,
+  );
 }
 
 console.log('\n— the one page off the site a button may send somebody to');

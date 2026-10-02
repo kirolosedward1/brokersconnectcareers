@@ -11,6 +11,7 @@ import { after } from 'next/server';
 import { clean, safeHttpUrl } from '@/lib/security/sanitize';
 import { publish } from '@/lib/notifications/events';
 import { currentPolicyVersions } from '@/lib/legal';
+import { logFailure } from '@/lib/observe';
 
 /**
  * A company answers more questions than a consultant does.
@@ -23,7 +24,15 @@ import { currentPolicyVersions } from '@/lib/legal';
  */
 const companySchema = z.object({
   nameAr: z.string().trim().min(2).max(160),
-  website: z.string().trim().max(200).optional().nullable(),
+  // The rule the company page applies (company.ts): an address the website
+  // will draw as a link and the column will take.
+  website: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .nullable()
+    .refine((value) => !value || safeHttpUrl(value) !== null, { message: 'invalidUrl' }),
   headcountBand: z.enum(HEADCOUNT_BANDS).optional().nullable(),
   districtId: z.coerce.number().int().positive().optional().nullable(),
 });
@@ -224,7 +233,13 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
     const { data: existing } = await supabase.rpc('my_company_id');
 
     if (!existing) {
-      await withUniqueSlug<{ id: string }>(
+      /*
+        Checked: an employer whose company insert was refused was answered
+        ok, and left pending with no company for anybody to review. The
+        account is made either way, so a second try only needs the company —
+        the duplicate profile above is read as already onboarded.
+      */
+      const created = await withUniqueSlug<{ id: string }>(
         () => buildCompanySlug(company.nameAr),
         (slug) =>
           supabase
@@ -240,6 +255,10 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
             .select('id')
             .single(),
       );
+      if (created.error) {
+        logFailure('onboarding', 'the company could not be created', { code: created.error.code ?? null });
+        return { ok: false, error: 'failed' };
+      }
     }
   }
 
@@ -264,6 +283,12 @@ function asPublicRole(value: string | null | undefined): 'candidate' | 'employer
 function flatten(error: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
   for (const issue of error.issues) {
+    // The company's website has its own field, and its own words: under the
+    // company's name, "required" told somebody to fill in what they had.
+    if (issue.path[0] === 'company' && issue.path[1] === 'website') {
+      out.companyWebsite ??= 'invalidUrl';
+      continue;
+    }
     const key = String(issue.path[0] ?? '');
     if (key && !out[key]) out[key] = 'required';
   }

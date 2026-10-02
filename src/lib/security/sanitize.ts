@@ -99,5 +99,26 @@ export function safeHttpUrl(value: string | null | undefined, maxLength = 200): 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
   if (!url.hostname || url.username || url.password) return null;
 
-  return url.toString();
+  /*
+    The address as it is read, not as it is sent. Percent-encoding writes each
+    Arabic letter as six characters, so a 63-character Facebook page became
+    233 and broke the column's rule (migration 307: 190 after the scheme) — a
+    company page that would not save, an onboarding that made no company. A
+    run of escapes is written back only when it decodes to letters, marks or
+    digits; a space, a slash, a percent sign or an invisible direction mark
+    stays escaped, and a browser escapes the letters again when the link is
+    followed.
+  */
+  const readable = url.toString().replace(/(?:%[89a-f][0-9a-f])+/gi, (run) => {
+    try {
+      const decoded = decodeURIComponent(run);
+      return /^[\p{L}\p{M}\p{N}]+$/u.test(decoded) ? decoded : run;
+    } catch {
+      return run;
+    }
+  });
+  return WEBSITE_COLUMN.test(readable) ? readable : null;
 }
+
+/** companies_website_is_http (migration 307): what the column itself takes. */
+const WEBSITE_COLUMN = /^https?:\/\/[^\s]{1,190}$/i;
