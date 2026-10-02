@@ -66,6 +66,7 @@ for (const path of ['/dashboard', '/employer$', '/employer/', '/admin', '/api', 
 // Read as a crawler reads them: a rule is a prefix, and one written for a
 // private area must not also cover a page the sitemap asks to be read.
 const disallowed = [...robots.body.matchAll(/^Disallow: (\S+)$/gm)].map((match) => match[1]);
+const allowed = [...robots.body.matchAll(/^Allow: (\S+)$/gm)].map((match) => match[1]);
 
 console.log('\n— sitemap');
 const sitemap = await get('/sitemap.xml');
@@ -75,7 +76,7 @@ const origin = new URL(urls[0] ?? BASE).origin;
 check('every URL is absolute on one origin', urls.every((url) => url.startsWith(origin)));
 check('no duplicates', new Set(urls).size === urls.length);
 check('no query strings', urls.every((url) => !url.includes('?')));
-const blocked = urls.filter((url) => isDisallowed(new URL(url).pathname, disallowed));
+const blocked = urls.filter((url) => isDisallowed(new URL(url).pathname, disallowed, allowed));
 check('robots.txt lets a crawler read every URL in it', blocked.length === 0, blocked.slice(0, 5).join(', '));
 
 console.log(`\n— every sitemap URL (${urls.length})`);

@@ -65,6 +65,18 @@ export const VIEW_PARAMS = [
   'years',
 ];
 
+/**
+ * Every `Allow:` line. A crawler takes the longest rule that matches (RFC
+ * 9309; Allow wins a tie), so these let through what a shorter Disallow would
+ * otherwise catch:
+ *
+ *   /_next/image — Next's image optimiser, every logo and picture on the site:
+ *     `/_next/image?url=…&w=64&q=75`. Its `q` is the image's quality, but
+ *     `/*?*&q=` above cannot tell, and kept crawlers off every image while
+ *     they rendered the pages, logos out of image search with them.
+ */
+export const ALLOW = ['/', '/_next/image'];
+
 /** Every `Disallow:` line robots.txt carries, in order. */
 export function disallowRules(englishEnabled: boolean): string[] {
   const privatePaths = englishEnabled
@@ -74,6 +86,7 @@ export function disallowRules(englishEnabled: boolean): string[] {
     ...privatePaths,
     // The apply step: a sign-in wall for a crawler, one per listing.
     '/jobs/*/apply',
+    ...(englishEnabled ? ['/en/jobs/*/apply'] : []),
     ...VIEW_PARAMS.flatMap((param) => [`/*?${param}=`, `/*?*&${param}=`]),
   ];
 }
@@ -81,17 +94,20 @@ export function disallowRules(englishEnabled: boolean): string[] {
 /**
  * Whether a crawler reading these rules leaves `pathAndQuery` alone — as
  * Google matches them (RFC 9309): from the start of the path, `*` standing
- * for any run of characters and a final `$` for the end of the URL. The only
- * Allow is `/`, which every Disallow outranks by being longer, so any match
- * keeps the URL out.
+ * for any run of characters and a final `$` for the end of the URL. The
+ * longest rule that matches decides, and an Allow as long as a Disallow wins.
  */
-export function isDisallowed(pathAndQuery: string, rules: string[]): boolean {
-  return rules.some((rule) => {
-    const anchored = rule.endsWith('$');
-    const body = (anchored ? rule.slice(0, -1) : rule)
-      .split('*')
-      .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
-      .join('.*');
-    return new RegExp(`^${body}${anchored ? '$' : ''}`).test(pathAndQuery);
-  });
+export function isDisallowed(pathAndQuery: string, disallow: string[], allow: string[] = ALLOW): boolean {
+  const longest = (rules: string[]) =>
+    rules.reduce((best, rule) => (rule.length > best && matches(rule, pathAndQuery) ? rule.length : best), -1);
+  return longest(disallow) > longest(allow);
+}
+
+function matches(rule: string, pathAndQuery: string): boolean {
+  const anchored = rule.endsWith('$');
+  const body = (anchored ? rule.slice(0, -1) : rule)
+    .split('*')
+    .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+    .join('.*');
+  return new RegExp(`^${body}${anchored ? '$' : ''}`).test(pathAndQuery);
 }

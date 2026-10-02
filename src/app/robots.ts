@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { env } from '@/lib/env';
 import { ENGLISH_ENABLED } from '@/i18n/routing';
-import { disallowRules } from '@/lib/seo/robots-rules';
+import { ALLOW, disallowRules } from '@/lib/seo/robots-rules';
 
 /**
  * What crawlers are kept out of, and where the sitemap is. The rules, and why
@@ -13,7 +13,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: '/',
+      allow: ALLOW,
       disallow: disallowRules(ENGLISH_ENABLED),
     },
     sitemap: `${env.siteUrl}/sitemap.xml`,

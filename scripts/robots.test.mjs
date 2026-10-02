@@ -11,7 +11,7 @@
  * purpose must stay in.
  */
 import { readFileSync } from 'node:fs';
-import { disallowRules, isDisallowed } from '../src/lib/seo/robots-rules.ts';
+import { ALLOW, disallowRules, isDisallowed } from '../src/lib/seo/robots-rules.ts';
 
 let pass = 0;
 let fail = 0;
@@ -32,7 +32,11 @@ const legal = slugList ? [...slugList[1].matchAll(/'([\w-]+)'/g)].map((match) =>
 console.log('— the sitemap is read as written');
 check('sitemap.ts lists its fixed pages', fixed.includes('/') && fixed.includes('/employers'), fixed.join(', '));
 check('lib/legal.ts names the legal pages', legal.length >= 5, legal.join(', '));
-check('robots.ts serves these rules', read('src/app/robots.ts').includes('disallow: disallowRules(ENGLISH_ENABLED)'));
+check(
+  'robots.ts serves these rules',
+  read('src/app/robots.ts').includes('disallow: disallowRules(ENGLISH_ENABLED)') &&
+    read('src/app/robots.ts').includes('allow: ALLOW'),
+);
 
 // What the sitemap builds from the database, one of each shape.
 const PUBLIC = [
@@ -46,6 +50,13 @@ const PUBLIC = [
 
 // Facets left in on purpose (lib/seo/robots-rules.ts says why).
 const CRAWLABLE = ['/jobs?track=primary', '/jobs?district=new-cairo', '/jobs?page=2', '/agents/a1b2c3'];
+
+// What a page is drawn with: Next's image optimiser, whose own `q` is the
+// image's quality — a logo of ours, and a company's logo from Storage.
+const ASSETS = [
+  '/_next/image?url=%2Fbrand%2Flogo-mark.png&w=64&q=75',
+  '/_next/image?url=https%3A%2F%2Fhiwdhicwsohbipxzazmb.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Fcompany-logos%2Fc%2Flogo-1.webp&w=128&q=75',
+];
 
 const PRIVATE = [
   '/employer',
@@ -79,9 +90,17 @@ for (const english of [false, true]) {
     }
     for (const path of CRAWLABLE) check(`a crawler may read ${prefix}${path}`, !isDisallowed(`${prefix}${path}`, rules));
   }
+  for (const path of ASSETS) check(`a crawler may fetch ${path.slice(0, 48)}…`, !isDisallowed(path, rules));
   for (const path of PRIVATE) check(`a crawler keeps out of ${path}`, isDisallowed(path, rules));
   if (english) {
-    for (const path of ['/en/employer', '/en/employer/jobs', '/en/dashboard', '/en/admin', '/en/onboarding']) {
+    for (const path of [
+      '/en/employer',
+      '/en/employer/jobs',
+      '/en/dashboard',
+      '/en/admin',
+      '/en/onboarding',
+      '/en/jobs/sales-manager-new-cairo-123456/apply',
+    ]) {
       check(`a crawler keeps out of ${path}`, isDisallowed(path, rules));
     }
   }
@@ -92,6 +111,11 @@ check('a rule is a prefix', isDisallowed('/admin/x', ['/admin']));
 check('`$` ends the match', !isDisallowed('/employers', ['/employer$']) && isDisallowed('/employer', ['/employer$']));
 check('`*` stands for any run of characters', isDisallowed('/jobs/a/b/apply', ['/jobs/*/apply']));
 check('`?` is a character, not a pattern', !isDisallowed('/employe', ['/employer?']) && isDisallowed('/employer?x=1', ['/employer?']));
+check('the longer rule decides: an Allow longer than a Disallow lets it through',
+  !isDisallowed('/_next/image?url=x&q=75', ['/*?*&q='], ['/', '/_next/image']));
+check('and a Disallow longer than an Allow keeps it out', isDisallowed('/jobs?q=sales', ['/*?q='], ['/']));
+check('an Allow as long as a Disallow wins', !isDisallowed('/a', ['/a'], ['/a']));
+check('the Allow lines robots.ts serves start with /', ALLOW[0] === '/');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
