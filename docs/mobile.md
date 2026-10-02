@@ -591,4 +591,8 @@ features can follow over the air.
 
 The native iOS build is also compiled in CI on `main` (`ios-build` in
 `.github/workflows/mobile.yml`), so a config plugin or native dependency that
-breaks the build shows up before an EAS build is paid for.
+breaks the build shows up before an EAS build is paid for. It runs on demand
+too: Actions → Mobile → Run workflow, on any branch. It builds with Xcode 26,
+as EAS does for SDK 57: `@expo/ui`, which `expo-router` depends on, uses iOS 26
+SwiftUI API that Xcode 16 cannot compile, so a Mac building locally needs
+Xcode 26 as well.

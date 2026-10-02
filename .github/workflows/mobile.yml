@@ -82,9 +82,14 @@ jobs:
     # A real native build for the simulator: config plugins, CocoaPods, Swift
     # and Objective-C all compile. Not on pull requests (it takes a while and
     # needs a macOS runner); on main, and on demand.
+    #
+    # Xcode 26, as EAS builds SDK 57 with: @expo/ui (a dependency of
+    # expo-router) calls iOS 26 SwiftUI API — ButtonRole.close, a Button with a
+    # role and no label — that Xcode 16's SDK does not have. macos-15 defaults
+    # to Xcode 16.4, and the build failed there; macos-26 defaults to Xcode 26.
     if: github.event_name != 'pull_request'
     needs: check
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     defaults:
       run:
@@ -104,6 +109,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Xcode
+        run: |
+          xcodebuild -version
+          if ! xcodebuild -version | grep -qE '^Xcode (2[6-9]|[3-9][0-9])\.'; then
+            echo "::error::Expo SDK 57 needs Xcode 26 or later"
+            exit 1
+          fi
+
       - name: Generate the native project
         run: npx expo prebuild --platform ios --no-install
 
@@ -111,15 +124,22 @@ jobs:
         run: pod install
         working-directory: mobile/ios
 
+      # The whole log is kept and only its errors are shown when it fails: the
+      # compiler's errors come long before the end, where a tail would miss them.
       - name: Build for the simulator
         working-directory: mobile/ios
         run: |
-          set -o pipefail
-          xcodebuild \
+          if xcodebuild \
             -workspace BrokersConnect.xcworkspace \
             -scheme BrokersConnect \
             -configuration Debug \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            build | tail -n 200
+            build > "$RUNNER_TEMP/xcodebuild.log" 2>&1; then
+            tail -n 20 "$RUNNER_TEMP/xcodebuild.log"
+          else
+            grep -nE -A4 'error:|fatal error|Undefined symbol|The following build commands failed' "$RUNNER_TEMP/xcodebuild.log" | head -n 300 || true
+            tail -n 40 "$RUNNER_TEMP/xcodebuild.log"
+            exit 1
+          fi
