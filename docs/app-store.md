@@ -116,6 +116,10 @@ Then, in the notes:
 In this order; each needs an account, a secret or a decision only the owner
 has.
 
+0. **The seeded demo accounts off production** (P0.1 in
+   `docs/privacy/AUDIT-2026-09-27.md`): Supabase dashboard → Authentication →
+   Users → search `demo.test`, and delete them. App Review gets its own two
+   accounts (above), never these.
 1. **The website's server keys on Vercel** (production), then a redeploy.
    `SUPABASE_SERVICE_ROLE_KEY` first: without it account deletion answers
    "unavailable", CV and document links do not open, team invites, view
