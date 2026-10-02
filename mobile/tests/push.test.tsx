@@ -82,7 +82,11 @@ afterEach(() => {
   warnings.length = 0;
 });
 
+/** Each test's cache, fresh; a test reads the profile again through it, as the app would. */
+let queryClient: QueryClient;
+
 beforeEach(async () => {
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   me = { ...profile };
   unread = 0;
   jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue({
@@ -121,9 +125,8 @@ function Settled({ children }: { children: ReactNode }) {
 
 /** The app's root as far as pushes need it: the stack, the pending page, and the bridge. */
 function Root() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
-    <QueryClientProvider client={client}>
+    <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <I18nProvider>
           <SessionProvider>
@@ -292,6 +295,65 @@ describe('what to hear about', () => {
     await waitFor(() => expect(screen.getByLabelText(ar.app.push.accountCandidate).props.value).toBe(false));
     expect(screen.getByLabelText(ar.app.push.jobAlerts).props.value).toBe(false);
     expect(screen.getByLabelText(ar.app.push.applicationsCandidate).props.value).toBe(true);
+  });
+
+  it('follows another phone\'s later change to a switch flipped here once', async () => {
+    me = { ...profile, ...chosen };
+    // The website applies what it is sent, as updatePushPreferences does.
+    server.on('POST /api/mobile/v1/actions/updatePushPreferences', (_url, init) => {
+      const { input } = JSON.parse(String(init?.body));
+      me = { ...me, ...input };
+      return { ok: true };
+    });
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    // Quiet hours on, here; saved.
+    fireEvent(await screen.findByLabelText(ar.app.push.quiet), 'valueChange', true);
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+
+    // Later, on another phone: quiet hours off again. This phone reads the
+    // profile again, and the switch flipped here earlier shows what is saved.
+    me = { ...me, push_quiet_hours: false, push_account: false };
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ['viewer'] });
+    });
+    await waitFor(() => expect(screen.getByLabelText(ar.app.push.accountCandidate).props.value).toBe(false));
+    expect(screen.getByLabelText(ar.app.push.quiet).props.value).toBe(false);
+  });
+
+  it('puts a refused switch back to what was read meanwhile, not to what it showed before', async () => {
+    me = { ...profile, ...chosen };
+    server.on('POST /api/mobile/v1/actions/updatePushPreferences', { ok: false, error: 'failed' });
+    // The save's answer held back until the profile has been read again.
+    let answer!: () => void;
+    const answered = new Promise<void>((resolve) => (answer = resolve));
+    const plain = server.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (href.includes('updatePushPreferences')) await answered;
+      return plain(input, init);
+    }) as typeof fetch;
+    try {
+      jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+      renderRouter(app, { initialUrl: '/account/alerts' });
+
+      // Applications off, here; the save on its way.
+      fireEvent(await screen.findByLabelText(ar.app.push.applicationsCandidate), 'valueChange', false);
+      // Meanwhile another phone turns them off too, and this phone reads the profile.
+      me = { ...me, push_applications: false, push_account: false };
+      await act(async () => {
+        await queryClient.invalidateQueries({ queryKey: ['viewer'] });
+      });
+      await waitFor(() => expect(screen.getByLabelText(ar.app.push.accountCandidate).props.value).toBe(false));
+
+      // Then this phone's save is refused: the switch shows what is saved, off.
+      answer();
+      expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+      expect(screen.getByLabelText(ar.app.push.applicationsCandidate).props.value).toBe(false);
+    } finally {
+      globalThis.fetch = plain as unknown as typeof fetch;
+    }
   });
 
   it('puts a switch back when the website refuses it', async () => {

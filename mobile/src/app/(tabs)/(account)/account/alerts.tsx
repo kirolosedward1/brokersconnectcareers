@@ -152,24 +152,36 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
   const tCommon = useTranslations('common');
   const { colors } = useTheme();
   const save = useSavePushPreferences();
-  const [prefs, setPrefs] = useState(initial);
   const [saved, setSaved] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  // A switch flipped here shows what was flipped. The others follow the
-  // saved values as they arrive — a change made on another phone, or a read
-  // still on its way when this opened — where they used to keep the first
-  // copy for as long as the screen was open.
-  const [touched, setTouched] = useState<ReadonlySet<keyof PushPreferences>>(() => new Set());
+  // A switch shows the saved value as last read — a change made on another
+  // phone, a read still on its way when this opened — except one flipped
+  // here: that shows the flip while it is saved, and once saved until the
+  // profile is read again. Refused, it shows the last read, which may have
+  // changed while the save was on its way.
+  const [flipped, setFlipped] = useState<Partial<Record<keyof PushPreferences, { value: boolean; saving: boolean }>>>(
+    {},
+  );
   const [seen, setSeen] = useState(initial);
   if (KINDS.some((kind) => seen[kind] !== initial[kind])) {
+    // A read newer than the saves that are done: they give way to it.
     setSeen(initial);
-    setPrefs((current) => {
+    setFlipped((current) => {
       const next = { ...current };
-      for (const kind of KINDS) if (!touched.has(kind)) next[kind] = initial[kind];
+      for (const kind of KINDS) if (next[kind] && !next[kind].saving) delete next[kind];
       return next;
     });
   }
+  const shown = (key: keyof PushPreferences) => flipped[key]?.value ?? initial[key];
+  const settle = (key: keyof PushPreferences, done: boolean) =>
+    setFlipped((current) => {
+      const next = { ...current };
+      const entry = next[key];
+      if (done && entry) next[key] = { ...entry, saving: false };
+      else delete next[key];
+      return next;
+    });
 
   const rows: { key: keyof PushPreferences; label: string; hint: string }[] = [
     ...(employer ? [] : [{ key: 'push_job_alerts' as const, label: t('jobAlerts'), hint: t('jobAlertsHint') }]),
@@ -183,22 +195,19 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
   ];
 
   const flip = (key: keyof PushPreferences) => {
-    const value = !prefs[key];
-    setPrefs((current) => ({ ...current, [key]: value }));
-    setTouched((current) => new Set(current).add(key));
+    const value = !shown(key);
+    setFlipped((current) => ({ ...current, [key]: { value, saving: true } }));
     setSaved(false);
     setFailed(false);
     save.mutate(
       { [key]: value },
       {
-        onSuccess: () => setSaved(true),
+        onSuccess: () => {
+          settle(key, true);
+          setSaved(true);
+        },
         onError: () => {
-          setPrefs((current) => ({ ...current, [key]: !value }));
-          setTouched((current) => {
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-          });
+          settle(key, false);
           setFailed(true);
         },
       },
@@ -236,7 +245,7 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
             </Text>
           </View>
           <Switch
-            value={prefs[row.key]}
+            value={shown(row.key)}
             onValueChange={() => flip(row.key)}
             disabled={save.isPending}
             accessibilityLabel={row.label}
