@@ -2226,8 +2226,11 @@ report.section('reports need an account, and an account has limits');
   report.check('the tenth report in a day is the last one',
     !eleventh.ok && /report_rate_limit/.test(eleventh.error ?? ''), eleventh.error);
 
+  // A listing the second reporter can read: since migration 344 a report
+  // needs a target its reporter can see, and the fixtures are drafts.
+  const readable = (await db.query("select id from jobs where status = 'active' order by id limit 1")).rows[0].id;
   const other = await as(publicAgent,
-    `insert into reports (job_id, reporter_id, reason) values ('${rlJobs[9]}','${publicAgent}','spam') returning id`);
+    `insert into reports (job_id, reporter_id, reason) values ('${readable}','${publicAgent}','spam') returning id`);
   report.check('and the cap is per account, not per listing',
     other.ok && other.rows.length === 1, other.error);
 }
@@ -2237,9 +2240,16 @@ report.section('applications are capped per day too');
   // Counted inside the trigger's own window, not over the whole table. The
   // seeded applications are older than a day and correctly do not count, which
   // is the difference between a rolling limit and a lifetime quota.
+  // What the trigger counts: the applications in the window, or — since
+  // migration 344 — the ledger of what was sent, which also holds the ones
+  // earlier sections withdrew, whichever is more.
   const inWindow = `
-    select count(*)::int as n from applications
-     where candidate_id = '${candidate}' and created_at > now() - interval '1 day'
+    select greatest(
+             (select count(*) from applications
+               where candidate_id = '${candidate}' and created_at > now() - interval '1 day'),
+             (select count(*) from rate_limit_hits
+               where bucket = 'applications:${candidate}' and created_at > now() - interval '1 day')
+           )::int as n
   `;
   const held = (await db.query(inWindow)).rows[0].n;
 
@@ -2260,9 +2270,13 @@ report.section('applications are capped per day too');
     written eight at a time and aged past the short window between batches,
     which is what a day of honest applying looks like to the counter.
   */
+  // Since migration 344 the limit also counts a ledger of what was sent
+  // (rate_limit_hits), which a withdrawal cannot take back; it ages with them.
   const ageTheShortWindow = () =>
     db.exec(`update applications set created_at = created_at - interval '11 minutes'
-              where candidate_id = '${candidate}' and created_at > now() - interval '10 minutes'`);
+              where candidate_id = '${candidate}' and created_at > now() - interval '10 minutes';
+             update rate_limit_hits set created_at = created_at - interval '11 minutes'
+              where bucket = 'applications:${candidate}' and created_at > now() - interval '10 minutes'`);
 
   // Whatever earlier sections filed for this candidate counts against the
   // short window too, so it is aged before the first batch.
@@ -2303,6 +2317,12 @@ report.section('applications are capped per day too');
      where id = (
        select id from applications
         where candidate_id = '${candidate}' and created_at > now() - interval '1 day'
+        limit 1
+     );
+    update rate_limit_hits set created_at = now() - interval '2 days'
+     where ctid = (
+       select ctid from rate_limit_hits
+        where bucket = 'applications:${candidate}' and created_at > now() - interval '1 day'
         limit 1
      )
   `);

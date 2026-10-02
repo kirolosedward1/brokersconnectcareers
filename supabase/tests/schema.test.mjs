@@ -410,9 +410,12 @@ report.section('who may call a definer function, on purpose');
     'record_support_event',
     'submit_support_request',
     // Predicates that row-level security itself calls.
+    'agent_card_listed_to_viewer', // the report insert policy (344)
+    'agent_owner_listed', // the directory's row policies (344)
     'applied_to_job',
     'applied_to_my_job',
     'can_browse_agent_directory',
+    'company_document_reviewed', // the verification papers' storage policies (344)
     'current_role_of_user',
     'is_admin',
     'is_approved_employer',

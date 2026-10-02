@@ -104,7 +104,7 @@ and each file `apply` ran with the adjustment it ran with. Without that, it
 could not rebuild production at all: 068 met a database with no tables.
 `scripts/release/rehearse.test.mjs` checks it on production's ledger read
 2026-10-02: the rebuild has production's fingerprint in every kind, and 332–343
-apply on top of it and end where `main` does. Without `--ledger` it reads the
+apply on top of it and end where `main` does (and so do the files merged since). Without `--ledger` it reads the
 ledger of `TARGET_DATABASE_URL`, as `pnpm db:apply` does, and nothing else.
 
 ### Verified against production (2026-09-29)
