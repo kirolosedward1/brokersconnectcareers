@@ -3,7 +3,7 @@
   "regions": [
     "bom1"
   ],
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ':(exclude)mobile' ':(exclude).github/workflows/mobile.yml'",
+  "ignoreCommand": "base=${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}; git cat-file -e \"$base^{commit}\" 2>/dev/null || exit 1; git diff --quiet \"$base\" HEAD -- . ':(exclude)mobile' ':(exclude).github/workflows/mobile.yml'",
   "crons": [
     {
       "path": "/api/cron/expire-jobs",

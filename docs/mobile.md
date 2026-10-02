@@ -76,6 +76,15 @@ not reported as unused and a key the app asks for must exist.
 Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
 `src/lib/**` and `messages/**` as well as `mobile/**`.
 
+The other way round, a change only to `mobile/` does not build the website:
+`vercel.json`'s `ignoreCommand` skips the deployment when nothing outside
+`mobile/` (and the app's workflow) changed since the last deployment that
+succeeded (`VERCEL_GIT_PREVIOUS_SHA`). It compared with the previous commit
+alone before, so a push of several commits whose last one touched only the app
+skipped the website changes in the commits before it. When that deployment's
+commit is not in Vercel's shallow clone, the build runs; with no deployment to
+compare with (a new branch), it compares with the previous commit.
+
 ## Inside the app
 
 - **Session.** Supabase Auth, as on the website. The session is stored
