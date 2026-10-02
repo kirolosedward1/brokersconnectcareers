@@ -116,8 +116,25 @@ export function ApplicantCard({
   const [reason, setReason] = useState(application.decision_note ?? '');
   const [savedReason, setSavedReason] = useState(application.decision_note ?? '');
   const [conflict, setConflict] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
+
+  /*
+    What the server holds, followed after every refresh. The inbox keys a card
+    by its application, so a refresh brings this card new props rather than a
+    new card, and a copy taken when it mounted went stale: after a colleague's
+    move it went on showing the old stage, and every move from it was refused
+    as theirs. The box follows only while nobody has typed in it.
+  */
+  const storedReason = application.decision_note ?? '';
+  const [stored, setStored] = useState({ status: application.status, reason: storedReason });
+  if (stored.status !== application.status || stored.reason !== storedReason) {
+    setStored({ status: application.status, reason: storedReason });
+    setStatus(application.status);
+    setSavedReason(storedReason);
+    if (reason === savedReason) setReason(storedReason);
+  }
 
   const candidate = application.candidate;
   const profile = candidate?.agent_profiles ?? null;
@@ -129,6 +146,7 @@ export function ApplicantCard({
     setStatus(next);
     setSavedReason(decisionNote);
     setConflict(false);
+    setFailed(false);
 
     startTransition(async () => {
       const result = await reach(setApplicationStatus({
@@ -146,12 +164,20 @@ export function ApplicantCard({
       if (!result.ok) {
         setStatus(previousStatus);
         setSavedReason(previousReason);
-        setReason(previousReason);
+        // What they typed stays in the box, and the card says it was not
+        // saved. Put back to the stored words, a failed save took their
+        // sentence away and the button then read "Saved" over nothing new —
+        // the notes below keep a draft the same way.
         if (result.error === 'moved_already') {
           setConflict(true);
           // Their move is the one that stands, and it is already on the
           // server — so re-read rather than describe it from here.
           router.refresh();
+        } else {
+          setFailed(true);
+          // No answer: the move may have landed and only the answer been
+          // lost, so read what the server holds.
+          if (result.error === 'network') router.refresh();
         }
         return;
       }
@@ -341,6 +367,10 @@ export function ApplicantCard({
         {conflict ? (
           <p role="alert" className="w-full text-xs text-destructive">
             {t('applicantMovedAlready')}
+          </p>
+        ) : failed ? (
+          <p role="alert" className="w-full text-xs text-destructive">
+            {tCommon('errorBody')}
           </p>
         ) : null}
 
