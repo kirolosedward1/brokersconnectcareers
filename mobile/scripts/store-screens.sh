@@ -16,8 +16,10 @@
 #   ipad        the largest iPad, where App Review also opens an iPhone app
 #
 # What they show is the live site's: the first listing and the first company
-# it lists. A crash, an error screen or a screen that never loads fails the
-# pass; every pass runs, and the script fails if any did.
+# it lists. With none, the board and the company list are checked empty and the
+# pages they lead to are left out, with a warning: the set is then a smoke run,
+# not the store's screenshots. A crash, an error screen or a screen that never
+# loads fails the pass; every pass runs, and the script fails if any did.
 set -euo pipefail
 
 app="$1"
@@ -38,16 +40,20 @@ live=$(SITE="$site" node --input-type=module -e '
   const pattern = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const { jobs } = await read("/api/mobile/v1/jobs");
   const { companies } = await read("/api/mobile/v1/companies");
-  if (!jobs.length || !companies.length) throw new Error("the live site lists no job or no company");
   console.log(JSON.stringify({
-    JOB_SLUG: jobs[0].slug,
-    JOB_TITLE: pattern(jobs[0].title_ar),
-    COMPANY_SLUG: companies[0].slug,
-    COMPANY_NAME: pattern(companies[0].name_ar),
+    JOB_SLUG: jobs[0]?.slug ?? "none",
+    JOB_TITLE: jobs[0] ? pattern(jobs[0].title_ar) : "none",
+    COMPANY_SLUG: companies[0]?.slug ?? "none",
+    COMPANY_NAME: companies[0] ? pattern(companies[0].name_ar) : "none",
   }));
 ')
 echo "$live" | jq . > "$out/live.json"
 cat "$out/live.json"
+# The company list holds only companies with a live listing, so it is empty
+# exactly when the board is.
+if [ "$(jq -r .JOB_SLUG <<<"$live")" = none ]; then
+  echo "::warning::The live site has no live listing: the board and the company list are checked empty, and the listing and company pages are left out. These are not the store's screenshots; run this again once listings are live."
+fi
 envs=()
 while IFS= read -r pair; do envs+=(-e "$pair"); done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' <<<"$live")
 

@@ -1,0 +1,10 @@
+# A company's page: its name on its own, heading the page.
+appId: net.brokersconnect.app
+---
+- openLink: brokersconnect:///companies/${COMPANY_SLUG}
+- extendedWaitUntil:
+    visible: "${COMPANY_NAME}"
+    timeout: 45000
+- waitForAnimationToEnd
+- runFlow: checks.yaml
+- takeScreenshot: 5-company

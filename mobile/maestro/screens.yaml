@@ -1,56 +1,71 @@
-# The five screens the App Store listing shows, each opened by a link the way a
+# The screens the App Store listing shows, each opened by a link the way a
 # shared link or a notification opens it, checked, then captured. The live
-# site supplies what they show; scripts/store-screens.sh passes the listing and
-# the company to open (JOB_SLUG, COMPANY_SLUG) and their names as patterns
-# (JOB_TITLE, COMPANY_NAME). Each screen is waited for by something only it
-# shows, so a capture never catches the screen before.
+# site supplies what they show: scripts/store-screens.sh passes its first
+# listing and first company (JOB_SLUG, COMPANY_SLUG) and their names as
+# patterns (JOB_TITLE, COMPANY_NAME), or "none" when it lists none. Each screen
+# is waited for by something only it shows, so a capture never catches the
+# screen before; an empty board and an empty company list are checked as
+# such, and the pages they would lead to are left out.
 appId: net.brokersconnect.app
 ---
 # Home, as the app opens on it.
 - runFlow: checks.yaml
 - takeScreenshot: 1-home
 
-# The board: its filter button, then the listing among the cards.
+# The board: its filter button, then the listing among the cards, or the
+# board saying it has none.
 - openLink: brokersconnect:///jobs
 - extendedWaitUntil:
     visible: "الفلاتر.*"
     timeout: 45000
-- extendedWaitUntil:
-    visible: ".*${JOB_TITLE}.*"
-    timeout: 45000
+- runFlow:
+    when:
+      true: ${JOB_SLUG != 'none'}
+    commands:
+      - extendedWaitUntil:
+          visible: ".*${JOB_TITLE}.*"
+          timeout: 45000
+- runFlow:
+    when:
+      true: ${JOB_SLUG == 'none'}
+    commands:
+      - extendedWaitUntil:
+          visible: "مفيش وظائف مطابقة لبحثك."
+          timeout: 45000
 - waitForAnimationToEnd
 - runFlow: checks.yaml
 - takeScreenshot: 2-jobs
 
-# The listing: its share button, then its title on its own.
-- openLink: brokersconnect:///jobs/${JOB_SLUG}
-- extendedWaitUntil:
-    visible: "مشاركة"
-    timeout: 45000
-- extendedWaitUntil:
-    visible: "${JOB_TITLE}"
-    timeout: 45000
-- waitForAnimationToEnd
-- runFlow: checks.yaml
-- takeScreenshot: 3-listing
+- runFlow:
+    when:
+      true: ${JOB_SLUG != 'none'}
+    file: listing.yaml
 
-# The companies: the line under the title, then the company among them.
+# The companies: the line under the title and the company among them, or the
+# list saying it has none.
 - openLink: brokersconnect:///companies
-- extendedWaitUntil:
-    visible: "الشركات اللي بتوظّف على بروكرز كونكت، والموثّق منها."
-    timeout: 45000
-- extendedWaitUntil:
-    visible: ".*${COMPANY_NAME}.*"
-    timeout: 45000
+- runFlow:
+    when:
+      true: ${COMPANY_SLUG != 'none'}
+    commands:
+      - extendedWaitUntil:
+          visible: "الشركات اللي بتوظّف على بروكرز كونكت، والموثّق منها."
+          timeout: 45000
+      - extendedWaitUntil:
+          visible: ".*${COMPANY_NAME}.*"
+          timeout: 45000
+- runFlow:
+    when:
+      true: ${COMPANY_SLUG == 'none'}
+    commands:
+      - extendedWaitUntil:
+          visible: "مفيش شركات مطابقة."
+          timeout: 45000
 - waitForAnimationToEnd
 - runFlow: checks.yaml
 - takeScreenshot: 4-companies
 
-# The company's page: its name on its own, heading the page.
-- openLink: brokersconnect:///companies/${COMPANY_SLUG}
-- extendedWaitUntil:
-    visible: "${COMPANY_NAME}"
-    timeout: 45000
-- waitForAnimationToEnd
-- runFlow: checks.yaml
-- takeScreenshot: 5-company
+- runFlow:
+    when:
+      true: ${COMPANY_SLUG != 'none'}
+    file: company.yaml
