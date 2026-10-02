@@ -61,7 +61,7 @@ function formatMoment(value: string, locale: string): string {
 }
 
 /** Counts a run recorded, as one line of identifiers — `sent 3 · failed 1`. */
-function statsLine(stats: Record<string, number | boolean> | null): string {
+function statsLine(stats: Record<string, number | boolean | string> | null): string {
   if (!stats) return '';
   return Object.entries(stats)
     .filter(([key]) => key !== 'ms')

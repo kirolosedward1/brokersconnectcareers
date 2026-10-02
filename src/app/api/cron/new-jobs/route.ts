@@ -1,10 +1,17 @@
 import type { NextRequest } from 'next/server';
-import { runScheduledJob } from '@/lib/jobs/run';
+import { runScheduledJob, type ScheduledWork } from '@/lib/jobs/run';
 import { retryDb } from '@/lib/jobs/db';
 import { createPublicClient } from '@/lib/supabase/public';
 import { parseJobFilters, queryJobs } from '@/lib/queries/jobs';
 import { queryParams } from '@/lib/saved-search';
-import { DUE_AFTER_HOURS, FIRST_LOOK_HOURS, lookForNewJobs, type LookContext } from '@/lib/new-jobs';
+import {
+  boardSince,
+  duePeople,
+  DUE_AFTER_HOURS,
+  FIRST_LOOK_HOURS,
+  lookForNewJobs,
+  type LookContext,
+} from '@/lib/new-jobs';
 import { logFailure } from '@/lib/observe';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +30,10 @@ const HOUR_MS = 3_600_000;
  * own parser and query, through the public client as the weekly email's does,
  * so it can only find what its owner could see for themselves. The push
  * follows from the bell (enqueue_push).
+ *
+ * A run that runs out of time records where it stopped (`resume_after` in its
+ * stats), and the next one starts there (duePeople), so nobody is left behind
+ * the same people every day.
  */
 export async function GET(request: NextRequest) {
   return runScheduledJob(request, {
@@ -31,6 +42,7 @@ export async function GET(request: NextRequest) {
     work: async ({ admin, deadline }) => {
       const publicClient = createPublicClient();
       const started = Date.now();
+      const resumeAfter = await resumePoint(admin);
       const dueBefore = new Date(started - DUE_AFTER_HOURS * HOUR_MS).toISOString();
 
       const stats = {
@@ -64,13 +76,14 @@ export async function GET(request: NextRequest) {
           if (error) throw error;
           return data?.role ?? null;
         },
-        board: async (query) => {
+        board: async (query, since) => {
           const filters = parseJobFilters(queryParams(query));
           // Newest first, so everything published since the cursor is on the first
-          // page — with no sponsored listing pinned above them, as in the email.
-          const { jobs } = await queryJobs({ ...filters, sort: 'newest', page: 1 }, publicClient, {
-            pinSponsored: false,
-          });
+          // pages — with no sponsored listing pinned above them, as in the email.
+          const jobs = await boardSince(
+            (page) => queryJobs({ ...filters, sort: 'newest', page }, publicClient, { pinSponsored: false }),
+            since,
+          );
           return jobs.map((job) => ({
             id: job.id,
             published_at: job.published_at,
@@ -104,49 +117,68 @@ export async function GET(request: NextRequest) {
         },
       };
 
-      let after: string | null = null;
-      pages: for (;;) {
+      const people = duePeople(
+        async (after, through) => {
+          const rows = await retryDb(() => {
+            let due = admin
+              .from('saved_searches')
+              .select('candidate_id')
+              .eq('alerts', true)
+              .or(`bell_checked_at.is.null,bell_checked_at.lt."${dueBefore}"`)
+              .order('candidate_id', { ascending: true })
+              .limit(PAGE);
+            if (after) due = due.gt('candidate_id', after);
+            if (through) due = due.lte('candidate_id', through);
+            return due;
+          });
+          return rows.map((row) => row.candidate_id);
+        },
+        resumeAfter,
+        PAGE,
+      );
+
+      // The last person this run reached, for the next to start after.
+      let reached: string | null = null;
+      for (;;) {
         if (deadline.expired()) {
           stats.out_of_time = true;
           break;
         }
-
-        const rows = await retryDb(() => {
-          const due = admin
-            .from('saved_searches')
-            .select('candidate_id')
-            .eq('alerts', true)
-            .or(`bell_checked_at.is.null,bell_checked_at.lt."${dueBefore}"`)
-            .order('candidate_id', { ascending: true })
-            .limit(PAGE);
-          return after ? due.gt('candidate_id', after) : due;
-        });
-        if (!rows.length) break;
-
-        // In candidate order, each person once; the next page starts after
-        // the last person, whose searches lookForNewJobs reads whole.
-        for (const person of new Set(rows.map((row) => row.candidate_id))) {
-          if (deadline.expired()) {
-            stats.out_of_time = true;
-            break pages;
-          }
-          after = person;
-          stats.people += 1;
-          try {
-            stats[await lookForNewJobs(person, context)] += 1;
-          } catch (cause) {
-            // One person's failure must not stop the run for everyone else;
-            // their cursors stay, so the next run tries again.
-            stats.errors += 1;
-            logFailure('new-jobs', 'a person failed', { code: (cause as { code?: string } | null)?.code });
-          }
+        const next = await people.next();
+        if (next.done) break;
+        const person = next.value;
+        reached = person;
+        stats.people += 1;
+        try {
+          stats[await lookForNewJobs(person, context)] += 1;
+        } catch (cause) {
+          // One person's failure must not stop the run for everyone else;
+          // their cursors stay, so the next run tries again.
+          stats.errors += 1;
+          logFailure('new-jobs', 'a person failed', { code: (cause as { code?: string } | null)?.code });
         }
-
-        // A short page was the end of the due set.
-        if (rows.length < PAGE) break;
       }
 
-      return stats;
+      return stats.out_of_time && reached ? { ...stats, resume_after: reached } : stats;
     },
   });
+}
+
+/**
+ * Where the last run stopped, when it ran out of time before the end of the
+ * people due: its `resume_after`. Null when it got through them all, or when
+ * there is no run to read.
+ */
+async function resumePoint(admin: Parameters<ScheduledWork>[0]['admin']): Promise<string | null> {
+  const { data, error } = await admin
+    .from('job_runs')
+    .select('stats')
+    .eq('job', 'new-jobs')
+    .eq('status', 'succeeded')
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  const at = (data?.stats as { resume_after?: unknown } | undefined)?.resume_after;
+  return typeof at === 'string' && /^[0-9a-f-]{36}$/i.test(at) ? at : null;
 }

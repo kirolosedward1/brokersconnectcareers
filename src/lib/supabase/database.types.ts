@@ -702,7 +702,7 @@ export type JobRunRow = {
   finished_at: string | null;
   lease_until: string | null;
   duration_ms: number | null;
-  stats: Record<string, number | boolean>;
+  stats: Record<string, number | boolean | string>;
   error: string | null;
 };
 
@@ -1840,7 +1840,7 @@ export type Database = {
         Args: {
           p_id: string;
           p_status: 'succeeded' | 'failed';
-          p_stats?: Record<string, number | boolean>;
+          p_stats?: Record<string, number | boolean | string>;
           p_error?: string | null;
         };
         Returns: boolean;

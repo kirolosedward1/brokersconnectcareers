@@ -11,6 +11,7 @@
  * made from, where a plain publish's is not.
  */
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { profileFor, updateArguments } from './publish-update.mjs';
@@ -110,6 +111,33 @@ is('with one, they come from its EAS Update URL, checked at launch and run from 
   checkAutomatically: 'ON_LOAD',
   fallbackToCacheTimeout: 0,
 });
+
+console.log('\n— what the runtime version is a fingerprint of');
+{
+  // As expo-updates takes it for this app (ios/ and android/ are generated),
+  // in the store build's environment: the native app, and nothing a fix
+  // published over the air could not have changed. fingerprint.config.js.
+  const { createFingerprintAsync } = createRequire(join(appRoot, 'package.json'))('expo/fingerprint');
+  const saved = process.env;
+  process.env = { ...saved, ...eas.build.base.env, EAS_BUILD_PROFILE: 'production' };
+  try {
+    const fingerprint = await createFingerprintAsync(appRoot, {
+      platforms: ['ios'],
+      ignorePaths: ['android/**/*', 'ios/**/*'],
+      silent: true,
+    });
+    const counted = fingerprint.sources.map((source) => source.id ?? source.filePath);
+    is('package.json scripts are not counted (a new check script changed every fingerprint)', counted.includes('packageJson:scripts'), false);
+    is('nor .gitignore', counted.includes('.gitignore'), false);
+    is(
+      'the configuration and the native modules are',
+      ['expoConfig', 'expoAutolinkingConfig:ios', 'rncoreAutolinkingConfig:ios'].every((id) => counted.includes(id)),
+      true,
+    );
+  } finally {
+    process.env = saved;
+  }
+}
 
 console.log('\n— Face ID');
 const purpose = (name) => storeBuild.plugins.find((plugin) => plugin[0] === name)?.[1]?.faceIDPermission;

@@ -254,7 +254,7 @@ describe('what to hear about', () => {
   const chosen = { push_job_alerts: true, push_applications: true, push_account: true, push_quiet_hours: false };
   const saves = () => server.asked('/api/mobile/v1/actions/updatePushPreferences').map((request) => request.body);
 
-  it('offers a candidate each kind once pushes are on, and saves all four as one is flipped', async () => {
+  it('offers a candidate each kind once pushes are on, and saves the one flipped', async () => {
     me = { ...profile, ...chosen };
     server.on('POST /api/mobile/v1/actions/updatePushPreferences', { ok: true });
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
@@ -267,16 +267,31 @@ describe('what to hear about', () => {
     expect(screen.getByLabelText(ar.app.push.quiet).props.value).toBe(false);
 
     fireEvent(screen.getByLabelText(ar.app.push.jobAlerts), 'valueChange', false);
-    await waitFor(() =>
-      expect(saves()).toEqual([{ input: { ...chosen, push_job_alerts: false } }]),
-    );
+    await waitFor(() => expect(saves()).toEqual([{ input: { push_job_alerts: false } }]));
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
     expect(screen.getByLabelText(ar.app.push.jobAlerts).props.value).toBe(false);
 
     fireEvent(screen.getByLabelText(ar.app.push.quiet), 'valueChange', true);
-    await waitFor(() =>
-      expect(saves()[1]).toEqual({ input: { ...chosen, push_job_alerts: false, push_quiet_hours: true } }),
-    );
+    await waitFor(() => expect(saves()[1]).toEqual({ input: { push_quiet_hours: true } }));
+  });
+
+  it('shows what another phone saved since, and never writes this phone\'s older copy back over it', async () => {
+    me = { ...profile, ...chosen };
+    server.on('POST /api/mobile/v1/actions/updatePushPreferences', () => {
+      // Meanwhile, on another phone: the account's pushes turned off.
+      me = { ...me, push_job_alerts: false, push_account: false };
+      return { ok: true };
+    });
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    fireEvent(await screen.findByLabelText(ar.app.push.jobAlerts), 'valueChange', false);
+    // Only the switch flipped here was sent: not push_account as this phone last read it.
+    await waitFor(() => expect(saves()).toEqual([{ input: { push_job_alerts: false } }]));
+    // And once the saved values are read again, the switch nobody flipped here follows them.
+    await waitFor(() => expect(screen.getByLabelText(ar.app.push.accountCandidate).props.value).toBe(false));
+    expect(screen.getByLabelText(ar.app.push.jobAlerts).props.value).toBe(false);
+    expect(screen.getByLabelText(ar.app.push.applicationsCandidate).props.value).toBe(true);
   });
 
   it('puts a switch back when the website refuses it', async () => {

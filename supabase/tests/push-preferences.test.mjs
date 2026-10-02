@@ -5,6 +5,8 @@
  * What is pinned: which switch every kind answers to; quiet hours, by Cairo's
  * wall clock in summer and in winter, and the expiry notices' own window kept
  * either way; a kind turned off not queued while the bell still has it; the
+ * choice asked again when a push is handed out to be sent (a retry in the
+ * night held, a kind switched off since skipped — migration 341); the
  * defaults being today's behaviour; and only the person changing their own
  * switches.
  */
@@ -19,6 +21,21 @@ const PHONE = 'ExponentPushToken[dddddddddddddddddddddd]';
 
 const one = async (sql) => (await db.query(sql)).rows[0];
 const count = async (sql) => Number((await db.query(sql)).rows[0].n);
+
+/** As the senders call it: the service role, committed. */
+async function asCommit(sql) {
+  await db.exec('begin');
+  try {
+    await db.exec(`set local role service_role;`);
+    await db.exec(`set local request.jwt.claims = '${JSON.stringify({ role: 'service_role' })}';`);
+    const result = await db.query(sql);
+    await db.exec('commit');
+    return { ok: true, rows: result.rows };
+  } catch (error) {
+    await db.exec('rollback');
+    return { ok: false, error: error.message, rows: [] };
+  }
+}
 
 report.section('which switch a kind answers to');
 {
@@ -96,6 +113,46 @@ report.section('what is queued');
   report.check('quiet hours: a push made at 2:30 in Cairo is queued for eight',
     night.queued && new Date(night.at).toISOString() === '2026-10-02T05:00:00.000Z', String(night.at));
 
+  await db.exec(`update profiles set push_quiet_hours = false where id = '${candidate}'`);
+}
+
+report.section('asked again when it goes (migration 341)');
+{
+  // The phone registered above; quiet hours on, every kind on.
+  await db.exec(`update profiles set push_job_alerts = true, push_applications = true, push_account = true, push_quiet_hours = true where id = '${candidate}'`);
+  const id = (await one(`insert into notifications (user_id, kind, payload) values ('${candidate}', 'application_moved', '{"count":1}') returning id`)).id;
+  const outbox = (await one(`select id from push_outbox where notification_id = '${id}'`)).id;
+  const dueAt = async (at) =>
+    (await one(`select to_char(public.push_due_at(${outbox}, '${at}'::timestamptz) at time zone 'UTC', 'YYYY-MM-DD HH24:MI') as t`)).t;
+
+  report.check('a retry that comes due after midnight in Cairo waits for eight',
+    (await dueAt('2026-10-02 00:06:00+03')) === '2026-10-02 05:00');
+  report.check('one that comes due in the day goes then', (await dueAt('2026-10-02 14:00:00+03')) === '2026-10-02 11:00');
+  await db.exec(`update profiles set push_quiet_hours = false where id = '${candidate}'`);
+  report.check('quiet hours turned off since: it goes when it comes due', (await dueAt('2026-10-02 00:06:00+03')) === '2026-10-01 21:06');
+  await db.exec(`update profiles set push_applications = false where id = '${candidate}'`);
+  report.check('its kind switched off since: it does not go at all', (await dueAt('2026-10-02 14:00:00+03')) === null);
+
+  // Through the lease the senders use: due now, switched off since it was queued.
+  await db.exec(`update push_outbox set next_attempt_at = now() - interval '1 minute' where id = ${outbox}`);
+  const leased = await asCommit(`select * from public.lease_due_pushes(10, 60)`);
+  report.check('the senders are not handed it', leased.ok && !leased.rows.some((row) => Number(row.id) === Number(outbox)), leased.error);
+  const settled = await one(`select status, detail, settled_at is not null as settled from push_outbox where id = ${outbox}`);
+  report.check('it is settled as skipped, saying why',
+    settled.status === 'skipped' && settled.detail === 'switched off' && settled.settled, JSON.stringify(settled));
+
+  // Switched back on, with quiet hours: whatever the hour this runs at, it is
+  // handed out now unless Cairo is in the night, and then it waits for eight.
+  await db.exec(`update profiles set push_applications = true, push_quiet_hours = true where id = '${candidate}'`);
+  const id2 = (await one(`insert into notifications (user_id, kind, payload) values ('${candidate}', 'application_moved', '{"count":2}') returning id`)).id;
+  const outbox2 = (await one(`select id from push_outbox where notification_id = '${id2}'`)).id;
+  await db.exec(`update push_outbox set next_attempt_at = now() - interval '1 minute' where id = ${outbox2}`);
+  const night = (await one(`select public.push_hold_until('application_moved', now(), true) > now() as night`)).night;
+  const lease2 = await asCommit(`select * from public.lease_due_pushes(10, 60)`);
+  const handed = lease2.rows.some((row) => Number(row.id) === Number(outbox2));
+  const row2 = await one(`select status, next_attempt_at > now() as later from push_outbox where id = ${outbox2}`);
+  report.check(night ? 'at night in Cairo: held for eight, still queued' : 'in the day in Cairo: handed out at once',
+    night ? !handed && row2.status === 'queued' && row2.later : handed, JSON.stringify({ night, handed, row2 }));
   await db.exec(`update profiles set push_quiet_hours = false where id = '${candidate}'`);
 }
 

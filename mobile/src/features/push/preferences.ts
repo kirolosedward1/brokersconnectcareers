@@ -34,12 +34,16 @@ export function pushPreferencesOf(profile: ProfileRow): PushPreferences | null {
   return { push_job_alerts, push_applications, push_account, push_quiet_hours };
 }
 
-/** All four at once, through the website, as the email switches are saved. */
+/**
+ * Saves the switches given, through the website, as the email switches are
+ * saved — only those: the others as this phone last read them may be older
+ * than what another phone has saved since.
+ */
 export function useSavePushPreferences() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (next: PushPreferences) => {
-      const result = await callAction('updatePushPreferences', next);
+    mutationFn: async (change: Partial<PushPreferences>) => {
+      const result = await callAction('updatePushPreferences', change);
       if (!result.ok) throw new Error(result.error);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['viewer'] }),

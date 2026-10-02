@@ -29,7 +29,8 @@ import type { Deadline } from './policy';
  *              its lease lapses, so nothing stays wrong for long.
  */
 
-export type JobStats = Record<string, number | boolean>;
+/** Counts and flags — and, for a job that resumes, an id saying where (new-jobs' resume_after). */
+export type JobStats = Record<string, number | boolean | string>;
 
 export type JobLogDetail = Record<string, string | number | boolean | null | undefined>;
 

@@ -269,12 +269,15 @@ export async function updateNotificationPreferences(input: unknown): Promise<Act
   return { ok: true };
 }
 
-const pushPreferencesSchema = z.object({
-  push_job_alerts: z.boolean(),
-  push_applications: z.boolean(),
-  push_account: z.boolean(),
-  push_quiet_hours: z.boolean(),
-});
+const pushPreferencesSchema = z
+  .object({
+    push_job_alerts: z.boolean(),
+    push_applications: z.boolean(),
+    push_account: z.boolean(),
+    push_quiet_hours: z.boolean(),
+  })
+  .partial()
+  .refine((change) => Object.keys(change).length > 0);
 
 /**
  * The push switches (migration 335): which kinds reach the person's phones,
@@ -283,6 +286,10 @@ const pushPreferencesSchema = z.object({
  * phone's, so they live on the profile beside the email switches and are
  * written the same way: through the caller's own session, RLS deciding the
  * row, and a write that touched nothing reported as such.
+ *
+ * Any of them, not all four: the app sends the switch that was flipped, so a
+ * phone holding an older copy of the others does not write it back over what
+ * another phone saved since.
  */
 export async function updatePushPreferences(input: unknown): Promise<ActionResult> {
   const parsed = pushPreferencesSchema.safeParse(input);

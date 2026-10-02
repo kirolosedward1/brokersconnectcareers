@@ -7,15 +7,17 @@
  * companies, and where it takes them: named after the one thing that found
  * listings, counted when several did, a listing found twice counted once. And
  * the turn's rules: only what was published since each search was last
- * looked at, less what the person applied to; the cursors moving when the
- * notice is written or there is nothing new, and staying when today's already
- * went out or anything failed.
+ * looked at and not after the run began, less what the person applied to;
+ * the cursors moving when the notice is written or there is nothing new, and
+ * staying when today's already went out or anything failed. And the run's:
+ * every new listing counted however many pages it takes (to a limit), and
+ * the people taken from where the last run stopped, round to the start.
  */
 import { register } from 'node:module';
 
 register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 
-const { newJobsNotice, publishedAfter, lookForNewJobs } = await import('../src/lib/new-jobs.ts');
+const { newJobsNotice, publishedAfter, lookForNewJobs, boardSince, duePeople, BOARD_PAGES } = await import('../src/lib/new-jobs.ts');
 
 let pass = 0;
 let fail = 0;
@@ -114,7 +116,7 @@ const FIRST_LOOK = '2026-09-30T07:17:00.000Z';
 
 /** A context over fixed data that records what the turn did. */
 function context({ role = 'candidate', searches, board, applied = [], recorded = 'n1', throwOn = null }) {
-  const log = { recorded: [], advanced: [], boards: 0, searched: 0 };
+  const log = { recorded: [], advanced: [], boards: 0, searched: 0, since: [] };
   return {
     log,
     ctx: {
@@ -122,8 +124,9 @@ function context({ role = 'candidate', searches, board, applied = [], recorded =
       firstLook: FIRST_LOOK,
       searches: async () => searches,
       role: async () => role,
-      board: async (query) => {
+      board: async (query, since) => {
         log.boards += 1;
+        log.since.push(since);
         if (throwOn === 'board') throw new Error('board down');
         return board[query] ?? [];
       },
@@ -211,6 +214,95 @@ const BOARD = {
   }
   is('a failure is thrown to the run', threw, true);
   is('and the cursors stay, so the next run tries again', log.advanced, []);
+}
+
+{
+  const { ctx, log } = context({ searches: SEARCHES, board: BOARD });
+  await lookForNewJobs('p', ctx);
+  is('each search asks the board for what is new since its own cursor', log.since, ['2026-09-30T07:17:00+00:00', FIRST_LOOK]);
+}
+{
+  // Published two minutes after the run began, and seen by it: tomorrow's
+  // news, when the cursor (the run's start) is behind it — and not today's too.
+  const during = { id: 'during', published_at: '2026-10-01T07:19:00+00:00', company: nile };
+  const board = { 'company=nile-co': [during, ...BOARD['company=nile-co']] };
+  const { ctx, log } = context({ searches: [SEARCHES[0]], board });
+  await lookForNewJobs('p', ctx);
+  is('a listing published after the run began is left for tomorrow', log.recorded[0]?.payload.count, 1);
+  const tomorrow = context({
+    searches: [{ ...SEARCHES[0], bell_checked_at: CURSOR }],
+    board,
+  });
+  tomorrow.ctx.cursor = '2026-10-02T07:17:00.000Z';
+  await lookForNewJobs('p', tomorrow.ctx);
+  is('and counted then, once', tomorrow.log.recorded[0]?.payload.count, 1);
+}
+
+console.log('\n— every new listing, page by page');
+{
+  const SINCE = '2026-10-01T00:00:00Z';
+  // A board of `total` listings, newest first, twenty to a page; the first `fresh` are new.
+  const board = (total, fresh) => {
+    const all = Array.from({ length: total }, (_, i) => ({
+      id: `j${i}`,
+      published_at: i < fresh ? '2026-10-01T06:00:00Z' : '2026-09-29T06:00:00Z',
+    }));
+    const pageCount = Math.max(1, Math.ceil(total / 20));
+    const asked = [];
+    const page = async (n) => {
+      asked.push(n);
+      const shown = Math.min(n, pageCount);
+      return { jobs: all.slice((shown - 1) * 20, shown * 20), page: shown, pageCount };
+    };
+    return { page, asked };
+  };
+  const count = (jobs) => jobs.filter((job) => publishedAfter(job.published_at, SINCE)).length;
+
+  let b = board(50, 5);
+  is('five new on the first page: one page read', [count(await boardSince(b.page, SINCE)), b.asked], [5, [1]]);
+  b = board(80, 35);
+  is('thirty-five new: two pages read, all thirty-five counted', [count(await boardSince(b.page, SINCE)), b.asked], [35, [1, 2]]);
+  b = board(40, 40);
+  is('every listing new: the last page is the end, not read twice', [count(await boardSince(b.page, SINCE)), b.asked], [40, [1, 2]]);
+  b = board(400, 400);
+  is(`a flood: ${BOARD_PAGES} pages and no more`, [count(await boardSince(b.page, SINCE)), b.asked.length], [BOARD_PAGES * 20, BOARD_PAGES]);
+  b = board(0, 0);
+  is('an empty board: one look', [count(await boardSince(b.page, SINCE)), b.asked], [0, [1]]);
+}
+
+console.log('\n— who is looked at, in what order');
+{
+  // Due searches, one row each, in candidate order: p2 has three, spanning a page.
+  const ROWS = ['p1', 'p2', 'p2', 'p2', 'p3', 'p4', 'p5', 'p6'];
+  const page = async (after, through) =>
+    ROWS.filter((id) => (after === null || id > after) && (through === null || id <= through)).slice(0, 3);
+  const all = async (resumeAfter) => {
+    const order = [];
+    for await (const person of duePeople(page, resumeAfter, 3)) order.push(person);
+    return order;
+  };
+  is('from the start when the last run finished', await all(null), ['p1', 'p2', 'p3', 'p4', 'p5', 'p6']);
+  is('after where the last run stopped, then round to it', await all('p3'), ['p4', 'p5', 'p6', 'p1', 'p2', 'p3']);
+  is('stopped at the last person: round from the start', await all('p6'), ['p1', 'p2', 'p3', 'p4', 'p5', 'p6']);
+
+  // Why: a run with room for three people, every day, over five people due daily.
+  const due = ['a', 'b', 'c', 'd', 'e'];
+  const fetch = async (after, through) =>
+    due.filter((id) => (after === null || id > after) && (through === null || id <= through)).slice(0, 2);
+  const seen = new Set();
+  let resume = null;
+  for (let day = 0; day < 2; day += 1) {
+    const people = duePeople(fetch, resume, 2);
+    let reached = null;
+    for (let room = 3; room > 0; room -= 1) {
+      const next = await people.next();
+      if (next.done) break;
+      reached = next.value;
+      seen.add(reached);
+    }
+    resume = reached;
+  }
+  is('over two days, everybody is looked at', [...seen].sort(), due);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

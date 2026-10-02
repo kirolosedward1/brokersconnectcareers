@@ -580,7 +580,11 @@ unless `--platform` is given. `scripts/publish-update.test.mjs` (in
 What cannot go out this way is anything native: a new native module, a
 permission string, the icon, a config plugin's settings. Those change the
 fingerprint and need a new build (and a review); updates published after it
-go to that build only. So the first App Store build already carries the
+go to that build only. What is not native stays out of the fingerprint
+(`mobile/fingerprint.config.js`): Expo counts `package.json`'s scripts and
+`.gitignore` by default, and adding a check to `scripts` would have cut every
+installed build off from later updates without a word. The same test computes
+the fingerprint and checks what it is made of. So the first App Store build already carries the
 native modules this round's later features need — `expo-store-review` for the
 rating prompt, `expo-local-authentication` for the app lock — and those
 features can follow over the air.

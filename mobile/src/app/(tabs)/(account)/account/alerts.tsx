@@ -139,10 +139,13 @@ export default function AlertsScreen() {
   );
 }
 
+const KINDS = ['push_job_alerts', 'push_applications', 'push_account', 'push_quiet_hours'] as const;
+
 /**
- * Which kinds reach the phones, and quiet hours: saved as each is flipped and
- * put back if the website refuses, as the email switches are. New listings
- * are a candidate's only — an employer has no saved searches.
+ * Which kinds reach the phones, and quiet hours: saved as each is flipped —
+ * that switch alone — and put back if the website refuses, as the email
+ * switches are. New listings are a candidate's only — an employer has no
+ * saved searches.
  */
 function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferences }) {
   const t = useTranslations('app.push');
@@ -152,6 +155,21 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
   const [prefs, setPrefs] = useState(initial);
   const [saved, setSaved] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  // A switch flipped here shows what was flipped. The others follow the
+  // saved values as they arrive — a change made on another phone, or a read
+  // still on its way when this opened — where they used to keep the first
+  // copy for as long as the screen was open.
+  const [touched, setTouched] = useState<ReadonlySet<keyof PushPreferences>>(() => new Set());
+  const [seen, setSeen] = useState(initial);
+  if (KINDS.some((kind) => seen[kind] !== initial[kind])) {
+    setSeen(initial);
+    setPrefs((current) => {
+      const next = { ...current };
+      for (const kind of KINDS) if (!touched.has(kind)) next[kind] = initial[kind];
+      return next;
+    });
+  }
 
   const rows: { key: keyof PushPreferences; label: string; hint: string }[] = [
     ...(employer ? [] : [{ key: 'push_job_alerts' as const, label: t('jobAlerts'), hint: t('jobAlertsHint') }]),
@@ -165,18 +183,26 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
   ];
 
   const flip = (key: keyof PushPreferences) => {
-    const before = prefs;
-    const next = { ...prefs, [key]: !prefs[key] };
-    setPrefs(next);
+    const value = !prefs[key];
+    setPrefs((current) => ({ ...current, [key]: value }));
+    setTouched((current) => new Set(current).add(key));
     setSaved(false);
     setFailed(false);
-    save.mutate(next, {
-      onSuccess: () => setSaved(true),
-      onError: () => {
-        setPrefs(before);
-        setFailed(true);
+    save.mutate(
+      { [key]: value },
+      {
+        onSuccess: () => setSaved(true),
+        onError: () => {
+          setPrefs((current) => ({ ...current, [key]: !value }));
+          setTouched((current) => {
+            const next = new Set(current);
+            next.delete(key);
+            return next;
+          });
+          setFailed(true);
+        },
       },
-    });
+    );
   };
 
   return (
