@@ -81,8 +81,11 @@ or a screen that never loads fails the run. Its artifact, `ios-screens`, holds:
 
 They show whatever the live site lists when the workflow runs — its first
 listing and its first company — so run it when production holds the listings
-the store should show. They go into App Store Connect by hand (the 6.9-inch
-slot of each language).
+the store should show. With no live listing, the board and the company list
+(which shows only companies with one) are checked empty, the listing and
+company pages are left out, and the run says so: a smoke run, not the store's
+screenshots. They go into App Store Connect by hand (the 6.9-inch slot of each
+language).
 
 ## App privacy ("nutrition label")
 
@@ -199,10 +202,24 @@ app. "The listing, as code" above says how they reach App Store Connect.
 In this order; each needs an account, a secret or a decision only the owner
 has.
 
-0. **The seeded demo accounts off production** (P0.1 in
-   `docs/privacy/AUDIT-2026-09-27.md`): Supabase dashboard → Authentication →
-   Users → search `demo.test`, and delete them. App Review gets its own two
-   accounts (above), never these.
+**Before any of it: real listings on production.** On 2026-10-02 none was
+live, and every listing production had was the demo data's (14 expired, 3
+waiting for review, 1 draft); the one real company had posted none. So the
+app's board and company list were both empty, and stay empty once the demo data
+goes (step 0) until companies post. App Review is likely to turn down an app
+that opens empty, and the screenshots need real listings: get companies
+posting, and approve their listings in the console (`/admin`), before
+submitting.
+
+0. **The seeded demo data off production** (P0.1 in
+   `docs/privacy/AUDIT-2026-09-27.md`): `pnpm remove-demo` lists what it would
+   remove — on 2026-10-02, 15 accounts, 7 companies, 18 listings and the 33
+   applications to them, one of them from a real account — and
+   `pnpm remove-demo --execute --confirm hiwdhicwsohbipxzazmb` removes it, with
+   the same variables as `pnpm db:apply`. Deleting the users in the dashboard
+   fails for the employers: a profile that owns a company is never deleted
+   from under it. App Review gets its own two accounts ("Review accounts"),
+   never these.
 1. **The website's server keys on Vercel** (production), then a redeploy.
    `SUPABASE_SERVICE_ROLE_KEY` first: without it account deletion answers
    "unavailable", CV and document links do not open, team invites, view
