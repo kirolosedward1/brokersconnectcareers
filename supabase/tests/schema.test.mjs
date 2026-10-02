@@ -50,8 +50,12 @@ report.section('every foreign key has an index behind it');
     columns that lookup reads the whole table, once per row deleted. Supabase's
     performance advisor flags each one (it found three on 2026-10-02, indexed
     by migration 340); this is the same rule, here, before production has the
-    migration to complain about. An index whose leading columns are the key
-    counts, as the advisor counts it — a partial one included.
+    migration to complain about. A b-tree whose leading columns are the key
+    counts. A partial one counts only when its condition is the key being
+    there (`col IS NOT NULL`, which every row the lookup wants meets): the
+    advisor counts any partial index, but the lookup cannot use one that
+    leaves rows out — push_devices' index on active phones left account
+    deletion reading every phone ever registered.
   */
   const { rows } = await db.query(`
     select c.conrelid::regclass::text as tbl,
@@ -65,9 +69,20 @@ report.section('every foreign key has an index behind it');
        and not exists (
          select 1
            from pg_index i
+           join pg_class ic on ic.oid = i.indexrelid
+           join pg_am am on am.oid = ic.relam
           where i.indrelid = c.conrelid
             and i.indisvalid
+            and am.amname = 'btree'
             and (string_to_array(i.indkey::text, ' ')::int2[])[1:array_length(c.conkey, 1)] = c.conkey
+            and (
+              i.indpred is null
+              or (array_length(c.conkey, 1) = 1
+                  and pg_get_expr(i.indpred, i.indrelid) =
+                      format('(%s IS NOT NULL)',
+                             (select quote_ident(a.attname) from pg_attribute a
+                               where a.attrelid = c.conrelid and a.attnum = c.conkey[1])))
+            )
        )
      order by 1, 2`);
   report.check(

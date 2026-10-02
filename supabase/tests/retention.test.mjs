@@ -172,6 +172,11 @@ report.section('companies that stopped being verified before the date was kept')
       ('${NEVER}', 'commercial_register', '${NEVER}/refused.pdf', 'rejected', now() - interval '400 days', now() - interval '401 days')
   `);
   const notificationsBefore = Number((await one(`select count(*) as n from notifications`)).n);
+  const versions = async () =>
+    Object.fromEntries(
+      (await q(`select id, version from companies where id in ('${LOGGED}', '${UNLOGGED}', '${NEVER}')`)).map((row) => [row.id, row.version]),
+    );
+  const versionsBefore = await versions();
 
   const { readFileSync } = await import('node:fs');
   const migration = readFileSync(new URL('../migrations/20260101000338_kept_as_long_as_the_policy_says.sql', import.meta.url), 'utf8');
@@ -189,6 +194,11 @@ report.section('companies that stopped being verified before the date was kept')
   report.check('a company never verified stays undated', ended[NEVER] === null, String(ended[NEVER]));
   const notificationsAfter = Number((await one(`select count(*) as n from notifications`)).n);
   report.check('dating them tells nobody anything', notificationsAfter === notificationsBefore, `${notificationsBefore} → ${notificationsAfter}`);
+  // Nor edits them: a company's version is what tells an employer with its
+  // form open that somebody else saved it.
+  const versionsAfter = await versions();
+  report.check('nor counts as an edit of the company', JSON.stringify(versionsAfter) === JSON.stringify(versionsBefore),
+    `${JSON.stringify(versionsBefore)} → ${JSON.stringify(versionsAfter)}`);
 
   await db.query(`select public.run_privacy_retention()`);
   const paths = (await q(`select storage_path from company_documents where company_id in ('${LOGGED}', '${UNLOGGED}', '${NEVER}')`)).map((row) => row.storage_path);

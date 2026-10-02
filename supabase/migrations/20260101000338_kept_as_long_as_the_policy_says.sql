@@ -81,7 +81,11 @@ drop trigger if exists companies_90_verification_ended on companies;
 -- were approved, so verified once, today: kept longer than the year, never
 -- shorter. A company never verified stays undated, as the trigger leaves it.
 -- Between the trigger's drop and its creation, because the trigger puts back
--- the date the row had.
+-- the date the row had. And with the version trigger (migration 50) off:
+-- dating a company is not an edit of it, and an employer with its form open
+-- would be told somebody else had saved it.
+alter table companies disable trigger companies_40_bump_version;
+
 update companies c
    set verification_ended_at = coalesce(
          (select max(e.occurred_at)
@@ -102,6 +106,8 @@ update companies c
                 and e.detail ->> 'from' = 'verified')
      or exists (select 1 from company_documents d where d.company_id = c.id and d.status = 'verified')
    );
+
+alter table companies enable trigger companies_40_bump_version;
 
 create trigger companies_90_verification_ended
   before insert or update on companies
@@ -223,7 +229,10 @@ begin
     end;
   end if;
 
-  -- Verification papers of a company that is not verified.
+  -- Verification papers of a company that is not verified. The company row is
+  -- locked as well as the papers: an admin verifying it at this moment holds
+  -- it, and this read "not verified" from before that verification, so its
+  -- papers are skipped until a night when nobody is reviewing it.
   v_days := public.retention_days('company_documents');
   if v_days is not null then
     begin
@@ -239,6 +248,7 @@ begin
          order by d.created_at
          limit v_limit
          for update of d skip locked
+         for share of c skip locked
       )
       delete from company_documents x using doomed where x.id = doomed.id;
       get diagnostics n = row_count;

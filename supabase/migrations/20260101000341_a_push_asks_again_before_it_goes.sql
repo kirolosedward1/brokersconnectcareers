@@ -63,6 +63,8 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  v_limit integer := least(greatest(coalesce(p_limit, 50), 1), 500);
 begin
   -- A row that has crashed its worker eight times is not going to succeed on
   -- the ninth, and one a day old is not news any more.
@@ -73,24 +75,33 @@ begin
      and (o.lease_until is null or o.lease_until < now())
      and (o.leases >= 8 or o.created_at < now() - interval '1 day');
 
-  -- What the person wants now: a kind switched off since is not sent, and a
-  -- push due inside quiet hours waits for eight.
-  with due as (
-    select q.id, public.push_due_at(q.id, now()) as at
-      from push_outbox q
-     where q.status = 'queued'
-       and q.next_attempt_at <= now()
-       and (q.lease_until is null or q.lease_until < now())
-       for update skip locked
-  )
-  update push_outbox o
-     set status          = case when due.at is null then 'skipped' else o.status end,
-         settled_at      = case when due.at is null then now() else o.settled_at end,
-         detail          = case when due.at is null then 'switched off' else o.detail end,
-         next_attempt_at = coalesce(due.at, o.next_attempt_at)
-    from due
-   where o.id = due.id
-     and (due.at is null or due.at > now());
+  -- What the person wants now, asked of the rows this call would hand out: a
+  -- kind switched off since is settled as skipped, and a push due inside
+  -- quiet hours is put back to eight. A batch at a time, until the batch at
+  -- the front is all due now. Asking the whole backlog at once locked every
+  -- due row on every call, so a second sender — a flush after somebody's
+  -- action, during the sweep — found nothing to send.
+  loop
+    with due as (
+      select q.id, public.push_due_at(q.id, now()) as at
+        from push_outbox q
+       where q.status = 'queued'
+         and q.next_attempt_at <= now()
+         and (q.lease_until is null or q.lease_until < now())
+       order by q.next_attempt_at, q.id
+       limit v_limit
+         for update skip locked
+    )
+    update push_outbox o
+       set status          = case when due.at is null then 'skipped' else o.status end,
+           settled_at      = case when due.at is null then now() else o.settled_at end,
+           detail          = case when due.at is null then 'switched off' else o.detail end,
+           next_attempt_at = coalesce(due.at, o.next_attempt_at)
+      from due
+     where o.id = due.id
+       and (due.at is null or due.at > now());
+    exit when not found;
+  end loop;
 
   return query
   with due as (
@@ -100,7 +111,7 @@ begin
        and q.next_attempt_at <= now()
        and (q.lease_until is null or q.lease_until < now())
      order by q.next_attempt_at, q.id
-     limit least(greatest(coalesce(p_limit, 50), 1), 500)
+     limit v_limit
        for update skip locked
   ),
   lease as (

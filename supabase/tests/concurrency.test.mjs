@@ -374,6 +374,79 @@ async function main() {
     report.check('the stray claim racing it gets nothing', without.rows[0].id === null);
   }
 
+  // -------------------------------------------------------------------------
+  report.section('two push senders lease disjoint batches');
+  {
+    // Thirty pushes due now for one person with every kind on. A sender holds
+    // its lease open (the sweep sending a batch); a second one — a flush
+    // after somebody's action — must get the next batch, not nothing. When
+    // the lease asked every due row whether it could still go, it locked the
+    // whole backlog doing so, and the second sender found it all taken.
+    const { rows: [person] } = await setup.query(`select id from profiles where role = 'candidate' order by id limit 1`);
+    const { rows: made } = await setup.query(
+      `insert into notifications (user_id, kind, payload)
+       select $1, 'application_moved', jsonb_build_object('race', n) from generate_series(1, 30) as n
+       returning id`,
+      [person.id],
+    );
+    await setup.query(
+      `insert into push_outbox (notification_id, user_id, next_attempt_at)
+       select id, $1, now() - interval '1 minute' from unnest($2::uuid[]) as id
+       on conflict (notification_id) do nothing`,
+      [person.id, made.map((row) => row.id)],
+    );
+
+    await a.query('begin');
+    const { rows: first } = await a.query('select * from public.lease_due_pushes(10, 60)');
+    const second = await within(b.query('select * from public.lease_due_pushes(10, 60)'), 5000);
+    await a.query('commit');
+
+    report.check('the first sender leased a batch', first.length === 10, `got ${first.length}`);
+    report.check('the second did not wait on it', !second.timedOut);
+    const firstIds = new Set(first.map((row) => String(row.id)));
+    const secondRows = second.value?.rows ?? [];
+    report.check('and leased the next batch, not nothing', secondRows.length === 10, `got ${secondRows.length}`);
+    report.check('with no push in both', secondRows.every((row) => !firstIds.has(String(row.id))));
+
+    await setup.query(`delete from notifications where id = any($1::uuid[])`, [made.map((row) => row.id)]);
+  }
+
+  // -------------------------------------------------------------------------
+  report.section('the nightly purge racing a verification keeps the papers');
+  {
+    // A company that is not verified, with papers reviewed more than a year
+    // ago: the nightly purge's to delete (migration 338) — unless an
+    // admin is verifying it at that moment. The admin's transaction holds the
+    // company row, as the update in admin_review_company does; the purge read
+    // "not verified" from before it and would delete the papers the admin is
+    // about to rely on.
+    // Never verified, so no end date holds its papers back: they go a year
+    // after their review.
+    const { rows: [company] } = await setup.query(
+      `select id from companies where verification_status <> 'verified' and verification_ended_at is null order by id limit 1`,
+    );
+    const path = `${company.id}/race-old.pdf`;
+    await setup.query(
+      `insert into company_documents (company_id, doc_type, storage_path, status, reviewed_at, created_at)
+       values ($1, 'commercial_register', $2, 'rejected', now() - interval '400 days', now() - interval '401 days')`,
+      [company.id, path],
+    );
+    const papers = async () =>
+      (await setup.query(`select count(*)::int as n from company_documents where storage_path = $1`, [path])).rows[0].n;
+
+    await a.query('begin');
+    await a.query('select id from companies where id = $1 for no key update', [company.id]);
+    const purge = await within(b.query('select public.run_privacy_retention(500) as done'), 5000);
+    report.check('the purge does not wait on the company under review', !purge.timedOut);
+    report.check('and leaves its papers alone', (await papers()) === 1);
+    await a.query('rollback');
+
+    // Nobody verifying it: the same papers go, so the check above was not
+    // passing for some other reason.
+    await b.query('select public.run_privacy_retention(500)');
+    report.check('with nobody verifying it, the next run deletes them', (await papers()) === 0);
+  }
+
 }
 
 let failed = false;
