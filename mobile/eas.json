@@ -33,6 +33,11 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "language": "ar-SA",
+        "metadataPath": "./store.config.js"
+      }
+    }
   }
 }

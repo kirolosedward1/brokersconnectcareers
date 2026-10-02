@@ -15,11 +15,52 @@ code settles.
 | Name | Brokers Connect (Arabic: بروكرز كونكت — `mobile/assets/locales/ar.json`) |
 | Bundle ID | `net.brokersconnect.app` — permanent once submitted |
 | Primary language | Arabic (the app is right to left, Arabic only while the website's `ENGLISH_ENABLED` is off) |
-| Category | **decide** — Business (job boards and professional directories sit there) |
+| Category | **decide** — Business (job boards and professional directories sit there); `mobile/store.config.js` says Business |
 | Privacy policy URL | `https://www.brokersconnect.net/privacy` (`content/legal/privacy.ar.md`; the English text is at `/privacy?lang=en`). It, the terms, the cookie page and the account-deletion page want the owner's legal review (`docs/legal.md`) |
 | Account deletion URL | `https://www.brokersconnect.net/account-deletion` — the web page an app store asks for (Google Play requires one): how to delete in the app and on the website, what goes and what stays, and how to ask without signing in |
 | Support URL | the website, or a page with `SUPPORT_EMAIL` on it (the footer and the app's "Contact us" fall back to the operator's published address, `src/lib/business.ts`) |
 | Price | Free. The app sells nothing (`/employer/billing` is read-only; see Guideline 3.1.1 below) |
+
+## The listing, as code
+
+`mobile/store.config.js` is the listing App Store Connect shows, in Arabic
+(the primary language, `eas.json` → `submit.production.ios.language`) and
+English: name, subtitle, description, keywords, promotional text, the support,
+marketing, privacy and privacy-choices links, the category, the copyright, the
+age-rating answers below and the release (by hand, once approved). EAS Metadata
+reads it (`metadataPath` in `eas.json`); from `mobile/`:
+
+- `npx eas-cli@latest metadata:lint` checks it against Apple's limits without
+  signing in (`tests/store-config.test.ts` checks the same limits, the links
+  and the claims with every app check);
+- `npx eas-cli@latest metadata:push` writes it to App Store Connect, after the
+  first build has created the app's record there.
+
+Its words make claims the code backs: a listing goes live only after
+moderation, every listing names who supplies the leads, candidates pay nothing,
+and the app is in Arabic while `ENGLISH_ENABLED` is off. Change the file when
+one of those changes; the test fails on the last.
+
+The reviewer's contact and the two review accounts are not in the file — the
+repository is public. The push that sends them reads eight variables from its
+environment, all or none (some but not all stops the push):
+
+```bash
+export APP_REVIEW_CONTACT_FIRST_NAME=… APP_REVIEW_CONTACT_LAST_NAME=…
+export APP_REVIEW_CONTACT_EMAIL=… APP_REVIEW_CONTACT_PHONE='+20 …'
+export APP_REVIEW_CANDIDATE_EMAIL=… APP_REVIEW_CANDIDATE_PASSWORD=…
+export APP_REVIEW_EMPLOYER_EMAIL=… APP_REVIEW_EMPLOYER_PASSWORD=…
+npx eas-cli@latest metadata:push
+```
+
+The candidate is the sign-in App Review uses; the employer goes into the
+review notes, which the file writes (`reviewNotes`). Without the variables, a
+push leaves the review details App Store Connect already has.
+
+An App Store name is unique across the store: if «Brokers Connect» or
+«بروكرز كونكت» is taken, App Store Connect refuses it, and the name in
+`store.config.js` (and `appName` in `eas.json`, for the first submission)
+changes to one that is free.
 
 ## App privacy ("nutrition label")
 
@@ -99,17 +140,11 @@ App Review needs accounts that show the whole app. Create them on production
 2. An **approved employer** whose company is **verified**, with one live
    listing that the candidate above has applied to.
 
-Then, in the notes:
-
-> Brokers Connect is an Arabic-language job board and consultant directory for
-> Egypt's real estate market. Candidate account: <email> / <password> — browse
-> Jobs, open a listing, apply; Applications, Saved and the directory profile
-> are in the tabs and under Account. Employer account: <email> / <password> —
-> Listings (post and edit a role), Applicants (move an applicant, open a CV),
-> Consultants (the directory, contact reveal, shortlist). Account → Delete
-> account deletes the signed-in account; for a company owner it files a
-> deletion request, because deleting the account would delete other people's
-> applications. Nothing is sold in the app.
+The candidate is the sign-in App Review is given; the notes, written by
+`mobile/store.config.js` (`reviewNotes`), carry the employer account and say
+where each part of the app is, that a new listing waits for moderation, how
+account deletion works for a company owner, and that nothing is sold in the
+app. "The listing, as code" above says how they reach App Store Connect.
 
 ## Before the first submission (the owner)
 
@@ -162,7 +197,9 @@ has.
    credentials it keeps, and uploads it to App Store Connect. The first upload
    creates the app's record there and asks you to sign in with your Apple ID.
    After Apple's processing it is in TestFlight: install it on the iPhone
-   from there, then submit it for review with the answers in this file.
+   from there. Then `npx eas-cli@latest metadata:push`, with the review
+   variables set ("The listing, as code"), fills in the listing, and it is
+   submitted for review from App Store Connect.
 10. After the listing exists: `MOBILE_APP_STORE_URL` on Vercel, so the
    "update the app" screen can link to it, and `MOBILE_MIN_APP_VERSION` raised
    only when an older build must stop.
