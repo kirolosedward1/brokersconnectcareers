@@ -12,6 +12,7 @@ import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/component
 import { Text } from '~/components/ui/text';
 import {
   APPLICANTS_CAP,
+  notesOf,
   STAGES,
   useApplicantNotes,
   useListingApplicants,
@@ -109,31 +110,37 @@ export default function ListingApplicantsScreen() {
           </View>
         ) : null}
 
-        {STAGES.map((stage) => {
+        {/* One list, each stage's header among its cards. A card whose stage
+            changes on a re-read — a colleague's move, read again after a pull
+            or a push — moves under its new header as the same card, keeping
+            the reason or note being typed in it; in a box per stage it was
+            built again, empty. */}
+        {STAGES.flatMap((stage) => {
           const inStage = rows.filter((row) => row.status === stage);
-          if (!inStage.length) return null;
-          return (
-            <View key={stage} style={{ gap: space[3] }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-                <Text weight="semibold" accessibilityRole="header">
-                  {t(`applicationStatus.${stage}`)}
-                </Text>
-                <Badge label={String(inStage.length)} />
-              </View>
-              {inStage.map((row) => (
-                <ApplicantCard
-                  key={row.id}
-                  applicant={row}
-                  jobTitle={title}
-                  companyName={context.companyName}
-                  districtNames={context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
-                  notes={notes.data ? (notes.data.byApplication[row.id] ?? []) : undefined}
-                  authors={notes.data?.authors ?? {}}
-                  viewerId={context.viewerId}
-                />
-              ))}
-            </View>
-          );
+          if (!inStage.length) return [];
+          return [
+            <View
+              key={`stage:${stage}`}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], marginTop: space[2] }}
+            >
+              <Text weight="semibold" accessibilityRole="header">
+                {t(`applicationStatus.${stage}`)}
+              </Text>
+              <Badge label={String(inStage.length)} />
+            </View>,
+            ...inStage.map((row) => (
+              <ApplicantCard
+                key={row.id}
+                applicant={row}
+                jobTitle={title}
+                companyName={context.companyName}
+                districtNames={context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
+                notes={notesOf(notes.data, row.id)}
+                authors={notes.data?.authors ?? {}}
+                viewerId={context.viewerId}
+              />
+            )),
+          ];
         })}
       </ScrollView>
     );

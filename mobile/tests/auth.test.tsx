@@ -486,6 +486,30 @@ describe('onboarding', () => {
     });
   });
 
+  it("takes a company's website as the company page does, and says when it is not one", async () => {
+    profileRow = null;
+    await signedIn();
+    renderRouter(app, { initialUrl: '/onboarding' });
+    fireEvent.press(await screen.findByRole('radio', { name: `${ar.onboarding.roleEmployer}. ${ar.onboarding.roleEmployerHint}` }));
+    fireEvent.changeText(await screen.findByLabelText(ar.onboarding.companyName), 'نايل بروكرز');
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
+    fireEvent.press(screen.getByRole('checkbox'));
+
+    // Not an address: said before anything is sent.
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.companyWebsite), 'نايل بروكرز دوت كوم');
+    await press(ar.onboarding.submit);
+    expect(await screen.findByText(ar.validation.invalidUrl)).toBeTruthy();
+    expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
+
+    // A bare domain is the https address.
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.companyWebsite), 'nilebrokers.com');
+    await press(ar.onboarding.submit);
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(1));
+    expect((bodyOf('/api/mobile/v1/actions/completeOnboarding') as { input: { company: { website: string } } }).input.company.website).toBe(
+      'https://nilebrokers.com',
+    );
+  });
+
   it('opens by itself when a returning session has no profile yet', async () => {
     profileRow = null;
     await signedIn();

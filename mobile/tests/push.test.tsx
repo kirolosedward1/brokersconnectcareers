@@ -454,12 +454,14 @@ describe('a push while the app is open', () => {
       expect.arrayContaining([
         '["notifications"]',
         '["viewer"]',
-        // A new applicant: the company's inbox, pipelines and counts.
+        // A new applicant: the company's inbox, pipelines, overview and counts.
         '["employer","applicants"]',
         '["employer","summary"]',
+        '["employer","trend"]',
         '["employer","listings"]',
-        // A move: the candidate's applications.
+        // A move: the candidate's applications, and the summary on their Home.
         '["applications"]',
+        '["candidate"]',
       ]),
     );
     invalidated.mockRestore();

@@ -63,16 +63,20 @@ export function PushBridge() {
   // and the screens that depend on it (the directory, the standing notice)
   // follow without waiting for the app to come back from the background. So
   // are the lists a push is most often about: a new applicant in a company's
-  // inbox and pipeline and its counts, a move in a candidate's applications.
-  // Only what is on screen is read again; the rest when it is next opened.
+  // inbox and pipelines, its overview and its listings' counts; a move in a
+  // candidate's applications and the summary on their Home. Whatever is
+  // mounted is read again (a tab left open behind another included), the
+  // rest when it is next opened.
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener(() => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['viewer'] });
       queryClient.invalidateQueries({ queryKey: ['employer', 'applicants'] });
       queryClient.invalidateQueries({ queryKey: ['employer', 'summary'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'trend'] });
       queryClient.invalidateQueries({ queryKey: ['employer', 'listings'] });
       queryClient.invalidateQueries({ queryKey: ['applications'] });
+      queryClient.invalidateQueries({ queryKey: ['candidate'] });
     });
     return () => subscription.remove();
   }, [queryClient]);

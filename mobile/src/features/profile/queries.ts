@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AgentProfileInput, MobileActions } from '@/lib/mobile-api/contract';
+import { releaseUnusedCv } from '@/lib/cv-in-use';
 import { canAccessCandidateArea } from '@/lib/permissions';
 import { clean } from '@/lib/security/sanitize';
 import type {
@@ -153,7 +154,19 @@ export function useSaveAgentProfile() {
         throw error;
       }
       if (!result.ok) {
-        if (uploaded) await removeCv(uploaded);
+        // Unless the profile went in with it: the row is written before the
+        // developer tags, so a refusal from those follows a save that kept
+        // the new file, and taking it out left the profile pointing at nothing.
+        if (uploaded) {
+          await releaseUnusedCv(
+            {
+              profileCv: () => supabase.from('agent_profiles').select('cv_path').eq('cv_path', uploaded).maybeSingle(),
+              applicationsWith: (path) => supabase.from('applications').select('id').eq('cv_path', path).limit(1),
+            },
+            removeCv,
+            uploaded,
+          );
+        }
         throw new SaveRefused(result.error, result.fieldErrors);
       }
     },

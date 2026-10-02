@@ -279,6 +279,8 @@ describe('a listing', () => {
 
     expect(await screen.findByRole('button', { name: ar.common.retry })).toBeTruthy();
     expect(screen.queryByText(ar.jobs.empty)).toBeNull();
+    // Nor a count of none at the top (resultsCount at zero).
+    expect(screen.queryByText('لا توجد نتائج')).toBeNull();
 
     // Read again on the retry.
     server.on('/api/mobile/v1/jobs', board());

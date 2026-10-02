@@ -106,9 +106,12 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
             {t('title', { track: trackName, district: districtName })}
           </Text>
           <Text tone="mutedForeground">{t('subtitle', { track: trackName, district: districtName })}</Text>
-          <Text variant="small" tone="mutedForeground">
-            {tJobs('resultsCount', { count: total })}
-          </Text>
+          {/* Counted only once read: a failed read is not "no results". */}
+          {board.data ? (
+            <Text variant="small" tone="mutedForeground">
+              {tJobs('resultsCount', { count: total })}
+            </Text>
+          ) : null}
           {factLines.length ? (
             <View accessibilityLabel={t('factsLabel')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
               {factLines.map((line) => (

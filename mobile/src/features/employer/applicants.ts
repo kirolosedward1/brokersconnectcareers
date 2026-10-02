@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsFocused } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { canAccessEmployerArea } from '@/lib/permissions';
@@ -192,7 +192,20 @@ export function useInbox(filters: InboxFilters, { enabled = true }: { enabled?: 
   });
 }
 
-export type Notes = { byApplication: Record<string, ApplicationNoteRow[]>; authors: Record<string, string> };
+export type Notes = {
+  byApplication: Record<string, ApplicationNoteRow[]>;
+  authors: Record<string, string>;
+  /** The applicants these were read for. Any other card's notes are unread, not none. */
+  read: string[];
+};
+
+/**
+ * One card's notes, or undefined while they are unread — which a card treats
+ * differently from none (its note box, and how a lost answer is checked).
+ */
+export function notesOf(notes: Notes | undefined, applicationId: string): ApplicationNoteRow[] | undefined {
+  return notes?.read.includes(applicationId) ? (notes.byApplication[applicationId] ?? []) : undefined;
+}
 
 /**
  * The company's own notes on these applicants, oldest first, and who wrote
@@ -204,6 +217,11 @@ export function useApplicantNotes(applicationIds: string[]) {
   return useQuery({
     queryKey: ['employer', 'notes', key],
     enabled: applicationIds.length > 0,
+    // A new applicant changes the set, and so the key. The cards already on
+    // screen keep their notes while it is read — an open note box with a
+    // sentence half typed in it stays open — and only the new card's are
+    // unread (notesOf).
+    placeholderData: keepPreviousData,
     queryFn: async (): Promise<Notes> => {
       const { data, error } = await supabase
         .from('application_notes')
@@ -227,7 +245,7 @@ export function useApplicantNotes(applicationIds: string[]) {
           if (member.profile?.full_name) authors[member.user_id] = member.profile.full_name;
         }
       }
-      return { byApplication, authors };
+      return { byApplication, authors, read: applicationIds };
     },
   });
 }
@@ -272,6 +290,22 @@ export class MovedAlready extends Error {
  * rather than overwritten, and always with the decision note (the action
  * writes it on every move).
  */
+/**
+ * Whether a move whose answer never came is in: the stage it was sent to and
+ * the reason as the website stores it (clean, or nothing). A read that fails
+ * is "not known to be".
+ */
+async function moveLanded(input: { applicationId: string; status: ApplicationStatus; decisionNote: string }) {
+  const { data, error } = await supabase
+    .from('applications')
+    .select('status, decision_note')
+    .eq('id', input.applicationId)
+    .maybeSingle();
+  if (error || !data) return false;
+  const row = data as { status: ApplicationStatus; decision_note: string | null };
+  return row.status === input.status && (row.decision_note ?? null) === (clean(input.decisionNote.trim(), true) || null);
+}
+
 export function useSetApplicationStatus() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -281,6 +315,12 @@ export function useSetApplicationStatus() {
         status: input.status,
         decisionNote: input.decisionNote.trim() || null,
         from: input.from,
+      }).catch(async (error: unknown) => {
+        // No answer: the move may be in, and only the answer lost. Said to be
+        // offline over a card the re-read then showed moved, the employer
+        // was told it had not happened when it had.
+        if (!refusedAtTheDoor(error) && (await moveLanded(input))) return { ok: true as const };
+        throw error;
       });
       if (!result.ok) throw result.error === 'moved_already' ? new MovedAlready() : new Error(result.error);
     },

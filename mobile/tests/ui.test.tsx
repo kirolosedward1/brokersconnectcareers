@@ -36,6 +36,7 @@ function Providers({ children }: { children: ReactNode }) {
 }
 
 const photo = (name: string) => `${env.supabaseUrl}/storage/v1/object/public/avatars/${name}.webp`;
+const logo = (name: string) => `${env.supabaseUrl}/storage/v1/object/public/company-logos/${name}/logo.webp`;
 
 describe('a picture that does not load', () => {
   // The letter is drawn, and kept from VoiceOver: the name beside it is what
@@ -53,11 +54,21 @@ describe('a picture that does not load', () => {
   });
 
   it("is the company's letter, not a blank white tile", () => {
-    render(<CompanyLogo name="النيل" logoUrl="https://example.com/logo.webp" />, { wrapper: Providers });
+    render(<CompanyLogo name="النيل" logoUrl={logo('nile')} />, { wrapper: Providers });
     act(() => screen.UNSAFE_getByType(Image).props.onError());
     expect(screen.getByText('ا', drawn)).toBeTruthy();
     expect(screen.queryByText('ا')).toBeNull();
     expect(screen.UNSAFE_queryByType(Image)).toBeNull();
+  });
+
+  it("is the company's letter, never fetched, for a logo on any other host", () => {
+    // The column's path on a tracker's host: migration 344 cannot tell the hosts apart.
+    render(
+      <CompanyLogo name="النيل" logoUrl="https://tracker.example/storage/v1/object/public/company-logos/c1/p.png" />,
+      { wrapper: Providers },
+    );
+    expect(screen.UNSAFE_queryByType(Image)).toBeNull();
+    expect(screen.getByText('ا', drawn)).toBeTruthy();
   });
 
   it('is a letter VoiceOver does not read when there was never a picture', () => {

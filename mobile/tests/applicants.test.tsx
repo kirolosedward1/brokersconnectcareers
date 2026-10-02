@@ -188,6 +188,15 @@ const app = {
   '(tabs)/(listings,applicants)/agents/[slug]': ConsultantStandIn,
 };
 
+/** A read held in flight until the test lets it go. */
+function held<T>(answer: () => T) {
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { handler: async () => (await gate, answer()), release };
+}
+
 const pull = async () => {
   await act(async () => {
     screen.UNSAFE_getByType(RefreshControl).props.onRefresh();
@@ -272,6 +281,79 @@ describe("a listing's applicants", () => {
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     expect(screen.queryByText(ar.app.offline.body)).toBeNull();
     expect(screen.getByDisplayValue('مقابلة يوم الأحد الساعة ١١.')).toBeTruthy();
+  });
+
+  it('never sends a reason that is not on screen', async () => {
+    // The first move from "new" is held, then lost; the box shows while it is on its way.
+    let calls = 0;
+    const first = held(() => {
+      throw new TypeError('Network request failed');
+    });
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', async () => {
+      calls += 1;
+      return calls === 1 ? first.handler() : { ok: true };
+    });
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` }));
+    fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.shortlisted }));
+    fireEvent.changeText((await screen.findAllByLabelText(ar.employer.decisionNote))[0], 'ملف ممتاز، هنكلمك الأحد.');
+
+    // Not in: back at "new", where the box is hidden — with the sentence still in it.
+    await act(async () => first.release());
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+    expect(screen.getByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` })).toBeTruthy();
+
+    // The next move carries the reason the card holds, not the hidden sentence.
+    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` }));
+    fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.rejected }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/setApplicationStatus')).toHaveLength(2));
+    expect(input('/api/mobile/v1/actions/setApplicationStatus', 1)).toEqual({
+      applicationId: sara.id,
+      status: 'rejected',
+      decisionNote: null,
+      from: 'new',
+    });
+  });
+
+  it("keeps what is typed on a card when a colleague's move, read again, puts it under another stage", async () => {
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.changeText(await screen.findByDisplayValue('مقابلة يوم الخميس.'), 'مقابلة يوم الأحد.');
+
+    // A colleague moves him to interview; the page reads its applicants again (a pull, a push).
+    rows = rows.map((row) => (row.id === omar.id ? { ...row, status: 'interview' } : row));
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['employer', 'applicants'] });
+    });
+
+    expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (عمر حسن): ${ar.applicationStatus.interview}` })).toBeTruthy();
+    // The same card under its new stage, with the sentence still in it.
+    expect(screen.getByDisplayValue('مقابلة يوم الأحد.')).toBeTruthy();
+  });
+
+  it('takes a move whose answer was lost as made, when the database has it', async () => {
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', (_url: URL, init: RequestInit | undefined) => {
+      const move = (JSON.parse(String(init?.body)) as { input: { applicationId: string; status: Applicant['status']; decisionNote: string | null } })
+        .input;
+      rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status, decision_note: move.decisionNote } : row));
+      throw new TypeError('Network request failed');
+    });
+    // The row as the database holds it, read by its id.
+    server.on('GET /rest/v1/applications', (url: URL) => {
+      const id = url.searchParams.get('id');
+      if (id) return rows.filter((row) => `eq.${row.id}` === id).map((row) => ({ status: row.status, decision_note: row.decision_note }));
+      if (url.searchParams.get('select')?.startsWith('status,')) return rows.map((row) => ({ status: row.status }));
+      return { body: rows, headers: { 'content-range': `0-${rows.length - 1}/${rows.length}` } };
+    });
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.moveTo} (عمر حسن): ${ar.applicationStatus.shortlisted}` }));
+    fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.interview }));
+    expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (عمر حسن): ${ar.applicationStatus.interview}` })).toBeTruthy();
+    await act(async () => {});
+    // It happened: nothing says it did not.
+    expect(screen.queryByText(ar.app.offline.body)).toBeNull();
+    expect(screen.queryByText(ar.common.errorBody)).toBeNull();
+    expect(server.asked('/api/mobile/v1/actions/setApplicationStatus')).toHaveLength(1);
   });
 
   it('adds a private note, and lets its author take their own back', async () => {
@@ -457,6 +539,50 @@ describe('the inbox', () => {
     await pull();
     expect(await screen.findByText('ليلى محمود')).toBeTruthy();
     expect(screen.getByText(`${ar.filters.any} (3)`)).toBeTruthy();
+  });
+
+  it('keeps a note being written open while a new applicant is read in', async () => {
+    renderRouter(app, { initialUrl: '/employer/applicants' });
+    expect(await screen.findByText('كلّمتها، هترد الخميس.')).toBeTruthy();
+    fireEvent.changeText(screen.getAllByLabelText(ar.employer.notesTitle)[0], 'نكلمها بكرة.');
+
+    // A new applicant changes the cards, and with them the notes' read — held here.
+    const notesRead = held(() => notes);
+    server.on('GET /rest/v1/application_notes', notesRead.handler);
+    rows = [layla, ...rows];
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['employer', 'applicants'] });
+    });
+    expect(await screen.findByText('ليلى محمود')).toBeTruthy();
+
+    // Her notes are on their way; the box being written in has not closed.
+    expect(screen.getAllByLabelText(ar.employer.notesTitle)[0].props.value).toBe('نكلمها بكرة.');
+    await act(async () => notesRead.release());
+  });
+
+  it('turns the spinner for a pull, and not for a read started by a move', async () => {
+    renderRouter(app, { initialUrl: '/employer/applicants' });
+    expect(await screen.findByText('سارة عادل')).toBeTruthy();
+
+    const reading = held(() => ({ body: rows, headers: { 'content-range': `0-${rows.length - 1}/${rows.length}` } }));
+    server.on('GET /rest/v1/applications', reading.handler);
+    // Read again for another reason (after a move, a push): no spinner.
+    act(() => {
+      void client.invalidateQueries({ queryKey: ['employer', 'applicants'] });
+    });
+    await waitFor(() => expect(server.asked('/rest/v1/applications').length).toBeGreaterThan(2));
+    expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
+    await act(async () => reading.release());
+
+    // A pull: the spinner, until the read is in.
+    const again = held(() => ({ body: rows, headers: { 'content-range': `0-${rows.length - 1}/${rows.length}` } }));
+    server.on('GET /rest/v1/applications', again.handler);
+    act(() => {
+      screen.UNSAFE_getByType(RefreshControl).props.onRefresh();
+    });
+    expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
+    await act(async () => again.release());
+    await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false));
   });
 
   it('searches by name, with LIKE’s own characters taken as typed', async () => {

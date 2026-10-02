@@ -223,6 +223,31 @@ describe('the photo', () => {
     expect(await screen.findByRole('button', { name: ar.account.photoReplace })).toBeTruthy();
   });
 
+  it('stays busy until the new photo can show', async () => {
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///library/IMG_0003.HEIC', width: 2000, height: 2000 }],
+    } as ImagePicker.ImagePickerResult);
+    await signIn();
+    renderRouter(app, { initialUrl: '/account' });
+    const upload = await screen.findByRole('button', { name: ar.account.photoUpload });
+
+    // The account's read after the upload, held.
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.on('/rest/v1/profiles', async () => (await gate, [me]));
+    fireEvent.press(upload);
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/uploadImage')).toHaveLength(1));
+    await act(async () => {});
+    // Answered, but the photo is not on screen yet: still busy, not offering the same upload again.
+    expect(screen.getByRole('button', { name: ar.account.photoUpload }).props.accessibilityState).toMatchObject({ busy: true });
+
+    await act(async () => release());
+    expect(await screen.findByRole('button', { name: ar.account.photoReplace })).toBeTruthy();
+  });
+
   it("says what the website refused", async () => {
     server.on('POST /api/mobile/v1/actions/uploadImage', { ok: false, error: 'file_type' });
     jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({

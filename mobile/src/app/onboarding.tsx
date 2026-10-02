@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'use-intl';
 import { BadgeCheck, Briefcase, Check, Eye, EyeOff, MailCheck, Search } from '~/components/ui/lucide';
 import type { OnboardingInput } from '@/lib/mobile-api/contract';
 import { localized, type Locale } from '@/lib/locale';
+import { safeHttpUrl } from '@/lib/security/sanitize';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import type { AgentVisibility, HeadcountBand } from '@/lib/supabase/database.types';
 import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
@@ -27,6 +28,7 @@ import { callAction } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { useHoldBack } from '~/lib/use-hold-back';
+import { webAddress } from '~/lib/web-address';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -171,6 +173,10 @@ function OnboardingForm({
     const missing: Record<string, string> = {};
     if (role === 'candidate' && !visibility) missing.visibility = t('onboarding.visibilityRequired');
     if (!agreed) missing.terms = t('onboarding.consentRequired');
+    // As the company page takes it: "nilebrokers.com" is https://nilebrokers.com.
+    // Sent as typed, the website refused it as not an address.
+    const website = role === 'employer' ? webAddress(companyWebsite) : null;
+    if (website && !safeHttpUrl(website)) missing.companyWebsite = t('validation.invalidUrl');
     if (Object.keys(missing).length) {
       setErrors(missing);
       return;
@@ -187,7 +193,7 @@ function OnboardingForm({
         role === 'employer'
           ? {
               nameAr: companyName,
-              website: companyWebsite.trim() || null,
+              website,
               headcountBand: headcount,
               districtId,
             }

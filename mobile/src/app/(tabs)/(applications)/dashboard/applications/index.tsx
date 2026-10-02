@@ -19,6 +19,7 @@ import {
   type CandidateApplication,
 } from '~/features/applications/queries';
 import { useSession } from '~/lib/session';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -32,6 +33,8 @@ export default function ApplicationsScreen() {
   const { colors } = useTheme();
   const { session } = useSession();
   const applications = useMyApplications();
+  // A push about a move reads the list again; the spinner is the pull's alone.
+  const pull = usePullRefresh(() => applications.refetch());
 
   let body: React.ReactNode;
   if (!session) {
@@ -53,11 +56,7 @@ export default function ApplicationsScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
         refreshControl={
-          <RefreshControl
-            refreshing={applications.isRefetching}
-            onRefresh={() => applications.refetch()}
-            tintColor={colors.primary}
-          />
+          <RefreshControl {...pull} tintColor={colors.primary} />
         }
       >
         <Text tone="mutedForeground">{t('dashboard.applicationsLede')}</Text>

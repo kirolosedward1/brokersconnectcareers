@@ -21,6 +21,7 @@ import { useEmployerSummary, useEmployerTrend } from '~/features/employer/overvi
 import { noAnswer } from '~/lib/api';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -49,14 +50,19 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
   const n = (value: number) => formatNumber(value, locale);
   const go = (href: string) => router.navigate(routeInside(href, actor) as never);
 
-  const refresh = () => {
-    summary.refetch();
-    trend.refetch();
-    queryClient.invalidateQueries({ queryKey: ['viewer'] });
-    queryClient.invalidateQueries({ queryKey: ['account', 'note'] });
-    queryClient.invalidateQueries({ queryKey: ['employer', 'suspension'] });
-    queryClient.invalidateQueries({ queryKey: ['appeal'] });
-  };
+  // The spinner is the pull's alone: a push about a new applicant reads the
+  // overview again too, and a spinner that starts by itself pushes the page
+  // down under the reader's finger.
+  const pull = usePullRefresh(() =>
+    Promise.all([
+      summary.refetch(),
+      trend.refetch(),
+      queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+      queryClient.invalidateQueries({ queryKey: ['account', 'note'] }),
+      queryClient.invalidateQueries({ queryKey: ['employer', 'suspension'] }),
+      queryClient.invalidateQueries({ queryKey: ['appeal'] }),
+    ]),
+  );
 
   const header = (
     <View>
@@ -214,7 +220,7 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
       keyboardDismissMode="interactive"
       automaticallyAdjustKeyboardInsets
       refreshControl={
-        <RefreshControl refreshing={summary.isRefetching || trend.isRefetching} onRefresh={refresh} tintColor={colors.primary} />
+        <RefreshControl {...pull} tintColor={colors.primary} />
       }
       contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
     >

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
+import { trustedLogoUrl } from '@/lib/avatar-url';
+import { env } from '~/lib/env';
 import { useTheme } from '~/theme/provider';
 import { radius } from '~/theme/tokens';
 import { Text } from '~/components/ui/text';
@@ -38,7 +40,11 @@ export function CompanyLogo({
   // A logo that does not load (gone, offline) is the letter, not a blank white tile.
   const [failedLogo, setFailedLogo] = useState<string | null>(null);
 
-  if (logoUrl && failedLogo !== logoUrl) {
+  // Only this deployment's own logos bucket is fetched (avatar-url.ts): any
+  // other host would learn who scrolls the board, and when.
+  const logo = trustedLogoUrl(logoUrl, env.supabaseUrl);
+
+  if (logo && failedLogo !== logo) {
     return (
       <View
         style={{
@@ -53,11 +59,11 @@ export function CompanyLogo({
         }}
       >
         <Image
-          source={{ uri: logoUrl }}
-          recyclingKey={logoUrl}
+          source={{ uri: logo }}
+          recyclingKey={logo}
           contentFit="contain"
           style={{ flex: 1 }}
-          onError={() => setFailedLogo(logoUrl)}
+          onError={() => setFailedLogo(logo)}
           accessible={false}
         />
       </View>

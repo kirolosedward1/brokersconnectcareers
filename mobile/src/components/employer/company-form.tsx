@@ -15,17 +15,11 @@ import { CompanyRefused, useSaveCompany } from '~/features/employer/company';
 import { useDistricts } from '~/features/taxonomy';
 import { ApiError } from '~/lib/api';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
+import { webAddress } from '~/lib/web-address';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 
 type Key = 'nameAr' | 'website' | 'aboutAr' | 'aboutEn' | 'form';
-
-/** A web address as a person types it: the scheme is added when left off. */
-function website(text: string): string | null {
-  const value = text.trim();
-  if (!value) return null;
-  return /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
-}
 
 /** The columns this form edits, as the fields hold them. */
 type Fields = {
@@ -115,7 +109,7 @@ export function CompanyForm({ company }: { company: CompanyRow | null }) {
   const submit = () => {
     setSaved(false);
     const local: Partial<Record<Key, string>> = {};
-    const address = website(site);
+    const address = webAddress(site);
     if (nameAr.trim().length < 2) local.nameAr = t('validation.required');
     if (address && !safeHttpUrl(address)) local.website = t('validation.invalidUrl');
     if (Object.keys(local).length) return setErrors(local);

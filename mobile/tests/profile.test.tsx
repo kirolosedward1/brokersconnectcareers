@@ -102,7 +102,13 @@ beforeEach(async () => {
   server.on('/rest/v1/profiles', [profile]);
   server.on('/rest/v1/districts', [newCairo]);
   server.on('/rest/v1/developers', [{ id: 3, name_ar: 'بالم هيلز', name_en: 'Palm Hills', slug: 'palm-hills' }]);
-  server.on('GET /rest/v1/agent_profiles', () => (agent ? [agent] : []));
+  server.on('GET /rest/v1/agent_profiles', (url: URL) => {
+    // Asked whether the profile points at a file: by its path.
+    const path = url.searchParams.get('cv_path');
+    if (path) return agent && `eq.${agent.cv_path}` === path ? [agent] : [];
+    return agent ? [agent] : [];
+  });
+  server.on('GET /rest/v1/applications', []);
   server.on('GET /rest/v1/agent_developers', [{ developer_id: 3 }]);
   server.on('GET /rest/v1/agent_experience', [job]);
   server.on('GET /rest/v1/agent_education', []);
@@ -225,6 +231,31 @@ describe('the profile', () => {
     const path = String(bodyOf('/api/mobile/v1/actions/saveAgentProfile')?.input?.cvPath);
     expect(path).toMatch(new RegExp(`^${USER_ID}/[0-9a-f-]{36}\\.pdf$`));
     await waitFor(() => expect(server.asked('/storage/v1/object/cvs')[0]?.body).toEqual({ prefixes: [path] }));
+  });
+
+  it('keeps a new CV the profile was saved with, when a later step of the save is refused', async () => {
+    // The row goes in with the new file; the developer tags after it are refused.
+    server.on('POST /api/mobile/v1/actions/saveAgentProfile', (_url: URL, init: RequestInit | undefined) => {
+      const sent = (JSON.parse(String(init?.body)) as { input: { cvPath: string } }).input;
+      agent = agent ? { ...agent, cv_path: sent.cvPath } : agent;
+      return { ok: false, error: 'insert or update on table "agent_developers" violates foreign key constraint' };
+    });
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///cache/cv.pdf', name: 'cv.pdf', mimeType: 'application/pdf', size: 2048, lastModified: 0 }],
+    } as DocumentPicker.DocumentPickerResult);
+    open();
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
+    expect(await screen.findByText('cv.pdf')).toBeTruthy();
+    fireEvent.press(saveButton());
+
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/saveAgentProfile')).toHaveLength(1));
+    const path = String(bodyOf('/api/mobile/v1/actions/saveAgentProfile')?.input?.cvPath);
+    // Asked, and the saved profile points at it: not taken out from under it.
+    await waitFor(() => expect(server.asked('/rest/v1/agent_profiles').some((request) => request.url.searchParams.get('cv_path') === `eq.${path}`)).toBe(true));
+    await act(async () => {});
+    expect(server.asked('/storage/v1/object/cvs')).toHaveLength(0);
   });
 
   it('catches a phone number the website would refuse, before sending anything', async () => {

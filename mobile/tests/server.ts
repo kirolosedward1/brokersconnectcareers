@@ -7,7 +7,8 @@
 type Handler = (
   url: URL,
   init: RequestInit | undefined,
-) => { status?: number; body: unknown; headers?: Record<string, string> } | unknown;
+  // A promise answers when it settles: a test holds a read in flight that way.
+) => { status?: number; body: unknown; headers?: Record<string, string> } | unknown | Promise<unknown>;
 
 export type Request = { method: string; url: URL; body: unknown };
 
@@ -36,7 +37,7 @@ export function fakeServer() {
         ([route]) => route.endsWith('*') && `${method} ${url.pathname}`.startsWith(route.slice(0, -1)),
       )?.[1];
     if (!handler) return new Response(JSON.stringify({ error: 'not_found' }), { status: 404 });
-    const answer = handler(url, init);
+    const answer = await handler(url, init);
     const { status, body: payload, headers } =
       answer && typeof answer === 'object' && 'body' in answer
         ? (answer as { status?: number; body: unknown; headers?: Record<string, string> })

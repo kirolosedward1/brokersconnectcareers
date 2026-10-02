@@ -19,6 +19,7 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import {
   APPLICANTS_CAP,
+  notesOf,
   parseInboxFilters,
   STAGES,
   useApplicantNotes,
@@ -218,7 +219,7 @@ export default function InboxScreen() {
                     jobTitle={jobTitle}
                     companyName={context.companyName}
                     districtNames={context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
-                    notes={notes.data ? (notes.data.byApplication[row.id] ?? []) : undefined}
+                    notes={notesOf(notes.data, row.id)}
                     authors={notes.data?.authors ?? {}}
                     viewerId={context.viewerId}
                   />

@@ -29,6 +29,7 @@ import {
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -54,6 +55,8 @@ export default function ListingsScreen() {
   const { colors } = useTheme();
   const { session, viewer, actor } = useSession();
   const listings = useMyListings();
+  // A push about a new applicant reads the counts again; the spinner is the pull's alone.
+  const pull = usePullRefresh(() => listings.refetch());
 
   const header = (
     <Stack.Screen options={{ title: t('employer.jobs'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
@@ -131,8 +134,7 @@ export default function ListingsScreen() {
           if (listings.hasNextPage && !listings.isFetchingNextPage) listings.fetchNextPage();
         }}
         onEndReachedThreshold={0.5}
-        refreshing={listings.isRefetching && !listings.isFetchingNextPage}
-        onRefresh={() => listings.refetch()}
+        {...pull}
       />
     );
   }

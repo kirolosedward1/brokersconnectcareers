@@ -31,6 +31,7 @@ import { useAgentProfile, useCandidateSummary } from '~/features/profile/queries
 import { useDistricts } from '~/features/taxonomy';
 import { inOwnTab } from '~/lib/links';
 import { useSession } from '~/lib/session';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { tabsFor } from '~/lib/tabs';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, radius, space } from '~/theme/tokens';
@@ -70,18 +71,22 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   const unreadable = !s && applications.isError;
   const noApplications = s ? s.applications_total === 0 : applications.isSuccess && applications.data.length === 0;
 
-  const refresh = () => {
-    summary.refetch();
-    applications.refetch();
-    agent.refetch();
-    board.refetch();
-    counts.refetch();
-    // Where the account stands can change while the app is open.
-    queryClient.invalidateQueries({ queryKey: ['viewer'] });
-    queryClient.invalidateQueries({ queryKey: ['account', 'note'] });
-    queryClient.invalidateQueries({ queryKey: ['appeal'] });
-  };
-  const refreshing = summary.isRefetching || applications.isRefetching || board.isRefetching;
+  const refresh = () =>
+    Promise.all([
+      summary.refetch(),
+      applications.refetch(),
+      agent.refetch(),
+      board.refetch(),
+      counts.refetch(),
+      // Where the account stands can change while the app is open.
+      queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+      queryClient.invalidateQueries({ queryKey: ['account', 'note'] }),
+      queryClient.invalidateQueries({ queryKey: ['appeal'] }),
+    ]);
+  // The spinner is the pull's alone: a push reads the summary and the
+  // applications again too, and a spinner that starts by itself pushes the
+  // page down under the reader's finger.
+  const pull = usePullRefresh(refresh);
 
   return (
     <ScrollView
@@ -90,7 +95,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       automaticallyAdjustKeyboardInsets
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
+      refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
     >
       <View>
@@ -142,7 +147,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
             <Notice tone="destructive" title={t('common.error')}>
               <Text variant="small">{t('common.errorBody')}</Text>
               <View style={{ alignItems: 'flex-start', marginTop: space[2] }}>
-                <Button label={t('common.retry')} size="sm" variant="outline" onPress={refresh} />
+                <Button label={t('common.retry')} size="sm" variant="outline" onPress={() => void refresh()} />
               </View>
             </Notice>
           ) : null}

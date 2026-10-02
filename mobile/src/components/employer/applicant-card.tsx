@@ -263,7 +263,11 @@ export function ApplicantCard({
           placeholder={t(`applicationStatus.${status}`)}
           required
           options={STAGES.map((value) => ({ value, label: t(`applicationStatus.${value}`) }))}
-          onChange={(value) => value && value !== status && save(value, reason)}
+          // The box is hidden at "new", so whatever it holds there is not on
+          // screen — a sentence typed before a move that failed, or before a
+          // colleague's move back to "new" — and is not sent: the reason the
+          // card holds is.
+          onChange={(value) => value && value !== status && save(value, status === 'new' ? savedReason : reason)}
         />
       </Field>
       {conflict ? (

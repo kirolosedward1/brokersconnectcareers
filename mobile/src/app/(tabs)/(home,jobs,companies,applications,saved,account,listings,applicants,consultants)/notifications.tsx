@@ -17,6 +17,7 @@ import { markReadLocally, useMarkAllRead, useNotificationFeed, useUnreadCount } 
 import { callAction } from '~/lib/api';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 
@@ -54,6 +55,10 @@ export default function NotificationsScreen() {
   const userId = session?.user.id ?? null;
 
   const feed = useNotificationFeed();
+  // Every push reads the feed again; the spinner is the pull's alone.
+  const pull = usePullRefresh(() =>
+    Promise.all([feed.refetch(), queryClient.invalidateQueries({ queryKey: ['notifications', 'unread'] })]),
+  );
   const unread = useUnreadCount().data ?? 0;
   const markAll = useMarkAllRead();
   const navigation = useNavigation();
@@ -166,14 +171,7 @@ export default function NotificationsScreen() {
         onEndReachedThreshold={0.5}
         ListFooterComponent={<PageFooter query={feed} />}
         refreshControl={
-          <RefreshControl
-            refreshing={feed.isRefetching && !feed.isFetchingNextPage}
-            onRefresh={() => {
-              feed.refetch();
-              queryClient.invalidateQueries({ queryKey: ['notifications', 'unread'] });
-            }}
-            tintColor={colors.primary}
-          />
+          <RefreshControl {...pull} tintColor={colors.primary} />
         }
       />
     );
