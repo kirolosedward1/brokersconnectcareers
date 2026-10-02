@@ -11,7 +11,8 @@
 #   export:ios      bundles the app for iOS with Metro and Hermes, which is
 #                   what an EAS build does first: an import Metro cannot
 #                   resolve, or a module Hermes cannot compile, fails here
-#   expo-doctor     Expo's own check of dependency versions and config
+#   expo install    the dependency versions the installed SDK expects
+#   expo-doctor     Expo's own check of the config and the native setup
 #
 # The native iOS build (prebuild + xcodebuild on macOS) is slower and runs on
 # main and by hand, not on every pull request.
@@ -75,18 +76,33 @@ jobs:
       - name: Bundle for iOS
         run: pnpm export:ios
 
+      # Against the SDK the lockfile installs, not the newest patches: doctor's
+      # own version check asks Expo's servers, so it went red each time Expo
+      # published an SDK patch, and could not be fixed for a day because pnpm
+      # here takes nothing younger (pnpm-workspace.yaml, minimumReleaseAge).
+      # On main that also skipped the iOS build, which waits on this job.
+      # Newer patches are taken on purpose: npx expo install --fix.
+      - name: Dependency versions
+        run: npx expo install --check
+        env:
+          EXPO_OFFLINE: '1'
+
       - name: Expo doctor
         run: npx expo-doctor
+        env:
+          EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: '1'
 
   ios-build:
     # A real native build for the simulator: config plugins, CocoaPods, Swift
     # and Objective-C all compile. Not on pull requests (it takes a while and
     # needs a macOS runner); on main, and on demand.
     #
-    # Xcode 26, as EAS builds SDK 57 with: @expo/ui (a dependency of
-    # expo-router) calls iOS 26 SwiftUI API — ButtonRole.close, a Button with a
-    # role and no label — that Xcode 16's SDK does not have. macos-15 defaults
-    # to Xcode 16.4, and the build failed there; macos-26 defaults to Xcode 26.
+    # Xcode 26, as EAS builds SDK 57 with. On macos-15 (Xcode 16.4, Swift 6.1)
+    # the build failed in ExpoModulesJSI's "Build xcframework" phase: its Swift
+    # package says swift-tools-version 6.2, which only Xcode 26 reads. @expo/ui,
+    # which expo-router depends on, also calls iOS 26 SwiftUI API
+    # (ButtonRole.close) that Xcode 16's SDK does not have. macos-26 defaults to
+    # Xcode 26.
     if: github.event_name != 'pull_request'
     needs: check
     runs-on: macos-26
