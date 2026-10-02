@@ -61,6 +61,17 @@ export async function GET(request: NextRequest) {
   if (retentionError && retentionError.code !== 'PGRST202' && retentionError.code !== '42883') {
     logFailure('lifecycle', 'retention failed', { code: retentionError.code });
   }
+  // A period it could not apply is reported in the answer, not raised, so the
+  // others still run — which also means a part that fails every night (a
+  // trigger change that makes its delete raise) looked like a clean run.
+  // Which parts, never the database's words: those can quote a value.
+  const retentionErrors = (retention as { errors?: unknown } | null)?.errors;
+  if (Array.isArray(retentionErrors) && retentionErrors.length > 0) {
+    logFailure('lifecycle', 'retention incomplete', {
+      count: retentionErrors.length,
+      parts: retentionErrors.map((entry) => String(entry).split(':')[0]).join(','),
+    });
+  }
 
   // ---------------------------------------------------------------- files --
   let removed = 0;

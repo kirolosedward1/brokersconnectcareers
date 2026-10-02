@@ -94,8 +94,12 @@ export function UserMenu({
             aria-hidden
             onClick={() => setOpen(false)}
           />
+          {/* Its own colours, as the phone menu has (mobile-nav.tsx): over a
+              landing page's film the header carries white type and a white
+              focus ring, and this light panel inherited both — white on
+              white. */}
           <div
-            className="absolute end-0 z-20 mt-1 w-48 rounded-lg border border-border bg-popover p-1 shadow-lg"
+            className="absolute end-0 z-20 mt-1 w-48 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg [--ring:var(--brand-blue)]"
           >
             {/* Where the privacy policy says these rights are exercised, so it
                 has to be reachable without knowing the URL. */}

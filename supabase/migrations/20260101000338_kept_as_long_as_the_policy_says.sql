@@ -13,7 +13,8 @@
 --   company_documents   "for as long as the company is verified, and for a
 --                       year after". A company's papers go a year after it
 --                       stopped being verified — companies.verification_ended_at,
---                       stamped from now on — or, for one that never was, a
+--                       stamped from now on, and dated below for a company
+--                       that stopped before — or, for one that never was, a
 --                       year after the papers were reviewed. Papers still
 --                       waiting for review are never touched.
 --   security_events     a year. Salted hashes and ids, kept to see a pattern
@@ -72,6 +73,36 @@ $$;
 revoke all on function public.stamp_verification_ended() from public, anon, authenticated;
 
 drop trigger if exists companies_90_verification_ended on companies;
+
+-- Companies that stopped being verified before the date was kept. Undated,
+-- their papers would go a year after their review — for a company verified
+-- until last week, on the first run. The audit trail (migration 203) dates
+-- each verification decision; where it has none for a company whose papers
+-- were approved, so verified once, today: kept longer than the year, never
+-- shorter. A company never verified stays undated, as the trigger leaves it.
+-- Between the trigger's drop and its creation, because the trigger puts back
+-- the date the row had.
+update companies c
+   set verification_ended_at = coalesce(
+         (select max(e.occurred_at)
+            from audit_events e
+           where e.subject_type = 'company'
+             and e.subject_id = c.id
+             and e.action = 'company_verification'
+             and e.detail ->> 'from' = 'verified'),
+         now())
+ where c.verification_status <> 'verified'
+   and c.verification_ended_at is null
+   and (
+     exists (select 1
+               from audit_events e
+              where e.subject_type = 'company'
+                and e.subject_id = c.id
+                and e.action = 'company_verification'
+                and e.detail ->> 'from' = 'verified')
+     or exists (select 1 from company_documents d where d.company_id = c.id and d.status = 'verified')
+   );
+
 create trigger companies_90_verification_ended
   before insert or update on companies
   for each row execute function public.stamp_verification_ended();

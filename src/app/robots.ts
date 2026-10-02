@@ -1,68 +1,20 @@
 import type { MetadataRoute } from 'next';
 import { env } from '@/lib/env';
 import { ENGLISH_ENABLED } from '@/i18n/routing';
+import { disallowRules } from '@/lib/seo/robots-rules';
 
 /**
- * Private surfaces and anything whose URL carries a signed token.
- *
- * Not `/agents`, though the directory has been behind a sign-in since
- * migration 322. Its profile URLs used to carry a consultant's name (migration
- * 202 renamed them), and some were indexed while profiles were public. A
- * crawler kept out by robots.txt never sees that they now redirect a visitor
- * to a noindex sign-in page, so a search engine keeps listing them, name and
- * all, for good. Let in, it sees the redirect and drops them; the pages
- * themselves are noindex anyway.
+ * What crawlers are kept out of, and where the sitemap is. The rules, and why
+ * each is there, are in lib/seo/robots-rules.ts, where
+ * scripts/robots.test.mjs checks that none of them keeps out a page the
+ * sitemap lists.
  */
-const PRIVATE = ['/dashboard', '/employer', '/admin', '/notifications', '/onboarding', '/auth', '/api'];
-
-/**
- * Query parameters that only ever produce a view of a list page.
- *
- * Every one of these pages already answers `noindex, follow`, but noindex is
- * read only after the page is fetched — it stops indexing, not crawling. The
- * board alone takes a free-text query, a sort and eight multi-value filters,
- * and a crawler that follows the combinations spends its visit on them
- * instead of on listings. Google's guidance for faceted navigation that does
- * not need to be indexed is to keep it out of the crawl with robots.txt.
- *
- * Left crawlable on purpose:
- *   track, district — linked from every footer and the home page; single
- *     values lead a crawler to listings, and they stay noindex.
- *   page — the unfiltered board's pagination is a path to every listing.
- *
- * `*` in a rule is Google's and Bing's wildcard; `?*name=` matches the
- * parameter anywhere in the query string.
- */
-const VIEW_PARAMS = [
-  'q', // free-text search, on the board and the company directory
-  'sort',
-  'leads',
-  'exp',
-  'type',
-  'ctype',
-  'salary',
-  'gov',
-  'company', // one company's roles — the company page is the indexable version
-  'verified',
-  'availability',
-  'years',
-];
-
 export default function robots(): MetadataRoute.Robots {
-  const privatePaths = ENGLISH_ENABLED
-    ? [...PRIVATE, ...PRIVATE.filter((path) => path !== '/auth' && path !== '/api').map((path) => `/en${path}`)]
-    : PRIVATE;
-
   return {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: [
-        ...privatePaths,
-        // The apply step: a sign-in wall for a crawler, one per listing.
-        '/jobs/*/apply',
-        ...VIEW_PARAMS.flatMap((param) => [`/*?${param}=`, `/*?*&${param}=`]),
-      ],
+      disallow: disallowRules(ENGLISH_ENABLED),
     },
     sitemap: `${env.siteUrl}/sitemap.xml`,
   };

@@ -73,7 +73,7 @@
     "test:security-libs": "node --experimental-strip-types scripts/security-libs.test.mjs",
     "crawl": "node scripts/crawl.mjs",
     "perf:budget": "node scripts/perf-budget.mjs",
-    "test:seo": "node --experimental-strip-types scripts/job-posting.test.mjs && node --experimental-strip-types scripts/record-exists.test.mjs",
+    "test:seo": "node --experimental-strip-types scripts/job-posting.test.mjs && node --experimental-strip-types scripts/record-exists.test.mjs && node --experimental-strip-types scripts/robots.test.mjs",
     "seo:check": "node --experimental-strip-types scripts/seo-check.mjs"
   },
   "dependencies": {

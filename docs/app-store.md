@@ -58,7 +58,10 @@ in the app, and nothing is used to track people across apps or websites.
   deleted at a tap without taking the company and other people's applications
   with it, asks for it from the same screen (`requestAccountDeletion`) and is
   told how long it takes: a reply within 7 days, deletion within 30 (**decide**:
-  these are the words in `messages/*.json`, `account.deleteRequested`).
+  these are the words in `messages/*.json`, `account.deleteRequested`). An
+  account that never finished onboarding is deleted from the onboarding screen
+  itself (**Delete this account**, under signing out), without agreeing to the
+  Terms first.
 - **4.8 Sign in with Apple.** Offered wherever Google is (`enabledProviders()`
   shows both once the Apple provider is on in Supabase).
 - **1.2 user-generated content.** Listings, companies and consultant profiles

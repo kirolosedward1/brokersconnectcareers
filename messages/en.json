@@ -1253,6 +1253,7 @@
     "packs": "Post packs",
     "buy": "Buy",
     "buyFailed": "We could not open the payment page. Try again in a moment.",
+    "buyForbidden": "Packs are bought by a company admin whose account is approved.",
     "seatsUpTo": "Up to {count} seats",
     "unlimitedSeats": "Unlimited seats",
     "days": "{count} days",

@@ -2,8 +2,8 @@
  * The versions of the Terms of use and the Privacy policy a person agrees to:
  * each document's `updated:` date, as content/legal/{terms,privacy}.ar.md
  * (and their English texts) say it. Recorded with every acceptance
- * (policy_acceptances, migration 336) and compared with the latest one to
- * decide whether somebody has agreed to what is published now.
+ * (policy_acceptances, migration 336), and looked for there to decide
+ * whether somebody has agreed to what is published now.
  *
  * Written here rather than read from the files at request time. Vercel ships a
  * function with the files Next saw it read, and Next sees a read only where it

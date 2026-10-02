@@ -190,6 +190,21 @@ export function AppShell({
   // layout mounted across a route change, so nothing closes it on its own.
   useEffect(() => setOpen(false), [pathname]);
 
+  // Nor the window growing past `lg` (a tablet turned on its side), where the
+  // drawer and its backdrop are display:none but the layer below would still
+  // be modal: the page locked against scrolling, and every Tab swallowed with
+  // nothing in the drawer left to move to. 64rem is Tailwind's `lg`.
+  useEffect(() => {
+    if (!open) return;
+    const wide = window.matchMedia('(min-width: 64rem)');
+    const closeIfWide = () => {
+      if (wide.matches) setOpen(false);
+    };
+    closeIfWide();
+    wide.addEventListener('change', closeIfWide);
+    return () => wide.removeEventListener('change', closeIfWide);
+  }, [open]);
+
   // The phone menu is modal, so it behaves as the dialog does: focus moves
   // into it, Tab stays in it, Escape closes it and focus goes back to the
   // button that opened it. Only Escape used to work, and Tab walked out of

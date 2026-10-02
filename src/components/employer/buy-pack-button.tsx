@@ -16,7 +16,7 @@ import type { PACKS_ON_SALE } from '@/lib/taxonomy';
  */
 export function BuyPackButton({ packKey }: { packKey: (typeof PACKS_ON_SALE)[number]['key'] }) {
   const t = useTranslations('billing');
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'buyFailed' | 'buyForbidden' | null>(null);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
 
@@ -27,7 +27,7 @@ export function BuyPackButton({ packKey }: { packKey: (typeof PACKS_ON_SALE)[num
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            setFailed(false);
+            setFailed(null);
             const result = await reach(startCheckout({ packKey }));
             if (recoverSession(result)) return;
             // Only to Paymob's own payment page, whatever the answer says.
@@ -35,7 +35,14 @@ export function BuyPackButton({ packKey }: { packKey: (typeof PACKS_ON_SALE)[num
               window.location.assign(result.data.url);
               return;
             }
-            setFailed(true);
+            // Who may buy is not something trying again changes: a team
+            // member who is not the company's admin, or an account not
+            // approved yet, is told who can, not to wait a moment.
+            setFailed(
+              !result.ok && (result.error === 'forbidden' || result.error === 'no_company')
+                ? 'buyForbidden'
+                : 'buyFailed',
+            );
           })
         }
       >
@@ -44,7 +51,7 @@ export function BuyPackButton({ packKey }: { packKey: (typeof PACKS_ON_SALE)[num
 
       {failed ? (
         <p role="alert" className="text-sm text-destructive">
-          {t('buyFailed')}
+          {t(failed)}
         </p>
       ) : null}
     </div>

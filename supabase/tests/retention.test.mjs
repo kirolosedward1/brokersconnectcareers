@@ -144,6 +144,65 @@ report.section('verification papers');
   report.check('the deleted paper’s file is queued for deletion', queued.n === 1);
 }
 
+report.section('companies that stopped being verified before the date was kept');
+{
+  /*
+    As production stands before this migration: no end date on any company,
+    whatever its history. One that lost its verification ten days ago (the
+    audit trail says when), one whose papers were approved but whose loss
+    predates the trail, and one never verified. Then 338 again, as it would
+    run there.
+  */
+  const LOGGED = 'bbbbbbbb-3333-0000-0000-000000000011';
+  const UNLOGGED = 'bbbbbbbb-3333-0000-0000-000000000012';
+  const NEVER = 'bbbbbbbb-3333-0000-0000-000000000013';
+  const owners = ['bbbbbbbb-1111-0000-0000-000000000011', 'bbbbbbbb-1111-0000-0000-000000000012', 'bbbbbbbb-1111-0000-0000-000000000013'];
+  for (const owner of owners) await user(owner, 'employer');
+  await back(`
+    insert into companies (id, owner_id, name_ar, slug, verification_status, verification_ended_at) values
+      ('${LOGGED}', '${owners[0]}', 'شركة فقدت التوثيق', 'retention-lost-logged', 'rejected', null),
+      ('${UNLOGGED}', '${owners[1]}', 'شركة فقدته قديماً', 'retention-lost-unlogged', 'unverified', null),
+      ('${NEVER}', '${owners[2]}', 'شركة لم تُوثَّق', 'retention-never', 'rejected', null);
+    insert into audit_events (action, subject_type, subject_id, detail, occurred_at) values
+      ('company_verification', 'company', '${LOGGED}', '{"from":"pending","to":"verified"}', now() - interval '500 days'),
+      ('company_verification', 'company', '${LOGGED}', '{"from":"verified","to":"rejected"}', now() - interval '10 days');
+    insert into company_documents (company_id, doc_type, storage_path, status, reviewed_at, created_at) values
+      ('${LOGGED}', 'commercial_register', '${LOGGED}/approved.pdf', 'verified', now() - interval '400 days', now() - interval '401 days'),
+      ('${UNLOGGED}', 'commercial_register', '${UNLOGGED}/approved.pdf', 'verified', now() - interval '400 days', now() - interval '401 days'),
+      ('${NEVER}', 'commercial_register', '${NEVER}/refused.pdf', 'rejected', now() - interval '400 days', now() - interval '401 days')
+  `);
+  const notificationsBefore = Number((await one(`select count(*) as n from notifications`)).n);
+
+  const { readFileSync } = await import('node:fs');
+  const migration = readFileSync(new URL('../migrations/20260101000338_kept_as_long_as_the_policy_says.sql', import.meta.url), 'utf8');
+  const applied = await tryExec(migration);
+  report.check('338 runs again over a database that already has it', applied.ok, applied.error);
+
+  const ended = Object.fromEntries(
+    (await q(`select id, verification_ended_at from companies where id in ('${LOGGED}', '${UNLOGGED}', '${NEVER}')`)).map(
+      (row) => [row.id, row.verification_ended_at && new Date(row.verification_ended_at).getTime()],
+    ),
+  );
+  const daysAgo = (time) => (Date.now() - time) / 86_400_000;
+  report.check('a loss the audit trail dates is dated then', ended[LOGGED] !== null && Math.abs(daysAgo(ended[LOGGED]) - 10) < 0.01, String(ended[LOGGED]));
+  report.check('one it does not, for approved papers, is dated today', ended[UNLOGGED] !== null && Math.abs(daysAgo(ended[UNLOGGED])) < 0.01, String(ended[UNLOGGED]));
+  report.check('a company never verified stays undated', ended[NEVER] === null, String(ended[NEVER]));
+  const notificationsAfter = Number((await one(`select count(*) as n from notifications`)).n);
+  report.check('dating them tells nobody anything', notificationsAfter === notificationsBefore, `${notificationsBefore} → ${notificationsAfter}`);
+
+  await db.query(`select public.run_privacy_retention()`);
+  const paths = (await q(`select storage_path from company_documents where company_id in ('${LOGGED}', '${UNLOGGED}', '${NEVER}')`)).map((row) => row.storage_path);
+  report.check('the papers of a company verified until ten days ago stay', paths.includes(`${LOGGED}/approved.pdf`), paths.join(', '));
+  report.check('as do approved papers whose loss nobody dated', paths.includes(`${UNLOGGED}/approved.pdf`), paths.join(', '));
+  report.check('a never-verified company’s papers still go a year after review', !paths.includes(`${NEVER}/refused.pdf`), paths.join(', '));
+
+  // And the trigger is back: dating stays the database's.
+  await db.exec(`update companies set verification_status = 'verified' where id = '${NEVER}'`);
+  await db.exec(`update companies set verification_status = 'rejected' where id = '${NEVER}'`);
+  const stamped = (await one(`select verification_ended_at from companies where id = '${NEVER}'`)).verification_ended_at;
+  report.check('the trigger stamps again after the second run', stamped !== null && Math.abs(daysAgo(new Date(stamped).getTime())) < 0.01, String(stamped));
+}
+
 report.section('logs');
 {
   await back(`

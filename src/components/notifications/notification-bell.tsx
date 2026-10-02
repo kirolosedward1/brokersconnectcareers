@@ -143,10 +143,14 @@ export function NotificationBell({
         The header is `sticky top-0 h-14`, so `top-14` puts the panel directly
         under it whatever the page has scrolled to, and `inset-x-4` gives it
         the same gutter as everything else on the screen.
+
+        Its own text colour and focus ring, as the phone menu has: over a
+        landing page's film the header carries white type and a white ring,
+        and this light panel inherited both — white on white.
       */}
       <div
         className={[
-          'z-50 overflow-hidden rounded-xl border border-border bg-popover shadow-lg',
+          'z-50 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lg [--ring:var(--brand-blue)]',
           'fixed inset-x-4 top-14',
           'sm:absolute sm:inset-x-auto sm:end-0 sm:top-auto sm:mt-2 sm:w-[22rem]',
         ].join(' ')}

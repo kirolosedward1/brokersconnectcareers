@@ -257,7 +257,10 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   the Terms of use, which the App Store requires of an app where people publish
   to each other. A session with no profile — just signed in, restored at launch,
   or arriving from a link — is sent there by the session gate
-  (`mobile/src/components/navigation/session-gate.tsx`).
+  (`mobile/src/components/navigation/session-gate.tsx`). Its ways out are
+  signing out and deleting the account, which runs the Account tab's own path
+  (`mobile/src/features/account/delete.ts`); the website's onboarding page has
+  the same two (`src/components/auth/leave-onboarding.tsx`).
 - **The Account tab** signs out of this phone only (`scope: 'local'`), and
   deletes the account through `deleteMyAccount` — for an Apple account after
   asking Apple for a fresh authorization code, so the website can revoke the

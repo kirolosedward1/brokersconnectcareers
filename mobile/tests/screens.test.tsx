@@ -2,7 +2,7 @@ import { Stack, Tabs } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Alert, Modal, type AlertButton } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
-import { unhideCompany } from '~/features/moderation/hidden-companies';
+import { hideCompany, unhideCompany } from '~/features/moderation/hidden-companies';
 import { I18nProvider } from '~/i18n/provider';
 import { SessionProvider } from '~/lib/session';
 import { ThemeProvider } from '~/theme/provider';
@@ -116,6 +116,27 @@ describe('the board', () => {
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     expect(screen.getByText('إعلان ممول')).toBeTruthy();
     expect(screen.getByText(SPONSORED_FIRST)).toBeTruthy();
+  });
+
+  it('says nothing about sponsored listings when the only one is from a company the reader hid', async () => {
+    const other = {
+      ...listing,
+      id: '5b0c7d1e-0000-4000-8000-000000000102',
+      slug: 'sales-manager-c3d4',
+      title_ar: 'مدير مبيعات',
+      company_id: 'c0000000-0000-4000-8000-000000000002',
+      company: { ...listing.company, id: 'c0000000-0000-4000-8000-000000000002', slug: 'other-brokers' },
+    };
+    server.on('/api/mobile/v1/jobs', board([{ ...listing, is_featured: true }, other]));
+    act(() => hideCompany(company.id));
+    try {
+      renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+      expect(await screen.findByText(other.title_ar)).toBeTruthy();
+      expect(screen.queryByText(listing.title_ar)).toBeNull();
+      expect(screen.queryByText(SPONSORED_FIRST)).toBeNull();
+    } finally {
+      act(() => unhideCompany(company.id));
+    }
   });
 
   it('says "no basic salary", not "commission only", for a listing that has no commission either', async () => {

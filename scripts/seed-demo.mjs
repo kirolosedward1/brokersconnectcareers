@@ -8,7 +8,8 @@
  * between versions, and a hand-rolled insert yields an account that cannot sign
  * in. The API does it correctly whatever version the project runs.
  *
- * Safe to re-run — existing users are reused and the SQL half is idempotent.
+ * Safe to re-run — existing users are reused, given this run's password, and
+ * the SQL half is idempotent.
  */
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -76,6 +77,22 @@ async function findUser(email) {
   return (body.users ?? []).find((user) => user.email === email) ?? null;
 }
 
+/**
+ * The password printed at the end is the one every demo account has: one
+ * found from an earlier run is given it too. Reused as they were, a second
+ * run printed a new password that signed in to none of them.
+ */
+async function setPassword(id, email) {
+  const response = await fetch(new URL(`/auth/v1/admin/users/${id}`, supabaseUrl), {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ password: PASSWORD }),
+  });
+  if (response.ok) return;
+  console.error(`Could not set the password of ${email}: ${response.status} ${await response.text()}`);
+  process.exit(1);
+}
+
 async function createUser({ email, name }) {
   const response = await fetch(new URL('/auth/v1/admin/users', supabaseUrl), {
     method: 'POST',
@@ -92,7 +109,10 @@ async function createUser({ email, name }) {
 
   // Already registered — fall back to looking it up.
   const existing = await findUser(email);
-  if (existing) return existing;
+  if (existing) {
+    await setPassword(existing.id, email);
+    return existing;
+  }
 
   console.error(`Could not create ${email}: ${response.status} ${await response.text()}`);
   process.exit(1);
@@ -102,6 +122,7 @@ console.log('demo accounts');
 const ids = {};
 for (const user of DEMO) {
   const existing = await findUser(user.email);
+  if (existing) await setPassword(existing.id, user.email);
   const record = existing ?? (await createUser(user));
   ids[user.key] = record.id;
   console.log(`  ${existing ? 'found  ' : 'created'} ${user.email}`);

@@ -149,7 +149,14 @@ export default function BoardScreen() {
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
         ListHeaderComponent={
-          <BoardHeader filters={filters} first={first} apply={apply} onFilters={openFilters} hasResults={jobs.length > 0} />
+          <BoardHeader
+            filters={filters}
+            first={first}
+            apply={apply}
+            onFilters={openFilters}
+            hasResults={jobs.length > 0}
+            sponsoredShown={jobs.some((job) => job.is_featured)}
+          />
         }
         ListEmptyComponent={<EmptyBoard filters={filters} first={first} apply={apply} />}
         ListFooterComponent={
@@ -184,12 +191,15 @@ function BoardHeader({
   apply,
   onFilters,
   hasResults,
+  sponsoredShown,
 }: {
   filters: JobFilters;
   first: JobBoardResponse | undefined;
   apply: (next: JobFilters) => void;
   onFilters: () => void;
   hasResults: boolean;
+  /** A sponsored listing is among the cards drawn — not merely in the answer, which still holds a company the reader hid. */
+  sponsoredShown: boolean;
 }) {
   const locale = useLocale();
   const t = useTranslations('jobs');
@@ -284,7 +294,7 @@ function BoardHeader({
       {/* Paid placement pins above every sort (the website's board says the
           same), so whoever chose "highest salary" is told why the first card
           may not be. Sponsored listings sit at the top of the first page. */}
-      {first?.jobs.some((job) => job.is_featured) ? (
+      {sponsoredShown ? (
         <Text variant="small" tone="mutedForeground">
           {t('sponsoredFirst')}
         </Text>

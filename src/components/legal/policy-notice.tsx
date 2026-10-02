@@ -1,7 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { getViewer } from '@/lib/auth';
-import { getPolicyStatus } from '@/lib/policies';
+import { asksToAgree } from '@/lib/policies';
 import { cn } from '@/lib/utils';
 import { AcceptPoliciesButton } from '@/components/legal/accept-policies-button';
 
@@ -19,9 +19,7 @@ import { AcceptPoliciesButton } from '@/components/legal/accept-policies-button'
  * otherwise a band under the site header.
  */
 export async function PolicyNotice({ inset = false }: { inset?: boolean }) {
-  const viewer = await getViewer();
-  if (!viewer?.profile) return null;
-  if ((await getPolicyStatus(viewer.userId)) !== 'outdated') return null;
+  if (!(await asksToAgree(await getViewer()))) return null;
 
   const t = await getTranslations('legal');
   const link = (href: '/terms' | '/privacy') =>

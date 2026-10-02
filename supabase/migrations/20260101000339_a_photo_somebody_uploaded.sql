@@ -15,7 +15,9 @@
 -- Not here: migration 322's guard still accepts a googleusercontent.com URL,
 -- because the code running before this release still writes one at
 -- onboarding, and refusing it would break that sign-up until the new code is
--- live. Take that branch out in the next release (docs/data-lifecycle.md).
+-- live. Take that branch out in the next release, and run this statement
+-- again there for anybody who signed up with Google in between
+-- (docs/data-lifecycle.md).
 --
 -- Compatibility: production code keeps running while this is applied, and
 -- stays running on it if the release is rolled back. Add first, switch the code
@@ -23,7 +25,7 @@
 -- =============================================================================
 
 -- rollback: none — the cleared URLs were Google's copies of photos the people they showed never uploaded here, and are not restored
--- safety: ships-with-code — only clears data: old code draws initials for a profile with no photo exactly as the new code does, and if old code imports a Google photo for a new sign-up after this runs, the next release's guard change (or this statement run again) clears it; nothing is refused
+-- safety: ships-with-code — only clears data: old code draws initials for a profile with no photo exactly as the new code does, and if old code imports a Google photo for a new sign-up after this runs, the next release's migration clears it by running this statement again as it takes the guard's Google branch out (a guard judges only new writes; docs/data-lifecycle.md item 13); nothing is refused
 
 update profiles
    set avatar_url = null

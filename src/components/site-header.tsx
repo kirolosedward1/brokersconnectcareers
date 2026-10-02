@@ -3,6 +3,7 @@ import { LayoutDashboard, Search, ShieldCheck, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { ENGLISH_ENABLED, type Locale } from '@/i18n/routing';
 import { actorOf, getViewer } from '@/lib/auth';
+import { asksToAgree } from '@/lib/policies';
 import { canAccessEmployerArea, homeFor, postJobHref, siteNavFor } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -42,9 +43,11 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
   const ghostOnFilm = 'group-data-[over-hero]/header:hover:bg-white/15';
 
   // The home page swaps its hero for a listings feed once you are signed in,
-  // and the header has to stop floating when it does.
+  // and the header has to stop floating when it does — and anywhere while the
+  // band asking to agree to the policies again is drawn under it.
+  const bandBelow = await asksToAgree(viewer);
   return (
-    <HeaderShell hasHomeHero={!viewer?.profile}>
+    <HeaderShell hasHomeHero={!viewer?.profile} bandBelow={bandBelow}>
       {/* Three cells below `md` — search, the mark, menu and account — with the
           two outer cells the same width whenever they can be, so the mark sits
           at the true centre of the bar. From `md` it is the ordinary row: mark
