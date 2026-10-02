@@ -10,6 +10,7 @@ import { buildEnvelope, type Audience } from './envelope';
 import { deliver } from './service';
 import type { SendOutcome } from './send';
 import { unsubscribeLinks } from './unsubscribe-link';
+import { stageTelling, tellingSuffix } from '@/lib/application-arrival';
 
 /**
  * One function per product event.
@@ -690,10 +691,24 @@ export async function notifyCandidateOfStatus(applicationId: string): Promise<Se
       : '';
     const audience = audienceOf(to, 'notify_status');
 
-    // Keyed on the status as well as the application, so a pipeline that goes
-    // shortlisted → interview → hired sends three messages, and an employer
-    // saving the same stage twice sends one.
-    const dedupeKey = `status:${applicationId}:${application.status}`;
+    /*
+      Keyed on the status, and on which telling of it this is
+      (application-arrival.ts): shortlisted → interview → hired sends three
+      messages; an employer saving the same stage twice, or tidying a card
+      back to "new" and out again, sends one; rejected, reconsidered, then
+      rejected again sends the second rejection, which a key on the stage
+      alone held back forever. The move is recorded (application_events)
+      before this runs. A history that cannot be read is taken as the first
+      telling — the key this message always had — so at worst a repeat goes
+      unsent, as it always did, and never is a message sent twice.
+    */
+    const { data: history } = await admin
+      .from('application_events')
+      .select('to_status')
+      .eq('application_id', applicationId)
+      .order('id', { ascending: true });
+    const telling = stageTelling((history ?? []).map((event) => event.to_status), application.status);
+    const dedupeKey = `status:${applicationId}:${application.status}${tellingSuffix(telling)}`;
     const entity = { type: 'application', id: applicationId } as const;
 
     if (application.status === 'rejected') {
