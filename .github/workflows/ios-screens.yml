@@ -1,6 +1,8 @@
 # The App Store screenshots, and a smoke run of the build the store gets.
-# By hand (Actions → iOS screens → Run workflow), and when the flows or this
-# file change in a pull request.
+# By hand (Actions → iOS screens → Run workflow, on any branch), and on main
+# when the flows or this file change. Not on pull requests: their path filter
+# is matched against the whole pull request, so once a pull request changed
+# one of these files, every push to it restarted this forty-minute run.
 #
 # The app is built as the App Store gets it — Release, the JavaScript bundled
 # in, nothing served by a development server — and run on iOS simulators in
@@ -17,7 +19,8 @@ name: iOS screens
 
 on:
   workflow_dispatch:
-  pull_request:
+  push:
+    branches: [main]
     paths:
       - 'mobile/maestro/**'
       - 'mobile/scripts/store-screens.sh'
