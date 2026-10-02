@@ -17,7 +17,7 @@ import { register } from 'node:module';
 
 register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 
-const { newJobsNotice, publishedAfter, lookForNewJobs, boardSince, duePeople, BOARD_PAGES } = await import('../src/lib/new-jobs.ts');
+const { newJobsNotice, publishedAfter, lookForNewJobs, boardSince, duePeople, BOARD_PAGES, APPLIED_CHUNK } = await import('../src/lib/new-jobs.ts');
 
 let pass = 0;
 let fail = 0;
@@ -181,6 +181,25 @@ const BOARD = {
     name_ar: 'شركة النيل',
     name_en: 'Nile Co',
   });
+}
+{
+  // Ten searches can find a thousand listings, and the lookup is a GET with
+  // every id in its URL: past the gateway's limit it failed on every run.
+  const many = Array.from({ length: 230 }, (_, i) => ({ id: `j${i}`, published_at: '2026-10-01T05:00:00+00:00', company: nile }));
+  const { ctx, log } = context({
+    searches: [SEARCHES[0]],
+    board: { 'company=nile-co': many },
+    applied: ['j3', 'j120', 'j229'],
+  });
+  const sizes = [];
+  const lookup = ctx.applied;
+  ctx.applied = async (person, ids) => {
+    sizes.push(ids.length);
+    return lookup(person, ids);
+  };
+  await lookForNewJobs('p', ctx);
+  is(`230 listings are looked up ${APPLIED_CHUNK} at a time`, sizes, [50, 50, 50, 50, 30]);
+  is('and one applied to in any of the lookups is left out', log.recorded[0].payload.count, 227);
 }
 {
   const { ctx, log } = context({ searches: SEARCHES, board: BOARD, recorded: null });

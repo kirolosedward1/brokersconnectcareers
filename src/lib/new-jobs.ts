@@ -154,7 +154,13 @@ export async function lookForNewJobs(person: string, ctx: LookContext): Promise<
 
     const found = [...new Set(findings.flatMap((finding) => finding.jobs.map((job) => job.id)))];
     if (found.length) {
-      const done = new Set(await ctx.applied(person, found));
+      // A few at a time: the lookup is a GET whose URL carries every id, and
+      // ten searches can find a thousand. Past the gateway's URL limit it
+      // failed on every run, and the person was never told again.
+      const done = new Set<string>();
+      for (let at = 0; at < found.length; at += APPLIED_CHUNK) {
+        for (const id of await ctx.applied(person, found.slice(at, at + APPLIED_CHUNK))) done.add(id);
+      }
       for (const finding of findings) finding.jobs = finding.jobs.filter((job) => !done.has(job.id));
     }
 
@@ -173,6 +179,9 @@ export async function lookForNewJobs(person: string, ctx: LookContext): Promise<
 
 /** How many of the board's pages one search reads at most: a hundred listings. */
 export const BOARD_PAGES = 5;
+
+/** Listings per applied-to lookup, as the expiry job's outbox lookups are. */
+export const APPLIED_CHUNK = 50;
 
 /**
  * Every listing on the board published after `since`, newest first: the
