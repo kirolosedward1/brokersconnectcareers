@@ -521,8 +521,23 @@ report.section('two workers: leases partition the queue');
   report.is(a.length + b.length, 6, 'two sweepers of three take all six due rows between them');
   report.ok(b.every((r) => !seenA.has(r.id)), 'with no row in both batches');
   report.is(c.length, 0, 'and a third finds nothing left');
-  report.ok(a.every((r) => r.lock_token === a[0].lock_token), 'one token proves one batch');
-  report.ok(a[0].lock_token !== b[0].lock_token, 'and the two batches hold different tokens');
+  // Every row its own token (migration 346). A rebuild runs with one row's
+  // token, and claim_email hands it any row in the batch whose key it claims —
+  // with one token for the batch, a rebuild that writes to every member of a
+  // company claimed its colleagues' rows, sent them, could not record them,
+  // and they were sent again on their own turns.
+  report.is(new Set([...a, ...b].map((r) => r.lock_token)).size, 6, 'each leased row holds a token of its own');
+  const keyOf = async (id) => (await row(id)).dedupe_key;
+  report.is(
+    await claim(await keyOf(a[1].id), { token: a[0].lock_token }),
+    null,
+    "a rebuild holding one row's lease cannot claim another row of its batch",
+  );
+  report.is(
+    await claim(await keyOf(a[1].id), { token: a[1].lock_token }),
+    a[1].id,
+    'while that row, with its own token, is handed back to its own rebuild',
+  );
 
   // Worker A's token is no good for worker B's row.
   report.is(await settle(b[0].id, a[0].lock_token, 'cancelled', 'x'), false, "one worker cannot settle the other's row");
