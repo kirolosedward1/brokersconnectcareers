@@ -163,6 +163,8 @@ type ApplicationForCandidate = {
 
 type JobForOwner = JobBits & {
   company: { id: string; owner_id: string; name_ar: string } | null;
+  /** The moderator's reason, read again when a refusal is retried. */
+  rejection_note?: string | null;
 };
 
 // `version` is here for the dedupe keys below: it moves on every update, so a
@@ -405,10 +407,12 @@ export async function notifyVisibilityChanged(
       template: 'visibility_changed',
       to: to.email,
       userId,
-      // Keyed on the value, not the event: flipping to hidden and back should
-      // produce two messages, but saving the form twice on the same setting
-      // should not.
-      dedupeKey: `visibility:${userId}:${visibility}`,
+      // Keyed on the value and the day in Cairo, as the bell is: saving the
+      // form twice on one setting sends one message, and a change on another
+      // day always sends. Keyed on the value alone, the email went out once
+      // per setting, ever — hidden, public, then hidden again a month later,
+      // and the security notice for a change somebody else made never came.
+      dedupeKey: `visibility:${userId}:${visibility}:${cairoDay(new Date())}`,
       entity: { type: 'profile', id: userId },
       envelope: buildEnvelope({
         audience: audienceOf(to, null),
@@ -897,8 +901,11 @@ export async function notifyEmployerOfModeration(
     const companyId = job?.company?.id;
     if (!job || !companyId) return 'skipped';
 
+    // A retry (rebuild.ts) passes no note: the reason is the listing's own,
+    // or the retried refusal said "rejected, edit and resend" and not why.
+    const reason = note !== undefined ? note : approved ? null : (job.rejection_note ?? null);
     return forEachMember(admin, companyId, (memberId) =>
-      oneModerationNotice({ admin, memberId, job, approved, note }),
+      oneModerationNotice({ admin, memberId, job, approved, note: reason }),
     );
   } catch (error) {
     console.warn('[email] moderation notice failed:', asMessage(error));
@@ -1242,11 +1249,26 @@ export async function notifyCompanyVerification(
 
     const { data: company, error: companyError } = await admin
       .from('companies')
-      .select('id, slug, name_ar, name_en, owner_id, logo_url')
+      .select('id, slug, name_ar, name_en, owner_id, logo_url, version')
       .eq('id', companyId)
       .maybeSingle();
     if (companyError) readFailed('company', companyError);
     if (!company) return 'skipped';
+
+    // A retry (rebuild.ts) passes no note: the reason is on the paper the
+    // review refused, or the retried refusal arrived without one.
+    let reason = note;
+    if (reason === undefined && !verified) {
+      const { data: refused } = await admin
+        .from('company_documents')
+        .select('review_note')
+        .eq('company_id', companyId)
+        .eq('status', 'rejected')
+        .order('reviewed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      reason = refused?.review_note ?? null;
+    }
 
     return forEachMember(admin, companyId, async (memberId) => {
       const to = await recipient(admin, memberId, null);
@@ -1260,7 +1282,10 @@ export async function notifyCompanyVerification(
         template: verified ? 'company_verified' : 'company_verification_needed',
         to: to.email,
         userId: memberId,
-        dedupeKey: `company_verification:${companyId}:${verified}:${memberId}`,
+        // Per round, as the bell is (its key carries the version): keyed on the
+        // decision alone, a second refusal — new papers, refused again — was
+        // never sent, the first one's key still held.
+        dedupeKey: `company_verification:${companyId}:${verified}:${company.version}:${memberId}`,
         entity: { type: 'company', id: companyId },
         envelope: buildEnvelope({
           audience: audienceOf(to, null),
@@ -1275,8 +1300,8 @@ export async function notifyCompanyVerification(
               logoUrl: company.logo_url,
               href: `${env.siteUrl}/companies/${company.slug}`,
             },
-            ...(!verified && note
-              ? [{ kind: 'text' as const, value: c.companyVerificationNeeded.reason(note) }]
+            ...(!verified && reason
+              ? [{ kind: 'text' as const, value: c.companyVerificationNeeded.reason(reason) }]
               : []),
             {
               kind: 'button',
@@ -1510,7 +1535,7 @@ async function candidateApplication(
 async function ownedJob(admin: ReturnType<typeof createAdminClient>, jobId: string) {
   const { data, error } = await admin
     .from('jobs')
-    .select(`${JOB_FIELDS}, company:companies (id, owner_id, name_ar)`)
+    .select(`${JOB_FIELDS}, rejection_note, company:companies (id, owner_id, name_ar)`)
     .eq('id', jobId)
     .maybeSingle();
   if (error) readFailed('listing', error);
@@ -1557,6 +1582,16 @@ function formatMoment(date: Date, locale: 'ar' | 'en'): string {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: 'Africa/Cairo',
+  }).format(date);
+}
+
+/** The calendar day in Cairo, YYYY-MM-DD — what a once-a-day key counts in. */
+function cairoDay(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(date);
 }
 
