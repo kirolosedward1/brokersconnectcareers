@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { localized } from '@/lib/locale';
@@ -18,6 +18,7 @@ import {
   useMarkSeen,
 } from '~/features/employer/applicants';
 import { markupTags } from '~/i18n/rich';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, radius, space } from '~/theme/tokens';
@@ -40,6 +41,8 @@ export default function ListingApplicantsScreen() {
   const notes = useApplicantNotes((applicants ?? []).map((row) => row.id));
   const context = useApplicantContext();
   useMarkSeen(applicants);
+  // A new applicant, or a colleague's move, reaches the pipeline with a pull.
+  const pull = usePullRefresh(() => Promise.all([pipeline.refetch(), applicants?.length ? notes.refetch() : null]));
 
   const job = pipeline.data?.job ?? null;
   const title = job ? localized(locale, job.title_ar, job.title_en) : t('employer.jobs');
@@ -53,21 +56,28 @@ export default function ListingApplicantsScreen() {
   else if (pipeline.isError && !pipeline.data) body = <ErrorState error={pipeline.error} onRetry={() => pipeline.refetch()} />;
   else if (!pipeline.data || !job) body = <NotFoundState />;
   else if (pipeline.data.applicants.length === 0) {
+    // In a scroll view of its own, so the first applicant arrives with a pull too.
     body = (
-      <EmptyState
-        title={t('employer.noApplicants')}
-        body={t('employer.noApplicantsHint')}
-        action={
-          <View style={{ gap: space[2], alignSelf: 'stretch' }}>
-            <Button
-              label={t('employer.viewListing')}
-              variant="outline"
-              onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
-            />
-            <Button label={t('employer.allApplicants')} variant="ghost" onPress={() => router.navigate('/employer/applicants' as never)} />
-          </View>
-        }
-      />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ flexGrow: 1 }}
+        refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
+      >
+        <EmptyState
+          title={t('employer.noApplicants')}
+          body={t('employer.noApplicantsHint')}
+          action={
+            <View style={{ gap: space[2], alignSelf: 'stretch' }}>
+              <Button
+                label={t('employer.viewListing')}
+                variant="outline"
+                onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
+              />
+              <Button label={t('employer.allApplicants')} variant="ghost" onPress={() => router.navigate('/employer/applicants' as never)} />
+            </View>
+          }
+        />
+      </ScrollView>
     );
   } else {
     const { total } = pipeline.data;
@@ -79,6 +89,7 @@ export default function ListingApplicantsScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
+        refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       >
         <Text tone="mutedForeground">{t.markup('employer.pipelineCount', { count: total, ...markupTags })}</Text>
 

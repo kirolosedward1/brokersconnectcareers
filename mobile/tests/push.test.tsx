@@ -441,6 +441,31 @@ describe('a tapped push', () => {
   });
 });
 
+describe('a push while the app is open', () => {
+  it('reads again what it is most often about, as well as the bell and the account', async () => {
+    renderRouter(app, { initialUrl: '/' });
+    await screen.findByText(ar.app.push.promptTitle);
+    const listener = jest.mocked(Notifications.addNotificationReceivedListener).mock.calls.at(-1)?.[0];
+    const invalidated = jest.spyOn(queryClient, 'invalidateQueries');
+
+    act(() => listener?.({} as Notifications.Notification));
+    const keys = invalidated.mock.calls.map(([filters]) => JSON.stringify(filters?.queryKey));
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        '["notifications"]',
+        '["viewer"]',
+        // A new applicant: the company's inbox, pipelines and counts.
+        '["employer","applicants"]',
+        '["employer","summary"]',
+        '["employer","listings"]',
+        // A move: the candidate's applications.
+        '["applications"]',
+      ]),
+    );
+    invalidated.mockRestore();
+  });
+});
+
 describe('signing out', () => {
   it('tells the database to forget this phone first, then stops listening on it', async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);

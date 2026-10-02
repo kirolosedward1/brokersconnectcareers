@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Alert, Modal, type AlertButton } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import { hideCompany, unhideCompany } from '~/features/moderation/hidden-companies';
-import { I18nProvider } from '~/i18n/provider';
+import { catalogues, I18nProvider } from '~/i18n/provider';
 import { SessionProvider } from '~/lib/session';
 import { ThemeProvider } from '~/theme/provider';
 import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
@@ -24,6 +24,7 @@ import { fakeServer } from './server';
   message that fails to format, a parameter read under the wrong name.
 */
 
+const ar = catalogues.ar;
 const server = fakeServer();
 
 const SPONSORED_FIRST = 'الإعلانات الممولة بتظهر في الأول، وبعدها الباقي بالترتيب اللي اخترته.';
@@ -263,6 +264,25 @@ describe('a listing', () => {
     });
     renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
     expect(await screen.findByText('وظائف بيع أول في القاهرة الجديدة')).toBeTruthy();
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+  });
+
+  it("says a track-in-district page's listings could not be read, never that there are none", async () => {
+    server.on('/api/mobile/v1/landing/primary-sales-new-cairo', {
+      track: 'primary',
+      district: newCairo,
+      facts: { listings: 3, companies: 3, withBasicSalary: 0, salaryFloor: null, salaryCeiling: null },
+    });
+    server.on('/api/mobile/v1/jobs', { status: 503, body: { error: 'unavailable' } });
+    renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+    expect(await screen.findByText('وظائف بيع أول في القاهرة الجديدة')).toBeTruthy();
+
+    expect(await screen.findByRole('button', { name: ar.common.retry })).toBeTruthy();
+    expect(screen.queryByText(ar.jobs.empty)).toBeNull();
+
+    // Read again on the retry.
+    server.on('/api/mobile/v1/jobs', board());
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
   });
 

@@ -10,12 +10,10 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useAuthErrorText } from '~/features/auth/errors';
 import { callAction } from '~/lib/api';
+import { EMAIL_SHAPE } from '~/lib/email-shape';
 import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
-
-/** A shape check before anything is sent; Supabase has the last word. */
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Change the email address — the website's CredentialsSettings, through
@@ -38,7 +36,7 @@ export function EmailSettings({ email }: { email: string }) {
     setError(null);
     setSent(false);
     if (!address || address === email) return;
-    if (!EMAIL.test(address)) {
+    if (!EMAIL_SHAPE.test(address)) {
       setError(t('validation.invalidEmail'));
       return;
     }

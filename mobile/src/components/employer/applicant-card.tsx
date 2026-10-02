@@ -82,6 +82,7 @@ export function ApplicantCard({
     setReasonFrom(storedReason);
   }
   const [conflict, setConflict] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
   const [cvError, setCvError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
 
@@ -98,14 +99,19 @@ export function ApplicantCard({
     const from = status;
     setPending({ status: next, reason: decisionNote });
     setConflict(false);
+    setFailed(null);
     move.mutate(
       { applicationId: applicant.id, status: next, decisionNote, from },
       {
         // Settled once the stages have been read again (the hook waits for that), so what shows next is stored.
         onSettled: () => setPending(null),
+        // What they typed stays in the box, and the card says it was not
+        // saved. Put back to the stored words, a failed save took their
+        // sentence away and the button then read "Saved" over nothing new —
+        // the notes below keep a draft the same way.
         onError: (failure) => {
-          setReason(savedReason);
           if (failure instanceof MovedAlready) setConflict(true);
+          else setFailed(failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody'));
         },
       },
     );
@@ -263,6 +269,10 @@ export function ApplicantCard({
       {conflict ? (
         <Text variant="small" tone="destructive" accessibilityRole="alert">
           {t('employer.applicantMovedAlready')}
+        </Text>
+      ) : failed ? (
+        <Text variant="small" tone="destructive" accessibilityRole="alert">
+          {failed}
         </Text>
       ) : null}
 

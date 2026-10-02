@@ -61,11 +61,18 @@ export function PushBridge() {
   // Arriving while the app is open: the bell's count and feed are stale now,
   // and so may the account be — an approval or a suspension is told this way,
   // and the screens that depend on it (the directory, the standing notice)
-  // follow without waiting for the app to come back from the background.
+  // follow without waiting for the app to come back from the background. So
+  // are the lists a push is most often about: a new applicant in a company's
+  // inbox and pipeline and its counts, a move in a candidate's applications.
+  // Only what is on screen is read again; the rest when it is next opened.
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener(() => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['viewer'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'applicants'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'summary'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'listings'] });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
     });
     return () => subscription.remove();
   }, [queryClient]);

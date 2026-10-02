@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Linking } from 'react-native';
+import { Linking, Pressable } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
@@ -15,6 +15,7 @@ import type {
   ProfileRow,
   SavedAgentCardRow,
 } from '@/lib/supabase/database.types';
+import { useSaveRecord } from '~/features/profile/queries';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -213,6 +214,13 @@ function Settled({ children }: { children: ReactNode }) {
   return useSession().settled ? children : null;
 }
 
+/** An edit to the profile from its own screen, on the same cache. */
+let withEdit = false;
+function ProfileEdit() {
+  const save = useSaveRecord();
+  return <Pressable accessibilityRole="button" accessibilityLabel="edit the profile" onPress={() => save.mutate({ summaryAr: 'هدفي الجديد' })} />;
+}
+
 function Root() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
@@ -222,6 +230,7 @@ function Root() {
           <SessionProvider>
             <Settled>
               <Stack screenOptions={{ headerShown: false }} />
+              {withEdit ? <ProfileEdit /> : null}
             </Settled>
           </SessionProvider>
         </I18nProvider>
@@ -545,6 +554,23 @@ describe("a candidate's own card", () => {
     // A candidate has no company: nothing to record.
     await act(async () => {});
     expect(server.asked('/api/mobile/v1/actions/recordAgentView')).toHaveLength(0);
+  });
+
+  it('shows an edit made to the profile, not the card as it was half a minute ago', async () => {
+    server.on('POST /api/mobile/v1/actions/saveProfileRecord', () => {
+      card = card ? { ...card, headline_ar: 'مديرة مبيعات في الشيخ زايد' } : card;
+      return { ok: true };
+    });
+    withEdit = true;
+    try {
+      renderRouter(app, { initialUrl: '/account/profile/preview' });
+      expect(await screen.findByText('مديرة مبيعات ريسيل في التجمع')).toBeTruthy();
+
+      fireEvent.press(screen.getByRole('button', { name: 'edit the profile' }));
+      expect(await screen.findByText('مديرة مبيعات في الشيخ زايد')).toBeTruthy();
+    } finally {
+      withEdit = false;
+    }
   });
 });
 

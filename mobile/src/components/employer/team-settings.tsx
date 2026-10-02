@@ -12,6 +12,7 @@ import { Select } from '~/components/ui/select';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { MemberRefused, useAddMember, useRemoveMember, type TeamMember } from '~/features/employer/company';
+import { EMAIL_SHAPE } from '~/lib/email-shape';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, radius, space } from '~/theme/tokens';
 
@@ -41,6 +42,12 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
     const address = email.trim();
     if (!address) return;
     setError(null);
+    // Not an address: said here, in those words. Sent, the website refused it
+    // as "invalid", which read as "try again" — with the same address.
+    if (!EMAIL_SHAPE.test(address)) {
+      setError(t('validation.invalidEmail'));
+      return;
+    }
     add.mutate(
       { email: address, role },
       {
@@ -50,7 +57,13 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
         },
         onError: (failure) => {
           const reason = failure instanceof MemberRefused ? failure.reason : 'failed';
-          setError(reason === 'failed' ? t('common.errorBody') : t(`employer.${REFUSAL_COPY[reason]}`));
+          setError(
+            reason === 'failed'
+              ? t('common.errorBody')
+              : reason === 'invalid_email'
+                ? t('validation.invalidEmail')
+                : t(`employer.${REFUSAL_COPY[reason]}`),
+          );
         },
       },
     );

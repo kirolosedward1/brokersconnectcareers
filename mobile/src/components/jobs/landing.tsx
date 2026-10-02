@@ -132,6 +132,9 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
 
         {board.isPending ? (
           <LoadingState />
+        ) : board.isError && !board.data ? (
+          // Never "no jobs here" for a read that failed.
+          <ErrorState error={board.error} onRetry={() => board.refetch()} />
         ) : jobs.length ? (
           <View style={{ gap: space[2] }}>
             {jobs.slice(0, 20).map((job) => (

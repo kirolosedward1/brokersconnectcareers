@@ -1,5 +1,6 @@
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { Stack } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
 import { Gift } from '~/components/ui/lucide';
 import { formatDate, formatEgp, formatNumber } from '@/lib/format';
@@ -15,6 +16,7 @@ import { Text } from '~/components/ui/text';
 import { useMobileConfig } from '~/features/config';
 import { useBilling, useClaimFreePost } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { radius, space } from '~/theme/tokens';
 
@@ -34,6 +36,11 @@ export default function BillingScreen() {
   const billingEnabled = useMobileConfig().data?.billingEnabled ?? false;
   const company = viewer?.company ?? null;
   const header = <Stack.Screen options={{ title: t('billing.title') }} />;
+  // The credits and the verified badge are the account's (viewer.company), not
+  // the orders' read: a pull reads both, or a balance spent or bought on the
+  // website stayed as it was.
+  const queryClient = useQueryClient();
+  const pull = usePullRefresh(() => Promise.all([billing.refetch(), queryClient.invalidateQueries({ queryKey: ['viewer'] })]));
 
   let body: React.ReactNode;
   if (!session) body = <SignedOut next="/employer/billing" />;
@@ -48,7 +55,7 @@ export default function BillingScreen() {
     body = (
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        refreshControl={<RefreshControl refreshing={billing.isRefetching} onRefresh={() => billing.refetch()} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
       >
         <Text tone="mutedForeground">{t('billing.lede')}</Text>

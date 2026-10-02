@@ -362,6 +362,23 @@ describe("the company's page, for a company admin", () => {
     await waitFor(() => expect(input('/api/mobile/v1/actions/removeCompanyMember')).toEqual({ userId: RECRUITER }));
     alert.mockRestore();
   });
+
+  it('says an address is not one before sending it, and when the website says so', async () => {
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.employer.teamEmail), 'mona@example');
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.teamAdd }));
+    expect(await screen.findByText(ar.validation.invalidEmail)).toBeTruthy();
+    expect(server.asked('/api/mobile/v1/actions/addCompanyMember')).toHaveLength(0);
+
+    // A shape the phone takes and the website's check does not: its word, not "try again".
+    server.on('POST /api/mobile/v1/actions/addCompanyMember', { ok: false, error: 'invalid' });
+    fireEvent.changeText(screen.getByLabelText(ar.employer.teamEmail), 'mona@example.c');
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.teamAdd }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/addCompanyMember')).toHaveLength(1));
+    expect(await screen.findByText(ar.validation.invalidEmail)).toBeTruthy();
+    expect(screen.queryByText(ar.common.errorBody)).toBeNull();
+  });
 });
 
 describe("the company's page, for a recruiter", () => {
@@ -465,5 +482,19 @@ describe('billing', () => {
     renderRouter(app, { initialUrl: '/employer/billing' });
     expect(await screen.findByText(ar.billing.credits)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.employer.freePostClaim }) === null).toBe(true);
+  });
+
+  it('reads the balance and the badge again on a pull, not only the orders', async () => {
+    company = { ...baseCompany, post_credits: 2 };
+    renderRouter(app, { initialUrl: '/employer/billing' });
+    expect(await screen.findByText('2')).toBeTruthy();
+
+    // Spent on the website, and the company verified meanwhile.
+    company = { ...baseCompany, verification_status: 'verified', post_credits: 1 };
+    await act(async () => {
+      screen.UNSAFE_getByType(RefreshControl).props.onRefresh();
+    });
+    expect(await screen.findByText('1')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.employer.freePostClaim })).toBeTruthy();
   });
 });

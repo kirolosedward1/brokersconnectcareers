@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Search, ShieldCheck } from '~/components/ui/lucide';
@@ -26,6 +26,7 @@ import {
   useMarkSeen,
 } from '~/features/employer/applicants';
 import { markupTags } from '~/i18n/rich';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useSession } from '~/lib/session';
 import { useVisited } from '~/lib/use-visited';
 import { useTheme } from '~/theme/provider';
@@ -54,6 +55,8 @@ export default function InboxScreen() {
   const context = useApplicantContext();
   useMarkSeen(rows);
   const [q, setQ] = useState(filters.q);
+  // A new applicant, or a colleague's move, reaches the inbox with a pull.
+  const pull = usePullRefresh(() => Promise.all([inbox.refetch(), rows?.length ? notes.refetch() : null]));
 
   const header = (
     <Stack.Screen options={{ title: t('employer.allApplicants'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
@@ -84,6 +87,7 @@ export default function InboxScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
+        refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       >
         <View style={{ gap: space[2] }}>
           <Text tone="mutedForeground">{t('employer.allApplicantsLede')}</Text>

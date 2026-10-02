@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Linking, Text } from 'react-native';
+import { Linking, RefreshControl, Text } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
@@ -92,6 +92,19 @@ const omar: Applicant = {
   job: { id: JOB_ID, title_ar: 'مستشار مبيعات', title_en: null, track: 'primary' },
 };
 
+const layla: Applicant = {
+  id: 'a0000000-0000-4000-8000-000000000003',
+  status: 'new',
+  created_at: '2026-09-29T10:00:00Z',
+  note: null,
+  decision_note: null,
+  cv_path: null,
+  experience_band: null,
+  employer_viewed_at: null,
+  candidate: { full_name: 'ليلى محمود', whatsapp_phone: '+201223334445', avatar_url: null, agent_profiles: null },
+  job: { id: JOB_ID, title_ar: 'مستشار مبيعات', title_en: null, track: 'primary' },
+};
+
 const notes: ApplicationNoteRow[] = [
   { id: 1, application_id: sara.id, author_id: USER_ID, body: 'كلّمتها، هترد الخميس.', created_at: '2026-09-21T10:00:00Z' },
   { id: 2, application_id: sara.id, author_id: 'c0000000-0000-4000-8000-000000000009', body: 'ملفها قوي.', created_at: '2026-09-22T10:00:00Z' },
@@ -175,6 +188,12 @@ const app = {
   '(tabs)/(listings,applicants)/agents/[slug]': ConsultantStandIn,
 };
 
+const pull = async () => {
+  await act(async () => {
+    screen.UNSAFE_getByType(RefreshControl).props.onRefresh();
+  });
+};
+
 const input = (path: string, index = 0) => (server.asked(path)[index]?.body as { input: unknown } | undefined)?.input;
 
 describe("a listing's applicants", () => {
@@ -232,6 +251,27 @@ describe("a listing's applicants", () => {
         from: 'shortlisted',
       }),
     );
+  });
+
+  it('keeps the reason as typed when it could not be saved, and says why', async () => {
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', () => {
+      throw new TypeError('Network request failed');
+    });
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.changeText(await screen.findByDisplayValue('مقابلة يوم الخميس.'), 'مقابلة يوم الأحد الساعة ١١.');
+    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.decisionNote}: ${ar.common.save}` }));
+
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+    // Their words, to send again — not the stored ones under a "Saved" that is not true.
+    expect(screen.getByDisplayValue('مقابلة يوم الأحد الساعة ١١.')).toBeTruthy();
+    expect(screen.queryByText(ar.employer.decisionNoteSaved)).toBeNull();
+
+    // Refused for any other reason: the general words, and still their sentence.
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: false, error: 'failed' });
+    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.decisionNote}: ${ar.common.save}` }));
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    expect(screen.queryByText(ar.app.offline.body)).toBeNull();
+    expect(screen.getByDisplayValue('مقابلة يوم الأحد الساعة ١١.')).toBeTruthy();
   });
 
   it('adds a private note, and lets its author take their own back', async () => {
@@ -340,6 +380,27 @@ describe("a listing's applicants", () => {
     expect(screen.queryByHintText(ar.agents.viewProfile)).toBeNull();
   });
 
+  it('takes in a new applicant with a pull, and stops spinning once it is in', async () => {
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText('سارة عادل')).toBeTruthy();
+    expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
+
+    rows = [layla, ...rows];
+    await pull();
+    expect(await screen.findByText('ليلى محمود')).toBeTruthy();
+    await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false));
+  });
+
+  it('takes in the first applicant with a pull on the empty listing', async () => {
+    rows = [];
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText(ar.employer.noApplicants)).toBeTruthy();
+
+    rows = [layla];
+    await pull();
+    expect(await screen.findByText('ليلى محمود')).toBeTruthy();
+  });
+
   it("is not found when the listing is not the company's", async () => {
     server.on('GET /rest/v1/jobs', []);
     renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
@@ -386,6 +447,16 @@ describe('the inbox', () => {
     await waitFor(() => expect(input('/api/mobile/v1/actions/setApplicationStatus')).toMatchObject({ status: 'interview', from: 'shortlisted' }));
     expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.interview}` })).toBeTruthy();
     expect(screen.queryByText(ar.employer.applicantMovedAlready)).toBeNull();
+  });
+
+  it('takes in a new applicant with a pull', async () => {
+    renderRouter(app, { initialUrl: '/employer/applicants' });
+    expect(await screen.findByText('سارة عادل')).toBeTruthy();
+
+    rows = [layla, ...rows];
+    await pull();
+    expect(await screen.findByText('ليلى محمود')).toBeTruthy();
+    expect(screen.getByText(`${ar.filters.any} (3)`)).toBeTruthy();
   });
 
   it('searches by name, with LIKE’s own characters taken as typed', async () => {

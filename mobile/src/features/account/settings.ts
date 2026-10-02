@@ -101,7 +101,11 @@ export function useUploadPhoto() {
         throw new PhotoRefused(result.error === 'file_type' || result.error === 'too_large' ? result.error : 'failed');
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+    // The account, and the directory card it is drawn on (the profile's preview).
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['viewer'] });
+      queryClient.invalidateQueries({ queryKey: ['directory', 'card'] });
+    },
   });
 }
 
@@ -117,7 +121,10 @@ export function useRemovePhoto() {
       const result = await callAction('saveAvatar', { storagePath: null });
       if (!result.ok) throw new PhotoRefused('failed');
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['viewer'] });
+      queryClient.invalidateQueries({ queryKey: ['directory', 'card'] });
+    },
   });
 }
 

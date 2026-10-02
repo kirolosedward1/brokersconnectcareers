@@ -163,6 +163,8 @@ export function useSaveAgentProfile() {
       // The name and number live on the account too, and the apply form offers the profile's CV.
       queryClient.invalidateQueries({ queryKey: ['viewer'] });
       queryClient.invalidateQueries({ queryKey: ['apply'] });
+      // The card as companies see it, which the preview draws.
+      queryClient.invalidateQueries({ queryKey: ['directory', 'card'] });
     },
   });
 }
@@ -178,6 +180,7 @@ export function useSaveRecord() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      queryClient.invalidateQueries({ queryKey: ['directory', 'card'] });
     },
   });
 }
@@ -274,6 +277,7 @@ export function useSaveCvEntry() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      queryClient.invalidateQueries({ queryKey: ['directory', 'card'] });
     },
   });
 }
@@ -307,6 +311,7 @@ export function useDeleteCvEntry(agentId: string | null) {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      queryClient.invalidateQueries({ queryKey: ['directory', 'card'] });
     },
   });
 }

@@ -255,7 +255,7 @@ export function useUploadDocument(companyId: string) {
 }
 
 /** The team refusals the website has words for; anything else is the generic line. */
-export type MemberRefusal = 'no_account' | 'already_member' | 'rate_limited' | 'failed';
+export type MemberRefusal = 'no_account' | 'already_member' | 'rate_limited' | 'invalid_email' | 'failed';
 
 export class MemberRefused extends Error {
   constructor(readonly reason: MemberRefusal) {
@@ -284,7 +284,10 @@ export function useAddMember() {
               ? 'no_account'
               : result.error === 'already_member'
                 ? 'already_member'
-                : 'failed';
+                : // The website's schema refused the address itself.
+                  result.error === 'invalid'
+                  ? 'invalid_email'
+                  : 'failed';
         throw new MemberRefused(reason);
       }
     },
