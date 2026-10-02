@@ -1,0 +1,9 @@
+# iOS can ask before an app opens a link in its own scheme from outside
+# ("Open in …?"): the answer a person would give, when it asks.
+appId: net.brokersconnect.app
+---
+- runFlow:
+    when:
+      visible: "فتح|Open"
+    commands:
+      - tapOn: "فتح|Open"

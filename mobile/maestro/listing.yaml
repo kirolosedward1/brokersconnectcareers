@@ -2,6 +2,7 @@
 appId: net.brokersconnect.app
 ---
 - openLink: brokersconnect:///jobs/${JOB_SLUG}
+- runFlow: confirm-link.yaml
 - extendedWaitUntil:
     visible: "مشاركة"
     timeout: 45000

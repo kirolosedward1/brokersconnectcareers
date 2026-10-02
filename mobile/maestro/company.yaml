@@ -2,6 +2,7 @@
 appId: net.brokersconnect.app
 ---
 - openLink: brokersconnect:///companies/${COMPANY_SLUG}
+- runFlow: confirm-link.yaml
 - extendedWaitUntil:
     visible: "${COMPANY_NAME}"
     timeout: 45000

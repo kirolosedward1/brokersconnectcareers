@@ -15,6 +15,7 @@ appId: net.brokersconnect.app
 # The board: its filter button, then the listing among the cards, or the
 # board saying it has none.
 - openLink: brokersconnect:///jobs
+- runFlow: confirm-link.yaml
 - extendedWaitUntil:
     visible: "الفلاتر.*"
     timeout: 45000
@@ -44,6 +45,7 @@ appId: net.brokersconnect.app
 # The companies: the line under the title and the company among them, or the
 # list saying it has none.
 - openLink: brokersconnect:///companies
+- runFlow: confirm-link.yaml
 - runFlow:
     when:
       true: ${COMPANY_SLUG != 'none'}

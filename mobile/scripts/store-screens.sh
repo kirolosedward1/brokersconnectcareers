@@ -5,9 +5,10 @@
 #
 #   scripts/store-screens.sh <BrokersConnect.app> <output folder>
 #
-# Each pass is a fresh simulator in Arabic (Egypt), the status bar at 9:41 with
-# full bars, the app installed and opened as by someone new, and the screens
-# of maestro/screens.yaml opened by link, checked and captured:
+# Each pass runs on a simulator in Arabic (Egypt), the status bar at 9:41 with
+# full bars, opens the app as someone new would, and opens the screens of
+# maestro/screens.yaml by link, checking and capturing each; a failed pass
+# writes what was on the screen into the log:
 #
 #   store       the largest iPhone, light: the screenshots App Store Connect
 #               asks for (6.9-inch)
@@ -77,24 +78,55 @@ printf 'runtime %s\niphone %s\nipad %s\n' "$runtime" "$iphone" "$ipad" | tee "$o
 
 failed=()
 
-# pass <name> <device type> <content size> <flow>
-pass() {
-  local name="$1" type="$2" size="$3" flow="$4" udid status=0
-  echo "::group::$name"
-  udid=$(xcrun simctl create "store-$name" "$type" "$runtime")
-  xcrun simctl boot "$udid"
-  xcrun simctl bootstatus "$udid" -b > /dev/null
-  # Arabic, Egypt; the system reads it at boot.
-  xcrun simctl spawn "$udid" defaults write 'Apple Global Domain' AppleLanguages -array ar-EG
-  xcrun simctl spawn "$udid" defaults write 'Apple Global Domain' AppleLocale -string ar_EG
-  xcrun simctl shutdown "$udid"
-  xcrun simctl boot "$udid"
-  xcrun simctl bootstatus "$udid" -b > /dev/null
-  xcrun simctl ui "$udid" content_size "$size"
-  xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
-    --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
-  xcrun simctl install "$udid" "$app"
+# device <name> <device type>: a fresh simulator in Arabic (Egypt), the
+# status bar at 9:41 with full bars and the app installed; prints its id.
+device() {
+  local udid
+  udid=$(xcrun simctl create "store-$1" "$2" "$runtime")
+  {
+    xcrun simctl boot "$udid"
+    xcrun simctl bootstatus "$udid" -b
+    # The system reads the language at boot.
+    xcrun simctl spawn "$udid" defaults write 'Apple Global Domain' AppleLanguages -array ar-EG
+    xcrun simctl spawn "$udid" defaults write 'Apple Global Domain' AppleLocale -string ar_EG
+    xcrun simctl shutdown "$udid"
+    xcrun simctl boot "$udid"
+    xcrun simctl bootstatus "$udid" -b
+    xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
+      --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+    xcrun simctl install "$udid" "$app"
+  } > /dev/null
+  echo "$udid"
+}
 
+# What a failed pass left on the screen, in the run's log, which can be read
+# where its artifact cannot: the words Maestro sees, whether the app is still
+# running, and what it logged as errors.
+explain() {
+  local name="$1" udid="$2"
+  echo "On screen when $name failed:"
+  if maestro --device "$udid" hierarchy > "$out/$name/hierarchy.json" 2> /dev/null; then
+    jq -r '[.. | objects | .attributes? // empty | (.accessibilityText // empty), (.text // empty), (.title // empty)
+            | select(type == "string" and . != "")] | unique | .[]' "$out/$name/hierarchy.json" | head -n 80 | sed 's/^/    /'
+  else
+    echo "    (Maestro could not read the screen)"
+  fi
+  if xcrun simctl spawn "$udid" launchctl list | grep -q 'UIKitApplication:net.brokersconnect.app'; then
+    echo "The app is running."
+  else
+    echo "The app is not running."
+  fi
+  echo "What the app logged as errors in the last 10 minutes:"
+  xcrun simctl spawn "$udid" log show --last 10m --style compact \
+    --predicate 'process == "BrokersConnect" AND (messageType == error OR messageType == fault OR eventMessage CONTAINS[c] "error")' 2> /dev/null |
+    grep -v '^Timestamp' | tail -n 40 | cut -c 1-400 | sed 's/^/    /'
+}
+
+# pass <name> <simulator> <content size> <flow>
+pass() {
+  local name="$1" udid="$2" size="$3" flow="$4" status=0
+  echo "::group::$name"
+  xcrun simctl ui "$udid" content_size "$size"
   mkdir -p "$out/$name"
   touch "$out/$name/.started"
   (cd "$out/$name" && maestro --device "$udid" test "${envs[@]}" --debug-output "$out/$name/debug" "$flows/$flow") || status=$?
@@ -103,19 +135,25 @@ pass() {
   find "$flows" -maxdepth 1 -type f -name '[0-9]-*.png' -newer "$out/$name/.started" -exec mv {} "$out/$name/" \;
   if [ "$status" -ne 0 ]; then
     failed+=("$name")
-    # What the screen showed when it failed.
-    xcrun simctl io "$udid" screenshot "$out/$name/failed.png" || true
+    xcrun simctl io "$udid" screenshot "$out/$name/failed.png" > /dev/null 2>&1 || true
+    explain "$name" "$udid"
     echo "::error::$name: the screens did not all open cleanly (maestro exited $status)"
   fi
-  xcrun simctl shutdown "$udid" || true
-  xcrun simctl delete "$udid" || true
   echo "::endgroup::"
 }
 
-pass store "$iphone" large store.yaml
-pass dark "$iphone" large dark.yaml
-pass large-text "$iphone" accessibility-extra-extra-extra-large store.yaml
-pass ipad "$ipad" large store.yaml
+# One iPhone for its three passes: each starts the app afresh (launch.yaml).
+phone=$(device iphone "$iphone")
+pass store "$phone" large store.yaml
+pass dark "$phone" large dark.yaml
+pass large-text "$phone" accessibility-extra-extra-extra-large store.yaml
+xcrun simctl shutdown "$phone" || true
+xcrun simctl delete "$phone" || true
+
+tablet=$(device ipad "$ipad")
+pass ipad "$tablet" large store.yaml
+xcrun simctl shutdown "$tablet" || true
+xcrun simctl delete "$tablet" || true
 
 # The sizes App Store Connect checks a 6.9-inch screenshot against.
 echo "Store screenshots:"

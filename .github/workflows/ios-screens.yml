@@ -40,6 +40,9 @@ env:
   # Maestro, pinned: 2.4.0 was the first to run on iOS 26.
   MAESTRO_VERSION: 2.6.0
   MAESTRO_CLI_NO_ANALYTICS: '1'
+  # Its driver, installed on each new simulator, took longer than the default
+  # to start on a runner once ("iOS driver not ready in time").
+  MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
 
 jobs:
   screens:
