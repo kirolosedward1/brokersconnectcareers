@@ -45,6 +45,8 @@ type Recipient = {
   email: string;
   locale: 'ar' | 'en';
   unsubscribeToken: string;
+  /** Who they are on the platform, for a notice that reads differently by role. */
+  role: string | null;
 };
 
 /**
@@ -115,6 +117,7 @@ async function recipient(
     email: data.user.email,
     locale: localeOf(profile.locale),
     unsubscribeToken: secret.unsubscribe_token,
+    role: typeof profile.role === 'string' ? profile.role : null,
   };
 }
 
@@ -1161,7 +1164,12 @@ async function oneExpiryNotice({
 // ---------------------------------------------------------------------------
 
 /**
- * An employer is told what the account review decided.
+ * An account is told what the account review decided.
+ *
+ * A candidate is held or suspended, and restored, too — and was sent the
+ * employer's words: "we reviewed your company details", and a button to post
+ * a role, which bounced them. The wording, and where the button goes, follow
+ * the account's role.
  *
  * Transactional, and one of the clearest cases: it is the answer to a question
  * the person asked by signing up, and it arrives once. Suppressing it would
@@ -1181,7 +1189,14 @@ export async function notifyAccountDecision(
     if (!to) return 'skipped';
 
     const c = copyFor(to.locale);
-    const t = approved ? c.accountApproved : c.accountRejected;
+    const candidate = to.role === 'candidate';
+    const t = approved
+      ? candidate
+        ? c.accountApprovedCandidate
+        : c.accountApproved
+      : candidate
+        ? c.accountRejectedCandidate
+        : c.accountRejected;
 
     return deliver({
       template: approved ? 'account_approved' : 'account_rejected',
@@ -1199,7 +1214,9 @@ export async function notifyAccountDecision(
         blocks: approved
           ? [
               { kind: 'text', value: t.body },
-              { kind: 'button', label: c.accountApproved.cta, href: `${env.siteUrl}/employer/jobs/new` },
+              candidate
+                ? { kind: 'button', label: c.accountApprovedCandidate.cta, href: `${env.siteUrl}/dashboard` }
+                : { kind: 'button', label: c.accountApproved.cta, href: `${env.siteUrl}/employer/jobs/new` },
             ]
           : [
               { kind: 'text', value: t.body },

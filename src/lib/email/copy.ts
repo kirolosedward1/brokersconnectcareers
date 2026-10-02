@@ -250,6 +250,22 @@ export const emailCopy = {
       contact: 'لو ده مش صح، ابعتلنا من صفحة المساعدة وهنراجعها.',
     },
 
+    // The same decisions, for a consultant's account.
+    accountApprovedCandidate: {
+      subject: 'حسابك اتفعّل',
+      preheader: 'تقدر تقدّم على الوظايف دلوقتي.',
+      heading: 'حسابك اتفعّل',
+      body: 'راجعنا حسابك، وبقى مفعّل تاني. تقدر تقدّم على الوظايف وتحدّث ملفك.',
+      cta: 'افتح حسابك',
+    },
+
+    accountRejectedCandidate: {
+      subject: 'حسابك متوقف مؤقتاً',
+      preheader: 'محتاجين نراجع بيانات حسابك تاني.',
+      heading: 'حسابك متوقف مؤقتاً',
+      body: 'وقّفنا الحساب مؤقتاً لحد ما نراجع البيانات تاني.',
+    },
+
     companyVerified: {
       subject: 'تم توثيق شركتك',
       preheader: 'علامة التوثيق ظهرت على صفحتك.',
@@ -535,6 +551,22 @@ export const emailCopy = {
       body: 'We have paused the account until we can review the details again.',
       reason: (note: string) => `Reason: ${note}`,
       contact: 'If this is wrong, write to us from the help page and we will look again.',
+    },
+
+    // The same decisions, for a consultant's account.
+    accountApprovedCandidate: {
+      subject: 'Your account is active',
+      preheader: 'You can apply for roles now.',
+      heading: 'Your account is active',
+      body: 'We have reviewed your account and it is active again. You can apply for roles and update your profile.',
+      cta: 'Open your account',
+    },
+
+    accountRejectedCandidate: {
+      subject: 'Your account is on hold',
+      preheader: 'We need to review your account details again.',
+      heading: 'Your account is on hold',
+      body: 'We have paused the account until we can review the details again.',
     },
 
     companyVerified: {
