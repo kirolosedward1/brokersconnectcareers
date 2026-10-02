@@ -9,6 +9,7 @@ import { createCheckout, paymobConfig } from '@/lib/paymob/client';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 import { recordSecurityEvent } from '@/lib/security/events';
+import { checkoutAccess } from '@/lib/checkout-access';
 
 const schema = z.object({
   packKey: z.enum(['single', 'bulk', 'mass_hiring', 'featured_addon']),
@@ -41,26 +42,16 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // Through the caller's own session, so RLS confirms the company is theirs —
-  // and through membership, so a colleague buying credits for the company they
-  // work at is not told they have no company.
-  const { data: companyId } = await supabase.rpc('my_company_id');
-  const { data: company } = companyId
-    ? await supabase.from('companies').select('id, name_ar').eq('id', companyId).maybeSingle()
-    : { data: null };
-  if (!company) return { ok: false, error: 'no_company' };
-
-  // Buying is a company admin's act, from an account in good standing. The
-  // order row is written with the service role below, so the caller's
-  // standing has to be established here — orders_select_own is admin-only,
-  // and a recruiter could otherwise create orders they can never read.
-  const [{ data: isCompanyAdmin }, { data: standing }] = await Promise.all([
-    supabase.rpc('is_company_admin', { target: company.id }),
-    supabase.from('profiles').select('approval_status').eq('id', user.id).maybeSingle(),
-  ]);
-  if (!isCompanyAdmin || standing?.approval_status !== 'approved') {
-    return { ok: false, error: 'forbidden' };
-  }
+  // Through the caller's own session, so RLS confirms the company is theirs;
+  // who may buy, and why a failed read is "try again", is checkoutAccess's.
+  const access = await checkoutAccess({
+    myCompanyId: () => supabase.rpc('my_company_id'),
+    company: (id) => supabase.from('companies').select('id, name_ar').eq('id', id).maybeSingle(),
+    isCompanyAdmin: (id) => supabase.rpc('is_company_admin', { target: id }),
+    standing: () => supabase.from('profiles').select('approval_status').eq('id', user.id).maybeSingle(),
+  });
+  if (!access.ok) return { ok: false, error: access.error };
+  const { company } = access;
 
   const { data: profile } = await supabase
     .from('profiles')
