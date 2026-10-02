@@ -539,5 +539,29 @@ section('database outage: one settle that throws does not strand the rest of the
   is('nothing more is leased after it', outbox.leases.length, 1);
 }
 
+// ---------------------------------------------------------------------------
+// The cron routes
+// ---------------------------------------------------------------------------
+
+section('every cron route checks the secret the same way');
+{
+  /*
+    runScheduledJob compares the bearer in constant time and refuses a missing
+    secret or an unedited REPLACE_ME (cronAuthorised for a route that does not
+    run through it). The lifecycle route compared the header with `!==`
+    against the raw variable, so the placeholder from the import file opened
+    it. Read off the routes themselves, so a new one cannot quietly differ.
+  */
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const dir = new URL('../src/app/api/cron/', import.meta.url);
+  for (const name of readdirSync(dir)) {
+    const source = readFileSync(new URL(`${name}/route.ts`, dir), 'utf8');
+    ok(
+      `/api/cron/${name} authorises through runScheduledJob or cronAuthorised`,
+      /runScheduledJob\(|cronAuthorised\(/.test(source) && !/headers\.get\(['"]authorization['"]\)\s*[!=]==/.test(source),
+    );
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail === 0 ? 0 : 1;

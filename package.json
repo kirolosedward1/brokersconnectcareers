@@ -48,7 +48,7 @@
     "test:messages": "node --experimental-strip-types scripts/messages.mjs",
     "test:licenses": "node scripts/licenses.mjs --check",
     "test:legal": "node --experimental-strip-types scripts/legal.test.mjs",
-    "check": "pnpm typecheck && pnpm test:messages && pnpm test:licenses && pnpm test:legal && pnpm test:compat && pnpm test:match && pnpm test:earnings && pnpm test:share && pnpm test:saved && node --experimental-strip-types scripts/job-filters.test.mjs && pnpm test:mobile-api && pnpm test:auth-confirm && pnpm test:app-links && pnpm test:apple && pnpm test:nextaction && pnpm test:checkout && pnpm test:paging && pnpm test:cv && pnpm test:reads && pnpm test:security-libs && pnpm test:seo && node --experimental-strip-types scripts/notification-links.test.mjs && node --experimental-strip-types scripts/notification-title.test.mjs && node --experimental-strip-types scripts/notification-dispatch.test.mjs && node --experimental-strip-types scripts/new-jobs.test.mjs && pnpm test:push-send && pnpm test:release && pnpm test:db && pnpm test:concurrency",
+    "check": "pnpm typecheck && pnpm test:messages && pnpm test:licenses && pnpm test:legal && pnpm test:compat && pnpm test:match && pnpm test:earnings && pnpm test:share && pnpm test:saved && node --experimental-strip-types scripts/job-filters.test.mjs && pnpm test:mobile-api && pnpm test:auth-confirm && pnpm test:app-links && pnpm test:apple && pnpm test:nextaction && pnpm test:checkout && pnpm test:paging && pnpm test:cv && pnpm test:phone && pnpm test:reads && pnpm test:security-libs && pnpm test:seo && node --experimental-strip-types scripts/notification-links.test.mjs && node --experimental-strip-types scripts/notification-title.test.mjs && node --experimental-strip-types scripts/notification-dispatch.test.mjs && node --experimental-strip-types scripts/new-jobs.test.mjs && pnpm test:push-send && pnpm test:release && pnpm test:db && pnpm test:concurrency",
     "test:search": "node --experimental-strip-types supabase/tests/search.test.mjs",
     "bench:search": "node --experimental-strip-types supabase/tests/search-bench.mjs",
     "test:email": "node --experimental-strip-types supabase/tests/email.test.mjs",
@@ -76,6 +76,7 @@
     "perf:budget": "node scripts/perf-budget.mjs",
     "test:checkout": "node --experimental-strip-types scripts/checkout-access.test.mjs",
     "test:cv": "node --experimental-strip-types scripts/cv-in-use.test.mjs",
+    "test:phone": "node --experimental-strip-types scripts/phone.test.mjs",
     "test:paging": "node --experimental-strip-types scripts/admin-paging.test.mjs && node --experimental-strip-types scripts/company-filters.test.mjs",
     "test:seo": "node --experimental-strip-types scripts/job-posting.test.mjs && node --experimental-strip-types scripts/record-exists.test.mjs && node --experimental-strip-types scripts/robots.test.mjs",
     "seo:check": "node --experimental-strip-types scripts/seo-check.mjs"

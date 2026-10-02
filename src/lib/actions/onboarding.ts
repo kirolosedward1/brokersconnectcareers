@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { normalisePhone } from '@/lib/phone';
+import { isValidPhone, normalisePhone } from '@/lib/phone';
 import { buildAgentSlug, buildCompanySlug } from '@/lib/slug';
 import { withUniqueSlug } from '@/lib/actions/unique-slug';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
@@ -65,8 +65,12 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
     return { ok: false, error: 'invalid', fieldErrors: flatten(parsed.error) };
   }
 
+  // The rule apply and the profile use: an Egyptian number has to be a mobile
+  // of the right length. The bare international shape took "0100 123 456",
+  // a digit short, and stored a number that reaches nobody — which the apply
+  // form then refused when it came back pre-filled.
   const phone = normalisePhone(parsed.data.whatsapp);
-  if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
+  if (!isValidPhone(phone)) {
     return { ok: false, error: 'invalid', fieldErrors: { whatsapp: 'invalidPhone' } };
   }
 

@@ -105,6 +105,15 @@ export async function runScheduledJob(
  * secret's length either — timingSafeEqual refuses buffers of different
  * lengths, and returning early on that is its own timing signal.
  */
+/**
+ * Whether a request carries the cron secret, as runScheduledJob checks it: in
+ * constant time, and never against a missing secret or an unedited
+ * REPLACE_ME. For a cron route that does not run through runScheduledJob.
+ */
+export function cronAuthorised(request: NextRequest): boolean {
+  return authorised(request.headers.get('authorization'), configuredValue(env.cronSecret) ?? '');
+}
+
 function authorised(header: string | null, secret: string): boolean {
   if (!secret || !header) return false;
   const digest = (value: string) => createHash('sha256').update(value).digest();

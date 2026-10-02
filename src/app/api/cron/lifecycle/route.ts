@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { env } from '@/lib/env';
+import { cronAuthorised } from '@/lib/jobs/run';
 import { logFailure } from '@/lib/observe';
 
 export const dynamic = 'force-dynamic';
@@ -31,8 +31,10 @@ const BATCH = 100;
 const MAX_BATCHES = 5;
 
 export async function GET(request: NextRequest) {
-  const secret = env.cronSecret;
-  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
+  // The check every other cron route makes (runScheduledJob): this one
+  // compared the raw header with `!==` — not in constant time — and took an
+  // unedited REPLACE_ME from the import file as a secret.
+  if (!cronAuthorised(request)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
@@ -47,7 +49,8 @@ export async function GET(request: NextRequest) {
   const { data: maintenance, error } = await admin.rpc('run_lifecycle_maintenance');
   if (error) {
     logFailure('lifecycle', 'maintenance failed', { code: error.code });
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // A code, never the database's words: they can quote a value.
+    return NextResponse.json({ error: 'maintenance_failed', code: error.code ?? null }, { status: 500 });
   }
 
   // ------------------------------------------------------------ retention --
