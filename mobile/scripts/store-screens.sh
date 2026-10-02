@@ -90,8 +90,11 @@ pass() {
   xcrun simctl install "$udid" "$app"
 
   mkdir -p "$out/$name"
-  # Screenshots land where Maestro runs: in the pass's own folder.
+  touch "$out/$name/.started"
   (cd "$out/$name" && maestro --device "$udid" test "${envs[@]}" --debug-output "$out/$name/debug" "$flows/$flow") || status=$?
+  # takeScreenshot writes into Maestro's workspace, which is where it ran or,
+  # for some versions, the flows' own folder: the pass's shots come from either.
+  find "$flows" -maxdepth 1 -type f -name '[0-9]-*.png' -newer "$out/$name/.started" -exec mv {} "$out/$name/" \;
   if [ "$status" -ne 0 ]; then
     failed+=("$name")
     # What the screen showed when it failed.
