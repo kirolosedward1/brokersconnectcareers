@@ -16,26 +16,21 @@
 --  2. "Request changes" on a company's verification rang no bell: the trigger
 --     announced verified and rejected only, and a review that asked for new
 --     papers moves the company to unverified. It does now, keyed per version
---     like a refusal — but only for a reviewer's decision, not for a company
---     that took its own papers back.
+--     like a refusal — but only for a reviewer's decision, not when the
+--     database itself takes the last paper waiting out of the queue.
 --  3. The daily "finish your profile" reminder asked for the fifty oldest
 --     incomplete profiles, whether or not they had asked for the reminder
 --     (opt-in since 337) or had already been sent it (its key is held for 180
 --     days). The run was filled with people it then skipped, and somebody who
 --     had asked was reached weeks late, or never. It lists only those who
 --     asked and have not been told.
---  4. A company could not take back the last paper it had sent for review.
---     company_documents_delete allows it while nobody has looked, and the
---     documents' trigger moves the company back out of the queue — which the
---     company's own update guard refused, so the delete failed. Found by the
---     test for (2).
 --
 -- Compatibility: production code keeps running while this is applied, and
 -- stays running on it if the release is rolled back. Add first, switch the code
 -- over, remove the old thing in a later release — never in the same one.
 -- =============================================================================
 
--- rollback: restate on_application_moved() from migration 301, on_company_verified() from migration 301, incomplete_candidate_profiles(int) from migration 28, and guard_company_update() from migration 344
+-- rollback: restate on_application_moved() from migration 301, on_company_verified() from migration 301, and incomplete_candidate_profiles(int) from migration 28
 -- safety: ships-with-code — the functions keep their signatures and triggers; the website's cron reads the reminder list as before, only shorter, and a stage keeps its old key the first time it is told, so the only notices added are the ones that were being swallowed
 
 -- ---------------------------------------------------------------------------
@@ -157,8 +152,9 @@ begin
     elsif new.verification_status = 'rejected'
        -- A reviewer sending the papers back for changes: the company is the
        -- one who has to act, exactly as after a refusal. Asked of the review
-       -- (is_admin), because a company withdrawing its own last paper takes
-       -- the same path back to unverified and needs telling nothing.
+       -- (is_admin), because the documents' own trigger takes the same path
+       -- back to unverified when the database removes the last paper waiting
+       -- (company_review_state, migration 44), and that asks nothing of anyone.
        or (new.verification_status = 'unverified' and old.verification_status = 'pending'
            and public.is_admin())
     then
@@ -205,64 +201,4 @@ as $$
      and (a.id is null or public.profile_completeness(a.id) < 60)
    order by p.created_at
    limit least(greatest(p_limit, 1), 200);
-$$;
-
--- ---------------------------------------------------------------------------
--- 4. A paper nobody has reviewed can be taken back
--- ---------------------------------------------------------------------------
-
-create or replace function public.guard_company_update()
-returns trigger
-language plpgsql
-set search_path = public, pg_temp
-as $$
-begin
-  if public.acting_as_admin() then return new; end if;
-
-  -- The public address of the company. Permanent, because other people's
-  -- links and other people's saved rows point at it.
-  if new.slug is distinct from old.slug then
-    raise exception 'a company slug is permanent — links and follows point at it';
-  end if;
-
-  -- Verification is set by review, with one exception below it.
-  if new.verification_status is distinct from old.verification_status then
-    -- Submitting papers is a transition the company makes, and so is taking
-    -- them back: company_review_state (migration 44) moves a company out of
-    -- the queue when its last paper waiting for review is withdrawn, which
-    -- company_documents_delete allows — and this refused it, so the paper
-    -- could not be taken back at all. Both only under the marker that
-    -- trigger sets, so neither can become a way to arrive at `verified`.
-    if not (
-      coalesce(current_setting('app.submitting_for_review', true), 'off') = 'on'
-      and (
-        (new.verification_status = 'pending' and old.verification_status in ('unverified', 'rejected'))
-        or (new.verification_status = 'unverified' and old.verification_status = 'pending')
-      )
-    ) then
-      raise exception 'verification_status is set by review, not by the owner';
-    end if;
-  end if;
-
-  if new.verified_at is distinct from old.verified_at then
-    raise exception 'verified_at is set by review, not by the owner';
-  end if;
-  if new.owner_id is distinct from old.owner_id then
-    raise exception 'company ownership cannot be transferred';
-  end if;
-  -- A company's age is a review signal ("new company"); backdating it hid one.
-  if new.created_at is distinct from old.created_at then
-    raise exception 'created_at is not owner-writable';
-  end if;
-
-  -- Credits move only when platform code says it is granting them. The marker
-  -- is transaction-local and set inside a SECURITY DEFINER function; a client
-  -- speaking to PostgREST has no statement with which to set it.
-  if new.post_credits is distinct from old.post_credits
-     and coalesce(current_setting('app.granting_credits', true), 'off') <> 'on' then
-    raise exception 'post_credits is set by billing, not by the owner';
-  end if;
-
-  return new;
-end;
 $$;

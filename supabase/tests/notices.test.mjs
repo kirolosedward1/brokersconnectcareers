@@ -257,26 +257,38 @@ report.section('a review that asks for new papers rings the bell');
     `${once.rows[0]?.n} → ${twice.rows[0]?.n} ${again.error ?? ''}`,
   );
 
-  const withdrawn = await scenario([
+  // The database itself taking the last paper waiting out of the queue (a
+  // clean-up, a deletion) takes the same path back to unverified.
+  const removed = await scenario([
     { as: null, sql: needed },
     ...submit('third'),
-    {
-      as: E2,
-      sql: `delete from company_documents where company_id = '${HUB}' and storage_path = '${HUB}/third.pdf' returning id`,
-    },
+    { as: null, sql: `delete from company_documents where company_id = '${HUB}' and storage_path = '${HUB}/third.pdf' returning id` },
     status,
     { as: null, sql: needed },
   ]);
-  const [before, , , taken, back, afterwards] = withdrawn;
+  const [before, , , taken, back, afterwards] = removed;
   report.check(
-    '(a company may take back a paper nobody has reviewed)',
+    '(the last paper waiting removed by the database: back to unverified)',
     taken.rows.length === 1 && back.rows[0]?.status === 'unverified',
     JSON.stringify(taken.rows) + (taken.error ?? '') + JSON.stringify(back.rows[0]),
   );
   report.check(
-    'and doing so tells it nothing: nobody asked it for anything',
+    'and that tells the company nothing: no reviewer asked it for anything',
     afterwards.rows[0]?.n === before.rows[0]?.n,
     `${before.rows[0]?.n} → ${afterwards.rows[0]?.n}`,
+  );
+
+  // The company's own: refused, as since migration 44 — and so not a way back
+  // from a refusal to "unverified" (a paper sent, then taken back).
+  const own = await scenario([...submit('fourth'), {
+    as: E2,
+    sql: `delete from company_documents where company_id = '${HUB}' and storage_path = '${HUB}/fourth.pdf' returning id`,
+  }, status]);
+  const [, , ownTake, ownStatus] = own;
+  report.check(
+    "a company cannot take its last paper waiting back out of the queue",
+    !ownTake.ok && ownStatus.rows[0]?.status === 'pending',
+    JSON.stringify(ownTake.rows) + (ownTake.error ?? '') + JSON.stringify(ownStatus.rows[0]),
   );
 }
 
