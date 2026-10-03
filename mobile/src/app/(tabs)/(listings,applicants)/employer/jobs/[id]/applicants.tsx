@@ -23,6 +23,7 @@ import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { Inbox, ShieldAlert } from '~/components/ui/lucide';
 
 /**
  * One listing's applicants — the website's /employer/jobs/<id>/applicants:
@@ -53,12 +54,12 @@ export default function ListingApplicantsScreen() {
 
   let body: React.ReactNode;
   if (!session || !viewer?.profile) body = <ViewerPending />;
-  else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) body = <NotFoundState />;
   // A suspended company's applicants are hidden (migration 349): said, not
   // shown as an empty pipeline.
   else if (viewer.company.suspended_at) {
-    body = <EmptyState title={t('employer.applicantsSuspendedTitle')} body={t('employer.applicantsSuspendedBody')} />;
+    body = <EmptyState icon={ShieldAlert} title={t('employer.applicantsSuspendedTitle')} body={t('employer.applicantsSuspendedBody')} />;
   } else if (pipeline.isPending) body = <LoadingState />;
   else if (pipeline.isError && !pipeline.data) body = <ErrorState error={pipeline.error} onRetry={() => pipeline.refetch()} />;
   else if (!pipeline.data || !job) body = <NotFoundState />;
@@ -71,6 +72,7 @@ export default function ListingApplicantsScreen() {
         refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       >
         <EmptyState
+          icon={Inbox}
           title={t('employer.noApplicants')}
           body={t('employer.noApplicantsHint')}
           action={

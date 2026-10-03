@@ -14,6 +14,7 @@ import { useSavedJobs, useSavedSearches } from '~/features/saved/queries';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
+import { UserRound } from '~/components/ui/lucide';
 
 /**
  * What the candidate kept — the website's /dashboard/saved: the bookmarked
@@ -41,6 +42,7 @@ export default function SavedScreen() {
   if (!session) {
     body = (
       <EmptyState
+        icon={UserRound}
         title={t('app.account.signedOutTitle')}
         action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
       />

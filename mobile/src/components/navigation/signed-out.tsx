@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
 import { EmptyState } from '~/components/ui/states';
+import { UserRound } from '~/components/ui/lucide';
 
 /**
  * A page of one's own, with nobody signed in: reached from a link, or left
@@ -13,6 +14,7 @@ export function SignedOut({ next }: { next?: string }) {
   const t = useTranslations();
   return (
     <EmptyState
+      icon={UserRound}
       title={t('app.account.signedOutTitle')}
       body={t('app.account.signedOutBody')}
       action={

@@ -6,6 +6,7 @@ import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { useEditableJob } from '~/features/employer/job-form';
 import { useSession } from '~/lib/session';
+import { ShieldAlert } from '~/components/ui/lucide';
 
 /**
  * Changing a listing — the website's /employer/jobs/<id>/edit: the company's
@@ -22,7 +23,7 @@ export default function EditJobScreen() {
 
   let body: React.ReactNode;
   if (!session || !viewer?.profile) body = <ViewerPending />;
-  else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) body = <NotFoundState />;
   else if (editable.isPending) body = <LoadingState />;
   else if (editable.isError && !editable.data) body = <ErrorState error={editable.error} onRetry={() => editable.refetch()} />;

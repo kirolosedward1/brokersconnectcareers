@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Check, Scale, TriangleAlert } from '~/components/ui/lucide';
+import { Scale, TriangleAlert } from '~/components/ui/lucide';
 import { formatEgp, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { JobRow, SalaryReferenceRow } from '@/lib/supabase/database.types';
@@ -209,45 +209,37 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
       keyboardDismissMode="interactive"
       contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
     >
-      {/* Where the form is, and a way back to any step. */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-        {STEPS.map((name, index) => {
-          const current = index === step;
-          return (
+      {/*
+        Where the form is, and a way back to any step: a segment each, filled
+        up to this one — one row at any width, where four labelled pills
+        wrapped — with the step's name under it.
+      */}
+      <View style={{ gap: space[2] }}>
+        <View style={{ flexDirection: 'row', gap: space[1] + 2 }}>
+          {STEPS.map((name, index) => (
             <Pressable
               key={name}
               accessibilityRole="button"
               accessibilityLabel={t(`jobForm.${name}`)}
-              accessibilityState={{ selected: current }}
+              accessibilityState={{ selected: index === step }}
               onPress={() => goTo(index)}
-              hitSlop={4}
-              style={{
-                minHeight: 36,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: space[1],
-                paddingHorizontal: space[3],
-                ...corner('md'),
-                backgroundColor: current ? colors.primary : 'transparent',
-              }}
+              hitSlop={{ top: 10, bottom: 10 }}
+              style={{ flex: 1, minHeight: 24, justifyContent: 'center' }}
             >
-              {index < step ? (
-                <Check size={14} color={colors.primary} />
-              ) : (
-                <Text variant="small" weight="semibold" style={{ color: current ? colors.primaryForeground : colors.mutedForeground }}>
-                  {formatNumber(index + 1, locale)}
-                </Text>
-              )}
-              <Text
-                variant="small"
-                weight={current ? 'semibold' : 'regular'}
-                style={{ color: current ? colors.primaryForeground : index < step ? colors.primary : colors.mutedForeground }}
-              >
-                {t(`jobForm.${name}`)}
-              </Text>
+              <View style={{ height: 4, ...corner('full'), backgroundColor: index <= step ? colors.primary : colors.border }} />
             </Pressable>
-          );
-        })}
+          ))}
+        </View>
+        <Text variant="caption" weight="medium" tone="mutedForeground">
+          {t.markup('app.jobs.wizardStep', {
+            current: formatNumber(step + 1, locale),
+            total: formatNumber(STEPS.length, locale),
+            ...markupTags,
+          })}
+        </Text>
+        <Text variant="title" weight="semibold" accessibilityRole="header">
+          {t(`jobForm.${STEPS[step]}`)}
+        </Text>
       </View>
 
       {/* A refusal, where a refused save leaves the screen: at the top. */}

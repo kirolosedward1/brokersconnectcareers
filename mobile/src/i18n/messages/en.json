@@ -42,7 +42,8 @@
   },
   "jobs": {
     "loadMore": "Load more",
-    "endOfList": "That is every matching job."
+    "endOfList": "That is every matching job.",
+    "wizardStep": "Step <v>{current}</v> of <v>{total}</v>"
   },
   "auth": {
     "forCompanies": "Register your company",

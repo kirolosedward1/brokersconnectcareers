@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { Archive, BriefcaseBusiness, Eye, MapPin, Pencil, Plus, RotateCcw, Users } from '~/components/ui/lucide';
+import { Archive, BriefcaseBusiness, Building2, Eye, MapPin, Pencil, Plus, RotateCcw, ShieldAlert, Users } from '~/components/ui/lucide';
 import { formatDate, formatNumber } from '@/lib/format';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -68,10 +68,11 @@ export default function ListingsScreen() {
     body = <ViewerPending />;
   } else if (isSuspended(actor)) {
     // The website's console for a suspended account: nothing to act on, said once.
-    body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+    body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   } else if (!viewer.company) {
     body = (
       <EmptyState
+        icon={Building2}
         title={t('employer.createCompanyFirst')}
         body={t('employer.createCompanyFirstBody')}
         action={<Button label={t('employer.company')} onPress={() => router.navigate('/employer/company' as never)} />}

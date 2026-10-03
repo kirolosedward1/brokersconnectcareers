@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2, Eye, MapPin } from '~/components/ui/lucide';
+import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -40,6 +40,7 @@ export default function ApplicationsScreen() {
   if (!session) {
     body = (
       <EmptyState
+        icon={UserRound}
         title={t('app.account.signedOutTitle')}
         action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
       />

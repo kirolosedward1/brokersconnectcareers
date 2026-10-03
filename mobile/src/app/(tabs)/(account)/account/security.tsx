@@ -7,6 +7,7 @@ import { Button } from '~/components/ui/button';
 import { EmptyState } from '~/components/ui/states';
 import { useSession } from '~/lib/session';
 import { gutter, space } from '~/theme/tokens';
+import { UserRound } from '~/components/ui/lucide';
 
 /**
  * Signing in, and keeping others out — the email address, the password and
@@ -25,6 +26,7 @@ export default function SecurityScreen() {
       <>
         {header}
         <EmptyState
+          icon={UserRound}
           title={t('app.account.signedOutTitle')}
           action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
         />

@@ -107,7 +107,6 @@ export function ApplicantCard({
   const t = useTranslations('employer');
   const tStatus = useTranslations('applicationStatus');
   const tExp = useTranslations('experienceBand');
-  const tJobs = useTranslations('jobs');
   const tCommon = useTranslations('common');
   const tAgents = useTranslations('agents');
   const tTrack = useTranslations('track');
@@ -232,7 +231,7 @@ export function ApplicantCard({
             <FactLine className="mt-0.5 text-sm text-muted-foreground">
               {application.experience_band ? <span>{tExp(application.experience_band)}</span> : null}
               <time dateTime={isoDate(application.created_at)}>
-                {tJobs('postedOn', { date: formatDate(application.created_at, locale) })}
+                {t('applicantReceivedOn', { date: formatDate(application.created_at, locale) })}
               </time>
             </FactLine>
           </div>

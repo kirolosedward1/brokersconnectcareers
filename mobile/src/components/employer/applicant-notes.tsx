@@ -10,7 +10,7 @@ import { TextField } from '~/components/ui/text-field';
 import { useAddNote, useDeleteNote } from '~/features/employer/applicants';
 import { ApiError } from '~/lib/api';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 
 /**
  * The company's own notes on an applicant — the website's ApplicantNotes.
@@ -76,9 +76,11 @@ export function ApplicantNotes({
           {t('employer.notesTitle')}
         </Text>
         {shown.length ? (
-          <Text variant="caption" weight="medium" style={{ paddingHorizontal: 6, borderRadius: 4, backgroundColor: colors.muted }}>
-            {formatNumber(shown.length, locale)}
-          </Text>
+          <View style={{ minWidth: 24, paddingHorizontal: space[2], paddingVertical: 1, ...corner('full'), backgroundColor: colors.muted, alignItems: 'center' }}>
+            <Text variant="caption" weight="medium">
+              {formatNumber(shown.length, locale)}
+            </Text>
+          </View>
         ) : null}
         <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }} numberOfLines={1}>
           {`— ${t('employer.notesHint')}`}

@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { Eye, Info } from '~/components/ui/lucide';
+import { Compass, Eye, Info, UserRound } from '~/components/ui/lucide';
 import { canAccessCandidateArea } from '@/lib/permissions';
 import { AppealPanel } from '~/components/moderation/appeal-panel';
 import { CvSections } from '~/components/profile/cv-sections';
@@ -50,6 +50,7 @@ export default function ProfileScreen() {
       <>
         {header}
         <EmptyState
+          icon={UserRound}
           title={t('app.account.signedOutTitle')}
           action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
         />
@@ -69,7 +70,7 @@ export default function ProfileScreen() {
     return (
       <>
         {header}
-        <EmptyState title={t('common.notFound')} body={t('common.notFoundBody')} />
+        <EmptyState icon={Compass} title={t('common.notFound')} body={t('common.notFoundBody')} />
       </>
     );
   }

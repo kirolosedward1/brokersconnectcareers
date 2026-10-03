@@ -13,6 +13,7 @@ import { pushPreferencesOf, useSavePushPreferences, type PushPreferences } from 
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
+import { UserRound } from '~/components/ui/lucide';
 
 /**
  * Pushes on this phone: on or off for the person signed in, without going to
@@ -36,6 +37,7 @@ export default function AlertsScreen() {
       <>
         {header}
         <EmptyState
+          icon={UserRound}
           title={t('app.account.signedOutTitle')}
           action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
         />

@@ -42,7 +42,8 @@
   },
   "jobs": {
     "loadMore": "تحميل المزيد",
-    "endOfList": "دي كل الوظايف المطابقة."
+    "endOfList": "دي كل الوظايف المطابقة.",
+    "wizardStep": "الخطوة <v>{current}</v> من <v>{total}</v>"
   },
   "auth": {
     "forCompanies": "سجّل شركتك",

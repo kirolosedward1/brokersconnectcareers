@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { Lock } from '~/components/ui/lucide';
+import { Lock, UserRoundCheck } from '~/components/ui/lucide';
 import { formatDate, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { canBrowseAgentDirectory, canShortlistAgents } from '@/lib/permissions';
@@ -99,6 +99,7 @@ export default function ShortlistScreen() {
         }
         ListEmptyComponent={
           <EmptyState
+            icon={UserRoundCheck}
             title={t('employer.shortlistEmpty')}
             body={t('employer.shortlistEmptyHint')}
             action={<Button label={t('nav.agents')} variant="outline" onPress={() => router.dismissTo('/agents')} />}

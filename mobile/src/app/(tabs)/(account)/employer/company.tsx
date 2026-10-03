@@ -16,6 +16,7 @@ import { useCompanyPage } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
+import { Compass, ShieldAlert } from '~/components/ui/lucide';
 
 /**
  * The company, as candidates read it and as its admins keep it — the
@@ -38,8 +39,8 @@ export default function CompanyScreen() {
   let body: React.ReactNode;
   if (!session) body = <SignedOut next="/employer/company" />;
   else if (!viewer?.profile) body = <ViewerPending />;
-  else if (!canAccessEmployerArea(actor)) body = <EmptyState title={t('common.notFound')} body={t('common.notFoundBody')} />;
-  else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (!canAccessEmployerArea(actor)) body = <EmptyState icon={Compass} title={t('common.notFound')} body={t('common.notFoundBody')} />;
+  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (company && page.isPending) body = <LoadingState />;
   else if (company && page.isError && !page.data) body = <ErrorState error={page.error} onRetry={() => page.refetch()} />;
   else {

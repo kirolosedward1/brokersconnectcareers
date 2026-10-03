@@ -18,6 +18,7 @@ import { useDistricts } from '~/features/taxonomy';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
+import { SearchX } from '~/components/ui/lucide';
 
 /**
  * One track in one district — the website's TrackDistrictLanding at
@@ -146,6 +147,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
           </View>
         ) : (
           <EmptyState
+            icon={SearchX}
             title={tJobs('empty')}
             action={hasBoard ? <Button label={tJobs('title')} variant="outline" onPress={() => router.navigate('/jobs')} /> : null}
           />

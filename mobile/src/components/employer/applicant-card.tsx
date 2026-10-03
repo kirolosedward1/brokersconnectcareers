@@ -157,7 +157,7 @@ export function ApplicantCard({
 
   const facts = [
     applicant.experience_band ? t(`experienceBand.${applicant.experience_band}`) : null,
-    t('jobs.postedOn', { date: formatDate(applicant.created_at, locale) }),
+    t('employer.applicantReceivedOn', { date: formatDate(applicant.created_at, locale) }),
   ].filter((fact): fact is string => Boolean(fact));
 
   return (

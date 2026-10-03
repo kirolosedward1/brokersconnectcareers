@@ -2,7 +2,7 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
-import { Gift } from '~/components/ui/lucide';
+import { Building2, Compass, Gift, ShieldAlert } from '~/components/ui/lucide';
 import { formatDate, formatEgp, formatNumber } from '@/lib/format';
 import { canAccessEmployerArea, isSuspended } from '@/lib/permissions';
 import { Badge } from '~/components/ui/badge';
@@ -45,9 +45,9 @@ export default function BillingScreen() {
   let body: React.ReactNode;
   if (!session) body = <SignedOut next="/employer/billing" />;
   else if (!viewer?.profile) body = <ViewerPending />;
-  else if (!canAccessEmployerArea(actor)) body = <EmptyState title={t('common.notFound')} body={t('common.notFoundBody')} />;
-  else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
-  else if (!company) body = <EmptyState title={t('employer.createCompanyFirst')} body={t('employer.createCompanyFirstBody')} />;
+  else if (!canAccessEmployerArea(actor)) body = <EmptyState icon={Compass} title={t('common.notFound')} body={t('common.notFoundBody')} />;
+  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (!company) body = <EmptyState icon={Building2} title={t('employer.createCompanyFirst')} body={t('employer.createCompanyFirstBody')} />;
   else if (billing.isPending) body = <LoadingState />;
   else if (billing.isError && !billing.data) body = <ErrorState error={billing.error} onRetry={() => billing.refetch()} />;
   else {

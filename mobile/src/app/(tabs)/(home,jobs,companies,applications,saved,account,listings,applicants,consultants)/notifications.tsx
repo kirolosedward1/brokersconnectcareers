@@ -4,7 +4,7 @@ import { router, Stack, useLocalSearchParams, useNavigation, type Href } from 'e
 import { FlashList } from '@shopify/flash-list';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
-import { CheckCheck } from '~/components/ui/lucide';
+import { Bell, CheckCheck, UserRound } from '~/components/ui/lucide';
 import { canAccessCandidateArea } from '@/lib/permissions';
 import type { NotificationRow } from '@/lib/supabase/database.types';
 import { NotificationItem } from '~/components/notifications/notification-item';
@@ -134,6 +134,7 @@ export default function NotificationsScreen() {
     // Signed out on this screen: the feed is the account's.
     body = (
       <EmptyState
+        icon={UserRound}
         title={t('app.account.signedOutTitle')}
         action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
       />
@@ -145,6 +146,7 @@ export default function NotificationsScreen() {
     // at what this person came to do.
     body = (
       <EmptyState
+        icon={Bell}
         title={t('notifications.empty')}
         body={t('notifications.emptyHint')}
         action={

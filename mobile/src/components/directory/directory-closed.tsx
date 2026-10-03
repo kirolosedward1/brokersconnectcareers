@@ -2,6 +2,7 @@ import { useTranslations } from 'use-intl';
 import { canAccessEmployerArea, isSuspended } from '@/lib/permissions';
 import { EmptyState, NotFoundState } from '~/components/ui/states';
 import { useSession } from '~/lib/session';
+import { Lock, ShieldAlert } from '~/components/ui/lucide';
 
 /**
  * The Consultants tab for an employer the directory does not answer yet.
@@ -14,6 +15,6 @@ export function DirectoryClosed() {
   const t = useTranslations();
   const { actor } = useSession();
   if (!canAccessEmployerArea(actor)) return <NotFoundState />;
-  if (isSuspended(actor)) return <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
-  return <EmptyState title={t('agents.title')} body={t('agents.subtitle')} />;
+  if (isSuspended(actor)) return <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  return <EmptyState icon={Lock} title={t('agents.title')} body={t('agents.subtitle')} />;
 }

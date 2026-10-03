@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Search, ShieldCheck } from '~/components/ui/lucide';
+import { Building2, Search, ShieldAlert, ShieldCheck } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { isSuspended } from '@/lib/permissions';
@@ -69,10 +69,11 @@ export default function InboxScreen() {
 
   let body: React.ReactNode;
   if (!session || !viewer?.profile) body = <ViewerPending />;
-  else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) {
     body = (
       <EmptyState
+        icon={Building2}
         title={t('employer.createCompanyFirst')}
         body={t('employer.createCompanyFirstBody')}
         action={<Button label={t('employer.company')} onPress={() => router.navigate('/employer/company' as never)} />}
@@ -81,7 +82,7 @@ export default function InboxScreen() {
   } else if (viewer.company.suspended_at) {
     // A suspended company's applicants are hidden (migration 349): said, not
     // shown as an empty inbox.
-    body = <EmptyState title={t('employer.applicantsSuspendedTitle')} body={t('employer.applicantsSuspendedBody')} />;
+    body = <EmptyState icon={ShieldAlert} title={t('employer.applicantsSuspendedTitle')} body={t('employer.applicantsSuspendedBody')} />;
   } else {
     // The listings the rows came from — the choices for narrowing to one.
     const listings = new Map<string, string>();

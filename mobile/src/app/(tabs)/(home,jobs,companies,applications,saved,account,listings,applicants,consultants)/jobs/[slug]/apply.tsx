@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { CheckCircle2, FileText, Paperclip, ShieldCheck, X } from '~/components/ui/lucide';
+import { CalendarX2, CheckCircle2, CircleSlash, FileText, Paperclip, ShieldAlert, ShieldCheck, UserRound, X } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
 import type { JobDetail } from '@/lib/job-list';
 import { jobIsLive } from '@/lib/job-state';
@@ -115,6 +115,7 @@ function Apply({ job }: { job: JobDetail }) {
   if (!jobIsLive(job)) {
     return (
       <EmptyState
+        icon={CalendarX2}
         title={t('jobs.expired')}
         body={t('jobs.expiredBody')}
         action={hasBoard ? <Button label={t('jobs.title')} onPress={() => router.navigate('/jobs')} /> : null}
@@ -125,6 +126,7 @@ function Apply({ job }: { job: JobDetail }) {
   if (!session) {
     return (
       <EmptyState
+        icon={UserRound}
         title={t('app.account.signedOutTitle')}
         body={t('app.account.signedOutBody')}
         action={
@@ -142,6 +144,7 @@ function Apply({ job }: { job: JobDetail }) {
   if (!isCandidate(actor)) {
     return (
       <EmptyState
+        icon={CircleSlash}
         title={t('apply.employerCannotApply')}
         action={<Button label={title} variant="outline" onPress={toListing} />}
       />
@@ -152,6 +155,7 @@ function Apply({ job }: { job: JobDetail }) {
   if (!isApproved(actor)) {
     return (
       <EmptyState
+        icon={ShieldAlert}
         title={t('apply.suspendedTitle')}
         body={t('apply.suspendedBody')}
         action={<Button label={title} variant="outline" onPress={toListing} />}
@@ -165,6 +169,7 @@ function Apply({ job }: { job: JobDetail }) {
   if (context.data.existing) {
     return (
       <EmptyState
+        icon={CheckCircle2}
         title={t('apply.alreadyApplied')}
         action={
           <View style={{ gap: space[2], alignItems: 'center' }}>

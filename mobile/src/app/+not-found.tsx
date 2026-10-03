@@ -6,6 +6,7 @@ import { Button } from '~/components/ui/button';
 import { EmptyState } from '~/components/ui/states';
 import { env } from '~/lib/env';
 import { space } from '~/theme/tokens';
+import { Compass } from '~/components/ui/lucide';
 
 /**
  * A path the app has no screen for — a website page that lives only on the
@@ -20,6 +21,7 @@ export default function NotFoundScreen() {
     <>
       <Stack.Screen options={{ title: '', headerShown: true }} />
       <EmptyState
+        icon={Compass}
         title={t('common.notFound')}
         body={t('common.notFoundBody')}
         action={
