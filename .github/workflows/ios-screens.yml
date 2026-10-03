@@ -8,10 +8,11 @@
 # in, nothing served by a development server — and run on iOS simulators in
 # Arabic against the live site: the largest iPhone (the screenshots), the same
 # in the dark appearance and at the largest text size, and the largest iPad,
-# where App Review also opens an iPhone app. mobile/scripts/store-screens.sh
-# says what each pass does; mobile/maestro/ holds the screens, each opened by
-# link, checked for the app's error states, and captured. A crash, an error
-# screen or a screen that never loads fails the run.
+# where App Review also opens an iPhone app (checked by what macOS's text
+# recognition reads on it). mobile/scripts/store-screens.sh says what each
+# pass does; mobile/maestro/ holds the screens, each opened by link, checked
+# for the app's error states, and captured. A crash, an error screen or a
+# screen that never loads fails the run.
 #
 # The screenshots are the run's artifact. The EXPO_PUBLIC_* values are the
 # public ones in mobile/eas.json; no secret is used (the repository is public).

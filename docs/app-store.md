@@ -79,13 +79,19 @@ or a screen that never loads fails the run. Its artifact, `ios-screens`, holds:
   at the largest accessibility text size and on an iPad (App Review opens an
   iPhone app on one too), for checking rather than for the store.
 
+On the iPad, iPadOS 26 draws an iPhone app in a window of its own, and Maestro
+loses that window after the first link: it read none of the app's words while
+the screen showed them. That pass therefore checks each screen by what macOS's
+text recognition reads on it (`mobile/scripts/screen-text.swift`), for the
+same words and error states as the iPhone passes.
+
 They show whatever the live site lists when the workflow runs — its first
 listing and its first company — so run it when production holds the listings
-the store should show. With no live listing, the board and the company list
-(which shows only companies with one) are checked empty, the listing and
-company pages are left out, and the run says so: a smoke run, not the store's
-screenshots. They go into App Store Connect by hand (the 6.9-inch slot of each
-language).
+the store should show. Where it lists none, the board or the company list is
+checked empty, the page it would lead to is left out, and the run says so: a
+smoke run, not the store's screenshots. (Once this code is deployed, the
+company list shows only companies with a live listing.) They go into App Store
+Connect by hand (the 6.9-inch slot of each language).
 
 ## App privacy ("nutrition label")
 

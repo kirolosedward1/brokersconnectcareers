@@ -1,0 +1,9 @@
+# Opens LINK in the app as from outside it, and answers when the system asks
+# first ("Open in …?", which the iPad does every time). The iPad pass in
+# scripts/store-screens.sh opens its screens with this and checks them itself.
+appId: net.brokersconnect.app
+---
+- openLink: ${LINK}
+# The question takes a moment to appear.
+- waitForAnimationToEnd
+- runFlow: confirm-link.yaml
