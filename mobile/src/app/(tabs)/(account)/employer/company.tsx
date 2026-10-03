@@ -17,6 +17,7 @@ import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 import { Compass, ShieldAlert } from '~/components/ui/lucide';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * The company, as candidates read it and as its admins keep it — the
@@ -33,6 +34,7 @@ export default function CompanyScreen() {
   const queryClient = useQueryClient();
   const { session, viewer, actor } = useSession();
   const page = useCompanyPage();
+  const pull = usePullRefresh(() => Promise.all([page.refetch(), queryClient.invalidateQueries({ queryKey: ['viewer'] })]));
   const company = viewer?.company ?? null;
   const header = <Stack.Screen options={{ title: t('employer.company') }} />;
 
@@ -52,14 +54,7 @@ export default function CompanyScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         refreshControl={
-          <RefreshControl
-            refreshing={page.isRefetching}
-            onRefresh={() => {
-              page.refetch();
-              queryClient.invalidateQueries({ queryKey: ['viewer'] });
-            }}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
         }
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >

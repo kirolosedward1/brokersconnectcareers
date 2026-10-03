@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
@@ -38,6 +38,7 @@ import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-
 import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 const SORTS: JobSort[] = ['newest', 'salary', 'seats'];
 
@@ -63,6 +64,8 @@ export default function BoardScreen() {
   const query = boardQuery(filters);
 
   const board = useJobBoard(query);
+  // The spinner is the reader's pull, not a re-read on coming back to the app.
+  const pull = usePullRefresh(() => board.refetch());
   const hidden = useHiddenCompanies();
   const jobs = useMemo(() => withoutHidden(flattenBoard(board.data?.pages), hidden), [board.data, hidden]);
   const first = board.data?.pages[0];
@@ -116,11 +119,28 @@ export default function BoardScreen() {
   );
 
   if (board.isPending) {
+    // The filters and the order work before the first listings are in: on a
+    // slow first answer they are what the reader can already use.
     return (
       <>
         {header}
         {sheet}
-        <SkeletonList />
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
+        >
+          <BoardHeader
+            filters={filters}
+            first={undefined}
+            apply={apply}
+            onFilters={openFilters}
+            hasResults={false}
+            sponsoredShown={false}
+            loading
+          />
+          <SkeletonList inset={false} />
+        </ScrollView>
       </>
     );
   }
@@ -171,8 +191,8 @@ export default function BoardScreen() {
           if (board.hasNextPage && !board.isFetchingNextPage) board.fetchNextPage();
         }}
         onEndReachedThreshold={0.5}
-        refreshing={board.isRefetching && !board.isFetchingNextPage}
-        onRefresh={() => board.refetch()}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
       />
     </>
   );
@@ -193,6 +213,7 @@ function BoardHeader({
   onFilters,
   hasResults,
   sponsoredShown,
+  loading = false,
 }: {
   filters: JobFilters;
   first: JobBoardResponse | undefined;
@@ -201,6 +222,8 @@ function BoardHeader({
   hasResults: boolean;
   /** A sponsored listing is among the cards drawn — not merely in the answer, which still holds a company the reader hid. */
   sponsoredShown: boolean;
+  /** The first page is still on its way: no count to give yet. */
+  loading?: boolean;
 }) {
   const locale = useLocale();
   const t = useTranslations('jobs');
@@ -214,9 +237,13 @@ function BoardHeader({
   return (
     <View style={{ gap: space[3], marginBottom: space[4] }}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
-        <Text variant="small" weight="medium" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
-          {t('resultsCount', { count: first?.total ?? 0 })}
-        </Text>
+        {loading ? (
+          <View style={{ flexGrow: 1 }} />
+        ) : (
+          <Text variant="small" weight="medium" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
+            {t('resultsCount', { count: first?.total ?? 0 })}
+          </Text>
+        )}
         <Chip
           label={inSheet ? `${t('filters')} · ${formatNumber(inSheet, locale)}` : t('filters')}
           selected={inSheet > 0}

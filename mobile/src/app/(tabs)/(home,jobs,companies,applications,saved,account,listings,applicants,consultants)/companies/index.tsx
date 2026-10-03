@@ -21,6 +21,7 @@ import { useHiddenCompanies } from '~/features/moderation/hidden-companies';
 import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * The company directory — the website's /companies: companies with a live
@@ -43,6 +44,7 @@ export default function CompaniesScreen() {
   );
 
   const directory = useCompanyDirectory(query);
+  const pull = usePullRefresh(() => directory.refetch());
   const hidden = useHiddenCompanies();
   const companies = useMemo(
     () => flattenCompanies(directory.data?.pages).filter((company) => !hidden.has(company.id)),
@@ -173,8 +175,8 @@ export default function CompaniesScreen() {
           if (directory.hasNextPage && !directory.isFetchingNextPage) directory.fetchNextPage();
         }}
         onEndReachedThreshold={0.5}
-        refreshing={directory.isRefetching && !directory.isFetchingNextPage}
-        onRefresh={() => directory.refetch()}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
       />
     </>
   );

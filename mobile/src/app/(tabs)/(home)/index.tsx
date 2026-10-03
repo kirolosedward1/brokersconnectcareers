@@ -25,6 +25,7 @@ import { useSession } from '~/lib/session';
 import { tabsFor } from '~/lib/tabs';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * Home — the website's home page for the phone, and a candidate's console.
@@ -69,6 +70,8 @@ function MarketHome() {
 
   const board = useJobBoard('');
   const counts = useBrowseCounts();
+  // The spinner is the reader's pull, not a re-read on coming back to the app.
+  const pull = usePullRefresh(() => Promise.all([board.refetch(), counts.refetch()]));
   const districts = useDistricts();
 
   const jobs = withoutHidden(flattenBoard(board.data?.pages), useHiddenCompanies()).slice(0, 20);
@@ -83,8 +86,6 @@ function MarketHome() {
     router.navigate(words ? { pathname: '/jobs', params: { q: words } } : '/jobs');
   };
 
-  const refreshing = board.isRefetching || counts.isRefetching;
-
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
@@ -92,11 +93,8 @@ function MarketHome() {
       keyboardShouldPersistTaps="handled"
       refreshControl={
         <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => {
-            board.refetch();
-            counts.refetch();
-          }}
+          refreshing={pull.refreshing}
+          onRefresh={pull.onRefresh}
           tintColor={colors.primary}
         />
       }

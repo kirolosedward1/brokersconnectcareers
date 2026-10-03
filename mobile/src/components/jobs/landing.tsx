@@ -19,6 +19,7 @@ import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { SearchX } from '~/components/ui/lucide';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * One track in one district — the website's TrackDistrictLanding at
@@ -39,6 +40,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const counts = useBrowseCounts();
   const districts = useDistricts();
   const hasBoard = useHasBoard();
+  const pull = usePullRefresh(() => Promise.all([landing.refetch(), board.refetch()]));
 
   if (landing.isPending) return <LoadingState />;
   if (landing.isError && !landing.data) {
@@ -91,14 +93,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
-          <RefreshControl
-            refreshing={landing.isRefetching || board.isRefetching}
-            onRefresh={() => {
-              landing.refetch();
-              board.refetch();
-            }}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
         }
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
       >

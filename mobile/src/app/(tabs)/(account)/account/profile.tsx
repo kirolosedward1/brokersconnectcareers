@@ -19,6 +19,7 @@ import { markupTags } from '~/i18n/rich';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * The candidate's directory profile — the website's /dashboard/profile, which
@@ -40,6 +41,7 @@ export default function ProfileScreen() {
   const profile = useAgentProfile();
   const agent = profile.data?.agent ?? null;
   const cv = useCvSections(agent?.id ?? null);
+  const pull = usePullRefresh(() => Promise.all([profile.refetch(), cv.refetch()]));
   const completeness = useCompleteness(agent?.id ?? null).data ?? null;
   const views = useCandidateSummary().data?.profile_views_30d ?? 0;
 
@@ -85,8 +87,6 @@ export default function ProfileScreen() {
   }
   const developerIds = profile.data?.developerIds ?? [];
 
-  const refreshing = profile.isRefetching || cv.isRefetching;
-
   return (
     <>
       {header}
@@ -98,11 +98,8 @@ export default function ProfileScreen() {
         keyboardDismissMode="interactive"
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              profile.refetch();
-              cv.refetch();
-            }}
+            refreshing={pull.refreshing}
+            onRefresh={pull.onRefresh}
             tintColor={colors.primary}
           />
         }

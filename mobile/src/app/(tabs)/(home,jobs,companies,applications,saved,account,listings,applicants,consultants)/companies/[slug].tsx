@@ -19,6 +19,7 @@ import { ApiError } from '~/lib/api';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * A company's page — the website's /companies/<slug>: who they are, where,
@@ -33,6 +34,7 @@ export default function CompanyScreen() {
   const tJobs = useTranslations('jobs');
   const { colors, shadow } = useTheme();
   const page = useCompany(slug);
+  const pull = usePullRefresh(() => page.refetch());
   const hasBoard = useHasBoard();
 
   if (page.isPending) {
@@ -69,7 +71,7 @@ export default function CompanyScreen() {
       <Stack.Screen options={{ title: '' }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        refreshControl={<RefreshControl refreshing={page.isRefetching} onRefresh={() => page.refetch()} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
       >
         <HiddenNotice companyId={company.id} />

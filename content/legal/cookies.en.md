@@ -1,6 +1,6 @@
 ---
 title: Cookies and storage on your device
-updated: 2026-10-01
+updated: 2026-10-03
 ---
 
 This page explains everything the Brokers Connect website keeps in your browser, and everything the app keeps on your phone, and why. It is part of our [Privacy policy](/privacy).
@@ -38,7 +38,7 @@ The app uses no cookies. It keeps only the following on your phone:
 - **Your sign-in session:** encrypted, with a key held in the phone's secure storage (the Keychain on an iPhone), and deleted when you sign out.
 - **The last account signed in on this phone:** its kind (consultant or company) and approval status, and its company's id and verification status, so the app knows which tabs to show when it opens, before it reaches the internet. Forgotten when you sign out.
 - **Your settings on this phone:** your appearance choice, the companies you hid from lists, and your notification token and choices.
-- **A temporary copy of public lists:** governorates, districts and developers, so search screens open quickly. Refreshed every day, and holding nothing from your account.
+- **A temporary copy of public lists:** governorates, districts and developers, so search screens open quickly; and the counts on Home with the first page of the job board and of the company directory, so the app opens on them at once, even on a slow connection, and refreshes them behind. None is kept longer than a day, and none holds anything from your account.
 
 All of this is deleted when you delete the app from your phone. (An iPhone may keep the encryption key itself in the Keychain after the app is deleted, but with the session it protected gone, it unlocks nothing.)
 

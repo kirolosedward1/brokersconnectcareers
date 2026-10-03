@@ -22,6 +22,7 @@ import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * One consultant's page — the website's /agents/<slug>, for the directory's
@@ -40,6 +41,7 @@ export function AgentProfile({ handle }: { handle: string }) {
   const { colors } = useTheme();
   const { session, viewer, actor } = useSession();
   const page = useAgentPage(handle);
+  const pull = usePullRefresh(() => page.refetch());
   const districts = useDistricts().data;
   const developers = useDevelopers().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
@@ -100,7 +102,7 @@ export function AgentProfile({ handle }: { handle: string }) {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
-          <RefreshControl refreshing={page.isRefetching} onRefresh={() => page.refetch()} tintColor={colors.primary} />
+          <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
         }
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >

@@ -6,6 +6,7 @@ import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states'
 import { useLanding } from '~/features/browse/queries';
 import { useJob } from '~/features/jobs/queries';
 import { ApiError } from '~/lib/api';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * /jobs/<slug> is two things on the website, and here: a listing, or a
@@ -39,6 +40,7 @@ export default function JobOrLandingScreen() {
 
 function Job({ slug }: { slug: string }) {
   const job = useJob(slug);
+  const pull = usePullRefresh(() => job.refetch());
 
   if (job.isPending) return <Loading />;
   // A failed re-read keeps what is on screen; only a first read that failed is an error page.
@@ -54,7 +56,7 @@ function Job({ slug }: { slug: string }) {
       </>
     );
   }
-  return <JobDetail data={job.data} refreshing={job.isRefetching} onRefresh={() => job.refetch()} />;
+  return <JobDetail data={job.data} refreshing={pull.refreshing} onRefresh={pull.onRefresh} />;
 }
 
 function Loading() {

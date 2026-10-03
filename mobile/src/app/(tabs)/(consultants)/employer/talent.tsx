@@ -22,6 +22,7 @@ import { useDistricts } from '~/features/taxonomy';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * The company's shortlist — the website's /employer/talent: people worth
@@ -37,6 +38,7 @@ export default function ShortlistScreen() {
   const t = useTranslations();
   const { actor } = useSession();
   const shortlist = useShortlist();
+  const pull = usePullRefresh(() => shortlist.refetch());
   const ids = useShortlistedIds().data;
   const districts = useDistricts().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
@@ -110,8 +112,8 @@ export default function ShortlistScreen() {
           if (shortlist.hasNextPage && !shortlist.isFetchingNextPage) shortlist.fetchNextPage();
         }}
         onEndReachedThreshold={0.5}
-        refreshing={shortlist.isRefetching && !shortlist.isFetchingNextPage}
-        onRefresh={() => shortlist.refetch()}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
       />
     </>
   );

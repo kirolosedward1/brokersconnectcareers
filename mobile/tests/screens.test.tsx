@@ -1,6 +1,6 @@
 import { Stack, Tabs } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Alert, Modal, type AlertButton } from 'react-native';
+import { Alert, Modal, RefreshControl, type AlertButton } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import { hideCompany, unhideCompany } from '~/features/moderation/hidden-companies';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -55,8 +55,13 @@ afterEach(() => {
   expect(warnings.filter((warning) => warning.includes('[i18n]'))).toEqual([]);
 });
 
+/** Each test's query cache, for reading the board again as the app does on its own. */
+let client: QueryClient;
+beforeEach(() => {
+  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+});
+
 function Root() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
     <QueryClientProvider client={client}>
       <ThemeProvider>
@@ -100,7 +105,43 @@ describe('home', () => {
   });
 });
 
+/** A read held in flight until the test lets it go. */
+function held<T>(answer: () => T) {
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { handler: async () => (await gate, answer()), release };
+}
+
 describe('the board', () => {
+  it('spins for a pull, and not when the board is read again on its own', async () => {
+    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    const spinning = () => screen.UNSAFE_getByType(RefreshControl).props.refreshing;
+    expect(spinning()).toBe(false);
+
+    // Read again on coming back to the app: no spinner pushing the list down.
+    const reading = held(() => board());
+    server.on('/api/mobile/v1/jobs', reading.handler);
+    act(() => {
+      void client.invalidateQueries({ queryKey: ['jobs', 'board'] });
+    });
+    await waitFor(() => expect(server.asked('/api/mobile/v1/jobs').length).toBeGreaterThan(1));
+    expect(spinning()).toBe(false);
+    await act(async () => reading.release());
+
+    // A pull: the spinner, until the board is in.
+    const again = held(() => board());
+    server.on('/api/mobile/v1/jobs', again.handler);
+    act(() => {
+      screen.UNSAFE_getByType(RefreshControl).props.onRefresh();
+    });
+    expect(spinning()).toBe(true);
+    await act(async () => again.release());
+    await waitFor(() => expect(spinning()).toBe(false));
+  });
+
   it('shows the listings, how many, and the pay in the website words', async () => {
     renderRouter(app, { initialUrl: '/(jobs)/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();

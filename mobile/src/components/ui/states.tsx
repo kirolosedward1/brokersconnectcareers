@@ -38,7 +38,16 @@ export function LoadingState() {
  * page's muted tone — the place the content will land, rather than a spinner
  * in the middle of nothing. Said as "loading" to VoiceOver, like the spinner.
  */
-export function SkeletonList({ count = 3, compact = false }: { count?: number; compact?: boolean }) {
+export function SkeletonList({
+  count = 3,
+  compact = false,
+  inset = true,
+}: {
+  count?: number;
+  compact?: boolean;
+  /** Its own margin from the screen's edge; off inside a list that already has one. */
+  inset?: boolean;
+}) {
   const { colors } = useTheme();
   const t = useTranslations('common');
   const bar = (width: DimensionValue, height: number) => (
@@ -49,7 +58,7 @@ export function SkeletonList({ count = 3, compact = false }: { count?: number; c
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={t('loading')}
-      style={{ flex: 1, padding: gutter, gap: space[3] }}
+      style={{ flex: 1, padding: inset ? gutter : 0, gap: space[3] }}
     >
       {Array.from({ length: count }, (_, index) => (
         <View
