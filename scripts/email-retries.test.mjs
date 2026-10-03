@@ -18,6 +18,7 @@ const {
   notifyCandidateOfStatus,
   notifyCompanyVerification,
   notifyCompanyVerificationRevoked,
+  notifyEmployerOfApplication,
   notifyEmployerOfModeration,
   notifyVisibilityChanged,
 } = await import('../src/lib/email/notify.ts');
@@ -346,6 +347,37 @@ section('a verification taken away is told once per revocation, while it stands,
   );
   const second = await notifyCompanyVerificationRevoked('C');
   ok('revoked a second time, it is told again', second === 'sent' && sentTo('M1') === 2 && sentTo('M2') === 2, `${second} M1:${sentTo('M1')}`);
+}
+
+section('a suspended company is not emailed its applicants (349)');
+{
+  reset();
+  globalThis.__db = {
+    applications: [
+      {
+        id: 'A2', created_at: '2026-10-03T09:00:00Z', experience_band: 'junior_1_3', candidate_id: 'U2',
+        job: {
+          id: 'J', slug: 'sales-x', title_ar: 'مستشار', title_en: 'Consultant', expires_at: null, published_at: null, version: 1,
+          company: { id: 'C', suspended_at: '2026-10-03T10:00:00Z' },
+        },
+      },
+    ],
+    company_members: [{ company_id: 'C', user_id: 'M1' }],
+    profiles: [
+      { id: 'M1', locale: 'en', role: 'employer', notify_applications: true, notify_applicant_digest: false },
+      { id: 'U2', full_name: 'Mona Saleh', role: 'candidate' },
+    ],
+    profile_private: [{ user_id: 'M1', unsubscribe_token: 't-M1' }],
+  };
+  const suspended = await notifyEmployerOfApplication('A2');
+  ok('while it is suspended, nothing is sent, not even the name', suspended === 'skipped' && mail.sends.length === 0, suspended);
+  globalThis.__db.applications[0].job.company.suspended_at = null;
+  const lifted = await notifyEmployerOfApplication('A2');
+  ok(
+    "once it is not, the member is told, with the applicant's name",
+    lifted === 'sent' && mail.sends.some((send) => send.text.includes('Mona Saleh')),
+    `${lifted} ${mail.sends.length}`,
+  );
 }
 
 section('a move the bell calls no news is not emailed, whatever the outbox still holds');

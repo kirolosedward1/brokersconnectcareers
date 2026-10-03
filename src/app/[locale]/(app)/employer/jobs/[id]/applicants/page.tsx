@@ -10,6 +10,7 @@ import { getDistricts } from '@/lib/queries/taxonomy';
 import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { optional, raise } from '@/lib/queries/error';
 import { requireEmployer } from '@/lib/auth';
+import { ApplicantsSuspended } from '@/components/employer/applicants-suspended';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
 import { UUID_RE } from '@/lib/admin/params';
@@ -92,6 +93,23 @@ export default async function ApplicantsPage({
 
   if (jobError) raise(jobError, 'loading the listing');
   if (!job) notFound();
+
+  // A suspended company's applicants are hidden (migration 349): said, not
+  // shown as an empty pipeline, and nothing is stamped as seen.
+  if (viewer.company.suspended_at) {
+    const t = await getTranslations('employer');
+    return (
+      <div className="space-y-4">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-bold">{localized(locale, job.title_ar, job.title_en)}</h1>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/employer/jobs">{t('jobs')}</Link>
+          </Button>
+        </header>
+        <ApplicantsSuspended />
+      </div>
+    );
+  }
 
   const { data, error, count } = await supabase
     .from('applications')

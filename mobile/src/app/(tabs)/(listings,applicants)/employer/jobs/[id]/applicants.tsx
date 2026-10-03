@@ -41,7 +41,9 @@ export default function ListingApplicantsScreen() {
   const applicants = pipeline.data?.applicants;
   const notes = useApplicantNotes((applicants ?? []).map((row) => row.id));
   const context = useApplicantContext();
-  useMarkSeen(applicants);
+  // Nobody is told a suspended company opened their application: its
+  // applicants are hidden from it (migration 349), whatever a read returns.
+  useMarkSeen(viewer?.company?.suspended_at ? undefined : applicants);
   // A new applicant, or a colleague's move, reaches the pipeline with a pull.
   const pull = usePullRefresh(() => Promise.all([pipeline.refetch(), applicants?.length ? notes.refetch() : null]));
 
@@ -53,7 +55,11 @@ export default function ListingApplicantsScreen() {
   if (!session || !viewer?.profile) body = <ViewerPending />;
   else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) body = <NotFoundState />;
-  else if (pipeline.isPending) body = <LoadingState />;
+  // A suspended company's applicants are hidden (migration 349): said, not
+  // shown as an empty pipeline.
+  else if (viewer.company.suspended_at) {
+    body = <EmptyState title={t('employer.applicantsSuspendedTitle')} body={t('employer.applicantsSuspendedBody')} />;
+  } else if (pipeline.isPending) body = <LoadingState />;
   else if (pipeline.isError && !pipeline.data) body = <ErrorState error={pipeline.error} onRetry={() => pipeline.refetch()} />;
   else if (!pipeline.data || !job) body = <NotFoundState />;
   else if (pipeline.data.applicants.length === 0) {

@@ -54,7 +54,9 @@ export default function InboxScreen() {
   const rows = inbox.data?.rows;
   const notes = useApplicantNotes((rows ?? []).map((row) => row.id));
   const context = useApplicantContext();
-  useMarkSeen(rows);
+  // Nobody is told a suspended company opened their application: its
+  // applicants are hidden from it (migration 349), whatever a read returns.
+  useMarkSeen(viewer?.company?.suspended_at ? undefined : rows);
   const [q, setQ] = useState(filters.q);
   // A new applicant, or a colleague's move, reaches the inbox with a pull.
   const pull = usePullRefresh(() => Promise.all([inbox.refetch(), rows?.length ? notes.refetch() : null]));
@@ -76,6 +78,10 @@ export default function InboxScreen() {
         action={<Button label={t('employer.company')} onPress={() => router.navigate('/employer/company' as never)} />}
       />
     );
+  } else if (viewer.company.suspended_at) {
+    // A suspended company's applicants are hidden (migration 349): said, not
+    // shown as an empty inbox.
+    body = <EmptyState title={t('employer.applicantsSuspendedTitle')} body={t('employer.applicantsSuspendedBody')} />;
   } else {
     // The listings the rows came from — the choices for narrowing to one.
     const listings = new Map<string, string>();

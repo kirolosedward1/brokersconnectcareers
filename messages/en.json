@@ -562,6 +562,8 @@
     "pendingBody": "We check company details before the first listing goes out. Complete your company profile and upload your commercial registry to move it along.",
     "allApplicants": "All applicants",
     "allApplicantsLede": "Everyone who applied to your listings, newest first.",
+    "applicantsSuspendedTitle": "Applicants are hidden while your company is suspended",
+    "applicantsSuspendedBody": "The applications you received are kept, and the applicants’ names, numbers and CVs come back when the suspension is lifted. The notice on your dashboard says why and how to ask for a review.",
     "allListings": "All listings",
     "logo": "Company logo",
     "logoHint": "PNG, JPG or WebP, up to 2 MB. Shown beside your company name everywhere.",
@@ -1738,7 +1740,7 @@
     "heldBodyCandidate": "Your applications stay as they are. Until the review ends you can’t apply to new jobs.",
     "reason": "Our team’s note: {reason}",
     "companySuspendedTitle": "Your company is suspended",
-    "companySuspendedBody": "Its listings are off the board, and nothing new can be submitted until the suspension is lifted. Applications you already received are kept."
+    "companySuspendedBody": "Its listings are off the board, and nothing new can be submitted until the suspension is lifted. Applications you already received are kept, but their applicants are hidden until then."
   },
   "appeals": {
     "ask": "Ask for a review",

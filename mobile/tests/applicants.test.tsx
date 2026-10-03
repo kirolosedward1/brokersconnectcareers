@@ -666,3 +666,35 @@ describe('the inbox', () => {
     });
   });
 });
+
+describe('a suspended company', () => {
+  it('is told its applicants are hidden, in the inbox and on a listing, rather than shown an empty list', async () => {
+    // The database answers none of them while the company is suspended (349).
+    server.on('GET /rest/v1/companies', [{ ...ownedCompany, suspended_at: '2026-10-01T10:00:00Z' }]);
+
+    const inbox = renderRouter(app, { initialUrl: '/employer/applicants' });
+    expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
+    expect(screen.getByText(ar.employer.applicantsSuspendedBody)).toBeTruthy();
+    expect(screen.queryByText(ar.employer.noApplicants)).toBeNull();
+    inbox.unmount();
+
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
+  });
+
+  it('does not stamp them seen, even where the database still answers them', async () => {
+    // Before 349 is applied, the reads still bring the applicants back; the
+    // candidates must not be told the company opened their applications.
+    server.on('GET /rest/v1/companies', [{ ...ownedCompany, suspended_at: '2026-10-01T10:00:00Z' }]);
+
+    const inbox = renderRouter(app, { initialUrl: '/employer/applicants' });
+    expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
+    await waitFor(() => expect(server.asked('/rest/v1/applications').length).toBeGreaterThan(0));
+    inbox.unmount();
+
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
+    await waitFor(() => expect(server.asked('/rest/v1/application_notes').length).toBeGreaterThan(0));
+    expect(server.asked('/api/mobile/v1/actions/markApplicantsSeen')).toEqual([]);
+  });
+});

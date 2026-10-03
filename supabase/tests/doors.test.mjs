@@ -1,6 +1,6 @@
 /**
- * Doors a review found open (migrations 344 and 347), against the real
- * migrations. Run with: pnpm test:doors  (also part of pnpm test:db)
+ * Doors a review found open (migrations 344, 347 and 349), against the
+ * real migrations. Run with: pnpm test:doors  (also part of pnpm test:db)
  *
  * One section per door, each a scenario that ran to the end before 344 and is
  * refused, or comes out different, after it — with the case that must still
@@ -496,6 +496,69 @@ report.section("13. a moderator's note on a listing is its company's to read (34
   report.check('an appeal against it shows the reason it answers', snapshot.rows[0]?.note === NOTE, JSON.stringify(snapshot.rows[0] ?? snapshot.error));
   report.check('nothing writes a note into the listing itself', refused(write, /jobs_rejection_note_is_private/), JSON.stringify(write.error ?? write.rows));
   report.check('putting the listing back clears its note', restored.ok && afterRestore.rows[0]?.n === 0, JSON.stringify(restored.error ?? afterRestore.rows[0]));
+}
+
+report.section("14. a suspended company does not see its applicants (349)");
+{
+  const applied = await one(`
+    select a.id, a.candidate_id from applications a join jobs j on j.id = a.job_id
+     where j.company_id = '${ROWAD}' order by a.id limit 1`);
+  const mine = `select count(*)::int as n from applications a join jobs j on j.id = a.job_id where j.company_id = '${ROWAD}'`;
+  const digest = {
+    as: null,
+    sql: `select count(*)::int as n from pending_applicant_digests('30 days') d
+           join company_members m on m.user_id = d.user_id where m.company_id = '${ROWAD}'`,
+  };
+  const steps = [
+    // An applicant the owner has not opened, from today, and an owner who
+    // takes the daily digest: the company is in it.
+    { as: null, sql: `update profiles set notify_applications = true, notify_applicant_digest = true where id = '${E1}'` },
+    { as: null, sql: `update applications set created_at = now() - interval '1 hour', employer_viewed_at = null where id = '${applied.id}'` },
+    digest,
+    { as: E1, sql: mine },
+    { as: E1, sql: `select whatsapp_phone from profiles where id = '${applied.candidate_id}'` },
+    { as: admin, sql: `select admin_set_company_suspension('${ROWAD}', true, 'سبب داخلي')` },
+    { as: E1, sql: mine },
+    { as: E1, sql: `select whatsapp_phone from profiles where id = '${applied.candidate_id}'` },
+    { as: E1, sql: `select count(*)::int as n from application_events where application_id = '${applied.id}'` },
+    { as: E1, sql: `update applications set status = 'shortlisted' where id = '${applied.id}' returning id` },
+    { as: E1, sql: `insert into application_notes (application_id, author_id, body) values ('${applied.id}', '${E1}', 'ملاحظة') returning id` },
+    { as: applied.candidate_id, sql: `select status from applications where id = '${applied.id}'` },
+    digest,
+    { as: admin, sql: `select admin_set_company_suspension('${ROWAD}', false, 'رجعت بعد المراجعة')` },
+    { as: E1, sql: mine },
+    { as: E1, sql: `select whatsapp_phone from profiles where id = '${applied.candidate_id}'` },
+  ];
+  const [, , digestBefore, before, phoneBefore, suspended, during, phoneDuring, events, moved, noted, candidateOwn, digestDuring, lifted, after, phoneAfter] =
+    await scenario(steps);
+  report.check(
+    "(before: the company reads its applicants and their numbers)",
+    before.rows[0]?.n > 0 && Boolean(phoneBefore.rows[0]?.whatsapp_phone),
+    JSON.stringify({ n: before.rows[0], phone: phoneBefore.rows.length }),
+  );
+  report.check('(an admin suspends it)', suspended.ok, suspended.error);
+  report.check(
+    'suspended, it reads none of its applications, nor any applicant\'s number',
+    during.rows[0]?.n === 0 && phoneDuring.ok && phoneDuring.rows.length === 0,
+    JSON.stringify({ n: during.rows[0], phone: phoneDuring.rows }),
+  );
+  report.check('nor the history of a move', events.rows[0]?.n === 0, JSON.stringify(events.rows[0] ?? events.error));
+  report.check(
+    'and moves nobody and writes no note',
+    moved.ok && moved.rows.length === 0 && !noted.ok,
+    JSON.stringify({ moved: moved.rows, noted: noted.error ?? noted.rows }),
+  );
+  report.check('the candidate still reads their own application', candidateOwn.rows.length === 1, JSON.stringify(candidateOwn.rows));
+  report.check(
+    'the daily digest, which counted it, leaves the company out',
+    digestBefore.rows[0]?.n > 0 && digestDuring.rows[0]?.n === 0,
+    JSON.stringify({ before: digestBefore.rows[0] ?? digestBefore.error, during: digestDuring.rows[0] ?? digestDuring.error }),
+  );
+  report.check(
+    'lifted, everything comes back as it was',
+    lifted.ok && after.rows[0]?.n === before.rows[0]?.n && phoneAfter.rows[0]?.whatsapp_phone === phoneBefore.rows[0]?.whatsapp_phone,
+    JSON.stringify({ n: after.rows[0], lifted: lifted.error }),
+  );
 }
 
 await db.close();

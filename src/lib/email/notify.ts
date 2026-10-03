@@ -150,7 +150,7 @@ type ApplicationForEmployer = {
   created_at: string;
   experience_band: string | null;
   candidate_id: string;
-  job: (JobBits & { company: { id: string } | null }) | null;
+  job: (JobBits & { company: { id: string; suspended_at: string | null } | null }) | null;
 };
 
 type ApplicationForCandidate = {
@@ -481,7 +481,7 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
     const { data, error: applicationError } = await admin
       .from('applications')
       .select(
-        `id, created_at, experience_band, candidate_id, job:jobs (${JOB_FIELDS}, company:companies (id))`,
+        `id, created_at, experience_band, candidate_id, job:jobs (${JOB_FIELDS}, company:companies (id, suspended_at))`,
       )
       .eq('id', applicationId)
       .maybeSingle();
@@ -491,6 +491,10 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
     const job = application?.job;
     const companyId = job?.company?.id;
     if (!application || !job || !companyId) return 'skipped';
+    // A suspended company does not see its applicants (migration 349): an
+    // email sent, or retried, after the suspension would hand over the name
+    // the pages no longer show.
+    if (job.company?.suspended_at) return 'skipped';
 
     const { data: members, error: membersError } = await admin
       .from('company_members')

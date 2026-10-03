@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApplicantCard, type ApplicantProfile } from '@/components/employer/applicant-card';
 import { requireEmployer } from '@/lib/auth';
+import { ApplicantsSuspended } from '@/components/employer/applicants-suspended';
 import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
@@ -99,6 +100,20 @@ export default async function AllApplicantsPage({
 
   const viewer = await requireEmployer(locale);
   const { stage, job: jobFilter, q: rawQuery, band: rawBand, track: rawTrack } = await searchParams;
+
+  // A suspended company's applicants are hidden (migration 349): said, not
+  // shown as an empty inbox, and nothing is stamped as seen.
+  if (viewer.company?.suspended_at) {
+    const t = await getTranslations('employer');
+    return (
+      <div className="space-y-4">
+        <header>
+          <h1 className="text-xl font-bold">{t('allApplicants')}</h1>
+        </header>
+        <ApplicantsSuspended />
+      </div>
+    );
+  }
 
   /*
     Two more ways to narrow, both real columns rather than derived guesses.
