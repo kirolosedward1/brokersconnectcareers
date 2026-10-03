@@ -77,6 +77,13 @@ const updates = easProjectId
   ? { url: `https://u.expo.dev/${easProjectId}`, checkAutomatically: 'ON_LOAD' as const, fallbackToCacheTimeout: 0 }
   : { enabled: false };
 
+/**
+ * An update for Expo Go (`pnpm run ota expo-go`, scripts/publish-update.mjs)
+ * runs on Expo Go's native code, not this app's: its runtime version is Expo
+ * Go's SDK ("exposdk:57.0.0"), which no fingerprint of this app matches.
+ */
+const forExpoGo = process.env.EXPO_GO_UPDATE === '1';
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Brokers Connect',
@@ -90,7 +97,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   userInterfaceStyle: 'automatic',
   // Checked at launch and downloaded in the background; it runs from the next
   // launch on, so nobody's screen changes under them (fallbackToCacheTimeout 0).
-  runtimeVersion: { policy: 'fingerprint' },
+  runtimeVersion: forExpoGo ? { policy: 'sdkVersion' } : { policy: 'fingerprint' },
   updates,
   ios: {
     // Permanent once the app is on the App Store: confirm before the first build.

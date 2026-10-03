@@ -4,6 +4,7 @@
  *
  *   pnpm run ota production --message "what changed"
  *   node scripts/publish-update.mjs <build profile> [eas update options…]
+ *   pnpm run ota expo-go --message "what changed"     (for Expo Go, below)
  *
  * A build takes only updates made for its own native code: the runtime
  * version is a fingerprint of app.config.ts as evaluated, and of the native
@@ -59,6 +60,33 @@ export function profileFor(eas, name) {
   return { channel: settings.channel, env: { ...env, EAS_BUILD_PROFILE: name } };
 }
 
+/**
+ * Expo Go, the App Store app: an update it opens with no computer running,
+ * from a link or a QR code, on the `expo-go` channel. It runs on Expo Go's
+ * native code, so its runtime version is Expo Go's SDK (EXPO_GO_UPDATE in
+ * app.config.ts), and the bundle carries the store build's settings: the
+ * production profile's environment, so the phone talks to production.
+ */
+export const EXPO_GO = 'expo-go';
+
+export function expoGoTarget(eas) {
+  const { env } = profileFor(eas, 'production');
+  return { channel: EXPO_GO, env: { ...env, EXPO_GO_UPDATE: '1' } };
+}
+
+/** The EAS project's id: EAS_PROJECT_ID, or the constant app.config.ts carries. */
+export function projectIdFrom(env, appConfigSource) {
+  if (env.EAS_PROJECT_ID) return env.EAS_PROJECT_ID;
+  const written = /const EAS_PROJECT_ID: string \| null = '([^']+)';/.exec(appConfigSource);
+  return written ? written[1] : null;
+}
+
+/** Expo's page with the QR code that opens the channel's newest update in Expo Go (`slug=exp`). */
+export function expoGoLink(projectId, sdkVersion) {
+  const query = new URLSearchParams({ slug: 'exp', projectId, runtimeVersion: `exposdk:${sdkVersion}`, channel: EXPO_GO });
+  return `https://qr.expo.dev/eas-update?${query}`;
+}
+
 /** The `eas update` command line for a profile, with the options given after it. */
 export function updateArguments(channel, options) {
   const platform = options.some((option) => option === '--platform' || option.startsWith('--platform=') || option === '-p');
@@ -69,17 +97,37 @@ const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(imp
 if (isMain) {
   const [name, ...options] = process.argv.slice(2);
   if (!name || name.startsWith('-')) {
-    console.error('Usage: pnpm run ota <build profile> --message "what changed"   (for example: production)');
+    console.error('Usage: pnpm run ota <build profile | expo-go> --message "what changed"   (for example: production)');
     process.exit(1);
   }
   try {
-    const { channel, env } = profileFor(JSON.parse(readFileSync(join(appRoot, 'eas.json'), 'utf8')), name);
-    console.log(`Publishing to the "${channel}" channel, built as the "${name}" profile builds.`);
-    const run = spawnSync('npx', updateArguments(channel, options), {
+    const eas = JSON.parse(readFileSync(join(appRoot, 'eas.json'), 'utf8'));
+    let target;
+    let link = null;
+    if (name === EXPO_GO) {
+      const projectId = projectIdFrom(process.env, readFileSync(join(appRoot, 'app.config.ts'), 'utf8'));
+      if (!projectId) {
+        throw new Error(
+          'No EAS project yet: run `npx eas-cli@latest init` (or create the project on expo.dev) and put its id in ' +
+            'app.config.ts in place of null (EAS_PROJECT_ID).',
+        );
+      }
+      const sdkMajor = JSON.parse(readFileSync(join(appRoot, 'node_modules/expo/package.json'), 'utf8')).version.split('.')[0];
+      target = expoGoTarget(eas);
+      link = expoGoLink(projectId, `${sdkMajor}.0.0`);
+      console.log(`Publishing for Expo Go (SDK ${sdkMajor}) to the "${target.channel}" channel, with the store build's settings.`);
+    } else {
+      target = profileFor(eas, name);
+      console.log(`Publishing to the "${target.channel}" channel, built as the "${name}" profile builds.`);
+    }
+    const run = spawnSync('npx', updateArguments(target.channel, options), {
       cwd: appRoot,
       stdio: 'inherit',
-      env: { ...process.env, ...env },
+      env: { ...process.env, ...target.env },
     });
+    if (run.status === 0 && link) {
+      console.log(`\nOpen it in Expo Go: scan the QR code on ${link}\nwith the iPhone's camera (signed in to the same Expo account in Expo Go).`);
+    }
     process.exit(run.status ?? 1);
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);

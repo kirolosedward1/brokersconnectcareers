@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { profileFor, updateArguments } from './publish-update.mjs';
+import { expoGoLink, expoGoTarget, profileFor, projectIdFrom, updateArguments } from './publish-update.mjs';
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const eas = JSON.parse(readFileSync(join(appRoot, 'eas.json'), 'utf8'));
@@ -80,7 +80,7 @@ console.log('\n— the configuration a store build is made from');
 /** app.config.ts evaluated with exactly these variables, as EAS or the publish script would. */
 async function configWith(vars) {
   const saved = { ...process.env };
-  for (const key of ['EAS_BUILD_PROFILE', 'EAS_PROJECT_ID', 'EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'EXPO_PUBLIC_SITE_URL']) {
+  for (const key of ['EAS_BUILD_PROFILE', 'EAS_PROJECT_ID', 'EXPO_GO_UPDATE', 'EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'EXPO_PUBLIC_SITE_URL']) {
     delete process.env[key];
   }
   Object.assign(process.env, vars);
@@ -111,6 +111,32 @@ is('with one, they come from its EAS Update URL, checked at launch and run from 
   checkAutomatically: 'ON_LOAD',
   fallbackToCacheTimeout: 0,
 });
+
+console.log('\n— an update Expo Go opens, with no computer running');
+{
+  const go = expoGoTarget(eas);
+  is('Expo Go publishes on its own channel', go.channel, 'expo-go');
+  for (const name of ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'EXPO_PUBLIC_SITE_URL']) {
+    is(`with the store build's ${name}`, go.env[name], eas.build.base.env[name]);
+  }
+  is('and the switch app.config.ts reads', go.env.EXPO_GO_UPDATE, '1');
+
+  const goConfig = await configWith({ ...go.env, EAS_PROJECT_ID: '00000000-0000-4000-8000-000000000000' });
+  is("its runtime version is Expo Go's SDK, which Expo resolves to exposdk:<SDK>", goConfig.runtimeVersion, { policy: 'sdkVersion' });
+  is('right to left still forced, as Expo Go reads it', goConfig.extra.forcesRTL, true);
+  is('fetched from the project, like a build', goConfig.updates.url, 'https://u.expo.dev/00000000-0000-4000-8000-000000000000');
+  is('and nothing else differs from the store build', JSON.stringify({ ...goConfig, runtimeVersion: null, updates: null }),
+    JSON.stringify({ ...(await configWith({ ...production.env, EAS_PROJECT_ID: '00000000-0000-4000-8000-000000000000' })), runtimeVersion: null, updates: null }));
+
+  is('the project id from the environment first', projectIdFrom({ EAS_PROJECT_ID: 'from-env' }, "const EAS_PROJECT_ID: string | null = 'in-file';"), 'from-env');
+  is('then the one app.config.ts carries', projectIdFrom({}, "const EAS_PROJECT_ID: string | null = 'in-file';"), 'in-file');
+  is('none while it is null, so the script stops before publishing', projectIdFrom({}, readFileSync(join(appRoot, 'app.config.ts'), 'utf8')), null);
+  is(
+    "Expo's QR page opens the channel's newest update in Expo Go",
+    expoGoLink('p-1', '57.0.0'),
+    'https://qr.expo.dev/eas-update?slug=exp&projectId=p-1&runtimeVersion=exposdk%3A57.0.0&channel=expo-go',
+  );
+}
 
 console.log('\n— what the runtime version is a fingerprint of');
 {

@@ -473,6 +473,41 @@ on the phone. An iPhone's Expo Go opens a project from a computer only then, and
 otherwise stops at "You need to be signed in to Expo Go and Expo CLI"; the
 tunnel needs the login too. The iOS Simulator does not ask.
 
+#### Without a computer running
+
+The app can also be published to Expo's servers as an update that Expo Go
+opens by itself, so the phone needs only the internet. It is the same code,
+with the store build's settings (it talks to production), on its own
+`expo-go` channel. It uses Expo Go's runtime version (`exposdk:57.0.0`), not
+the fingerprint store builds take (`EXPO_GO_UPDATE` in `app.config.ts`).
+
+Once, with the same free Expo account:
+
+1. Create the EAS project: `npx eas-cli@latest init` in `mobile/`, or on
+   expo.dev, a new project with the slug `brokers-connect`. Its id goes in
+   `app.config.ts` in place of `null` (`EAS_PROJECT_ID`). It is not a secret.
+   It also turns on updates and push for builds, which they need anyway.
+2. For publishing from GitHub instead of a computer: an access token
+   (expo.dev → Account settings → Access tokens) as the repository secret
+   `EXPO_TOKEN`.
+
+Then, each time the phone should get the newest code:
+
+- from GitHub: Actions → Expo Go → Run workflow (on any branch). It also runs
+  by itself on pushes to `main` and on this repository's pull requests. The
+  run's summary links the QR code;
+- or from a computer: `pnpm run ota expo-go --message "what changed"` in
+  `mobile/`, which prints the same link.
+
+On the phone, scan the QR code on that page with the camera. Expo Go opens the
+app and keeps it in its list, so later it is one tap. Each publish replaces
+what it opens next.
+
+Expo Go from the App Store runs one SDK at a time. Today that is 57, this
+app's. When it moves to the next SDK, the app has to move too
+(`npx expo install expo@latest --fix`) before Expo Go opens it again. A build
+of the app itself (`docs/app-store.md`) does not depend on that.
+
 Expo Go runs the app as itself, not as `net.brokersconnect.app`, so a few
 things need a development build instead:
 
