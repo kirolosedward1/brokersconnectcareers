@@ -78,9 +78,8 @@ export function JobCard({
     <article
       className={cn(
         'lift group relative rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5',
-        // Still readable, still clickable — just no longer competing with the
-        // roles somebody can actually apply to.
-        closed && 'opacity-70',
+        // A closed role is not dimmed: at 70% opacity the muted lines fell to
+        // 2.9:1. The "closed" badge beside the title is what says so.
       )}
     >
       {/*

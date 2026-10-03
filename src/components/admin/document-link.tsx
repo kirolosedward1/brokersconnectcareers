@@ -51,7 +51,7 @@ export function DocumentLink({ documentId, label }: { documentId: string; label:
   return (
     <span className="inline-flex flex-col items-start gap-1">
       <Button type="button" variant="outline" size="sm" onClick={open} disabled={pending}>
-        <FileText />
+        <FileText aria-hidden />
         {label}
       </Button>
       {fallback ? (

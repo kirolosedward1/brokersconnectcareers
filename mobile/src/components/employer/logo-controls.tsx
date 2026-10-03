@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { ImageUp, Trash2 } from 'lucide-react-native';
+import { ImageUp, Trash2 } from '~/components/ui/lucide';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
@@ -47,17 +47,16 @@ export function LogoControls({
         : t('common.errorBody');
   };
 
-  const choose = async () => {
+  // Promise chains, not try/finally, which the React Compiler does not compile.
+  const choose = () => {
     setError(null);
     setPicking(true);
-    try {
-      const logo = await pickImage('logo');
-      if (logo) upload.mutate(logo, { onError: (failure) => setError(explain(failure)) });
-    } catch (failure) {
-      setError(explain(failure));
-    } finally {
-      setPicking(false);
-    }
+    pickImage('logo')
+      .then((logo) => {
+        if (logo) upload.mutate(logo, { onError: (failure) => setError(explain(failure)) });
+      })
+      .catch((failure: unknown) => setError(explain(failure)))
+      .then(() => setPicking(false));
   };
 
   const confirmRemove = () =>

@@ -2226,8 +2226,11 @@ report.section('reports need an account, and an account has limits');
   report.check('the tenth report in a day is the last one',
     !eleventh.ok && /report_rate_limit/.test(eleventh.error ?? ''), eleventh.error);
 
+  // A listing the second reporter can read: since migration 344 a report
+  // needs a target its reporter can see, and the fixtures are drafts.
+  const readable = (await db.query("select id from jobs where status = 'active' order by id limit 1")).rows[0].id;
   const other = await as(publicAgent,
-    `insert into reports (job_id, reporter_id, reason) values ('${rlJobs[9]}','${publicAgent}','spam') returning id`);
+    `insert into reports (job_id, reporter_id, reason) values ('${readable}','${publicAgent}','spam') returning id`);
   report.check('and the cap is per account, not per listing',
     other.ok && other.rows.length === 1, other.error);
 }
@@ -2237,9 +2240,16 @@ report.section('applications are capped per day too');
   // Counted inside the trigger's own window, not over the whole table. The
   // seeded applications are older than a day and correctly do not count, which
   // is the difference between a rolling limit and a lifetime quota.
+  // What the trigger counts: the applications in the window, or — since
+  // migration 344 — the ledger of what was sent, which also holds the ones
+  // earlier sections withdrew, whichever is more.
   const inWindow = `
-    select count(*)::int as n from applications
-     where candidate_id = '${candidate}' and created_at > now() - interval '1 day'
+    select greatest(
+             (select count(*) from applications
+               where candidate_id = '${candidate}' and created_at > now() - interval '1 day'),
+             (select count(*) from rate_limit_hits
+               where bucket = 'applications:${candidate}' and created_at > now() - interval '1 day')
+           )::int as n
   `;
   const held = (await db.query(inWindow)).rows[0].n;
 
@@ -2260,9 +2270,13 @@ report.section('applications are capped per day too');
     written eight at a time and aged past the short window between batches,
     which is what a day of honest applying looks like to the counter.
   */
+  // Since migration 344 the limit also counts a ledger of what was sent
+  // (rate_limit_hits), which a withdrawal cannot take back; it ages with them.
   const ageTheShortWindow = () =>
     db.exec(`update applications set created_at = created_at - interval '11 minutes'
-              where candidate_id = '${candidate}' and created_at > now() - interval '10 minutes'`);
+              where candidate_id = '${candidate}' and created_at > now() - interval '10 minutes';
+             update rate_limit_hits set created_at = created_at - interval '11 minutes'
+              where bucket = 'applications:${candidate}' and created_at > now() - interval '10 minutes'`);
 
   // Whatever earlier sections filed for this candidate counts against the
   // short window too, so it is aged before the first batch.
@@ -2303,6 +2317,12 @@ report.section('applications are capped per day too');
      where id = (
        select id from applications
         where candidate_id = '${candidate}' and created_at > now() - interval '1 day'
+        limit 1
+     );
+    update rate_limit_hits set created_at = now() - interval '2 days'
+     where ctid = (
+       select ctid from rate_limit_hits
+        where bucket = 'applications:${candidate}' and created_at > now() - interval '1 day'
         limit 1
      )
   `);
@@ -2886,6 +2906,43 @@ report.section('a shortlist that outlives one listing');
     values ('${alRowad}', '${openCard}', '${employerUnverified}') returning agent_id`);
   report.check("nor into another company's shortlist",
     !r7.ok, r7.ok ? 'insert was allowed' : r7.error);
+
+  /*
+    A pending employer is outside the directory (migration 322), and so outside
+    the shortlist: saving a consultant by id was a way round the gate, and the
+    name came back through saved_agent_cards() (migration 331). Their company,
+    Skyline, is verified — which is what used to open a gated card to them.
+  */
+  const skyline = (
+    await db.query(`select company_id from company_members where user_id = '${employerPending}' limit 1`)
+  ).rows[0]?.company_id;
+  const gatedStranger = (
+    await db.query(`
+      select a.id from agent_profiles a
+       where a.visibility = 'verified_employers_only'
+         and not exists (
+           select 1 from applications ap join jobs j on j.id = ap.job_id
+            where ap.candidate_id = a.user_id and j.company_id = '${skyline}')
+       limit 1`)
+  ).rows[0]?.id;
+  for (const [what, agent] of [['a gated', gatedStranger], ['a public', openCard]]) {
+    const saved = await as(employerPending, `
+      insert into saved_agents (company_id, agent_id, saved_by)
+      values ('${skyline}', '${agent}', '${employerPending}') returning agent_id`);
+    report.check(`a pending employer shortlists nobody from the directory: ${what} consultant`,
+      Boolean(skyline && agent) && !saved.ok, saved.ok ? 'insert was allowed' : saved.error);
+  }
+
+  // One saved before the account went back to pending reads back unnamed.
+  await db.exec(`insert into saved_agents (company_id, agent_id, saved_by)
+                 values ('${skyline}', '${gatedStranger}', '${employerPending}') on conflict do nothing`);
+  const pendingCards = await as(employerPending,
+    `select is_unlocked, full_name, avatar_url from saved_agent_cards() where id = '${gatedStranger}'`);
+  await db.exec(`delete from saved_agents where company_id = '${skyline}' and agent_id = '${gatedStranger}'`);
+  report.check('and a card it saved earlier comes back without the name',
+    pendingCards.ok && pendingCards.rows.length === 1 && pendingCards.rows[0].is_unlocked === false &&
+      pendingCards.rows[0].full_name === null && pendingCards.rows[0].avatar_url === null,
+    pendingCards.error ?? JSON.stringify(pendingCards.rows));
 }
 
 report.section('a shortlist is not a copy of the directory');

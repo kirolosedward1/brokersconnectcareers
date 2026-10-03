@@ -2,6 +2,7 @@
   "ios": {
     "CFBundleDisplayName": "بروكرز كونكت",
     "NSPhotoLibraryUsageDescription": "بنستخدم صورك عشان تختار صورتك الشخصية أو لوجو شركتك، ومفيش حاجة بتترفع غير اللي انت تختاره.",
-    "NSCameraUsageDescription": "بنستخدم الكاميرا عشان تصوّر صورتك الشخصية أو مستندات شركتك."
+    "NSCameraUsageDescription": "بنستخدم الكاميرا عشان تصوّر صورتك الشخصية أو مستندات شركتك.",
+    "NSFaceIDUsageDescription": "بنستخدم Face ID عشان تقفل التطبيق وتفتحه، لو انت شغّلت القفل بنفسك."
   }
 }

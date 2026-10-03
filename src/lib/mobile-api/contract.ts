@@ -80,6 +80,10 @@ export type OnboardingInput = {
     headcountBand?: Nullable<HeadcountBand>;
     districtId?: Nullable<number>;
   };
+  /** 18 or older, and agrees to the Terms of use and the Privacy policy. Nothing is created without it. */
+  agreed: true;
+  /** Who sees a candidate's directory card: asked, never assumed. Required for a candidate. */
+  visibility?: AgentVisibility;
 };
 
 export type AgentProfileInput = {
@@ -166,6 +170,18 @@ export type MobileActions = {
       notify_status: boolean;
       notify_digest: boolean;
       notify_applicant_digest: boolean;
+      /** The profile reminder, off unless turned on (migration 337); sent only when the profile has it. */
+      notify_profile_nudge?: boolean;
+    };
+    output: ActionResult;
+  };
+  /** Which kinds reach the person's phones, and quiet hours (migration 335): any of them, at least one. */
+  updatePushPreferences: {
+    input: {
+      push_job_alerts?: boolean;
+      push_applications?: boolean;
+      push_account?: boolean;
+      push_quiet_hours?: boolean;
     };
     output: ActionResult;
   };
@@ -187,6 +203,8 @@ export type MobileActions = {
 
   // Onboarding
   completeOnboarding: { input: OnboardingInput; output: ActionResult<{ role: string }> };
+  /** Agreeing to the Terms and the Privacy policy as published now (an account made before they were recorded, or since changed). */
+  acceptPolicies: { input: undefined; output: ActionResult };
 
   // Candidate: applying and the pipeline they can see
   applyToJob: { input: ApplyInput; output: ActionResult };

@@ -32,6 +32,35 @@ export function rangeOf(page: number, size = PAGE_SIZE): [number, number] {
 }
 
 /**
+ * Where a page that came back empty should send somebody, or null to stay.
+ *
+ * An empty first page is the answer: nothing is waiting. An empty later page
+ * is the end of the list moving under the URL — the last case on the last page
+ * resolved, and the page refreshed where it was — and showing it said "nothing
+ * waiting" over a page one still full of work. PostgREST refuses an offset
+ * past the total (PGRST103) but answers an offset of exactly the total with no
+ * rows, and a database function paging with limit/offset counts its total
+ * over the rows it returns, so an empty page reads as a total of 0. So: the
+ * last page the total says has rows, or the first when the total is not known
+ * — never this page or a later one, so following it always ends.
+ */
+export function pageAfterTheEnd({
+  page,
+  rows,
+  total,
+  size = PAGE_SIZE,
+}: {
+  page: number;
+  rows: number;
+  total: number | null | undefined;
+  size?: number;
+}): number | null {
+  if (page <= 1 || rows > 0) return null;
+  const last = Math.ceil((total ?? 0) / size);
+  return Math.max(1, Math.min(last, page - 1));
+}
+
+/**
  * A path with the current query, some keys replaced. An empty or undefined
  * value removes the key, and changing anything but `page` resets to page one,
  * because page four of a different filter is not a place anybody meant to go.

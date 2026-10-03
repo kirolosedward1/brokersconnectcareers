@@ -1,6 +1,6 @@
 import { Alert, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { EyeOff } from 'lucide-react-native';
+import { EyeOff } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';

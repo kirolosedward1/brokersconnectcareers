@@ -32,16 +32,31 @@ const esmPackages = [
   '@tanstack',
 ];
 
+// React Compiler, as Metro runs it for the phone (app.config.ts,
+// experiments.reactCompiler). babel-preset-expo compiles only when Babel's
+// caller says it can, which Metro's does and jest-expo's does not, so every
+// test rendered components the phone never runs. The preset's own options,
+// with that one flag.
+const jestExpo = require('jest-expo/jest-preset');
+const SOURCE = '\\.[jt]sx?$';
+const [babelJest, babelOptions] = jestExpo.transform[SOURCE];
+
 module.exports = {
   preset: 'jest-expo',
+  transform: {
+    ...jestExpo.transform,
+    [SOURCE]: [babelJest, { ...babelOptions, caller: { ...babelOptions.caller, supportsReactCompiler: true } }],
+  },
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.ts?(x)'],
   resolver: '<rootDir>/jest.resolver.js',
   setupFiles: ['<rootDir>/tests/setup.ts'],
   moduleNameMapper: {
-    // Its React Native entry is an .mjs file, which Jest's transform does not
-    // pick up; the CommonJS build draws the same icons.
+    // Its React Native entries are .mjs files, which Jest's transform does not
+    // pick up; the CommonJS build draws the same icons (the app imports each
+    // from its own module: src/components/ui/lucide.ts).
     '^lucide-react-native$': '<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js',
+    '^lucide-react-native/icons/(.*)$': '<rootDir>/node_modules/lucide-react-native/dist/cjs/icons/$1.js',
   },
   transformIgnorePatterns: [
     `/node_modules/(?!(${esmPackages.join('|')}))`,

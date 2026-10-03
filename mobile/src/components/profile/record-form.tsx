@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2, TrendingUp } from 'lucide-react-native';
+import { Building2, TrendingUp } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import type { AgentProfileRow } from '@/lib/supabase/database.types';
 import { Button } from '~/components/ui/button';
@@ -10,8 +10,9 @@ import { Field } from '~/components/ui/field';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useSaveRecord } from '~/features/profile/queries';
+import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 import { wholeNumber } from './fields';
 
 /**
@@ -31,6 +32,11 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
   const [volume, setVolume] = useState(agent.volume_egp == null ? '' : String(agent.volume_egp));
   const [invalid, setInvalid] = useState(false);
 
+  // Leaving with the record changed and not saved asks first.
+  const typedNow = JSON.stringify([summary, units, volume]);
+  const [savedAs, setSavedAs] = useState(typedNow);
+  useLeaveGuard(typedNow !== savedAs);
+
   const percent = completeness ?? 0;
 
   const submit = () => {
@@ -42,7 +48,8 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
       return;
     }
     setInvalid(false);
-    save.mutate({ summaryAr: summary.trim() || null, unitsClosed, volumeEgp });
+    const sending = typedNow;
+    save.mutate({ summaryAr: summary.trim() || null, unitsClosed, volumeEgp }, { onSuccess: () => setSavedAs(sending) });
   };
 
   return (
@@ -52,7 +59,8 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
           style={{
             width: 40,
             height: 40,
-            borderRadius: radius.xl,
+            // The app's icon tile: a rounded square, not a disc.
+            ...corner('md'),
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: colors.muted,
@@ -79,9 +87,9 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
             accessibilityRole="progressbar"
             accessibilityLabel={t('cv.completeness')}
             accessibilityValue={{ min: 0, max: 100, now: percent }}
-            style={{ height: 8, borderRadius: radius.full, overflow: 'hidden', backgroundColor: colors.muted }}
+            style={{ height: 8, ...corner('full'), overflow: 'hidden', backgroundColor: colors.muted }}
           >
-            <View style={{ width: `${percent}%`, height: '100%', borderRadius: radius.full, backgroundColor: colors.primary }} />
+            <View style={{ width: `${percent}%`, height: '100%', ...corner('full'), backgroundColor: colors.primary }} />
           </View>
         </View>
       ) : null}

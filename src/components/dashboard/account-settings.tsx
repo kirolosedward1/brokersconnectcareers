@@ -14,7 +14,7 @@ import { uuid } from '@/lib/uuid';
 
 type Prefs = Pick<
   ProfileRow,
-  'notify_applications' | 'notify_status' | 'notify_digest' | 'notify_applicant_digest'
+  'notify_applications' | 'notify_status' | 'notify_digest' | 'notify_applicant_digest' | 'notify_profile_nudge'
 >;
 
 /**
@@ -134,6 +134,17 @@ export function AccountSettings({
     ...(isEmployer
       ? []
       : [{ key: 'notify_digest' as const, label: t('notifyDigest'), hint: t('notifyDigestHint') }]),
+    // The profile reminder, off unless turned on — offered only where the
+    // database has the switch (migration 337).
+    ...(!isEmployer && typeof initial.notify_profile_nudge === 'boolean'
+      ? [
+          {
+            key: 'notify_profile_nudge' as const,
+            label: t('notifyProfileNudge'),
+            hint: t('notifyProfileNudgeHint'),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -148,7 +159,7 @@ export function AccountSettings({
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4 transition-colors hover:bg-muted/50">
                 <input
                   type="checkbox"
-                  checked={prefs[row.key]}
+                  checked={Boolean(prefs[row.key])}
                   onChange={() => toggle(row.key)}
                   disabled={pending}
                   className="mt-0.5 size-4 shrink-0 accent-primary"

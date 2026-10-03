@@ -5,7 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useMobileConfig } from '~/features/config';
 import { env } from '~/lib/env';
 import { useTheme } from '~/theme/provider';
-import { radius } from '~/theme/tokens';
+import { corner } from '~/theme/tokens';
 
 /**
  * Cloudflare Turnstile for the password forms, as the website runs it.
@@ -172,7 +172,7 @@ function CaptchaView({
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
       style={
         visible
-          ? { height: 72, borderRadius: radius.lg, overflow: 'hidden' }
+          ? { height: 72, ...corner('lg'), overflow: 'hidden' }
           : { position: 'absolute', width: 300, height: 72, opacity: 0 }
       }
     >

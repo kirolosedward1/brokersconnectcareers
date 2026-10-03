@@ -7,7 +7,7 @@ import { Card } from '~/components/ui/card';
 import { ForwardChevron } from '~/components/ui/icons';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 
 /**
  * What is missing from the profile, and why each one matters — the website's
@@ -73,7 +73,7 @@ export function ProfileGaps({
             borderTopColor: colors.border,
           }}
         >
-          <View style={{ paddingHorizontal: space[2], paddingVertical: 2, borderRadius: radius.md, backgroundColor: colors.secondary }}>
+          <View style={{ paddingHorizontal: space[2], paddingVertical: 2, ...corner('md'), backgroundColor: colors.secondary }}>
             <Text variant="caption" weight="semibold" tone="primary">
               {t('gapsPoints', { points: formatNumber(gap.points, locale) })}
             </Text>

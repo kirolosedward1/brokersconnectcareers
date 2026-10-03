@@ -3,17 +3,18 @@ import { Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
-import { EyeOff, Flag, ShieldCheck, X } from 'lucide-react-native';
+import { EyeOff, Flag, ShieldCheck, X } from '~/components/ui/lucide';
 import type { ReportInput } from '@/lib/mobile-api/contract';
 import type { ReportReason } from '@/lib/supabase/database.types';
 import { AGENT_REPORT_REASONS, COMPANY_REPORT_REASONS, REPORT_REASONS } from '@/lib/taxonomy';
 import { Button } from '~/components/ui/button';
+import { KeyboardRoom } from '~/components/ui/keyboard-room';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { font, hitTarget, radius, space, type as scale } from '~/theme/tokens';
+import { corner, font, gutter, hitTarget, space, type as scale } from '~/theme/tokens';
 
 type Target = ReportInput['target'];
 
@@ -129,6 +130,18 @@ function ReportSheet({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  // Each opening starts empty — no reason chosen for the reader, no refusal
+  // left over from the last time — as the filter sheet starts from the board.
+  const [shown, setShown] = useState(visible);
+  if (visible !== shown) {
+    setShown(visible);
+    if (visible) {
+      setReason(null);
+      setDetail('');
+      setError(null);
+    }
+  }
+
   async function submit() {
     if (pending) return;
     if (!reason) {
@@ -161,124 +174,127 @@ function ReportSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: space[2],
-            paddingHorizontal: space[4],
-            paddingVertical: space[2],
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-          }}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('common.close')}
-            onPress={onClose}
-            hitSlop={8}
-            style={{ minWidth: hitTarget, minHeight: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+      <KeyboardRoom>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: space[2],
+              paddingHorizontal: gutter,
+              paddingVertical: space[2],
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
           >
-            <X size={22} color={colors.foreground} />
-          </Pressable>
-          <Text weight="semibold" accessibilityRole="header" style={{ flex: 1 }}>
-            {label}
-          </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('common.close')}
+              onPress={onClose}
+              hitSlop={8}
+              // The glyph, not its 44-point box, on the page's margin.
+              style={{ minWidth: hitTarget, minHeight: hitTarget, marginStart: -(hitTarget - 22) / 2, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={22} color={colors.foreground} />
+            </Pressable>
+            <Text weight="semibold" accessibilityRole="header" style={{ flex: 1 }}>
+              {label}
+            </Text>
+          </View>
+
+          <ScrollView
+            automaticallyAdjustKeyboardInsets
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ padding: gutter, gap: space[5], paddingBottom: insets.bottom + space[6] }}
+          >
+            <View style={{ gap: space[2] }} accessibilityRole="radiogroup" accessibilityLabel={t('report.question')}>
+              <Text variant="small" weight="semibold">
+                {t('report.question')}
+              </Text>
+              {REASONS_FOR[target].map((value) => {
+                const selected = value === reason;
+                const name = t(`reportReason.${value}` as never);
+                const hint = t(`reportHint.${value}` as never);
+                return (
+                  <Pressable
+                    key={value}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    accessibilityLabel={`${name}. ${hint}`}
+                    onPress={() => {
+                      setReason(value);
+                      setError(null);
+                    }}
+                    style={({ pressed }) => ({
+                      minHeight: hitTarget,
+                      gap: 2,
+                      paddingHorizontal: space[3],
+                      paddingVertical: space[2],
+                      ...corner('lg'),
+                      borderWidth: selected ? 2 : 1,
+                      borderColor: selected ? colors.primary : colors.border,
+                      backgroundColor: pressed ? colors.muted : selected ? colors.secondary : colors.card,
+                    })}
+                  >
+                    <Text variant="small" weight="medium">
+                      {name}
+                    </Text>
+                    <Text variant="caption" tone="mutedForeground">
+                      {hint}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={{ gap: space[1] }}>
+              <Text variant="small" weight="medium">
+                {t('report.detailLabel')}
+              </Text>
+              <TextInput
+                value={detail}
+                onChangeText={setDetail}
+                accessibilityLabel={t('report.detailLabel')}
+                accessibilityHint={t('report.detailHint')}
+                placeholder={t('report.detailPlaceholder')}
+                multiline
+                maxLength={500}
+                textAlignVertical="top"
+                keyboardAppearance={scheme}
+                placeholderTextColor={colors.mutedForeground}
+                selectionColor={colors.primary}
+                style={{
+                  minHeight: 72,
+                  padding: space[3],
+                  ...corner('lg'),
+                  borderWidth: 1,
+                  borderColor: colors.input,
+                  backgroundColor: colors.card,
+                  color: colors.foreground,
+                  fontFamily: font.regular,
+                  fontSize: scale.body.fontSize,
+                  textAlign: 'left',
+                }}
+              />
+              <Text variant="caption" tone="mutedForeground">
+                {t('report.detailHint')}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: space[2] }}>
+              <EyeOff size={14} color={colors.mutedForeground} style={{ marginTop: 4 }} />
+              <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }}>
+                {t('report.privacy')}
+              </Text>
+            </View>
+
+            {error ? <Notice tone="destructive">{error}</Notice> : null}
+
+            <Button label={t('report.send')} size="lg" loading={pending} onPress={submit} />
+            <Button label={t('common.cancel')} variant="ghost" disabled={pending} onPress={onClose} />
+          </ScrollView>
         </View>
-
-        <ScrollView
-          automaticallyAdjustKeyboardInsets
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: space[4], gap: space[5], paddingBottom: insets.bottom + space[6] }}
-        >
-          <View style={{ gap: space[2] }} accessibilityRole="radiogroup" accessibilityLabel={t('report.question')}>
-            <Text variant="small" weight="semibold">
-              {t('report.question')}
-            </Text>
-            {REASONS_FOR[target].map((value) => {
-              const selected = value === reason;
-              const name = t(`reportReason.${value}` as never);
-              const hint = t(`reportHint.${value}` as never);
-              return (
-                <Pressable
-                  key={value}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
-                  accessibilityLabel={`${name}. ${hint}`}
-                  onPress={() => {
-                    setReason(value);
-                    setError(null);
-                  }}
-                  style={({ pressed }) => ({
-                    minHeight: hitTarget,
-                    gap: 2,
-                    paddingHorizontal: space[3],
-                    paddingVertical: space[2],
-                    borderRadius: radius.lg,
-                    borderWidth: selected ? 2 : 1,
-                    borderColor: selected ? colors.primary : colors.border,
-                    backgroundColor: pressed ? colors.muted : selected ? colors.secondary : colors.card,
-                  })}
-                >
-                  <Text variant="small" weight="medium">
-                    {name}
-                  </Text>
-                  <Text variant="caption" tone="mutedForeground">
-                    {hint}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <View style={{ gap: space[1] }}>
-            <Text variant="small" weight="medium">
-              {t('report.detailLabel')}
-            </Text>
-            <TextInput
-              value={detail}
-              onChangeText={setDetail}
-              accessibilityLabel={t('report.detailLabel')}
-              accessibilityHint={t('report.detailHint')}
-              placeholder={t('report.detailPlaceholder')}
-              multiline
-              maxLength={500}
-              textAlignVertical="top"
-              keyboardAppearance={scheme}
-              placeholderTextColor={colors.mutedForeground}
-              selectionColor={colors.primary}
-              style={{
-                minHeight: 72,
-                padding: space[3],
-                borderRadius: radius.lg,
-                borderWidth: 1,
-                borderColor: colors.input,
-                backgroundColor: colors.card,
-                color: colors.foreground,
-                fontFamily: font.regular,
-                fontSize: scale.body.fontSize,
-                textAlign: 'left',
-              }}
-            />
-            <Text variant="caption" tone="mutedForeground">
-              {t('report.detailHint')}
-            </Text>
-          </View>
-
-          <View style={{ flexDirection: 'row', gap: space[2] }}>
-            <EyeOff size={14} color={colors.mutedForeground} style={{ marginTop: 4 }} />
-            <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }}>
-              {t('report.privacy')}
-            </Text>
-          </View>
-
-          {error ? <Notice tone="destructive">{error}</Notice> : null}
-
-          <Button label={t('report.send')} size="lg" loading={pending} onPress={submit} />
-          <Button label={t('common.cancel')} variant="ghost" disabled={pending} onPress={onClose} />
-        </ScrollView>
-      </View>
+      </KeyboardRoom>
     </Modal>
   );
 }

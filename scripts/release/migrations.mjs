@@ -902,7 +902,7 @@ export const ADJUSTMENTS = {
   },
 };
 
-async function loadLedger(options) {
+export async function loadLedger(options) {
   if (options.fromFile) {
     const parsed = JSON.parse(readFileSync(options.fromFile, 'utf8'));
     return { source: options.fromFile, rows: Array.isArray(parsed) ? parsed : (parsed.migrations ?? parsed.result ?? []) };
@@ -932,13 +932,45 @@ async function loadLedger(options) {
 }
 
 /**
+ * When `apply` ran on production. A row it records carries its file's own
+ * version, which says which file ran but not when, and a ledger is read in
+ * version order — so the files of the release of 2026-09-29 (068–330, all that
+ * production was missing then) list ahead of everything they ran after, and
+ * replayed in that order 068 meets a database with no tables yet. Frozen per
+ * run, like the rest of production's history here; a run not listed is the
+ * latest, which ran after everything else.
+ */
+export const APPLY_RUNS = [{ at: '20260929000000', from: '20260101000068', through: '20260101000330' }];
+
+/**
+ * A ledger in the order its database ran it, which scripts/release/rehearse.mjs
+ * replays. A row recorded under a time (Supabase's apply_migration, the CLI on
+ * production before `apply` existed) ran at that time; a row `apply` recorded
+ * under its file's version ran with its run (APPLY_RUNS), in file order. Only
+ * production's ledger mixes the two — it is the one that carries the historical
+ * names — so any other database's runs in version order, which for files is
+ * file order.
+ */
+export function replayOrder(rows, repoFiles) {
+  const production = rows.some((row) => Object.hasOwn(LEGACY, String(row.name ?? '')));
+  const versions = new Set(repoFiles.map((file) => file.slice(0, 14)));
+  const ranAt = (row) => {
+    const version = String(row.version);
+    if (!production || !versions.has(version)) return version;
+    return APPLY_RUNS.find((run) => version >= run.from && version <= run.through)?.at ?? '99999999999999';
+  };
+  return [...rows].sort((a, b) => ranAt(a).localeCompare(ranAt(b)) || String(a.version).localeCompare(String(b.version)));
+}
+
+/**
  * Which file each ledger row is, in the ledger's own order: a stem, `null` for
  * a historical entry that has no file (LEGACY), or `undefined` for a row no
  * file accounts for (drift). A row matches by version, then by the historical
  * name it was applied under, then by the name part of a file.
  *
- * In row order because the order is information: it is the order the database
- * ran them in, which scripts/release/rehearse.mjs replays.
+ * In row order because the order is information: given rows in the order the
+ * database ran them (replayOrder), it is what scripts/release/rehearse.mjs
+ * replays.
  */
 export function resolveLedger(rows, repoFiles) {
   const stems = repoFiles.map((file) => file.replace(/\.sql$/, ''));

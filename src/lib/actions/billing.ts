@@ -4,11 +4,12 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { BILLING_ENABLED } from '@/lib/env';
-import { POST_PACKS } from '@/lib/taxonomy';
+import { PACKS_ON_SALE } from '@/lib/taxonomy';
 import { createCheckout, paymobConfig } from '@/lib/paymob/client';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 import { recordSecurityEvent } from '@/lib/security/events';
+import { checkoutAccess } from '@/lib/checkout-access';
 
 const schema = z.object({
   packKey: z.enum(['single', 'bulk', 'mass_hiring', 'featured_addon']),
@@ -18,7 +19,7 @@ const schema = z.object({
  * Start a purchase.
  *
  * The price is never taken from the request. The client sends a pack key, and
- * the amount, the credits and the seat tier are all read from POST_PACKS on
+ * the amount, the credits and the seat tier are all read from PACKS_ON_SALE on
  * the server — otherwise the cheapest possible attack on this endpoint is to
  * post the same key with a different number attached to it.
  *
@@ -41,26 +42,16 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  // Through the caller's own session, so RLS confirms the company is theirs —
-  // and through membership, so a colleague buying credits for the company they
-  // work at is not told they have no company.
-  const { data: companyId } = await supabase.rpc('my_company_id');
-  const { data: company } = companyId
-    ? await supabase.from('companies').select('id, name_ar').eq('id', companyId).maybeSingle()
-    : { data: null };
-  if (!company) return { ok: false, error: 'no_company' };
-
-  // Buying is a company admin's act, from an account in good standing. The
-  // order row is written with the service role below, so the caller's
-  // standing has to be established here — orders_select_own is admin-only,
-  // and a recruiter could otherwise create orders they can never read.
-  const [{ data: isCompanyAdmin }, { data: standing }] = await Promise.all([
-    supabase.rpc('is_company_admin', { target: company.id }),
-    supabase.from('profiles').select('approval_status').eq('id', user.id).maybeSingle(),
-  ]);
-  if (!isCompanyAdmin || standing?.approval_status !== 'approved') {
-    return { ok: false, error: 'forbidden' };
-  }
+  // Through the caller's own session, so RLS confirms the company is theirs;
+  // who may buy, and why a failed read is "try again", is checkoutAccess's.
+  const access = await checkoutAccess({
+    myCompanyId: () => supabase.rpc('my_company_id'),
+    company: (id) => supabase.from('companies').select('id, name_ar').eq('id', id).maybeSingle(),
+    isCompanyAdmin: (id) => supabase.rpc('is_company_admin', { target: id }),
+    standing: () => supabase.from('profiles').select('approval_status').eq('id', user.id).maybeSingle(),
+  });
+  if (!access.ok) return { ok: false, error: access.error };
+  const { company } = access;
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -68,8 +59,10 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
     .eq('id', user.id)
     .maybeSingle();
 
-  const pack = POST_PACKS.find((item) => item.key === parsed.data.packKey);
-  if (!pack) return { ok: false, error: 'invalid' };
+  // Only what is on sale: the featured add-on is in the schema because
+  // orders carry its key, but buying it would deliver nothing (PACKS_ON_SALE).
+  const pack = PACKS_ON_SALE.find((item) => item.key === parsed.data.packKey);
+  if (!pack) return { ok: false, error: 'not_available' };
 
   // Every call opens a pending order and three provider round trips. A
   // handful an hour is a company buying credits; more is a loop.

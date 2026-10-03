@@ -8,13 +8,16 @@ import { CompanyForm } from '~/components/employer/company-form';
 import { LogoControls } from '~/components/employer/logo-controls';
 import { TeamSettings } from '~/components/employer/team-settings';
 import { VerificationPanel } from '~/components/employer/verification-panel';
+import { SignedOut } from '~/components/navigation/signed-out';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useCompanyPage } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
+import { Compass, ShieldAlert } from '~/components/ui/lucide';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * The company, as candidates read it and as its admins keep it — the
@@ -31,15 +34,17 @@ export default function CompanyScreen() {
   const queryClient = useQueryClient();
   const { session, viewer, actor } = useSession();
   const page = useCompanyPage();
+  const pull = usePullRefresh(() => Promise.all([page.refetch(), queryClient.invalidateQueries({ queryKey: ['viewer'] })]));
   const company = viewer?.company ?? null;
   const header = <Stack.Screen options={{ title: t('employer.company') }} />;
 
   let body: React.ReactNode;
-  if (!session || !viewer?.profile) body = <ViewerPending />;
-  else if (!canAccessEmployerArea(actor)) body = <EmptyState title={t('common.notFound')} body={t('common.notFoundBody')} />;
-  else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  if (!session) body = <SignedOut next="/employer/company" />;
+  else if (!viewer?.profile) body = <ViewerPending />;
+  else if (!canAccessEmployerArea(actor)) body = <EmptyState icon={Compass} title={t('common.notFound')} body={t('common.notFoundBody')} />;
+  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (company && page.isPending) body = <LoadingState />;
-  else if (company && page.isError) body = <ErrorState error={page.error} onRetry={() => page.refetch()} />;
+  else if (company && page.isError && !page.data) body = <ErrorState error={page.error} onRetry={() => page.refetch()} />;
   else {
     const isAdmin = page.data?.isAdmin ?? false;
     body = (
@@ -49,16 +54,9 @@ export default function CompanyScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         refreshControl={
-          <RefreshControl
-            refreshing={page.isRefetching}
-            onRefresh={() => {
-              page.refetch();
-              queryClient.invalidateQueries({ queryKey: ['viewer'] });
-            }}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
         }
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >
         <Text tone="mutedForeground">{t('employer.companyLede')}</Text>
         {company && isAdmin ? (
@@ -69,8 +67,8 @@ export default function CompanyScreen() {
             logoUrl={company.logo_url}
           />
         ) : null}
-        {/* Keyed on the version: a save (or a colleague's, read on refresh) starts the form from what is stored. */}
-        {isAdmin || !company ? <CompanyForm key={company ? `${company.id}:${company.version}` : 'new'} company={company} /> : null}
+        {/* Keyed on the company, not its version: a logo or a paper moves the version, and must not wipe what is being typed. */}
+        {isAdmin || !company ? <CompanyForm key={company?.id ?? 'new'} company={company} /> : null}
         {company && isAdmin ? (
           <VerificationPanel companyId={company.id} status={company.verification_status} documents={page.data?.documents ?? []} />
         ) : null}

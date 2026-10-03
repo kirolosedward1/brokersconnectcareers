@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import { COMPANY_DOCS_BUCKET } from '@/lib/buckets';
 import { fileExtension, fileType } from '@/lib/file-type';
@@ -7,8 +9,8 @@ import type { CompanyInput } from '@/lib/mobile-api/contract';
 import { canAccessEmployerArea } from '@/lib/permissions';
 import type { CompanyDocumentRow, CompanyMemberRole, OrderRow } from '@/lib/supabase/database.types';
 import { uuid } from '@/lib/uuid';
-import { PhotoRefused, type PickedPhoto } from '~/features/account/settings';
-import { callAction } from '~/lib/api';
+import { formFile, PhotoRefused, type PickedPhoto } from '~/features/account/settings';
+import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -100,6 +102,12 @@ export function useSaveCompany() {
       queryClient.invalidateQueries({ queryKey: ['viewer'] });
       queryClient.invalidateQueries({ queryKey: ['employer'] });
     },
+    // A colleague's save got there first: read theirs, which the form then shows.
+    onError: (error) => {
+      if (error instanceof CompanyRefused && error.reason === 'stale') {
+        queryClient.invalidateQueries({ queryKey: ['viewer'] });
+      }
+    },
   });
 }
 
@@ -111,7 +119,7 @@ export function useUploadLogo(companyId: string) {
       const form = new FormData();
       form.append('kind', 'logo');
       form.append('companyId', companyId);
-      form.append('file', { uri: logo.uri, name: logo.name, type: logo.type } as unknown as Blob);
+      form.append('file', formFile(logo));
       const result = await callAction('uploadImage', form);
       if (!result.ok) {
         throw new PhotoRefused(result.error === 'file_type' || result.error === 'too_large' ? result.error : 'failed');
@@ -148,6 +156,46 @@ export async function pickDocument(): Promise<{ document: PickedDocument } | { p
   return { document: { uri: asset.uri, name: asset.name, type } };
 }
 
+/** Where a paper comes from: a picture taken now, one in the library, or a file. */
+export type DocumentSource = 'camera' | 'library' | 'file';
+
+/**
+ * The longest side a photographed paper keeps: legible, and far under the
+ * website's 10 MB once a phone's photo (12 to 48 megapixels) is re-encoded.
+ */
+const DOCUMENT_EDGE = 2400;
+
+/**
+ * A paper as a photo — taken now, or from the library — which is how most
+ * people have their commercial register on a phone. The file picker alone
+ * showed only Files, where an iPhone's photos (HEIC, which the website does
+ * not take) were greyed out anyway. Re-encoded as a JPEG, as the logo and the
+ * photo are; null when cancelled.
+ */
+export async function pickDocumentPhoto(
+  source: 'camera' | 'library',
+): Promise<{ document: PickedDocument } | { problem: 'fileTooLarge' | 'camera' } | null> {
+  if (source === 'camera') {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) return { problem: 'camera' };
+  }
+  const options = { mediaTypes: ['images'] as ImagePicker.MediaType[], allowsEditing: false, quality: 1 };
+  const result =
+    source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
+  const asset = result.canceled ? null : result.assets[0];
+  if (!asset) return null;
+
+  const context = ImageManipulator.manipulate(asset.uri);
+  const long = Math.max(asset.width, asset.height);
+  const sized =
+    long > DOCUMENT_EDGE
+      ? context.resize(asset.width >= asset.height ? { width: DOCUMENT_EDGE } : { height: DOCUMENT_EDGE })
+      : context;
+  const saved = await (await sized.renderAsync()).saveAsync({ format: SaveFormat.JPEG, compress: 0.85 });
+  if (new File(saved.uri).size > MAX_DOCUMENT_BYTES) return { problem: 'fileTooLarge' };
+  return { document: { uri: saved.uri, name: 'document.jpg', type: 'image/jpeg' } };
+}
+
 export class DocumentRefused extends Error {
   constructor(readonly reason: 'fileType' | 'fileTooLarge' | 'failed') {
     super(reason);
@@ -159,7 +207,8 @@ export class DocumentRefused extends Error {
  * A verification paper: the bytes to `company-documents/<company>/<type>-<uuid>.<ext>`
  * (a company admin's folder, fewer than twenty files), then the website's
  * recordCompanyDocument, which reads what arrived and records it for review.
- * Refused, the upload is taken back out.
+ * Refused, the upload is taken back out; with no answer it stays, and the
+ * database says whether the paper went in.
  */
 export function useUploadDocument(companyId: string) {
   const queryClient = useQueryClient();
@@ -172,10 +221,29 @@ export function useUploadDocument(companyId: string) {
       const { error } = await storage.upload(path, bytes, { upsert: false, contentType: document.type });
       if (error) throw new DocumentRefused('failed');
 
-      const result = await callAction('recordCompanyDocument', { companyId, docType, storagePath: path }).catch(() => null);
-      if (!result?.ok) {
+      let result: Awaited<ReturnType<typeof callAction<'recordCompanyDocument'>>>;
+      try {
+        result = await callAction('recordCompanyDocument', { companyId, docType, storagePath: path });
+      } catch (error) {
+        if (refusedAtTheDoor(error)) {
+          await storage.remove([path]).catch(() => {});
+          throw new DocumentRefused('failed');
+        }
+        // No answer: the paper may have been recorded and only the answer lost,
+        // so the file stays (the storage clean-up takes one nothing points at
+        // after a day) and the database says whether it went in.
+        const { data, error: unread } = await supabase
+          .from('company_documents')
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('storage_path', path)
+          .maybeSingle();
+        if (!unread && data) return;
+        throw new DocumentRefused('failed');
+      }
+      if (!result.ok) {
         await storage.remove([path]).catch(() => {});
-        throw new DocumentRefused(result && !result.ok && result.error === 'file_type' ? 'fileType' : 'failed');
+        throw new DocumentRefused(result.error === 'file_type' ? 'fileType' : 'failed');
       }
     },
     onSuccess: () => {
@@ -187,7 +255,7 @@ export function useUploadDocument(companyId: string) {
 }
 
 /** The team refusals the website has words for; anything else is the generic line. */
-export type MemberRefusal = 'no_account' | 'already_member' | 'not_employer' | 'rate_limited' | 'failed';
+export type MemberRefusal = 'no_account' | 'already_member' | 'rate_limited' | 'invalid_email' | 'failed';
 
 export class MemberRefused extends Error {
   constructor(readonly reason: MemberRefusal) {
@@ -207,12 +275,19 @@ export function useAddMember() {
     mutationFn: async (input: { email: string; role: CompanyMemberRole }) => {
       const result = await callAction('addCompanyMember', input);
       if (!result.ok) {
+        // A consultant's address is "no company account", as the website now
+        // answers it; a server from before that still says not_employer.
         const reason: MemberRefusal =
           result.error === 'rate_limit' || result.error === 'rate_limited'
             ? 'rate_limited'
-            : result.error === 'no_account' || result.error === 'already_member' || result.error === 'not_employer'
-              ? result.error
-              : 'failed';
+            : result.error === 'no_account' || result.error === 'not_employer'
+              ? 'no_account'
+              : result.error === 'already_member'
+                ? 'already_member'
+                : // The website's schema refused the address itself.
+                  result.error === 'invalid'
+                  ? 'invalid_email'
+                  : 'failed';
         throw new MemberRefused(reason);
       }
     },

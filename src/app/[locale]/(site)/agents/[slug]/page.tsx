@@ -168,7 +168,7 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
             aria-hidden
             className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-muted"
           >
-            <UserRound className="size-7 text-muted-foreground" />
+            <UserRound className="size-7 text-muted-foreground" aria-hidden />
           </span>
         )}
 
@@ -176,7 +176,7 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
           <h1 className="flex items-center gap-2 text-2xl font-bold">
             {name}
             {agent.is_unlocked ? null : (
-              <Lock className="size-4 text-muted-foreground" aria-label={t('locked')} />
+              <Lock className="size-4 text-muted-foreground" role="img" aria-label={t('locked')} />
             )}
           </h1>
           {headline ? <p className="mt-1 text-muted-foreground">{headline}</p> : null}
@@ -192,7 +192,7 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
           {ownCvHref ? (
             <Button asChild variant="outline" size="lg">
               <a href={ownCvHref} target="_blank" rel="noopener noreferrer">
-                <Download />
+                <Download aria-hidden />
                 {t('downloadCv')}
               </a>
             </Button>

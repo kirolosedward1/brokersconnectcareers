@@ -1,21 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import type { SearchBarCommands } from 'react-native-screens';
-import { ShieldCheck, SlidersHorizontal, UserRoundCheck } from 'lucide-react-native';
+import { SearchX, ShieldCheck, SlidersHorizontal, UserRoundCheck } from '~/components/ui/lucide';
 import { EMPTY_AGENT_FILTERS, parseAgentFilters, type AgentFilters } from '@/lib/agent-filters';
 import { formatNumber } from '@/lib/format';
 import { canBrowseAgentDirectory, canShortlistAgents, hasVerifiedCompany, isAdmin } from '@/lib/permissions';
 import { AgentCard } from '~/components/directory/agent-card';
+import { DirectoryClosed } from '~/components/directory/directory-closed';
 import { DirectoryFilterSheet } from '~/components/directory/directory-filter-sheet';
 import { HeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
+import { PageFooter } from '~/components/ui/page-footer';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
 import { ForwardChevron } from '~/components/ui/icons';
-import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
+import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
   activeAgentFilters,
@@ -29,8 +31,10 @@ import { useCompanyPage } from '~/features/employer/company';
 import { useDistricts } from '~/features/taxonomy';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
+import { useVisited } from '~/lib/use-visited';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * The consultant directory — the website's /agents, for the companies that
@@ -50,7 +54,10 @@ export default function DirectoryScreen() {
   const raw = useLocalSearchParams();
   const filters = useMemo(() => parseAgentFilters(raw as Record<string, string | string[] | undefined>), [raw]);
 
-  const directory = useAgentDirectory(filters);
+  // Drawn at launch behind Home by the tab bar: searched once the tab is opened.
+  const visited = useVisited();
+  const directory = useAgentDirectory(filters, { enabled: visited });
+  const pull = usePullRefresh(() => directory.refetch());
   const agents = useMemo(() => flattenAgents(directory.data?.pages), [directory.data]);
   const districts = useDistricts().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
@@ -98,12 +105,12 @@ export default function DirectoryScreen() {
     />
   );
 
-  // Not a reader of the directory (the tab is not theirs; a link was routed elsewhere).
+  // Not a reader of the directory (yet): who it is for.
   if (!canBrowseAgentDirectory(actor)) {
     return (
       <>
         {header}
-        <NotFoundState />
+        <DirectoryClosed />
       </>
     );
   }
@@ -140,7 +147,7 @@ export default function DirectoryScreen() {
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
           <DirectoryHeader
             filters={filters}
@@ -151,6 +158,7 @@ export default function DirectoryScreen() {
         }
         ListEmptyComponent={
           <EmptyState
+            icon={SearchX}
             title={t('agents.empty')}
             body={t('agents.emptyHint')}
             action={
@@ -160,19 +168,13 @@ export default function DirectoryScreen() {
             }
           />
         }
-        ListFooterComponent={
-          directory.isFetchingNextPage ? (
-            <View style={{ paddingTop: space[4] }}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
-          ) : null
-        }
+        ListFooterComponent={<PageFooter query={directory} />}
         onEndReached={() => {
           if (directory.hasNextPage && !directory.isFetchingNextPage) directory.fetchNextPage();
         }}
         onEndReachedThreshold={0.5}
-        refreshing={directory.isRefetching && !directory.isFetchingNextPage}
-        onRefresh={() => directory.refetch()}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
       />
     </>
   );
@@ -220,16 +222,8 @@ function DirectoryHeader({
       </Text>
 
       {gated ? (
-        <View
-          style={{
-            gap: space[2],
-            padding: space[4],
-            borderRadius: radius.xl,
-            borderWidth: 1,
-            borderColor: colors.primary,
-            backgroundColor: colors.secondary,
-          }}
-        >
+        // The card's own surface; the shield carries the meaning, not an outline.
+        <Card style={{ gap: space[2] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
             <ShieldCheck size={18} color={colors.primary} />
             <Text weight="medium" style={{ flexShrink: 1 }}>
@@ -248,7 +242,7 @@ function DirectoryHeader({
               />
             </View>
           ) : null}
-        </View>
+        </Card>
       ) : null}
 
       {canShortlistAgents(actor) ? (
@@ -272,8 +266,9 @@ function DirectoryHeader({
         <Chip
           label={inSheet ? `${t('jobs.filters')} · ${formatNumber(inSheet, locale)}` : t('jobs.filters')}
           selected={inSheet > 0}
-          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primary : colors.foreground} />}
+          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primaryForeground : colors.foreground} />}
           onPress={onFilters}
+          feedback={false}
         />
         <Text variant="small" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
           {t('jobs.resultsCount', { count: total })}

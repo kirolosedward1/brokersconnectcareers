@@ -9,8 +9,11 @@ import { HomeTabs } from '@/components/home/home-tabs';
  * same logo. Only what sits inside changes.
  */
 export function HeroShell({ children }: { children: React.ReactNode }) {
+  // Focus rings are white over the film. The default ring is the brand blue,
+  // which against these overlays measured 1.9-3.3:1 in the light theme — a
+  // keyboard user could lose their place on the first screen of the site.
   return (
-    <section className="relative isolate overflow-hidden">
+    <section className="relative isolate overflow-hidden [--ring:white]">
       {/* The gradient is the hero's actual background. The film, when the
           reader's connection can afford it, sits on top of it — which is why
           this is a full brand treatment and not a grey placeholder. */}

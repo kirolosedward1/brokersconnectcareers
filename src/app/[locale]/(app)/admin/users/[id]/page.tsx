@@ -275,7 +275,7 @@ export default async function AdminUserPage({
                     title={profile.approval_status === 'rejected' ? t('restoreAccount') : t('approveAccount')}
                     body={t('approveAccountBody')}
                     variant="success"
-                    icon={profile.approval_status === 'rejected' ? <RotateCcw /> : <Check />}
+                    icon={profile.approval_status === 'rejected' ? <RotateCcw aria-hidden /> : <Check aria-hidden />}
                   />
                 ) : null}
                 {/* Restrict: a hold while something is looked into. Live
@@ -291,7 +291,7 @@ export default async function AdminUserPage({
                     reason="required"
                     reasonLabel={t('reasonToUser')}
                     variant="outline"
-                    icon={<CirclePause />}
+                    icon={<CirclePause aria-hidden />}
                   />
                 ) : null}
                 {profile.approval_status !== 'rejected' ? (
@@ -303,7 +303,7 @@ export default async function AdminUserPage({
                     reason="required"
                     reasonLabel={t('reasonToUser')}
                     variant="destructive"
-                    icon={<Ban />}
+                    icon={<Ban aria-hidden />}
                   />
                 ) : null}
               </div>
@@ -338,7 +338,7 @@ export default async function AdminUserPage({
                   reason="required"
                   reasonLabel={t('reportingBanReason')}
                   variant={ban ? 'outline' : 'ghost'}
-                  icon={<Flag />}
+                  icon={<Flag aria-hidden />}
                 />
               </div>
             ) : null}

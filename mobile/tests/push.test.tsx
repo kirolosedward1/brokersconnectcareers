@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Linking, Text } from 'react-native';
+import { Linking, Platform, Text } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
@@ -9,7 +10,7 @@ import type { ProfileRow } from '@/lib/supabase/database.types';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { PushPrompt } from '~/components/push/push-prompt';
-import { signOutHere } from '~/features/push/device';
+import { pushAvailable, signOutHere } from '~/features/push/device';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -42,6 +43,19 @@ jest.mock('~/lib/session-storage', () => {
   };
 });
 
+// A build with an EAS project, the only kind that can have a push token. The
+// last cases take it away, as Expo Go and a build before the project exists are.
+const PROJECT = 'b1f0c2d4-0000-4000-8000-000000000001';
+const mockEas: { projectId?: string } = { projectId: PROJECT };
+jest.mock('expo-constants', () => {
+  const actual = jest.requireActual('expo-constants');
+  // A getter defined after the copy: in an object literal, the transform would
+  // read it once, before mockEas exists.
+  const constants = { ...actual.default };
+  Object.defineProperty(constants, 'easConfig', { get: () => mockEas, enumerable: true });
+  return { ...actual, __esModule: true, default: constants };
+});
+
 const ar = catalogues.ar;
 const server = fakeServer();
 const PASSWORD = 'correct-horse';
@@ -68,7 +82,11 @@ afterEach(() => {
   warnings.length = 0;
 });
 
+/** Each test's cache, fresh; a test reads the profile again through it, as the app would. */
+let queryClient: QueryClient;
+
 beforeEach(async () => {
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   me = { ...profile };
   unread = 0;
   jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue({
@@ -107,9 +125,8 @@ function Settled({ children }: { children: ReactNode }) {
 
 /** The app's root as far as pushes need it: the stack, the pending page, and the bridge. */
 function Root() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
-    <QueryClientProvider client={client}>
+    <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <I18nProvider>
           <SessionProvider>
@@ -236,6 +253,151 @@ describe('this phone, registered', () => {
   });
 });
 
+describe('what to hear about', () => {
+  const chosen = { push_job_alerts: true, push_applications: true, push_account: true, push_quiet_hours: false };
+  const saves = () => server.asked('/api/mobile/v1/actions/updatePushPreferences').map((request) => request.body);
+
+  it('offers a candidate each kind once pushes are on, and saves the one flipped', async () => {
+    me = { ...profile, ...chosen };
+    server.on('POST /api/mobile/v1/actions/updatePushPreferences', { ok: true });
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    expect(await screen.findByText(ar.app.push.kindsTitle)).toBeTruthy();
+    expect(screen.getByLabelText(ar.app.push.jobAlerts).props.value).toBe(true);
+    expect(screen.getByLabelText(ar.app.push.applicationsCandidate).props.value).toBe(true);
+    expect(screen.getByLabelText(ar.app.push.accountCandidate).props.value).toBe(true);
+    expect(screen.getByLabelText(ar.app.push.quiet).props.value).toBe(false);
+
+    fireEvent(screen.getByLabelText(ar.app.push.jobAlerts), 'valueChange', false);
+    await waitFor(() => expect(saves()).toEqual([{ input: { push_job_alerts: false } }]));
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+    expect(screen.getByLabelText(ar.app.push.jobAlerts).props.value).toBe(false);
+
+    fireEvent(screen.getByLabelText(ar.app.push.quiet), 'valueChange', true);
+    await waitFor(() => expect(saves()[1]).toEqual({ input: { push_quiet_hours: true } }));
+  });
+
+  it('shows what another phone saved since, and never writes this phone\'s older copy back over it', async () => {
+    me = { ...profile, ...chosen };
+    server.on('POST /api/mobile/v1/actions/updatePushPreferences', () => {
+      // Meanwhile, on another phone: the account's pushes turned off.
+      me = { ...me, push_job_alerts: false, push_account: false };
+      return { ok: true };
+    });
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    fireEvent(await screen.findByLabelText(ar.app.push.jobAlerts), 'valueChange', false);
+    // Only the switch flipped here was sent: not push_account as this phone last read it.
+    await waitFor(() => expect(saves()).toEqual([{ input: { push_job_alerts: false } }]));
+    // And once the saved values are read again, the switch nobody flipped here follows them.
+    await waitFor(() => expect(screen.getByLabelText(ar.app.push.accountCandidate).props.value).toBe(false));
+    expect(screen.getByLabelText(ar.app.push.jobAlerts).props.value).toBe(false);
+    expect(screen.getByLabelText(ar.app.push.applicationsCandidate).props.value).toBe(true);
+  });
+
+  it('follows another phone\'s later change to a switch flipped here once', async () => {
+    me = { ...profile, ...chosen };
+    // The website applies what it is sent, as updatePushPreferences does.
+    server.on('POST /api/mobile/v1/actions/updatePushPreferences', (_url, init) => {
+      const { input } = JSON.parse(String(init?.body));
+      me = { ...me, ...input };
+      return { ok: true };
+    });
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    // Quiet hours on, here; saved.
+    fireEvent(await screen.findByLabelText(ar.app.push.quiet), 'valueChange', true);
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+
+    // Later, on another phone: quiet hours off again. This phone reads the
+    // profile again, and the switch flipped here earlier shows what is saved.
+    me = { ...me, push_quiet_hours: false, push_account: false };
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ['viewer'] });
+    });
+    await waitFor(() => expect(screen.getByLabelText(ar.app.push.accountCandidate).props.value).toBe(false));
+    expect(screen.getByLabelText(ar.app.push.quiet).props.value).toBe(false);
+  });
+
+  it('puts a refused switch back to what was read meanwhile, not to what it showed before', async () => {
+    me = { ...profile, ...chosen };
+    server.on('POST /api/mobile/v1/actions/updatePushPreferences', { ok: false, error: 'failed' });
+    // The save's answer held back until the profile has been read again.
+    let answer!: () => void;
+    const answered = new Promise<void>((resolve) => (answer = resolve));
+    const plain = server.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (href.includes('updatePushPreferences')) await answered;
+      return plain(input, init);
+    }) as typeof fetch;
+    try {
+      jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+      renderRouter(app, { initialUrl: '/account/alerts' });
+
+      // Applications off, here; the save on its way.
+      fireEvent(await screen.findByLabelText(ar.app.push.applicationsCandidate), 'valueChange', false);
+      // Meanwhile another phone turns them off too, and this phone reads the profile.
+      me = { ...me, push_applications: false, push_account: false };
+      await act(async () => {
+        await queryClient.invalidateQueries({ queryKey: ['viewer'] });
+      });
+      await waitFor(() => expect(screen.getByLabelText(ar.app.push.accountCandidate).props.value).toBe(false));
+
+      // Then this phone's save is refused: the switch shows what is saved, off.
+      answer();
+      expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+      expect(screen.getByLabelText(ar.app.push.applicationsCandidate).props.value).toBe(false);
+    } finally {
+      globalThis.fetch = plain as unknown as typeof fetch;
+    }
+  });
+
+  it('puts a switch back when the website refuses it', async () => {
+    me = { ...profile, ...chosen };
+    server.on('POST /api/mobile/v1/actions/updatePushPreferences', { ok: false, error: 'failed' });
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    fireEvent(await screen.findByLabelText(ar.app.push.applicationsCandidate), 'valueChange', false);
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    expect(screen.getByLabelText(ar.app.push.applicationsCandidate).props.value).toBe(true);
+  });
+
+  it('offers an employer applicants and listings, and no new jobs — they keep no saved searches', async () => {
+    me = { ...profile, role: 'employer', ...chosen };
+    // An employer's session also reads their company: none yet is an answer.
+    server.on('POST /rest/v1/rpc/my_company_id', () => null);
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    expect(await screen.findByLabelText(ar.app.push.applicationsEmployer)).toBeTruthy();
+    expect(screen.getByLabelText(ar.app.push.accountEmployer)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.app.push.jobAlerts)).toBeNull();
+  });
+
+  it('offers nothing while the database does not have the switches yet', async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    await screen.findByLabelText(ar.app.push.switch);
+    await waitFor(() => expect(registered()).toHaveLength(1));
+    expect(screen.queryByText(ar.app.push.kindsTitle)).toBeNull();
+  });
+
+  it('offers nothing while pushes are off on this phone', async () => {
+    me = { ...profile, ...chosen };
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(denied as never);
+    renderRouter(app, { initialUrl: '/account/alerts' });
+
+    expect(await screen.findByText(ar.app.push.denied)).toBeTruthy();
+    expect(screen.queryByText(ar.app.push.kindsTitle)).toBeNull();
+  });
+});
+
 describe('a tapped push', () => {
   const response = (notificationId: string) =>
     ({
@@ -263,6 +425,8 @@ describe('a tapped push', () => {
     server.on('POST /api/mobile/v1/actions/openNotification', { ok: true, data: { fallback: '/notifications?link=gone' } });
     act(() => listener?.(response(NOTIFICATION)));
     await waitFor(() => expect(result.getPathname()).toBe('/notifications'));
+    // With the reason, which the feed says as it does for a tap in the bell.
+    expect(result.getSearchParams()).toEqual({ link: 'gone' });
   });
 
   it('asks somebody signed out to sign in, and comes back to the feed', async () => {
@@ -274,6 +438,33 @@ describe('a tapped push', () => {
     await waitFor(() => expect(result.getPathname()).toBe('/sign-in'));
     expect(result.getSearchParams()).toEqual({ next: '/notifications' });
     expect(server.asked('/api/mobile/v1/actions/openNotification')).toHaveLength(0);
+  });
+});
+
+describe('a push while the app is open', () => {
+  it('reads again what it is most often about, as well as the bell and the account', async () => {
+    renderRouter(app, { initialUrl: '/' });
+    await screen.findByText(ar.app.push.promptTitle);
+    const listener = jest.mocked(Notifications.addNotificationReceivedListener).mock.calls.at(-1)?.[0];
+    const invalidated = jest.spyOn(queryClient, 'invalidateQueries');
+
+    act(() => listener?.({} as Notifications.Notification));
+    const keys = invalidated.mock.calls.map(([filters]) => JSON.stringify(filters?.queryKey));
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        '["notifications"]',
+        '["viewer"]',
+        // A new applicant: the company's inbox, pipelines, overview and counts.
+        '["employer","applicants"]',
+        '["employer","summary"]',
+        '["employer","trend"]',
+        '["employer","listings"]',
+        // A move: the candidate's applications, and the summary on their Home.
+        '["applications"]',
+        '["candidate"]',
+      ]),
+    );
+    invalidated.mockRestore();
   });
 });
 
@@ -310,5 +501,59 @@ describe('the badge', () => {
     unread = 3;
     renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(Notifications.setBadgeCountAsync).toHaveBeenCalledWith(3));
+  });
+});
+
+describe('Android', () => {
+  it('offers pushes only to a build that has Firebase, where its token comes from', () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    const config = Constants.expoConfig as { android?: { googleServicesFile?: string } };
+    const before = config.android;
+    try {
+      config.android = {};
+      expect(pushAvailable()).toBe(false);
+      config.android = { googleServicesFile: './google-services.json' };
+      expect(pushAvailable()).toBe(true);
+    } finally {
+      config.android = before;
+      os.restore();
+    }
+  });
+});
+
+describe('a build without a push project', () => {
+  beforeEach(() => {
+    delete mockEas.projectId;
+  });
+  afterEach(() => {
+    mockEas.projectId = PROJECT;
+  });
+
+  it('asks nothing on Home', async () => {
+    renderRouter(app, { initialUrl: '/' });
+    await waitFor(() => expect(jest.mocked(Notifications.getPermissionsAsync)).toHaveBeenCalled());
+    await act(async () => {});
+    await act(async () => {});
+    expect(screen.queryByText(ar.app.push.promptTitle)).toBeNull();
+  });
+
+  it('registers nothing, even with the phone allowing it, and leaves its registration alone at sign-out', async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/' });
+    await act(async () => {});
+    await act(async () => {});
+    expect(registered()).toHaveLength(0);
+
+    await act(async () => {
+      await signOutHere();
+    });
+    await waitFor(() => expect(Notifications.setBadgeCountAsync).toHaveBeenLastCalledWith(0));
+    expect(Notifications.unregisterForNotificationsAsync).not.toHaveBeenCalled();
+  });
+
+  it('says so in the account, with no switch that would turn on nothing', async () => {
+    renderRouter(app, { initialUrl: '/account/alerts' });
+    expect(await screen.findByText(ar.app.push.unavailable)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.app.push.switch)).toBeNull();
   });
 });

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
+import { westernDigits } from '@/lib/search/arabic';
 import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
@@ -11,6 +13,7 @@ import { intentFromParams } from '~/features/auth/intent';
 import { useCloseFlow, useLand } from '~/features/auth/land';
 import { signOutHere } from '~/features/push/device';
 import { supabase } from '~/lib/supabase';
+import { useHoldBack } from '~/lib/use-hold-back';
 import { space } from '~/theme/tokens';
 
 /**
@@ -29,53 +32,66 @@ export default function SecondFactorScreen() {
   const intent = intentFromParams(params);
   const land = useLand();
   const close = useCloseFlow();
+  useHoldBack();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function verify() {
-    const digits = code.replace(/\D/g, '');
-    if (digits.length !== 6) {
-      setError(t('account.mfaCodeInvalid'));
-      return;
-    }
-    setError(null);
-    setPending(true);
-
+  /** What went wrong, in words, or null once through. */
+  async function answer(digits: string): Promise<string | null> {
     const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
-    if (listError) {
-      setPending(false);
-      setError(t('common.errorBody'));
-      return;
-    }
+    if (listError) return isAuthRetryableFetchError(listError) ? t('app.offline.body') : t('common.errorBody');
     const factor = factors?.totp.find((candidate) => candidate.status === 'verified') ?? factors?.totp[0];
     if (!factor) {
       // Nothing to answer with — removed elsewhere since this session began.
+      // The session still names it until it is refreshed, and landing on it
+      // brought this screen straight back, over and over.
+      await supabase.auth.refreshSession();
       await land(intent);
-      setPending(false);
-      return;
+      return null;
     }
 
     const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code: digits });
     if (verifyError) {
-      setPending(false);
+      // No answer is not a wrong code: the code stays for another try.
+      if (isAuthRetryableFetchError(verifyError)) return t('app.offline.body');
       setCode('');
+      return t('account.mfaCodeInvalid');
+    }
+    await land(intent);
+    return null;
+  }
+
+  const verify = () => {
+    // Typed on an Arabic keyboard, the number pad gives Arabic-Indic digits.
+    const digits = westernDigits(code).replace(/\D/g, '');
+    if (digits.length !== 6) {
       setError(t('account.mfaCodeInvalid'));
       return;
     }
-    await land(intent);
-    setPending(false);
-  }
+    if (pending) return;
+    setError(null);
+    setPending(true);
+    answer(digits)
+      .catch(() => t('common.errorBody'))
+      .then((problem) => {
+        setPending(false);
+        if (problem) setError(problem);
+      });
+  };
 
-  async function signOut() {
-    await signOutHere();
-    close();
-  }
+  const signOut = () => {
+    setPending(true);
+    signOutHere().then(() => {
+      setPending(false);
+      close();
+    });
+  };
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-      <AuthScroll>
+      <AuthScroll bare>
         <View style={{ height: space[8] }} />
         <AuthHeading title={t('account.mfaTitle')} body={t('account.mfaChallengeBody')} />
         <View style={{ gap: space[4] }}>

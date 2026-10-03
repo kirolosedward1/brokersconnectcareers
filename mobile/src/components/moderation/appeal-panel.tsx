@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { MessageSquareReply } from 'lucide-react-native';
+import { MessageSquareReply } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
 import type { AppealRefusal } from '@/lib/mobile-api/contract';
 import type { AppealSubjectType } from '@/lib/supabase/database.types';

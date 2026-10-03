@@ -225,7 +225,7 @@ export function MfaSettings({
             <div className="flex flex-wrap items-start gap-5">
               {/* Supabase returns the QR as an SVG data URI; img-src allows data:. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qr} alt="" width={176} height={176} className="rounded-lg border border-border bg-white p-2" />
+              <img src={qr} alt={t('mfaQrAlt')} width={176} height={176} className="rounded-lg border border-border bg-white p-2" />
               <div className="min-w-0 text-sm">
                 <p className="text-muted-foreground">{t('mfaSecret')}</p>
                 <code className="numeral mt-1 block break-all rounded-md bg-muted px-2 py-1 text-xs" dir="ltr">

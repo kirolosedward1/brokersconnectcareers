@@ -70,9 +70,12 @@ export async function NotificationMenu({ locale, userId }: { locale: string; use
   // has not. Nothing is folded there yet, so the unfiltered list is the list.
   if (recentError?.code === '42703') ({ data: recent } = await latest(false));
   const notifications = (recent ?? []) as NotificationRow[];
+  const count = unread ?? 0;
 
   return (
-    <NotificationBell label={t('title')} unread={unread ?? 0}>
+    // The count is in the name as well as on the badge: "Notifications" alone
+    // hid the one thing the badge is there to say.
+    <NotificationBell label={count > 0 ? t('bellUnread', { count }) : t('title')} unread={count}>
       <div className="flex items-center justify-between gap-2 border-b border-border ps-3 pe-1.5 py-1">
         <p className="text-sm font-semibold">{t('title')}</p>
         <Link

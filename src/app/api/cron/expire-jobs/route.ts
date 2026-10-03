@@ -3,7 +3,8 @@ import { runScheduledJob } from '@/lib/jobs/run';
 import { retryDb } from '@/lib/jobs/db';
 import type { Deadline } from '@/lib/jobs/policy';
 import type { createAdminClient } from '@/lib/supabase/admin';
-import { EXPIRY_WARN_DAYS, jobExpiryKeyPrefix } from '@/lib/email/notify';
+import { EXPIRY_WARN_DAYS } from '@/lib/email/notify';
+import { stillOwed } from '@/lib/jobs/expiry-owed';
 import { publish } from '@/lib/notifications/events';
 import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { logFailure } from '@/lib/observe';
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
       const expiringSoon = await retryDb(() =>
         admin
           .from('jobs')
-          .select('id, expires_at')
+          .select('id, company_id, expires_at')
           .eq('status', 'active')
           .gt('expires_at', new Date(now).toISOString())
           .lte('expires_at', new Date(now + WARN_DAYS * DAY_MS).toISOString())
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
       const recentlyExpired = await retryDb(() =>
         admin
           .from('jobs')
-          .select('id, slug, expires_at')
+          .select('id, slug, company_id, expires_at')
           .eq('status', 'expired')
           .gte('expires_at', new Date(now - CATCH_UP_DAYS * DAY_MS).toISOString())
           .lte('expires_at', new Date(now).toISOString())
@@ -132,8 +133,8 @@ export async function GET(request: NextRequest) {
       );
 
       const stats = { warned: 0, closed: 0, skipped_on_error: 0, out_of_time: false };
-      const owedWarning = await stillOwed(admin, expiringSoon ?? [], 'expiring');
-      const owedClosing = await stillOwed(admin, recentlyExpired ?? [], 'expired');
+      const owedWarning = await stillOwed(admin, expiringSoon ?? [], 'expiring', { cap: CAP, chunk: KEY_CHUNK });
+      const owedClosing = await stillOwed(admin, recentlyExpired ?? [], 'expired', { cap: CAP, chunk: KEY_CHUNK });
       await notifyAll(admin, deadline, owedWarning, 'expiring', stats);
       await notifyAll(admin, deadline, owedClosing, 'expired', stats);
 
@@ -160,46 +161,6 @@ export async function GET(request: NextRequest) {
       };
     },
   });
-}
-
-/**
- * The listings in `jobs` whose notice for this stage has no outbox row yet,
- * in the same order, at most CAP of them.
- *
- * Each member of the company gets their own copy, keyed
- * `<prefix><memberId>` (notify.ts, jobExpiryKeyPrefix). Any row under the
- * listing's prefix counts as "told": the company was reached, and
- * claim_email would hand back nothing for a member who already has one — so
- * sending would be skipped anyway, only later and at more cost. A member who
- * joined since is told tomorrow, when the listing is still in the window.
- * A lookup that fails is not a reason to skip anybody: that chunk is kept,
- * and the claim decides.
- */
-async function stillOwed(
-  admin: Admin,
-  jobs: { id: string; expires_at: string | null }[],
-  stage: 'expiring' | 'expired',
-): Promise<{ id: string }[]> {
-  const template = stage === 'expiring' ? 'job_expiring' : 'job_expired';
-  const owed: { id: string }[] = [];
-  for (let i = 0; i < jobs.length && owed.length < CAP; i += KEY_CHUNK) {
-    const chunk = jobs.slice(i, i + KEY_CHUNK);
-    const { data, error } = await admin
-      .from('email_log')
-      .select('dedupe_key')
-      .eq('template', template)
-      .in('entity_id', chunk.map((job) => job.id));
-    if (error) {
-      logFailure('cron', 'could not check which expiry notices went', { stage, code: error.code });
-    }
-    const keys = (data ?? []).map((row) => row.dedupe_key ?? '');
-    for (const job of chunk) {
-      if (owed.length >= CAP) break;
-      const prefix = jobExpiryKeyPrefix(stage, job.id, job.expires_at);
-      if (!keys.some((key) => key.startsWith(prefix))) owed.push({ id: job.id });
-    }
-  }
-  return owed;
 }
 
 async function notifyAll(

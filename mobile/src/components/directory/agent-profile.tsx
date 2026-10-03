@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Lock, MapPin, ShieldCheck, UserRound } from 'lucide-react-native';
+import { Lock, MapPin, ShieldCheck, UserRound } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
 import { canShortlistAgents, canViewAgentProfile } from '@/lib/permissions';
 import type { DistrictRow } from '@/lib/supabase/database.types';
@@ -13,6 +13,7 @@ import { ReportButton } from '~/components/moderation/report';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
+import { Card } from '~/components/ui/card';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { recordAgentView, useAgentPage } from '~/features/directory/queries';
@@ -20,7 +21,8 @@ import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * One consultant's page — the website's /agents/<slug>, for the directory's
@@ -39,6 +41,7 @@ export function AgentProfile({ handle }: { handle: string }) {
   const { colors } = useTheme();
   const { session, viewer, actor } = useSession();
   const page = useAgentPage(handle);
+  const pull = usePullRefresh(() => page.refetch());
   const districts = useDistricts().data;
   const developers = useDevelopers().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
@@ -65,7 +68,7 @@ export function AgentProfile({ handle }: { handle: string }) {
       </>
     );
   }
-  if (page.isError) {
+  if (page.isError && !page.data) {
     return (
       <>
         {header}
@@ -99,22 +102,13 @@ export function AgentProfile({ handle }: { handle: string }) {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
-          <RefreshControl refreshing={page.isRefetching} onRefresh={() => page.refetch()} tintColor={colors.primary} />
+          <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
         }
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >
         {/* The owner sees everything; what they need to know is what everybody else sees. */}
         {isOwner ? (
-          <View
-            style={{
-              gap: space[1],
-              padding: space[4],
-              borderRadius: radius.xl,
-              borderWidth: 1,
-              borderColor: colors.primary,
-              backgroundColor: colors.secondary,
-            }}
-          >
+          <Card style={{ gap: space[1] }}>
             <Text variant="small" weight="semibold">
               {t('agents.ownerBanner')}
             </Text>
@@ -135,7 +129,7 @@ export function AgentProfile({ handle }: { handle: string }) {
             >
               {t('agents.ownerEdit')}
             </Text>
-          </View>
+          </Card>
         ) : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[4] }}>
@@ -187,17 +181,9 @@ export function AgentProfile({ handle }: { handle: string }) {
             </View>
           ) : null
         ) : (
-          // Locked to this company: why, and the way to open it.
-          <View
-            style={{
-              gap: space[3],
-              padding: space[4],
-              borderRadius: radius.xl,
-              borderWidth: 1,
-              borderColor: colors.primary,
-              backgroundColor: colors.secondary,
-            }}
-          >
+          // Locked to this company: why, and the way to open it. The card's own
+          // surface; the shield carries the meaning, not an outline.
+          <Card style={{ gap: space[3] }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
               <ShieldCheck size={18} color={colors.primary} />
               <Text weight="medium" style={{ flexShrink: 1 }}>
@@ -210,7 +196,7 @@ export function AgentProfile({ handle }: { handle: string }) {
             <View style={{ alignItems: 'flex-start' }}>
               <Button label={t('agents.lockedCta')} onPress={() => router.navigate(routeInside('/employer/company', actor) as never)} />
             </View>
-          </View>
+          </Card>
         )}
 
         <View style={{ gap: space[5] }}>

@@ -9,6 +9,7 @@ import { safeNext } from '@/lib/safe-next';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
 import { OnboardingForm } from '@/components/auth/onboarding-form';
+import { LeaveOnboarding } from '@/components/auth/leave-onboarding';
 import { AuthShell } from '../auth-shell';
 
 export async function generateMetadata({
@@ -66,6 +67,7 @@ export default async function OnboardingPage({
   const defaultRole =
     role === 'employer' || role === 'candidate' ? role : viewer!.suggestedRole;
   const t = await getTranslations('onboarding');
+  const tNav = await getTranslations('nav');
 
   // Needed only for the company block, but fetched unconditionally: the role
   // is chosen in the browser, so the server cannot know which form is coming.
@@ -97,6 +99,7 @@ export default async function OnboardingPage({
             next={safeNext(next) ?? undefined}
           />
         </div>
+        <LeaveOnboarding locale={locale} signOutLabel={tNav('signOut')} />
       </div>
     </AuthShell>
   );

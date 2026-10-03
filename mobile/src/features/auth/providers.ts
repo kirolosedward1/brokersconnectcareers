@@ -1,7 +1,9 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '~/lib/supabase';
+import { awaitingOAuthReturn, OAUTH_REDIRECT } from './oauth-return';
 
 /**
  * The one-tap sign-ins, as the phone does them.
@@ -21,7 +23,7 @@ import { supabase } from '~/lib/supabase';
  * Neither needs a captcha: Supabase asks for one only with a password.
  */
 
-export const OAUTH_REDIRECT = 'brokersconnect://auth/callback';
+export { OAUTH_REDIRECT };
 
 export type ProviderOutcome =
   | { ok: true }
@@ -39,7 +41,13 @@ function hex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * Sign in with Apple, where it can work: not in Expo Go, which the phone offers
+ * it to but which Apple then issues the token to, under Expo Go's own bundle
+ * id, and Supabase refuses it.
+ */
 export function appleAvailable(): Promise<boolean> {
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return Promise.resolve(false);
   return AppleAuthentication.isAvailableAsync().catch(() => false);
 }
 
@@ -102,9 +110,12 @@ export async function signInWithGoogle(): Promise<ProviderOutcome> {
   if (error) return failed(error);
   if (!data.url) return failed('google: no authorization url');
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, OAUTH_REDIRECT);
-  if (result.type !== 'success') return CANCELLED;
-  return completeOAuth(result.url);
+  const authorize = data.url;
+  return awaitingOAuthReturn(async () => {
+    const result = await WebBrowser.openAuthSessionAsync(authorize, OAUTH_REDIRECT);
+    if (result.type !== 'success') return CANCELLED;
+    return completeOAuth(result.url);
+  });
 }
 
 /**

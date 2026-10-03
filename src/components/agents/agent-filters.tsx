@@ -102,7 +102,7 @@ export function AgentFilters({
             startTransition(() => router.push('/agents', { scroll: false }));
           }}
         >
-          <X />
+          <X aria-hidden />
           {tJobs('clearFilters')}
         </Button>
       ) : null}

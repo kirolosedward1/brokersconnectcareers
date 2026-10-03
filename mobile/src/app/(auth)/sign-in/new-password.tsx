@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
+import { isAuthRetryableFetchError, type AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
-import { Check } from 'lucide-react-native';
+import { Check } from '~/components/ui/lucide';
 import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
@@ -46,17 +47,26 @@ export default function NewPasswordScreen() {
     }
 
     setPending(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const { error: updateError } = await supabase.auth
+      .updateUser({ password })
+      // Thrown rather than answered (the phone's storage failing): said, and the button freed.
+      .catch((failure: unknown) => ({ error: failure as AuthError }));
     if (updateError) {
       setPending(false);
-      setError(/session|jwt|expired/i.test(updateError.message) ? t('auth.linkExpired') : t('common.errorBody'));
+      setError(
+        isAuthRetryableFetchError(updateError)
+          ? t('app.offline.body')
+          : /session|jwt|expired/i.test(updateError.message)
+            ? t('auth.linkExpired')
+            : t('common.errorBody'),
+      );
       return;
     }
 
     setDone(true);
     await supabase.auth.signOut({ scope: 'others' }).catch(() => {});
     await callAction('announcePasswordChange').catch(() => null);
-    await land(NO_INTENT);
+    await land(NO_INTENT).catch(() => setError(t('common.errorBody')));
     setPending(false);
   }
 

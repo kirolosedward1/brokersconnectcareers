@@ -77,6 +77,7 @@ export const SCHEDULE_ALLOWANCE_MINUTES: Record<string, number> = {
   'daily-digest': 26 * 60,
   'email-retry': 3 * 60,
   'job-alerts': 8 * 24 * 60,
+  'new-jobs': 26 * 60,
   maintenance: 3 * 60,
   lifecycle: 3 * 60,
 };

@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { localized } from '@/lib/locale';
@@ -12,15 +12,18 @@ import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/component
 import { Text } from '~/components/ui/text';
 import {
   APPLICANTS_CAP,
+  notesOf,
   STAGES,
   useApplicantNotes,
   useListingApplicants,
   useMarkSeen,
 } from '~/features/employer/applicants';
 import { markupTags } from '~/i18n/rich';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { Inbox, ShieldAlert } from '~/components/ui/lucide';
 
 /**
  * One listing's applicants — the website's /employer/jobs/<id>/applicants:
@@ -39,7 +42,11 @@ export default function ListingApplicantsScreen() {
   const applicants = pipeline.data?.applicants;
   const notes = useApplicantNotes((applicants ?? []).map((row) => row.id));
   const context = useApplicantContext();
-  useMarkSeen(applicants);
+  // Nobody is told a suspended company opened their application: its
+  // applicants are hidden from it (migration 349), whatever a read returns.
+  useMarkSeen(viewer?.company?.suspended_at ? undefined : applicants);
+  // A new applicant, or a colleague's move, reaches the pipeline with a pull.
+  const pull = usePullRefresh(() => Promise.all([pipeline.refetch(), applicants?.length ? notes.refetch() : null]));
 
   const job = pipeline.data?.job ?? null;
   const title = job ? localized(locale, job.title_ar, job.title_en) : t('employer.jobs');
@@ -47,27 +54,39 @@ export default function ListingApplicantsScreen() {
 
   let body: React.ReactNode;
   if (!session || !viewer?.profile) body = <ViewerPending />;
-  else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) body = <NotFoundState />;
-  else if (pipeline.isPending) body = <LoadingState />;
-  else if (pipeline.isError) body = <ErrorState error={pipeline.error} onRetry={() => pipeline.refetch()} />;
+  // A suspended company's applicants are hidden (migration 349): said, not
+  // shown as an empty pipeline.
+  else if (viewer.company.suspended_at) {
+    body = <EmptyState icon={ShieldAlert} title={t('employer.applicantsSuspendedTitle')} body={t('employer.applicantsSuspendedBody')} />;
+  } else if (pipeline.isPending) body = <LoadingState />;
+  else if (pipeline.isError && !pipeline.data) body = <ErrorState error={pipeline.error} onRetry={() => pipeline.refetch()} />;
   else if (!pipeline.data || !job) body = <NotFoundState />;
   else if (pipeline.data.applicants.length === 0) {
+    // In a scroll view of its own, so the first applicant arrives with a pull too.
     body = (
-      <EmptyState
-        title={t('employer.noApplicants')}
-        body={t('employer.noApplicantsHint')}
-        action={
-          <View style={{ gap: space[2], alignSelf: 'stretch' }}>
-            <Button
-              label={t('employer.viewListing')}
-              variant="outline"
-              onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
-            />
-            <Button label={t('employer.allApplicants')} variant="ghost" onPress={() => router.navigate('/employer/applicants' as never)} />
-          </View>
-        }
-      />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ flexGrow: 1 }}
+        refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
+      >
+        <EmptyState
+          icon={Inbox}
+          title={t('employer.noApplicants')}
+          body={t('employer.noApplicantsHint')}
+          action={
+            <View style={{ gap: space[2], alignSelf: 'stretch' }}>
+              <Button
+                label={t('employer.viewListing')}
+                variant="outline"
+                onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
+              />
+              <Button label={t('employer.allApplicants')} variant="ghost" onPress={() => router.navigate('/employer/applicants' as never)} />
+            </View>
+          }
+        />
+      </ScrollView>
     );
   } else {
     const { total } = pipeline.data;
@@ -78,16 +97,18 @@ export default function ListingApplicantsScreen() {
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
+        refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       >
         <Text tone="mutedForeground">{t.markup('employer.pipelineCount', { count: total, ...markupTags })}</Text>
 
         {total > rows.length ? (
-          <View style={{ gap: space[1], padding: space[3], borderRadius: radius.lg, backgroundColor: colors.muted }}>
+          <View style={{ gap: space[1], padding: space[3], ...corner('lg'), backgroundColor: colors.muted }}>
             <Text variant="small">{t.markup('employer.applicantsCapped', { count: APPLICANTS_CAP, ...markupTags })}</Text>
             <Pressable
               accessibilityRole="link"
               onPress={() => router.navigate({ pathname: '/employer/applicants', params: { job: job.id } } as never)}
+              hitSlop={{ top: 4, bottom: 4 }}
               style={{ minHeight: hitTarget - 8, justifyContent: 'center' }}
             >
               <Text variant="small" weight="medium" tone="primary">
@@ -97,31 +118,37 @@ export default function ListingApplicantsScreen() {
           </View>
         ) : null}
 
-        {STAGES.map((stage) => {
+        {/* One list, each stage's header among its cards. A card whose stage
+            changes on a re-read — a colleague's move, read again after a pull
+            or a push — moves under its new header as the same card, keeping
+            the reason or note being typed in it; in a box per stage it was
+            built again, empty. */}
+        {STAGES.flatMap((stage) => {
           const inStage = rows.filter((row) => row.status === stage);
-          if (!inStage.length) return null;
-          return (
-            <View key={stage} style={{ gap: space[3] }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-                <Text weight="semibold" accessibilityRole="header">
-                  {t(`applicationStatus.${stage}`)}
-                </Text>
-                <Badge label={String(inStage.length)} />
-              </View>
-              {inStage.map((row) => (
-                <ApplicantCard
-                  key={row.id}
-                  applicant={row}
-                  jobTitle={title}
-                  companyName={context.companyName}
-                  districtNames={context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
-                  notes={notes.data?.byApplication[row.id] ?? []}
-                  authors={notes.data?.authors ?? {}}
-                  viewerId={context.viewerId}
-                />
-              ))}
-            </View>
-          );
+          if (!inStage.length) return [];
+          return [
+            <View
+              key={`stage:${stage}`}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], marginTop: space[2] }}
+            >
+              <Text weight="semibold" accessibilityRole="header">
+                {t(`applicationStatus.${stage}`)}
+              </Text>
+              <Badge label={String(inStage.length)} />
+            </View>,
+            ...inStage.map((row) => (
+              <ApplicantCard
+                key={row.id}
+                applicant={row}
+                jobTitle={title}
+                companyName={context.companyName}
+                districtNames={context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
+                notes={notesOf(notes.data, row.id)}
+                authors={notes.data?.authors ?? {}}
+                viewerId={context.viewerId}
+              />
+            )),
+          ];
         })}
       </ScrollView>
     );

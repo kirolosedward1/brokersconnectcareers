@@ -15,6 +15,10 @@ import { utf8Decode, utf8Encode } from './utf8';
  * The key is this-device-only. Restored onto a new phone from a backup, the
  * ciphertext comes along and the key does not; the copy cannot be opened, is
  * discarded, and the person signs in again — which is what should happen.
+ *
+ * What was read or written is kept in memory too. supabase-js reads the
+ * session before every request, and each read was a storage read, an AES
+ * decryption and a parse; nothing but this process writes these keys.
  */
 const KEY_NAME = 'bc.session-key.v1';
 
@@ -38,30 +42,50 @@ function sessionKey(): Promise<AESEncryptionKey> {
   return keyPromise;
 }
 
+const memory = new Map<string, string | null>();
+
+async function readSealed(name: string): Promise<string | null> {
+  const sealed = await AsyncStorage.getItem(name);
+  if (!sealed) return null;
+  // The Keychain not answering this once is not a copy that cannot be opened:
+  // nothing is discarded, and the next read tries again.
+  const key = await sessionKey();
+  try {
+    const bytes = await aesDecryptAsync(AESSealedData.fromCombined(sealed), key, { output: 'bytes' });
+    return utf8Decode(bytes);
+  } catch {
+    // Unreadable — sealed with a key this device no longer has. Treated as
+    // signed out, and cleared so the next launch does not try again.
+    await AsyncStorage.removeItem(name);
+    return null;
+  }
+}
+
 /** The storage adapter supabase-js is given; its three methods are all it asks for. */
 export const encryptedSessionStorage = {
   async getItem(name: string): Promise<string | null> {
-    const sealed = await AsyncStorage.getItem(name);
-    if (!sealed) return null;
+    if (memory.has(name)) return memory.get(name) ?? null;
+    let value: string | null;
     try {
-      const bytes = await aesDecryptAsync(AESSealedData.fromCombined(sealed), await sessionKey(), {
-        output: 'bytes',
-      });
-      return utf8Decode(bytes);
+      value = await readSealed(name);
     } catch {
-      // Unreadable — sealed with a key this device no longer has. Treated as
-      // signed out, and cleared so the next launch does not try again.
-      await AsyncStorage.removeItem(name);
+      // Storage or the Keychain failed to answer: nothing to go on this time,
+      // and nothing remembered or thrown away — supabase-js rethrows a
+      // storage error, which left the app waiting for an answer forever.
       return null;
     }
+    memory.set(name, value);
+    return value;
   },
 
   async setItem(name: string, value: string): Promise<void> {
+    memory.set(name, value);
     const sealed = await aesEncryptAsync(utf8Encode(value), await sessionKey());
     await AsyncStorage.setItem(name, await sealed.combined('base64'));
   },
 
   async removeItem(name: string): Promise<void> {
+    memory.set(name, null);
     await AsyncStorage.removeItem(name);
   },
 };

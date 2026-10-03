@@ -308,8 +308,10 @@ export function AuthForm({
     RLS confining an account to its own rows is no protection when the rows
     are other people's applications.
   */
-  const DEMO_LOGIN = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true';
-  const DEMO_PASSWORD = 'password123';
+  // The password seed-demo.mjs was given (DEMO_PASSWORD), for a local build
+  // only: it is no longer a constant anybody can read in this repository.
+  const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? '';
+  const DEMO_LOGIN = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true' && DEMO_PASSWORD !== '';
   const DEMO_EMAILS = {
     candidate: 'candidate1@demo.test',
     employer: 'employer1@demo.test',
@@ -549,6 +551,26 @@ export function AuthForm({
           {pending ? tCommon('loading') : mode === 'sign-up' ? t('signUp') : t('signIn')}
         </SubmitButton>
       </form>
+
+      {/* Where the address is first asked for, the policy that says what
+          happens to it. Agreement itself is the checkbox at onboarding, the
+          one step every way in — email, Google, Apple — goes through. */}
+      {mode === 'sign-up' ? (
+        <p className="text-center text-xs leading-relaxed text-muted-foreground">
+          {t.rich('signUpNotice', {
+            terms: (chunks) => (
+              <Link href="/terms" target="_blank" className="font-medium text-primary underline-offset-4 hover:underline">
+                {chunks}
+              </Link>
+            ),
+            privacy: (chunks) => (
+              <Link href="/privacy" target="_blank" className="font-medium text-primary underline-offset-4 hover:underline">
+                {chunks}
+              </Link>
+            ),
+          })}
+        </p>
+      ) : null}
 
       {/* Sign-in only. Offering a demo account on the sign-up screen would be
           arguing against the thing that screen exists to do. */}

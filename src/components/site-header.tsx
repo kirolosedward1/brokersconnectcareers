@@ -3,6 +3,7 @@ import { LayoutDashboard, Search, ShieldCheck, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { ENGLISH_ENABLED, type Locale } from '@/i18n/routing';
 import { actorOf, getViewer } from '@/lib/auth';
+import { asksToAgree } from '@/lib/policies';
 import { canAccessEmployerArea, homeFor, postJobHref, siteNavFor } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
@@ -42,9 +43,11 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
   const ghostOnFilm = 'group-data-[over-hero]/header:hover:bg-white/15';
 
   // The home page swaps its hero for a listings feed once you are signed in,
-  // and the header has to stop floating when it does.
+  // and the header has to stop floating when it does — and anywhere while the
+  // band asking to agree to the policies again is drawn under it.
+  const bandBelow = await asksToAgree(viewer);
   return (
-    <HeaderShell hasHomeHero={!viewer?.profile}>
+    <HeaderShell hasHomeHero={!viewer?.profile} bandBelow={bandBelow}>
       {/* Three cells below `md` — search, the mark, menu and account — with the
           two outer cells the same width whenever they can be, so the mark sits
           at the true centre of the bar. From `md` it is the ordinary row: mark
@@ -65,7 +68,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           aria-label={t('jobs')}
           className="grid size-11 place-items-center justify-self-start rounded-lg transition-colors hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15 md:hidden"
         >
-          <Search className="size-4" />
+          <Search className="size-4" aria-hidden />
         </Link>
 
         <Link href="/" className="flex min-h-11 shrink-0 items-center justify-self-center">
@@ -96,7 +99,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           {role === 'admin' ? (
             <Button asChild variant="ghost" className={`hidden lg:inline-flex ${ghostOnFilm}`}>
               <Link href="/admin">
-                <ShieldCheck /> {t('admin')}
+                <ShieldCheck aria-hidden /> {t('admin')}
               </Link>
             </Button>
           ) : null}
@@ -108,7 +111,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               {role === 'admin' ? null : (
                 <Button asChild variant="ghost" className={`hidden lg:inline-flex ${ghostOnFilm}`}>
                   <Link href={dashboardHref}>
-                    {hiring ? <Users /> : <LayoutDashboard />}
+                    {hiring ? <Users aria-hidden /> : <LayoutDashboard aria-hidden />}
                     {hiring ? t('employerArea') : t('dashboard')}
                   </Link>
                 </Button>
@@ -116,8 +119,9 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               {/* The same bell the console has. An employer reading their own
                   company page is where an application lands, and until now the
                   only place that said so was a screen they had navigated away
-                  from. It never sits on the hero film: HeaderShell floats only
-                  when nobody is signed in, and nobody signed out has a bell. */}
+                  from. On /employers the header floats over the film for
+                  everybody, signed in or not, so the bell, the account menu
+                  and the phone menu each take the film's white there. */}
               <NotificationMenu locale={locale} userId={viewer.userId} />
               <UserMenu
                 name={viewer.profile.full_name}

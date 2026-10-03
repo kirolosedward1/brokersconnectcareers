@@ -206,7 +206,7 @@ export default async function AdminAgentPage({ params }: { params: Promise<{ loc
                 body={t('liftRestrictionBody')}
                 reason="required"
                 variant="success"
-                icon={<RotateCcw />}
+                icon={<RotateCcw aria-hidden />}
               />
             ) : (
               <ConfirmAction
@@ -215,8 +215,9 @@ export default async function AdminAgentPage({ params }: { params: Promise<{ loc
                 title={t('restrictProfile')}
                 body={t('restrictProfileBody')}
                 reason="required"
+                reasonLabel={t('reasonToConsultant')}
                 variant="destructive"
-                icon={<ShieldAlert />}
+                icon={<ShieldAlert aria-hidden />}
               />
             )}
           </Section>

@@ -11,6 +11,13 @@ export const COMPANIES_PER_PAGE = 24;
 
 export type { CompanyListItem, CompanyProfile } from '@/lib/read-types';
 
+/** A directory row as the cards read it: its live listings as a count. */
+function listed(rows: unknown[] | null): CompanyListItem[] {
+  return ((rows ?? []) as (Omit<CompanyListItem, 'open_roles'> & { open_roles: { id: string }[] })[]).map(
+    ({ open_roles, ...company }) => ({ ...company, open_roles: [{ count: open_roles.length }] }),
+  );
+}
+
 export async function queryCompanies({
   q,
   verifiedOnly,
@@ -56,13 +63,20 @@ export async function queryCompanies({
       `
       *,
       district:districts (id, governorate_id, name_ar, name_en, slug),
-      open_roles:jobs!inner (count)
+      open_roles:jobs!inner (id)
     `,
       { count: 'exact' },
     )
     /*
       !inner on the jobs relation means only companies with at least one live
       listing appear — an employer directory full of empty profiles is noise.
+
+      The live listings themselves, counted below, and not `jobs!inner (count)`,
+      which this was. An aggregate always yields a row, a count of 0 when
+      nothing matches, so the inner join held nothing back: production's
+      directory listed eight companies, six with no open role, under a total of
+      two (2026-09-29). The total was right, being counted apart, and it cut
+      the pages short of the list.
 
       And live means the date, not the label. The nightly cron that writes
       `expired` needs a service-role key that is not configured on production,
@@ -137,7 +151,7 @@ export async function queryCompanies({
     if (lastError) raise(lastError, 'listing companies');
 
     return {
-      companies: (lastPage ?? []) as unknown as CompanyListItem[],
+      companies: listed(lastPage),
       total: total ?? 0,
       pageCount,
       page: pageCount,
@@ -148,7 +162,7 @@ export async function queryCompanies({
 
   const total = count ?? 0;
   return {
-    companies: (data ?? []) as unknown as CompanyListItem[],
+    companies: listed(data),
     total,
     pageCount: Math.max(1, Math.ceil(total / COMPANIES_PER_PAGE)),
     page,

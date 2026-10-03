@@ -53,11 +53,12 @@ export function DirectoryFilterSheet({
       onApply={() => onApply(draft)}
     >
       <FilterGroup title={t('agents.availability')} single>
-        <Chip label={t('filters.any')} selected={draft.availability === null} onPress={() => setDraft({ ...draft, availability: null })} />
+        <Chip label={t('filters.any')} radio selected={draft.availability === null} onPress={() => setDraft({ ...draft, availability: null })} />
         {AVAILABILITIES.map((value) => (
           <Chip
             key={value}
             label={t(`availability.${value}`)}
+            radio
             selected={draft.availability === value}
             onPress={() => setDraft({ ...draft, availability: value })}
           />
@@ -66,11 +67,12 @@ export function DirectoryFilterSheet({
 
       {/* A floor, and labelled as one: search_agents() keeps everybody with at least this many years. */}
       <FilterGroup title={t('filters.experienceBand')} single>
-        <Chip label={t('filters.any')} selected={draft.minYears === null} onPress={() => setDraft({ ...draft, minYears: null })} />
+        <Chip label={t('filters.any')} radio selected={draft.minYears === null} onPress={() => setDraft({ ...draft, minYears: null })} />
         {MIN_YEARS_STEPS.map((years) => (
           <Chip
             key={years}
             label={t('filters.minYears', { count: years })}
+            radio
             selected={draft.minYears === years}
             onPress={() => setDraft({ ...draft, minYears: years })}
           />

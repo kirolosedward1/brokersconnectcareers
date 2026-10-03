@@ -12,6 +12,8 @@ import { CompanySignalList, SafetyFlags } from '@/components/admin/safety';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { must } from '@/lib/admin/read';
+import { raise } from '@/lib/queries/error';
+import { listingNotes, noteFor } from '@/lib/listing-notes';
 import { UUID_RE } from '@/lib/admin/params';
 import { jobIsLive } from '@/lib/job-state';
 import { formatDate, formatEgp, formatNumber } from '@/lib/utils';
@@ -85,6 +87,15 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
   ).data as unknown as JobDetail | null;
   if (!job) notFound();
 
+  // Why it was refused: beside it in job_moderation since migration 347, in
+  // its own column before.
+  const moderation = await listingNotes(
+    (ids) => supabase.from('job_moderation').select('job_id, rejection_note').in('job_id', ids),
+    [job.id],
+  );
+  if (moderation.error) raise(moderation.error, "loading the listing's note");
+  const rejectionNote = noteFor(moderation.notes, job);
+
   const stageCounts = STAGES.map((stage) =>
     supabase.from('applications').select('id', { count: 'exact', head: true }).eq('job_id', id).eq('status', stage),
   );
@@ -119,8 +130,25 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
   const tApplication = await getTranslations('applicationStatus');
   const tReason = await getTranslations('reportReason');
   const tCommon = await getTranslations('common');
+  const tForm = await getTranslations('jobForm');
 
   const title = localized(locale, job.title_ar, job.title_en);
+  /*
+    Every text a reader of the listing is shown, each under its field's name.
+    The commission note is on every visitor's page, and the English title and
+    description on every English reader's; showing the moderator only the
+    Arabic description and requirements had them approve text they were never
+    shown — and an edit to any of these sends a live listing back to review
+    (migration 327) precisely so that somebody reads it.
+  */
+  const texts = [
+    { label: tForm('titleAr'), value: job.title_ar },
+    { label: tForm('titleEn'), value: job.title_en },
+    { label: tForm('descriptionAr'), value: job.description_ar },
+    { label: tForm('descriptionEn'), value: job.description_en },
+    { label: tForm('requirementsAr'), value: job.requirements_ar },
+    { label: tForm('commissionNote'), value: job.commission_note_ar },
+  ].filter((text): text is { label: string; value: string } => Boolean(text.value?.trim()));
   const live = jobIsLive(job);
   const openReports = complaints.filter((r) => r.status === 'open' || r.status === 'investigating').length;
 
@@ -157,9 +185,9 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
         }
       />
 
-      {job.rejection_note && job.status === 'rejected' ? (
+      {rejectionNote && job.status === 'rejected' ? (
         <p className="rounded-xl border border-destructive/40 bg-destructive-muted px-4 py-3 text-sm text-destructive">
-          {t('rejectionNoteShown')} «{job.rejection_note}»
+          {t('rejectionNoteShown')} «{rejectionNote}»
         </p>
       ) : null}
 
@@ -191,12 +219,19 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                 { label: t('views'), value: <span className="numeral">{formatNumber(job.view_count, locale)}</span> },
               ]}
             />
-            <details className="mt-4 text-sm">
+            {/* Open while it waits for a decision: the text is what is being decided on. */}
+            <details className="mt-4 text-sm" open={job.status === 'pending_review'}>
               <summary className="cursor-pointer text-primary">{t('fullDescription')}</summary>
-              <p className="mt-2 whitespace-pre-line leading-relaxed text-muted-foreground">{job.description_ar}</p>
-              {job.requirements_ar ? (
-                <p className="mt-2 whitespace-pre-line leading-relaxed text-muted-foreground">{job.requirements_ar}</p>
-              ) : null}
+              <dl className="mt-2 space-y-3">
+                {texts.map((text) => (
+                  <div key={text.label}>
+                    <dt className="text-xs font-medium text-muted-foreground">{text.label}</dt>
+                    <dd className="mt-0.5 whitespace-pre-line leading-relaxed" dir="auto">
+                      {text.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             </details>
           </Section>
 
@@ -262,31 +297,31 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
               {job.status === 'pending_review' ? (
                 <>
                   <ConfirmAction
-                    lever={{ do: 'job', jobId: job.id, action: 'approve' }}
+                    lever={{ do: 'job', jobId: job.id, action: 'approve', version: job.version }}
                     label={t('approve')}
                     title={t('approveListingTitle')}
                     body={t('approveListingBody')}
                     variant="success"
-                    icon={<Check />}
+                    icon={<Check aria-hidden />}
                   />
                   <ConfirmAction
-                    lever={{ do: 'job', jobId: job.id, action: 'request_changes' }}
+                    lever={{ do: 'job', jobId: job.id, action: 'request_changes', version: job.version }}
                     label={t('requestChanges')}
                     title={t('requestChanges')}
                     body={t('requestChangesListingBody')}
                     reason="required"
                     reasonLabel={t('reasonToCompany')}
-                    icon={<FilePen />}
+                    icon={<FilePen aria-hidden />}
                   />
                   <ConfirmAction
-                    lever={{ do: 'job', jobId: job.id, action: 'reject' }}
+                    lever={{ do: 'job', jobId: job.id, action: 'reject', version: job.version }}
                     label={t('reject')}
                     title={t('rejectListingTitle')}
                     body={t('rejectListingBody')}
                     reason="required"
                     reasonLabel={t('reasonToCompany')}
                     variant="destructive"
-                    icon={<X />}
+                    icon={<X aria-hidden />}
                   />
                 </>
               ) : null}
@@ -300,7 +335,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                   reason="required"
                   reasonLabel={t('reasonToCompany')}
                   variant="destructive"
-                  icon={<EyeOff />}
+                  icon={<EyeOff aria-hidden />}
                 />
               ) : null}
 
@@ -311,18 +346,18 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                   title={t('closeListing')}
                   body={t('closeListingBody')}
                   reason="required"
-                  icon={<Lock />}
+                  icon={<Lock aria-hidden />}
                 />
               ) : null}
 
               {job.status === 'rejected' ? (
                 <ConfirmAction
-                  lever={{ do: 'job', jobId: job.id, action: 'restore' }}
+                  lever={{ do: 'job', jobId: job.id, action: 'restore', version: job.version }}
                   label={t('restoreListing')}
                   title={t('restoreListing')}
                   body={t('restoreListingBody')}
                   variant="success"
-                  icon={<RotateCcw />}
+                  icon={<RotateCcw aria-hidden />}
                 />
               ) : null}
 
@@ -333,7 +368,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                   title={job.is_featured ? t('unfeature') : t('feature')}
                   body={job.is_featured ? undefined : t('featureBody')}
                   variant="ghost"
-                  icon={job.is_featured ? <StarOff /> : <Star />}
+                  icon={job.is_featured ? <StarOff aria-hidden /> : <Star aria-hidden />}
                 />
               ) : null}
 

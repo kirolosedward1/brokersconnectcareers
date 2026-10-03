@@ -42,6 +42,56 @@ report.section('every migration has a version of its own');
   );
 }
 
+report.section('every foreign key has an index behind it');
+{
+  /*
+    A delete on the referenced side looks up the rows that point at it — to
+    cascade, to clear, or to refuse — and with no index on the referencing
+    columns that lookup reads the whole table, once per row deleted. Supabase's
+    performance advisor flags each one (it found three on 2026-10-02, indexed
+    by migration 340); this is the same rule, here, before production has the
+    migration to complain about. A b-tree whose leading columns are the key
+    counts. A partial one counts only when its condition is the key being
+    there (`col IS NOT NULL`, which every row the lookup wants meets): the
+    advisor counts any partial index, but the lookup cannot use one that
+    leaves rows out — push_devices' index on active phones left account
+    deletion reading every phone ever registered.
+  */
+  const { rows } = await db.query(`
+    select c.conrelid::regclass::text as tbl,
+           (select string_agg(a.attname, ', ' order by k.ord)
+              from unnest(c.conkey) with ordinality k(attnum, ord)
+              join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.attnum) as cols
+      from pg_constraint c
+      join pg_class cl on cl.oid = c.conrelid
+     where c.contype = 'f'
+       and cl.relnamespace = 'public'::regnamespace
+       and not exists (
+         select 1
+           from pg_index i
+           join pg_class ic on ic.oid = i.indexrelid
+           join pg_am am on am.oid = ic.relam
+          where i.indrelid = c.conrelid
+            and i.indisvalid
+            and am.amname = 'btree'
+            and (string_to_array(i.indkey::text, ' ')::int2[])[1:array_length(c.conkey, 1)] = c.conkey
+            and (
+              i.indpred is null
+              or (array_length(c.conkey, 1) = 1
+                  and pg_get_expr(i.indpred, i.indrelid) =
+                      format('(%s IS NOT NULL)',
+                             (select quote_ident(a.attname) from pg_attribute a
+                               where a.attrelid = c.conrelid and a.attnum = c.conkey[1])))
+            )
+       )
+     order by 1, 2`);
+  report.check(
+    'no foreign key without one',
+    rows.length === 0,
+    rows.map((row) => `${row.tbl} (${row.cols})`).join('; ') + ' — add an index on those columns in a new migration',
+  );
+}
+
 report.section('the schema applies and the taxonomies land');
 for (const [label, sql, expected] of [
   ['governorates', 'select count(*)::int as n from governorates', 7],
@@ -360,9 +410,12 @@ report.section('who may call a definer function, on purpose');
     'record_support_event',
     'submit_support_request',
     // Predicates that row-level security itself calls.
+    'agent_card_listed_to_viewer', // the report insert policy (344)
+    'agent_owner_listed', // the directory's row policies (344)
     'applied_to_job',
     'applied_to_my_job',
     'can_browse_agent_directory',
+    'company_document_reviewed', // the verification papers' storage policies (344)
     'current_role_of_user',
     'is_admin',
     'is_approved_employer',

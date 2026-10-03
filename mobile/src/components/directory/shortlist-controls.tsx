@@ -1,6 +1,6 @@
 import { Pressable } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { UserRoundCheck, UserRoundPlus } from 'lucide-react-native';
+import { UserRoundCheck, UserRoundPlus } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { useShortlistedIds, useToggleShortlist } from '~/features/directory/queries';
 import { useTheme } from '~/theme/provider';
@@ -15,13 +15,18 @@ import { hitTarget, space } from '~/theme/tokens';
  */
 export function useShortlistToggle(agentId: string) {
   const t = useTranslations('agents');
-  const saved = (useShortlistedIds().data ?? []).includes(agentId);
+  const shortlisted = useShortlistedIds().data;
+  const saved = (shortlisted ?? []).includes(agentId);
+  // Until the shortlist is read, a press could take somebody off (the website toggles).
+  const known = shortlisted !== undefined;
   const toggle = useToggleShortlist();
   return {
     saved,
-    pending: toggle.isPending,
+    pending: toggle.isPending || !known,
     label: saved ? t('shortlistRemove') : t('shortlistAdd'),
-    toggle: () => toggle.mutate(agentId),
+    toggle: () => {
+      if (known) toggle.mutate({ agentId, saved });
+    },
   };
 }
 

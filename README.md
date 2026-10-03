@@ -35,8 +35,13 @@ pnpm dev
 REST API as an anonymous visitor (which also proves the grants and RLS are
 right), then the schema, storage buckets, and auth.
 
-Demo sign-ins are `employer@demo.test`, `employer2@demo.test`,
-`candidate@demo.test` and `admin@demo.test`, all with password `password123`.
+The demo accounts (`employer1@demo.test` … `employer7@demo.test`,
+`candidate1@demo.test` … `candidate7@demo.test` and `admin@demo.test`) get a
+password generated for the run, which `pnpm db:seed:demo` prints; set
+`DEMO_PASSWORD` to choose one, and `NEXT_PUBLIC_DEMO_LOGIN=true` with
+`NEXT_PUBLIC_DEMO_PASSWORD` for the one-tap demo buttons on a local build. The
+script refuses to run against production: shared accounts, one of them an
+admin, have no place where real people's applications are.
 
 Google OAuth is optional; email/password works without it. To enable it, turn on
 `Authentication → Providers → Google` in Supabase and add `<site>/auth/callback`

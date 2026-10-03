@@ -3,8 +3,10 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import {
   BadgeCheck,
+  BadgeX,
   Ban,
   Bell,
+  Briefcase,
   CalendarClock,
   CalendarX2,
   CirclePause,
@@ -23,14 +25,14 @@ import {
   UserMinus,
   UserRound,
   type LucideProps,
-} from 'lucide-react-native';
+} from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
 import { isKnownNotificationKind, notificationTitle, type Translate } from '@/lib/notifications/title';
 import type { NotificationKind, NotificationRow } from '@/lib/supabase/database.types';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
 import type { Colors } from '~/theme/tokens';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 /**
  * One notification — the website's NotificationItem, icon for icon and tone
@@ -61,6 +63,8 @@ const ICONS: Record<NotificationKind, ComponentType<LucideProps>> = {
   profile_restored: Eye,
   account_held: CirclePause,
   appeal_decided: Scale,
+  new_jobs: Briefcase,
+  company_verification_revoked: BadgeX,
 };
 
 type Tone = 'success' | 'primary' | 'muted' | 'destructive' | 'warning';
@@ -89,6 +93,8 @@ const TONES: Record<NotificationKind, Tone> = {
   profile_restored: 'success',
   account_held: 'warning',
   appeal_decided: 'primary',
+  new_jobs: 'primary',
+  company_verification_revoked: 'destructive',
 };
 
 function toneColors(tone: Tone, colors: Colors): { background: string; foreground: string } {
@@ -142,7 +148,7 @@ export function NotificationItem({
         alignItems: 'flex-start',
         gap: space[3],
         padding: space[3],
-        borderRadius: radius.xl,
+        ...corner('xl'),
         backgroundColor: pressed ? colors.muted : 'transparent',
       })}
     >
@@ -150,7 +156,7 @@ export function NotificationItem({
         style={{
           width: 36,
           height: 36,
-          borderRadius: radius.lg,
+          ...corner('lg'),
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: tone.background,

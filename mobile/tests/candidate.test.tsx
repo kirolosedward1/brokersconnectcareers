@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Alert, Text, View, type AlertButton } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
@@ -188,6 +188,7 @@ const app = {
   [`${SHARED}/_layout`]: TabStack,
   [`${SHARED}/notifications`]: NotificationsScreen,
   [`${SHARED}/jobs/[slug]`]: () => <Text>listing page</Text>,
+  [`${SHARED}/companies/[slug]`]: () => <Text>company page</Text>,
   '(tabs)/(home)/index': () => (
     <View>
       <Text>home screen</Text>
@@ -259,6 +260,44 @@ describe('the feed', () => {
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);
     expect(bodyOf('/api/mobile/v1/actions/openNotification')).toEqual({ input: { id: feed[0].id } });
+  });
+
+  it("tells of a followed company's new listings as the website does, and opens the company", async () => {
+    feed = [
+      notification({
+        id: 'n0000000-0000-4000-8000-000000000003',
+        kind: 'new_jobs',
+        payload: { count: 2, source: 'follow', slug: 'nile-brokers', name_ar: 'النيل للوساطة', name_en: null },
+        href: '/companies/nile-brokers',
+      }),
+    ];
+    server.on('POST /api/mobile/v1/actions/openNotification', { ok: true, data: { href: '/companies/nile-brokers' } });
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: '/notifications' });
+
+    fireEvent.press(await screen.findByText('النيل للوساطة نزّلت وظيفتين جداد'));
+    await waitFor(() => expect(result.getPathname()).toBe('/companies/nile-brokers'));
+    expect(screen.getByText('company page')).toBeTruthy();
+    expect(bodyOf('/api/mobile/v1/actions/openNotification')).toEqual({ input: { id: feed[0].id } });
+  });
+
+  it('goes back to the page the bell was opened from when that is where it leads, rather than a second copy', async () => {
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: '/dashboard/applications' });
+    await waitFor(() => expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']));
+    act(() => router.push('/notifications'));
+    fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
+
+    await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
+    // One screen in the tab: Back does not show the feed again.
+    act(() => router.back());
+    expect(result.getPathname()).not.toBe('/notifications');
+  });
+
+  it('says why when a tapped push opened it for a page that is gone', async () => {
+    await signedIn();
+    renderRouter(app, { initialUrl: '/notifications?link=gone' });
+    expect(await screen.findByText(ar.notifications.linkGone)).toBeTruthy();
   });
 
   it('says so when the page a notification pointed at is gone', async () => {

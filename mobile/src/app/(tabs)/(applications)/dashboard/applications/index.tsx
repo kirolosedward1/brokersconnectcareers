@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2, Eye, MapPin } from 'lucide-react-native';
+import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -19,8 +19,9 @@ import {
   type CandidateApplication,
 } from '~/features/applications/queries';
 import { useSession } from '~/lib/session';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * The candidate's applications — the website's /dashboard/applications: every
@@ -29,21 +30,24 @@ import { radius, space } from '~/theme/tokens';
  */
 export default function ApplicationsScreen() {
   const t = useTranslations();
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const { session } = useSession();
   const applications = useMyApplications();
+  // A push about a move reads the list again; the spinner is the pull's alone.
+  const pull = usePullRefresh(() => applications.refetch());
 
   let body: React.ReactNode;
   if (!session) {
     body = (
       <EmptyState
+        icon={UserRound}
         title={t('app.account.signedOutTitle')}
         action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
       />
     );
   } else if (applications.isPending) {
     body = <LoadingState />;
-  } else if (applications.isError) {
+  } else if (applications.isError && !applications.data) {
     // Never "you have not applied" for a read that failed.
     body = <ErrorState error={applications.error} onRetry={() => applications.refetch()} />;
   } else {
@@ -51,13 +55,9 @@ export default function ApplicationsScreen() {
     body = (
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
         refreshControl={
-          <RefreshControl
-            refreshing={applications.isRefetching}
-            onRefresh={() => applications.refetch()}
-            tintColor={colors.primary}
-          />
+          <RefreshControl {...pull} tintColor={colors.primary} />
         }
       >
         <Text tone="mutedForeground">{t('dashboard.applicationsLede')}</Text>
@@ -69,8 +69,8 @@ export default function ApplicationsScreen() {
               gap: space[3],
               paddingVertical: space[8],
               paddingHorizontal: space[6],
-              borderRadius: radius.xl,
-              borderWidth: 1,
+              ...corner('xl'),
+              borderWidth: StyleSheet.hairlineWidth * 2,
               borderStyle: 'dashed',
               borderColor: colors.border,
             }}
@@ -84,9 +84,10 @@ export default function ApplicationsScreen() {
           // One surface, ruled rows — the website's layout, not a card per application.
           <View
             style={{
-              borderRadius: radius.xl,
-              borderWidth: 1,
+              ...corner('xl'),
+              borderWidth: StyleSheet.hairlineWidth * 2,
               borderColor: colors.border,
+              boxShadow: shadow.card,
               backgroundColor: colors.card,
               overflow: 'hidden',
             }}

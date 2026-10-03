@@ -65,23 +65,23 @@ otp_expiry = 3600
 # line that goes with each.
 [auth.email.template.confirmation]
 subject = "أكّد بريدك الإلكتروني في بروكرز كونكت"
-content_path = "./templates/confirmation.html"
+content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
 subject = "إعادة تعيين كلمة المرور"
-content_path = "./templates/recovery.html"
+content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.email_change]
 subject = "أكّد بريدك الإلكتروني الجديد"
-content_path = "./templates/email-change.html"
+content_path = "./supabase/templates/email-change.html"
 
 [auth.email.template.reauthentication]
 subject = "كود تأكيد الهوية"
-content_path = "./templates/reauthentication.html"
+content_path = "./supabase/templates/reauthentication.html"
 
 [auth.email.template.magic_link]
 subject = "لينك الدخول لحسابك"
-content_path = "./templates/magic-link.html"
+content_path = "./supabase/templates/magic-link.html"
 
 # Auth mail does not go through the application's Resend integration — GoTrue
 # sends it, over SMTP. Supabase's built-in sender is rate limited to a handful

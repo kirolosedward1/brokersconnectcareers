@@ -3,6 +3,15 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
+/** The Supabase project's host, from the build's environment; null when unset or unreadable. */
+function storageHost(): string | null {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').hostname || null;
+  } catch {
+    return null;
+  }
+}
+
 const nextConfig: NextConfig = {
   /**
    * `pnpm build` and `pnpm dev` share .next by default, so running a
@@ -28,10 +37,15 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/sitemap.xml': ['./content/**/*'],
     // The legal pages read their markdown off disk at request time, same as the
-    // blog. Traced explicitly rather than trusted to inference, because these
-    // two are linked from the footer of every page on the site.
-    '/[locale]/(site)/privacy': ['./content/legal/**/*'],
-    '/[locale]/(site)/terms': ['./content/legal/**/*'],
+    // blog, by a name Next cannot work out (`${slug}.${locale}.md`), so it has
+    // to be told. The keys are globs over Next's route names, which drop route
+    // groups and start with /app — '/app/[locale]/privacy' — so the
+    // '/[locale]/(site)/privacy' that stood here (a character class and a
+    // regex group, to picomatch) matched nothing, and a production build
+    // carried no English text and no page but the two Arabic ones the policy
+    // versions happened to name. Every document in lib/legal.ts LEGAL_SLUGS
+    // is named in the key; scripts/legal.test.mjs holds the two together.
+    '/**/{privacy,terms,cookies,refunds,account-deletion}': ['./content/legal/**/*'],
   },
   /**
    * Security headers.
@@ -175,8 +189,10 @@ const nextConfig: NextConfig = {
 
   images: {
     remotePatterns: [
-      // Supabase Storage public buckets (company logos).
-      { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/**' },
+      // Supabase Storage public buckets (company logos) — this project's own
+      // host where it is known at build time, so /_next/image cannot be made
+      // to fetch from another project's storage; any project's otherwise.
+      { protocol: 'https', hostname: storageHost() ?? '*.supabase.co', pathname: '/storage/v1/object/public/**' },
     ],
   },
 };

@@ -30,7 +30,8 @@ export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 /** Wider than any place the photo is drawn, and small enough to send over a slow line. */
 const PHOTO_EDGE = 1024;
 
-export type PickedPhoto = { uri: string; name: string; type: 'image/jpeg' | 'image/png' };
+/** A picture ready to send: a JPEG (a photo) or a PNG (a logo) in the app's cache. */
+export type PickedPhoto = { uri: string };
 
 /** Why a photo was not taken, in the website's words for each. */
 export class PhotoRefused extends Error {
@@ -66,13 +67,26 @@ export async function pickImage(kind: 'photo' | 'logo'): Promise<PickedPhoto | n
       : await image.saveAsync({ format: SaveFormat.PNG });
 
   if (new File(saved.uri).size > MAX_PHOTO_BYTES) throw new PhotoRefused('too_large');
-  return kind === 'photo'
-    ? { uri: saved.uri, name: 'photo.jpg', type: 'image/jpeg' }
-    : { uri: saved.uri, name: 'logo.png', type: 'image/png' };
+  return { uri: saved.uri };
 }
 
 /** The account's photo: square, as a JPEG. */
 export const pickPhoto = () => pickImage('photo');
+
+/**
+ * A picked picture as a form's file part: the file itself, whose bytes and name
+ * Expo's fetch reads when it builds the request.
+ *
+ * Not React Native's `{ uri, name, type }` part, which this was. Expo replaces
+ * the global fetch with its own (expo/src/winter), and that one refuses such a
+ * part ("Unsupported FormDataPart implementation"); the app reported the throw
+ * as being offline, and no photo or logo ever reached the website from a
+ * phone. The tests missed it for sending through a stand-in fetch; they now put
+ * the form through Expo's own conversion (tests/multipart.ts).
+ */
+export function formFile(picked: PickedPhoto): Blob {
+  return new File(picked.uri);
+}
 
 /** Send the photo to the website's uploadImage, which writes it and records it on the profile. */
 export function useUploadPhoto() {
@@ -81,14 +95,19 @@ export function useUploadPhoto() {
     mutationFn: async (photo: PickedPhoto) => {
       const form = new FormData();
       form.append('kind', 'avatar');
-      // React Native's form part for a file: read from the uri as it is sent.
-      form.append('file', { uri: photo.uri, name: photo.name, type: photo.type } as unknown as Blob);
+      form.append('file', formFile(photo));
       const result = await callAction('uploadImage', form);
       if (!result.ok) {
         throw new PhotoRefused(result.error === 'file_type' || result.error === 'too_large' ? result.error : 'failed');
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+    // The account, and the directory card it is drawn on (the profile's
+    // preview). Returned, so the button is busy until the new photo shows.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+        queryClient.invalidateQueries({ queryKey: ['directory', 'card'] }),
+      ]),
   });
 }
 
@@ -104,7 +123,11 @@ export function useRemovePhoto() {
       const result = await callAction('saveAvatar', { storagePath: null });
       if (!result.ok) throw new PhotoRefused('failed');
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+        queryClient.invalidateQueries({ queryKey: ['directory', 'card'] }),
+      ]),
   });
 }
 
@@ -114,10 +137,10 @@ export function useRemovePhoto() {
 
 export type EmailPreferences = Pick<
   ProfileRow,
-  'notify_applications' | 'notify_status' | 'notify_digest' | 'notify_applicant_digest'
+  'notify_applications' | 'notify_status' | 'notify_digest' | 'notify_applicant_digest' | 'notify_profile_nudge'
 >;
 
-/** All four switches at once, as the website sends them. */
+/** Every switch at once, as the website sends them (the profile reminder only where the profile has it). */
 export function useSaveEmailPreferences() {
   const queryClient = useQueryClient();
   return useMutation({

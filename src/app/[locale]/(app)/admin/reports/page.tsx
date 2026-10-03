@@ -10,7 +10,7 @@ import { FilterTabs, PageHeader, Pager } from '@/components/admin/kit';
 import { CompanySignalList, SafetyFlags, SeverityBadge } from '@/components/admin/safety';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { must } from '@/lib/admin/read';
+import { leaveAnEmptyPage, must } from '@/lib/admin/read';
 import { cairoDayStart, dayOf, hrefWith, oneOf, pageOf, param, type SearchParams } from '@/lib/admin/params';
 import { formatDate, formatNumber } from '@/lib/utils';
 import type {
@@ -162,14 +162,23 @@ export default async function AdminReportsPage({
     ).data ?? [];
     total = Number(rows[0]?.total_count ?? 0);
   }
+  // Resolving the last case on a later page refreshes that page empty, its
+  // total read as 0 — "nothing waiting" over a page one still full of cases.
+  await leaveAnEmptyPage(locale, {
+    page,
+    rows: grouped ? cases.length : rows.length,
+    total,
+    size: grouped ? CASE_PAGE : CLOSED_PAGE,
+    href: (n) => hrefWith('/admin/reports', current, { page: n }),
+  });
 
   const byId = new Map(rows.map((row) => [row.id, row]));
   const n = (value: number) => formatNumber(value, locale);
 
   const takeDown: Record<ReportTargetType, { label: string; body: string; icon: React.ReactNode }> = {
-    job: { label: t('resolveTakeDownJob'), body: t('resolveTakeDownJobBody'), icon: <EyeOff /> },
-    company: { label: t('resolveSuspendCompany'), body: t('resolveSuspendCompanyBody'), icon: <Ban /> },
-    agent: { label: t('resolveRestrictAgent'), body: t('resolveRestrictAgentBody'), icon: <ShieldAlert /> },
+    job: { label: t('resolveTakeDownJob'), body: t('resolveTakeDownJobBody'), icon: <EyeOff aria-hidden /> },
+    company: { label: t('resolveSuspendCompany'), body: t('resolveSuspendCompanyBody'), icon: <Ban aria-hidden /> },
+    agent: { label: t('resolveRestrictAgent'), body: t('resolveRestrictAgentBody'), icon: <ShieldAlert aria-hidden /> },
   };
 
   const hrefOf = (targetType: ReportTargetType, id: string) =>
@@ -251,7 +260,7 @@ export default async function AdminReportsPage({
               reason="required"
               reasonLabel={t('abusiveReasonLabel')}
               variant="ghost"
-              icon={<UserX />}
+              icon={<UserX aria-hidden />}
             />
           </div>
         ) : null}
@@ -358,7 +367,7 @@ export default async function AdminReportsPage({
                   title={t('investigate')}
                   body={t('investigateBody')}
                   reason="optional"
-                  icon={<Search />}
+                  icon={<Search aria-hidden />}
                 />
               ) : null}
               {actionable ? (
@@ -374,7 +383,9 @@ export default async function AdminReportsPage({
                   title={takeDown[item.target_type].label}
                   body={takeDown[item.target_type].body}
                   reason="required"
-                  reasonLabel={t('reasonToOwner')}
+                  // Who reads it: a listing's company and a company's members get the
+                  // reason with the take-down, a consultant gets it on their profile.
+                  reasonLabel={item.target_type === 'agent' ? t('reasonToConsultant') : t('reasonToCompany')}
                   variant="destructive"
                   icon={takeDown[item.target_type].icon}
                 />
@@ -385,7 +396,7 @@ export default async function AdminReportsPage({
                 title={t('resolveOnly')}
                 body={t('resolveOnlyBody')}
                 reason="optional"
-                icon={<CheckCheck />}
+                icon={<CheckCheck aria-hidden />}
               />
               <ConfirmAction
                 lever={{ do: 'reports', targetType: item.target_type, targetId: item.target_id, status: 'dismissed' }}
@@ -394,7 +405,7 @@ export default async function AdminReportsPage({
                 body={t('dismissBody')}
                 reason="optional"
                 variant="ghost"
-                icon={<ThumbsUp />}
+                icon={<ThumbsUp aria-hidden />}
               />
             </>
           ) : openIds.length ? (
@@ -405,7 +416,7 @@ export default async function AdminReportsPage({
                 title={t('closeDeletedResolve')}
                 body={t('closeDeletedBody')}
                 reason="optional"
-                icon={<CheckCheck />}
+                icon={<CheckCheck aria-hidden />}
               />
               <ConfirmAction
                 lever={{ do: 'closeReports', ids: openIds, status: 'dismissed' }}
@@ -414,7 +425,7 @@ export default async function AdminReportsPage({
                 body={t('closeDeletedBody')}
                 reason="optional"
                 variant="ghost"
-                icon={<ThumbsUp />}
+                icon={<ThumbsUp aria-hidden />}
               />
             </>
           ) : null}

@@ -6,6 +6,7 @@ import { Button } from '~/components/ui/button';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState } from '~/components/ui/states';
 import { useSession } from '~/lib/session';
+import { Building2, ShieldAlert } from '~/components/ui/lucide';
 
 /**
  * A new listing — the website's /employer/jobs/new: the wizard, for somebody
@@ -19,10 +20,11 @@ export default function NewJobScreen() {
 
   let body: React.ReactNode;
   if (!session || !viewer?.profile) body = <ViewerPending />;
-  else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) {
     body = (
       <EmptyState
+        icon={Building2}
         title={t('employer.createCompanyFirst')}
         body={t('employer.createCompanyFirstBody')}
         action={<Button label={t('employer.company')} onPress={() => router.navigate('/employer/company' as never)} />}

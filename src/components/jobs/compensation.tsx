@@ -20,8 +20,15 @@ export function SalaryLine({ job, locale }: { job: Comp; locale: string }) {
   const t = useTranslations('compensation');
   const { basic_salary_min: min, basic_salary_max: max } = job;
 
+  // No salary figures is "commission only" — unless the listing also says
+  // there is no commission, where those words would contradict the line
+  // under them.
   if (min == null && max == null) {
-    return <span className="text-muted-foreground">{t('commissionOnly')}</span>;
+    return (
+      <span className="text-muted-foreground">
+        {t(job.commission_type === 'none' ? 'noBasicSalary' : 'commissionOnly')}
+      </span>
+    );
   }
 
   // Only the digits are isolated, never the phrase around them.

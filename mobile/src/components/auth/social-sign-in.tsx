@@ -7,7 +7,7 @@ import { appleAvailable, signInWithApple, signInWithGoogle, type ProviderOutcome
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { space } from '~/theme/tokens';
 import { GoogleMark } from './google-mark';
 
 /**
@@ -49,13 +49,16 @@ export function SocialSignIn({
   const google = Boolean(config.data?.providers.google);
   if (!apple && !google) return null;
 
-  const run = async (provider: () => Promise<ProviderOutcome>) => {
+  // A promise chain, not try/finally, which the React Compiler does not compile.
+  const run = (provider: () => Promise<ProviderOutcome>) => {
     onBusy(true);
-    try {
-      await onOutcome(await provider());
-    } finally {
-      onBusy(false);
-    }
+    const done = () => onBusy(false);
+    return provider()
+      .then(onOutcome)
+      .then(done, (failure: unknown) => {
+        done();
+        throw failure;
+      });
   };
 
   return (
@@ -74,8 +77,9 @@ export function SocialSignIn({
                   ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
                   : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
               }
-              cornerRadius={radius.lg}
-              style={{ height: 52 }}
+              // The same capsule as the Google button under it: 56 high, round ends.
+              cornerRadius={28}
+              style={{ height: 56 }}
               onPress={() => run(signInWithApple)}
             />
           </View>

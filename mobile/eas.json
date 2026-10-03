@@ -13,6 +13,7 @@
     },
     "development": {
       "extends": "base",
+      "channel": "development",
       "developmentClient": true,
       "distribution": "internal"
     },
@@ -22,14 +23,21 @@
     },
     "preview": {
       "extends": "base",
+      "channel": "preview",
       "distribution": "internal"
     },
     "production": {
       "extends": "base",
+      "channel": "production",
       "autoIncrement": true
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "language": "ar-SA",
+        "metadataPath": "./store.config.js"
+      }
+    }
   }
 }

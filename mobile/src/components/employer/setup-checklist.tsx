@@ -1,13 +1,13 @@
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { Check, CircleDashed, Clock } from 'lucide-react-native';
+import { Check, CircleDashed, Clock } from '~/components/ui/lucide';
 import type { CompanyRow } from '@/lib/supabase/database.types';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 type Step = { key: string; label: string; hint: string; state: 'done' | 'waiting' | 'todo'; href: string };
 
@@ -70,7 +70,7 @@ export function SetupChecklist({
             {t('setupLede')}
           </Text>
         </View>
-        <View style={{ paddingHorizontal: space[3], paddingVertical: 2, borderRadius: radius.full, backgroundColor: colors.muted }}>
+        <View style={{ paddingHorizontal: space[3], paddingVertical: 2, ...corner('full'), backgroundColor: colors.muted }}>
           <Text variant="small" weight="medium">
             {t('setupProgress', { done, total: steps.length })}
           </Text>
@@ -79,7 +79,18 @@ export function SetupChecklist({
 
       {steps.map((step) => (
         <View key={step.key} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3] }}>
+          {/* The mark says where the step stands, so VoiceOver says it too —
+              read before the step, where it sits; the icon alone left a done
+              step and one not begun sounding the same. */}
           <View
+            accessible
+            accessibilityLabel={
+              step.state === 'done'
+                ? t('setupStateDone')
+                : step.state === 'waiting'
+                  ? t('setupStateWaiting')
+                  : t('setupStateTodo')
+            }
             style={{
               width: 24,
               height: 24,

@@ -5,7 +5,6 @@ import {
   MapPin,
   Search,
   Send,
-  Users,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { localized, type Locale } from "@/i18n/routing";
@@ -59,7 +58,6 @@ export async function SignedInHome({
 
   const featured = jobs.filter((job) => job.is_featured).slice(0, 2);
   const latest = jobs.filter((job) => !featured.includes(job)).slice(0, 6);
-  const openSeats = jobs.reduce((sum, job) => sum + job.seats, 0);
 
   const hiring = role === "employer" || role === "admin";
   const action = locale === "ar" ? "/jobs" : `/${locale}/jobs`;
@@ -76,7 +74,7 @@ export async function SignedInHome({
         <Button asChild variant="outline">
           <Link href={hiring ? "/employer" : "/dashboard"}>
             {hiring ? tNav("employerArea") : tNav("dashboard")}
-            <ArrowRight className="rtl-flip" />
+            <ArrowRight className="rtl-flip" aria-hidden />
           </Link>
         </Button>
       </header>
@@ -85,11 +83,16 @@ export async function SignedInHome({
           a job to apply to — they get their own strip instead, and the market
           feed below it stays, because what else is running is worth knowing
           when you are writing a listing. A plain GET form, so it works before
-          any JavaScript loads. */}
+          any JavaScript loads.
+
+          The bar's edge is the text field's edge, which has none of its own,
+          so it is drawn in --input (3.4:1) rather than --border (1.35:1). The
+          select gets the same edge: its muted fill alone was 1.1:1 against
+          the bar. */}
       {hiring ? null : (
         <form
           action={action}
-          className="mt-5 rounded-xl border border-border bg-card p-1.5"
+          className="mt-5 rounded-xl border border-input bg-card p-1.5"
         >
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative flex-1">
@@ -102,7 +105,7 @@ export async function SignedInHome({
                 name="q"
                 placeholder={t("searchPlaceholder")}
                 aria-label={t("searchPlaceholder")}
-                className="h-11 w-full rounded-lg border-0 bg-transparent px-4 ps-11 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
+                className="h-11 w-full rounded-lg border-0 bg-transparent px-4 ps-11 text-base outline-hidden placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
 
@@ -115,7 +118,7 @@ export async function SignedInHome({
                 name="district"
                 aria-label={t("byDistrict")}
                 defaultValue=""
-                className="h-11 w-full appearance-none rounded-lg border-0 bg-muted px-4 ps-11 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="h-11 w-full appearance-none rounded-lg border border-input bg-muted px-4 ps-11 text-base outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <option value="">{tFilters("any")}</option>
                 {districts.slice(0, 12).map((district) => (
@@ -138,20 +141,22 @@ export async function SignedInHome({
           <p className="me-auto text-sm font-medium">{t("hiringStrip")}</p>
           <Button asChild variant="outline">
             <Link href="/employer/jobs">
-              <Briefcase /> {t("hiringJobs")}
+              <Briefcase aria-hidden /> {t("hiringJobs")}
             </Link>
           </Button>
           <Button asChild>
             <Link href="/employer/jobs/new">
-              <Send /> {tNav("postJob")}
+              <Send aria-hidden /> {tNav("postJob")}
             </Link>
           </Button>
         </section>
       ) : null}
 
       {/* The market, in one line rather than a run of dot-separated
-          fragments — two labelled figures read as facts; "15 · وظيفة · 138"
-          reads as a fragment of something else. */}
+          fragments — a labelled figure reads as a fact; "15 · وظيفة · 138"
+          reads as a fragment of something else. Live listings only: an
+          open-seats figure beside it added up the first page of the board and
+          sat next to the board's total as if it were the market's. */}
       <section className="mt-8" aria-labelledby="market-heading">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 id="market-heading" className="text-lg font-semibold">
@@ -166,14 +171,6 @@ export async function SignedInHome({
                 <span className="numeral">{n(total)}</span>
               </dd>
               <span>{t("statJobs")}</span>
-            </div>
-            <div className="inline-flex items-center gap-1.5">
-              <Users className="size-3.5" aria-hidden />
-              <dt className="sr-only">{t("statSeats")}</dt>
-              <dd className="font-semibold text-foreground">
-                <span className="numeral">{n(openSeats)}</span>
-              </dd>
-              <span>{t("statSeats")}</span>
             </div>
           </dl>
         </div>
@@ -218,7 +215,7 @@ export async function SignedInHome({
           <Button asChild variant="outline">
             <Link href="/jobs">
               {t("browseAll")}
-              <ArrowRight className="rtl-flip" />
+              <ArrowRight className="rtl-flip" aria-hidden />
             </Link>
           </Button>
         </div>

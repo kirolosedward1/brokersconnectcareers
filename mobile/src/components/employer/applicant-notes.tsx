@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { ChevronDown, ChevronUp, Lock, Trash2 } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Lock, Trash2 } from '~/components/ui/lucide';
 import { formatDate, formatNumber } from '@/lib/format';
 import type { ApplicationNoteRow } from '@/lib/supabase/database.types';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useAddNote, useDeleteNote } from '~/features/employer/applicants';
+import { ApiError } from '~/lib/api';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 
 /**
  * The company's own notes on an applicant — the website's ApplicantNotes.
@@ -25,7 +26,8 @@ export function ApplicantNotes({
   viewerId,
 }: {
   applicationId: string;
-  notes: ApplicationNoteRow[];
+  /** Undefined until the company's notes have been read. */
+  notes: ApplicationNoteRow[] | undefined;
   authors: Record<string, string>;
   viewerId: string | null;
 }) {
@@ -34,9 +36,10 @@ export function ApplicantNotes({
   const { colors } = useTheme();
   const add = useAddNote();
   const remove = useDeleteNote();
+  const shown = notes ?? [];
   // Open while there are notes, until somebody says otherwise — they arrive after the card does.
   const [chosen, setChosen] = useState<boolean | null>(null);
-  const open = chosen ?? notes.length > 0;
+  const open = chosen ?? shown.length > 0;
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -45,11 +48,13 @@ export function ApplicantNotes({
     if (!body) return;
     setError(null);
     add.mutate(
-      { applicationId, body },
+      // The newest note shown, so a lost answer can be told from a note that never went in; none while unread.
+      { applicationId, body, after: notes ? notes.reduce((newest, note) => Math.max(newest, note.id), 0) : null },
       {
         // Cleared only once the server has it: a box that empties and then fails has taken a sentence away.
         onSuccess: () => setDraft(''),
-        onError: () => setError(t('common.errorBody')),
+        onError: (failure) =>
+          setError(failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody')),
       },
     );
   };
@@ -63,16 +68,19 @@ export function ApplicantNotes({
         accessibilityState={{ expanded: open }}
         accessibilityHint={t('employer.notesHint')}
         onPress={() => setChosen(!open)}
+        hitSlop={{ top: 4, bottom: 4 }}
         style={{ minHeight: hitTarget - 8, flexDirection: 'row', alignItems: 'center', gap: space[1] }}
       >
         <Lock size={14} color={colors.mutedForeground} />
         <Text variant="small" weight="medium" tone="mutedForeground">
           {t('employer.notesTitle')}
         </Text>
-        {notes.length ? (
-          <Text variant="caption" weight="medium" style={{ paddingHorizontal: 6, borderRadius: 4, backgroundColor: colors.muted }}>
-            {formatNumber(notes.length, locale)}
-          </Text>
+        {shown.length ? (
+          <View style={{ minWidth: 24, paddingHorizontal: space[2], paddingVertical: 1, ...corner('full'), backgroundColor: colors.muted, alignItems: 'center' }}>
+            <Text variant="caption" weight="medium">
+              {formatNumber(shown.length, locale)}
+            </Text>
+          </View>
         ) : null}
         <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }} numberOfLines={1}>
           {`— ${t('employer.notesHint')}`}
@@ -82,7 +90,7 @@ export function ApplicantNotes({
 
       {open ? (
         <View style={{ gap: space[2] }}>
-          {notes.map((note) => (
+          {shown.map((note) => (
             <View key={note.id} style={{ gap: 2, paddingStart: space[3], borderStartWidth: 2, borderStartColor: colors.border }}>
               <Text variant="small">{note.body}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
@@ -99,6 +107,7 @@ export function ApplicantNotes({
                         onError: () => setError(t('common.errorBody')),
                       })
                     }
+                    hitSlop={{ top: 6, bottom: 6, left: 8, right: 8 }}
                     style={{ minHeight: hitTarget - 12, flexDirection: 'row', alignItems: 'center', gap: 2 }}
                   >
                     <Trash2 size={12} color={colors.destructive} />

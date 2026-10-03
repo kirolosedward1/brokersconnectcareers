@@ -36,7 +36,7 @@ export async function generateMetadata({
  * matching, is exactly that absence, and it is the most important thing this
  * page can show. So the expected set is the spine and the database fills it.
  */
-const EXPECTED_JOBS = ['expire-jobs', 'email-retry', 'daily-digest', 'job-alerts'];
+const EXPECTED_JOBS = ['expire-jobs', 'email-retry', 'daily-digest', 'job-alerts', 'new-jobs'];
 
 const VARIANT: Record<JobRunStatus, 'default' | 'primary' | 'success' | 'destructive' | 'outline'> = {
   running: 'primary',
@@ -61,7 +61,7 @@ function formatMoment(value: string, locale: string): string {
 }
 
 /** Counts a run recorded, as one line of identifiers — `sent 3 · failed 1`. */
-function statsLine(stats: Record<string, number | boolean> | null): string {
+function statsLine(stats: Record<string, number | boolean | string> | null): string {
   if (!stats) return '';
   return Object.entries(stats)
     .filter(([key]) => key !== 'ms')

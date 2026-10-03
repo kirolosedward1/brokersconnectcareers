@@ -6,7 +6,7 @@ import { CheckCircle2, Paperclip, ShieldCheck } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
-import { Field, Input, Select, Textarea } from '@/components/ui/field';
+import { Field, fieldMessageId, Input, Select, Textarea } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
 import { CV_BUCKET } from '@/lib/buckets';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
@@ -144,8 +144,13 @@ export function ApplyForm({
           the upload, so removing it needs no privilege the browser did not
           already have. A failure here is not worth reporting: the person is
           already being told the application did not go through.
+
+          Except when no answer came back at all ('network'): the application
+          may have gone in with this file and only the answer been lost, and
+          taking the file out would leave it pointing at nothing. The storage
+          clean-up removes a file nothing points at after a day.
         */
-        if (cvPath) {
+        if (cvPath && result.error !== 'network') {
           await createClient().storage.from(CV_BUCKET).remove([cvPath]);
         }
 
@@ -157,7 +162,14 @@ export function ApplyForm({
           setErrors({ form: t('rateLimit') });
           return;
         }
-        setErrors(result.fieldErrors ?? { form: tCommon('errorBody') });
+        // The server names a refused CV by its key — 'fileType': the bytes are
+        // no PDF or Word document, whatever the name says — and the field
+        // showed the key itself, in Latin letters under an Arabic form.
+        setErrors(
+          result.fieldErrors
+            ? { ...result.fieldErrors, ...(result.fieldErrors.cv ? { cv: tValidation('fileType') } : {}) }
+            : { form: tCommon('errorBody') },
+        );
         return;
       }
 
@@ -275,12 +287,16 @@ export function ApplyForm({
 
       <Field label={t('cv')} hint={t('cvOptional')} htmlFor="cv" error={errors.cv || undefined}>
         <div className="flex items-center gap-3">
+          {/* Not one of Field's own controls, so it reads the hint's or the
+              error's id itself, as Field's Input would. */}
           <input
             ref={fileRef}
             id="cv"
             name="cv"
             type="file"
             accept=".pdf,.doc,.docx"
+            aria-describedby={fieldMessageId('cv', { hint: t('cvOptional'), error: errors.cv })}
+            aria-invalid={errors.cv ? true : undefined}
             onChange={onFileChange}
             className="block w-full text-sm file:me-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium"
           />

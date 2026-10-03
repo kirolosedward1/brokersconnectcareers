@@ -19,10 +19,23 @@ function salt(): string {
   return (
     process.env.SECURITY_SALT ||
     process.env.CRON_SECRET ||
+    // Production cannot run without the service role key, so a deployment
+    // that set neither of the two above still hashes with a secret rather
+    // than with the public string below. The hash reveals nothing of it.
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
     // Development only. Production is expected to set SECURITY_SALT; the
     // health endpoint says when it has not.
     'brokers-connect-development-salt'
   );
+}
+
+/**
+ * The same handle for a rate-limit bucket (`reset:email:<handle>`): salted,
+ * so a copy of rate_limit_hits cannot be reversed by hashing every IPv4
+ * address, or a list of email addresses, and looking the results up.
+ */
+export function bucketHandle(kind: 'ip' | 'email', value: string): string {
+  return hashSubject(kind, value).slice(kind.length + 1, kind.length + 1 + 22);
 }
 
 /** A short, stable, non-reversible handle for a subject. */

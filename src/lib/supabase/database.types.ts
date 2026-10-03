@@ -66,6 +66,18 @@ export type ProfileRow = Timestamped & {
   notify_digest: boolean;
   /** Employer: batch applicant notices into one daily email. Gated by notify_applications. */
   notify_applicant_digest: boolean;
+  /** Candidate: the one-time "finish your profile" reminder. Off unless turned on (migration 337); absent before it. */
+  notify_profile_nudge?: boolean;
+  /**
+   * Pushes, by kind, for all of the person's phones (migration 335): the day's
+   * new listings, application events, and everything else. The bell has them
+   * either way. Absent until that migration is applied.
+   */
+  push_job_alerts?: boolean;
+  push_applications?: boolean;
+  push_account?: boolean;
+  /** Hold pushes made between 23:00 and 08:00 Cairo time until eight. Off unless turned on. */
+  push_quiet_hours?: boolean;
   /**
    * Whether this account may act. Candidates arrive approved; companies wait
    * for an admin, because the side that collects CVs and phone numbers is the
@@ -189,6 +201,11 @@ export type JobRow = Timestamped & {
   published_at: string | null;
   expires_at: string | null;
   view_count: number;
+  /**
+   * Always null since migration 347: a moderator's note is in job_moderation,
+   * for the listing's company. Read through src/lib/listing-notes.ts, which
+   * falls back to this column on a database before 347.
+   */
   rejection_note: string | null;
   /** Bumped on every update; the edit form sends back the one it loaded. */
   version: number;
@@ -328,7 +345,12 @@ export type NotificationKind =
   | 'profile_restricted'
   | 'profile_restored'
   | 'account_held'
-  | 'appeal_decided';
+  | 'appeal_decided'
+  // Migrations 333–334: the day's new listings from a person's saved searches
+  // and followed companies (/api/cron/new-jobs).
+  | 'new_jobs'
+  // Migration 348: a moderator took a company's verification away.
+  | 'company_verification_revoked';
 
 /**
  * The payload holds data, never a rendered sentence — the site is read in two
@@ -365,6 +387,10 @@ export type NotificationRow = {
     outcome?: 'actioned' | 'reviewed' | 'upheld' | 'overturned';
     /** appeal_decided: what the appeal was about. */
     subject_type?: AppealSubjectType;
+    /** new_jobs: what found the listings — one followed company, one search, or several. */
+    source?: 'follow' | 'search' | 'mixed';
+    /** new_jobs: the saved search's own name, when one search found them. */
+    label?: string;
   };
   href: string | null;
   read_at: string | null;
@@ -443,6 +469,12 @@ export type AgentProfileRow = Timestamped & {
   units_closed: number | null;
   /** Self-reported closed value in EGP. The platform does not verify it. */
   volume_egp: number | null;
+  /**
+   * When the owner last chose who sees the card, on the database's clock
+   * (migration 336). Null for a card made before anybody was asked. Send any
+   * value to mark an explicit choice; the database replaces it with now().
+   */
+  visibility_chosen_at?: string | null;
   /** Set by an admin (migration 317); pins visibility to hidden until lifted. */
   restricted_at?: string | null;
   restriction_reason?: string | null;
@@ -466,6 +498,8 @@ export type SavedSearchRow = Timestamped & {
    * Job-written only, same guard as last_sent_at.
    */
   last_checked_at: string | null;
+  /** The daily new-jobs job's own cursor (migration 334), apart from the weekly email's. Job-written only. */
+  bell_checked_at: string | null;
 };
 
 export type EmailStatus =
@@ -596,6 +630,16 @@ export type SupportRequestRow = {
 };
 
 /** A phone signed in with the app (migration 329). Written through register_push_device only. */
+/** One agreement to the Terms of use and the Privacy policy (migration 336). Written by record_policy_acceptance() only. */
+export type PolicyAcceptanceRow = {
+  id: number;
+  user_id: string;
+  /** The documents' `updated` dates (content/legal/*.ar.md). */
+  terms_version: string;
+  privacy_version: string;
+  accepted_at: string;
+};
+
 export type PushDeviceRow = {
   id: string;
   user_id: string;
@@ -665,7 +709,7 @@ export type JobRunRow = {
   finished_at: string | null;
   lease_until: string | null;
   duration_ms: number | null;
-  stats: Record<string, number | boolean>;
+  stats: Record<string, number | boolean | string>;
   error: string | null;
 };
 
@@ -866,6 +910,17 @@ export type AppealState = {
 export type CompanyModerationRow = {
   company_id: string;
   suspension_reason: string | null;
+  updated_at: string;
+};
+
+/**
+ * Why a moderator refused or took down a listing (migration 347): the
+ * listing's company and the admins read it. Before 347 it was the listing's
+ * own rejection_note, which is always null since.
+ */
+export type JobModerationRow = {
+  job_id: string;
+  rejection_note: string | null;
   updated_at: string;
 };
 
@@ -1282,6 +1337,7 @@ export type Database = {
       job_runs: Table<JobRunRow, never>;
       /** Its owner reads it; register_push_device / unregister_push_device write it; the sender disables it. */
       push_devices: Table<PushDeviceRow, never>;
+      policy_acceptances: Table<PolicyAcceptanceRow, never>;
       /** Read by its sender and by admins; written only through submit_support_request(), answered through admin_answer_support_request(). */
       support_requests: Table<SupportRequestRow, never>;
       /** Queued by the notifications trigger; RLS on, no policies: the sender (service role) only. */
@@ -1302,6 +1358,8 @@ export type Database = {
       moderation_appeals: Table<AppealRow, never>;
       /** Written by admin_set_company_suspension() only. */
       company_moderation: Table<CompanyModerationRow, never>;
+      /** Written by admin_moderate_job() and the suspension levers only. */
+      job_moderation: Table<JobModerationRow, never>;
       email_suppressions: Table<
         EmailSuppressionRow,
         { email: string; reason: SuppressionReason; created_at?: string }
@@ -1419,6 +1477,8 @@ export type Database = {
         readers, which answer admins and refuse everybody else.
       */
       run_lifecycle_maintenance: { Args: Empty; Returns: Record<string, unknown> };
+      /** The privacy policy's periods (migration 338): counts per kind, and `errors`. Service role. */
+      run_privacy_retention: { Args: { p_limit?: number }; Returns: Record<string, unknown> };
       claim_storage_gc: {
         Args: { p_limit?: number };
         Returns: { bucket: string; path: string }[];
@@ -1467,6 +1527,8 @@ export type Database = {
           p_job: string;
           p_action: 'approve' | 'reject' | 'request_changes' | 'unpublish' | 'close' | 'restore';
           p_reason?: string | null;
+          /** The version the moderator read; a change since is refused (migration 346). */
+          p_version?: number | null;
         };
         Returns: JobStatus;
       };
@@ -1476,9 +1538,13 @@ export type Database = {
           p_company: string;
           p_decision: 'verify' | 'reject' | 'request_changes' | 'revoke';
           p_note?: string | null;
+          /** The version the reviewer read; a change since is refused (migration 346). */
+          p_version?: number | null;
         };
         Returns: VerificationStatus;
       };
+      /** Closes an account deletion request, on the record (migration 346). */
+      admin_close_deletion_request: { Args: { p_id: string }; Returns: string };
       admin_set_company_suspension: {
         Args: { p_company: string; p_suspend: boolean; p_reason: string };
         Returns: number;
@@ -1753,6 +1819,13 @@ export type Database = {
         Returns: string;
       };
       unregister_push_device: { Args: { p_token: string }; Returns: undefined };
+      /** The caller agreeing to these versions of the Terms and the Privacy policy (migration 336). Once per pair. */
+      record_policy_acceptance: { Args: { p_terms_version: string; p_privacy_version: string }; Returns: undefined };
+      /** The day's new-jobs notification (migration 334): its id, or null when today's exists or the person is not a candidate. Service role. */
+      record_new_jobs_notification: {
+        Args: { p_user: string; p_payload: NotificationRow['payload']; p_href: string };
+        Returns: string | null;
+      };
       /** A help request, or an owner's deletion request; the answer is its reference. Retried with the same key, the same one. */
       submit_support_request: {
         Args: {
@@ -1793,7 +1866,7 @@ export type Database = {
         Args: {
           p_id: string;
           p_status: 'succeeded' | 'failed';
-          p_stats?: Record<string, number | boolean>;
+          p_stats?: Record<string, number | boolean | string>;
           p_error?: string | null;
         };
         Returns: boolean;

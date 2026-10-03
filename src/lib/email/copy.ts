@@ -250,6 +250,22 @@ export const emailCopy = {
       contact: 'لو ده مش صح، ابعتلنا من صفحة المساعدة وهنراجعها.',
     },
 
+    // The same decisions, for a consultant's account.
+    accountApprovedCandidate: {
+      subject: 'حسابك اتفعّل',
+      preheader: 'تقدر تقدّم على الوظايف دلوقتي.',
+      heading: 'حسابك اتفعّل',
+      body: 'راجعنا حسابك، وبقى مفعّل تاني. تقدر تقدّم على الوظايف وتحدّث ملفك.',
+      cta: 'افتح حسابك',
+    },
+
+    accountRejectedCandidate: {
+      subject: 'حسابك متوقف مؤقتاً',
+      preheader: 'محتاجين نراجع بيانات حسابك تاني.',
+      heading: 'حسابك متوقف مؤقتاً',
+      body: 'وقّفنا الحساب مؤقتاً لحد ما نراجع البيانات تاني.',
+    },
+
     companyVerified: {
       subject: 'تم توثيق شركتك',
       preheader: 'علامة التوثيق ظهرت على صفحتك.',
@@ -268,6 +284,16 @@ export const emailCopy = {
         `مراجعة مستندات «${company}» ماكمّلتش. محتاجين السجل التجاري والبطاقة الضريبية بصورة واضحة وسارية.`,
       reason: (note: string) => `الملاحظة: ${note}`,
       cta: 'استكمل البيانات',
+      labelCompany: 'الشركة',
+    },
+
+    companyVerificationRevoked: {
+      subject: 'تم إلغاء توثيق شركتك',
+      preheader: 'علامة التوثيق اتشالت من صفحة الشركة.',
+      heading: 'شركتك مابقتش موثّقة',
+      body: (company: string) =>
+        `علامة التوثيق اتشالت من صفحة «${company}» ومن إعلاناتها، ومعاها ملفات المستشارين المخصّصة للشركات الموثّقة. تقدر تطلب التوثيق تاني من صفحة الشركة بسجل تجاري وبطاقة ضريبية ساريين، ولو عندك سؤال ابعتلنا.`,
+      cta: 'افتح صفحة الشركة',
       labelCompany: 'الشركة',
     },
 
@@ -537,6 +563,22 @@ export const emailCopy = {
       contact: 'If this is wrong, write to us from the help page and we will look again.',
     },
 
+    // The same decisions, for a consultant's account.
+    accountApprovedCandidate: {
+      subject: 'Your account is active',
+      preheader: 'You can apply for roles now.',
+      heading: 'Your account is active',
+      body: 'We have reviewed your account and it is active again. You can apply for roles and update your profile.',
+      cta: 'Open your account',
+    },
+
+    accountRejectedCandidate: {
+      subject: 'Your account is on hold',
+      preheader: 'We need to review your account details again.',
+      heading: 'Your account is on hold',
+      body: 'We have paused the account until we can review the details again.',
+    },
+
     companyVerified: {
       subject: 'Your company is verified',
       preheader: 'The badge is on your page.',
@@ -555,6 +597,16 @@ export const emailCopy = {
         `The document review for "${company}" could not be completed. We need a clear, current commercial register and tax card.`,
       reason: (note: string) => `Note: ${note}`,
       cta: 'Complete the details',
+      labelCompany: 'Company',
+    },
+
+    companyVerificationRevoked: {
+      subject: "Your company's verification was removed",
+      preheader: 'The badge is no longer on your company page.',
+      heading: 'Your company is no longer verified',
+      body: (company: string) =>
+        `The verified badge no longer appears on "${company}"'s page or its listings, and the consultant profiles reserved for verified companies are closed to it. You can ask for verification again from the company page, with a current commercial register and tax card. If you have a question, write to us.`,
+      cta: 'Open the company page',
       labelCompany: 'Company',
     },
 

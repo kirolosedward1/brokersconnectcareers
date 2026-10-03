@@ -317,36 +317,36 @@ export default async function AdminCompanyPage({
             <div className="flex flex-wrap gap-2">
               {status !== 'verified' ? (
                 <ConfirmAction
-                  lever={{ do: 'company', companyId: company.id, decision: 'verify' }}
+                  lever={{ do: 'company', companyId: company.id, decision: 'verify', version: company.version }}
                   label={t('verify')}
                   title={t('verifyCompanyTitle', { name })}
                   body={docs.some((d) => d.status === 'pending') ? t('verifyCompanyBody') : t('verifyWithoutPapers')}
                   reason="optional"
                   variant="success"
-                  icon={<BadgeCheck />}
+                  icon={<BadgeCheck aria-hidden />}
                 />
               ) : null}
               {status === 'pending' ? (
                 <ConfirmAction
-                  lever={{ do: 'company', companyId: company.id, decision: 'request_changes' }}
+                  lever={{ do: 'company', companyId: company.id, decision: 'request_changes', version: company.version }}
                   label={t('requestChanges')}
                   title={t('requestChanges')}
                   body={t('requestChangesCompanyBody')}
                   reason="required"
                   reasonLabel={t('reasonToCompany')}
-                  icon={<FilePen />}
+                  icon={<FilePen aria-hidden />}
                 />
               ) : null}
               {status === 'pending' || status === 'unverified' ? (
                 <ConfirmAction
-                  lever={{ do: 'company', companyId: company.id, decision: 'reject' }}
+                  lever={{ do: 'company', companyId: company.id, decision: 'reject', version: company.version }}
                   label={t('reject')}
                   title={t('rejectVerification')}
                   body={t('rejectVerificationBody')}
                   reason="required"
                   reasonLabel={t('reasonToCompany')}
                   variant="destructive"
-                  icon={<X />}
+                  icon={<X aria-hidden />}
                 />
               ) : null}
               {status === 'verified' ? (
@@ -357,7 +357,7 @@ export default async function AdminCompanyPage({
                   body={t('revokeVerificationBody')}
                   reason="required"
                   variant="destructive"
-                  icon={<ShieldOff />}
+                  icon={<ShieldOff aria-hidden />}
                 />
               ) : null}
             </div>
@@ -375,7 +375,7 @@ export default async function AdminCompanyPage({
                 body={t('restoreCompanyBody')}
                 reason="required"
                 variant="success"
-                icon={<RotateCcw />}
+                icon={<RotateCcw aria-hidden />}
               />
             ) : (
               <ConfirmAction
@@ -386,7 +386,7 @@ export default async function AdminCompanyPage({
                 reason="required"
                 reasonLabel={t('reasonToCompany')}
                 variant="destructive"
-                icon={<Ban />}
+                icon={<Ban aria-hidden />}
               />
             )}
           </Section>

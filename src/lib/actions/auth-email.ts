@@ -36,8 +36,8 @@ export async function requestPasswordReset(email: unknown, captchaToken?: unknow
   const parsed = emailSchema.safeParse(email);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
-  const address = subject(parsed.data);
-  const ip = subject(await clientIp());
+  const address = subject('email', parsed.data);
+  const ip = subject('ip', await clientIp());
 
   // Three an hour to one address; twenty an hour from one network, which
   // leaves room for an office sharing an address and none for a list.
@@ -70,8 +70,8 @@ export async function resendConfirmation(
   const parsed = emailSchema.safeParse(email);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
-  if (!(await allow(`confirm:email:${subject(parsed.data)}`, 3, 3600))) return { ok: false, error: 'wait' };
-  if (!(await allow(`confirm:ip:${subject(await clientIp())}`, 20, 3600))) return { ok: false, error: 'wait' };
+  if (!(await allow(`confirm:email:${subject('email', parsed.data)}`, 3, 3600))) return { ok: false, error: 'wait' };
+  if (!(await allow(`confirm:ip:${subject('ip', await clientIp())}`, 20, 3600))) return { ok: false, error: 'wait' };
 
   // Only ever back to this site's own callback: the value comes from the
   // browser, and GoTrue's allow-list is the second check, not the only one.

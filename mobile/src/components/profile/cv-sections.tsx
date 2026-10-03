@@ -1,7 +1,7 @@
 import { useState, type ComponentType } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { Award, Briefcase, GraduationCap, Pencil, Plus, Trash2, type LucideProps } from 'lucide-react-native';
+import { Award, Briefcase, GraduationCap, Pencil, Plus, Trash2, type LucideProps } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Notice } from '~/components/ui/notice';
@@ -9,7 +9,7 @@ import { Text } from '~/components/ui/text';
 import { isolate } from '~/i18n/rich';
 import { useDeleteCvEntry, type CvSection, type CvSections as Sections } from '~/features/profile/queries';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 import { CvEntrySheet, type CvEntry } from './cv-entry-sheet';
 import { monthOf } from './fields';
 
@@ -114,7 +114,8 @@ function Section({
           style={{
             width: 40,
             height: 40,
-            borderRadius: radius.xl,
+            // The app's icon tile: a rounded square, not a disc.
+            ...corner('md'),
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: colors.muted,
@@ -162,8 +163,8 @@ function Row({
         gap: space[1],
         paddingStart: space[3],
         paddingVertical: space[1],
-        borderRadius: radius.xl,
-        borderWidth: 1,
+        ...corner('xl'),
+        borderWidth: StyleSheet.hairlineWidth * 2,
         borderColor: colors.border,
       }}
     >

@@ -1,7 +1,7 @@
-import { Alert, Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Alert, BackHandler, Platform, Text } from 'react-native';
+import { router, Stack, Tabs } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
 import { PendingPath } from '~/components/navigation/pending-path';
@@ -20,8 +20,10 @@ import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,s
 import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/companies/[slug]';
 import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import * as DeleteAccountScreen from '../src/app/(tabs)/(account)/account/delete';
+import * as LicensesScreen from '../src/app/(tabs)/(account)/account/licenses';
 import * as ConfirmScreen from '../src/app/auth/confirm';
 import * as CallbackScreen from '../src/app/auth/callback';
+import { redirectSystemPath } from '../src/app/+native-intent';
 import * as MfaScreen from '../src/app/mfa';
 import * as OnboardingScreen from '../src/app/onboarding';
 import {
@@ -187,6 +189,7 @@ const app = {
   '(tabs)/(home)/index': () => <Text>home screen</Text>,
   '(tabs)/(account)/account/index': AccountScreen,
   '(tabs)/(account)/account/delete': DeleteAccountScreen,
+  '(tabs)/(account)/account/licenses': LicensesScreen,
   '(auth)/_layout': AuthLayout,
   '(auth)/sign-in/index': SignInScreen,
   '(auth)/sign-in/forgot': ForgotScreen,
@@ -223,6 +226,19 @@ describe('the Account tab', () => {
     expect(await screen.findByText(ar.app.account.signedOutTitle)).toBeTruthy();
     await press(ar.nav.signIn);
     expect(await screen.findByText(ar.auth.signInTitle)).toBeTruthy();
+  });
+
+  it('keeps the policies, the licences and who runs the app one tap away, signed in or not', async () => {
+    renderRouter(app, { initialUrl: '/account' });
+    expect(await screen.findByText(ar.app.account.signedOutTitle)).toBeTruthy();
+    expect(screen.getByText(ar.footer.operatedBy.replace('{name}', 'Top Suite Digital Marketing'))).toBeTruthy();
+
+    await press(ar.footer.privacy);
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/privacy`);
+    await press(ar.footer.terms);
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/terms`);
+    await press(ar.licenses.title);
+    expect(await screen.findByText(ar.app.licenses.intro)).toBeTruthy();
   });
 
   it('says who is signed in, and signs out of this phone only', async () => {
@@ -375,6 +391,15 @@ describe('creating an account', () => {
     expect(await screen.findByText(ar.auth.resendSent)).toBeTruthy();
   });
 
+  it('says where the policies are where the address is asked for, and opens them', async () => {
+    renderRouter(app, { initialUrl: '/sign-up' });
+    fireEvent.press(await screen.findByText(ar.footer.privacy));
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/privacy`);
+    fireEvent.press(screen.getByText(ar.footer.terms));
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/terms`);
+    expect(server.asked('/auth/v1/signup')).toHaveLength(0);
+  });
+
   it('catches a mistyped password before sending it', async () => {
     renderRouter(app, { initialUrl: '/sign-up' });
     fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'new@example.com');
@@ -399,22 +424,39 @@ describe('onboarding', () => {
     expect(screen.getByDisplayValue('sara')).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.fullName), 'سارة عادل');
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
+    // Who sees the directory card is asked, one choice among three, with none made for them.
+    const visibility = screen.getByLabelText(ar.onboarding.visibilityQuestion);
+    expect(visibility.props.accessibilityRole).toBe('radiogroup');
+    const hidden = screen.getByRole('radio', { name: `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}` });
+    expect(within(visibility).getAllByRole('radio')).toHaveLength(3);
+    expect(within(visibility).queryAllByRole('radio', { checked: true })).toHaveLength(0);
+    // The language is a choice of its own, made already: the phone's.
+    expect(screen.getByLabelText(ar.onboarding.locale).props.accessibilityRole).toBe('radiogroup');
+    fireEvent.press(hidden);
     fireEvent.press(screen.getByRole('checkbox'));
     await press(ar.onboarding.submit);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     expect(bodyOf('/api/mobile/v1/actions/completeOnboarding')).toEqual({
-      input: { role: 'candidate', fullName: 'سارة عادل', whatsapp: '01001234567', locale: 'ar' },
+      input: {
+        role: 'candidate',
+        fullName: 'سارة عادل',
+        whatsapp: '01001234567',
+        locale: 'ar',
+        agreed: true,
+        visibility: 'hidden',
+      },
     });
   });
 
-  it('asks for the Terms before anything is created', async () => {
+  it('asks for the agreement, the age and the directory choice before anything is created', async () => {
     profileRow = null;
     await signedIn();
     renderRouter(app, { initialUrl: '/onboarding' });
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01001234567');
     await press(ar.onboarding.submit);
-    expect(await screen.findByText(ar.app.onboarding.termsRequired)).toBeTruthy();
+    expect(await screen.findByText(ar.onboarding.consentRequired)).toBeTruthy();
+    expect(screen.getByText(ar.onboarding.visibilityRequired)).toBeTruthy();
     expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
   });
 
@@ -428,6 +470,8 @@ describe('onboarding', () => {
     await signedIn();
     renderRouter(app, { initialUrl: '/onboarding' });
     fireEvent.press(await screen.findByRole('radio', { name: `${ar.onboarding.roleEmployer}. ${ar.onboarding.roleEmployerHint}` }));
+    // The two kinds of account are one choice, named by the question they answer.
+    expect(screen.getByLabelText(ar.onboarding.roleQuestion).props.accessibilityRole).toBe('radiogroup');
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.companyName), 'نايل بروكرز');
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '12');
     fireEvent.press(screen.getByRole('checkbox'));
@@ -440,9 +484,34 @@ describe('onboarding', () => {
         fullName: 'sara',
         whatsapp: '12',
         locale: 'ar',
+        agreed: true,
         company: { nameAr: 'نايل بروكرز', website: null, headcountBand: null, districtId: null },
       },
     });
+  });
+
+  it("takes a company's website as the company page does, and says when it is not one", async () => {
+    profileRow = null;
+    await signedIn();
+    renderRouter(app, { initialUrl: '/onboarding' });
+    fireEvent.press(await screen.findByRole('radio', { name: `${ar.onboarding.roleEmployer}. ${ar.onboarding.roleEmployerHint}` }));
+    fireEvent.changeText(await screen.findByLabelText(ar.onboarding.companyName), 'نايل بروكرز');
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
+    fireEvent.press(screen.getByRole('checkbox'));
+
+    // Not an address: said before anything is sent.
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.companyWebsite), 'نايل بروكرز دوت كوم');
+    await press(ar.onboarding.submit);
+    expect(await screen.findByText(ar.validation.invalidUrl)).toBeTruthy();
+    expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
+
+    // A bare domain is the https address.
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.companyWebsite), 'nilebrokers.com');
+    await press(ar.onboarding.submit);
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(1));
+    expect((bodyOf('/api/mobile/v1/actions/completeOnboarding') as { input: { company: { website: string } } }).input.company.website).toBe(
+      'https://nilebrokers.com',
+    );
   });
 
   it('opens by itself when a returning session has no profile yet', async () => {
@@ -450,6 +519,47 @@ describe('onboarding', () => {
     await signedIn();
     renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
+  });
+
+  /** The buttons of the last question Alert.alert asked. */
+  const alertButtons = () =>
+    (jest.mocked(Alert.alert).mock.calls.at(-1)?.[2] ?? []) as { text?: string; style?: string; onPress?: () => void }[];
+
+  it('lets an account that changed its mind go, without agreeing to anything first', async () => {
+    profileRow = null;
+    jest.mocked(Alert.alert).mockClear();
+    await signedIn();
+    renderRouter(app, { initialUrl: '/onboarding' });
+    await press(ar.onboarding.leaveDelete);
+
+    // Asked first; nothing goes until the person says so.
+    expect(Alert.alert).toHaveBeenCalledWith(ar.onboarding.leaveDelete, ar.onboarding.leaveConfirm, expect.any(Array));
+    expect(server.asked('/api/mobile/v1/actions/deleteMyAccount')).toHaveLength(0);
+    const yes = alertButtons().find((button) => button.style === 'destructive');
+    expect(yes?.text).toBe(ar.onboarding.leaveConfirmCta);
+    await act(async () => yes?.onPress?.());
+
+    await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/deleteMyAccount')).toEqual({ input: {} }));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
+    expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
+    const { data } = await supabase.auth.getSession();
+    expect(data.session).toBeNull();
+    expect(await screen.findByText('home screen')).toBeTruthy();
+  });
+
+  it('stays, and says so, when the account could not be deleted', async () => {
+    profileRow = null;
+    server.on('POST /api/mobile/v1/actions/deleteMyAccount', { ok: false, error: 'unavailable' });
+    jest.mocked(Alert.alert).mockClear();
+    await signedIn();
+    renderRouter(app, { initialUrl: '/onboarding' });
+    await press(ar.onboarding.leaveDelete);
+    await act(async () => alertButtons().find((button) => button.style === 'destructive')?.onPress?.());
+
+    expect(await screen.findByText(ar.onboarding.leaveFailed)).toBeTruthy();
+    expect(screen.getByText(ar.onboarding.title)).toBeTruthy();
+    const { data } = await supabase.auth.getSession();
+    expect(data.session).not.toBeNull();
   });
 });
 
@@ -473,6 +583,65 @@ describe('the second factor', () => {
       code: '123456',
       challenge_id: 'challenge-1',
     });
+  });
+
+  it('takes the code typed with Arabic-Indic digits, as an Arabic keyboard types it', async () => {
+    user = authUser({ factors: [totpFactor] });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '١٢٣٤٥٦');
+    await press(ar.account.mfaVerify);
+    await waitFor(() =>
+      expect(server.asked(`/auth/v1/factors/${totpFactor.id}/verify`).at(-1)?.body).toMatchObject({ code: '123456' }),
+    );
+    expect(screen.queryByText(ar.account.mfaCodeInvalid)).toBeNull();
+  });
+
+  it('lets the person in when the authenticator was removed elsewhere, instead of asking over and over', async () => {
+    user = authUser({ factors: [totpFactor] });
+    await signedIn();
+    // Removed on the website since: the auth server's account has none, and a refreshed session says so.
+    user = authUser();
+    const pushes: unknown[] = [];
+    const push = router.push.bind(router);
+    jest.spyOn(router, 'push').mockImplementation((...args: Parameters<typeof router.push>) => {
+      pushes.push(args[0]);
+      return push(...args);
+    });
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
+    // A while later, so the refreshed session is a new one (the clock stands still under renderRouter).
+    act(() => jest.setSystemTime(Date.now() + 60_000));
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+    await press(ar.account.mfaVerify);
+
+    expect(await screen.findByText('home screen')).toBeTruthy();
+    // Asked once, at launch; not again once the answer was that there is nothing to ask.
+    expect(pushes.filter((path) => path === '/mfa')).toHaveLength(1);
+    expect(server.asked(`/auth/v1/factors/${totpFactor.id}/challenge`)).toHaveLength(0);
+  });
+
+  it('keeps what was typed on Android’s Back, which does nothing here', async () => {
+    // Android's BackHandler: the newest listener first, until one takes the press.
+    const listeners: Parameters<typeof BackHandler.addEventListener>[1][] = [];
+    const add = jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_event, listener) => {
+      listeners.push(listener);
+      return { remove: () => void listeners.splice(listeners.indexOf(listener), 1) };
+    });
+    user = authUser({ factors: [totpFactor] });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123');
+
+    act(() => void [...listeners].reverse().some((listener) => listener({} as never)));
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    // Not closed and opened again by the session gate: the same screen, with the same digits.
+    expect(screen.getByLabelText(ar.account.mfaCode).props.value).toBe('123');
+    add.mockRestore();
   });
 
   it('can be walked away from only by signing out', async () => {
@@ -532,6 +701,27 @@ describe('one-tap sign-in', () => {
     expect(returnTo).toBe('brokersconnect://auth/callback');
     const exchange = server.asked('/auth/v1/token').find((request) => request.url.searchParams.get('grant_type') === 'pkce');
     expect(exchange?.body).toMatchObject({ auth_code: 'google-code' });
+  });
+
+  it('Google on Android: the return also arrives as a link, and the code is exchanged once', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: false } }));
+    const back = 'brokersconnect://auth/callback?code=google-code';
+    let opened: string | null = 'not asked';
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockImplementation(async () => {
+      // What expo-router does with a link the system hands the app.
+      opened = await redirectSystemPath({ path: back, initial: false });
+      if (opened) act(() => router.navigate(opened as never));
+      return { type: 'success', url: back };
+    });
+    renderRouter(app, { initialUrl: '/account' });
+    await press(ar.nav.signIn);
+    await press(ar.auth.continueWithGoogle);
+
+    expect(await screen.findByText(profile.full_name)).toBeTruthy();
+    expect(opened).toBeNull();
+    const exchanges = server.asked('/auth/v1/token').filter((request) => request.url.searchParams.get('grant_type') === 'pkce');
+    expect(exchanges).toHaveLength(1);
+    expect(screen.queryByText(ar.common.errorBody)).toBeNull();
   });
 
   it('Google: closing the browser is not an error', async () => {
@@ -666,6 +856,31 @@ describe('deleting the account', () => {
     );
   });
 
+  it('deletes an account made with Apple on Android as the website does, where there is no Apple sheet to ask', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    jest.mocked(AppleAuthentication.signInAsync).mockClear();
+    try {
+      user = authUser({
+        app_metadata: { provider: 'apple', providers: ['apple'] },
+        identities: [{ id: 'apple-user', user_id: USER_ID, provider: 'apple', identity_data: {} }],
+      });
+      await signedIn();
+      renderRouter(app, { initialUrl: '/account/delete' });
+      fireEvent.changeText(
+        await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`),
+        ar.account.deleteConfirmWord,
+      );
+      expect(screen.queryByText(ar.app.account.deleteApple)).toBeNull();
+      await press(ar.account.deleteCta);
+
+      await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/deleteMyAccount')).toEqual({ input: {} }));
+      expect(AppleAuthentication.signInAsync).not.toHaveBeenCalled();
+      await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
+    } finally {
+      os.restore();
+    }
+  });
+
   it("is refused while a suspension stands, in the website's words", async () => {
     server.on('POST /api/mobile/v1/actions/deleteMyAccount', { ok: false, error: 'under_review' });
     await signedIn();
@@ -748,6 +963,23 @@ describe('reporting', () => {
     await press(ar.report.send);
     expect(await screen.findByText(ar.report.chooseReason)).toBeTruthy();
     expect(server.asked('/api/mobile/v1/actions/reportTarget')).toHaveLength(0);
+  });
+
+  it('starts empty each time it is opened: no reason left chosen, no refusal left over', async () => {
+    server.on('POST /api/mobile/v1/actions/reportTarget', () => {
+      throw new TypeError('Network request failed');
+    });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/companies/nile-brokers' });
+    await press(ar.companies.report);
+    fireEvent.press(await reasonNamed('scam'));
+    await press(ar.report.send);
+    expect(await screen.findByText(ar.report.network)).toBeTruthy();
+    await press(ar.common.close);
+
+    await press(ar.companies.report);
+    expect((await reasonNamed('scam')).props.accessibilityState).toMatchObject({ checked: false });
+    expect(screen.queryByText(ar.report.network)).toBeNull();
   });
 
   it.each([

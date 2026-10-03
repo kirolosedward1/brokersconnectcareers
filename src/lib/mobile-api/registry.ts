@@ -11,6 +11,7 @@ import {
   requestAccountDeletion,
   saveAvatar,
   updateNotificationPreferences,
+  updatePushPreferences,
 } from '@/lib/actions/account';
 import { recordAgentView } from '@/lib/agent-views';
 import { revealAgentContact } from '@/lib/actions/agent-contact';
@@ -42,6 +43,7 @@ import {
 import { findSimilarListing, salaryReferenceFor, saveJob, transitionJob } from '@/lib/actions/employer-jobs';
 import { recordJobView, toggleSavedJob } from '@/lib/actions/jobs';
 import { completeOnboarding } from '@/lib/actions/onboarding';
+import { acceptPolicies } from '@/lib/actions/policies';
 import { reportTarget } from '@/lib/actions/reports';
 import {
   deleteSavedSearch,
@@ -112,6 +114,7 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   requestAccountDeletion: { run: (input) => requestAccountDeletion(input) },
   announcePasswordChange: { run: () => announcePasswordChange() },
   updateNotificationPreferences: { run: (input) => updateNotificationPreferences(input) },
+  updatePushPreferences: { run: (input) => updatePushPreferences(input) },
   saveAvatar: { run: (input) => saveAvatar(input) },
   uploadImage: { run: async (input) => (input instanceof FormData ? uploadImage(input) : invalid) },
 
@@ -129,8 +132,9 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
     },
   },
 
-  // Onboarding
+  // Onboarding, and agreeing again when the Terms or the Privacy policy change
   completeOnboarding: { run: (input) => completeOnboarding(input) },
+  acceptPolicies: { run: () => acceptPolicies() },
 
   // Candidate
   applyToJob: { run: (input) => applyToJob(input) },

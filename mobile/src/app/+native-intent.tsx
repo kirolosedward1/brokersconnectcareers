@@ -1,3 +1,4 @@
+import { isAwaitedOAuthReturn } from '~/features/auth/oauth-return';
 import { readLastActor } from '~/lib/last-actor';
 import { isPublicPath, routeFromOutside, webPathToAppPath } from '~/lib/links';
 import { openWhenReady } from '~/lib/open-path';
@@ -16,6 +17,8 @@ import { openWhenReady } from '~/lib/open-path';
  * PendingPath opens it (or the sign-in sheet) then. Nothing opens meanwhile.
  */
 export async function redirectSystemPath({ path }: { path: string; initial: boolean }): Promise<string | null> {
+  // Google's return, which the sign-in screen is waiting for itself (oauth-return.ts).
+  if (isAwaitedOAuthReturn(path)) return null;
   try {
     const actor = await readLastActor();
     if (!actor && !isPublicPath(path)) {

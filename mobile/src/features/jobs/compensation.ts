@@ -1,6 +1,6 @@
 import { useTranslations } from 'use-intl';
 import type { JobRow } from '@/lib/supabase/database.types';
-import { formatEgp } from '@/lib/format';
+import { formatEgp, formatRate } from '@/lib/format';
 import { markupTags } from '~/i18n/rich';
 
 type Pay = Pick<JobRow, 'basic_salary_min' | 'basic_salary_max' | 'commission_type' | 'commission_value'>;
@@ -18,7 +18,11 @@ export function useCompensationText() {
   return {
     salary(job: Pay, locale: string): { amount: string; perMonth: string | null } {
       const { basic_salary_min: min, basic_salary_max: max } = job;
-      if (min == null && max == null) return { amount: t('commissionOnly'), perMonth: null };
+      // As the website's: "commission only", unless the listing also says
+      // there is no commission.
+      if (min == null && max == null) {
+        return { amount: t(job.commission_type === 'none' ? 'noBasicSalary' : 'commissionOnly'), perMonth: null };
+      }
 
       const amount =
         min != null && max != null
@@ -32,10 +36,7 @@ export function useCompensationText() {
 
     commission(job: Pay, locale: string): string {
       if (job.commission_type === 'percentage' && job.commission_value != null) {
-        const value = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', {
-          maximumFractionDigits: 2,
-        }).format(job.commission_value);
-        return t.markup('commissionPercent', { value, ...markupTags });
+        return t.markup('commissionPercent', { value: formatRate(job.commission_value, locale), ...markupTags });
       }
       return tCommission(job.commission_type);
     },

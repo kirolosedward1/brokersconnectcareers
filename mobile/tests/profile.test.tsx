@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Alert, Text, type AlertButton } from 'react-native';
+import { Alert, Modal, Text, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -102,7 +102,13 @@ beforeEach(async () => {
   server.on('/rest/v1/profiles', [profile]);
   server.on('/rest/v1/districts', [newCairo]);
   server.on('/rest/v1/developers', [{ id: 3, name_ar: 'بالم هيلز', name_en: 'Palm Hills', slug: 'palm-hills' }]);
-  server.on('GET /rest/v1/agent_profiles', () => (agent ? [agent] : []));
+  server.on('GET /rest/v1/agent_profiles', (url: URL) => {
+    // Asked whether the profile points at a file: by its path.
+    const path = url.searchParams.get('cv_path');
+    if (path) return agent && `eq.${agent.cv_path}` === path ? [agent] : [];
+    return agent ? [agent] : [];
+  });
+  server.on('GET /rest/v1/applications', []);
   server.on('GET /rest/v1/agent_developers', [{ developer_id: 3 }]);
   server.on('GET /rest/v1/agent_experience', [job]);
   server.on('GET /rest/v1/agent_education', []);
@@ -227,6 +233,31 @@ describe('the profile', () => {
     await waitFor(() => expect(server.asked('/storage/v1/object/cvs')[0]?.body).toEqual({ prefixes: [path] }));
   });
 
+  it('keeps a new CV the profile was saved with, when a later step of the save is refused', async () => {
+    // The row goes in with the new file; the developer tags after it are refused.
+    server.on('POST /api/mobile/v1/actions/saveAgentProfile', (_url: URL, init: RequestInit | undefined) => {
+      const sent = (JSON.parse(String(init?.body)) as { input: { cvPath: string } }).input;
+      agent = agent ? { ...agent, cv_path: sent.cvPath } : agent;
+      return { ok: false, error: 'insert or update on table "agent_developers" violates foreign key constraint' };
+    });
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///cache/cv.pdf', name: 'cv.pdf', mimeType: 'application/pdf', size: 2048, lastModified: 0 }],
+    } as DocumentPicker.DocumentPickerResult);
+    open();
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
+    expect(await screen.findByText('cv.pdf')).toBeTruthy();
+    fireEvent.press(saveButton());
+
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/saveAgentProfile')).toHaveLength(1));
+    const path = String(bodyOf('/api/mobile/v1/actions/saveAgentProfile')?.input?.cvPath);
+    // Asked, and the saved profile points at it: not taken out from under it.
+    await waitFor(() => expect(server.asked('/rest/v1/agent_profiles').some((request) => request.url.searchParams.get('cv_path') === `eq.${path}`)).toBe(true));
+    await act(async () => {});
+    expect(server.asked('/storage/v1/object/cvs')).toHaveLength(0);
+  });
+
   it('catches a phone number the website would refuse, before sending anything', async () => {
     open();
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '12');
@@ -307,6 +338,76 @@ describe('the CV sections', () => {
     );
   });
 
+  it('adds a job once when the answer is lost, and keeps the sheet when it did not go in', async () => {
+    let stored = [job];
+    // What the table holds, by the company named in the question.
+    server.on('GET /rest/v1/agent_experience', (url: URL) => {
+      const company = url.searchParams.get('company_name');
+      return company ? stored.filter((row) => `eq.${row.company_name}` === company) : stored;
+    });
+    // The website stores what was sent, cleaned, and its answer never reaches the phone.
+    server.on('POST /api/mobile/v1/actions/saveExperience', (_url: URL, init?: RequestInit) => {
+      const { input } = JSON.parse(String(init?.body)) as {
+        input: { companyName: string; title: string; track: null; started: string; ended: null; highlights: null };
+      };
+      stored = [
+        ...stored,
+        {
+          ...job,
+          id: '0e000000-0000-4000-8000-000000000002',
+          company_name: input.companyName.trim(),
+          title: input.title.trim(),
+          track: input.track,
+          started: input.started,
+          ended: input.ended,
+          highlights: input.highlights,
+        },
+      ];
+      throw new TypeError('Network request failed');
+    });
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.company), '  سيتي سكيب ');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+
+    // The database has it: the sheet closes, and nothing is sent twice.
+    await waitFor(() => expect(screen.queryByLabelText(ar.cv.company)).toBeNull());
+    expect(server.asked('/api/mobile/v1/actions/saveExperience')).toHaveLength(1);
+
+    // One that did not go in stays in the sheet, with the reason.
+    server.on('POST /api/mobile/v1/actions/saveExperience', () => {
+      throw new TypeError('Network request failed');
+    });
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'بالم هيلز');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مستشار مبيعات');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2022-01');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+    expect(screen.getByLabelText(ar.cv.company).props.value).toBe('بالم هيلز');
+  });
+
+  it('does not take an entry that was already there for the one whose answer was lost', async () => {
+    // Cairo University is on the profile already, for another field of study.
+    const law = { id: '0f000000-0000-4000-8000-000000000001', agent_id: AGENT_ID, institution: 'جامعة القاهرة', degree: null, field: 'تجارة', graduated: null, sort_order: 0, created_at: '2026-09-01T10:00:00Z' };
+    server.on('GET /rest/v1/agent_education', (url: URL) =>
+      url.searchParams.get('institution') === `eq.${law.institution}` || !url.searchParams.get('institution') ? [law] : [],
+    );
+    // The website refuses with a server error and writes nothing.
+    server.on('POST /api/mobile/v1/actions/saveEducation', { status: 500, body: { error: 'failed' } });
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addEducation }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.institution), 'جامعة القاهرة');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.field), 'حقوق');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+
+    // Not saved, and not said to be: the sheet stays with what was typed.
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    expect(screen.getByLabelText(ar.cv.field).props.value).toBe('حقوق');
+  });
+
   it('edits an entry without moving a date nobody touched', async () => {
     open();
     fireEvent.press(await screen.findByRole('button', { name: `${ar.app.profile.edit}: ${job.title} · ${job.company_name}` }));
@@ -332,6 +433,27 @@ describe('the CV sections', () => {
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
     expect(await screen.findByText(ar.app.profile.endBeforeStart)).toBeTruthy();
     expect(server.asked('/api/mobile/v1/actions/saveExperience')).toHaveLength(0);
+  });
+
+  it('asks before an entry typed into the sheet is thrown away, by its X or by pulling the sheet down', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    // Nothing typed: it simply closes.
+    fireEvent.press(await screen.findByRole('button', { name: ar.common.close }));
+    expect(alert).not.toHaveBeenCalled();
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'سيتي سكيب');
+    // The sheet pulled down: iOS asks the modal to close.
+    const sheet = screen.UNSAFE_getAllByType(Modal).find((modal) => modal.props.visible);
+    act(() => sheet?.props.onRequestClose());
+    expect(alert).toHaveBeenCalledWith(ar.app.leave.title, ar.app.leave.body, expect.any(Array));
+    // Kept: the sheet and what was typed are still there.
+    const stay = (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'cancel');
+    act(() => stay?.onPress?.());
+    expect(screen.getByLabelText(ar.cv.company).props.value).toBe('سيتي سكيب');
+    alert.mockRestore();
   });
 
   it('deletes an entry after asking', async () => {

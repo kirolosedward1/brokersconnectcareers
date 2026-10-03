@@ -6,6 +6,7 @@ import {
   destinationOf,
   forgetThisPhone,
   notificationIdOf,
+  pushAvailable,
   registerThisPhone,
   stopListeningHere,
   usePushState,
@@ -39,7 +40,7 @@ export function PushBridge() {
   const userId = session?.user.id ?? null;
   const hasProfile = Boolean(viewer?.profile);
   const state = usePushState().data;
-  const wanted = Boolean(userId && hasProfile && state?.permission === 'granted' && !state.off);
+  const wanted = Boolean(pushAvailable() && userId && hasProfile && state?.permission === 'granted' && !state.off);
 
   // Register, and again when the token changes.
   useEffect(() => {
@@ -57,10 +58,25 @@ export function PushBridge() {
     if (off) forgetThisPhone().catch(() => {});
   }, [off, userId]);
 
-  // Arriving while the app is open: the bell's count and feed are stale now.
+  // Arriving while the app is open: the bell's count and feed are stale now,
+  // and so may the account be — an approval or a suspension is told this way,
+  // and the screens that depend on it (the directory, the standing notice)
+  // follow without waiting for the app to come back from the background. So
+  // are the lists a push is most often about: a new applicant in a company's
+  // inbox and pipelines, its overview and its listings' counts; a move in a
+  // candidate's applications and the summary on their Home. Whatever is
+  // mounted is read again (a tab left open behind another included), the
+  // rest when it is next opened.
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener(() => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['viewer'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'applicants'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'summary'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'trend'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'listings'] });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      queryClient.invalidateQueries({ queryKey: ['candidate'] });
     });
     return () => subscription.remove();
   }, [queryClient]);
@@ -94,6 +110,7 @@ export function PushBridge() {
     destinationOf(id).then((href) => {
       openWhenReady(href);
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['viewer'] });
     });
   }, [tapped, known, userId, queryClient]);
 

@@ -121,7 +121,8 @@ export function scrubDetail(detail: Record<string, unknown> | undefined | null):
  * dropped: Arabic and English are the same route.
  */
 const LITERAL_SEGMENTS = new Set([
-  'jobs', 'companies', 'agents', 'blog', 'employers', 'privacy', 'terms',
+  'jobs', 'companies', 'agents', 'blog', 'employers', 'privacy', 'terms', 'licenses',
+  'cookies', 'refunds', 'account-deletion',
   'unsubscribe', 'onboarding', 'notifications', 'sign-in', 'sign-up', 'forgot',
   'new-password', 'candidate', 'employer', 'dashboard', 'account',
   'applications', 'profile', 'saved', 'billing', 'company', 'talent',

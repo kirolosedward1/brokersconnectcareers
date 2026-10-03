@@ -35,6 +35,7 @@ that forgot to publish, and it can never announce something that rolled back.
 | `JOB_APPROVED` / `JOB_REJECTED` | `on_job_moderated` | `notifyEmployerOfModeration` | every company member |
 | `JOB_EXPIRING` / `JOB_EXPIRED` | `emit_job_expiry_notifications` sweep | `notifyJobExpiry` | every company member |
 | `COMPANY_VERIFIED` / `COMPANY_VERIFICATION_REJECTED` | `on_company_verified` | `notifyCompanyVerification` | every company member |
+| `COMPANY_VERIFICATION_REVOKED` (348) | `on_company_verified` | `notifyCompanyVerificationRevoked` | every company member |
 | `ACCOUNT_APPROVED` / `ACCOUNT_SUSPENDED` | `on_approval_changed` | `notifyAccountDecision` | the account holder |
 | `ACCOUNT_ONBOARDED` | — | `notifyWelcome` | the new account |
 | `PROFILE_CREATED` | — | `notifyProfileReady` | the consultant |
@@ -96,6 +97,7 @@ checking first.
 | `job_published` / `job_rejected` | `…:{job}:{version}` — the row version (migration 50) distinguishes a re-approval from a replay |
 | `company_verified` | `company_verified:{company}` — once ever |
 | `company_verification_needed` | `…:{company}:{version}` — each refusal can carry a new note |
+| `company_verification_revoked` | `…:{company}:{version}` — verified again and revoked again is news again |
 | `account_approved` / `account_rejected` | `…:{user}:{UTC hour}` |
 | `job_expiring` / `job_expired` | `…:{job}:{expires_at epoch}` — a reposted listing that ends again is a new event |
 | `profile_visibility_changed` | `profile_visibility:{user}:{value}:{Cairo day}` |

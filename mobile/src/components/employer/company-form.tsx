@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { CheckCircle2 } from 'lucide-react-native';
+import { CheckCircle2 } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
 import { safeHttpUrl } from '@/lib/security/sanitize';
 import type { CompanyRow, CompanyType, HeadcountBand } from '@/lib/supabase/database.types';
@@ -14,17 +14,39 @@ import { TextField } from '~/components/ui/text-field';
 import { CompanyRefused, useSaveCompany } from '~/features/employer/company';
 import { useDistricts } from '~/features/taxonomy';
 import { ApiError } from '~/lib/api';
+import { useLeaveGuard } from '~/lib/use-leave-guard';
+import { webAddress } from '~/lib/web-address';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 
 type Key = 'nameAr' | 'website' | 'aboutAr' | 'aboutEn' | 'form';
 
-/** A web address as a person types it: the scheme is added when left off. */
-function website(text: string): string | null {
-  const value = text.trim();
-  if (!value) return null;
-  return /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
+/** The columns this form edits, as the fields hold them. */
+type Fields = {
+  nameAr: string;
+  nameEn: string;
+  aboutAr: string;
+  aboutEn: string;
+  site: string;
+  companyType: CompanyType | null;
+  headcount: HeadcountBand | null;
+  districtId: number | null;
+};
+
+function fieldsOf(company: CompanyRow | null): Fields {
+  return {
+    nameAr: company?.name_ar ?? '',
+    nameEn: company?.name_en ?? '',
+    aboutAr: company?.about_ar ?? '',
+    aboutEn: company?.about_en ?? '',
+    site: company?.website ?? '',
+    companyType: company?.company_type ?? null,
+    headcount: company?.headcount_band ?? null,
+    districtId: company?.district_id ?? null,
+  };
 }
+
+const sameFields = (a: Fields, b: Fields) => (Object.keys(a) as (keyof Fields)[]).every((key) => a[key] === b[key]);
 
 /**
  * The company's profile as candidates read it — the website's CompanyForm,
@@ -32,6 +54,13 @@ function website(text: string): string | null {
  * version it was loaded at, so a colleague's save in between is reported
  * rather than overwritten. The website's schema refuses a name under two
  * letters and any address that is not http(s); both are said before sending.
+ *
+ * A new version of the company (a logo, a paper, a save — every change moves
+ * it) does not start the form again: that wiped whatever was being typed. It
+ * is taken over when nothing was typed since the fields were filled, when it
+ * is this form's own save coming back, or when the profile's own columns did
+ * not change; a colleague's change to them leaves what is typed on the old
+ * version, so saving says so, and the answer brings theirs in.
  */
 export function CompanyForm({ company }: { company: CompanyRow | null }) {
   const t = useTranslations();
@@ -50,11 +79,37 @@ export function CompanyForm({ company }: { company: CompanyRow | null }) {
   const [districtId, setDistrictId] = useState<number | null>(company?.district_id ?? null);
   const [errors, setErrors] = useState<Partial<Record<Key, string>>>({});
   const [saved, setSaved] = useState(false);
+  // The row the fields were filled from, and whether the next version to arrive is to be taken over whole.
+  const [loaded, setLoaded] = useState(company);
+  const [takeNext, setTakeNext] = useState(false);
+
+  // Leaving with the profile changed and not saved asks first.
+  const typedNow: Fields = { nameAr, nameEn, aboutAr, aboutEn, site, companyType, headcount, districtId };
+  useLeaveGuard(!takeNext && !sameFields(typedNow, fieldsOf(loaded)));
+
+  if (company && loaded && company.version !== loaded.version) {
+    const typed: Fields = { nameAr, nameEn, aboutAr, aboutEn, site, companyType, headcount, districtId };
+    if (takeNext || sameFields(typed, fieldsOf(loaded))) {
+      const next = fieldsOf(company);
+      setNameAr(next.nameAr);
+      setNameEn(next.nameEn);
+      setAboutAr(next.aboutAr);
+      setAboutEn(next.aboutEn);
+      setSite(next.site);
+      setCompanyType(next.companyType);
+      setHeadcount(next.headcount);
+      setDistrictId(next.districtId);
+      setLoaded(company);
+      setTakeNext(false);
+    } else if (sameFields(fieldsOf(company), fieldsOf(loaded))) {
+      setLoaded(company);
+    }
+  }
 
   const submit = () => {
     setSaved(false);
     const local: Partial<Record<Key, string>> = {};
-    const address = website(site);
+    const address = webAddress(site);
     if (nameAr.trim().length < 2) local.nameAr = t('validation.required');
     if (address && !safeHttpUrl(address)) local.website = t('validation.invalidUrl');
     if (Object.keys(local).length) return setErrors(local);
@@ -70,14 +125,22 @@ export function CompanyForm({ company }: { company: CompanyRow | null }) {
         headcountBand: headcount,
         companyType,
         districtId,
-        ...(company ? { version: company.version } : {}),
+        ...(loaded ? { version: loaded.version } : {}),
       },
       {
-        onSuccess: () => setSaved(true),
+        onSuccess: () => {
+          setSaved(true);
+          // What comes back is what was just typed, on its new version.
+          setTakeNext(true);
+        },
         onError: (failure) => {
           if (failure instanceof ApiError && failure.status === 0) return setErrors({ form: t('app.offline.body') });
           const reason = failure instanceof CompanyRefused ? failure.reason : 'failed';
-          if (reason === 'stale') return setErrors({ form: t('employer.companyMoved') });
+          if (reason === 'stale') {
+            // "Reload to see their version": the next read of the company fills the form with it.
+            setTakeNext(true);
+            return setErrors({ form: t('employer.companyMoved') });
+          }
           const fields = failure instanceof CompanyRefused ? failure.fieldErrors : undefined;
           if (fields?.aboutAr || fields?.aboutEn) {
             return setErrors({

@@ -7,7 +7,7 @@ import { useSession } from '~/lib/session';
  * down), the error and a way to try again, never a spinner that does not end.
  */
 export function ViewerPending() {
-  const { viewer, refreshViewer } = useSession();
-  if (viewer?.profileUnreadable) return <ErrorState error={null} onRetry={() => refreshViewer().catch(() => {})} />;
+  const { viewer, viewerError, refreshViewer } = useSession();
+  if (viewer?.profileUnreadable) return <ErrorState error={viewerError} onRetry={() => refreshViewer().catch(() => {})} />;
   return <LoadingState />;
 }

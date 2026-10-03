@@ -1,5 +1,6 @@
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
+import { PolicyNotice } from '@/components/legal/policy-notice';
 import type { Locale } from '@/i18n/routing';
 
 /**
@@ -28,6 +29,9 @@ export default async function SiteLayout({
   return (
     <>
       <SiteHeader locale={locale as Locale} />
+      {/* Somebody signed in who has not agreed to the documents as they are
+          now; nothing for anybody else. */}
+      <PolicyNotice />
       <main id="main" tabIndex={-1} className="flex-1">
         {children}
       </main>

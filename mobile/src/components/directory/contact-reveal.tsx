@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { Download, Eye, MessageCircle } from 'lucide-react-native';
+import { Download, Eye, MessageCircle } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { openAgentCv, RevealRefused, useRevealContact, type RevealedContact } from '~/features/directory/queries';
@@ -93,17 +93,16 @@ export function CvButton({ handle }: { handle: string }) {
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const open = async () => {
+  // A promise chain, not try/finally, which the React Compiler does not compile.
+  const open = () => {
     setError(null);
     setOpening(true);
-    try {
-      await openAgentCv(handle);
-    } catch (failure) {
-      const status = failure instanceof ApiError ? failure.status : -1;
-      setError(status === 429 ? t('app.applicants.cvLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'));
-    } finally {
-      setOpening(false);
-    }
+    openAgentCv(handle)
+      .catch((failure: unknown) => {
+        const status = failure instanceof ApiError ? failure.status : -1;
+        setError(status === 429 ? t('app.applicants.cvLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'));
+      })
+      .then(() => setOpening(false));
   };
 
   return (

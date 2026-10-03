@@ -1,6 +1,6 @@
 import { Pressable } from 'react-native';
 import { Stack } from 'expo-router';
-import { X } from 'lucide-react-native';
+import { X } from '~/components/ui/lucide';
 import { useTranslations } from 'use-intl';
 import { useStackOptions } from '~/components/navigation/stack-options';
 import { useTheme } from '~/theme/provider';

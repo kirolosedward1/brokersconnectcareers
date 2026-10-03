@@ -4,6 +4,7 @@ import {
   type MobileActionName,
   type MobileActionOutput,
 } from '@/lib/mobile-api/contract';
+import { isAuthApiError, isAuthRetryableFetchError, isAuthSessionMissingError } from '@supabase/supabase-js';
 import { env } from './env';
 import { supabase } from './supabase';
 
@@ -36,15 +37,60 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Whether a failed call is known never to have reached the action: the route
+ * turned it away at the door (an action's own answer is always a 200, so a 4xx
+ * is the door's). Offline and 5xx say nothing either way — the action may have
+ * run and only its answer been lost, so whatever it was given (an uploaded
+ * file) may already be recorded.
+ */
+export function refusedAtTheDoor(error: unknown): boolean {
+  return error instanceof ApiError && error.status >= 400 && error.status < 500;
+}
+
+/**
+ * A call or a read that got no answer at all — offline, a dropped connection,
+ * a timeout — as opposed to one the server answered with a refusal. The app's
+ * own calls say it with status 0; supabase-js reports a fetch that never
+ * answered as an error with no code whose message names the fetch's failure.
+ */
+export function noAnswer(error: unknown): boolean {
+  if (error instanceof ApiError) return error.status === 0;
+  const failure = error as { message?: unknown; code?: unknown } | null;
+  return (
+    typeof failure?.message === 'string' &&
+    !failure.code &&
+    /^(TypeError|AbortError|TimeoutError|FetchError)\b/.test(failure.message)
+  );
+}
+
+/** The auth server said no to a refresh: the session cannot be continued. */
+function refreshRefused(error: unknown): boolean {
+  if (!error) return true;
+  if (isAuthSessionMissingError(error)) return true;
+  return isAuthApiError(error) && [400, 401, 403].includes(error.status ?? 0);
+}
+
 async function currentToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
 }
 
+/**
+ * How long a call may go without an answer before it counts as none. Without
+ * one, a stalled connection kept a button spinning, and the notification that
+ * was being opened blocking every other, until iOS gave up on its own. Longer
+ * for a photo sent through the website.
+ */
+const TIMEOUT_MS = 30_000;
+const UPLOAD_TIMEOUT_MS = 90_000;
+
 async function send(path: string, init: RequestInit, withToken: boolean): Promise<Response> {
+  const timeout = init.body instanceof FormData ? UPLOAD_TIMEOUT_MS : TIMEOUT_MS;
   const attempt = (token: string | null) =>
     fetch(`${env.siteUrl}${path}`, {
       ...init,
+      signal: AbortSignal.timeout(timeout),
       credentials: 'omit',
       headers: {
         accept: 'application/json',
@@ -61,6 +107,16 @@ async function send(path: string, init: RequestInit, withToken: boolean): Promis
     if (response.status === 401 && token) {
       const { data, error } = await supabase.auth.refreshSession();
       if (error || !data.session) {
+        // Only a refusal ends the session here: the refresh token is spent or
+        // revoked, or the session is gone. No answer, a rate limit (carriers
+        // put many phones behind one address) or a failing auth service is
+        // not one — signing out over it wiped every screen, half-typed forms
+        // included.
+        if (!refreshRefused(error)) {
+          throw isAuthRetryableFetchError(error)
+            ? new ApiError(0, 'offline')
+            : new ApiError(error?.status === 429 ? 429 : 503, error?.status === 429 ? 'rate_limited' : 'unavailable');
+        }
         await supabase.auth.signOut({ scope: 'local' });
         throw new ApiError(401, 'unauthenticated');
       }

@@ -57,6 +57,12 @@ export type EmailMessage = {
    * because there is nothing to unsubscribe from.
    */
   unsubscribeUrl?: string;
+  /**
+   * The outbox row's id. Sent as Resend's Idempotency-Key, so a message the
+   * provider accepted is not sent twice when only recording it failed and the
+   * sweeper tries the row again (Resend remembers a key for 24 hours).
+   */
+  idempotencyKey?: string;
 };
 
 export type SendOutcome = 'sent' | 'skipped' | 'failed';
@@ -132,6 +138,7 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
       headers: {
         Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json',
+        ...(message.idempotencyKey ? { 'Idempotency-Key': message.idempotencyKey } : {}),
       },
       body: JSON.stringify({
         from,
@@ -160,9 +167,32 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
       console.warn(
         `[email] send failed (${response.status}) for "${message.subject}": ${withoutAddresses(detail)}`,
       );
+
+      // The key or the sending domain — revoked, or no longer verified — not
+      // this message. Every message would fail the same way until it is
+      // fixed, so none is spent on it: skipped like a missing key, the row
+      // waits and goes once the account works again. As a permanent refusal
+      // it dead-lettered every message on its first attempt, password and
+      // decision notices included.
+      if (response.status === 401 || response.status === 403) {
+        return { outcome: 'skipped', error: `${response.status}: ${withoutAddresses(detail)}`.slice(0, 500) };
+      }
+
+      // The same idempotency key, already used. With a different body — a
+      // retry rebuilt the message from data that moved on — the first one was
+      // accepted: it went. Still in flight: try again later.
+      if (response.status === 409 && message.idempotencyKey) {
+        if (detail.includes('invalid_idempotent_request')) return { outcome: 'sent' };
+        if (detail.includes('concurrent_idempotent_requests')) {
+          return { outcome: 'failed', error: '409: concurrent_idempotent_requests', retryable: true };
+        }
+      }
+
       return {
         outcome: 'failed',
-        error: `${response.status}: ${detail}`.slice(0, 500),
+        // Stored on email_log, which outlives the warning above: the same
+        // reason, the same address taken out.
+        error: `${response.status}: ${withoutAddresses(detail)}`.slice(0, 500),
         // 4xx is the request being wrong and will stay wrong — except 408,
         // 425 and 429, which are about timing. Everything else is worth
         // another go. The rule lives in policy.ts, where it is tested.
@@ -177,6 +207,6 @@ export async function sendEmail(message: EmailMessage): Promise<SendResult> {
     // another go.
     const message_ = error instanceof Error ? error.message : String(error);
     console.warn(`[email] send threw for "${message.subject}":`, message_);
-    return { outcome: 'failed', error: message_.slice(0, 500), retryable: true };
+    return { outcome: 'failed', error: withoutAddresses(message_).slice(0, 500), retryable: true };
   }
 }

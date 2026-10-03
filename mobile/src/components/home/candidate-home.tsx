@@ -1,13 +1,15 @@
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2 } from 'lucide-react-native';
+import { Building2 } from '~/components/ui/lucide';
 import { formatDate, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { ProfileRow } from '@/lib/supabase/database.types';
+import { Hero } from '~/components/home/hero';
 import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
+import { PolicyNotice } from '~/components/legal/policy-notice';
 import { PushPrompt } from '~/components/push/push-prompt';
 import { StatStrip } from '~/components/dashboard/stat-strip';
 import { JobBrowse } from '~/components/home/job-browse';
@@ -25,13 +27,15 @@ import {
   useSuggestions,
   type Suggestion,
 } from '~/features/dashboard/candidate';
+import { useUnchosenVisibility } from '~/features/policies';
 import { useAgentProfile, useCandidateSummary } from '~/features/profile/queries';
 import { useDistricts } from '~/features/taxonomy';
 import { inOwnTab } from '~/lib/links';
 import { useSession } from '~/lib/session';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { tabsFor } from '~/lib/tabs';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * A candidate's Home — the website's /dashboard, which the app opens on.
@@ -49,7 +53,7 @@ import { hitTarget, radius, space } from '~/theme/tokens';
 export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   const t = useTranslations();
   const locale = useLocale();
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const queryClient = useQueryClient();
   const { actor } = useSession();
 
@@ -68,34 +72,47 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   const unreadable = !s && applications.isError;
   const noApplications = s ? s.applications_total === 0 : applications.isSuccess && applications.data.length === 0;
 
-  const refresh = () => {
-    summary.refetch();
-    applications.refetch();
-    agent.refetch();
-    board.refetch();
-    counts.refetch();
-    // Where the account stands can change while the app is open.
-    queryClient.invalidateQueries({ queryKey: ['viewer'] });
-    queryClient.invalidateQueries({ queryKey: ['account', 'note'] });
-    queryClient.invalidateQueries({ queryKey: ['appeal'] });
-  };
-  const refreshing = summary.isRefetching || applications.isRefetching || board.isRefetching;
+  const refresh = () =>
+    Promise.all([
+      summary.refetch(),
+      applications.refetch(),
+      agent.refetch(),
+      board.refetch(),
+      counts.refetch(),
+      // Where the account stands can change while the app is open.
+      queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+      queryClient.invalidateQueries({ queryKey: ['account', 'note'] }),
+      queryClient.invalidateQueries({ queryKey: ['appeal'] }),
+    ]);
+  // The spinner is the pull's alone: a push reads the summary and the
+  // applications again too, and a spinner that starts by itself pushes the
+  // page down under the reader's finger.
+  const pull = usePullRefresh(refresh);
 
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+      // An appeal is typed on Home: its Send takes the first tap, and the field is lifted above the keyboard.
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
+      refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
     >
-      <View>
-        {/* The profile is read again on every start; offline, the page is the same without the name. */}
-        <Text variant="title" weight="bold" accessibilityRole="header">
-          {profile ? t('dashboard.candidateGreeting', { name: profile.full_name }) : t('dashboard.overview')}
-        </Text>
-        <Text tone="mutedForeground">{t('dashboard.candidateLede')}</Text>
-      </View>
+      {/* The profile is read again on every start; offline, the page is the same without the name. */}
+      <Hero
+        compact
+        title={profile ? t('dashboard.candidateGreeting', { name: profile.full_name }) : t('dashboard.overview')}
+        subtitle={t('dashboard.candidateLede')}
+      />
 
       {profile ? <StandingNotice profile={profile} /> : null}
+
+      {/* The Terms and the Privacy policy as they are now, until agreed to. */}
+      {profile ? <PolicyNotice /> : null}
+
+      {/* Who sees their directory card was decided before onboarding asked. */}
+      {profile ? <VisibilityAsk /> : null}
 
       {/* The phone's question, with its reason, until it has been answered. */}
       {profile ? <PushPrompt audience="candidate" /> : null}
@@ -130,7 +147,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
             <Notice tone="destructive" title={t('common.error')}>
               <Text variant="small">{t('common.errorBody')}</Text>
               <View style={{ alignItems: 'flex-start', marginTop: space[2] }}>
-                <Button label={t('common.retry')} size="sm" variant="outline" onPress={refresh} />
+                <Button label={t('common.retry')} size="sm" variant="outline" onPress={() => void refresh()} />
               </View>
             </Notice>
           ) : null}
@@ -142,8 +159,8 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
                 gap: space[2],
                 paddingVertical: space[8],
                 paddingHorizontal: space[6],
-                borderRadius: radius.xl,
-                borderWidth: 1,
+                ...corner('xl'),
+                borderWidth: StyleSheet.hairlineWidth * 2,
                 borderStyle: 'dashed',
                 borderColor: colors.border,
               }}
@@ -192,9 +209,10 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
               <SectionHeader title={t('dashboard.applications')} onSeeAll={() => router.navigate('/dashboard/applications')} />
               <View
                 style={{
-                  borderRadius: radius.xl,
-                  borderWidth: 1,
+                  ...corner('xl'),
+                  borderWidth: StyleSheet.hairlineWidth * 2,
                   borderColor: colors.border,
+                  boxShadow: shadow.card,
                   backgroundColor: colors.card,
                   overflow: 'hidden',
                 }}
@@ -222,8 +240,8 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
                 gap: space[1],
                 paddingHorizontal: space[4],
                 paddingVertical: space[3],
-                borderRadius: radius.xl,
-                borderWidth: 1,
+                ...corner('xl'),
+                borderWidth: StyleSheet.hairlineWidth * 2,
                 borderStyle: 'dashed',
                 borderColor: colors.border,
               }}
@@ -365,5 +383,26 @@ function SuggestedRole({
         </Text>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * The website's question on /dashboard: a directory card listed before
+ * anybody asked its owner (visibility_chosen_at null, migration 336). Asked
+ * once, until they choose on their profile.
+ */
+function VisibilityAsk() {
+  const t = useTranslations();
+  const current = useUnchosenVisibility(true).data ?? null;
+  if (!current) return null;
+  return (
+    <Notice tone="muted" title={t('dashboard.visibilityAskTitle')}>
+      <View style={{ gap: space[3] }}>
+        <Text variant="small">{t('dashboard.visibilityAskBody', { current: t(`visibility.${current}`) })}</Text>
+        <View style={{ alignItems: 'flex-start' }}>
+          <Button label={t('dashboard.visibilityAskCta')} size="sm" onPress={() => router.navigate('/account/profile')} />
+        </View>
+      </View>
+    </Notice>
   );
 }

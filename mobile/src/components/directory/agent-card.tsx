@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Briefcase, CircleDot, Lock, MapPin, UserRound } from 'lucide-react-native';
+import { Briefcase, CircleDot, Lock, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { AgentCardRow, DistrictRow, JobTrack } from '@/lib/supabase/database.types';
@@ -11,7 +11,7 @@ import { Avatar } from '~/components/ui/avatar';
 import { Card } from '~/components/ui/card';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 /**
  * A directory card — the website's AgentCard: anonymised until the company is
@@ -115,7 +115,7 @@ export function TrackPills({ tracks }: { tracks: readonly JobTrack[] | null }) {
       {tracks.slice(0, 3).map((track) => (
         <View
           key={track}
-          style={{ paddingHorizontal: space[2], paddingVertical: 2, borderRadius: radius.full, backgroundColor: colors.secondary }}
+          style={{ paddingHorizontal: space[2], paddingVertical: 2, ...corner('full'), backgroundColor: colors.secondary }}
         >
           <Text variant="caption" weight="medium" tone="primary">
             {t(track)}

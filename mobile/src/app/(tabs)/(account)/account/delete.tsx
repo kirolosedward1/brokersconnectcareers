@@ -2,18 +2,19 @@ import { useState } from 'react';
 import { Alert, Linking, ScrollView, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
+import { OPERATOR } from '@/lib/business';
+import { SignedOut } from '~/components/navigation/signed-out';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
+import { asksApple, deleteAccountHere } from '~/features/account/delete';
 import { DeletionRequestRefused, useDeletionRequest, useRequestDeletion } from '~/features/account/settings';
-import { appleAuthorizationCode } from '~/features/auth/providers';
 import { useMobileConfig } from '~/features/config';
-import { ApiError, callAction } from '~/lib/api';
+import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
-import { supabase } from '~/lib/supabase';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 /**
  * Delete the account — the website's section, through its action
@@ -43,10 +44,9 @@ export default function DeleteAccountScreen() {
   const confirmLabel = t.markup('account.deleteConfirmLabel', { word, b: (chunks: string) => chunks });
   const ownsCompany = Boolean(viewer?.company && viewer.company.owner_id === viewer.userId);
   const user = session?.user;
-  const signsInWithApple =
-    (user?.identities ?? []).some((identity) => identity.provider === 'apple') ||
-    ((user?.app_metadata?.providers as string[] | undefined) ?? []).includes('apple');
-  const supportEmail = config.data?.supportEmail ?? null;
+  const asksAppleFirst = asksApple(user);
+  // Never no way out: the operator's published address when no support inbox is set.
+  const supportEmail = config.data?.supportEmail || OPERATOR.email;
 
   // An owner asks instead (requestAccountDeletion); one already asked sees their reference.
   const existing = useDeletionRequest();
@@ -67,39 +67,33 @@ export default function DeleteAccountScreen() {
     setError(null);
     setPending(true);
 
-    let appleCode: string | undefined;
-    if (signsInWithApple) {
-      const code = await appleAuthorizationCode();
-      if (!code) {
-        setPending(false);
-        setError(t('app.account.deleteAppleFailed'));
-        return;
-      }
-      appleCode = code;
-    }
-
-    const result = await callAction('deleteMyAccount', appleCode ? { appleAuthorizationCode: appleCode } : {}).catch(
-      () => null,
-    );
-    if (!result?.ok) {
+    const refusal = await deleteAccountHere(user);
+    if (refusal) {
       setPending(false);
-      const code = result && !result.ok ? result.error : null;
       setError(
-        code === 'owns_company'
+        refusal === 'owns_company'
           ? t('account.deleteBlockedCompany')
-          : code === 'under_review'
+          : refusal === 'under_review'
             ? t('account.deleteBlockedSuspended')
-            : code === 'apple_reauth_required'
+            : refusal === 'apple'
               ? t('app.account.deleteAppleFailed')
               : t('account.deleteUnavailable'),
       );
       return;
     }
 
-    // The account no longer exists (its phones went with it); what is left on this phone goes too.
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
     router.back();
     Alert.alert(t('app.account.deleted'));
+  }
+
+  // Reached from a link with nobody signed in: there is no account here to delete.
+  if (!session) {
+    return (
+      <>
+        <Stack.Screen options={{ title: t('account.deleteTitle') }} />
+        <SignedOut next="/account/delete" />
+      </>
+    );
   }
 
   return (
@@ -109,7 +103,7 @@ export default function DeleteAccountScreen() {
         contentInsetAdjustmentBehavior="automatic"
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[5] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
       >
         <Text>{t('account.deleteBody')}</Text>
 
@@ -144,7 +138,7 @@ export default function DeleteAccountScreen() {
           </View>
         ) : (
           <View style={{ gap: space[4] }}>
-            {signsInWithApple ? <Notice tone="muted">{t('app.account.deleteApple')}</Notice> : null}
+            {asksAppleFirst ? <Notice tone="muted">{t('app.account.deleteApple')}</Notice> : null}
 
             <Field label={confirmLabel}>
               <TextField

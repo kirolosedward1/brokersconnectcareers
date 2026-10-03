@@ -42,7 +42,8 @@
   },
   "jobs": {
     "loadMore": "Load more",
-    "endOfList": "That is every matching job."
+    "endOfList": "That is every matching job.",
+    "wizardStep": "Step <v>{current}</v> of <v>{total}</v>"
   },
   "auth": {
     "forCompanies": "Register your company",
@@ -58,8 +59,6 @@
     "mfaSignOut": "I do not have the code — sign out"
   },
   "onboarding": {
-    "terms": "I agree to the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>.",
-    "termsRequired": "Agree to the Terms of use to continue.",
     "choose": "Choose"
   },
   "moderation": {
@@ -90,7 +89,8 @@
     "monthInvalid": "Write the year and month like this: 2024-03",
     "endedHint": "Leave it empty if you still work there",
     "endBeforeStart": "The end date must come after the start.",
-    "yearInvalid": "Enter a year between 1950 and 2100."
+    "yearInvalid": "Enter a year between 1950 and 2100.",
+    "chooseUpTo": "Choose up to <v>{count}</v>."
   },
   "applicants": {
     "cvLimit": "You have opened a lot of CVs this hour. Try again shortly."
@@ -107,6 +107,37 @@
     "promptCandidate": "Turn on notifications and we will tell you as soon as a company answers your application.",
     "promptEmployer": "Turn on notifications and we will tell you as soon as someone applies to your listings.",
     "turnOn": "Turn on notifications",
-    "notNow": "Not now"
+    "notNow": "Not now",
+    "unavailable": "Notifications on this phone aren't available in this version of the app yet. Everything new still reaches you in the bell, and by email if you have that on.",
+    "kindsTitle": "What to hear about",
+    "kindsBody": "These apply on every phone you are signed in on. Anything turned off here still shows in the bell.",
+    "jobAlerts": "New jobs",
+    "jobAlertsHint": "Once a day, when jobs appear that match a saved search or a company you follow.",
+    "applicationsCandidate": "Your applications",
+    "applicationsCandidateHint": "When your application arrives, and when the company moves it to a new stage.",
+    "applicationsEmployer": "Applicants",
+    "applicationsEmployerHint": "When someone applies to one of your listings, or withdraws.",
+    "accountCandidate": "Your account",
+    "accountCandidateHint": "Decisions about your account or profile, support replies, a password changed.",
+    "accountEmployer": "Your account and listings",
+    "accountEmployerHint": "A listing published, rejected or ending, your company’s verification, decisions about your account, support replies.",
+    "quiet": "Quiet at night",
+    "quietHint": "Anything after 11 pm waits until 8 am, Cairo time."
+  },
+  "leave": {
+    "title": "Leave without saving?",
+    "body": "What you typed here has not been saved, and will be lost.",
+    "stay": "Keep editing",
+    "discard": "Leave"
+  },
+  "company": {
+    "docFrom": "Send the paper as",
+    "docCamera": "Take a photo of it",
+    "docPhotos": "A photo from your library",
+    "docFile": "A file (PDF or image)",
+    "cameraDenied": "Allow the camera for this app in Settings to photograph the paper."
+  },
+  "licenses": {
+    "intro": "This app is built on open-source software, written by many people and published for anyone to use. Here is every package in it, with its version, its licence and its copyright holders, and at the end the text of each licence."
   }
 }

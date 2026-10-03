@@ -8,7 +8,7 @@ import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { mustPage } from '@/lib/admin/read';
 import { PAGE_SIZE, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
-import { likeNeedle } from '@/lib/search/needle';
+import { looseArabicNeedle } from '@/lib/search/needle';
 import { formatDate, formatNumber } from '@/lib/utils';
 import type { AgentAvailability, AgentVisibility, ApprovalStatus } from '@/lib/supabase/database.types';
 
@@ -70,7 +70,7 @@ export default async function AdminAgentsPage({
   if (view === 'restricted') query = query.not('restricted_at', 'is', null);
   else if (view !== 'all') query = query.eq('visibility', view);
 
-  const needle = q ? likeNeedle(q) : '';
+  const needle = q ? looseArabicNeedle(q) : '';
   if (needle) {
     // Either the owner's name or the slug. Two filters on two tables cannot be
     // one `or`, so a slug-shaped query is taken as a slug.
@@ -80,7 +80,10 @@ export default async function AdminAgentsPage({
   }
 
   const current = { q, visibility: view === 'all' ? undefined : view };
-  const read = await mustPage(await query, 'loading consultant profiles', locale, hrefWith('/admin/agents', current, {}));
+  const read = await mustPage(await query, 'loading consultant profiles', locale, {
+    page,
+    href: (n) => hrefWith('/admin/agents', current, { page: n }),
+  });
   const rows = read.data as unknown as AgentListRow[];
 
   const t = await getTranslations('admin');

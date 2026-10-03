@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { BellPlus, BellRing, Bookmark, BookmarkCheck, Check } from 'lucide-react-native';
+import { BellPlus, BellRing, Bookmark, BookmarkCheck, Check } from '~/components/ui/lucide';
 import { canSaveJobs } from '@/lib/permissions';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
@@ -15,6 +15,7 @@ import {
   useToggleFollow,
   useToggleSavedJob,
 } from '~/features/saved/queries';
+import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
@@ -35,14 +36,20 @@ function signInThenReturn(next: string) {
 export function useSaveJob(jobId: string) {
   const t = useTranslations('jobs');
   const { actor } = useSession();
-  const saved = useSavedJobIds().has(jobId);
+  const { ids, known } = useSavedJobIds();
+  const saved = ids.has(jobId);
   const toggle = useToggleSavedJob();
   return {
     savable: canSaveJobs(actor),
     saved,
-    pending: toggle.isPending,
+    // Until the bookmarks are read, a press could take one off (the website toggles).
+    pending: toggle.isPending || !known,
     label: saved ? t('removeSaved') : t('save'),
-    toggle: () => toggle.mutate({ jobId, saved }),
+    toggle: () => {
+      if (!known) return;
+      haptic.selection();
+      toggle.mutate({ jobId, saved });
+    },
   };
 }
 
@@ -150,7 +157,8 @@ export function SaveSearchButton({ query, defaultLabel }: { query: string; defau
 
   const submit = () => {
     const name = label.trim();
-    if (!name) return;
+    // The keyboard's Done is not the button: a second press while saving would be told "already saved".
+    if (!name || save.isPending) return;
     setError(null);
     save.mutate(
       { label: name, query },
@@ -218,6 +226,7 @@ export function FollowCompanyButton({ slug, label }: { slug: string; label: stri
       return;
     }
     setError(null);
+    haptic.selection();
     toggle.mutate(
       { follow: !following },
       {

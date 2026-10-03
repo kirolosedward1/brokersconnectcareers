@@ -33,6 +33,7 @@ export async function JobDetailView({
   job,
   locale,
   open = true,
+  published = true,
 }: {
   job: JobDetail;
   locale: Locale;
@@ -42,6 +43,13 @@ export async function JobDetailView({
    * data, so the same answer reaches all three.
    */
   open?: boolean;
+  /**
+   * Whether it ever ran publicly: false for a draft, a listing in review or a
+   * rejected one, which only its company, an admin or an applicant can read.
+   * One that is not open is closed only if it was published — the others never
+   * ended, and have no "closed on" date.
+   */
+  published?: boolean;
 }) {
   const t = await getTranslations('jobs');
   const tTrack = await getTranslations('track');
@@ -50,6 +58,7 @@ export async function JobDetailView({
   const tCompanies = await getTranslations('companies');
   const tApply = await getTranslations('apply');
   const tLanding = await getTranslations('landing');
+  const tStatus = await getTranslations('jobStatus');
 
   const [similar, viewer, reference] = await Promise.all([
     getSimilarJobs(job),
@@ -241,9 +250,11 @@ export async function JobDetailView({
                     place where somebody reached for Apply, and the useful
                     thing to add there is the date and the way onward. */}
                 <p className="text-sm text-muted-foreground">
-                  {job.expires_at
-                    ? t('closedOn', { date: formatDate(job.expires_at, locale) })
-                    : t('closedCtaBody')}
+                  {!published
+                    ? t('notPublishedBody', { status: tStatus(job.status) })
+                    : job.expires_at
+                      ? t('closedOn', { date: formatDate(job.expires_at, locale) })
+                      : t('closedCtaBody')}
                 </p>
                 <Button asChild size="lg" className="mt-3">
                   <Link href="/jobs">{t('browseOpen')}</Link>
@@ -342,7 +353,7 @@ export async function JobDetailView({
             ) : null}
             {/* Past tense once the listing is closed: "closes 26 September"
                 under a banner saying it already has read as a contradiction. */}
-            {job.expires_at ? (
+            {job.expires_at && (open || published) ? (
               <time dateTime={isoDate(job.expires_at)} >
                 {t(open ? 'expiresOn' : 'endedOn', { date: formatDate(job.expires_at, locale) })}
               </time>

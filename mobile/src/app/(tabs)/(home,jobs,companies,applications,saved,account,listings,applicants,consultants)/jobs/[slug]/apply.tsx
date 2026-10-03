@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { CheckCircle2, FileText, Paperclip, ShieldCheck, X } from 'lucide-react-native';
+import { CalendarX2, CheckCircle2, CircleSlash, FileText, Paperclip, ShieldAlert, ShieldCheck, UserRound, X } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
 import type { JobDetail } from '@/lib/job-list';
 import { jobIsLive } from '@/lib/job-state';
@@ -13,6 +13,7 @@ import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
+import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
 import { Select } from '~/components/ui/select';
@@ -30,10 +31,12 @@ import {
 import { pickCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
 import { ApiError } from '~/lib/api';
+import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
+import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * Applying to a listing — the website's /jobs/<slug>/apply, at the same path
@@ -63,7 +66,9 @@ export default function ApplyScreen() {
       </>
     );
   }
-  if (job.isError) {
+  // A failed re-read in the background must not take the form away: only a
+  // first read that failed is an error page (TanStack keeps the data beside the error).
+  if (job.isError && !job.data) {
     return (
       <>
         {header}
@@ -90,7 +95,19 @@ function Apply({ job }: { job: JobDetail }) {
   const { session, viewer, actor } = useSession();
   const context = useApplyContext(isCandidate(actor) ? job.id : null);
   const hasBoard = useHasBoard();
+  const navigation = useNavigation();
   const [sentAt, setSentAt] = useState<Date | null>(null);
+
+  // The buttons that name the listing lead to it: back, when this page was
+  // opened from it; otherwise (a link, a sign-in that came back here) the
+  // listing in place of this page, not whatever the tab had underneath.
+  const toListing = () => {
+    const routes = navigation.getState()?.routes ?? [];
+    const below = routes.length > 1 ? routes[routes.length - 2] : null;
+    const params = (below?.params ?? {}) as { slug?: string };
+    if (below?.name === 'jobs/[slug]' && params.slug?.toLowerCase() === job.slug) router.back();
+    else router.replace({ pathname: '/jobs/[slug]', params: { slug: job.slug } });
+  };
 
   const title = localized(locale, job.title_ar, job.title_en);
 
@@ -99,6 +116,7 @@ function Apply({ job }: { job: JobDetail }) {
   if (!jobIsLive(job)) {
     return (
       <EmptyState
+        icon={CalendarX2}
         title={t('jobs.expired')}
         body={t('jobs.expiredBody')}
         action={hasBoard ? <Button label={t('jobs.title')} onPress={() => router.navigate('/jobs')} /> : null}
@@ -109,6 +127,7 @@ function Apply({ job }: { job: JobDetail }) {
   if (!session) {
     return (
       <EmptyState
+        icon={UserRound}
         title={t('app.account.signedOutTitle')}
         body={t('app.account.signedOutBody')}
         action={
@@ -126,8 +145,9 @@ function Apply({ job }: { job: JobDetail }) {
   if (!isCandidate(actor)) {
     return (
       <EmptyState
+        icon={CircleSlash}
         title={t('apply.employerCannotApply')}
-        action={<Button label={title} variant="outline" onPress={() => router.back()} />}
+        action={<Button label={title} variant="outline" onPress={toListing} />}
       />
     );
   }
@@ -136,24 +156,26 @@ function Apply({ job }: { job: JobDetail }) {
   if (!isApproved(actor)) {
     return (
       <EmptyState
+        icon={ShieldAlert}
         title={t('apply.suspendedTitle')}
         body={t('apply.suspendedBody')}
-        action={<Button label={title} variant="outline" onPress={() => router.back()} />}
+        action={<Button label={title} variant="outline" onPress={toListing} />}
       />
     );
   }
 
   if (context.isPending) return <LoadingState />;
-  if (context.isError) return <ErrorState error={context.error} onRetry={() => context.refetch()} />;
+  if (context.isError && !context.data) return <ErrorState error={context.error} onRetry={() => context.refetch()} />;
 
   if (context.data.existing) {
     return (
       <EmptyState
+        icon={CheckCircle2}
         title={t('apply.alreadyApplied')}
         action={
           <View style={{ gap: space[2], alignItems: 'center' }}>
             <Button label={t('apply.viewApplications')} onPress={() => router.navigate('/dashboard/applications')} />
-            <Button label={title} variant="outline" onPress={() => router.back()} />
+            <Button label={title} variant="outline" onPress={toListing} />
           </View>
         }
       />
@@ -166,7 +188,10 @@ function Apply({ job }: { job: JobDetail }) {
       defaultName={viewer.profile.full_name}
       defaultPhone={viewer.profile.whatsapp_phone}
       profileCv={context.data.profileCv}
-      onSent={() => setSentAt(new Date())}
+      onSent={() => {
+        haptic.success();
+        setSentAt(new Date());
+      }}
     />
   );
 }
@@ -199,6 +224,8 @@ function ApplyForm({
   // The CV already on the profile goes with it unless the candidate says otherwise.
   const [attachment, setAttachment] = useState<Attachment>(profileCv ? { kind: 'profile', path: profileCv } : null);
   const [errors, setErrors] = useState<Errors>({});
+  // Leaving with a note written or a file picked asks first (the form goes once it is sent).
+  useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file');
 
   const title = localized(locale, job.title_ar, job.title_en);
   const company = localized(locale, job.company.name_ar, job.company.name_en);
@@ -267,7 +294,7 @@ function ApplyForm({
       automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[5] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
     >
       <View style={{ gap: space[1] }}>
         <Text variant="title" weight="bold" accessibilityRole="header">
@@ -319,7 +346,7 @@ function ApplyForm({
               alignItems: 'center',
               gap: space[2],
               paddingStart: space[3],
-              borderRadius: radius.lg,
+              ...corner('lg'),
               borderWidth: 1,
               borderColor: colors.border,
               backgroundColor: colors.card,
@@ -379,8 +406,8 @@ function ApplyForm({
           flexDirection: 'row',
           gap: space[3],
           padding: space[4],
-          borderRadius: radius.xl,
-          borderWidth: 1,
+          ...corner('xl'),
+          borderWidth: StyleSheet.hairlineWidth * 2,
           borderColor: colors.border,
           backgroundColor: colors.muted,
         }}
@@ -425,7 +452,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
     >
       <View
         accessibilityLiveRegion="polite"
@@ -433,9 +460,8 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
           alignItems: 'center',
           gap: space[2],
           padding: space[6],
-          borderRadius: radius.xl,
-          borderWidth: 1,
-          borderColor: colors.success,
+          ...corner('xl'),
+          // A soft tint of its meaning, as a Notice is, not an outline in it.
           backgroundColor: colors.successMuted,
         }}
       >
@@ -448,7 +474,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
         </Text>
       </View>
 
-      <View style={{ borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+      <Card style={{ padding: 0 }}>
         {rows.map(([label, value], index) => (
           <View
             key={label}
@@ -457,7 +483,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
               justifyContent: 'space-between',
               gap: space[4],
               padding: space[4],
-              borderTopWidth: index ? 1 : 0,
+              borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
               borderTopColor: colors.border,
             }}
           >
@@ -469,7 +495,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
             </Text>
           </View>
         ))}
-      </View>
+      </Card>
 
       <View style={{ gap: space[2] }}>
         <Button label={t('apply.viewApplications')} onPress={() => router.navigate('/dashboard/applications')} />

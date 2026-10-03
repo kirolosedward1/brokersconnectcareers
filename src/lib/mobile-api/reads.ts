@@ -22,10 +22,23 @@ export type MobileConfig = {
   providers: { google: boolean; apple: boolean };
   englishEnabled: boolean;
   billingEnabled: boolean;
-  /** SUPPORT_EMAIL, the address the website's footer offers; null while unset. */
+  /** The address the website's footer offers: SUPPORT_EMAIL, or the operator's own. Null from a server older than that. */
   supportEmail: string | null;
-  /** MOBILE_APP_STORE_URL, where "update the app" leads; null until the app is listed. */
+  /** MOBILE_APP_STORE_URL, where "update the app" leads on an iPhone; null until the app is listed. */
   appStoreUrl: string | null;
+  /**
+   * The Android app's own floor (MOBILE_MIN_ANDROID_APP_VERSION): its builds
+   * are numbered and released apart from the iPhone's. minAppVersion when unset.
+   */
+  minAndroidAppVersion: string;
+  /** MOBILE_PLAY_STORE_URL, where "update the app" leads on Android; null until the app is listed. */
+  playStoreUrl: string | null;
+  /**
+   * The versions of the Terms of use and the Privacy policy a person agrees to
+   * now (their `updated` dates). Compared with the person's latest acceptance
+   * to decide whether to ask again. Absent from a server older than migration 336's code.
+   */
+  policies?: { terms: string; privacy: string };
 };
 
 /** GET /jobs */

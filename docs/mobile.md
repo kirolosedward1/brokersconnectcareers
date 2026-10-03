@@ -76,6 +76,15 @@ not reported as unused and a key the app asks for must exist.
 Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
 `src/lib/**` and `messages/**` as well as `mobile/**`.
 
+The other way round, a change only to `mobile/` does not build the website:
+`vercel.json`'s `ignoreCommand` skips the deployment when nothing outside
+`mobile/` (and the app's workflow) changed since the last deployment that
+succeeded (`VERCEL_GIT_PREVIOUS_SHA`). It compared with the previous commit
+alone before, so a push of several commits whose last one touched only the app
+skipped the website changes in the commits before it. When that deployment's
+commit is not in Vercel's shallow clone, the build runs; with no deployment to
+compare with (a new branch), it compares with the previous commit.
+
 ## Inside the app
 
 - **Session.** Supabase Auth, as on the website. The session is stored
@@ -93,9 +102,14 @@ Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
   `mobile/src/i18n/messages/`. Numbers inside Arabic sentences are wrapped in
   left-to-right isolates (U+2066…U+2069) — the website's `<v>` tag.
   `@formatjs` polyfills give Hermes Arabic plurals and formatting.
-- **Design.** The website's tokens (`mobile/src/theme/tokens.ts`, from
-  `globals.css`), IBM Plex Sans Arabic 400–700, light by default with light /
-  dark / system as on the site, 44-point touch targets.
+- **Design.** The brand set in a quieter key for the phone
+  (`mobile/src/theme/tokens.ts`): ivory paper with deep sapphire ink in light,
+  near-black with champagne in dark, champagne kept for what has been checked
+  (a verified company); every text pair 4.5:1, marks and field borders 3:1.
+  Cards raised with a hairline and a soft shadow, continuous corners, capsule
+  buttons and chips, a gentle press (none with Reduce Motion), a few haptics
+  (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, light by
+  default with light / dark / system as on the site, 44-point touch targets.
 - **Navigation.** Routes mirror the website's paths. Each tab is a route group
   with its own stack, and listings, company pages and the bell's feed live in
   a group all tabs share, so they open inside the tab the reader is in. The
@@ -257,7 +271,10 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   the Terms of use, which the App Store requires of an app where people publish
   to each other. A session with no profile — just signed in, restored at launch,
   or arriving from a link — is sent there by the session gate
-  (`mobile/src/components/navigation/session-gate.tsx`).
+  (`mobile/src/components/navigation/session-gate.tsx`). Its ways out are
+  signing out and deleting the account, which runs the Account tab's own path
+  (`mobile/src/features/account/delete.ts`); the website's onboarding page has
+  the same two (`src/components/auth/leave-onboarding.tsx`).
 - **The Account tab** signs out of this phone only (`scope: 'local'`), and
   deletes the account through `deleteMyAccount` — for an Apple account after
   asking Apple for a fresh authorization code, so the website can revoke the
@@ -300,6 +317,13 @@ A push is a second delivery of a bell notification, never a different one
   listing are one push, as they are one row in the bell — only for people with
   a phone, and it can never fail the notification. The expiry notices the
   night sweep writes wait until nine in Cairo.
+- **New listings.** Once a day (`/api/cron/new-jobs`, 07:17 UTC: nine or ten
+  in Cairo), every saved search with alerts on — a followed company is one —
+  runs through the board's own query, and what was published since it was
+  last looked at, less what the person applied to, becomes one bell
+  notification for the day (`new_jobs`, migrations 333–334,
+  `src/lib/new-jobs.ts`): naming the one search or company that found it, or
+  counting. It reaches the phone like any other. The Monday email is unchanged.
 - **What is sent.** The bell's own sentence (`notificationTitle`) in the
   phone's language, the unread count as the badge, and the notification's id —
   never the free-text note, which is not for a lock screen. Opening it asks the
@@ -313,7 +337,13 @@ A push is a second delivery of a bell notification, never a different one
   the person would hear about ("not now" puts it away) — never at launch; the
   Account tab's "Notifications on this phone" (`/account/alerts`) turns them
   off for this person on this phone without the phone's settings, and says so
-  when the phone's settings have them off, with the way there. The phone is
+  when the phone's settings have them off, with the way there. With them on,
+  it also has the person's choices for all their phones (migration 335, on
+  the profile beside the email switches, saved with `updatePushPreferences`):
+  new listings (a candidate's only), applications, and everything else, each
+  on or off, and quiet hours — what comes between 23:00 and 08:00 Cairo time
+  waits until eight; off unless turned on. `enqueue_push` applies them where
+  pushes are queued, so a kind turned off still reaches the bell. The phone is
   registered at every launch for somebody with a profile who allowed it
   (which keeps `last_seen_at` fresh) and again when its token changes.
   Signing out forgets the phone first (`signOutHere`, before the session
@@ -389,6 +419,45 @@ pnpm check          # typecheck, lint, the shared-code guard, Jest
 pnpm export:ios     # bundle for iOS with Metro and Hermes
 ```
 
+### Against the real stack
+
+The Jest suites answer Supabase and the website from fixtures. Two checks send
+the same requests to the real thing, in CI and on a computer:
+
+- **The contract replay** (the Mobile workflow's `contract` job) records every
+  database request the tests make and replays each distinct one against a real
+  Postgres 16 built from the migrations and seeds, behind a real PostgREST 12,
+  signed as a seeded candidate or employer, or as nobody. A column, embed,
+  function or grant the fixtures answer but the schema refuses fails it.
+
+  ```bash
+  (cd mobile && RECORD_REQUESTS=/tmp/requests.jsonl npx jest)
+  POSTGREST_BIN=/path/to/postgrest node scripts/contract/replay.mjs /tmp/requests.jsonl
+  ```
+
+- **The journeys** (`.github/workflows/e2e.yml`, "End to end") start Supabase
+  from the migrations and the seed, make the demo accounts, build and start the
+  website against it, and send what the phone sends: the password grant, reads
+  under row-level security, CV bytes to Storage, server actions through
+  `/api/mobile/v1`. Then they check what the database holds: an application
+  with its CV, the employer opening, noting and moving it, the move in the
+  candidate's bell, a listing sent for review, an account made, onboarded and
+  deleted. With Docker running:
+
+  ```bash
+  supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime
+  # .env.local from `supabase status -o env`: the API URL, the anon and
+  # service keys, and DATABASE_URL
+  DEMO_PASSWORD=… node scripts/seed-demo.mjs
+  pnpm build && pnpm start
+  SITE_URL=http://localhost:3000 SUPABASE_URL=http://127.0.0.1:54321 \
+    SUPABASE_ANON_KEY=… DEMO_PASSWORD=… node scripts/e2e/journeys.mjs
+  ```
+
+  They refuse to run against production: they sign in as the demo accounts,
+  apply, move applications, post a listing and delete an account they make.
+  The replay builds its own database and never connects to one.
+
 ### Trying it in Expo Go
 
 The quickest way onto a phone, with no Apple developer account: install Expo Go
@@ -398,13 +467,60 @@ iPhone, and scan the QR code it prints with the iPhone's camera
 left comes from `extra.forcesRTL` in `app.config.ts`, which Expo Go reads from
 the manifest.
 
+Sign in first, on both sides, to the same Expo account (a free one will do):
+`npx expo login` on the computer, and the account icon in Expo Go's top corner
+on the phone. An iPhone's Expo Go opens a project from a computer only then, and
+otherwise stops at "You need to be signed in to Expo Go and Expo CLI"; the
+tunnel needs the login too. The iOS Simulator does not ask.
+
+#### Without a computer running
+
+The app can also be published to Expo's servers as an update that Expo Go
+opens by itself, so the phone needs only the internet. It is the same code,
+with the store build's settings (it talks to production), on its own
+`expo-go` channel. It uses Expo Go's runtime version (`exposdk:57.0.0`), not
+the fingerprint store builds take (`EXPO_GO_UPDATE` in `app.config.ts`).
+
+Once, with the Expo account Expo Go is signed in to: an access token
+(expo.dev → Account settings → Access tokens) as the repository secret
+`EXPO_TOKEN` (GitHub → the repository's Settings → Secrets and variables →
+Actions). That is all Expo Go needs. While `app.config.ts` carries no EAS
+project id, a publish finds the app's project (slug `brokers-connect`) on the
+token's account, or creates it the first time, with Expo's own `eas init`
+(`scripts/publish-update.mjs`). The run's summary then gives the project's id:
+it goes in `app.config.ts` in place of `null` (`EAS_PROJECT_ID`) for builds and
+push notifications. It is not a secret.
+
+Then, each time the phone should get the newest code:
+
+- from GitHub: Actions → Expo Go → Run workflow (on any branch). It also runs
+  by itself on pushes to `main` and on this repository's pull requests. The
+  run's summary links the QR code;
+- or from a computer, signed in with `npx eas-cli@latest login`:
+  `pnpm run ota expo-go --message "what changed"` in `mobile/`, which finds or
+  creates the project the same way and prints the same link.
+
+On the phone, Expo Go lists the app under Projects (signed in to the same
+account), or scan the QR code on that page with the camera. Expo Go opens the
+app and keeps it in its list, so later it is one tap. Each publish replaces
+what it opens next.
+
+Expo Go from the App Store runs one SDK at a time. Today that is 57, this
+app's. When it moves to the next SDK, the app has to move too
+(`npx expo install expo@latest --fix`) before Expo Go opens it again. A build
+of the app itself (`docs/app-store.md`) does not depend on that.
+
 Expo Go runs the app as itself, not as `net.brokersconnect.app`, so a few
 things need a development build instead:
 
-- Sign in with Apple: Apple issues the token to Expo Go. Email and password,
-  and Google, work.
-- Push notifications, which need the EAS project and a build.
-- Links that open the app (universal links and `brokersconnect://`).
+- Sign in with Apple: Apple issues the token to Expo Go, so the app does not
+  show the button there. Email and password, and Google, work.
+- Push notifications, which need the EAS project (`EAS_PROJECT_ID` in
+  `app.config.ts`) and a build. Until a build has a project, the app offers
+  none: no prompt on Home, and a sentence in place of the switch under
+  Account → Notifications (`pushAvailable()` in `src/features/push/device.ts`).
+- Links that open the app (universal links and `brokersconnect://`). Expo
+  Go's own `exp://…/--/<path>` links do open the page they name.
 - The version on the Account screen, and the one the update gate compares, is
   Expo Go's own.
 
@@ -412,14 +528,71 @@ The app talks to production (the values in `.env`), so it works once the
 website and database carry what it relies on: the release in
 `docs/release/2026-09-prod-reconciliation.md`.
 
-The Jest suites cover the pure helpers, routing (where each kind of link lands
-and where Back goes), the real screens rendered against fixtures typed with the
-API's own shapes, and every sign-in path (`tests/auth.test.tsx`) run through the
+The Jest suites run as close to the phone as Node allows, because code that
+passed them has failed on the phone twice:
+
+- The phone's Intl: `tests/setup.ts` forces the formatjs polyfills the app
+  loads on Hermes (`src/lib/intl-polyfills.ts`), with the same few locales. A
+  formatter that worked in Node threw on every job card on the phone.
+  `tests/intl.test.ts` runs each shared formatter, and each catalogue message
+  with a number, plural, choice or date, on both Intls and requires the same
+  text.
+- The phone's engine: the setup removes what Node has and Hermes lacks
+  (`toSorted`, `Object.groupBy`, `Map.groupBy`, `Array.fromAsync`, iterator
+  helpers, `ArrayBuffer#transfer`).
+- The phone's compiler: `jest.config.js` has babel-preset-expo run React
+  Compiler, as Metro does for the app.
+- The phone's fetch: Expo replaces it with its own, which builds a multipart
+  body with rules of its own. Tests that upload put the form the app sent
+  through Expo's conversion (`tests/multipart.ts`); photos and logos once
+  passed every test and failed on every phone.
+
+The suites cover the pure helpers,
+routing (where each kind of link lands and where Back goes), the real screens
+rendered against fixtures typed with the API's own shapes, and every sign-in
+path (`tests/auth.test.tsx`) run through the
 real supabase-js client against a stand-in for Supabase Auth: what GoTrue is
 sent, what the website's actions are asked, and where each flow leaves the
 person. On the website side, `pnpm test:mobile-api` covers the
 bearer handling and the registry, and `pnpm smoke:mobile-api` runs the endpoints
 against a local production build.
+
+### On a phone, before a release
+
+The tests run the app's code, not the phone: what only a real phone shows is
+checked by hand, on a development build (`eas.json`, `development`) against
+production, with QA accounts made for it — never the demo accounts.
+
+- Signed out: the board's results match the website's for the same filters; a
+  listing, a company, sharing a listing.
+- Sign up with email: the confirmation email's link opens the app and leads to
+  onboarding; Sign in with Apple, and with Google (the browser comes back to
+  the app signed in, with no error behind it).
+- Candidate: apply with a CV from Files; the employer sees the applicant and
+  opens the CV; both emails arrive; the candidate sees "opened".
+- Employer: move an applicant — the candidate gets the push and the email;
+  post a listing — it waits for review; add a note on a weak connection.
+- Pushes: allow them from the prompt on Home, get one with the app closed,
+  tap it; the icon's number follows the bell; sign out — no more arrive.
+- Push settings (Account → notifications on this phone): with applications
+  off, a moved applicant reaches the bell but not the lock screen; with quiet
+  hours on, a push made after eleven at night arrives at eight, Cairo time.
+- A saved search with alerts on: the next morning the bell has the day's new
+  listings that match it.
+- Onboarding: "Delete this account" under signing out deletes an account that
+  never finished it, and the app is back at the start.
+- An over-the-air update (`pnpm run ota preview --message "…"` to a preview
+  build): it shows after the app is closed and opened twice.
+- Offline (airplane mode): the screens say so rather than spin; signing out
+  still works, in a few seconds.
+- Arabic on the phone: numbers, prices and "days ago" read as on the website.
+- A link to a listing on the website, tapped in Mail or WhatsApp, opens the
+  app (once `APPLE_APP_ID` is set).
+- Delete a QA account from the app; for one made with Apple, Apple's
+  "Sign in with Apple" list no longer shows the app.
+- On Android as well, when it ships: every form's lowest field stays above the
+  keyboard, Back on onboarding and the second factor stays put, and the tab
+  icons show.
 
 ## Configuration
 
@@ -433,6 +606,9 @@ On the website (Vercel):
 | --- | --- |
 | `MOBILE_MIN_APP_VERSION` | The lowest app version `/api/mobile/v1/config` accepts; below it the app asks to be updated. |
 | `MOBILE_APP_STORE_URL` | The app's App Store page (`https://apps.apple.com/...` only), where the "update the app" screen leads; unset until the app is listed. |
+| `MOBILE_MIN_ANDROID_APP_VERSION` | The same floor for the Android app, whose builds are numbered apart; `MOBILE_MIN_APP_VERSION` when unset. |
+| `MOBILE_PLAY_STORE_URL` | The app's Play Store page (`https://play.google.com/...` only), where the Android app's "update the app" screen leads. |
+| `ANDROID_CERT_SHA256` | The Android signing certificate's SHA-256 fingerprint (`AB:CD:…`, from `eas credentials` or the Play Console's app signing page; several, comma-separated). Serves `/.well-known/assetlinks.json`, so links to the site open the Android app. |
 | `APPLE_APP_ID` | `TEAMID.net.brokersconnect.app` — serves the universal-link file. |
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `APPLE_CLIENT_ID` | The Sign in with Apple key (`.p8`, newlines escaped) and the app's bundle id, used to revoke an Apple user's grant when they delete their account from the app (`src/lib/apple/revoke.ts`). Secret. |
 | `SUPPORT_EMAIL` | Already the footer's contact address; the app offers it too (`/api/mobile/v1/config`), beside a company owner's in-app deletion request. |
@@ -467,10 +643,56 @@ Before the first build:
   (Expo sends to Apple with it);
 - confirm the bundle identifier `net.brokersconnect.app` — it cannot change once
   the app is on the App Store;
-- real Privacy Policy and Terms pages on the website (the App Store requires a
-  privacy policy URL);
+- the privacy policy's section on the app (`content/legal/privacy.ar.md`)
+  reviewed — the App Store requires a privacy policy URL;
 - a 1024-pixel app icon.
+
+The whole list, in order, with the website's keys and Android's, is in
+`docs/app-store.md` ("Before the first submission").
+
+### Over-the-air updates
+
+A build on the App Store keeps taking new JavaScript and images without
+another review: `expo-updates` asks Expo's update service at launch, downloads
+in the background, and runs the update from the next launch, so nobody's
+screen changes under them (`app.config.ts`, `updates`). Each build listens on
+its profile's channel in `eas.json` (`production`, `preview`); a development
+build loads code from your computer instead. Without an EAS project id updates
+are off, and a build runs the code it was built with.
+
+Publish with the script, never a plain `eas update`:
+
+    cd mobile
+    pnpm run ota production --message "what changed"
+
+A build takes only an update made for its own native code: the runtime
+version is a fingerprint of the configuration as evaluated, and the
+configuration follows the build's environment (the APNs mode follows
+`EAS_BUILD_PROFILE`, the website's host `EXPO_PUBLIC_SITE_URL`). EAS sets
+those from `eas.json` during a build but not when an update is published, so a
+plain `eas update` computes another fingerprint and its update reaches nobody —
+and it bundles whatever Supabase address and key the machine's `.env` holds.
+The script publishes with the profile's own values from `eas.json`, iOS only
+unless `--platform` is given. `scripts/publish-update.test.mjs` (in
+`pnpm check`) checks both, against the real `eas.json` and `app.config.ts`.
+
+What cannot go out this way is anything native: a new native module, a
+permission string, the icon, a config plugin's settings. Those change the
+fingerprint and need a new build (and a review); updates published after it
+go to that build only. What is not native stays out of the fingerprint
+(`mobile/fingerprint.config.js`): Expo counts `package.json`'s scripts and
+`.gitignore` by default, and adding a check to `scripts` would have cut every
+installed build off from later updates without a word. The same test computes
+the fingerprint and checks what it is made of. So the first App Store build already carries the
+native modules this round's later features need — `expo-store-review` for the
+rating prompt, `expo-local-authentication` for the app lock — and those
+features can follow over the air.
 
 The native iOS build is also compiled in CI on `main` (`ios-build` in
 `.github/workflows/mobile.yml`), so a config plugin or native dependency that
-breaks the build shows up before an EAS build is paid for.
+breaks the build shows up before an EAS build is paid for. It runs on demand
+too: Actions → Mobile → Run workflow, on any branch. It builds with Xcode 26,
+as EAS does for SDK 57. Xcode 16 cannot build SDK 57: `expo-modules-jsi`'s
+Swift package needs Swift tools 6.2, and `@expo/ui`, which `expo-router`
+depends on, uses iOS 26 SwiftUI API. A Mac building locally needs Xcode 26 as
+well.

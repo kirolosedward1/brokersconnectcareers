@@ -3,7 +3,7 @@ import { Text } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { formatList } from '@/lib/format';
 import type { JobListItem } from '@/lib/job-list';
 import type { AgentProfileRow, CandidateSummary, ProfileRow } from '@/lib/supabase/database.types';
@@ -313,5 +313,149 @@ describe("a candidate's home", () => {
     open();
     expect(await screen.findByText(ar.standing.suspendedTitle)).toBeTruthy();
     expect(screen.getByText(ar.standing.suspendedBodyCandidate)).toBeTruthy();
+  });
+});
+
+describe('the Terms and the Privacy policy', () => {
+  const versions = { terms: '2026-10-01', privacy: '2026-10-01' };
+  type Acceptance = { terms_version: string; privacy_version: string; accepted_at?: string };
+
+  /** policy_acceptances as PostgREST answers: the rows the filters keep, in the order and number asked for. */
+  const acceptances = (rows: () => Acceptance[]) => (url: URL) => {
+    const kept = rows().filter((row) =>
+      (['terms_version', 'privacy_version'] as const).every((column) => {
+        const filter = url.searchParams.get(column);
+        return filter === null || filter === `eq.${row[column]}`;
+      }),
+    );
+    if (url.searchParams.get('order') === 'accepted_at.desc') {
+      kept.sort((a, b) => (b.accepted_at ?? '').localeCompare(a.accepted_at ?? ''));
+    }
+    const limit = url.searchParams.get('limit');
+    return limit ? kept.slice(0, Number(limit)) : kept;
+  };
+
+  /**
+   * The answer asked for, drawn: TanStack tells the screens on a timer (fake,
+   * under renderRouter), and "no notice" is only worth asserting once it has.
+   */
+  async function answered() {
+    await waitFor(() => expect(server.asked('/rest/v1/policy_acceptances')).toHaveLength(1));
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+  }
+
+  it('asks somebody who never agreed, and records the agreement through the website', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ policies: versions }));
+    let accepted: Acceptance[] = [];
+    server.on('GET /rest/v1/policy_acceptances', acceptances(() => accepted));
+    server.on('POST /api/mobile/v1/actions/acceptPolicies', () => {
+      accepted = [{ terms_version: versions.terms, privacy_version: versions.privacy }];
+      return { ok: true };
+    });
+    await signIn();
+    open();
+
+    expect(await screen.findByText(ar.legal.updatedTitle)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.legal.agree }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/acceptPolicies')).toHaveLength(1));
+    // The versions are the website's to record, never the phone's.
+    expect(server.asked('/api/mobile/v1/actions/acceptPolicies')[0].body).toEqual({ input: null });
+    await waitFor(() => expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull());
+  });
+
+  it('takes the agreement when a release changed a document after the phone last asked', async () => {
+    // The phone read the versions before the deploy; the website records its own, newer pair.
+    const newer = { terms: '2026-12-01', privacy: '2026-10-01' };
+    let published = versions;
+    server.on('GET /api/mobile/v1/config', () => mobileConfig({ policies: published }));
+    let accepted: Acceptance[] = [];
+    server.on('GET /rest/v1/policy_acceptances', acceptances(() => accepted));
+    server.on('POST /api/mobile/v1/actions/acceptPolicies', () => {
+      accepted = [{ terms_version: newer.terms, privacy_version: newer.privacy }];
+      return { ok: true };
+    });
+    await signIn();
+    open();
+    expect(await screen.findByText(ar.legal.updatedTitle)).toBeTruthy();
+
+    published = newer;
+    fireEvent.press(screen.getByRole('button', { name: ar.legal.agree }));
+    await waitFor(() =>
+      expect(server.asked('/rest/v1/policy_acceptances').at(-1)?.url.searchParams.get('terms_version')).toBe('eq.2026-12-01'),
+    );
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
+  });
+
+  it('asks again when a document has changed since', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ policies: { terms: '2026-12-01', privacy: '2026-10-01' } }));
+    server.on('GET /rest/v1/policy_acceptances', acceptances(() => [{ terms_version: '2026-10-01', privacy_version: '2026-10-01' }]));
+    await signIn();
+    open();
+    expect(await screen.findByText(ar.legal.updatedTitle)).toBeTruthy();
+    // It looks for an agreement to the versions published now.
+    const asked = server.asked('/rest/v1/policy_acceptances')[0].url.searchParams;
+    expect([asked.get('terms_version'), asked.get('privacy_version')]).toEqual(['eq.2026-12-01', 'eq.2026-10-01']);
+  });
+
+  it('asks nothing of somebody who agreed to what is current', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ policies: versions }));
+    server.on('GET /rest/v1/policy_acceptances', acceptances(() => [{ terms_version: versions.terms, privacy_version: versions.privacy }]));
+    await signIn();
+    open();
+    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    await answered();
+    expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
+  });
+
+  it('asks nothing of somebody who agreed to these versions before a later pair that was taken back', async () => {
+    // Agreed to the current pair, then to a newer one a release brought and its rollback took away.
+    server.on('GET /api/mobile/v1/config', mobileConfig({ policies: versions }));
+    server.on(
+      'GET /rest/v1/policy_acceptances',
+      acceptances(() => [
+        { terms_version: versions.terms, privacy_version: versions.privacy, accepted_at: '2026-10-02T08:00:00Z' },
+        { terms_version: '2026-12-01', privacy_version: '2026-12-01', accepted_at: '2026-12-02T08:00:00Z' },
+      ]),
+    );
+    await signIn();
+    open();
+    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    await answered();
+    expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
+  });
+
+  it('asks nothing when the website does not say what is current, and does not look', async () => {
+    await signIn();
+    open();
+    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
+    expect(server.asked('/rest/v1/policy_acceptances')).toHaveLength(0);
+  });
+});
+
+describe('a directory card nobody asked about', () => {
+  it('asks a candidate whose card was listed before onboarding asked, and leads to the profile', async () => {
+    server.on('GET /rest/v1/agent_profiles', [{ ...agent, visibility_chosen_at: null }]);
+    await signIn();
+    open();
+
+    expect(await screen.findByText(ar.dashboard.visibilityAskTitle)).toBeTruthy();
+    expect(screen.getByText(ar.dashboard.visibilityAskBody.replace('{current}', ar.visibility.verified_employers_only))).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.dashboard.visibilityAskCta }));
+    expect(await screen.findByText('the profile')).toBeTruthy();
+  });
+
+  it('says nothing once they have chosen', async () => {
+    server.on('GET /rest/v1/agent_profiles', [{ ...agent, visibility_chosen_at: '2026-10-01T10:00:00Z' }]);
+    await signIn();
+    open();
+    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    await waitFor(() => expect(server.asked('/rest/v1/agent_profiles').length).toBeGreaterThan(0));
+    expect(screen.queryByText(ar.dashboard.visibilityAskTitle)).toBeNull();
   });
 });

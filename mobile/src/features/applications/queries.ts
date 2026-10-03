@@ -90,6 +90,8 @@ export function useWithdrawApplication() {
       // The board's "applied" badges and the dashboard's counts.
       queryClient.invalidateQueries({ queryKey: ['jobs', 'applied'] });
       queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      // The listing's apply page: the row is gone, and so is "applied already".
+      queryClient.invalidateQueries({ queryKey: ['apply'] });
     },
   });
 }

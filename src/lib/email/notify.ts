@@ -2,6 +2,7 @@ import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { AgentVisibility, ApplicationStatus } from '@/lib/supabase/database.types';
 import { env } from '@/lib/env';
+import { trustedLogoUrl } from '@/lib/avatar-url';
 import { localized } from '@/i18n/routing';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { copyFor, localeOf } from './copy';
@@ -9,6 +10,9 @@ import { followedCompany } from '@/lib/saved-search';
 import { buildEnvelope, type Audience } from './envelope';
 import { deliver } from './service';
 import type { SendOutcome } from './send';
+import { unsubscribeLinks } from './unsubscribe-link';
+import { isNews, stageTelling, tellingSuffix } from '@/lib/application-arrival';
+import { listingNotes, noteFor } from '@/lib/listing-notes';
 
 /**
  * One function per product event.
@@ -37,16 +41,16 @@ import type { SendOutcome } from './send';
  * forever on something that already happened. Everything else is a stream that
  * keeps arriving, and turning a stream off is a reasonable thing to want.
  */
-type Preference = 'notify_applications' | 'notify_status' | 'notify_digest' | null;
+type Preference = 'notify_applications' | 'notify_status' | 'notify_digest' | 'notify_profile_nudge' | null;
 
 type Recipient = {
   userId: string;
   email: string;
   locale: 'ar' | 'en';
   unsubscribeToken: string;
+  /** Who they are on the platform, for a notice that reads differently by role. */
+  role: string | null;
 };
-
-const PREFERENCE_COLUMNS = 'notify_applications, notify_status, notify_digest';
 
 /**
  * A read that failed, as opposed to one that found nothing.
@@ -76,15 +80,24 @@ async function recipient(
   userId: string,
   preference: Preference,
 ): Promise<Recipient | null> {
+  // The whole row rather than a list of switches: a database that has not had
+  // the newest switch's migration yet answers without it, where naming it
+  // would fail every email's read.
   const { data: profile, error: profileError } = await admin
     .from('profiles')
-    .select(`locale, ${PREFERENCE_COLUMNS}`)
+    .select('*')
     .eq('id', userId)
     .maybeSingle();
 
   if (profileError) readFailed('profile', profileError);
   if (!profile) return null;
-  if (preference && (profile as Record<string, unknown>)[preference] === false) return null;
+  if (preference) {
+    const value = (profile as Record<string, unknown>)[preference];
+    // The profile reminder is opt-in (migration 337): only a yes sends it, and
+    // a database without the switch has not asked anybody. Every other switch
+    // is on until turned off.
+    if (preference === 'notify_profile_nudge' ? value !== true : value === false) return null;
+  }
 
   // The token lives on profile_private (migration 305), where no company that
   // reads an applicant's profile can reach it. Service role, as before.
@@ -107,6 +120,7 @@ async function recipient(
     email: data.user.email,
     locale: localeOf(profile.locale),
     unsubscribeToken: secret.unsubscribe_token,
+    role: typeof profile.role === 'string' ? profile.role : null,
   };
 }
 
@@ -136,7 +150,7 @@ type ApplicationForEmployer = {
   created_at: string;
   experience_band: string | null;
   candidate_id: string;
-  job: (JobBits & { company: { id: string } | null }) | null;
+  job: (JobBits & { company: { id: string; suspended_at: string | null } | null }) | null;
 };
 
 type ApplicationForCandidate = {
@@ -151,7 +165,15 @@ type ApplicationForCandidate = {
 };
 
 type JobForOwner = JobBits & {
+  /** Where the listing stands now: a message about a decision checks it still does. */
+  status: string;
   company: { id: string; owner_id: string; name_ar: string } | null;
+  /**
+   * The listing's own note column: before migration 347 the moderator's
+   * reason, null since (it is in job_moderation). Read again when a refusal
+   * is retried.
+   */
+  rejection_note?: string | null;
 };
 
 // `version` is here for the dedupe keys below: it moves on every update, so a
@@ -296,10 +318,11 @@ export async function notifyPasswordChanged(userId: string): Promise<SendOutcome
 export async function notifyProfileIncomplete(userId: string): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
-    // On notify_digest rather than transactional: this is a nudge, not an
-    // answer to anything the person asked for, and it is the closest thing
-    // here to marketing.
-    const to = await recipient(admin, userId, 'notify_digest');
+    // Its own switch, off unless turned on (migration 337): this is a nudge,
+    // not an answer to anything the person asked for, and it is the closest
+    // thing here to marketing. It used to ride on notify_digest, which is on
+    // by default and says "weekly job roundup".
+    const to = await recipient(admin, userId, 'notify_profile_nudge');
     if (!to) return 'skipped';
 
     const t = copyFor(to.locale).profileIncomplete;
@@ -311,7 +334,8 @@ export async function notifyProfileIncomplete(userId: string): Promise<SendOutco
       dedupeKey: `profile_incomplete:${userId}`,
       entity: { type: 'profile', id: userId },
       envelope: buildEnvelope({
-        audience: audienceOf(to, 'notify_digest'),
+        // Its own link turns off the reminder, not the job roundup.
+        audience: audienceOf(to, 'notify_profile_nudge'),
         subject: t.subject,
         preheader: t.preheader,
         heading: t.heading,
@@ -388,14 +412,34 @@ export async function notifyVisibilityChanged(
     const c = copyFor(to.locale);
     const t = c.visibilityChanged;
 
+    /*
+      Keyed on the change itself: the database dates each choice the owner
+      makes (visibility_chosen_at, migration 336), so the same change
+      published twice sends one message and every change sends its own.
+      Keyed on the value and the day, a third change in one day back to a
+      setting already told — perhaps by somebody else holding the session —
+      was silent; keyed on the value alone, it was once per setting, ever.
+      The bell keeps its key per day: it is a record, and a feed full of
+      toggles helps nobody. This is the security notice. Not retried, so the
+      stamp read now is the one the change made.
+    */
+    const { data: card, error: cardError } = await admin
+      .from('agent_profiles')
+      .select('visibility_chosen_at')
+      .eq('user_id', userId)
+      .maybeSingle();
+    // 42703: a database migration 336 has not reached has no stamp to key on,
+    // and keys on the day as it did before it. Failing instead lost the
+    // notice for good — it is not retried.
+    if (cardError && cardError.code !== '42703') readFailed('directory profile', cardError);
+    const chosenAt = card?.visibility_chosen_at ? Date.parse(card.visibility_chosen_at) : NaN;
+    const change = Number.isFinite(chosenAt) ? String(chosenAt) : cairoDay(new Date());
+
     return deliver({
       template: 'visibility_changed',
       to: to.email,
       userId,
-      // Keyed on the value, not the event: flipping to hidden and back should
-      // produce two messages, but saving the form twice on the same setting
-      // should not.
-      dedupeKey: `visibility:${userId}:${visibility}`,
+      dedupeKey: `visibility:${userId}:${visibility}:${change}`,
       entity: { type: 'profile', id: userId },
       envelope: buildEnvelope({
         audience: audienceOf(to, null),
@@ -437,7 +481,7 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
     const { data, error: applicationError } = await admin
       .from('applications')
       .select(
-        `id, created_at, experience_band, candidate_id, job:jobs (${JOB_FIELDS}, company:companies (id))`,
+        `id, created_at, experience_band, candidate_id, job:jobs (${JOB_FIELDS}, company:companies (id, suspended_at))`,
       )
       .eq('id', applicationId)
       .maybeSingle();
@@ -447,6 +491,10 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
     const job = application?.job;
     const companyId = job?.company?.id;
     if (!application || !job || !companyId) return 'skipped';
+    // A suspended company does not see its applicants (migration 349): an
+    // email sent, or retried, after the suspension would hand over the name
+    // the pages no longer show.
+    if (job.company?.suspended_at) return 'skipped';
 
     const { data: members, error: membersError } = await admin
       .from('company_members')
@@ -673,10 +721,30 @@ export async function notifyCandidateOfStatus(applicationId: string): Promise<Se
       : '';
     const audience = audienceOf(to, 'notify_status');
 
-    // Keyed on the status as well as the application, so a pipeline that goes
-    // shortlisted → interview → hired sends three messages, and an employer
-    // saving the same stage twice sends one.
-    const dedupeKey = `status:${applicationId}:${application.status}`;
+    /*
+      Keyed on the status, and on which telling of it this is
+      (application-arrival.ts): shortlisted → interview → hired sends three
+      messages; an employer saving the same stage twice, or tidying a card
+      back to "new" and out again, sends one; rejected, reconsidered, then
+      rejected again sends the second rejection, which a key on the stage
+      alone held back forever. The move is recorded (application_events)
+      before this runs. A history that cannot be read is a failure, not a
+      first telling: counted as one, a retry of the second rejection found the
+      first's key taken and was cancelled for good (readFailed).
+    */
+    const { data: history, error: historyError } = await admin
+      .from('application_events')
+      .select('to_status')
+      .eq('application_id', applicationId)
+      .order('id', { ascending: true });
+    if (historyError) readFailed('application history', historyError);
+    const stages = (history ?? []).map((event) => event.to_status);
+    // The bell's rule, so the two say the same thing (isNews): an employer
+    // tidying the board back to a stage the candidate was last told is not a
+    // second message, whether or not that message's key is still held.
+    if (!isNews(stages, application.status)) return 'skipped';
+    const telling = stageTelling(stages, application.status);
+    const dedupeKey = `status:${applicationId}:${application.status}${tellingSuffix(telling)}`;
     const entity = { type: 'application', id: applicationId } as const;
 
     if (application.status === 'rejected') {
@@ -804,6 +872,9 @@ export async function notifyJobSubmitted(
     const job = await ownedJob(admin, jobId);
     const companyId = job?.company?.id;
     if (!job || !companyId) return 'skipped';
+    // A receipt for a listing waiting in the queue. A retry that finds it
+    // approved, refused or withdrawn since has nothing true left to say.
+    if (job.status !== 'pending_review') return 'skipped';
 
     let recipientId = job.company?.owner_id ?? null;
     if (submittedBy) {
@@ -877,15 +948,36 @@ export async function notifyEmployerOfModeration(
   jobId: string,
   approved: boolean,
   note?: string | null,
+  /** A retry's own member (rebuild.ts): the colleagues it reached are not sent it again. */
+  only?: string | null,
 ): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
     const job = await ownedJob(admin, jobId);
     const companyId = job?.company?.id;
     if (!job || !companyId) return 'skipped';
+    // "Your listing is live" about a listing back in review, or a refusal of
+    // one approved since, is worse than no message: a retry checks the
+    // decision still stands.
+    if (job.status !== (approved ? 'active' : 'rejected')) return 'skipped';
 
-    return forEachMember(admin, companyId, (memberId) =>
-      oneModerationNotice({ admin, memberId, job, approved, note }),
+    // A retry (rebuild.ts) passes no note: the reason is the listing's own
+    // (job_moderation since 347, its column before), or the retried refusal
+    // said "rejected, edit and resend" and not why.
+    let reason = note !== undefined ? note : null;
+    if (note === undefined && !approved) {
+      const moderation = await listingNotes(
+        (ids) => admin.from('job_moderation').select('job_id, rejection_note').in('job_id', ids),
+        [job.id],
+      );
+      if (moderation.error) readFailed("listing's note", moderation.error);
+      reason = noteFor(moderation.notes, job);
+    }
+    return forEachMember(
+      admin,
+      companyId,
+      (memberId) => oneModerationNotice({ admin, memberId, job, approved, note: reason }),
+      only,
     );
   } catch (error) {
     console.warn('[email] moderation notice failed:', asMessage(error));
@@ -1151,7 +1243,12 @@ async function oneExpiryNotice({
 // ---------------------------------------------------------------------------
 
 /**
- * An employer is told what the account review decided.
+ * An account is told what the account review decided.
+ *
+ * A candidate is held or suspended, and restored, too — and was sent the
+ * employer's words: "we reviewed your company details", and a button to post
+ * a role, which bounced them. The wording, and where the button goes, follow
+ * the account's role.
  *
  * Transactional, and one of the clearest cases: it is the answer to a question
  * the person asked by signing up, and it arrives once. Suppressing it would
@@ -1171,15 +1268,39 @@ export async function notifyAccountDecision(
     if (!to) return 'skipped';
 
     const c = copyFor(to.locale);
-    const t = approved ? c.accountApproved : c.accountRejected;
+    const candidate = to.role === 'candidate';
+    const t = approved
+      ? candidate
+        ? c.accountApprovedCandidate
+        : c.accountApproved
+      : candidate
+        ? c.accountRejectedCandidate
+        : c.accountRejected;
+
+    /*
+      Keyed on the decision itself: set_account_approval records each one in
+      admin_audit_log, so suspended, restored and suspended again is two
+      suspensions, each told with its own reason. Keyed on the hour, the
+      second within it was skipped. Where the record cannot be read (a
+      database before 316, an outage) the hour is the key still — this notice
+      is not retried, so it must not fail on a read it can do without.
+    */
+    const { data: decision } = await admin
+      .from('admin_audit_log')
+      .select('id')
+      .eq('target_type', 'user')
+      .eq('target_id', userId)
+      .in('action', approved ? ['user.approved', 'user.restored'] : ['user.suspended'])
+      .order('id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const round = decision ? `d${decision.id}` : new Date().toISOString().slice(0, 13);
 
     return deliver({
       template: approved ? 'account_approved' : 'account_rejected',
       to: to.email,
       userId,
-      // Not keyed on the decision alone: an account suspended, restored and
-      // suspended again must say so each time. The timestamp is the run.
-      dedupeKey: `account:${userId}:${approved}:${new Date().toISOString().slice(0, 13)}`,
+      dedupeKey: `account:${userId}:${approved}:${round}`,
       entity: { type: 'profile', id: userId },
       envelope: buildEnvelope({
         audience: audienceOf(to, null),
@@ -1189,7 +1310,9 @@ export async function notifyAccountDecision(
         blocks: approved
           ? [
               { kind: 'text', value: t.body },
-              { kind: 'button', label: c.accountApproved.cta, href: `${env.siteUrl}/employer/jobs/new` },
+              candidate
+                ? { kind: 'button', label: c.accountApprovedCandidate.cta, href: `${env.siteUrl}/dashboard` }
+                : { kind: 'button', label: c.accountApproved.cta, href: `${env.siteUrl}/employer/jobs/new` },
             ]
           : [
               { kind: 'text', value: t.body },
@@ -1209,17 +1332,50 @@ export async function notifyCompanyVerification(
   companyId: string,
   verified: boolean,
   note?: string | null,
+  /** A retry's own member (rebuild.ts). */
+  only?: string | null,
 ): Promise<SendOutcome> {
   try {
     const admin = createAdminClient();
 
     const { data: company, error: companyError } = await admin
       .from('companies')
-      .select('id, slug, name_ar, name_en, owner_id, logo_url')
+      .select('id, slug, name_ar, name_en, owner_id, logo_url, version, verification_status')
       .eq('id', companyId)
       .maybeSingle();
     if (companyError) readFailed('company', companyError);
     if (!company) return 'skipped';
+    // The decision must still stand: a refusal retried after the company was
+    // verified, or a verification after it was revoked, is not sent.
+    const standing = verified
+      ? company.verification_status === 'verified'
+      : company.verification_status === 'rejected' || company.verification_status === 'unverified';
+    if (!standing) return 'skipped';
+
+    /*
+      The decision this message is about, as the console recorded it
+      (admin_review_company writes it to admin_audit_log): its id keys a
+      refusal, and its reason is the one quoted — a retry (rebuild.ts) passes
+      no note. Read from the company's state instead, a retry after the
+      company had moved on (papers sent again, the row's version bumped) was a
+      new key, sent again to members who already had it, and it quoted the
+      newest refused paper — a previous round's note when this refusal had no
+      papers to write its own on.
+    */
+    const { data: decision, error: decisionError } = await admin
+      .from('admin_audit_log')
+      .select('id, reason')
+      .eq('target_type', 'company')
+      .eq('target_id', companyId)
+      .in('action', verified ? ['company.verify'] : ['company.reject', 'company.request_changes'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (decisionError) readFailed('company decision', decisionError);
+    const reason = note !== undefined ? note : (decision?.reason ?? null);
+    // A refusal per decision (each can carry its own reason); a verification
+    // once ever, as the bell's is — a badge that flaps is not news twice.
+    const round = decision ? `d${decision.id}` : `v${company.version}`;
 
     return forEachMember(admin, companyId, async (memberId) => {
       const to = await recipient(admin, memberId, null);
@@ -1233,7 +1389,12 @@ export async function notifyCompanyVerification(
         template: verified ? 'company_verified' : 'company_verification_needed',
         to: to.email,
         userId: memberId,
-        dedupeKey: `company_verification:${companyId}:${verified}:${memberId}`,
+        // A refusal per decision: keyed on the outcome alone, a second refusal
+        // — new papers, refused again — was never sent, the first one's key
+        // still held.
+        dedupeKey: verified
+          ? `company_verification:${companyId}:true:${memberId}`
+          : `company_verification:${companyId}:false:${round}:${memberId}`,
         entity: { type: 'company', id: companyId },
         envelope: buildEnvelope({
           audience: audienceOf(to, null),
@@ -1245,11 +1406,11 @@ export async function notifyCompanyVerification(
             {
               kind: 'company',
               name,
-              logoUrl: company.logo_url,
+              logoUrl: trustedLogoUrl(company.logo_url, process.env.NEXT_PUBLIC_SUPABASE_URL),
               href: `${env.siteUrl}/companies/${company.slug}`,
             },
-            ...(!verified && note
-              ? [{ kind: 'text' as const, value: c.companyVerificationNeeded.reason(note) }]
+            ...(!verified && reason
+              ? [{ kind: 'text' as const, value: c.companyVerificationNeeded.reason(reason) }]
               : []),
             {
               kind: 'button',
@@ -1261,9 +1422,90 @@ export async function notifyCompanyVerification(
           ],
         }),
       });
-    });
+    }, only);
   } catch (error) {
     console.warn('[email] company verification notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+/**
+ * Employer: a moderator took the company's verification away (the console's
+ * "revoke"). Every member, as for the other verification decisions; the bell
+ * says it too (migration 348). Not the moderator's reason, which the console
+ * keeps: the message says where to ask.
+ */
+export async function notifyCompanyVerificationRevoked(
+  companyId: string,
+  /** A retry's own member (rebuild.ts). */
+  only?: string | null,
+): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+
+    const { data: company, error: companyError } = await admin
+      .from('companies')
+      .select('id, slug, name_ar, name_en, logo_url, version, verification_status')
+      .eq('id', companyId)
+      .maybeSingle();
+    if (companyError) readFailed('company', companyError);
+    if (!company) return 'skipped';
+    // The decision must still stand: verified again since, it is not news.
+    if (company.verification_status === 'verified') return 'skipped';
+
+    // The revocation this is about, as the console recorded it: its id keys
+    // the message, so a company verified again and revoked again hears again,
+    // and a retry of this one is the same message.
+    const { data: decision, error: decisionError } = await admin
+      .from('admin_audit_log')
+      .select('id')
+      .eq('target_type', 'company')
+      .eq('target_id', companyId)
+      .in('action', ['company.revoke'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (decisionError) readFailed('company decision', decisionError);
+    const round = decision ? `d${decision.id}` : `v${company.version}`;
+
+    return forEachMember(
+      admin,
+      companyId,
+      async (memberId) => {
+        const to = await recipient(admin, memberId, null);
+        if (!to) return 'skipped';
+
+        const t = copyFor(to.locale).companyVerificationRevoked;
+        const name = localized(to.locale, company.name_ar, company.name_en);
+
+        return deliver({
+          template: 'company_verification_revoked',
+          to: to.email,
+          userId: memberId,
+          dedupeKey: `company_verification_revoked:${companyId}:${round}:${memberId}`,
+          entity: { type: 'company', id: companyId },
+          envelope: buildEnvelope({
+            audience: audienceOf(to, null),
+            subject: t.subject,
+            preheader: t.preheader,
+            heading: t.heading,
+            blocks: [
+              { kind: 'text', value: t.body(name) },
+              {
+                kind: 'company',
+                name,
+                logoUrl: trustedLogoUrl(company.logo_url, process.env.NEXT_PUBLIC_SUPABASE_URL),
+                href: `${env.siteUrl}/companies/${company.slug}`,
+              },
+              { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/company` },
+            ],
+          }),
+        });
+      },
+      only,
+    );
+  } catch (error) {
+    console.warn('[email] verification revoked notice failed:', asMessage(error));
     return 'failed';
   }
 }
@@ -1428,11 +1670,16 @@ async function forEachMember(
   admin: ReturnType<typeof createAdminClient>,
   companyId: string,
   send: (memberId: string) => Promise<SendOutcome>,
+  /**
+   * One member only — a retry's own. Rebuilt for everybody, a retry whose key
+   * had moved on (a listing edited since bumps its version) minted new keys
+   * for every colleague, who were sent the message again.
+   */
+  only?: string | null,
 ): Promise<SendOutcome> {
-  const { data: members, error: membersError } = await admin
-    .from('company_members')
-    .select('user_id')
-    .eq('company_id', companyId);
+  let query = admin.from('company_members').select('user_id').eq('company_id', companyId);
+  if (only) query = query.eq('user_id', only);
+  const { data: members, error: membersError } = await query;
   if (membersError) readFailed('members', membersError);
 
   let outcome: SendOutcome = 'skipped';
@@ -1461,9 +1708,7 @@ function audienceOf(to: Recipient, preference: Preference): Audience {
     // Transactional mail carries no unsubscribe: there is nothing to
     // unsubscribe from, and offering one that would be ignored is worse than
     // offering none.
-    unsubscribe: preference
-      ? `${env.siteUrl}/unsubscribe?token=${to.unsubscribeToken}&kind=${preference}`
-      : undefined,
+    unsubscribe: preference ? unsubscribeLinks(env.siteUrl, to.unsubscribeToken, preference) : undefined,
   };
 }
 
@@ -1485,7 +1730,7 @@ async function candidateApplication(
 async function ownedJob(admin: ReturnType<typeof createAdminClient>, jobId: string) {
   const { data, error } = await admin
     .from('jobs')
-    .select(`${JOB_FIELDS}, company:companies (id, owner_id, name_ar)`)
+    .select(`${JOB_FIELDS}, status, rejection_note, company:companies (id, owner_id, name_ar)`)
     .eq('id', jobId)
     .maybeSingle();
   if (error) readFailed('listing', error);
@@ -1532,6 +1777,16 @@ function formatMoment(date: Date, locale: 'ar' | 'en'): string {
     hour: '2-digit',
     minute: '2-digit',
     timeZone: 'Africa/Cairo',
+  }).format(date);
+}
+
+/** The calendar day in Cairo, YYYY-MM-DD — what a once-a-day key counts in. */
+function cairoDay(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(date);
 }
 

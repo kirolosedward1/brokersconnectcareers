@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
+import { ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { SlidersHorizontal } from 'lucide-react-native';
+import { SearchX, SlidersHorizontal } from '~/components/ui/lucide';
 import type { SearchBarCommands } from 'react-native-screens';
 import {
   activeFilterList,
@@ -18,6 +18,7 @@ import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
 import { HeaderBell } from '~/components/notifications/header-bell';
+import { PageFooter } from '~/components/ui/page-footer';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { FilterSheet } from '~/components/jobs/filter-sheet';
 import { JobCard } from '~/components/jobs/job-card';
@@ -26,7 +27,8 @@ import { SaveSearchButton } from '~/components/saved/save-controls';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
-import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
+import { Segmented } from '~/components/ui/segmented';
+import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useBrowseCounts } from '~/features/browse/queries';
 import { boardQuery, filtersToParams, sheetFilterCount, useFilterLabel } from '~/features/jobs/filters';
@@ -35,7 +37,8 @@ import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 const SORTS: JobSort[] = ['newest', 'salary', 'seats'];
 
@@ -61,6 +64,8 @@ export default function BoardScreen() {
   const query = boardQuery(filters);
 
   const board = useJobBoard(query);
+  // The spinner is the reader's pull, not a re-read on coming back to the app.
+  const pull = usePullRefresh(() => board.refetch());
   const hidden = useHiddenCompanies();
   const jobs = useMemo(() => withoutHidden(flattenBoard(board.data?.pages), hidden), [board.data, hidden]);
   const first = board.data?.pages[0];
@@ -76,6 +81,9 @@ export default function BoardScreen() {
   useEffect(() => {
     searchBar.current?.setText(filters.q);
   }, [filters.q]);
+  const clearSearch = () => {
+    if (filters.q) apply({ ...filters, q: '' });
+  };
 
   const header = (
     <Stack.Screen
@@ -90,9 +98,9 @@ export default function BoardScreen() {
           autoCapitalize: 'none',
           tintColor: colors.primary,
           onSearchButtonPress: (event) => apply({ ...filters, q: event.nativeEvent.text.trim().slice(0, 120) }),
-          onCancelButtonPress: () => {
-            if (filters.q) apply({ ...filters, q: '' });
-          },
+          // Leaving the search drops it: Cancel on iOS, the field's close on Android.
+          onCancelButtonPress: clearSearch,
+          onClose: clearSearch,
         },
       }}
     />
@@ -111,11 +119,28 @@ export default function BoardScreen() {
   );
 
   if (board.isPending) {
+    // The filters and the order work before the first listings are in: on a
+    // slow first answer they are what the reader can already use.
     return (
       <>
         {header}
         {sheet}
-        <LoadingState />
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
+        >
+          <BoardHeader
+            filters={filters}
+            first={undefined}
+            apply={apply}
+            onFilters={openFilters}
+            hasResults={false}
+            sponsoredShown={false}
+            loading
+          />
+          <SkeletonList inset={false} />
+        </ScrollView>
       </>
     );
   }
@@ -140,14 +165,24 @@ export default function BoardScreen() {
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        // The saved search is named in a field on the board: its Save must save on the first tap.
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
-          <BoardHeader filters={filters} first={first} apply={apply} onFilters={openFilters} hasResults={jobs.length > 0} />
+          <BoardHeader
+            filters={filters}
+            first={first}
+            apply={apply}
+            onFilters={openFilters}
+            hasResults={jobs.length > 0}
+            sponsoredShown={jobs.some((job) => job.is_featured)}
+          />
         }
         ListEmptyComponent={<EmptyBoard filters={filters} first={first} apply={apply} />}
         ListFooterComponent={
           <BoardFooter
-            loadingMore={board.isFetchingNextPage}
+            paging={board}
             ended={!board.hasNextPage && jobs.length > 0}
             unfiltered={countActiveFilters(filters) === 0}
           />
@@ -156,15 +191,15 @@ export default function BoardScreen() {
           if (board.hasNextPage && !board.isFetchingNextPage) board.fetchNextPage();
         }}
         onEndReachedThreshold={0.5}
-        refreshing={board.isRefetching && !board.isFetchingNextPage}
-        onRefresh={() => board.refetch()}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
       />
     </>
   );
 }
 
 function Separator() {
-  return <View style={{ height: space[2] }} />;
+  return <View style={{ height: space[3] }} />;
 }
 
 /**
@@ -177,12 +212,18 @@ function BoardHeader({
   apply,
   onFilters,
   hasResults,
+  sponsoredShown,
+  loading = false,
 }: {
   filters: JobFilters;
   first: JobBoardResponse | undefined;
   apply: (next: JobFilters) => void;
   onFilters: () => void;
   hasResults: boolean;
+  /** A sponsored listing is among the cards drawn — not merely in the answer, which still holds a company the reader hid. */
+  sponsoredShown: boolean;
+  /** The first page is still on its way: no count to give yet. */
+  loading?: boolean;
 }) {
   const locale = useLocale();
   const t = useTranslations('jobs');
@@ -194,28 +235,33 @@ function BoardHeader({
   const searchLabel = useSearchLabel(filters, first);
 
   return (
-    <View style={{ gap: space[3], marginBottom: space[3] }}>
+    <View style={{ gap: space[3], marginBottom: space[4] }}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
+        {loading ? (
+          <View style={{ flexGrow: 1 }} />
+        ) : (
+          <Text variant="small" weight="medium" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
+            {t('resultsCount', { count: first?.total ?? 0 })}
+          </Text>
+        )}
         <Chip
           label={inSheet ? `${t('filters')} · ${formatNumber(inSheet, locale)}` : t('filters')}
           selected={inSheet > 0}
-          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primary : colors.foreground} />}
+          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primaryForeground : colors.foreground} />}
           onPress={onFilters}
+          feedback={false}
         />
-        <Text variant="small" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
-          {t('resultsCount', { count: first?.total ?? 0 })}
-        </Text>
-        <View accessibilityRole="radiogroup" accessibilityLabel={t('sortBy')} style={{ flexDirection: 'row', gap: space[1] }}>
-          {SORTS.map((sort) => (
-            <Chip
-              key={sort}
-              label={t(sort === 'newest' ? 'sortNewest' : sort === 'salary' ? 'sortSalary' : 'sortSeats')}
-              selected={filters.sort === sort}
-              onPress={() => apply({ ...filters, sort })}
-            />
-          ))}
-        </View>
       </View>
+
+      <Segmented
+        label={t('sortBy')}
+        value={filters.sort}
+        onChange={(sort) => apply({ ...filters, sort })}
+        options={SORTS.map((sort) => ({
+          value: sort,
+          label: t(sort === 'newest' ? 'sortNewest' : sort === 'salary' ? 'sortSalary' : 'sortSeats'),
+        }))}
+      />
 
       {company ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3] }}>
@@ -273,6 +319,14 @@ function BoardHeader({
         </View>
       ) : null}
 
+      {/* Paid placement pins above every sort (the website's board says the
+          same), so whoever chose "highest salary" is told why the first card
+          may not be. Sponsored listings sit at the top of the first page. */}
+      {sponsoredShown ? (
+        <Text variant="small" tone="mutedForeground">
+          {t('sponsoredFirst')}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -305,6 +359,7 @@ function EmptyBoard({
     <EmptyState
       title={t('empty')}
       body={t('emptyHint')}
+      icon={SearchX}
       action={
         <View style={{ alignItems: 'center', gap: space[3] }}>
           {relaxations.length ? (
@@ -318,6 +373,7 @@ function EmptyBoard({
                     key={filter.key}
                     label={t('withoutFilter', { name: labelFor(filter), count })}
                     onPress={() => apply({ ...filters, ...filter.without })}
+                    feedback={false}
                   />
                 ))}
               </View>
@@ -361,15 +417,22 @@ function useSearchLabel(filters: JobFilters, first: JobBoardResponse | undefined
   return parts.join(' · ') || t('jobs.title');
 }
 
-function BoardFooter({ loadingMore, ended, unfiltered }: { loadingMore: boolean; ended: boolean; unfiltered: boolean }) {
+function BoardFooter({
+  paging,
+  ended,
+  unfiltered,
+}: {
+  paging: ComponentProps<typeof PageFooter>['query'];
+  ended: boolean;
+  unfiltered: boolean;
+}) {
   const t = useTranslations('app.jobs');
-  const { colors } = useTheme();
   const counts = useBrowseCounts();
   const districts = useDistricts();
 
   return (
     <View style={{ paddingTop: space[4] }}>
-      {loadingMore ? <ActivityIndicator color={colors.primary} /> : null}
+      <PageFooter query={paging} />
       {ended ? (
         <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
           {t('endOfList')}

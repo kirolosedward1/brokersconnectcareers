@@ -78,7 +78,7 @@ export function RevealContact({ userId }: { userId: string }) {
   return (
     <>
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <Eye />
+        <Eye aria-hidden />
         {t('revealContact')}
       </Button>
 

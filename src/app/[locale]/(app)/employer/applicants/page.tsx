@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApplicantCard, type ApplicantProfile } from '@/components/employer/applicant-card';
 import { requireEmployer } from '@/lib/auth';
+import { ApplicantsSuspended } from '@/components/employer/applicants-suspended';
 import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
@@ -99,6 +100,20 @@ export default async function AllApplicantsPage({
 
   const viewer = await requireEmployer(locale);
   const { stage, job: jobFilter, q: rawQuery, band: rawBand, track: rawTrack } = await searchParams;
+
+  // A suspended company's applicants are hidden (migration 349): said, not
+  // shown as an empty inbox, and nothing is stamped as seen.
+  if (viewer.company?.suspended_at) {
+    const t = await getTranslations('employer');
+    return (
+      <div className="space-y-4">
+        <header>
+          <h1 className="text-xl font-bold">{t('allApplicants')}</h1>
+        </header>
+        <ApplicantsSuspended />
+      </div>
+    );
+  }
 
   /*
     Two more ways to narrow, both real columns rather than derived guesses.
@@ -325,11 +340,38 @@ export default async function AllApplicantsPage({
   const namesFor = (ids: number[] | undefined) =>
     (ids ?? []).map((id) => districtName.get(id)).filter((name): name is string => Boolean(name));
 
-  // The listings worth offering as a filter are the ones that have applicants,
-  // which the rows already name — no second query for a dropdown.
-  const jobs = [...new Map(rows.map((row) => [row.job?.id, row.job])).values()].filter(
-    (item): item is NonNullable<Row['job']> => Boolean(item),
-  );
+  /*
+    The listings to choose from, whatever is filtered now.
+
+    They were the listings the rows on screen belong to — no second query —
+    so choosing one left one, and the select vanished with the only sign the
+    list was narrowed: the heading still said all applicants, every chip and
+    even "clear filters" carried the listing on, and the way back was the
+    sidebar. Drafts are among them: a listing closed and kept as a draft
+    still has its applicants. And the listing the inbox is narrowed to always
+    is, past the newest 200 too — missing, the select read "all listings"
+    over a narrowed list, and the next Apply dropped the listing unasked.
+  */
+  const companyId = viewer.company?.id ?? NO_COMPANY;
+  const listingFilter = jobFilter && UUID.test(jobFilter) ? jobFilter : undefined;
+  const { data: listingRows, error: listingsError } = await supabase
+    .from('jobs')
+    .select('id, title_ar, title_en')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (listingsError) raise(listingsError, 'listing the company’s listings');
+  let jobs = listingRows ?? [];
+  if (listingFilter && !jobs.some((job) => job.id === listingFilter)) {
+    const { data: chosen, error: chosenError } = await supabase
+      .from('jobs')
+      .select('id, title_ar, title_en')
+      .eq('company_id', companyId)
+      .eq('id', listingFilter)
+      .maybeSingle();
+    if (chosenError) raise(chosenError, 'reading the listing the inbox is narrowed to');
+    if (chosen) jobs = [chosen, ...jobs];
+  }
 
   const t = await getTranslations('employer');
   const tStatus = await getTranslations('applicationStatus');
@@ -428,7 +470,7 @@ export default async function AllApplicantsPage({
             defaultValue={query_}
             maxLength={80}
             placeholder={t('searchApplicantsPlaceholder')}
-            className="h-11 w-full rounded-lg border border-input bg-card ps-9 pe-3 text-sm transition-colors placeholder:text-muted-foreground hover:border-border focus-visible:border-ring focus-visible:outline-none"
+            className="h-11 w-full rounded-lg border border-input bg-card ps-9 pe-3 text-sm transition-colors placeholder:text-muted-foreground hover:border-muted-foreground focus-visible:border-ring"
           />
         </div>
 
@@ -480,7 +522,7 @@ export default async function AllApplicantsPage({
           one control's height, reads each title in full when open, and submits
           with the same button as its neighbours.
         */}
-        {jobs.length > 1 ? (
+        {jobs.length > 1 || listingFilter ? (
           <>
             <label className="sr-only" htmlFor="applicant-job">
               {t('jobs')}
@@ -507,9 +549,9 @@ export default async function AllApplicantsPage({
           {t('filterApply')}
         </Button>
 
-        {query_ || band || track ? (
+        {query_ || band || track || listingFilter ? (
           <Button asChild variant="ghost">
-            <Link href={href({ stage, job: jobFilter })}>{t('filterClear')}</Link>
+            <Link href={href({ stage })}>{t('filterClear')}</Link>
           </Button>
         ) : null}
       </form>
@@ -567,7 +609,13 @@ export default async function AllApplicantsPage({
           {/* "Nobody has applied" and "nobody by that name" are different
               facts, and an employer who reads the first when the second is
               true concludes their listings are dead. */}
-          {query_ ? t('searchEmpty') : band || track ? t('filterEmpty') : t('noApplicants')}
+          {/* A stage chip or a listing empties the list too: "no applicants
+              yet" under a chip reading "new 12" is not true. */}
+          {query_
+            ? t('searchEmpty')
+            : band || track || listingFilter || activeStage
+              ? t('filterEmpty')
+              : t('noApplicants')}
         </p>
       ) : (
         <ul className="space-y-2.5">

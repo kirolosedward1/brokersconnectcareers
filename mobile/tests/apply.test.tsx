@@ -1,13 +1,15 @@
 import type { ReactNode } from 'react';
-import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Platform, Pressable, Share, Text } from 'react-native';
+import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { Actor } from '@/lib/permissions';
 import { PendingPath } from '~/components/navigation/pending-path';
+import { useWithdrawApplication } from '~/features/applications/queries';
 import { catalogues, I18nProvider } from '~/i18n/provider';
+import { env } from '~/lib/env';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -105,6 +107,13 @@ function Settled({ children }: { children: ReactNode }) {
   return useSession().settled ? children : null;
 }
 
+/** A withdrawal from elsewhere in the app (the Applications tab), on the same cache. */
+let withWithdrawal = false;
+function Withdrawal() {
+  const withdraw = useWithdrawApplication();
+  return <Pressable accessibilityRole="button" accessibilityLabel="withdraw elsewhere" onPress={() => withdraw.mutate('a-1')} />;
+}
+
 function Root() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
@@ -115,6 +124,7 @@ function Root() {
             <Settled>
               <Stack screenOptions={{ headerShown: false }} />
               <PendingPath />
+              {withWithdrawal ? <Withdrawal /> : null}
             </Settled>
           </SessionProvider>
         </I18nProvider>
@@ -187,6 +197,67 @@ describe('the form', () => {
     await waitFor(() => expect(bodyOf('/storage/v1/object/cvs')).toEqual({ prefixes: [path] }));
   });
 
+  it('keeps the CV when the answer is lost, and confirms once the database says the application went in', async () => {
+    server.on('GET /rest/v1/agent_profiles', []);
+    let recorded = false;
+    server.on('GET /rest/v1/applications', () => (recorded ? [{ id: 'a-1', created_at: '2026-09-29T10:00:00Z' }] : []));
+    // The website writes the application, and its answer never reaches the
+    // phone: the app suspended in the background, a lift, Wi-Fi to mobile data.
+    server.on('POST /api/mobile/v1/actions/applyToJob', () => {
+      recorded = true;
+      throw new TypeError('Network request failed');
+    });
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
+    await signedIn();
+    renderRouter(app, { initialUrl: APPLY });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
+    expect(await screen.findByText('cv.pdf')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+
+    expect(await screen.findByText(ar.apply.success)).toBeTruthy();
+    expect(uploads()).toHaveLength(1);
+    expect(server.asked('/storage/v1/object/cvs')).toHaveLength(0);
+  });
+
+  it('keeps the CV when neither the answer nor the database can be reached, and says it did not go through', async () => {
+    server.on('GET /rest/v1/agent_profiles', []);
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
+    await signedIn();
+    renderRouter(app, { initialUrl: APPLY });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
+    expect(await screen.findByText('cv.pdf')).toBeTruthy();
+    server.on('POST /api/mobile/v1/actions/applyToJob', () => {
+      throw new TypeError('Network request failed');
+    });
+    server.on('GET /rest/v1/applications', () => {
+      throw new TypeError('Network request failed');
+    });
+    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    // The form is still there, with the file, for another try.
+    expect(screen.getByText('cv.pdf')).toBeTruthy();
+    expect(server.asked('/storage/v1/object/cvs')).toHaveLength(0);
+  });
+
+  it('takes the CV back out when the website turns the request away before the action runs', async () => {
+    server.on('GET /rest/v1/agent_profiles', []);
+    server.on('POST /api/mobile/v1/actions/applyToJob', { status: 413, body: { error: 'too_large' } });
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
+    await signedIn();
+    renderRouter(app, { initialUrl: APPLY });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
+    expect(await screen.findByText('cv.pdf')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    const path = uploads()[0].url.pathname.replace('/storage/v1/object/cvs/', '');
+    await waitFor(() => expect(bodyOf('/storage/v1/object/cvs')).toEqual({ prefixes: [path] }));
+  });
+
   it('refuses a file that is too big, or is not a CV, before anything is sent', async () => {
     server.on('GET /rest/v1/agent_profiles', []);
     await signedIn();
@@ -243,6 +314,50 @@ describe('who gets the form', () => {
     expect(screen.getByRole('button', { name: ar.apply.viewApplications })).toBeTruthy();
   });
 
+  it('offers the form again once that application is withdrawn', async () => {
+    let applications = [{ id: 'a-1', created_at: '2026-09-20T10:00:00Z' }];
+    server.on('GET /rest/v1/applications', () => applications);
+    server.on('POST /api/mobile/v1/actions/withdrawApplication', () => {
+      applications = [];
+      return { ok: true };
+    });
+    withWithdrawal = true;
+    try {
+      await signedIn();
+      renderRouter(app, { initialUrl: APPLY });
+      expect(await screen.findByText(ar.apply.alreadyApplied)).toBeTruthy();
+
+      fireEvent.press(screen.getByRole('button', { name: 'withdraw elsewhere' }));
+      await waitFor(() => expect(server.asked('/api/mobile/v1/actions/withdrawApplication')).toHaveLength(1));
+      // Not "you have applied already" for the half-minute the answer was kept.
+      expect(await screen.findByRole('button', { name: ar.apply.submit })).toBeTruthy();
+      expect(screen.queryByText(ar.apply.alreadyApplied)).toBeNull();
+    } finally {
+      withWithdrawal = false;
+    }
+  });
+
+  it('leads to the listing from its title when opened from a link, not to what the tab had underneath', async () => {
+    server.on('GET /rest/v1/applications', [{ id: 'a-1', created_at: '2026-09-20T10:00:00Z' }]);
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: APPLY });
+    fireEvent.press(await screen.findByRole('button', { name: listing.title_ar }));
+    await waitFor(() => expect(result.getPathname()).toBe(`/jobs/${listing.slug}`));
+  });
+
+  it('goes back to the listing it was opened from', async () => {
+    server.on('GET /rest/v1/applications', [{ id: 'a-1', created_at: '2026-09-20T10:00:00Z' }]);
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
+    await waitFor(() => expect(result.getPathname()).toBe(APPLY));
+    fireEvent.press(await screen.findByRole('button', { name: listing.title_ar }));
+    await waitFor(() => expect(result.getPathname()).toBe(`/jobs/${listing.slug}`));
+    // Back from the listing leaves the tab, rather than returning to the apply page.
+    act(() => router.back());
+    expect(result.getPathname()).not.toBe(APPLY);
+  });
+
   it('tells a candidate the database would refuse why, before they type anything', async () => {
     server.on('/rest/v1/profiles', [{ ...profile, approval_status: 'pending' }]);
     await signedIn({ ...candidate, profile: { role: 'candidate', approval_status: 'pending' } });
@@ -263,5 +378,25 @@ describe('who gets the form', () => {
     const result = renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
     await waitFor(() => expect(result.getPathname()).toBe(APPLY));
+  });
+});
+
+describe('sharing a listing', () => {
+  const url = `${env.siteUrl}/jobs/${listing.slug}?src=share`;
+  afterEach(() => jest.restoreAllMocks());
+
+  it('hands iOS the link as a link', async () => {
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.share }));
+    expect(share).toHaveBeenCalledWith({ message: listing.title_ar, url });
+  });
+
+  it('puts the link inside the message on Android, which shares the message alone', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.share }));
+    expect(share).toHaveBeenCalledWith({ message: `${listing.title_ar}\n${url}` });
   });
 });

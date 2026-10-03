@@ -87,6 +87,10 @@ on conflict (slug) do nothing;
 -- The track rows restate the labels in messages/*.json, because those labels
 -- are what a reader sees on every card and so the first thing they type.
 -- Change a label there and change it here.
+--
+-- Migration 342 inserts the same rows into a database whose taxonomy was
+-- seeded before they existed (production). A change here needs a migration
+-- too; supabase/tests/search.test.mjs compares the two.
 -- ---------------------------------------------------------------------------
 
 insert into search_aliases (district_id, alias)

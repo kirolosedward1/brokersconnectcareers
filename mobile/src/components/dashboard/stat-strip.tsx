@@ -1,8 +1,8 @@
-import { Pressable, View } from 'react-native';
-import { TrendingDown, TrendingUp } from 'lucide-react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { TrendingDown, TrendingUp } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 export type StatTone = 'default' | 'accent' | 'good' | 'warn' | 'urgent';
 
@@ -25,31 +25,33 @@ export type StatCell = {
  * odd last figure takes the whole row rather than sit beside a hole.
  */
 export function StatStrip({ cells, label }: { cells: StatCell[]; label: string }) {
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
 
   const rows: StatCell[][] = [];
   for (let index = 0; index < cells.length; index += 2) rows.push(cells.slice(index, index + 2));
 
   return (
-    <View
-      accessibilityLabel={label}
-      style={{
-        gap: 1,
-        borderRadius: radius.xl,
-        borderWidth: 1,
-        borderColor: colors.border,
-        // The hairlines are the ground showing through the gaps.
-        backgroundColor: colors.border,
-        overflow: 'hidden',
-      }}
-    >
-      {rows.map((row) => (
-        <View key={row[0].label} style={{ flexDirection: 'row', gap: 1 }}>
-          {row.map((cell) => (
-            <Cell key={cell.label} cell={cell} />
-          ))}
-        </View>
-      ))}
+    <View style={{ ...corner('xl'), boxShadow: shadow.card }}>
+      <View
+        accessibilityLabel={label}
+        style={{
+          gap: 1,
+          ...corner('xl'),
+          borderWidth: StyleSheet.hairlineWidth * 2,
+          borderColor: colors.border,
+          // The hairlines are the ground showing through the gaps.
+          backgroundColor: colors.border,
+          overflow: 'hidden',
+        }}
+      >
+        {rows.map((row) => (
+          <View key={row[0].label} style={{ flexDirection: 'row', gap: 1 }}>
+            {row.map((cell) => (
+              <Cell key={cell.label} cell={cell} />
+            ))}
+          </View>
+        ))}
+      </View>
     </View>
   );
 }

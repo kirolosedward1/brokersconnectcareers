@@ -97,6 +97,8 @@ function listing(overrides: Partial<ConsoleListing> = {}): ConsoleListing {
 let me: ProfileRow;
 let company: CompanyRow | null;
 let listings: ConsoleListing[];
+// What job_moderation holds (migration 347), or its answer when it is not there yet.
+let notes: unknown;
 
 const warnings: string[] = [];
 beforeAll(() => {
@@ -115,6 +117,7 @@ beforeEach(async () => {
   me = { ...employerProfile };
   company = { ...myCompany };
   listings = [listing()];
+  notes = [];
 
   server.on('GET /api/mobile/v1/config', mobileConfig());
   server.on('POST /auth/v1/token', () => authSession(user));
@@ -132,6 +135,7 @@ beforeEach(async () => {
     body: listings,
     headers: { 'content-range': `0-${Math.max(listings.length - 1, 0)}/${listings.length}` },
   }));
+  server.on('GET /rest/v1/job_moderation', () => notes);
   server.on('POST /api/mobile/v1/actions/transitionJob', { ok: true });
 
   await supabase.auth.signOut({ scope: 'local' });
@@ -224,6 +228,18 @@ describe("an employer's home", () => {
     await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs/new'));
   });
 
+  it('says the figures could not be read, with a retry — never "create your company" to one that has one', async () => {
+    server.on('POST /rest/v1/rpc/employer_summary', { status: 503, body: { code: 'PGRST002', message: 'Could not query the database for the schema cache' } });
+    await signIn();
+    renderRouter(app, { initialUrl: '/' });
+
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    expect(screen.queryByText(ar.dashboard.emptyEmployerTitle)).toBeNull();
+    server.on('POST /rest/v1/rpc/employer_summary', () => summary());
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
+    expect(await screen.findByText(ar.dashboard.trendApplicationsTitle)).toBeTruthy();
+  });
+
   it('asks for the company first when there is none', async () => {
     company = null;
     server.on('POST /rest/v1/rpc/employer_summary', { has_company: false });
@@ -259,14 +275,9 @@ describe("an employer's listings", () => {
       listing(),
       listing({ id: 'j-draft', slug: 'draft-1', title_ar: 'مسودة إعلان', status: 'draft', published_at: null, applications: [{ count: 0 }] }),
       listing({ id: 'j-old', slug: 'old-1', title_ar: 'إعلان قديم', expires_at: '2020-01-01T00:00:00Z' }),
-      listing({
-        id: 'j-rejected',
-        slug: 'rejected-1',
-        title_ar: 'إعلان مرفوض',
-        status: 'rejected',
-        rejection_note: 'المرتب مش واضح.',
-      }),
+      listing({ id: 'j-rejected', slug: 'rejected-1', title_ar: 'إعلان مرفوض', status: 'rejected' }),
     ];
+    notes = [{ job_id: 'j-rejected', rejection_note: 'المرتب مش واضح.' }];
     await signIn();
     renderRouter(app, { initialUrl: '/employer/jobs' });
 
@@ -281,6 +292,17 @@ describe("an employer's listings", () => {
     expect(await screen.findByRole('button', { name: ar.appeals.ask })).toBeTruthy();
     // Applicants per listing.
     expect(screen.getByRole('button', { name: '⁦4⁩ متقدم: مستشار مبيعات' })).toBeTruthy();
+  });
+
+  it("shows a refused listing's reason from the listing itself on a database before migration 347", async () => {
+    listings = [
+      listing({ id: 'j-rejected', slug: 'rejected-1', title_ar: 'إعلان مرفوض', status: 'rejected', rejection_note: 'المرتب مش واضح.' }),
+    ];
+    notes = { status: 404, body: { code: 'PGRST205', message: "Could not find the table 'public.job_moderation' in the schema cache" } };
+    await signIn();
+    renderRouter(app, { initialUrl: '/employer/jobs' });
+
+    expect(await screen.findByText('المرتب مش واضح.')).toBeTruthy();
   });
 
   it("closes a listing through the website, and says so in the website's words when it is refused", async () => {

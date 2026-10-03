@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react';
-import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Alert, Text, type AlertButton } from 'react-native';
+import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { render } from '@testing-library/react-native';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { ChipGroup } from '~/components/profile/fields';
 import type { DistrictRow, JobRow, ProfileRow } from '@/lib/supabase/database.types';
-import { decimalNumber, initialValues, problemsOn, stepOf } from '~/features/employer/job-form';
+import { decimalNumber, initialValues, MAX_DEVELOPERS, problemsOn, stepOf } from '~/features/employer/job-form';
+import { useEmployerSummary } from '~/features/employer/overview';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -81,6 +84,7 @@ beforeEach(async () => {
   });
   server.on('POST /api/mobile/v1/actions/salaryReferenceFor', { ok: true, data: { reference: { sample: 6, low: 8000, high: 14000 } } });
   server.on('POST /api/mobile/v1/actions/saveJob', { ok: true, data: { id: 'j-new' } });
+  server.on('POST /rest/v1/rpc/employer_summary', { jobs_live: 1 });
 
   await supabase.auth.signOut({ scope: 'local' });
   await AsyncStorage.clear();
@@ -116,6 +120,8 @@ function Root() {
 }
 
 function Console() {
+  // As the real console: its figures are read, and read again after every save.
+  useEmployerSummary();
   return <Text>the console</Text>;
 }
 
@@ -243,6 +249,24 @@ describe('a new listing', () => {
   });
 });
 
+describe('leaving the wizard', () => {
+  it('asks before a half-written listing is thrown away, and goes when told to', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const result = renderRouter(app, { initialUrl: '/employer/jobs' });
+    act(() => router.push('/employer/jobs/new'));
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+
+    act(() => router.back());
+    expect(alert).toHaveBeenCalledWith(ar.app.leave.title, ar.app.leave.body, expect.any(Array));
+    expect(result.getPathname()).toBe('/employer/jobs/new');
+
+    const leave = (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive');
+    act(() => leave?.onPress?.());
+    await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    alert.mockRestore();
+  });
+});
+
 describe('a listing on the board', () => {
   it('is edited, not submitted: the version it was built from goes with it, and there is no draft', async () => {
     const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
@@ -258,12 +282,108 @@ describe('a listing on the board', () => {
     await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
   });
 
+  it('closes once saved, without waiting for every employer figure to be read again', async () => {
+    let saves = 0;
+    // Read again after the save, the listing comes back at its new version.
+    server.on('GET /rest/v1/jobs', () => [{ ...liveJob, version: saves ? 5 : 4 }]);
+    server.on('POST /rest/v1/rpc/employer_summary', { jobs_live: 1 });
+    server.on('POST /api/mobile/v1/actions/saveJob', () => {
+      saves += 1;
+      return { ok: true, data: { id: liveJob.id } };
+    });
+    // The console's figures take their time after the save, as a slow answer does.
+    let letGo: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      letGo = resolve;
+    });
+    const plain = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes('/rpc/employer_summary') && saves) await held;
+      return plain(input, init);
+    }) as typeof fetch;
+
+    try {
+      const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+      fireEvent.press(await screen.findByRole('button', { name: ar.jobForm.review }));
+      fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+
+      await waitFor(() => expect(saves).toBe(1));
+      await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+      expect(screen.queryByLabelText(ar.jobForm.titleAr)).toBeNull();
+    } finally {
+      letGo();
+      globalThis.fetch = plain;
+    }
+  });
+
   it("says so when a colleague saved it first, rather than overwriting their work", async () => {
-    server.on('POST /api/mobile/v1/actions/saveJob', { ok: false, error: 'stale' });
+    let theirs = false;
+    // A colleague's save lands first, with a title of their own.
+    server.on('GET /rest/v1/jobs', () => [theirs ? { ...liveJob, version: 5, title_ar: 'مستشار مبيعات أول' } : liveJob]);
+    server.on('POST /api/mobile/v1/actions/saveJob', () => {
+      theirs = true;
+      return { ok: false, error: 'stale' };
+    });
     renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobForm.review }));
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
     expect(await screen.findByText(ar.employer.listingMoved)).toBeTruthy();
+  });
+
+  it('takes an edit whose answer was lost for saved when the listing says what it sent', async () => {
+    let stored = liveJob;
+    server.on('GET /rest/v1/jobs', () => [stored]);
+    // The website saves the edit, and its answer never reaches the phone.
+    server.on('POST /api/mobile/v1/actions/saveJob', (_url: URL, init?: RequestInit) => {
+      const { input } = JSON.parse(String(init?.body)) as { input: { titleAr: string } };
+      // Stored as the website stores a title: its spaces collapsed.
+      stored = { ...liveJob, version: 5, title_ar: input.titleAr.replace(/\s+/g, ' ').trim() };
+      throw new TypeError('Network request failed');
+    });
+    const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات  للمشروعات ');
+    fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+
+    // Read back, it holds this edit: saved, once, and the wizard closes.
+    await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    expect(saved()).toHaveLength(1);
+  });
+
+  it('knows its own edit when the database has rounded the rate it sent to two decimals', async () => {
+    let stored = liveJob;
+    server.on('GET /rest/v1/jobs', () => [stored]);
+    server.on('POST /api/mobile/v1/actions/saveJob', () => {
+      // The column is numeric(5,2): Postgres stores the 2.555 sent as 2.56.
+      stored = { ...liveJob, version: 5, commission_value: 2.56 };
+      throw new TypeError('Network request failed');
+    });
+    const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    await screen.findByLabelText(ar.jobForm.titleAr);
+    next();
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.commissionValue), '2.555');
+    fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+    await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    expect(saved()[0]).toMatchObject({ commissionValue: 2.555 });
+  });
+
+  it('takes a refusal as stale for saved when it was this edit, sent again after its answer was lost', async () => {
+    let stored = liveJob;
+    server.on('GET /rest/v1/jobs', () => [stored]);
+    server.on('POST /api/mobile/v1/actions/saveJob', (_url: URL, init?: RequestInit) => {
+      const { input } = JSON.parse(String(init?.body)) as { input: { titleAr: string } };
+      // The first went in; this one found the version it was built from gone.
+      stored = { ...liveJob, version: 5, title_ar: input.titleAr };
+      return { ok: false, error: 'stale' };
+    });
+    const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات للمشروعات');
+    fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+    await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    expect(screen.queryByText(ar.employer.listingMoved)).toBeNull();
   });
 
   it("is not found when it is not the company's", async () => {
@@ -299,5 +419,30 @@ describe('the rules each step keeps', () => {
   it('sends a refusal back to the earliest step it names', () => {
     expect(stepOf(['descriptionAr', 'basicSalaryMax'])).toBe(1);
     expect(stepOf(['form'])).toBeNull();
+  });
+});
+
+describe('a list with a limit', () => {
+  it('takes no more than the website does, and says so, rather than being refused in silence', () => {
+    const options = Array.from({ length: MAX_DEVELOPERS + 1 }, (_, index) => ({ value: index + 1, label: `مطور ${index + 1}` }));
+    const chosen = options.slice(0, MAX_DEVELOPERS).map((option) => option.value);
+    const toggled: number[] = [];
+    render(
+      <ThemeProvider>
+        <I18nProvider>
+          <ChipGroup legend="المطورين" options={options} selected={chosen} onToggle={(value) => toggled.push(value)} max={MAX_DEVELOPERS} />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+
+    const last = screen.getByRole('button', { name: `مطور ${MAX_DEVELOPERS + 1}` });
+    expect(last.props.accessibilityState).toMatchObject({ disabled: true });
+    fireEvent.press(last);
+    expect(toggled).toEqual([]);
+    // One already chosen can still be let go.
+    fireEvent.press(screen.getByRole('button', { name: 'مطور 1' }));
+    expect(toggled).toEqual([1]);
+    // The limit is said under the list.
+    expect(screen.getByText(new RegExp(`^${ar.app.profile.chooseUpTo.split('<v>')[0]}`))).toBeTruthy();
   });
 });

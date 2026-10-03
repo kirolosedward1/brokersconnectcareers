@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale, useTranslations } from 'use-intl';
-import { X } from 'lucide-react-native';
+import { X } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import type { JobFilters } from '@/lib/job-filters';
 import { localized } from '@/lib/locale';
@@ -25,7 +25,7 @@ import { useBoardTotal } from '~/features/jobs/queries';
 import { useDistricts, useGovernorates } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, space } from '~/theme/tokens';
+import { gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * Every filter the website's /jobs panel has (src/components/jobs/job-filters.tsx),
@@ -89,21 +89,23 @@ export function FilterSheet({
       </FilterGroup>
 
       <FilterGroup title={t('filters.hasBasicSalary')} single>
-        <Chip label={t('filters.any')} selected={draft.hasBasicSalary === null} onPress={() => setDraft({ ...draft, hasBasicSalary: null })} />
+        <Chip label={t('filters.any')} radio selected={draft.hasBasicSalary === null} onPress={() => setDraft({ ...draft, hasBasicSalary: null })} />
         <Chip
           label={t('filters.hasBasicSalaryYes')}
+          radio
           selected={draft.hasBasicSalary === true}
           onPress={() => setDraft({ ...draft, hasBasicSalary: true })}
         />
         <Chip
           label={t('filters.hasBasicSalaryNo')}
+          radio
           selected={draft.hasBasicSalary === false}
           onPress={() => setDraft({ ...draft, hasBasicSalary: false })}
         />
       </FilterGroup>
 
       <FilterGroup title={t('filters.minSalary')} single>
-        <Chip label={t('filters.any')} selected={draft.minSalary === null} onPress={() => setDraft({ ...draft, minSalary: null })} />
+        <Chip label={t('filters.any')} radio selected={draft.minSalary === null} onPress={() => setDraft({ ...draft, minSalary: null })} />
         {MIN_SALARY_STEPS.map((value) => (
           <PayChip key={value} value={value} selected={draft.minSalary === value} onPress={() => setDraft({ ...draft, minSalary: value })} />
         ))}
@@ -121,11 +123,12 @@ export function FilterSheet({
       </FilterGroup>
 
       <FilterGroup title={t('filters.posted')} single>
-        <Chip label={t('filters.any')} selected={draft.postedWithin === null} onPress={() => setDraft({ ...draft, postedWithin: null })} />
+        <Chip label={t('filters.any')} radio selected={draft.postedWithin === null} onPress={() => setDraft({ ...draft, postedWithin: null })} />
         {POSTED_WITHIN_DAYS.map((days) => (
           <Chip
             key={days}
             label={t('filters.postedWithin', { days })}
+            radio
             selected={draft.postedWithin === days}
             onPress={() => setDraft({ ...draft, postedWithin: days })}
           />
@@ -218,7 +221,7 @@ export function FilterSheetFrame({
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: space[2],
-            paddingHorizontal: space[4],
+            paddingHorizontal: gutter,
             paddingVertical: space[2],
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
@@ -229,7 +232,8 @@ export function FilterSheetFrame({
             accessibilityLabel={t('common.close')}
             onPress={onClose}
             hitSlop={8}
-            style={{ minWidth: hitTarget, minHeight: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+            // The glyph, not its 44-point box, on the page's margin.
+            style={{ minWidth: hitTarget, minHeight: hitTarget, marginStart: -(hitTarget - 22) / 2, alignItems: 'center', justifyContent: 'center' }}
           >
             <X size={22} color={colors.foreground} />
           </Pressable>
@@ -237,15 +241,15 @@ export function FilterSheetFrame({
             {t('jobs.filters')}
           </Text>
           <View style={{ minWidth: hitTarget, alignItems: 'flex-end' }}>
-            {onClear ? <Button label={t('jobs.clearFilters')} variant="ghost" size="sm" onPress={onClear} /> : null}
+            {onClear ? <Button label={t('jobs.clearFilters')} variant="ghost" size="sm" onPress={onClear} style={{ marginEnd: -space[4] }} /> : null}
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: space[4], gap: space[6] }}>{children}</ScrollView>
+        <ScrollView contentContainerStyle={{ padding: gutter, gap: space[6] }}>{children}</ScrollView>
 
         <View
           style={{
-            paddingHorizontal: space[4],
+            paddingHorizontal: gutter,
             paddingTop: space[3],
             paddingBottom: Math.max(insets.bottom, space[4]),
             borderTopWidth: 1,
@@ -279,7 +283,7 @@ export function FilterGroup({ title, single = false, children }: { title: string
 function PayChip({ value, selected, onPress }: { value: number; selected: boolean; onPress: () => void }) {
   const t = useTranslations('filters');
   const locale = useLocale();
-  return <Chip label={t('minSalaryAtLeast', { amount: formatNumber(value, locale) })} selected={selected} onPress={onPress} />;
+  return <Chip label={t('minSalaryAtLeast', { amount: formatNumber(value, locale) })} radio selected={selected} onPress={onPress} />;
 }
 
 /** The districts under their governorates, as the website groups them. */

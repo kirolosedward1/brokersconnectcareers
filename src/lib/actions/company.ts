@@ -99,9 +99,20 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
   // themselves a second, empty company instead of editing the one they belong
   // to. Membership finds the company they are actually in; RLS decides whether
   // they may change it.
-  const { data: existing } = await supabase.rpc('my_company_id');
+  const { data: existing, error: membershipUnread } = await supabase.rpc('my_company_id');
+  // Unread is not "no company": creating one here would make a second company.
+  if (membershipUnread) return { ok: false, error: 'failed' };
 
   if (existing) {
+    /*
+      An update always carries the version its form was loaded at. One without
+      is a create form, sent by somebody whose company the page failed to read
+      (a dropped request on a phone): written as an update it replaced the
+      about text, the website, the size and the district with the empty
+      fields of that form. Refused as stale, it asks for the page again.
+    */
+    if (!parsed.data.version) return { ok: false, error: 'stale' };
+
     /*
       The slug is deliberately not regenerated on rename — it is a public URL
       that other sites may already link to.
@@ -113,7 +124,7 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
     */
     const update = (values: typeof withoutType) => {
       const query = supabase.from('companies').update(values).eq('id', existing);
-      return (parsed.data.version ? query.eq('version', parsed.data.version) : query).select('id');
+      return query.eq('version', parsed.data.version as number).select('id');
     };
 
     const { data: saved, error } = await retryWithoutType(await update(payload), () =>
@@ -132,7 +143,7 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
         .select('version')
         .eq('id', existing)
         .maybeSingle();
-      const moved = parsed.data.version != null && now != null && now.version !== parsed.data.version;
+      const moved = now != null && now.version !== parsed.data.version;
       return { ok: false, error: moved ? 'stale' : 'forbidden' };
     }
 
@@ -247,6 +258,19 @@ export async function recordCompanyDocument(input: unknown): Promise<ActionResul
     .eq('user_id', user.id)
     .maybeSingle();
   if (membership?.role !== 'admin') return { ok: false, error: 'forbidden' };
+
+  // A path a recorded paper already names is not checked again. The check
+  // below removes a file that fails it, with the server's own key: called on a
+  // reviewed paper's path — its bytes swapped while it waited — it took the
+  // file the verification was decided on out from under its row, and the
+  // company could upload something else in its place.
+  const { data: named, error: namedError } = await supabase
+    .from('company_documents')
+    .select('id')
+    .eq('storage_path', parsed.data.storagePath)
+    .limit(1);
+  if (namedError) return { ok: false, error: 'failed' };
+  if (named.length) return { ok: false, error: 'invalid_path' };
 
   // A commercial register is a PDF or a photograph, whatever the browser
   // said. Anything else is removed from the bucket before a row names it.
@@ -397,7 +421,10 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
 
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_member' };
-    if (error.message.includes('company_member_role')) return { ok: false, error: 'not_employer' };
+    // A consultant's address is answered as no company account at all: "that
+    // email is a consultant's" would tell a company that somebody who chose
+    // to stay hidden from it is on the platform.
+    if (error.message.includes('company_member_role')) return { ok: false, error: 'no_account' };
     // One company per account (migration 307): somebody already on another
     // team is answered the same way as somebody who may not be added.
     return { ok: false, error: 'forbidden' };

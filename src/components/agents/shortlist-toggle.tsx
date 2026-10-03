@@ -126,7 +126,7 @@ export function ShortlistButton({
       disabled={pending}
       aria-pressed={saved}
     >
-      {saved ? <UserRoundCheck /> : <UserRoundPlus />}
+      {saved ? <UserRoundCheck aria-hidden /> : <UserRoundPlus aria-hidden />}
       {saved ? labels.remove : labels.add}
     </Button>
   );

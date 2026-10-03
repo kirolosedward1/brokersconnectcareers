@@ -1,0 +1,445 @@
+{
+ "source": "Supabase list_migrations on project hiwdhicwsohbipxzazmb, read 2026-10-02 (read-only), in the order it lists them: by version",
+ "migrations": [
+  {
+   "version": "20260101000068",
+   "name": "search_that_reads_the_listing_the_way_people_do"
+  },
+  {
+   "version": "20260101000069",
+   "name": "what_the_provider_said_happened"
+  },
+  {
+   "version": "20260101000200",
+   "name": "a_reply_the_bell_can_carry"
+  },
+  {
+   "version": "20260101000201",
+   "name": "a_failure_somebody_can_quote"
+  },
+  {
+   "version": "20260101000202",
+   "name": "what_the_card_said_and_what_the_api_said"
+  },
+  {
+   "version": "20260101000300",
+   "name": "one_event_one_notification"
+  },
+  {
+   "version": "20260101000301",
+   "name": "notifications_that_cannot_repeat"
+  },
+  {
+   "version": "20260101000302",
+   "name": "twenty_applicants_one_row"
+  },
+  {
+   "version": "20260101000303",
+   "name": "who_did_what_and_when"
+  },
+  {
+   "version": "20260101000304",
+   "name": "a_number_you_ask_for_not_one_you_are_handed"
+  },
+  {
+   "version": "20260101000305",
+   "name": "what_an_employer_may_read_about_an_applicant"
+  },
+  {
+   "version": "20260101000306",
+   "name": "how_fast_is_too_fast"
+  },
+  {
+   "version": "20260101000307",
+   "name": "a_row_says_what_the_server_said"
+  },
+  {
+   "version": "20260101000308",
+   "name": "what_a_suspended_account_may_still_touch"
+  },
+  {
+   "version": "20260101000309",
+   "name": "a_bucket_is_not_a_drive"
+  },
+  {
+   "version": "20260101000310",
+   "name": "a_query_that_knows_when_to_stop"
+  },
+  {
+   "version": "20260101000311",
+   "name": "an_admin_who_proved_it_twice"
+  },
+  {
+   "version": "20260101000312",
+   "name": "a_payment_is_settled_against_itself"
+  },
+  {
+   "version": "20260101000313",
+   "name": "what_the_security_page_reads"
+  },
+  {
+   "version": "20260101000314",
+   "name": "a_question_asked_once_not_once_per_row"
+  },
+  {
+   "version": "20260101000319",
+   "name": "one_approval_lever_after_the_note_moved"
+  },
+  {
+   "version": "20260101000320",
+   "name": "the_audit_trail_asks_once"
+  },
+  {
+   "version": "20260101000322",
+   "name": "the_directory_is_for_employers"
+  },
+  {
+   "version": "20260101000323",
+   "name": "an_email_with_nothing_left_to_say"
+  },
+  {
+   "version": "20260101000324",
+   "name": "background_work_that_survives_a_crash"
+  },
+  {
+   "version": "20260101000325",
+   "name": "a_bell_for_a_decision_about_you"
+  },
+  {
+   "version": "20260101000326",
+   "name": "reports_that_cannot_be_turned_into_a_weapon"
+  },
+  {
+   "version": "20260101000327",
+   "name": "what_a_moderator_should_see_first"
+  },
+  {
+   "version": "20260101000328",
+   "name": "a_second_look_when_we_got_it_wrong"
+  },
+  {
+   "version": "20260101000329",
+   "name": "a_phone_that_hears_what_happened"
+  },
+  {
+   "version": "20260101000330",
+   "name": "an_owner_may_ask_to_leave"
+  },
+  {
+   "version": "20260831124134",
+   "name": "enums"
+  },
+  {
+   "version": "20260831124215",
+   "name": "core_tables"
+  },
+  {
+   "version": "20260831124232",
+   "name": "indexes"
+  },
+  {
+   "version": "20260831124313",
+   "name": "functions_and_triggers"
+  },
+  {
+   "version": "20260831124347",
+   "name": "row_level_security"
+  },
+  {
+   "version": "20260831124417",
+   "name": "privilege_guards"
+  },
+  {
+   "version": "20260831124439",
+   "name": "storage_buckets"
+  },
+  {
+   "version": "20260831124453",
+   "name": "api_role_grants"
+  },
+  {
+   "version": "20260831124504",
+   "name": "api_role_grants"
+  },
+  {
+   "version": "20260831125349",
+   "name": "harden_functions"
+  },
+  {
+   "version": "20260902103242",
+   "name": "email_notification_preferences"
+  },
+  {
+   "version": "20260902112743",
+   "name": "saved_searches"
+  },
+  {
+   "version": "20260902114831",
+   "name": "settle_order"
+  },
+  {
+   "version": "20260903201728",
+   "name": "decision_note"
+  },
+  {
+   "version": "20260903222403",
+   "name": "cv_profile"
+  },
+  {
+   "version": "20260903223200",
+   "name": "dashboard_summaries"
+  },
+  {
+   "version": "20260904111330",
+   "name": "dashboard_trends"
+  },
+  {
+   "version": "20260904115110",
+   "name": "applicants_are_candidates"
+  },
+  {
+   "version": "20260904120159",
+   "name": "account_approval"
+  },
+  {
+   "version": "20260904120228",
+   "name": "notifications"
+  },
+  {
+   "version": "20260908085958",
+   "name": "admin_pending_accounts"
+  },
+  {
+   "version": "20260908155006",
+   "name": "rate_limits"
+  },
+  {
+   "version": "20260908160922",
+   "name": "application_receipt"
+  },
+  {
+   "version": "20260908160934",
+   "name": "application_receipt_trigger"
+  },
+  {
+   "version": "20260908163426",
+   "name": "company_members"
+  },
+  {
+   "version": "20260908164157",
+   "name": "arabic_search"
+  },
+  {
+   "version": "20260909083658",
+   "name": "member_scope"
+  },
+  {
+   "version": "20260909083835",
+   "name": "company_logo_admin_scope"
+  },
+  {
+   "version": "20260909102632",
+   "name": "saved_search_query_length"
+  },
+  {
+   "version": "20260909115035",
+   "name": "email_outbox_tables"
+  },
+  {
+   "version": "20260909115053",
+   "name": "email_outbox_functions"
+  },
+  {
+   "version": "20260909115106",
+   "name": "email_activity_readers"
+  },
+  {
+   "version": "20260909115230",
+   "name": "email_activity_revoke_public"
+  },
+  {
+   "version": "20260909120620",
+   "name": "applicant_digest_preference"
+  },
+  {
+   "version": "20260909121322",
+   "name": "refuse_reserved_domains"
+  },
+  {
+   "version": "20260909232923",
+   "name": "targeted_indexes"
+  },
+  {
+   "version": "20260909235258",
+   "name": "report_job_required"
+  },
+  {
+   "version": "20260910000347",
+   "name": "reports_open_by_listing"
+  },
+  {
+   "version": "20260910001449",
+   "name": "suspension_takes_listings_down"
+  },
+  {
+   "version": "20260910004800",
+   "name": "agent_languages"
+  },
+  {
+   "version": "20260910020723",
+   "name": "avatars"
+  },
+  {
+   "version": "20260910135602",
+   "name": "applicants_unseen"
+  },
+  {
+   "version": "20260911093135",
+   "name": "function_hardening"
+  },
+  {
+   "version": "20260911093837",
+   "name": "fk_indexes"
+  },
+  {
+   "version": "20260911093852",
+   "name": "agent_card_owner_preview"
+  },
+  {
+   "version": "20260911122522",
+   "name": "company_source_of_truth"
+  },
+  {
+   "version": "20260911123437",
+   "name": "application_lifecycle"
+  },
+  {
+   "version": "20260911153723",
+   "name": "applying_is_consent"
+  },
+  {
+   "version": "20260911155108",
+   "name": "submitted_for_review"
+  },
+  {
+   "version": "20260911155709",
+   "name": "an_applicant_keeps_the_listing"
+  },
+  {
+   "version": "20260911160445",
+   "name": "reposting_a_listing_that_never_returns"
+  },
+  {
+   "version": "20260911160649",
+   "name": "repost_a_listing_whose_label_lags"
+  },
+  {
+   "version": "20260911161333",
+   "name": "an_admin_and_their_own_row"
+  },
+  {
+   "version": "20260911162048",
+   "name": "the_shape_of_a_row"
+  },
+  {
+   "version": "20260911162351",
+   "name": "a_set_clause_that_create_or_replace_ate"
+  },
+  {
+   "version": "20260911162913",
+   "name": "two_people_editing_one_listing"
+  },
+  {
+   "version": "20260911163330",
+   "name": "a_bell_for_everyone_who_does_the_work"
+  },
+  {
+   "version": "20260911163342",
+   "name": "the_applicant_who_simply_vanished"
+  },
+  {
+   "version": "20260911163851",
+   "name": "an_order_with_ties_is_not_an_order"
+  },
+  {
+   "version": "20260911164312",
+   "name": "an_index_shaped_like_the_board"
+  },
+  {
+   "version": "20260911165004",
+   "name": "a_listing_posted_twice_by_one_click"
+  },
+  {
+   "version": "20260911205035",
+   "name": "what_the_linter_sees_and_what_it_means"
+  },
+  {
+   "version": "20260911205631",
+   "name": "a_function_called_once_instead_of_per_row"
+  },
+  {
+   "version": "20260911211939",
+   "name": "somewhere_to_write_that_the_candidate_does_not_read"
+  },
+  {
+   "version": "20260911215413",
+   "name": "a_company_slug_is_a_promise"
+  },
+  {
+   "version": "20260911220853",
+   "name": "a_shortlist_that_outlives_one_listing"
+  },
+  {
+   "version": "20260911222411",
+   "name": "a_number_that_earns_the_right_to_be_shown"
+  },
+  {
+   "version": "20260911223328",
+   "name": "the_advert_that_ran_out_and_nobody_said_so"
+  },
+  {
+   "version": "20260911224604",
+   "name": "three_companies_looked_and_nobody_told_you"
+  },
+  {
+   "version": "20260912001300",
+   "name": "an_active_listing_has_an_end_date"
+  },
+  {
+   "version": "20260913124023",
+   "name": "a_follow_the_employer_could_not_reach"
+  },
+  {
+   "version": "20260913124044",
+   "name": "a_balance_that_only_ever_went_up"
+  },
+  {
+   "version": "20260922180323",
+   "name": "a_company_never_said_what_kind_it_was"
+  },
+  {
+   "version": "20260927170723",
+   "name": "what_a_delete_is_allowed_to_take"
+  },
+  {
+   "version": "20260927170749",
+   "name": "a_record_of_who_did_what"
+  },
+  {
+   "version": "20260927170823",
+   "name": "levers_the_console_did_not_have"
+  },
+  {
+   "version": "20260927170852",
+   "name": "housekeeping_that_runs_itself"
+  },
+  {
+   "version": "20260927171005",
+   "name": "every_lever_through_one_door"
+  },
+  {
+   "version": "20260930190621",
+   "name": "a_decision_is_told_to_those_it_is_about"
+  }
+ ]
+}

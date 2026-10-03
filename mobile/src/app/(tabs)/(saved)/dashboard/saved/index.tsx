@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { jobIsLive } from '@/lib/job-state';
@@ -13,7 +13,9 @@ import { useAppliedJobIds } from '~/features/jobs/marks';
 import { useSavedJobs, useSavedSearches } from '~/features/saved/queries';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
+import { UserRound } from '~/components/ui/lucide';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * What the candidate kept — the website's /dashboard/saved: the bookmarked
@@ -31,6 +33,7 @@ export default function SavedScreen() {
   const { session } = useSession();
   const jobs = useSavedJobs();
   const searches = useSavedSearches();
+  const pull = usePullRefresh(() => Promise.all([jobs.refetch(), searches.refetch()]));
 
   const saved = useMemo(() => jobs.data ?? [], [jobs.data]);
   const applied = useAppliedJobIds(useMemo(() => saved.map((job) => job.id), [saved]));
@@ -41,13 +44,14 @@ export default function SavedScreen() {
   if (!session) {
     body = (
       <EmptyState
+        icon={UserRound}
         title={t('app.account.signedOutTitle')}
         action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
       />
     );
   } else if (jobs.isPending || searches.isPending) {
     body = <LoadingState />;
-  } else if (jobs.isError || searches.isError) {
+  } else if ((jobs.isError && !jobs.data) || (searches.isError && !searches.data)) {
     body = (
       <ErrorState
         error={jobs.error ?? searches.error}
@@ -61,16 +65,9 @@ export default function SavedScreen() {
     body = (
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[8] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[8] }}
         refreshControl={
-          <RefreshControl
-            refreshing={jobs.isRefetching || searches.isRefetching}
-            onRefresh={() => {
-              jobs.refetch();
-              searches.refetch();
-            }}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
         }
       >
         <Text tone="mutedForeground">{t('dashboard.savedLede')}</Text>
@@ -82,8 +79,8 @@ export default function SavedScreen() {
               gap: space[3],
               paddingVertical: space[8],
               paddingHorizontal: space[6],
-              borderRadius: radius.xl,
-              borderWidth: 1,
+              ...corner('xl'),
+              borderWidth: StyleSheet.hairlineWidth * 2,
               borderStyle: 'dashed',
               borderColor: colors.border,
             }}

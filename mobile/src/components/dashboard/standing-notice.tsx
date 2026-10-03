@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { Ban, CirclePause, CircleSlash, Clock } from 'lucide-react-native';
+import { Ban, CirclePause, CircleSlash, Clock } from '~/components/ui/lucide';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
 import { AppealPanel } from '~/components/moderation/appeal-panel';
 import { Button } from '~/components/ui/button';

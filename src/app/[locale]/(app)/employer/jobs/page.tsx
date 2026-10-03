@@ -14,6 +14,7 @@ import { AppealPanel } from '@/components/moderation/appeal-panel';
 import { getAppealState } from '@/lib/moderation/appeal-state';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from '@/lib/queries/error';
+import { listingNotes, noteFor } from '@/lib/listing-notes';
 import { formatDate, formatNumber, isoDate } from '@/lib/utils';
 import type { JobRow, JobStatus } from '@/lib/supabase/database.types';
 
@@ -116,7 +117,7 @@ export default async function EmployerJobsPage({
 
   const total = count ?? data?.length ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const jobs = (data ?? []) as unknown as (Pick<
+  const rows = (data ?? []) as unknown as (Pick<
     JobRow,
     | 'id' | 'slug' | 'title_ar' | 'title_en' | 'status' | 'seats' | 'view_count'
     | 'published_at' | 'expires_at' | 'created_at' | 'rejection_note'
@@ -124,6 +125,15 @@ export default async function EmployerJobsPage({
     district: { name_ar: string; name_en: string } | null;
     applications: { count: number }[];
   })[];
+
+  // Why a listing was refused: beside it in job_moderation, the company's to
+  // read (migration 347), or before that migration in its own column.
+  const { notes, error: notesError } = await listingNotes(
+    (ids) => supabase.from('job_moderation').select('job_id, rejection_note').in('job_id', ids),
+    rows.map((row) => row.id),
+  );
+  if (notesError) raise(notesError, 'loading your listings');
+  const jobs = rows.map((row) => ({ ...row, rejection_note: noteFor(notes, row) }));
 
 
   // A rejected listing can be appealed — "we think this was a mistake" — as
@@ -147,7 +157,7 @@ export default async function EmployerJobsPage({
         </div>
         <Button asChild className="self-start">
           <Link href="/employer/jobs/new">
-            <Plus />
+            <Plus aria-hidden />
             {t('newJob')}
           </Link>
         </Button>
