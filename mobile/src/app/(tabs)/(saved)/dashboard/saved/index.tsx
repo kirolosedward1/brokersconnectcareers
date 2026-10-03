@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { jobIsLive } from '@/lib/job-state';
@@ -13,7 +13,7 @@ import { useAppliedJobIds } from '~/features/jobs/marks';
 import { useSavedJobs, useSavedSearches } from '~/features/saved/queries';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * What the candidate kept — the website's /dashboard/saved: the bookmarked
@@ -61,7 +61,7 @@ export default function SavedScreen() {
     body = (
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[8] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[8] }}
         refreshControl={
           <RefreshControl
             refreshing={jobs.isRefetching || searches.isRefetching}
@@ -82,8 +82,8 @@ export default function SavedScreen() {
               gap: space[3],
               paddingVertical: space[8],
               paddingHorizontal: space[6],
-              borderRadius: radius.xl,
-              borderWidth: 1,
+              ...corner('xl'),
+              borderWidth: StyleSheet.hairlineWidth * 2,
               borderStyle: 'dashed',
               borderColor: colors.border,
             }}

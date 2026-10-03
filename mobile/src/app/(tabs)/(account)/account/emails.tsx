@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, Switch, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
@@ -9,7 +9,7 @@ import { Text } from '~/components/ui/text';
 import { useSaveEmailPreferences, type EmailPreferences } from '~/features/account/settings';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * What we email — the website's switches on /dashboard/account: each kind of
@@ -63,7 +63,7 @@ export default function EmailsScreen() {
 function Switches({ employer, initial }: { employer: boolean; initial: EmailPreferences }) {
   const t = useTranslations('account');
   const tCommon = useTranslations('common');
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const save = useSaveEmailPreferences();
   const [prefs, setPrefs] = useState(initial);
   const [saved, setSaved] = useState(false);
@@ -104,7 +104,7 @@ function Switches({ employer, initial }: { employer: boolean; initial: EmailPref
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
     >
       <Text tone="mutedForeground">{t('emailsBody')}</Text>
       {rows.map((row) => (
@@ -115,9 +115,10 @@ function Switches({ employer, initial }: { employer: boolean; initial: EmailPref
             alignItems: 'center',
             gap: space[3],
             padding: space[4],
-            borderRadius: radius.xl,
-            borderWidth: 1,
+            ...corner('xl'),
+            borderWidth: StyleSheet.hairlineWidth * 2,
             borderColor: colors.border,
+            boxShadow: shadow.card,
             backgroundColor: colors.card,
           }}
         >

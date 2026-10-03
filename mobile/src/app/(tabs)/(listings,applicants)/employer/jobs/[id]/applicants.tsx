@@ -22,7 +22,7 @@ import { markupTags } from '~/i18n/rich';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * One listing's applicants — the website's /employer/jobs/<id>/applicants:
@@ -95,13 +95,13 @@ export default function ListingApplicantsScreen() {
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
         refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       >
         <Text tone="mutedForeground">{t.markup('employer.pipelineCount', { count: total, ...markupTags })}</Text>
 
         {total > rows.length ? (
-          <View style={{ gap: space[1], padding: space[3], borderRadius: radius.lg, backgroundColor: colors.muted }}>
+          <View style={{ gap: space[1], padding: space[3], ...corner('lg'), backgroundColor: colors.muted }}>
             <Text variant="small">{t.markup('employer.applicantsCapped', { count: APPLICANTS_CAP, ...markupTags })}</Text>
             <Pressable
               accessibilityRole="link"

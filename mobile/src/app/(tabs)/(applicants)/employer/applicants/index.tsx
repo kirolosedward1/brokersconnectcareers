@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Search, ShieldCheck } from '~/components/ui/lucide';
@@ -31,7 +31,7 @@ import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useSession } from '~/lib/session';
 import { useVisited } from '~/lib/use-visited';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * Every applicant across the company's listings — the website's
@@ -93,7 +93,7 @@ export default function InboxScreen() {
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
         refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       >
         <View style={{ gap: space[2] }}>
@@ -192,8 +192,8 @@ export default function InboxScreen() {
               alignItems: 'center',
               paddingVertical: space[8],
               paddingHorizontal: space[6],
-              borderRadius: radius.xl,
-              borderWidth: 1,
+              ...corner('xl'),
+              borderWidth: StyleSheet.hairlineWidth * 2,
               borderStyle: 'dashed',
               borderColor: colors.border,
             }}

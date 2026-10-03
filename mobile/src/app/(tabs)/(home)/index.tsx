@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, type Href } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Briefcase, Building2, Check, Search } from '~/components/ui/lucide';
@@ -7,12 +7,13 @@ import { formatNumber } from '@/lib/format';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { CandidateHome } from '~/components/home/candidate-home';
 import { EmployerHome } from '~/components/home/employer-home';
+import { Hero } from '~/components/home/hero';
 import { JobBrowse } from '~/components/home/job-browse';
 import { HeaderBell } from '~/components/notifications/header-bell';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
-import { ForwardChevron } from '~/components/ui/icons';
+import { SectionHeader } from '~/components/ui/section-header';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useBrowseCounts } from '~/features/browse/queries';
@@ -23,7 +24,7 @@ import { inOwnTab } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { tabsFor } from '~/lib/tabs';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 /**
  * Home — the website's home page for the phone, and a candidate's console.
@@ -99,73 +100,55 @@ function MarketHome() {
           tintColor={colors.primary}
         />
       }
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[8] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[8] }}
     >
-      <View style={{ gap: space[3] }}>
-        {name ? (
-          <View>
-            <Text variant="title" weight="bold" accessibilityRole="header">
-              {t('home.welcome', { name })}
-            </Text>
-            <Text tone="mutedForeground">{t('home.welcomeLede')}</Text>
-          </View>
-        ) : (
-          <View>
-            <Text variant="display" weight="bold" accessibilityRole="header">
-              {t('landingPage.hero.title')}
-            </Text>
-            <Text tone="mutedForeground" style={{ marginTop: space[1] }}>
-              {t('landingPage.hero.subtitle')}
-            </Text>
-          </View>
-        )}
+      <View style={{ gap: space[4] }}>
+        <Hero
+          eyebrow={name ? undefined : t('landingPage.hero.eyebrow')}
+          title={name ? t('home.welcome', { name }) : t('landingPage.hero.title')}
+          subtitle={name ? t('home.welcomeLede') : t('landingPage.hero.subtitle')}
+        >
+          <TextField
+            value={q}
+            onChangeText={setQ}
+            onSubmitEditing={search}
+            returnKeyType="search"
+            enterKeyHint="search"
+            autoCorrect={false}
+            placeholder={name ? t('home.searchPlaceholder') : t('landingPage.hero.searchPlaceholder')}
+            accessibilityLabel={t('landingPage.hero.searchLabel')}
+            leading={<Search size={18} color={colors.mutedForeground} />}
+          />
+          <Button
+            label={name ? t('home.searchButton') : t('landingPage.hero.cta')}
+            variant="champagne"
+            size="lg"
+            onPress={search}
+          />
+
+          {name ? null : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
+              <Check size={16} color={colors.champagne} strokeWidth={2.5} />
+              <Text variant="small" style={{ color: colors.onHeroMuted, flexShrink: 1 }}>
+                {t('landingPage.hero.trustNoSpam')}
+              </Text>
+            </View>
+          )}
+        </Hero>
 
         {/* The Terms and the Privacy policy as they are now, until agreed to. */}
         {name ? <PolicyNotice /> : null}
-
-        <TextField
-          value={q}
-          onChangeText={setQ}
-          onSubmitEditing={search}
-          returnKeyType="search"
-          enterKeyHint="search"
-          autoCorrect={false}
-          placeholder={name ? t('home.searchPlaceholder') : t('landingPage.hero.searchPlaceholder')}
-          accessibilityLabel={t('landingPage.hero.searchLabel')}
-          leading={<Search size={18} color={colors.mutedForeground} />}
-        />
-        <Button label={name ? t('home.searchButton') : t('landingPage.hero.cta')} onPress={search} />
-
-        {name ? null : (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
-            <Check size={16} color={colors.success} />
-            <Text variant="small" tone="mutedForeground">
-              {t('landingPage.hero.trustNoSpam')}
-            </Text>
-          </View>
-        )}
       </View>
 
       {name ? null : <JobBrowse counts={counts.data} districts={districts.data} />}
 
       {latest.length || featured.length ? (
-        <View style={{ gap: space[3] }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[3] }}>
-            <Text variant="title" weight="bold" accessibilityRole="header" style={{ flexShrink: 1 }}>
-              {name ? t('home.latestJobs') : t('landingPage.latest.title')}
-            </Text>
-            <Pressable
-              accessibilityRole="link"
-              onPress={() => router.navigate('/jobs')}
-              hitSlop={8}
-              style={{ minHeight: hitTarget, flexDirection: 'row', alignItems: 'center', gap: 2 }}
-            >
-              <Text variant="small" weight="medium" tone="primary">
-                {t('jobs.title')}
-              </Text>
-              <ForwardChevron size={16} color={colors.primary} />
-            </Pressable>
-          </View>
+        <View style={{ gap: space[4] }}>
+          <SectionHeader
+            title={name ? t('home.latestJobs') : t('landingPage.latest.title')}
+            action={t('jobs.title')}
+            onAction={() => router.navigate('/jobs')}
+          />
 
           {/* The market in a labelled figure, for somebody who comes back. Live
               listings only: an open-seats figure summed the first page and sat
@@ -177,20 +160,20 @@ function MarketHome() {
           ) : null}
 
           {featured.length ? (
-            <View style={{ gap: space[2] }}>
-              <Text variant="small" weight="medium" tone="mutedForeground">
+            <View style={{ gap: space[3] }}>
+              <Text variant="label" weight="semibold" tone="mutedForeground">
                 {t('home.featuredJobs')}
               </Text>
               {featured.map((job) => (
                 <JobCard key={job.id} job={job} />
               ))}
-              <Text variant="small" weight="medium" tone="mutedForeground" style={{ marginTop: space[3] }}>
+              <Text variant="label" weight="semibold" tone="mutedForeground" style={{ marginTop: space[3] }}>
                 {t('home.newestJobs')}
               </Text>
             </View>
           ) : null}
 
-          <View style={{ gap: space[2] }}>
+          <View style={{ gap: space[3] }}>
             {latest.map((job) => (
               <JobCard key={job.id} job={job} />
             ))}

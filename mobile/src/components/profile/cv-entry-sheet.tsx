@@ -20,7 +20,7 @@ import { SaveRefused, useSaveCvEntry, type CvSection } from '~/features/profile/
 import { ApiError } from '~/lib/api';
 import { useConfirmDiscard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, space } from '~/theme/tokens';
+import { gutter, hitTarget, space } from '~/theme/tokens';
 import { dateOf, monthOf, wholeNumber } from './fields';
 
 export type CvEntry =
@@ -236,7 +236,7 @@ function EntryForm({
       <ScrollView
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: space[4], paddingTop: 0, paddingBottom: space[10], gap: space[4] }}
+        contentContainerStyle={{ padding: gutter, paddingTop: 0, paddingBottom: space[10], gap: space[4] }}
       >
         {entry.section === 'experience' ? (
           <>

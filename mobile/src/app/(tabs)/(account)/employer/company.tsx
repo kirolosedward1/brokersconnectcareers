@@ -15,7 +15,7 @@ import { Text } from '~/components/ui/text';
 import { useCompanyPage } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 /**
  * The company, as candidates read it and as its admins keep it — the
@@ -60,7 +60,7 @@ export default function CompanyScreen() {
             tintColor={colors.primary}
           />
         }
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >
         <Text tone="mutedForeground">{t('employer.companyLede')}</Text>
         {company && isAdmin ? (

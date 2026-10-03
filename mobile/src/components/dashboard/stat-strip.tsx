@@ -1,8 +1,8 @@
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { TrendingDown, TrendingUp } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 export type StatTone = 'default' | 'accent' | 'good' | 'warn' | 'urgent';
 
@@ -35,8 +35,8 @@ export function StatStrip({ cells, label }: { cells: StatCell[]; label: string }
       accessibilityLabel={label}
       style={{
         gap: 1,
-        borderRadius: radius.xl,
-        borderWidth: 1,
+        ...corner('xl'),
+        borderWidth: StyleSheet.hairlineWidth * 2,
         borderColor: colors.border,
         // The hairlines are the ground showing through the gaps.
         backgroundColor: colors.border,

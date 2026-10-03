@@ -5,7 +5,7 @@ import { Chip } from '~/components/ui/chip';
 import { Text } from '~/components/ui/text';
 import { markupTags } from '~/i18n/rich';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 /**
  * Pieces the profile's forms share: the website's CheckboxGroup as chips, and
@@ -60,7 +60,7 @@ export function ChipGroup<T extends string | number>({
         {legend}
       </Text>
       {scroll ? (
-        <View style={{ maxHeight: 224, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border }}>
+        <View style={{ maxHeight: 224, ...corner('lg'), borderWidth: 1, borderColor: colors.border }}>
           <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: space[3] }}>
             {chips}
           </ScrollView>

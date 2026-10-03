@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { SlidersHorizontal } from '~/components/ui/lucide';
+import { SearchX, SlidersHorizontal } from '~/components/ui/lucide';
 import type { SearchBarCommands } from 'react-native-screens';
 import {
   activeFilterList,
@@ -27,7 +27,8 @@ import { SaveSearchButton } from '~/components/saved/save-controls';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
-import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
+import { Segmented } from '~/components/ui/segmented';
+import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useBrowseCounts } from '~/features/browse/queries';
 import { boardQuery, filtersToParams, sheetFilterCount, useFilterLabel } from '~/features/jobs/filters';
@@ -36,7 +37,7 @@ import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 const SORTS: JobSort[] = ['newest', 'salary', 'seats'];
 
@@ -119,7 +120,7 @@ export default function BoardScreen() {
       <>
         {header}
         {sheet}
-        <LoadingState />
+        <SkeletonList />
       </>
     );
   }
@@ -147,7 +148,7 @@ export default function BoardScreen() {
         // The saved search is named in a field on the board: its Save must save on the first tap.
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
           <BoardHeader
             filters={filters}
@@ -178,7 +179,7 @@ export default function BoardScreen() {
 }
 
 function Separator() {
-  return <View style={{ height: space[2] }} />;
+  return <View style={{ height: space[3] }} />;
 }
 
 /**
@@ -211,29 +212,28 @@ function BoardHeader({
   const searchLabel = useSearchLabel(filters, first);
 
   return (
-    <View style={{ gap: space[3], marginBottom: space[3] }}>
+    <View style={{ gap: space[3], marginBottom: space[4] }}>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
+        <Text variant="small" weight="medium" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
+          {t('resultsCount', { count: first?.total ?? 0 })}
+        </Text>
         <Chip
           label={inSheet ? `${t('filters')} · ${formatNumber(inSheet, locale)}` : t('filters')}
           selected={inSheet > 0}
-          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primary : colors.foreground} />}
+          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primaryForeground : colors.foreground} />}
           onPress={onFilters}
         />
-        <Text variant="small" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
-          {t('resultsCount', { count: first?.total ?? 0 })}
-        </Text>
-        <View accessibilityRole="radiogroup" accessibilityLabel={t('sortBy')} style={{ flexDirection: 'row', gap: space[1] }}>
-          {SORTS.map((sort) => (
-            <Chip
-              key={sort}
-              label={t(sort === 'newest' ? 'sortNewest' : sort === 'salary' ? 'sortSalary' : 'sortSeats')}
-              selected={filters.sort === sort}
-              radio
-              onPress={() => apply({ ...filters, sort })}
-            />
-          ))}
-        </View>
       </View>
+
+      <Segmented
+        label={t('sortBy')}
+        value={filters.sort}
+        onChange={(sort) => apply({ ...filters, sort })}
+        options={SORTS.map((sort) => ({
+          value: sort,
+          label: t(sort === 'newest' ? 'sortNewest' : sort === 'salary' ? 'sortSalary' : 'sortSeats'),
+        }))}
+      />
 
       {company ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3] }}>
@@ -331,6 +331,7 @@ function EmptyBoard({
     <EmptyState
       title={t('empty')}
       body={t('emptyHint')}
+      icon={SearchX}
       action={
         <View style={{ alignItems: 'center', gap: space[3] }}>
           {relaxations.length ? (

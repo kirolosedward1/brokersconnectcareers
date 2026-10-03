@@ -8,7 +8,7 @@ import { Card } from '~/components/ui/card';
 import { ForwardChevron } from '~/components/ui/icons';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 
 /**
  * How each live listing turns views into applications — the website's
@@ -63,8 +63,8 @@ export function ConversionBars({ rows }: { rows: EmployerConversionRow[] }) {
                   {percent}
                 </Text>
               </View>
-              <View style={{ height: 8, borderRadius: radius.full, backgroundColor: colors.muted, overflow: 'hidden' }}>
-                <View style={{ width: `${width}%`, height: '100%', borderRadius: radius.full, backgroundColor: colors.primary }} />
+              <View style={{ height: 8, ...corner('full'), backgroundColor: colors.muted, overflow: 'hidden' }}>
+                <View style={{ width: `${width}%`, height: '100%', ...corner('full'), backgroundColor: colors.primary }} />
               </View>
               <Text variant="caption" tone="mutedForeground">
                 {counts}

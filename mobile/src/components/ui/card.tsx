@@ -1,12 +1,15 @@
 import type { ReactNode } from 'react';
-import { Pressable, View, type AccessibilityActionEvent, type AccessibilityActionInfo, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type AccessibilityActionEvent, type AccessibilityActionInfo, type ViewStyle } from 'react-native';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
+import { PressableScale } from './pressable-scale';
 
 /**
- * The website's card: a border, no shadow, 10-point corners. Pressable when
- * given onPress. A pressable card is one element to VoiceOver, so a second
- * control inside it (a listing's bookmark) is offered as an action on the card.
+ * A surface raised off the page: white on the ivory in light, a lighter
+ * charcoal in dark, with a hairline, a soft shadow and continuous 20-point
+ * corners. Pressable when given onPress, settling a touch when held. A
+ * pressable card is one element to VoiceOver, so a second control inside it
+ * (a listing's bookmark) is offered as an action on the card.
  */
 export function Card({
   children,
@@ -23,27 +26,29 @@ export function Card({
   onAccessibilityAction?: (event: AccessibilityActionEvent) => void;
   style?: ViewStyle;
 }) {
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const base: ViewStyle = {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth * 2,
     borderColor: colors.border,
-    borderRadius: radius.xl,
+    ...corner('xl'),
     backgroundColor: colors.card,
+    boxShadow: shadow.card,
     padding: space[4],
   };
 
   if (!onPress) return <View style={[base, style]}>{children}</View>;
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="link"
       accessibilityLabel={accessibilityLabel}
       accessibilityActions={accessibilityActions}
       onAccessibilityAction={onAccessibilityAction}
       onPress={onPress}
+      scaleTo={0.985}
       style={({ pressed }) => [base, pressed && { backgroundColor: colors.muted }, style]}
     >
       {children}
-    </Pressable>
+    </PressableScale>
   );
 }

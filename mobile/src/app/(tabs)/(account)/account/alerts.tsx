@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Linking, ScrollView, Switch, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
@@ -12,7 +12,7 @@ import { pushAvailable, usePushState } from '~/features/push/device';
 import { pushPreferencesOf, useSavePushPreferences, type PushPreferences } from '~/features/push/preferences';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * Pushes on this phone: on or off for the person signed in, without going to
@@ -25,7 +25,7 @@ import { radius, space } from '~/theme/tokens';
  */
 export default function AlertsScreen() {
   const t = useTranslations();
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const { session, viewer } = useSession();
   const state = usePushState();
   const { turnOn, turnOff } = usePushControls();
@@ -48,7 +48,7 @@ export default function AlertsScreen() {
     return (
       <>
         {header}
-        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: space[4], gap: space[4] }}>
+        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: gutter, gap: space[4] }}>
           <Notice tone="muted">
             <Text variant="small">{t('app.push.unavailable')}</Text>
           </Notice>
@@ -77,7 +77,7 @@ export default function AlertsScreen() {
       {header}
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
       >
         <View
           style={{
@@ -85,9 +85,10 @@ export default function AlertsScreen() {
             alignItems: 'center',
             gap: space[3],
             padding: space[4],
-            borderRadius: radius.xl,
-            borderWidth: 1,
+            ...corner('xl'),
+            borderWidth: StyleSheet.hairlineWidth * 2,
             borderColor: colors.border,
+            boxShadow: shadow.card,
             backgroundColor: colors.card,
           }}
         >
@@ -150,7 +151,7 @@ const KINDS = ['push_job_alerts', 'push_applications', 'push_account', 'push_qui
 function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferences }) {
   const t = useTranslations('app.push');
   const tCommon = useTranslations('common');
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const save = useSavePushPreferences();
   const [saved, setSaved] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -232,9 +233,10 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
             alignItems: 'center',
             gap: space[3],
             padding: space[4],
-            borderRadius: radius.xl,
-            borderWidth: 1,
+            ...corner('xl'),
+            borderWidth: StyleSheet.hairlineWidth * 2,
             borderColor: colors.border,
+            boxShadow: shadow.card,
             backgroundColor: colors.card,
           }}
         >

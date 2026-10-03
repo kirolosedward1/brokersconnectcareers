@@ -33,7 +33,7 @@ import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useVisited } from '~/lib/use-visited';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * The consultant directory — the website's /agents, for the companies that
@@ -145,7 +145,7 @@ export default function DirectoryScreen() {
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
           <DirectoryHeader
             filters={filters}
@@ -223,7 +223,7 @@ function DirectoryHeader({
           style={{
             gap: space[2],
             padding: space[4],
-            borderRadius: radius.xl,
+            ...corner('xl'),
             borderWidth: 1,
             borderColor: colors.primary,
             backgroundColor: colors.secondary,
@@ -271,7 +271,7 @@ function DirectoryHeader({
         <Chip
           label={inSheet ? `${t('jobs.filters')} · ${formatNumber(inSheet, locale)}` : t('jobs.filters')}
           selected={inSheet > 0}
-          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primary : colors.foreground} />}
+          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primaryForeground : colors.foreground} />}
           onPress={onFilters}
         />
         <Text variant="small" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">

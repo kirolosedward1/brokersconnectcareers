@@ -17,7 +17,7 @@ import {
   type DocumentSource,
 } from '~/features/employer/company';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 const DOC_TYPES: readonly DocType[] = ['commercial_register', 'tax_card'];
 
@@ -109,7 +109,7 @@ export function VerificationPanel({
         const label = docType === 'commercial_register' ? t('employer.commercialRegister') : t('employer.taxCard');
         const sent = documents.filter((doc) => doc.doc_type === docType);
         return (
-          <View key={docType} style={{ gap: space[2], padding: space[3], borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border }}>
+          <View key={docType} style={{ gap: space[2], padding: space[3], ...corner('lg'), borderWidth: 1, borderColor: colors.border }}>
             <Text variant="small" weight="medium">
               {label}
             </Text>
@@ -148,7 +148,7 @@ export function VerificationPanel({
           {error}
         </Text>
       ) : null}
-      <View style={{ padding: space[3], borderRadius: radius.lg, backgroundColor: colors.muted }}>
+      <View style={{ padding: space[3], ...corner('lg'), backgroundColor: colors.muted }}>
         <Text variant="caption" tone="mutedForeground">
           {t('employer.unverifiedCap')}
         </Text>

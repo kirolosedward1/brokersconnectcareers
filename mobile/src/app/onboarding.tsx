@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -30,7 +30,7 @@ import { useSession } from '~/lib/session';
 import { useHoldBack } from '~/lib/use-hold-back';
 import { webAddress } from '~/lib/web-address';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 /**
  * The step that makes an account a profile — the website's onboarding
@@ -244,8 +244,8 @@ function OnboardingForm({
             alignItems: 'center',
             gap: space[2],
             padding: space[3],
-            borderRadius: radius.xl,
-            borderWidth: 1,
+            ...corner('xl'),
+            borderWidth: StyleSheet.hairlineWidth * 2,
             borderColor: colors.border,
             backgroundColor: colors.muted,
           }}
@@ -311,8 +311,8 @@ function OnboardingForm({
             style={{
               gap: space[4],
               padding: space[4],
-              borderRadius: radius.xl,
-              borderWidth: 1,
+              ...corner('xl'),
+              borderWidth: StyleSheet.hairlineWidth * 2,
               borderColor: colors.border,
               backgroundColor: colors.muted,
             }}
@@ -425,7 +425,7 @@ function OnboardingForm({
               width: 24,
               height: 24,
               marginTop: 3,
-              borderRadius: radius.md,
+              ...corner('md'),
               borderWidth: 1.5,
               borderColor: agreed ? colors.primary : colors.input,
               backgroundColor: agreed ? colors.primary : colors.card,
@@ -491,7 +491,7 @@ function RoleCard({
       style={({ pressed }) => ({
         gap: space[1],
         padding: space[4],
-        borderRadius: radius.xl,
+        ...corner('xl'),
         borderWidth: selected ? 2 : 1,
         borderColor: selected ? colors.primary : colors.border,
         backgroundColor: pressed ? colors.muted : selected ? colors.secondary : colors.card,

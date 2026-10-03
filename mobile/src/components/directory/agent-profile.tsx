@@ -20,7 +20,7 @@ import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * One consultant's page — the website's /agents/<slug>, for the directory's
@@ -101,7 +101,7 @@ export function AgentProfile({ handle }: { handle: string }) {
         refreshControl={
           <RefreshControl refreshing={page.isRefetching} onRefresh={() => page.refetch()} tintColor={colors.primary} />
         }
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >
         {/* The owner sees everything; what they need to know is what everybody else sees. */}
         {isOwner ? (
@@ -109,7 +109,7 @@ export function AgentProfile({ handle }: { handle: string }) {
             style={{
               gap: space[1],
               padding: space[4],
-              borderRadius: radius.xl,
+              ...corner('xl'),
               borderWidth: 1,
               borderColor: colors.primary,
               backgroundColor: colors.secondary,
@@ -192,7 +192,7 @@ export function AgentProfile({ handle }: { handle: string }) {
             style={{
               gap: space[3],
               padding: space[4],
-              borderRadius: radius.xl,
+              ...corner('xl'),
               borderWidth: 1,
               borderColor: colors.primary,
               backgroundColor: colors.secondary,

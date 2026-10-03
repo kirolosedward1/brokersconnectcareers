@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Appearance, useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { palette, type Colors, type Scheme } from './tokens';
+import { palette, shadows, type Colors, type Scheme, type Shadows } from './tokens';
 
 /**
  * Light, dark, or whatever the phone says — the website's three choices, with
@@ -17,6 +17,8 @@ const STORAGE_KEY = 'bc-theme';
 type ThemeState = {
   scheme: Scheme;
   colors: Colors;
+  /** The scheme's depth: a card's shadow, a raised sheet's, the hero's. */
+  shadow: Shadows;
   preference: ThemePreference;
   setPreference: (preference: ThemePreference) => void;
 };
@@ -44,6 +46,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return {
       scheme,
       colors: palette[scheme],
+      shadow: shadows[scheme],
       preference,
       setPreference: (next) => {
         setPreferenceState(next);

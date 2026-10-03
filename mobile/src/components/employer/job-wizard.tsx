@@ -46,7 +46,7 @@ import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * Posting a listing, or changing one — the website's four-step JobForm:
@@ -207,7 +207,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
       automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[5] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
     >
       {/* Where the form is, and a way back to any step. */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
@@ -227,7 +227,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
                 alignItems: 'center',
                 gap: space[1],
                 paddingHorizontal: space[3],
-                borderRadius: radius.md,
+                ...corner('md'),
                 backgroundColor: current ? colors.primary : 'transparent',
               }}
             >
@@ -463,7 +463,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
             ) : null}
           </Card>
 
-          <View style={{ padding: space[4], borderRadius: radius.lg, backgroundColor: colors.muted }}>
+          <View style={{ padding: space[4], ...corner('lg'), backgroundColor: colors.muted }}>
             <Text variant="small" tone="mutedForeground">
               {live ? t('jobForm.liveEditNote') : t('jobForm.reviewNote')}
             </Text>

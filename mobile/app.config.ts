@@ -179,10 +179,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#FDFDFF',
+        // The theme's page colours (src/theme/tokens.ts), so the launch screen
+        // gives way to the first screen without a change of tone.
+        backgroundColor: '#F6F4F0',
         image: './assets/images/splash-icon.png',
         imageWidth: 76,
-        dark: { backgroundColor: '#0B0F19', image: './assets/images/splash-icon.png' },
+        dark: { backgroundColor: '#0A0C10', image: './assets/images/splash-icon.png' },
       },
     ],
     // The session key sits in the keychain without a biometric gate. The Face

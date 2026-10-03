@@ -14,7 +14,7 @@ import { Text } from '~/components/ui/text';
 import { callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { font, hitTarget, radius, space, type as scale } from '~/theme/tokens';
+import { corner, font, gutter, hitTarget, space, type as scale } from '~/theme/tokens';
 
 type Target = ReportInput['target'];
 
@@ -204,7 +204,7 @@ function ReportSheet({
           <ScrollView
             automaticallyAdjustKeyboardInsets
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ padding: space[4], gap: space[5], paddingBottom: insets.bottom + space[6] }}
+            contentContainerStyle={{ padding: gutter, gap: space[5], paddingBottom: insets.bottom + space[6] }}
           >
             <View style={{ gap: space[2] }} accessibilityRole="radiogroup" accessibilityLabel={t('report.question')}>
               <Text variant="small" weight="semibold">
@@ -229,7 +229,7 @@ function ReportSheet({
                       gap: 2,
                       paddingHorizontal: space[3],
                       paddingVertical: space[2],
-                      borderRadius: radius.lg,
+                      ...corner('lg'),
                       borderWidth: selected ? 2 : 1,
                       borderColor: selected ? colors.primary : colors.border,
                       backgroundColor: pressed ? colors.muted : selected ? colors.secondary : colors.card,
@@ -265,7 +265,7 @@ function ReportSheet({
                 style={{
                   minHeight: 72,
                   padding: space[3],
-                  borderRadius: radius.lg,
+                  ...corner('lg'),
                   borderWidth: 1,
                   borderColor: colors.input,
                   backgroundColor: colors.card,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
@@ -31,7 +31,7 @@ import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 const STATUS_VARIANT: Record<JobStatus, 'default' | 'success' | 'warning' | 'destructive'> = {
   draft: 'default',
@@ -98,7 +98,7 @@ export default function ListingsScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
           <View style={{ gap: space[3], marginBottom: space[4] }}>
             <Text tone="mutedForeground">{t('employer.jobsLede')}</Text>
@@ -117,8 +117,8 @@ export default function ListingsScreen() {
               gap: space[3],
               paddingVertical: space[8],
               paddingHorizontal: space[6],
-              borderRadius: radius.xl,
-              borderWidth: 1,
+              ...corner('xl'),
+              borderWidth: StyleSheet.hairlineWidth * 2,
               borderStyle: 'dashed',
               borderColor: colors.border,
             }}
@@ -199,7 +199,7 @@ function ListingRow({ listing }: { listing: ConsoleListing }) {
       </View>
 
       {listing.rejection_note ? (
-        <View style={{ padding: space[2], borderRadius: radius.md, backgroundColor: colors.destructiveMuted }}>
+        <View style={{ padding: space[2], ...corner('md'), backgroundColor: colors.destructiveMuted }}>
           <Text variant="caption" tone="destructive">
             {listing.rejection_note}
           </Text>

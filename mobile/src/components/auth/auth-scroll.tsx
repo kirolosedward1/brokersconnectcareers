@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Platform, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 import { Text } from '~/components/ui/text';
 
 /**
@@ -25,7 +25,7 @@ export function AuthScroll({ children, bare = false }: { children: ReactNode; ba
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       contentContainerStyle={{
-        padding: space[4],
+        padding: gutter,
         paddingTop: space[4] + (android && bare ? insets.top : 0),
         paddingBottom: space[10] + (android ? insets.bottom : 0),
         gap: space[5],

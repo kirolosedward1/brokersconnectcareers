@@ -1,16 +1,17 @@
 import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { X } from '~/components/ui/lucide';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
+import { PressableScale } from './pressable-scale';
 import { Text } from './text';
 
 /**
- * A small pressable token — the website's filter chips.
+ * A small pressable capsule — the website's filter chips.
  *
  * `removable`: an active filter, tinted in the brand colour with a cross; the
  * whole chip is the target and says what pressing it does ("remove filter X").
- * `selected`: one choice of several, with the matching state.
+ * `selected`: one choice of several, with the matching state, drawn solid.
  * Neither: a plain choice, like "without X (n)" on an empty board.
  * `radio`: one option of a single choice (the sort order, the appearance),
  * inside a labelled `radiogroup` — a radio button, checked when `selected`,
@@ -39,10 +40,11 @@ export function Chip({
   icon?: ReactNode;
 }) {
   const { colors } = useTheme();
-  const tinted = removable || selected;
+  const solid = selected && !removable;
+  const text = solid ? colors.primaryForeground : removable ? colors.primary : colors.foreground;
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole={radio ? 'radio' : 'button'}
       accessibilityState={removable ? undefined : radio ? { checked: selected, disabled } : { selected, disabled }}
       accessibilityLabel={accessibilityLabel ?? label}
@@ -54,23 +56,31 @@ export function Chip({
         minHeight: 36,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: space[1],
-        paddingHorizontal: space[3],
-        borderRadius: radius.lg,
-        borderWidth: 1,
-        borderColor: tinted ? colors.primary : colors.border,
-        backgroundColor: pressed ? colors.muted : tinted ? colors.secondary : colors.card,
+        gap: space[1] + 2,
+        paddingHorizontal: space[3] + 2,
+        ...corner('full'),
+        borderWidth: solid || removable ? 0 : StyleSheet.hairlineWidth * 2,
+        borderColor: colors.border,
+        backgroundColor: solid
+          ? pressed
+            ? colors.primaryPressed
+            : colors.primary
+          : removable
+            ? colors.secondary
+            : pressed
+              ? colors.muted
+              : colors.card,
       })}
     >
       {icon}
-      <Text variant="small" weight="medium" style={{ color: tinted ? colors.primary : colors.foreground }}>
+      <Text variant="small" weight={solid || removable ? 'semibold' : 'medium'} style={{ color: text }}>
         {label}
       </Text>
       {removable ? (
         <View accessible={false}>
-          <X size={14} color={colors.primary} />
+          <X size={14} color={colors.primary} strokeWidth={2.5} />
         </View>
       ) : null}
-    </Pressable>
+    </PressableScale>
   );
 }

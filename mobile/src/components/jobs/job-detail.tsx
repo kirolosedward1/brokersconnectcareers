@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { Platform, RefreshControl, ScrollView, Share, View } from 'react-native';
+import { Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, Share2, Users } from '~/components/ui/lucide';
+import { BadgeCheck, Building2, CalendarClock, CalendarX2, Eye, MapPin, Share2, Users } from '~/components/ui/lucide';
 import type { JobDetailResponse } from '@/lib/mobile-api/reads';
 import { formatDate, formatNumber } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
@@ -19,6 +19,8 @@ import { JobCard } from '~/components/jobs/job-card';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
+import { ForwardChevron } from '~/components/ui/icons';
+import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { useAppliedJobIds } from '~/features/jobs/marks';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
@@ -27,7 +29,7 @@ import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * One listing — the website's JobDetailView, in the order a phone reads it:
@@ -104,79 +106,67 @@ export function JobDetail({
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[5] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
       >
         <HiddenNotice companyId={job.company.id} />
 
         {open ? null : (
-          <View style={{ padding: space[3], borderRadius: radius.xl, backgroundColor: colors.warningMuted }}>
-            <Text weight="medium">{t('expired')}</Text>
-            <Text variant="small" tone="mutedForeground">
-              {t('expiredBody')}
-            </Text>
-          </View>
+          <Notice tone="warning" title={t('expired')} icon={<CalendarX2 size={16} color={colors.warning} />}>
+            {t('expiredBody')}
+          </Notice>
         )}
 
-        <View style={{ gap: space[3] }}>
-          <View style={{ flexDirection: 'row', gap: space[3] }}>
+        <View style={{ gap: space[4] }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
             <CompanyLogo name={companyName} logoUrl={job.company.logo_url} seed={job.company.slug} />
-            <View style={{ flex: 1, gap: space[1] }}>
-              <Text variant="title" weight="bold" accessibilityRole="header">
-                {title}
-              </Text>
+            <View style={{ flex: 1, gap: 2 }}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[2], rowGap: 2 }}>
                 <Text
                   variant="small"
-                  weight="medium"
+                  weight="semibold"
+                  tone="primary"
                   accessibilityRole="link"
                   onPress={() => router.push({ pathname: '/companies/[slug]', params: { slug: job.company.slug } })}
                 >
                   {companyName}
                 </Text>
                 {job.company.verification_status === 'verified' ? (
-                  <Badge variant="success" label={tCompanies('verified')} icon={<BadgeCheck size={12} color={colors.success} />} />
+                  <Badge variant="accent" label={tCompanies('verified')} icon={<BadgeCheck size={12} color={colors.accentForeground} />} />
                 ) : null}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <MapPin size={13} color={colors.mutedForeground} />
-                  <Text variant="small" tone="mutedForeground">
-                    {districtName}
-                  </Text>
-                </View>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <MapPin size={13} color={colors.mutedForeground} />
+                <Text variant="small" tone="mutedForeground">
+                  {districtName}
+                </Text>
               </View>
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[3], rowGap: 2 }}>
-            <Text variant="small" tone="mutedForeground">
-              {tTrack(job.track)}
-            </Text>
-            <Text variant="small" tone="mutedForeground">
-              {tType(job.employment_type)}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Users size={13} color={colors.mutedForeground} />
-              <Text variant="small" tone="mutedForeground">
-                {tExp(job.experience_band)}
-              </Text>
-            </View>
-            <Text variant="small" tone="mutedForeground">
-              <Text variant="small" weight="semibold">
-                {formatNumber(job.seats, locale)}
-              </Text>
-              {` ${t('seatsLabel', { count: job.seats })}`}
-            </Text>
+          <Text variant="title" weight="bold" accessibilityRole="header">
+            {title}
+          </Text>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+            <Fact>{tTrack(job.track)}</Fact>
+            <Fact>{tType(job.employment_type)}</Fact>
+            <Fact icon={<Users size={13} color={colors.mutedForeground} />}>{tExp(job.experience_band)}</Fact>
+            <Fact>{`${formatNumber(job.seats, locale)} ${t('seatsLabel', { count: job.seats })}`}</Fact>
           </View>
 
-          <Text
-            variant="small"
-            tone="primary"
+          <Pressable
             accessibilityRole="link"
             onPress={() =>
               router.push({ pathname: '/jobs/[slug]', params: { slug: buildLandingSlug(job.track, job.district.slug) } })
             }
+            hitSlop={8}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', opacity: pressed ? 0.6 : 1 })}
           >
-            {tLanding('title', { track: tTrack(job.track), district: districtName })}
-          </Text>
+            <Text variant="small" weight="medium" tone="primary">
+              {tLanding('title', { track: tTrack(job.track), district: districtName })}
+            </Text>
+            <ForwardChevron size={14} color={colors.primary} />
+          </Pressable>
         </View>
 
         <CompensationCard job={job} reference={reference} />
@@ -240,7 +230,7 @@ export function JobDetail({
           <Section title={t('developers')}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
               {job.job_developers.map(({ developer }) => (
-                <Badge key={developer.id} variant="outline" label={localized(locale, developer.name_ar, developer.name_en)} />
+                <Fact key={developer.id}>{localized(locale, developer.name_ar, developer.name_en)}</Fact>
               ))}
             </View>
           </Section>
@@ -268,22 +258,22 @@ export function JobDetail({
           </View>
         </View>
 
-        <Card style={{ gap: space[3] }}>
+        <Card style={{ gap: space[3], padding: space[5] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-            <Building2 size={16} color={colors.foreground} />
-            <Text weight="semibold" accessibilityRole="header">
+            <Building2 size={16} color={colors.mutedForeground} />
+            <Text variant="label" weight="semibold" tone="mutedForeground" accessibilityRole="header">
               {t('aboutCompany')}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
             <CompanyLogo name={companyName} logoUrl={job.company.logo_url} seed={job.company.slug} size="sm" />
-            <Text weight="medium" style={{ flex: 1 }}>
+            <Text variant="headline" weight="semibold" style={{ flex: 1 }}>
               {companyName}
             </Text>
           </View>
           {job.company.verification_status === 'verified' ? (
             <View style={{ flexDirection: 'row', gap: space[2] }}>
-              <BadgeCheck size={16} color={colors.success} style={{ marginTop: 4 }} />
+              <BadgeCheck size={16} color={colors.gold} style={{ marginTop: 4 }} />
               <Text variant="small" tone="mutedForeground" style={{ flex: 1 }}>
                 {t('verifiedMeaning')}
               </Text>
@@ -322,11 +312,38 @@ export function JobDetail({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const { colors } = useTheme();
   return (
-    <View style={{ gap: space[2], paddingTop: space[4], borderTopWidth: 1, borderTopColor: colors.border }}>
-      <Text weight="semibold" accessibilityRole="header">
+    <View
+      style={{ gap: space[3], paddingTop: space[5], borderTopWidth: StyleSheet.hairlineWidth * 2, borderTopColor: colors.border }}
+    >
+      <Text variant="headline" weight="semibold" accessibilityRole="header">
         {title}
       </Text>
       {children}
+    </View>
+  );
+}
+
+/** One fact about the role, as a quiet pill. */
+function Fact({ icon, children }: { icon?: React.ReactNode; children: string }) {
+  const { colors } = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: space[3],
+        paddingVertical: space[1],
+        ...corner('full'),
+        backgroundColor: colors.card,
+        borderWidth: StyleSheet.hairlineWidth * 2,
+        borderColor: colors.border,
+      }}
+    >
+      {icon}
+      <Text variant="small" weight="medium">
+        {children}
+      </Text>
     </View>
   );
 }

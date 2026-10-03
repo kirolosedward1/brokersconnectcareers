@@ -18,7 +18,7 @@ import { useAgentProfile, useCandidateSummary, useCompleteness, useCvSections } 
 import { markupTags } from '~/i18n/rich';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 /**
  * The candidate's directory profile — the website's /dashboard/profile, which
@@ -105,7 +105,7 @@ export default function ProfileScreen() {
             tintColor={colors.primary}
           />
         }
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >
         <Text tone="mutedForeground">{t('dashboard.profileLede')}</Text>
 

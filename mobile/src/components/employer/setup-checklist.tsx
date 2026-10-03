@@ -7,7 +7,7 @@ import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 type Step = { key: string; label: string; hint: string; state: 'done' | 'waiting' | 'todo'; href: string };
 
@@ -70,7 +70,7 @@ export function SetupChecklist({
             {t('setupLede')}
           </Text>
         </View>
-        <View style={{ paddingHorizontal: space[3], paddingVertical: 2, borderRadius: radius.full, backgroundColor: colors.muted }}>
+        <View style={{ paddingHorizontal: space[3], paddingVertical: 2, ...corner('full'), backgroundColor: colors.muted }}>
           <Text variant="small" weight="medium">
             {t('setupProgress', { done, total: steps.length })}
           </Text>

@@ -3,7 +3,7 @@
  *
  * `lucide-react-native`'s index requires every one of its 1,854 icons as it
  * loads — about 2 MB of the bundle and 20 to 30 ms before the first frame on
- * a phone — for the 86 used here. One module per icon loads only those. Add
+ * a phone — for the 91 used here. One module per icon loads only those. Add
  * an icon here, from `lucide-react-native/icons/<its-file-name>`, and import
  * it from this file.
  */
@@ -37,6 +37,8 @@ export { default as CircleDot } from 'lucide-react-native/icons/circle-dot';
 export { default as CirclePause } from 'lucide-react-native/icons/circle-pause';
 export { default as CircleSlash } from 'lucide-react-native/icons/circle-slash';
 export { default as Clock } from 'lucide-react-native/icons/clock';
+export { default as CloudOff } from 'lucide-react-native/icons/cloud-off';
+export { default as Compass } from 'lucide-react-native/icons/compass';
 export { default as Download } from 'lucide-react-native/icons/download';
 export { default as ExternalLink } from 'lucide-react-native/icons/external-link';
 export { default as Eye } from 'lucide-react-native/icons/eye';
@@ -71,6 +73,7 @@ export { default as RefreshCw } from 'lucide-react-native/icons/refresh-cw';
 export { default as RotateCcw } from 'lucide-react-native/icons/rotate-ccw';
 export { default as Scale } from 'lucide-react-native/icons/scale';
 export { default as Search } from 'lucide-react-native/icons/search';
+export { default as SearchX } from 'lucide-react-native/icons/search-x';
 export { default as Send } from 'lucide-react-native/icons/send';
 export { default as SendHorizontal } from 'lucide-react-native/icons/send-horizontal';
 export { default as Share2 } from 'lucide-react-native/icons/share-2';
@@ -93,5 +96,6 @@ export { default as UserRound } from 'lucide-react-native/icons/user-round';
 export { default as UserRoundCheck } from 'lucide-react-native/icons/user-round-check';
 export { default as UserRoundPlus } from 'lucide-react-native/icons/user-round-plus';
 export { default as Users } from 'lucide-react-native/icons/users';
+export { default as WifiOff } from 'lucide-react-native/icons/wifi-off';
 export { default as X } from 'lucide-react-native/icons/x';
 export type { LucideIcon, LucideProps } from 'lucide-react-native';

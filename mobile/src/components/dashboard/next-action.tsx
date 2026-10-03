@@ -12,7 +12,7 @@ import type { NextActionKind } from '@/lib/next-action';
 import { ForwardChevron } from '~/components/ui/icons';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 
 const ICONS = {
   applicants: Inbox,
@@ -66,7 +66,7 @@ export function NextAction({
         alignItems: 'flex-start',
         gap: space[3],
         padding: space[4],
-        borderRadius: radius.xl,
+        ...corner('xl'),
         borderWidth: 1,
         borderColor: palette.accent,
         backgroundColor: palette.background,

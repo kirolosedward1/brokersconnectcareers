@@ -1,4 +1,4 @@
-import { Linking, RefreshControl, ScrollView, View } from 'react-native';
+import { Linking, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { BadgeCheck, Globe, MapPin, Users } from '~/components/ui/lucide';
@@ -18,7 +18,7 @@ import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * A company's page — the website's /companies/<slug>: who they are, where,
@@ -31,7 +31,7 @@ export default function CompanyScreen() {
   const locale = useLocale();
   const t = useTranslations('companies');
   const tJobs = useTranslations('jobs');
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const page = useCompany(slug);
   const hasBoard = useHasBoard();
 
@@ -70,40 +70,52 @@ export default function CompanyScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={page.isRefetching} onRefresh={() => page.refetch()} tintColor={colors.primary} />}
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
       >
         <HiddenNotice companyId={company.id} />
 
-        <View style={{ flexDirection: 'row', gap: space[4] }}>
-          <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} size="lg" />
-          <View style={{ flex: 1, gap: space[2] }}>
-            <Text variant="title" weight="bold" accessibilityRole="header">
-              {name}
-            </Text>
-            {company.verification_status === 'verified' ? (
-              <Badge variant="success" label={t('verified')} icon={<BadgeCheck size={12} color={colors.success} />} />
-            ) : null}
-            <View style={{ gap: space[1] }}>
-              {company.district ? (
-                <Fact icon={<MapPin size={14} color={colors.mutedForeground} />} label={t('location')}>
-                  {localized(locale, company.district.name_ar, company.district.name_en)}
-                </Fact>
-              ) : null}
-              {company.headcount_band ? (
-                <Fact icon={<Users size={14} color={colors.mutedForeground} />} label={t('headcount')}>
-                  {t(`headcountBand.${company.headcount_band}`)}
-                </Fact>
-              ) : null}
-              {website ? (
-                <Fact
-                  icon={<Globe size={14} color={colors.mutedForeground} />}
-                  label={t('website')}
-                  onPress={() => Linking.openURL(website).catch(() => {})}
-                >
-                  {website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-                </Fact>
+        <View style={{ gap: space[4] }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
+            <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} size="lg" />
+            <View style={{ flex: 1, gap: space[2] }}>
+              <Text variant="title" weight="bold" accessibilityRole="header">
+                {name}
+              </Text>
+              {company.verification_status === 'verified' ? (
+                <Badge variant="accent" label={t('verified')} icon={<BadgeCheck size={12} color={colors.accentForeground} />} />
               ) : null}
             </View>
+          </View>
+          <View
+            style={{
+              ...corner('xl'),
+              borderWidth: StyleSheet.hairlineWidth * 2,
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+              boxShadow: shadow.card,
+              paddingHorizontal: space[4],
+              paddingVertical: space[2],
+            }}
+          >
+            {company.district ? (
+              <Fact icon={<MapPin size={15} color={colors.gold} />} label={t('location')}>
+                {localized(locale, company.district.name_ar, company.district.name_en)}
+              </Fact>
+            ) : null}
+            {company.headcount_band ? (
+              <Fact icon={<Users size={15} color={colors.gold} />} label={t('headcount')}>
+                {t(`headcountBand.${company.headcount_band}`)}
+              </Fact>
+            ) : null}
+            {website ? (
+              <Fact
+                icon={<Globe size={15} color={colors.gold} />}
+                label={t('website')}
+                onPress={() => Linking.openURL(website).catch(() => {})}
+              >
+                {website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+              </Fact>
+            ) : null}
           </View>
         </View>
 
@@ -112,7 +124,7 @@ export default function CompanyScreen() {
 
         {about ? (
           <View style={{ gap: space[2] }}>
-            <Text weight="semibold" accessibilityRole="header">
+            <Text variant="headline" weight="semibold" accessibilityRole="header">
               {t('about')}
             </Text>
             <Text selectable>{about}</Text>
@@ -120,7 +132,7 @@ export default function CompanyScreen() {
         ) : null}
 
         <View style={{ gap: space[3] }}>
-          <Text weight="semibold" accessibilityRole="header">
+          <Text variant="headline" weight="semibold" accessibilityRole="header">
             {t('openRoles', { count: total })}
           </Text>
           {jobs.length ? (
@@ -132,10 +144,10 @@ export default function CompanyScreen() {
           ) : (
             <View
               style={{
-                borderWidth: 1,
+                borderWidth: StyleSheet.hairlineWidth * 2,
                 borderStyle: 'dashed',
                 borderColor: colors.border,
-                borderRadius: radius.xl,
+                ...corner('xl'),
                 padding: space[6],
               }}
             >
@@ -153,7 +165,15 @@ export default function CompanyScreen() {
           ) : null}
         </View>
 
-        <View style={{ alignItems: 'flex-start', gap: space[1], paddingTop: space[4], borderTopWidth: 1, borderTopColor: colors.border }}>
+        <View
+          style={{
+            alignItems: 'flex-start',
+            gap: space[1],
+            paddingTop: space[4],
+            borderTopWidth: StyleSheet.hairlineWidth * 2,
+            borderTopColor: colors.border,
+          }}
+        >
           <ReportButton target="company" targetId={company.id} returnPath={`/companies/${company.slug}`} label={t('report')} />
           <HideCompany companyId={company.id} companyName={name} />
         </View>
@@ -174,15 +194,19 @@ function Fact({
   onPress?: () => void;
 }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: 40 }}>
       {icon}
+      <Text variant="small" tone="mutedForeground" style={{ minWidth: 72 }}>
+        {label}
+      </Text>
       <Text
         variant="small"
-        tone={onPress ? 'primary' : 'mutedForeground'}
+        weight="medium"
+        tone={onPress ? 'primary' : 'foreground'}
         accessibilityLabel={`${label}: ${children}`}
         accessibilityRole={onPress ? 'link' : undefined}
         onPress={onPress}
-        style={{ flexShrink: 1 }}
+        style={{ flex: 1 }}
       >
         {children}
       </Text>

@@ -8,7 +8,7 @@ import { spdxUrl, type AssetNotice, type LicenseText, type Notices, type Package
 import { Text } from '~/components/ui/text';
 import { markupTags } from '~/i18n/rich';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * The open-source notices the app owes: every package it is built from, in
@@ -59,7 +59,7 @@ export default function LicensesScreen() {
         getItemType={(row) => row.kind}
         renderItem={({ item }) => <LicenseRow row={item} />}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
           <Text variant="small" tone="mutedForeground">
             {t('app.licenses.intro')}
@@ -146,7 +146,7 @@ function FullText({ license }: { license: LicenseText }) {
           <Text variant="caption" tone="mutedForeground">
             {t.markup('textFrom', { source: license.source, ...markupTags })}
           </Text>
-          <View style={{ padding: space[3], borderRadius: radius.lg, backgroundColor: colors.muted }}>
+          <View style={{ padding: space[3], ...corner('lg'), backgroundColor: colors.muted }}>
             <Text variant="caption" selectable style={ltr()}>
               {license.text}
             </Text>

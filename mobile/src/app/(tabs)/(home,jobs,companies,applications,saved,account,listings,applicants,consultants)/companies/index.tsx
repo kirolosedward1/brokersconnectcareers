@@ -4,7 +4,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import type { SearchBarCommands } from 'react-native-screens';
-import { BadgeCheck, Briefcase, MapPin } from '~/components/ui/lucide';
+import { BadgeCheck, Briefcase, Building2, MapPin } from '~/components/ui/lucide';
 import type { CompanyListItem } from '@/lib/read-types';
 import { formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
@@ -14,13 +14,13 @@ import { Button } from '~/components/ui/button';
 import { PageFooter } from '~/components/ui/page-footer';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
-import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
+import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { flattenCompanies, useCompanyDirectory, type CompanyQuery } from '~/features/companies/queries';
 import { useHiddenCompanies } from '~/features/moderation/hidden-companies';
 import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * The company directory — the website's /companies: companies with a live
@@ -92,7 +92,7 @@ export default function CompaniesScreen() {
     return (
       <>
         {header}
-        <LoadingState />
+        <SkeletonList count={5} compact />
       </>
     );
   }
@@ -116,9 +116,9 @@ export default function CompaniesScreen() {
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
-          <View style={{ gap: space[3], marginBottom: space[3] }}>
+          <View style={{ gap: space[3], marginBottom: space[4] }}>
             <Text variant="small" tone="mutedForeground">
               {t('companies.lede')}
             </Text>
@@ -126,7 +126,7 @@ export default function CompaniesScreen() {
               <Chip
                 label={t('filters.verifiedOnly')}
                 selected={query.verified}
-                icon={<BadgeCheck size={14} color={query.verified ? colors.primary : colors.mutedForeground} />}
+                icon={<BadgeCheck size={14} color={query.verified ? colors.primaryForeground : colors.gold} />}
                 onPress={() => set({ verified: !query.verified })}
               />
               {query.q ? (
@@ -156,6 +156,7 @@ export default function CompaniesScreen() {
         ListEmptyComponent={
           <EmptyState
             title={t('companies.empty')}
+            icon={Building2}
             action={
               narrowed ? (
                 <Button
@@ -180,7 +181,7 @@ export default function CompaniesScreen() {
 }
 
 function Separator() {
-  return <View style={{ height: space[2] }} />;
+  return <View style={{ height: space[3] }} />;
 }
 
 /**
@@ -205,15 +206,15 @@ function CompanyRow({ company }: { company: CompanyListItem }) {
         ),
         locale,
       )}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3] }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3] + 2 }}
     >
       <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} />
       <View style={{ flex: 1, gap: 2 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Text weight="semibold" numberOfLines={1} style={{ flexShrink: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
+          <Text variant="headline" weight="semibold" numberOfLines={1} style={{ flexShrink: 1 }}>
             {name}
           </Text>
-          {company.verification_status === 'verified' ? <BadgeCheck size={16} color={colors.primary} /> : null}
+          {company.verification_status === 'verified' ? <BadgeCheck size={16} color={colors.gold} /> : null}
         </View>
         {district ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -224,8 +225,18 @@ function CompanyRow({ company }: { company: CompanyListItem }) {
           </View>
         ) : null}
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-        <Briefcase size={16} color={colors.primary} />
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space[1],
+          paddingHorizontal: space[3],
+          paddingVertical: space[1],
+          ...corner('full'),
+          backgroundColor: colors.secondary,
+        }}
+      >
+        <Briefcase size={14} color={colors.primary} />
         <Text variant="small" weight="semibold" tone="primary">
           {formatNumber(openRoles, locale)}
         </Text>

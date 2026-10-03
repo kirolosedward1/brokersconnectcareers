@@ -24,7 +24,7 @@ import { SaveRefused, useSaveAgentProfile, type CvChange } from '~/features/prof
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 import { ChipGroup, wholeNumber } from './fields';
 
 const VISIBILITIES: AgentVisibility[] = ['public', 'verified_employers_only', 'hidden'];
@@ -200,7 +200,7 @@ export function ProfileForm({
                 flexDirection: 'row',
                 gap: space[3],
                 padding: space[3],
-                borderRadius: radius.lg,
+                ...corner('lg'),
                 borderWidth: 1,
                 borderColor: chosen ? colors.primary : colors.border,
                 backgroundColor: chosen ? colors.secondary : colors.card,
@@ -313,7 +313,7 @@ export function ProfileForm({
               alignItems: 'center',
               gap: space[2],
               paddingStart: space[3],
-              borderRadius: radius.lg,
+              ...corner('lg'),
               borderWidth: 1,
               borderColor: colors.border,
             }}

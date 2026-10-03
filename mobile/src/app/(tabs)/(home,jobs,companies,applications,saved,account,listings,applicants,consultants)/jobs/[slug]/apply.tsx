@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2, FileText, Paperclip, ShieldCheck, X } from '~/components/ui/lucide';
@@ -34,7 +34,7 @@ import { useSession } from '~/lib/session';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * Applying to a listing — the website's /jobs/<slug>/apply, at the same path
@@ -284,7 +284,7 @@ function ApplyForm({
       automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[5] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
     >
       <View style={{ gap: space[1] }}>
         <Text variant="title" weight="bold" accessibilityRole="header">
@@ -336,7 +336,7 @@ function ApplyForm({
               alignItems: 'center',
               gap: space[2],
               paddingStart: space[3],
-              borderRadius: radius.lg,
+              ...corner('lg'),
               borderWidth: 1,
               borderColor: colors.border,
               backgroundColor: colors.card,
@@ -396,8 +396,8 @@ function ApplyForm({
           flexDirection: 'row',
           gap: space[3],
           padding: space[4],
-          borderRadius: radius.xl,
-          borderWidth: 1,
+          ...corner('xl'),
+          borderWidth: StyleSheet.hairlineWidth * 2,
           borderColor: colors.border,
           backgroundColor: colors.muted,
         }}
@@ -442,7 +442,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
     >
       <View
         accessibilityLiveRegion="polite"
@@ -450,7 +450,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
           alignItems: 'center',
           gap: space[2],
           padding: space[6],
-          borderRadius: radius.xl,
+          ...corner('xl'),
           borderWidth: 1,
           borderColor: colors.success,
           backgroundColor: colors.successMuted,
@@ -465,7 +465,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
         </Text>
       </View>
 
-      <View style={{ borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+      <View style={{ ...corner('xl'), borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
         {rows.map(([label, value], index) => (
           <View
             key={label}

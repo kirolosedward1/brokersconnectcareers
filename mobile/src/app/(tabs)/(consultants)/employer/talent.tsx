@@ -21,7 +21,7 @@ import { flattenShortlist, useShortlist, useShortlistedIds } from '~/features/di
 import { useDistricts } from '~/features/taxonomy';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 /**
  * The company's shortlist — the website's /employer/talent: people worth
@@ -84,7 +84,7 @@ export default function ShortlistScreen() {
         renderItem={({ item }) => <ShortlistRow row={item} districts={districtMap} />}
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
           <View style={{ gap: space[2], marginBottom: space[3] }}>
             <Text variant="small" tone="mutedForeground">

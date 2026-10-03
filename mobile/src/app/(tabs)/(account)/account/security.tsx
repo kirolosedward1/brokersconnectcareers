@@ -6,7 +6,7 @@ import { TwoFactorSettings } from '~/components/account/two-factor';
 import { Button } from '~/components/ui/button';
 import { EmptyState } from '~/components/ui/states';
 import { useSession } from '~/lib/session';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 /**
  * Signing in, and keeping others out — the email address, the password and
@@ -47,7 +47,7 @@ export default function SecurityScreen() {
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
       >
         <EmailSettings email={session.user.email ?? ''} />
         <PasswordSettings provider={provider} />

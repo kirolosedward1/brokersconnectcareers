@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { Bell, BellOff, Building2, Search, Trash2 } from '~/components/ui/lucide';
@@ -7,7 +7,7 @@ import type { SavedSearchRow } from '@/lib/supabase/database.types';
 import { Text } from '~/components/ui/text';
 import { useDeleteSavedSearch, useSetSearchAlerts } from '~/features/saved/queries';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 
 /**
  * Saved searches and followed companies, with the weekly email's switch —
@@ -27,8 +27,8 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
       <View
         style={{
           padding: space[6],
-          borderRadius: radius.xl,
-          borderWidth: 1,
+          ...corner('xl'),
+          borderWidth: StyleSheet.hairlineWidth * 2,
           borderStyle: 'dashed',
           borderColor: colors.border,
         }}
@@ -51,7 +51,7 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
 
 function SavedSearchItem({ row }: { row: SavedSearchRow }) {
   const t = useTranslations('savedSearch');
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const alerts = useSetSearchAlerts();
   const remove = useDeleteSavedSearch();
 
@@ -72,9 +72,10 @@ function SavedSearchItem({ row }: { row: SavedSearchRow }) {
         paddingStart: space[4],
         paddingEnd: space[1],
         paddingVertical: space[1],
-        borderRadius: radius.xl,
-        borderWidth: 1,
+        ...corner('xl'),
+        borderWidth: StyleSheet.hairlineWidth * 2,
         borderColor: colors.border,
+        boxShadow: shadow.card,
         backgroundColor: colors.card,
       }}
     >
@@ -103,7 +104,7 @@ function SavedSearchItem({ row }: { row: SavedSearchRow }) {
           gap: space[1],
           minHeight: 32,
           paddingHorizontal: space[3],
-          borderRadius: radius.full,
+          ...corner('full'),
           backgroundColor: row.alerts ? colors.secondary : colors.muted,
         }}
       >
@@ -123,7 +124,7 @@ function SavedSearchItem({ row }: { row: SavedSearchRow }) {
           height: hitTarget,
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: radius.lg,
+          ...corner('lg'),
           backgroundColor: pressed ? colors.muted : 'transparent',
         })}
       >

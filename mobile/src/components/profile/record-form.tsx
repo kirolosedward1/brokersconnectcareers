@@ -12,7 +12,7 @@ import { TextField } from '~/components/ui/text-field';
 import { useSaveRecord } from '~/features/profile/queries';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 import { wholeNumber } from './fields';
 
 /**
@@ -59,7 +59,7 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
           style={{
             width: 40,
             height: 40,
-            borderRadius: radius.xl,
+            ...corner('xl'),
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: colors.muted,
@@ -86,9 +86,9 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
             accessibilityRole="progressbar"
             accessibilityLabel={t('cv.completeness')}
             accessibilityValue={{ min: 0, max: 100, now: percent }}
-            style={{ height: 8, borderRadius: radius.full, overflow: 'hidden', backgroundColor: colors.muted }}
+            style={{ height: 8, ...corner('full'), overflow: 'hidden', backgroundColor: colors.muted }}
           >
-            <View style={{ width: `${percent}%`, height: '100%', borderRadius: radius.full, backgroundColor: colors.primary }} />
+            <View style={{ width: `${percent}%`, height: '100%', ...corner('full'), backgroundColor: colors.primary }} />
           </View>
         </View>
       ) : null}

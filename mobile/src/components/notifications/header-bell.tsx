@@ -7,7 +7,7 @@ import { Text } from '~/components/ui/text';
 import { useUnreadCount } from '~/features/notifications/queries';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius } from '~/theme/tokens';
+import { corner, hitTarget } from '~/theme/tokens';
 
 /**
  * The bell, at the trailing end of each tab's first screen — the website keeps
@@ -47,7 +47,7 @@ export function HeaderBell() {
               minWidth: 18,
               minHeight: 18,
               paddingHorizontal: 4,
-              borderRadius: radius.full,
+              ...corner('full'),
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: colors.destructive,

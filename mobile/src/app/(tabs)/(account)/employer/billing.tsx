@@ -18,7 +18,7 @@ import { useBilling, useClaimFreePost } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * The company's balance — the website's /employer/billing, read-only: the
@@ -56,7 +56,7 @@ export default function BillingScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >
         <Text tone="mutedForeground">{t('billing.lede')}</Text>
         {billingEnabled ? null : (
@@ -102,7 +102,7 @@ export default function BillingScreen() {
             <Text weight="semibold" accessibilityRole="header">
               {t('billing.orders')}
             </Text>
-            <View style={{ borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+            <View style={{ ...corner('xl'), borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
               {billing.data.orders.map((order, index) => (
                 <View
                   key={order.id}

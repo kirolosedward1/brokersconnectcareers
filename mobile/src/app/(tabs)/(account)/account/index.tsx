@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useTranslations } from 'use-intl';
@@ -27,8 +27,8 @@ import { HeaderBell } from '~/components/notifications/header-bell';
 import { Avatar } from '~/components/ui/avatar';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
-import { Chip } from '~/components/ui/chip';
 import { ForwardChevron } from '~/components/ui/icons';
+import { Segmented } from '~/components/ui/segmented';
 import { LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { shareMyData } from '~/features/account/settings';
@@ -39,7 +39,7 @@ import { ApiError } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { useTheme, type ThemePreference } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * The Account tab. Signed out, it is the door: sign in, create an account, or
@@ -95,7 +95,7 @@ export default function AccountScreen() {
       <Stack.Screen options={{ title: t('app.tabs.account'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
       >
         {session ? (
           <Card style={{ gap: space[1] }}>
@@ -158,39 +158,15 @@ export default function AccountScreen() {
         )}
 
         <View style={{ gap: space[2] }}>
-          <Text variant="small" weight="semibold" tone="mutedForeground">
-            {t('app.account.appearance')}
-          </Text>
-          <View
-            style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}
-            accessibilityRole="radiogroup"
-            accessibilityLabel={t('app.account.appearance')}
-          >
-            {themes.map((theme) => (
-              <Chip
-                key={theme.value}
-                label={theme.label}
-                selected={preference === theme.value}
-                radio
-                onPress={() => setPreference(theme.value)}
-              />
-            ))}
-          </View>
+          <GroupTitle>{t('app.account.appearance')}</GroupTitle>
+          <Segmented label={t('app.account.appearance')} options={themes} value={preference} onChange={setPreference} />
         </View>
 
-        <View
-          style={{
-            borderRadius: radius.xl,
-            borderWidth: 1,
-            borderColor: colors.border,
-            backgroundColor: colors.card,
-            overflow: 'hidden',
-          }}
-        >
+        <Group>
           {/* A candidate's directory profile: the website keeps it in the console, the app here. */}
           {canAccessCandidateArea(actor) ? (
             <Row
-              icon={<UserRound size={18} color={colors.foreground} />}
+              icon={<UserRound size={18} color={colors.primary} />}
               label={t('dashboard.profile')}
               onPress={() => router.push('/account/profile')}
             />
@@ -199,12 +175,12 @@ export default function AccountScreen() {
           {canAccessEmployerArea(actor) ? (
             <>
               <Row
-                icon={<Building2 size={18} color={colors.foreground} />}
+                icon={<Building2 size={18} color={colors.primary} />}
                 label={t('employer.company')}
                 onPress={() => router.push('/employer/company' as never)}
               />
               <Row
-                icon={<Receipt size={18} color={colors.foreground} />}
+                icon={<Receipt size={18} color={colors.primary} />}
                 label={t('employer.billing')}
                 onPress={() => router.push('/employer/billing' as never)}
               />
@@ -213,17 +189,17 @@ export default function AccountScreen() {
           {session ? (
             <>
               <Row
-                icon={<ShieldCheck size={18} color={colors.foreground} />}
+                icon={<ShieldCheck size={18} color={colors.primary} />}
                 label={t('app.account.security')}
                 onPress={() => router.push('/account/security')}
               />
               <Row
-                icon={<BellRing size={18} color={colors.foreground} />}
+                icon={<BellRing size={18} color={colors.primary} />}
                 label={t('app.push.title')}
                 onPress={() => router.push('/account/alerts')}
               />
               <Row
-                icon={<MailCheck size={18} color={colors.foreground} />}
+                icon={<MailCheck size={18} color={colors.primary} />}
                 label={t('account.emailsTitle')}
                 onPress={() => router.push('/account/emails')}
               />
@@ -232,7 +208,7 @@ export default function AccountScreen() {
                   exporting ? (
                     <ActivityIndicator color={colors.primary} accessibilityLabel={t('common.loading')} />
                   ) : (
-                    <Download size={18} color={colors.foreground} />
+                    <Download size={18} color={colors.primary} />
                   )
                 }
                 label={t('account.exportCta')}
@@ -241,20 +217,20 @@ export default function AccountScreen() {
             </>
           ) : null}
           <Row
-            icon={<ExternalLink size={18} color={colors.foreground} />}
+            icon={<ExternalLink size={18} color={colors.primary} />}
             label={t('app.account.openWebsite')}
             onPress={() => WebBrowser.openBrowserAsync(env.siteUrl).catch(() => {})}
           />
           {supportEmail ? (
             <Row
-              icon={<Mail size={18} color={colors.foreground} />}
+              icon={<Mail size={18} color={colors.primary} />}
               label={t('app.account.contact')}
               onPress={() => Linking.openURL(`mailto:${supportEmail}`).catch(() => {})}
             />
           ) : null}
           {session ? (
             <Row
-              icon={<LogOut size={18} color={colors.foreground} />}
+              icon={<LogOut size={18} color={colors.primary} />}
               label={t('nav.signOut')}
               busy={signingOut}
               onPress={() => {
@@ -271,40 +247,30 @@ export default function AccountScreen() {
               onPress={() => router.push('/account/delete')}
             />
           ) : null}
-        </View>
+        </Group>
 
         {/* One tap away, signed in or not, as the store and the law expect of
             an app: the policies a person agrees to, the notices owed to the
             software it is made of, and who runs it. */}
         <View style={{ gap: space[2] }}>
-          <Text variant="small" weight="semibold" tone="mutedForeground" accessibilityRole="header">
-            {t('footer.about')}
-          </Text>
-          <View
-            style={{
-              borderRadius: radius.xl,
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-              overflow: 'hidden',
-            }}
-          >
+          <GroupTitle header>{t('footer.about')}</GroupTitle>
+          <Group>
             <Row
-              icon={<Lock size={18} color={colors.foreground} />}
+              icon={<Lock size={18} color={colors.primary} />}
               label={t('footer.privacy')}
               onPress={() => openSitePage('/privacy')}
             />
             <Row
-              icon={<FileText size={18} color={colors.foreground} />}
+              icon={<FileText size={18} color={colors.primary} />}
               label={t('footer.terms')}
               onPress={() => openSitePage('/terms')}
             />
             <Row
-              icon={<Scale size={18} color={colors.foreground} />}
+              icon={<Scale size={18} color={colors.primary} />}
               label={t('licenses.title')}
               onPress={() => router.push('/account/licenses')}
             />
-          </View>
+          </Group>
         </View>
 
         <View style={{ gap: space[1] }}>
@@ -349,21 +315,81 @@ function Row({
       disabled={busy}
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: hitTarget + 8,
+        minHeight: hitTarget + 10,
         flexDirection: 'row',
         alignItems: 'center',
         gap: space[3],
-        paddingHorizontal: space[4],
+        paddingStart: space[4],
         backgroundColor: pressed ? colors.muted : 'transparent',
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
       })}
     >
-      {icon}
-      <Text tone={destructive ? 'destructive' : 'foreground'} style={{ flex: 1 }}>
-        {label}
-      </Text>
-      {busy ? <ActivityIndicator color={colors.mutedForeground} /> : <ForwardChevron size={18} color={colors.mutedForeground} />}
+      <View
+        style={{
+          width: 32,
+          height: 32,
+          ...corner('md'),
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: destructive ? colors.destructiveMuted : colors.secondary,
+        }}
+      >
+        {icon}
+      </View>
+      {/* The rule above each row starts after its icon, as iOS draws a list. */}
+      <View
+        style={{
+          flex: 1,
+          alignSelf: 'stretch',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space[3],
+          paddingEnd: space[4],
+          borderTopWidth: StyleSheet.hairlineWidth * 2,
+          borderTopColor: colors.border,
+        }}
+      >
+        <Text tone={destructive ? 'destructive' : 'foreground'} style={{ flex: 1 }}>
+          {label}
+        </Text>
+        {busy ? <ActivityIndicator color={colors.mutedForeground} /> : <ForwardChevron size={18} color={colors.mutedForeground} />}
+      </View>
     </Pressable>
+  );
+}
+
+/**
+ * Rows on one card. Each row draws the rule above it; the first one's sits
+ * just outside the card's top edge, where the card clips it.
+ */
+function Group({ children }: { children: ReactNode }) {
+  const { colors, shadow } = useTheme();
+  return (
+    <View style={{ ...corner('xl'), boxShadow: shadow.card }}>
+      <View
+        style={{
+          ...corner('xl'),
+          borderWidth: StyleSheet.hairlineWidth * 2,
+          borderColor: colors.border,
+          backgroundColor: colors.card,
+          overflow: 'hidden',
+        }}
+      >
+        <View style={{ marginTop: -StyleSheet.hairlineWidth * 2 }}>{children}</View>
+      </View>
+    </View>
+  );
+}
+
+function GroupTitle({ children, header = false }: { children: string; header?: boolean }) {
+  return (
+    <Text
+      variant="label"
+      weight="semibold"
+      tone="mutedForeground"
+      accessibilityRole={header ? 'header' : undefined}
+      style={{ paddingHorizontal: space[1] }}
+    >
+      {children}
+    </Text>
   );
 }

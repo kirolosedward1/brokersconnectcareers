@@ -25,7 +25,7 @@ import { useBoardTotal } from '~/features/jobs/queries';
 import { useDistricts, useGovernorates } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, space } from '~/theme/tokens';
+import { gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * Every filter the website's /jobs panel has (src/components/jobs/job-filters.tsx),
@@ -244,7 +244,7 @@ export function FilterSheetFrame({
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: space[4], gap: space[6] }}>{children}</ScrollView>
+        <ScrollView contentContainerStyle={{ padding: gutter, gap: space[6] }}>{children}</ScrollView>
 
         <View
           style={{

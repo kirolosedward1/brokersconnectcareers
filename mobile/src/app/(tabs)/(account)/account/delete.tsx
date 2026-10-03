@@ -14,7 +14,7 @@ import { DeletionRequestRefused, useDeletionRequest, useRequestDeletion } from '
 import { useMobileConfig } from '~/features/config';
 import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 /**
  * Delete the account — the website's section, through its action
@@ -103,7 +103,7 @@ export default function DeleteAccountScreen() {
         contentInsetAdjustmentBehavior="automatic"
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[5] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
       >
         <Text>{t('account.deleteBody')}</Text>
 

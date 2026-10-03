@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
@@ -34,7 +34,7 @@ import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { tabsFor } from '~/lib/tabs';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * A candidate's Home — the website's /dashboard, which the app opens on.
@@ -52,7 +52,7 @@ import { hitTarget, radius, space } from '~/theme/tokens';
 export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   const t = useTranslations();
   const locale = useLocale();
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const queryClient = useQueryClient();
   const { actor } = useSession();
 
@@ -96,7 +96,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
       keyboardDismissMode="interactive"
       automaticallyAdjustKeyboardInsets
       refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
     >
       <View>
         {/* The profile is read again on every start; offline, the page is the same without the name. */}
@@ -159,8 +159,8 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
                 gap: space[2],
                 paddingVertical: space[8],
                 paddingHorizontal: space[6],
-                borderRadius: radius.xl,
-                borderWidth: 1,
+                ...corner('xl'),
+                borderWidth: StyleSheet.hairlineWidth * 2,
                 borderStyle: 'dashed',
                 borderColor: colors.border,
               }}
@@ -209,9 +209,10 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
               <SectionHeader title={t('dashboard.applications')} onSeeAll={() => router.navigate('/dashboard/applications')} />
               <View
                 style={{
-                  borderRadius: radius.xl,
-                  borderWidth: 1,
+                  ...corner('xl'),
+                  borderWidth: StyleSheet.hairlineWidth * 2,
                   borderColor: colors.border,
+                  boxShadow: shadow.card,
                   backgroundColor: colors.card,
                   overflow: 'hidden',
                 }}
@@ -239,8 +240,8 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
                 gap: space[1],
                 paddingHorizontal: space[4],
                 paddingVertical: space[3],
-                borderRadius: radius.xl,
-                borderWidth: 1,
+                ...corner('xl'),
+                borderWidth: StyleSheet.hairlineWidth * 2,
                 borderStyle: 'dashed',
                 borderColor: colors.border,
               }}

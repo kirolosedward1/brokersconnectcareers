@@ -18,7 +18,7 @@ import {
   type Enrolment,
 } from '~/features/account/settings';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 /**
  * Two-step verification with an authenticator app — the website's
@@ -175,7 +175,7 @@ export function TwoFactorSettings() {
         {/* For an authenticator on another device. Supabase draws the code as an SVG. */}
         <View
           accessible={false}
-          style={{ alignSelf: 'flex-start', padding: space[2], borderRadius: radius.lg, backgroundColor: '#FFFFFF' }}
+          style={{ alignSelf: 'flex-start', padding: space[2], ...corner('lg'), backgroundColor: '#FFFFFF' }}
         >
           <SvgXml xml={enrolment.qr.replace(/^data:image\/svg\+xml;utf-8,/, '')} width={176} height={176} />
         </View>
@@ -187,7 +187,7 @@ export function TwoFactorSettings() {
             selectable
             variant="small"
             weight="medium"
-            style={{ writingDirection: 'ltr', textAlign: 'left', padding: space[2], borderRadius: radius.md, backgroundColor: colors.muted }}
+            style={{ writingDirection: 'ltr', textAlign: 'left', padding: space[2], ...corner('md'), backgroundColor: colors.muted }}
           >
             {enrolment.secret}
           </Text>

@@ -1,4 +1,4 @@
-import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
@@ -23,7 +23,7 @@ import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * An employer's Home — the website's /employer overview, in the order of what
@@ -92,8 +92,8 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
           gap: space[2],
           paddingVertical: space[8],
           paddingHorizontal: space[6],
-          borderRadius: radius.xl,
-          borderWidth: 1,
+          ...corner('xl'),
+          borderWidth: StyleSheet.hairlineWidth * 2,
           borderStyle: 'dashed',
           borderColor: colors.border,
         }}
@@ -222,7 +222,7 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
       refreshControl={
         <RefreshControl {...pull} tintColor={colors.primary} />
       }
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
     >
       {header}
       {/* Without a company (and so without figures) the standing still comes first. */}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { ShieldCheck, UserPlus, UserRound, X } from '~/components/ui/lucide';
 import type { CompanyMemberRole } from '@/lib/supabase/database.types';
@@ -14,7 +14,7 @@ import { TextField } from '~/components/ui/text-field';
 import { MemberRefused, useAddMember, useRemoveMember, type TeamMember } from '~/features/employer/company';
 import { EMAIL_SHAPE } from '~/lib/email-shape';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 
 const REFUSAL_COPY = {
   no_account: 'teamNoAccount',
@@ -106,8 +106,8 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
               alignItems: 'center',
               gap: space[3],
               padding: space[3],
-              borderRadius: radius.xl,
-              borderWidth: 1,
+              ...corner('xl'),
+              borderWidth: StyleSheet.hairlineWidth * 2,
               borderColor: colors.border,
             }}
           >

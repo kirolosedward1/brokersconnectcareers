@@ -19,7 +19,7 @@ import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 type LinkNotice = 'gone' | 'unavailable' | 'failed' | null;
 
@@ -160,7 +160,7 @@ export default function NotificationsScreen() {
         data={rows}
         keyExtractor={(row) => row.id}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={header}
         renderItem={({ item }) => (
           <NotificationItem notification={item} opening={opening === item.id} onPress={() => open(item)} />

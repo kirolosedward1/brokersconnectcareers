@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Check, ChevronDown, X } from '~/components/ui/lucide';
 import { useTranslations } from 'use-intl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 import { Text } from './text';
 
 export type SelectOption<T extends string | number> = { value: T; label: string };
@@ -52,13 +52,13 @@ export function Select<T extends string | number>({
         accessibilityLabel={`${label}: ${current?.label ?? placeholder}`}
         onPress={() => setOpen(true)}
         style={({ pressed }) => ({
-          minHeight: hitTarget,
+          minHeight: hitTarget + 6,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: space[2],
-          paddingHorizontal: space[3],
-          borderRadius: radius.lg,
+          paddingHorizontal: space[4] - 2,
+          ...corner('lg'),
           borderWidth: 1,
           borderColor: colors.input,
           backgroundColor: pressed ? colors.muted : colors.card,
@@ -79,11 +79,11 @@ export function Select<T extends string | number>({
               justifyContent: 'space-between',
               paddingHorizontal: space[4],
               paddingVertical: space[3],
-              borderBottomWidth: 1,
+              borderBottomWidth: StyleSheet.hairlineWidth,
               borderBottomColor: colors.border,
             }}
           >
-            <Text weight="semibold" accessibilityRole="header">
+            <Text variant="headline" weight="semibold" accessibilityRole="header">
               {label}
             </Text>
             <Pressable
@@ -115,14 +115,14 @@ export function Select<T extends string | number>({
                     gap: space[2],
                     paddingHorizontal: space[4],
                     backgroundColor: pressed ? colors.muted : 'transparent',
-                    borderBottomWidth: 1,
+                    borderBottomWidth: StyleSheet.hairlineWidth,
                     borderBottomColor: colors.border,
                   })}
                 >
                   <Text tone={item.value === null ? 'mutedForeground' : 'foreground'} style={{ flexShrink: 1 }}>
                     {item.label}
                   </Text>
-                  {selected ? <Check size={18} color={colors.primary} /> : null}
+                  {selected ? <Check size={20} color={colors.primary} strokeWidth={2.5} /> : null}
                 </Pressable>
               );
             }}
