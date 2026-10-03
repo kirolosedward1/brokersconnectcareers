@@ -201,6 +201,11 @@ export type JobRow = Timestamped & {
   published_at: string | null;
   expires_at: string | null;
   view_count: number;
+  /**
+   * Always null since migration 347: a moderator's note is in job_moderation,
+   * for the listing's company. Read through src/lib/listing-notes.ts, which
+   * falls back to this column on a database before 347.
+   */
   rejection_note: string | null;
   /** Bumped on every update; the edit form sends back the one it loaded. */
   version: number;
@@ -906,6 +911,17 @@ export type CompanyModerationRow = {
   updated_at: string;
 };
 
+/**
+ * Why a moderator refused or took down a listing (migration 347): the
+ * listing's company and the admins read it. Before 347 it was the listing's
+ * own rejection_note, which is always null since.
+ */
+export type JobModerationRow = {
+  job_id: string;
+  rejection_note: string | null;
+  updated_at: string;
+};
+
 /** One move of an application (migration 42). Written only by a trigger. */
 export type ApplicationEventRow = {
   id: number;
@@ -1340,6 +1356,8 @@ export type Database = {
       moderation_appeals: Table<AppealRow, never>;
       /** Written by admin_set_company_suspension() only. */
       company_moderation: Table<CompanyModerationRow, never>;
+      /** Written by admin_moderate_job() and the suspension levers only. */
+      job_moderation: Table<JobModerationRow, never>;
       email_suppressions: Table<
         EmailSuppressionRow,
         { email: string; reason: SuppressionReason; created_at?: string }

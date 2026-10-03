@@ -12,6 +12,8 @@ import { CompanySignalList, SafetyFlags } from '@/components/admin/safety';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { must } from '@/lib/admin/read';
+import { raise } from '@/lib/queries/error';
+import { listingNotes, noteFor } from '@/lib/listing-notes';
 import { UUID_RE } from '@/lib/admin/params';
 import { jobIsLive } from '@/lib/job-state';
 import { formatDate, formatEgp, formatNumber } from '@/lib/utils';
@@ -84,6 +86,15 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
     'loading a listing',
   ).data as unknown as JobDetail | null;
   if (!job) notFound();
+
+  // Why it was refused: beside it in job_moderation since migration 347, in
+  // its own column before.
+  const moderation = await listingNotes(
+    (ids) => supabase.from('job_moderation').select('job_id, rejection_note').in('job_id', ids),
+    [job.id],
+  );
+  if (moderation.error) raise(moderation.error, "loading the listing's note");
+  const rejectionNote = noteFor(moderation.notes, job);
 
   const stageCounts = STAGES.map((stage) =>
     supabase.from('applications').select('id', { count: 'exact', head: true }).eq('job_id', id).eq('status', stage),
@@ -174,9 +185,9 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
         }
       />
 
-      {job.rejection_note && job.status === 'rejected' ? (
+      {rejectionNote && job.status === 'rejected' ? (
         <p className="rounded-xl border border-destructive/40 bg-destructive-muted px-4 py-3 text-sm text-destructive">
-          {t('rejectionNoteShown')} «{job.rejection_note}»
+          {t('rejectionNoteShown')} «{rejectionNote}»
         </p>
       ) : null}
 

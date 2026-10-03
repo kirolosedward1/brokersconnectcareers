@@ -1,6 +1,6 @@
 /**
- * Doors a review found open (migration 344), against the real migrations.
- * Run with: pnpm test:doors  (also part of pnpm test:db)
+ * Doors a review found open (migrations 344 and 347), against the real
+ * migrations. Run with: pnpm test:doors  (also part of pnpm test:db)
  *
  * One section per door, each a scenario that ran to the end before 344 and is
  * refused, or comes out different, after it — with the case that must still
@@ -63,29 +63,43 @@ report.section('1. a listing taken down for a suspension does not carry the priv
   const rowadApplied = await one(`
     select a.candidate_id, j.id as job from applications a join jobs j on j.id = a.job_id
      where j.company_id = '${ROWAD}' and j.status = 'active' order by a.id limit 1`);
-  const [suspended, read] = await scenario([
+  const [suspended, read, readNote, companyNote] = await scenario([
     { as: admin, sql: `select admin_set_company_suspension('${ROWAD}', true, 'سبب داخلي: بلاغ عن احتيال المالك')` },
     { as: rowadApplied.candidate_id, sql: `select status, rejection_note from jobs where id = '${rowadApplied.job}'` },
+    { as: rowadApplied.candidate_id, sql: `select rejection_note from job_moderation where job_id = '${rowadApplied.job}'` },
+    { as: E1, sql: `select rejection_note from job_moderation where job_id = '${rowadApplied.job}'` },
   ]);
   report.check('an admin suspends a company with an internal reason', suspended.ok, suspended.error);
   report.check(
-    'a candidate who applied reads that the listing was taken down, not why',
-    read.rows[0]?.status === 'rejected' && read.rows[0]?.rejection_note === 'الشركة موقوفة',
-    JSON.stringify(read.rows[0] ?? read.error),
+    'a candidate who applied reads that the listing was taken down, and no note at all',
+    read.rows[0]?.status === 'rejected' && read.rows[0]?.rejection_note === null && readNote.ok && readNote.rows.length === 0,
+    JSON.stringify({ listing: read.rows[0] ?? read.error, note: readNote.rows }),
+  );
+  report.check(
+    'its company reads that the company is suspended, not the internal reason',
+    companyNote.rows[0]?.rejection_note === 'الشركة موقوفة',
+    JSON.stringify(companyNote.rows[0] ?? companyNote.error),
   );
 
   const hubApplied = await one(`
     select a.candidate_id, j.id as job from applications a join jobs j on j.id = a.job_id
      where j.company_id = '${HUB}' and j.status = 'active' order by a.id limit 1`);
-  const [approval, readHub] = await scenario([
+  const [approval, readHub, readHubNote, adminNote] = await scenario([
     { as: admin, sql: `select set_account_approval('${E2}', 'rejected', 'ملاحظة المراجع: رقم مرتبط بحساب محظور')` },
     { as: hubApplied.candidate_id, sql: `select status, rejection_note from jobs where id = '${hubApplied.job}'` },
+    { as: hubApplied.candidate_id, sql: `select rejection_note from job_moderation where job_id = '${hubApplied.job}'` },
+    { as: admin, sql: `select rejection_note from job_moderation where job_id = '${hubApplied.job}'` },
   ]);
   report.check('an admin suspends the last approved account of a company', approval.ok, approval.error);
   report.check(
-    "and its listings say the account is suspended, not the reviewer's note",
-    readHub.rows[0]?.status === 'rejected' && readHub.rows[0]?.rejection_note === 'الحساب موقوف',
-    JSON.stringify(readHub.rows[0] ?? readHub.error),
+    'a candidate who applied to its listing reads that it was taken down, and no note at all',
+    readHub.rows[0]?.status === 'rejected' && readHub.rows[0]?.rejection_note === null && readHubNote.ok && readHubNote.rows.length === 0,
+    JSON.stringify({ listing: readHub.rows[0] ?? readHub.error, note: readHubNote.rows }),
+  );
+  report.check(
+    "and the listing says the account is suspended, not the reviewer's note",
+    adminNote.rows[0]?.rejection_note === 'الحساب موقوف',
+    JSON.stringify(adminNote.rows[0] ?? adminNote.error),
   );
 }
 
@@ -449,6 +463,39 @@ report.section('12. a closed or expired listing can go back to being a draft');
   report.check('and saves it as a draft', closedDraft.rows[0]?.status === 'draft', closedDraft.error);
   report.check('an expired listing can be kept as a draft too', expiredDraft.rows[0]?.status === 'draft', expiredDraft.error);
   report.check('but publishing is still review\'s', refused(publish, /job status cannot go from draft to active/), JSON.stringify(publish.rows[0] ?? publish.error));
+}
+
+report.section("13. a moderator's note on a listing is its company's to read (347)");
+{
+  const applied = await one(`
+    select a.candidate_id, j.id as job from applications a join jobs j on j.id = a.job_id
+     where j.company_id = '${ROWAD}' and j.status = 'active' order by a.id limit 1`);
+  const NOTE = 'ملاحظة المراجع: الراتب المعلن غير حقيقي';
+  const [unpublished, column, candidateNote, outsiderNote, companyNote, bell, snapshot, write, restored, afterRestore] =
+    await scenario([
+      { as: admin, sql: `select admin_moderate_job('${applied.job}', 'unpublish', '${NOTE}')` },
+      { as: applied.candidate_id, sql: `select status, rejection_note from jobs where id = '${applied.job}'` },
+      { as: applied.candidate_id, sql: `select rejection_note from job_moderation where job_id = '${applied.job}'` },
+      { as: E2, sql: `select rejection_note from job_moderation where job_id = '${applied.job}'` },
+      { as: E1, sql: `select rejection_note from job_moderation where job_id = '${applied.job}'` },
+      { as: E1, sql: `select payload->>'note' as note from notifications where user_id = '${E1}' and kind = 'job_rejected' and payload->>'job_id' = '${applied.job}'` },
+      { as: null, sql: `select appeal_decision_snapshot('${E1}', 'job', '${applied.job}')->>'note' as note` },
+      { as: null, sql: `update jobs set rejection_note = 'مكتوبة في الإعلان' where id = '${applied.job}'` },
+      { as: admin, sql: `select admin_moderate_job('${applied.job}', 'restore', 'رجع بعد المراجعة')` },
+      { as: null, sql: `select count(*)::int as n from job_moderation where job_id = '${applied.job}'` },
+    ]);
+  report.check('an admin takes a live listing down with a reason', unpublished.ok, unpublished.error);
+  report.check(
+    'a candidate who applied reads the listing taken down, and neither in it nor beside it the reason',
+    column.rows[0]?.status === 'rejected' && column.rows[0]?.rejection_note === null && candidateNote.ok && candidateNote.rows.length === 0,
+    JSON.stringify({ listing: column.rows[0] ?? column.error, note: candidateNote.rows }),
+  );
+  report.check('another company reads nothing of it', outsiderNote.ok && outsiderNote.rows.length === 0, JSON.stringify(outsiderNote.rows));
+  report.check('the listing\'s company reads the reason', companyNote.rows[0]?.rejection_note === NOTE, JSON.stringify(companyNote.rows[0] ?? companyNote.error));
+  report.check('and its bell quotes it', bell.rows[0]?.note === NOTE, JSON.stringify(bell.rows[0] ?? bell.error));
+  report.check('an appeal against it shows the reason it answers', snapshot.rows[0]?.note === NOTE, JSON.stringify(snapshot.rows[0] ?? snapshot.error));
+  report.check('nothing writes a note into the listing itself', refused(write, /jobs_rejection_note_is_private/), JSON.stringify(write.error ?? write.rows));
+  report.check('putting the listing back clears its note', restored.ok && afterRestore.rows[0]?.n === 0, JSON.stringify(restored.error ?? afterRestore.rows[0]));
 }
 
 await db.close();

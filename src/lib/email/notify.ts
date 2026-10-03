@@ -12,6 +12,7 @@ import { deliver } from './service';
 import type { SendOutcome } from './send';
 import { unsubscribeLinks } from './unsubscribe-link';
 import { isNews, stageTelling, tellingSuffix } from '@/lib/application-arrival';
+import { listingNotes, noteFor } from '@/lib/listing-notes';
 
 /**
  * One function per product event.
@@ -167,7 +168,11 @@ type JobForOwner = JobBits & {
   /** Where the listing stands now: a message about a decision checks it still does. */
   status: string;
   company: { id: string; owner_id: string; name_ar: string } | null;
-  /** The moderator's reason, read again when a refusal is retried. */
+  /**
+   * The listing's own note column: before migration 347 the moderator's
+   * reason, null since (it is in job_moderation). Read again when a refusal
+   * is retried.
+   */
   rejection_note?: string | null;
 };
 
@@ -952,9 +957,18 @@ export async function notifyEmployerOfModeration(
     // decision still stands.
     if (job.status !== (approved ? 'active' : 'rejected')) return 'skipped';
 
-    // A retry (rebuild.ts) passes no note: the reason is the listing's own,
-    // or the retried refusal said "rejected, edit and resend" and not why.
-    const reason = note !== undefined ? note : approved ? null : (job.rejection_note ?? null);
+    // A retry (rebuild.ts) passes no note: the reason is the listing's own
+    // (job_moderation since 347, its column before), or the retried refusal
+    // said "rejected, edit and resend" and not why.
+    let reason = note !== undefined ? note : null;
+    if (note === undefined && !approved) {
+      const moderation = await listingNotes(
+        (ids) => admin.from('job_moderation').select('job_id, rejection_note').in('job_id', ids),
+        [job.id],
+      );
+      if (moderation.error) readFailed("listing's note", moderation.error);
+      reason = noteFor(moderation.notes, job);
+    }
     return forEachMember(
       admin,
       companyId,

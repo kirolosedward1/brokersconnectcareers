@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { listingNotes, noteFor } from '@/lib/listing-notes';
 import { canAccessEmployerArea } from '@/lib/permissions';
 import type { JobRow } from '@/lib/supabase/database.types';
 import { callAction } from '~/lib/api';
@@ -61,7 +62,18 @@ export function useMyListings() {
       // Past the end is the end, not an error (PostgREST refuses an unsatisfiable range).
       if (error?.code === 'PGRST103') return { listings: [], total: count ?? 0 };
       if (error) throw error;
-      return { listings: (data ?? []) as unknown as ConsoleListing[], total: count ?? data?.length ?? 0 };
+      const rows = (data ?? []) as unknown as ConsoleListing[];
+      // Why a listing was refused: beside it in job_moderation, the company's
+      // to read (migration 347), or before that migration in its own column.
+      const { notes, error: notesError } = await listingNotes(
+        (ids) => supabase.from('job_moderation').select('job_id, rejection_note').in('job_id', ids),
+        rows.map((row) => row.id),
+      );
+      if (notesError) throw notesError;
+      return {
+        listings: rows.map((row) => ({ ...row, rejection_note: noteFor(notes, row) })),
+        total: count ?? data?.length ?? 0,
+      };
     },
     getNextPageParam: (last, pages) =>
       pages.length * LISTINGS_PAGE_SIZE < last.total && last.listings.length > 0 ? pages.length + 1 : undefined,

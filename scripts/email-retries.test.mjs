@@ -272,6 +272,40 @@ section("a listing's decision, retried, is sent while it stands, and only to who
   ok('and the colleague who had it is not sent it again', sentTo('M2') === 1, `M2 received ${sentTo('M2')}`);
 }
 
+section("a refusal retried quotes the moderator's reason from where the database keeps it");
+{
+  // A retry passes no note: notify.ts reads it again. Since migration 347 it
+  // is in job_moderation; before it, in the listing's own column.
+  async function retried({ table, column = null }) {
+    reset();
+    globalThis.__db = {
+      jobs: [
+        {
+          id: 'J', slug: 'sales-x', title_ar: 'مستشار', title_en: 'Consultant', expires_at: null,
+          published_at: null, version: 3, status: 'rejected', rejection_note: column,
+          company: { id: 'C', owner_id: 'M1', name_ar: 'الرواد' },
+        },
+      ],
+      job_moderation: table,
+      company_members: [{ company_id: 'C', user_id: 'M1' }],
+      profiles: [{ id: 'M1', locale: 'en', role: 'employer', notify_status: true }],
+      profile_private: [{ user_id: 'M1', unsubscribe_token: 't-M1' }],
+    };
+    const outcome = await notifyEmployerOfModeration('J', false);
+    return { outcome, text: mail.sends.map((send) => send.text).join('\n') };
+  }
+  const REASON = 'The salary is not stated.';
+  const after = await retried({ table: [{ job_id: 'J', rejection_note: REASON }] });
+  ok('after migration 347, the reason is read beside the listing', after.outcome === 'sent' && after.text.includes(REASON), after.outcome);
+  const before = await retried({
+    table: () => ({ data: null, error: { code: 'PGRST205', message: "Could not find the table 'public.job_moderation'" } }),
+    column: REASON,
+  });
+  ok('before it, from the listing itself', before.outcome === 'sent' && before.text.includes(REASON), before.outcome);
+  const unread = await retried({ table: () => ({ data: null, error: { code: '57014', message: 'canceling statement due to statement timeout' } }) });
+  ok('a reason that cannot be read fails the send, to be tried again, rather than sending it without', unread.outcome === 'failed', unread.outcome);
+}
+
 section('a move the bell calls no news is not emailed, whatever the outbox still holds');
 {
   reset();
