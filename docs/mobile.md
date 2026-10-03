@@ -419,6 +419,45 @@ pnpm check          # typecheck, lint, the shared-code guard, Jest
 pnpm export:ios     # bundle for iOS with Metro and Hermes
 ```
 
+### Against the real stack
+
+The Jest suites answer Supabase and the website from fixtures. Two checks send
+the same requests to the real thing, in CI and on a computer:
+
+- **The contract replay** (the Mobile workflow's `contract` job) records every
+  database request the tests make and replays each distinct one against a real
+  Postgres 16 built from the migrations and seeds, behind a real PostgREST 12,
+  signed as a seeded candidate or employer, or as nobody. A column, embed,
+  function or grant the fixtures answer but the schema refuses fails it.
+
+  ```bash
+  (cd mobile && RECORD_REQUESTS=/tmp/requests.jsonl npx jest)
+  POSTGREST_BIN=/path/to/postgrest node scripts/contract/replay.mjs /tmp/requests.jsonl
+  ```
+
+- **The journeys** (`.github/workflows/e2e.yml`, "End to end") start Supabase
+  from the migrations and the seed, make the demo accounts, build and start the
+  website against it, and send what the phone sends: the password grant, reads
+  under row-level security, CV bytes to Storage, server actions through
+  `/api/mobile/v1`. Then they check what the database holds: an application
+  with its CV, the employer opening, noting and moving it, the move in the
+  candidate's bell, a listing sent for review, an account made, onboarded and
+  deleted. With Docker running:
+
+  ```bash
+  supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime
+  # .env.local from `supabase status -o env`: the API URL, the anon and
+  # service keys, and DATABASE_URL
+  DEMO_PASSWORD=… node scripts/seed-demo.mjs
+  pnpm build && pnpm start
+  SITE_URL=http://localhost:3000 SUPABASE_URL=http://127.0.0.1:54321 \
+    SUPABASE_ANON_KEY=… DEMO_PASSWORD=… node scripts/e2e/journeys.mjs
+  ```
+
+  They refuse to run against production: they sign in as the demo accounts,
+  apply, move applications, post a listing and delete an account they make.
+  The replay builds its own database and never connects to one.
+
 ### Trying it in Expo Go
 
 The quickest way onto a phone, with no Apple developer account: install Expo Go
