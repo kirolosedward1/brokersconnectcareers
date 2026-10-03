@@ -112,14 +112,17 @@ device() {
 }
 
 # What a failed pass left on the screen, in the run's log, which can be read
-# where its artifact cannot: a sketch of the screen, the words Maestro sees,
-# whether the app is still running, any crash report, and what the app logged.
+# where its artifact cannot: a sketch of the screen, its words as macOS reads
+# them and as Maestro does, whether the app is still running, any crash report,
+# what Maestro's driver made of the apps it saw, and what the app logged.
 # In a subshell that stops for nothing: a diagnosis never fails the run.
 explain() (
   set +eo pipefail
   name="$1" udid="$2"
   echo "The screen when $name failed, roughly:"
   python3 "$here/screen-sketch.py" "$out/$name/failed.png" 60 || echo "    (no sketch)"
+  echo "The words on it, as macOS reads them:"
+  swift "$here/screen-text.swift" "$out/$name/failed.png" 2>&1 | head -n 60 | sed 's/^/    /'
   echo "The words on it, as Maestro reads them:"
   if maestro --device "$udid" hierarchy > "$out/$name/hierarchy.json" 2> /dev/null; then
     jq -r '[.. | objects | .attributes? // empty | (.accessibilityText // empty), (.text // empty), (.title // empty)
@@ -148,6 +151,9 @@ explain() (
         ((.threads[.faultingThread // 0].frames // [])[0:25][] | "      crashed \($r.usedImages[.imageIndex].name // "?") \(.symbol // "?")")' |
       cut -c 1-400
   done < "$out/$name/crashes.txt"
+  echo "What Maestro's driver said about the apps it saw (the last 30 such lines):"
+  xcrun simctl spawn "$udid" log show --last 15m --style compact --predicate 'process BEGINSWITH "maestro-driver"' 2> /dev/null |
+    grep -iE 'running app|foreground|springboard|snapshot|hierarchy|error' | tail -n 30 | cut -c 1-300 | sed 's/^/    /'
   # The test driver's own queries run inside the app's process: left out.
   log="$out/$name/app.log"
   xcrun simctl spawn "$udid" log show --last 15m --style compact \
@@ -161,6 +167,17 @@ explain() (
   awk '$3 == "E" || $3 == "F" || /com\.facebook\.react/' "$log" | tail -n 50 | cut -c 1-400 | sed 's/^/    /'
 )
 
+# The apps the simulator started on its own, closed (iPadOS starts Calendar):
+# Maestro reads the screen of the app it finds in front.
+close_others() {
+  local udid="$1" other
+  for other in $(xcrun simctl spawn "$udid" launchctl list 2> /dev/null |
+    sed -nE 's/.*UIKitApplication:([^[]+)\[.*/\1/p' | grep -vx 'net.brokersconnect.app' || true); do
+    echo "Closing $other, which the simulator started"
+    xcrun simctl terminate "$udid" "$other" > /dev/null 2>&1 || true
+  done
+}
+
 # pass <name> <simulator> <content size> <flow>
 pass() {
   local name="$1" udid="$2" size="$3" flow="$4" status=0
@@ -168,6 +185,7 @@ pass() {
   xcrun simctl ui "$udid" content_size "$size"
   mkdir -p "$out/$name"
   touch "$out/$name/.started"
+  close_others "$udid"
   (cd "$out/$name" && maestro --device "$udid" test "${envs[@]}" --debug-output "$out/$name/debug" "$flows/$flow") || status=$?
   # takeScreenshot writes into Maestro's workspace, which is where it ran or,
   # for some versions, the flows' own folder: the pass's shots come from either.
