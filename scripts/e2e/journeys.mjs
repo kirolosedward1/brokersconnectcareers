@@ -86,12 +86,12 @@ async function rest(token, path, { method = 'GET', body, headers = {} } = {}) {
   return { status: response.status, json };
 }
 
-/** A server action through /api/mobile/v1, as callAction() sends it. */
+/** A server action through /api/mobile/v1, as callAction() sends it: the input under `input`. */
 async function action(token, name, input) {
   const response = await fetch(`${SITE}/api/mobile/v1/actions/${name}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
-    body: JSON.stringify(input ?? {}),
+    body: JSON.stringify({ input: input ?? null }),
   });
   const json = await response.json().catch(() => null);
   return { status: response.status, json };
@@ -113,6 +113,20 @@ async function upload(token, bucket, path, bytes, contentType) {
     body: bytes,
   });
   return { status: response.status, json: await response.json().catch(() => null) };
+}
+
+/**
+ * What a server action does in `after()` — once its answer is sent, as the
+ * seen stamp is written — is looked for until it shows, for a few seconds.
+ */
+async function eventually(read, test, timeout = 8000) {
+  const until = Date.now() + timeout;
+  let last = await read();
+  while (!test(last) && Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    last = await read();
+  }
+  return last;
 }
 
 const ok = (result) => result.status === 200 && result.json?.ok === true;
@@ -137,7 +151,7 @@ const companyPage = firstCompany ? await read(`companies/${firstCompany.slug}`) 
 check('a company page opens', companyPage.status === 200 && companyPage.json?.company?.slug === firstCompany?.slug, describe(companyPage));
 check('an unknown listing is a 404', (await read('jobs/no-such-listing-e2e')).status === 404);
 const view = await action(null, 'recordJobView', { slug: firstJob?.slug });
-check('a signed-out reader is counted as a view', view.status === 200, describe(view));
+check('a signed-out reader is counted as a view', ok(view), describe(view));
 
 // ---------------------------------------------------------------------------
 section('the candidate signs in');
@@ -261,7 +275,10 @@ if (applicationId && employer) {
 
   const seen = await action(employer.token, 'markApplicantsSeen', { ids: [applicationId] });
   check('opening it marks it seen', ok(seen), describe(seen));
-  const viewed = await rest(candidate.token, `applications?select=employer_viewed_at&id=eq.${applicationId}`);
+  const viewed = await eventually(
+    () => rest(candidate.token, `applications?select=employer_viewed_at&id=eq.${applicationId}`),
+    (result) => Boolean(result.json?.[0]?.employer_viewed_at),
+  );
   check('and the candidate is told it was opened', Boolean(viewed.json?.[0]?.employer_viewed_at), describe(viewed));
 
   const note = await action(employer.token, 'addApplicationNote', { applicationId, body: 'مكالمة أولى يوم الأحد (e2e)' });
