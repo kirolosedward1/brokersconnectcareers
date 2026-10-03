@@ -23,6 +23,7 @@ export function Select<T extends string | number>({
   placeholder,
   onChange,
   required = false,
+  inlineLabel = false,
 }: {
   label: string;
   value: T | null;
@@ -31,6 +32,8 @@ export function Select<T extends string | number>({
   placeholder: string;
   onChange: (value: T | null) => void;
   required?: boolean;
+  /** The label inside the field, before the choice ("sort by: newest"), where nothing above it names the field. */
+  inlineLabel?: boolean;
 }) {
   const t = useTranslations('common');
   const { colors } = useTheme();
@@ -64,7 +67,9 @@ export function Select<T extends string | number>({
           backgroundColor: pressed ? colors.muted : colors.card,
         })}
       >
-        <Text tone={current ? 'foreground' : 'mutedForeground'} numberOfLines={1} style={{ flexShrink: 1 }}>
+        {/* Inline, the words wrap rather than cut: it is how the largest text sizes show a choice. */}
+        <Text tone={current ? 'foreground' : 'mutedForeground'} numberOfLines={inlineLabel ? undefined : 1} style={{ flexShrink: 1 }}>
+          {inlineLabel ? <Text tone="mutedForeground">{`${label}: `}</Text> : null}
           {current?.label ?? placeholder}
         </Text>
         <ChevronDown size={18} color={colors.mutedForeground} />

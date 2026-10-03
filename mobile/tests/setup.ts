@@ -48,6 +48,15 @@ process.env.EXPO_PUBLIC_SUPABASE_URL ??= 'http://127.0.0.1:9';
 process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??= 'test-publishable-key';
 process.env.EXPO_PUBLIC_SITE_URL ??= 'http://127.0.0.1:9';
 
+// React Native's test window reports a font scale of 2, an accessibility
+// text size, where the segmented control becomes a menu. The suites describe
+// the phone as most people set it; tests/segmented.test.tsx covers the large
+// sizes on purpose.
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => {
+  const { Dimensions } = jest.requireActual('react-native');
+  return { __esModule: true, default: () => ({ ...Dimensions.get('window'), fontScale: 1 }) };
+});
+
 // FlashList measures its window natively; in a test there is none, and the
 // package's own jestSetup names an export 2.0 no longer has. FlatList takes
 // the same props the app uses and draws every row.

@@ -3,6 +3,7 @@ import { haptic } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 import { PressableScale } from './pressable-scale';
+import { Select } from './select';
 import { Text } from './text';
 
 /**
@@ -10,9 +11,11 @@ import { Text } from './text';
  * raised out of it. To VoiceOver, a labelled radio group of radio buttons,
  * each checked or not — the same thing the chips said before it.
  *
- * At the largest text sizes three options no longer fit side by side, and a
- * label cut short is a label not read: the options are stacked instead, each
- * as wide as the screen, and their words wrap.
+ * At the accessibility text sizes three options no longer fit side by side,
+ * and a label cut short is a label not read; stacked, they filled the board's
+ * first screen before a single result. There it is one row instead, naming
+ * what is chosen ("sort by: newest"), that opens the options in a sheet —
+ * what iOS itself does at those sizes, with a menu.
  */
 export function Segmented<T extends string>({
   label,
@@ -27,17 +30,35 @@ export function Segmented<T extends string>({
   onChange: (value: T) => void;
 }) {
   const { colors, shadow, scheme } = useTheme();
-  const stacked = useWindowDimensions().fontScale >= 1.4;
+  const large = useWindowDimensions().fontScale >= 1.4;
+
+  if (large) {
+    return (
+      <Select
+        label={label}
+        value={value}
+        options={options}
+        placeholder={label}
+        required
+        inlineLabel
+        onChange={(next) => {
+          if (next === null || next === value) return;
+          haptic.selection();
+          onChange(next);
+        }}
+      />
+    );
+  }
 
   return (
     <View
       accessibilityRole="radiogroup"
       accessibilityLabel={label}
       style={{
-        flexDirection: stacked ? 'column' : 'row',
+        flexDirection: 'row',
         padding: 3,
         gap: 2,
-        ...corner(stacked ? 'xl' : 'full'),
+        ...corner('full'),
         backgroundColor: scheme === 'dark' ? colors.card : colors.secondary,
       }}
     >
@@ -61,8 +82,7 @@ export function Segmented<T extends string>({
               alignItems: 'center',
               justifyContent: 'center',
               paddingHorizontal: space[3],
-              paddingVertical: stacked ? space[2] : 0,
-              ...corner(stacked ? 'lg' : 'full'),
+              ...corner('full'),
               backgroundColor: checked ? colors.raised : 'transparent',
               boxShadow: checked ? shadow.card : undefined,
             }}
@@ -71,7 +91,7 @@ export function Segmented<T extends string>({
               variant="small"
               weight={checked ? 'semibold' : 'medium'}
               tone={checked ? 'foreground' : 'mutedForeground'}
-              numberOfLines={stacked ? undefined : 1}
+              numberOfLines={1}
               style={{ textAlign: 'center' }}
             >
               {option.label}
