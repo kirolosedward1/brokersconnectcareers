@@ -5,7 +5,7 @@ appId: net.brokersconnect.app
 - runFlow: confirm-link.yaml
 - extendedWaitUntil:
     visible: "${COMPANY_NAME}"
-    timeout: 45000
+    timeout: 100000
 - waitForAnimationToEnd
 - runFlow: checks.yaml
 - takeScreenshot: 5-company

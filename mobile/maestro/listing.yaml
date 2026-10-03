@@ -5,10 +5,10 @@ appId: net.brokersconnect.app
 - runFlow: confirm-link.yaml
 - extendedWaitUntil:
     visible: "مشاركة"
-    timeout: 45000
+    timeout: 100000
 - extendedWaitUntil:
     visible: "${JOB_TITLE}"
-    timeout: 45000
+    timeout: 100000
 - waitForAnimationToEnd
 - runFlow: checks.yaml
 - takeScreenshot: 3-listing

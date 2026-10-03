@@ -6,6 +6,13 @@
 # is waited for by something only it shows, so a capture never catches the
 # screen before; an empty board and an empty company list are checked as
 # such, and the pages they would lead to are left out.
+#
+# What the live site supplies is waited for up to 100 seconds (here and in
+# company.yaml and listing.yaml): as long as the app itself keeps trying
+# before it shows an error, three tries of up to 30 seconds each
+# (src/lib/api.ts, src/lib/query.ts). The first answer to a simulator just
+# started can be that slow: the board's once took over 45 seconds, and under
+# one on every pass after it.
 appId: net.brokersconnect.app
 ---
 # Home, as the app opens on it.
@@ -18,21 +25,21 @@ appId: net.brokersconnect.app
 - runFlow: confirm-link.yaml
 - extendedWaitUntil:
     visible: "الفلاتر.*"
-    timeout: 45000
+    timeout: 100000
 - runFlow:
     when:
       true: ${JOB_SLUG != 'none'}
     commands:
       - extendedWaitUntil:
           visible: ".*${JOB_TITLE}.*"
-          timeout: 45000
+          timeout: 100000
 - runFlow:
     when:
       true: ${JOB_SLUG == 'none'}
     commands:
       - extendedWaitUntil:
           visible: "مفيش وظائف مطابقة لبحثك."
-          timeout: 45000
+          timeout: 100000
 - waitForAnimationToEnd
 - runFlow: checks.yaml
 - takeScreenshot: 2-jobs
@@ -52,17 +59,17 @@ appId: net.brokersconnect.app
     commands:
       - extendedWaitUntil:
           visible: "الشركات اللي بتوظّف على بروكرز كونكت، والموثّق منها."
-          timeout: 45000
+          timeout: 100000
       - extendedWaitUntil:
           visible: ".*${COMPANY_NAME}.*"
-          timeout: 45000
+          timeout: 100000
 - runFlow:
     when:
       true: ${COMPANY_SLUG == 'none'}
     commands:
       - extendedWaitUntil:
           visible: "مفيش شركات مطابقة."
-          timeout: 45000
+          timeout: 100000
 - waitForAnimationToEnd
 - runFlow: checks.yaml
 - takeScreenshot: 4-companies
