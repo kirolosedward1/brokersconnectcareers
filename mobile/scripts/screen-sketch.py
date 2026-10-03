@@ -21,7 +21,7 @@ CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
 
 
 def read_png(path):
-    """(width, height, rows of (r, g, b)) of an 8-bit, non-interlaced PNG."""
+    """(width, height, rows of (r, g, b)) of a non-interlaced PNG of 8 or 16 bits."""
     data = open(path, "rb").read()
     if data[:8] != b"\x89PNG\r\n\x1a\n":
         raise ValueError("not a PNG")
@@ -39,9 +39,11 @@ def read_png(path):
             break
         pos += 12 + length
     width, height, depth, color, _, _, interlace = header
-    if depth != 8 or interlace != 0 or color not in CHANNELS or (color == 3 and not palette):
+    if depth not in (8, 16) or interlace != 0 or color not in CHANNELS or (color == 3 and not palette):
         raise ValueError(f"unsupported PNG: depth {depth}, colour type {color}, interlace {interlace}")
-    channels = CHANNELS[color]
+    # Filters work on bytes, a pixel's worth back; a 16-bit sample's high byte is enough here.
+    size = depth // 8
+    channels = CHANNELS[color] * size
     stride = width * channels
     raw = zlib.decompress(b"".join(idat))
     previous = bytearray(stride)
@@ -66,10 +68,10 @@ def read_png(path):
         previous = line
         row = []
         for x in range(width):
-            px = line[x * channels : (x + 1) * channels]
+            px = line[x * channels : (x + 1) * channels : size]
             if color == 3:
                 row.append(palette[px[0]])
-            elif channels <= 2:
+            elif len(px) <= 2:
                 row.append((px[0], px[0], px[0]))
             else:
                 row.append((px[0], px[1], px[2]))
