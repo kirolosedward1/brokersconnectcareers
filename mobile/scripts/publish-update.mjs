@@ -28,7 +28,8 @@
  * then be published with too.
  */
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -81,6 +82,74 @@ export function projectIdFrom(env, appConfigSource) {
   return written ? written[1] : null;
 }
 
+/** The app's name and slug as app.config.ts writes them: what its EAS project is called. */
+export function appIdentityFrom(appConfigSource) {
+  const name = /^ {2}name: '([^']+)',$/m.exec(appConfigSource)?.[1];
+  const slug = /^ {2}slug: '([^']+)',$/m.exec(appConfigSource)?.[1];
+  if (!name || !slug) throw new Error('app.config.ts: no name or slug found');
+  return { name, slug };
+}
+
+/**
+ * The Expo account a token or a login acts as: the first line `eas whoami`
+ * prints, "<name> (authenticated using EXPO_TOKEN)" for a token. A robot's
+ * token is refused: a robot has no account of its own, and Expo Go on the
+ * phone is signed in to a person's.
+ */
+export function accountFromWhoami(output) {
+  const first = output.split('\n').map((line) => line.trim()).find(Boolean) ?? '';
+  const name = first.replace(/ \(authenticated using EXPO_TOKEN\)$/, '');
+  if (!name) throw new Error('`eas whoami` named no account');
+  if (/\(robot\)$/.test(name) || name === 'robot') {
+    throw new Error("A robot's token has no account of its own: use a personal access token (expo.dev → Account settings → Access tokens)");
+  }
+  return name;
+}
+
+/** What `eas init --json` answers: the project it created or found, and whose it is. */
+export function linkedProject(stdout) {
+  const answer = JSON.parse(stdout);
+  if (typeof answer.projectId !== 'string' || !answer.projectId) throw new Error('`eas init` answered without a project id');
+  return { projectId: answer.projectId, owner: answer.owner, slug: answer.slug, status: answer.status };
+}
+
+/** eas-cli, as the rest of this script runs it, answering in text. */
+function runEas(args, options) {
+  return spawnSync('npx', ['--yes', 'eas-cli@latest', ...args], { encoding: 'utf8', ...options });
+}
+
+/**
+ * The app's EAS project on the account the token (or login) belongs to,
+ * created the first time and found every time after: `eas init`, Expo's own
+ * way, run in a scratch directory that holds only the app's name and slug.
+ * In the app's own directory it would create the project and then stop,
+ * unable to write the id into app.config.ts. So Expo Go needs nothing set up on
+ * expo.dev beyond the token; builds and pushes still need the id written in
+ * app.config.ts (EAS_PROJECT_ID), which the publish prints.
+ */
+export function findOrCreateProject({ name, slug }, eas = runEas) {
+  const who = eas(['whoami'], { cwd: appRoot, env: process.env });
+  if (who.status !== 0) {
+    throw new Error('Not signed in to Expo: set EXPO_TOKEN (an access token from expo.dev), or run `npx eas-cli@latest login`');
+  }
+  const account = accountFromWhoami(who.stdout);
+  const scratch = mkdtempSync(join(tmpdir(), 'eas-project-'));
+  try {
+    writeFileSync(join(scratch, 'package.json'), `${JSON.stringify({ name: 'eas-project-link', private: true })}\n`);
+    writeFileSync(join(scratch, 'app.json'), `${JSON.stringify({ expo: { name, slug } })}\n`);
+    const init = eas(['init', '--non-interactive', '--account', account, '--json', '--no-icon'], {
+      cwd: scratch,
+      env: { ...process.env, EAS_NO_VCS: '1', EAS_PROJECT_ROOT: scratch },
+    });
+    if (init.status !== 0) {
+      throw new Error(`\`eas init\` could not find or create @${account}/${slug}:\n${(init.stderr ?? '').trim().split('\n').slice(-6).join('\n')}`);
+    }
+    return linkedProject(init.stdout);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
 /** Expo's page with the QR code that opens the channel's newest update in Expo Go (`slug=exp`). */
 export function expoGoLink(projectId, sdkVersion) {
   const query = new URLSearchParams({ slug: 'exp', projectId, runtimeVersion: `exposdk:${sdkVersion}`, channel: EXPO_GO });
@@ -105,15 +174,21 @@ if (isMain) {
     let target;
     let link = null;
     if (name === EXPO_GO) {
-      const projectId = projectIdFrom(process.env, readFileSync(join(appRoot, 'app.config.ts'), 'utf8'));
+      const source = readFileSync(join(appRoot, 'app.config.ts'), 'utf8');
+      let projectId = projectIdFrom(process.env, source);
       if (!projectId) {
-        throw new Error(
-          'No EAS project yet: run `npx eas-cli@latest init` (or create the project on expo.dev) and put its id in ' +
-            'app.config.ts in place of null (EAS_PROJECT_ID).',
+        // Nothing written yet: the token's own account has (or now gets) the project.
+        const project = findOrCreateProject(appIdentityFrom(source));
+        projectId = project.projectId;
+        console.log(
+          `EAS project @${project.owner}/${project.slug} (${project.status}). EAS project id: ${projectId}\n` +
+            'Builds and pushes need it written in app.config.ts in place of null (EAS_PROJECT_ID).',
         );
       }
       const sdkMajor = JSON.parse(readFileSync(join(appRoot, 'node_modules/expo/package.json'), 'utf8')).version.split('.')[0];
       target = expoGoTarget(eas);
+      // app.config.ts takes the id from here when it carries none itself.
+      target.env.EAS_PROJECT_ID = projectId;
       link = expoGoLink(projectId, `${sdkMajor}.0.0`);
       console.log(`Publishing for Expo Go (SDK ${sdkMajor}) to the "${target.channel}" channel, with the store build's settings.`);
     } else {

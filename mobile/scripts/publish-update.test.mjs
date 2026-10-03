@@ -10,11 +10,21 @@
  * configuration evaluated in that environment is the one the store build was
  * made from, where a plain publish's is not.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expoGoLink, expoGoTarget, profileFor, projectIdFrom, updateArguments } from './publish-update.mjs';
+import {
+  accountFromWhoami,
+  appIdentityFrom,
+  expoGoLink,
+  expoGoTarget,
+  findOrCreateProject,
+  linkedProject,
+  profileFor,
+  projectIdFrom,
+  updateArguments,
+} from './publish-update.mjs';
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const eas = JSON.parse(readFileSync(join(appRoot, 'eas.json'), 'utf8'));
@@ -130,11 +140,66 @@ console.log('\n— an update Expo Go opens, with no computer running');
 
   is('the project id from the environment first', projectIdFrom({ EAS_PROJECT_ID: 'from-env' }, "const EAS_PROJECT_ID: string | null = 'in-file';"), 'from-env');
   is('then the one app.config.ts carries', projectIdFrom({}, "const EAS_PROJECT_ID: string | null = 'in-file';"), 'in-file');
-  is('none while it is null, so the script stops before publishing', projectIdFrom({}, readFileSync(join(appRoot, 'app.config.ts'), 'utf8')), null);
+  is("none while it is null: the publish then finds or creates the project on the token's account", projectIdFrom({}, readFileSync(join(appRoot, 'app.config.ts'), 'utf8')), null);
   is(
     "Expo's QR page opens the channel's newest update in Expo Go",
     expoGoLink('p-1', '57.0.0'),
     'https://qr.expo.dev/eas-update?slug=exp&projectId=p-1&runtimeVersion=exposdk%3A57.0.0&channel=expo-go',
+  );
+}
+
+console.log('\n— the EAS project for Expo Go, found or created from the token alone');
+{
+  // eas-cli 24.10.0's own words, from a rehearsal against a stand-in for
+  // api.expo.dev (EXPO_LOCAL=1): `eas whoami` with a token, then `eas init`
+  // creating the project, and on the next run finding it.
+  const whoami = 'owner (authenticated using EXPO_TOKEN)\nowner@example.com\n';
+  const created = JSON.stringify({ status: 'created', projectId: '11111111-2222-4333-8444-000000000001', owner: 'owner', slug: 'brokers-connect' });
+
+  is('the app is named as app.config.ts names it', appIdentityFrom(readFileSync(join(appRoot, 'app.config.ts'), 'utf8')), {
+    name: 'Brokers Connect',
+    slug: 'brokers-connect',
+  });
+  is("the token's account, from `eas whoami`", accountFromWhoami(whoami), 'owner');
+  is(
+    'a login with teams is still its own person',
+    accountFromWhoami('someone\nsomeone@example.com\n\nAccounts:\n• someone (Role: Owner)\n• agency (Role: Admin)\n'),
+    'someone',
+  );
+  throws("a robot's token is refused: it has no account of its own", () => accountFromWhoami('ci (robot) (authenticated using EXPO_TOKEN)\n'), /personal access token/);
+  is('the project `eas init --json` answers with', linkedProject(created).projectId, '11111111-2222-4333-8444-000000000001');
+  throws('an answer without an id is refused', () => linkedProject('{"status":"created"}'), /without a project id/);
+
+  const calls = [];
+  const fake = (answers) => (args, options) => {
+    const files = args[0] === 'init' ? JSON.parse(readFileSync(join(options.cwd, 'app.json'), 'utf8')) : null;
+    calls.push({ args, cwd: options.cwd, files, vcs: options.env.EAS_NO_VCS });
+    return answers[args[0]];
+  };
+  const project = findOrCreateProject(
+    { name: 'Brokers Connect', slug: 'brokers-connect' },
+    fake({ whoami: { status: 0, stdout: whoami, stderr: '' }, init: { status: 0, stdout: created, stderr: '' } }),
+  );
+  is('it asks who the token is, then has `eas init` find or create the project', calls.map((call) => call.args[0]), ['whoami', 'init']);
+  is('on that account, without asking, answering in JSON', calls[1].args, ['init', '--non-interactive', '--account', 'owner', '--json', '--no-icon']);
+  is('in a scratch directory holding only the name and slug', calls[1].files, { expo: { name: 'Brokers Connect', slug: 'brokers-connect' } });
+  is('outside any repository', calls[1].vcs, '1');
+  is('which is gone afterwards', existsSync(calls[1].cwd), false);
+  is('and the id comes back', project, { projectId: '11111111-2222-4333-8444-000000000001', owner: 'owner', slug: 'brokers-connect', status: 'created' });
+
+  throws(
+    'without a token or a login it says what is missing',
+    () => findOrCreateProject({ name: 'n', slug: 's' }, fake({ whoami: { status: 1, stdout: '', stderr: 'Not logged in' } })),
+    /set EXPO_TOKEN/,
+  );
+  throws(
+    'and when Expo refuses, it says why',
+    () =>
+      findOrCreateProject(
+        { name: 'n', slug: 's' },
+        fake({ whoami: { status: 0, stdout: whoami, stderr: '' }, init: { status: 1, stdout: '', stderr: 'Error: GraphQL request failed.\nForbidden' } }),
+      ),
+    /@owner\/s:\n[\s\S]*Forbidden/,
   );
 }
 

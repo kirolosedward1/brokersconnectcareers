@@ -4,10 +4,12 @@
 # publishes on the `expo-go` channel with Expo Go's runtime version and the
 # store build's settings (mobile/scripts/publish-update.mjs).
 #
-# It needs the owner's Expo account: an access token in the repository's
-# secrets as EXPO_TOKEN, and the EAS project's id in mobile/app.config.ts.
-# Without the token it does nothing; with the token and no project, it fails
-# and says what is missing.
+# It needs one thing from the owner's Expo account: an access token in the
+# repository's secrets as EXPO_TOKEN. Without it, it does nothing. While
+# mobile/app.config.ts carries no EAS project id, the publish finds the
+# app's project on the token's account, or creates it the first time
+# (`eas init`, in scripts/publish-update.mjs), and the summary gives its id
+# to write there for builds and pushes.
 #
 # Runs by hand (Actions → Expo Go → Run workflow, on any branch), on pushes to
 # main, and on this repository's own pull requests. Each publish replaces what
@@ -89,12 +91,25 @@ jobs:
           GIVEN: ${{ inputs.message }}
           COMMIT: ${{ github.event.head_commit.message || github.event.pull_request.title }}
         run: |
+          # The publish's own status, not tee's: a failed publish fails the job.
+          set -o pipefail
           message="${GIVEN:-${COMMIT:-Expo Go update}}"
           message="$(printf '%s' "$message" | head -n 1 | cut -c 1-200)"
-          pnpm run ota expo-go --message "$message (${GITHUB_SHA::7})" --non-interactive | tee "$RUNNER_TEMP/publish.log"
-          link=$(grep -o 'https://qr.expo.dev/eas-update?[^ ]*' "$RUNNER_TEMP/publish.log" | head -n 1)
+          pnpm run ota expo-go --message "$message (${GITHUB_SHA::7})" --non-interactive 2>&1 | tee "$RUNNER_TEMP/publish.log"
+          # One match each, and none is not an error here.
+          link=$(grep -m 1 -o 'https://qr.expo.dev/eas-update?[^ ]*' "$RUNNER_TEMP/publish.log" || true)
+          dashboard=$(grep -m 1 -o 'https://expo.dev/accounts/[^ ]*/updates/[^ ]*' "$RUNNER_TEMP/publish.log" || true)
+          project=$(grep -m 1 -o 'EAS project id: [0-9a-f-]*' "$RUNNER_TEMP/publish.log" | cut -d ' ' -f 4 || true)
           {
             echo "### Open it in Expo Go"
             echo
-            echo "Scan the QR code on [this page]($link) with the iPhone's camera, signed in to the same Expo account in Expo Go."
+            echo "In Expo Go on the iPhone, signed in to the Expo account this token belongs to, the app is under Projects. Or scan the QR code on [this page]($link) with the iPhone's camera."
+            if [ -n "$dashboard" ]; then
+              echo
+              echo "The update on Expo's dashboard: $dashboard"
+            fi
+            if [ -n "$project" ]; then
+              echo
+              echo "The EAS project's id is \`$project\`. Builds and push notifications need it written in \`mobile/app.config.ts\` in place of \`null\` (\`EAS_PROJECT_ID\`)."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"

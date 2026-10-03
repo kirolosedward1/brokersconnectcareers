@@ -481,25 +481,27 @@ with the store build's settings (it talks to production), on its own
 `expo-go` channel. It uses Expo Go's runtime version (`exposdk:57.0.0`), not
 the fingerprint store builds take (`EXPO_GO_UPDATE` in `app.config.ts`).
 
-Once, with the same free Expo account:
-
-1. Create the EAS project: `npx eas-cli@latest init` in `mobile/`, or on
-   expo.dev, a new project with the slug `brokers-connect`. Its id goes in
-   `app.config.ts` in place of `null` (`EAS_PROJECT_ID`). It is not a secret.
-   It also turns on updates and push for builds, which they need anyway.
-2. For publishing from GitHub instead of a computer: an access token
-   (expo.dev → Account settings → Access tokens) as the repository secret
-   `EXPO_TOKEN`.
+Once, with the Expo account Expo Go is signed in to: an access token
+(expo.dev → Account settings → Access tokens) as the repository secret
+`EXPO_TOKEN` (GitHub → the repository's Settings → Secrets and variables →
+Actions). That is all Expo Go needs. While `app.config.ts` carries no EAS
+project id, a publish finds the app's project (slug `brokers-connect`) on the
+token's account, or creates it the first time, with Expo's own `eas init`
+(`scripts/publish-update.mjs`). The run's summary then gives the project's id:
+it goes in `app.config.ts` in place of `null` (`EAS_PROJECT_ID`) for builds and
+push notifications. It is not a secret.
 
 Then, each time the phone should get the newest code:
 
 - from GitHub: Actions → Expo Go → Run workflow (on any branch). It also runs
   by itself on pushes to `main` and on this repository's pull requests. The
   run's summary links the QR code;
-- or from a computer: `pnpm run ota expo-go --message "what changed"` in
-  `mobile/`, which prints the same link.
+- or from a computer, signed in with `npx eas-cli@latest login`:
+  `pnpm run ota expo-go --message "what changed"` in `mobile/`, which finds or
+  creates the project the same way and prints the same link.
 
-On the phone, scan the QR code on that page with the camera. Expo Go opens the
+On the phone, Expo Go lists the app under Projects (signed in to the same
+account), or scan the QR code on that page with the camera. Expo Go opens the
 app and keeps it in its list, so later it is one tap. Each publish replaces
 what it opens next.
 
