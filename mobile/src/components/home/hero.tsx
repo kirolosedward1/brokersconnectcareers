@@ -8,7 +8,8 @@ import { corner, space } from '~/theme/tokens';
 /**
  * The first thing Home shows: a deep sapphire panel falling to midnight, a
  * line in champagne above the headline, the headline and its promise, and
- * whatever the screen puts beneath (the search, its button). Fine champagne
+ * whatever the screen puts beneath (the search, its button); compact, a
+ * dashboard's greeting in the same panel. Fine champagne
  * arcs open from its far corner, the way a plan's sightlines do; they are
  * drawing, not content, and are hidden from VoiceOver.
  */
@@ -16,11 +17,14 @@ export function Hero({
   eyebrow,
   title,
   subtitle,
+  compact = false,
   children,
 }: {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  /** A dashboard's greeting: the same panel, a smaller headline. */
+  compact?: boolean;
   children?: ReactNode;
 }) {
   const { colors, shadow } = useTheme();
@@ -33,8 +37,8 @@ export function Hero({
           overflow: 'hidden',
           backgroundColor: colors.hero,
           experimental_backgroundImage: `linear-gradient(160deg, ${colors.hero} 0%, ${colors.heroDeep} 100%)`,
-          padding: space[6],
-          gap: space[3],
+          padding: compact ? space[5] : space[6],
+          gap: compact ? space[1] : space[3],
         }}
       >
         <View
@@ -56,7 +60,7 @@ export function Hero({
             {eyebrow}
           </Text>
         ) : null}
-        <Text variant="display" weight="bold" accessibilityRole="header" style={{ color: colors.onHero }}>
+        <Text variant={compact ? 'title' : 'display'} weight="bold" accessibilityRole="header" style={{ color: colors.onHero }}>
           {title}
         </Text>
         {subtitle ? (

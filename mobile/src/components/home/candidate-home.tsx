@@ -6,6 +6,7 @@ import { Building2 } from '~/components/ui/lucide';
 import { formatDate, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { ProfileRow } from '@/lib/supabase/database.types';
+import { Hero } from '~/components/home/hero';
 import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { PolicyNotice } from '~/components/legal/policy-notice';
@@ -98,13 +99,12 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
       refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
     >
-      <View>
-        {/* The profile is read again on every start; offline, the page is the same without the name. */}
-        <Text variant="title" weight="bold" accessibilityRole="header">
-          {profile ? t('dashboard.candidateGreeting', { name: profile.full_name }) : t('dashboard.overview')}
-        </Text>
-        <Text tone="mutedForeground">{t('dashboard.candidateLede')}</Text>
-      </View>
+      {/* The profile is read again on every start; offline, the page is the same without the name. */}
+      <Hero
+        compact
+        title={profile ? t('dashboard.candidateGreeting', { name: profile.full_name }) : t('dashboard.overview')}
+        subtitle={t('dashboard.candidateLede')}
+      />
 
       {profile ? <StandingNotice profile={profile} /> : null}
 

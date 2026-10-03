@@ -1,4 +1,4 @@
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import {
   AlertTriangle,
   Clock,
@@ -10,6 +10,7 @@ import {
 } from '~/components/ui/lucide';
 import type { NextActionKind } from '@/lib/next-action';
 import { ForwardChevron } from '~/components/ui/icons';
+import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
@@ -56,24 +57,27 @@ export function NextAction({
   }[tone];
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="link"
       accessibilityLabel={`${title}. ${body}`}
       accessibilityHint={cta}
       onPress={onPress}
+      scaleTo={0.985}
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: space[3],
         padding: space[4],
         ...corner('xl'),
-        borderWidth: 1,
-        borderColor: palette.accent,
         backgroundColor: palette.background,
-        opacity: pressed ? 0.85 : 1,
+        opacity: pressed ? 0.88 : 1,
       })}
     >
-      <Icon size={20} color={palette.accent} style={{ marginTop: 2 }} />
+      <View
+        style={{ width: 36, height: 36, ...corner('md'), alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card }}
+      >
+        <Icon size={18} color={palette.accent} />
+      </View>
       <View style={{ flex: 1, gap: space[1] }}>
         <Text weight="semibold">{title}</Text>
         <Text variant="small" tone="mutedForeground">
@@ -86,6 +90,6 @@ export function NextAction({
           <ForwardChevron size={16} color={palette.accent} />
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }

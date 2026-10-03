@@ -14,6 +14,7 @@ import { PushPrompt } from '~/components/push/push-prompt';
 import { StatStrip } from '~/components/dashboard/stat-strip';
 import { TrendBars } from '~/components/dashboard/trend-bars';
 import { SetupChecklist } from '~/components/employer/setup-checklist';
+import { Hero } from '~/components/home/hero';
 import { Button } from '~/components/ui/button';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
@@ -64,14 +65,7 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
     ]),
   );
 
-  const header = (
-    <View>
-      <Text variant="title" weight="bold" accessibilityRole="header">
-        {t('dashboard.overview')}
-      </Text>
-      <Text tone="mutedForeground">{t('dashboard.employerLede')}</Text>
-    </View>
-  );
+  const header = <Hero compact title={t('dashboard.overview')} subtitle={t('dashboard.employerLede')} />;
   const standing = profile ? <StandingNotice profile={profile} company={company} /> : null;
 
   let body: React.ReactNode;
