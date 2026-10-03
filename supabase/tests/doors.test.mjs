@@ -7,7 +7,7 @@
  * work beside it. Every scenario runs in one transaction that is rolled back,
  * so no section sees another's suspensions, reports or edits.
  */
-import { createTestDb, reporter, FIXTURES, USERS } from './setup.mjs';
+import { createTestDb, migrationScripts, reporter, FIXTURES, USERS } from './setup.mjs';
 
 const report = reporter();
 const db = await createTestDb();
@@ -571,6 +571,63 @@ report.section("14. a suspended company does not see its applicants (349)");
     'lifted, everything comes back as it was',
     lifted.ok && after.rows[0]?.n === before.rows[0]?.n && phoneAfter.rows[0]?.whatsapp_phone === phoneBefore.rows[0]?.whatsapp_phone,
     JSON.stringify({ n: after.rows[0], lifted: lifted.error }),
+  );
+}
+
+report.section('15. a note already written moves with 347 without the listing reading as edited');
+{
+  // A database 347 has not reached, as production will be: a listing taken
+  // down with its reason in the old column, and an appeal against that.
+  const before = await createTestDb({ before: '20260101000347' });
+  const as = async (userId, sql) => {
+    await before.exec('begin');
+    await before.exec(
+      `set local role authenticated; set local request.jwt.claim.sub = '${userId}'; set local request.jwt.claims = '${JSON.stringify({ role: 'authenticated', sub: userId })}';`,
+    );
+    try {
+      const rows = (await before.query(sql)).rows;
+      await before.exec('commit');
+      return { ok: true, rows };
+    } catch (error) {
+      await before.exec('rollback');
+      return { ok: false, error: error.message, rows: [] };
+    }
+  };
+  const read = async (sql) => (await before.query(sql)).rows[0];
+  const job = await read(`select id from jobs where company_id = '${ROWAD}' and status = 'active' order by id limit 1`);
+  const appeal = `(select a from moderation_appeals a where subject_id = '${job.id}' and status = 'open')`;
+
+  const takenDown = await as(admin, `select admin_moderate_job('${job.id}', 'unpublish', 'رقم واتساب لجهة غير الشركة')`);
+  const appealed = await as(E1, `select submit_appeal('job', '${job.id}', 'أرجو مراجعة القرار مرة أخرى، البيانات صحيحة')`);
+  const was = await read(`select version, rejection_note, public.appeal_decision_state(${appeal}) as state from jobs where id = '${job.id}'`);
+
+  for (const script of migrationScripts({ from: '20260101000347' })) await before.exec(script.sql);
+
+  const is = await read(`select j.version, j.rejection_note, m.rejection_note as moved, public.appeal_decision_state(${appeal}) as state
+                           from jobs j left join job_moderation m on m.job_id = j.id where j.id = '${job.id}'`);
+  const overturned = await as(admin, `select admin_decide_appeal((${appeal}).id, true, null) as outcome`);
+  const live = await read(`select status from jobs where id = '${job.id}'`);
+  await before.close();
+
+  report.check(
+    '(before 347: taken down with its reason in the listing, and appealed)',
+    takenDown.ok && appealed.ok && Boolean(was?.rejection_note) && was?.state === 'same',
+    JSON.stringify({ takenDown: takenDown.error, appealed: appealed.error, was }),
+  );
+  report.check(
+    'the reason moves to job_moderation and leaves the listing',
+    is?.moved === was?.rejection_note && is?.rejection_note === null,
+    JSON.stringify(is),
+  );
+  report.check(
+    "the listing's version is as it was, so the appeal still reads as about the same listing",
+    is?.version === was?.version && is?.state === 'same',
+    JSON.stringify({ was: was?.version, is: is?.version, state: is?.state }),
+  );
+  report.check(
+    'and overturning it puts the listing back',
+    overturned.ok && overturned.rows[0]?.outcome === 'overturned' && live?.status === 'active',
+    JSON.stringify({ overturned: overturned.error ?? overturned.rows, live }),
   );
 }
 

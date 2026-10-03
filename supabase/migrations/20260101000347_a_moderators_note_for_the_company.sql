@@ -19,6 +19,7 @@
 
 -- rollback: alter table jobs drop constraint jobs_rejection_note_is_private; update jobs j set rejection_note = m.rejection_note from job_moderation m where m.job_id = j.id; restate on_job_moderated() from migration 301, admin_support_facts() from 305, set_account_approval() and admin_set_company_suspension() from 344, admin_moderate_job() and appeal_decision_snapshot() from 346; drop table job_moderation
 -- safety: constraint — production holds no note (checked 2026-10-03: no listing carries one), and this file moves any note into job_moderation and empties the column before the check is added
+-- safety: drop — jobs_40_bump_version is off only for the one statement that empties the column, inside this file's transaction, and on again before it ends; no other session ever sees it off
 -- safety: ships-with-code — the new code reads job_moderation and, until this file is applied (the table missing), the column as before; the levers and the bell are database functions, so a note goes wherever the database they run in keeps it. Applied before the deploy, main's listing pages read the now-empty column and show no reason until the new code arrives, while the bell and the email still quote it; production holds no note today
 
 create table if not exists job_moderation (
@@ -46,7 +47,12 @@ insert into job_moderation (job_id, rejection_note)
 select id, rejection_note from jobs where rejection_note is not null
 on conflict (job_id) do update set rejection_note = excluded.rejection_note, updated_at = now();
 
+-- Emptying the column is the platform's own write, not an edit, so the
+-- version trigger stays out of it: an open appeal, and an edit form, were read
+-- at the listing's version (346), and a raised version would read as an edit.
+alter table jobs disable trigger jobs_40_bump_version;
 update jobs set rejection_note = null where rejection_note is not null;
+alter table jobs enable trigger jobs_40_bump_version;
 
 alter table jobs drop constraint if exists jobs_rejection_note_is_private;
 alter table jobs add constraint jobs_rejection_note_is_private check (rejection_note is null);

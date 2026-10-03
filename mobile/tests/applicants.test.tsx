@@ -682,19 +682,30 @@ describe('a suspended company', () => {
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
   });
 
-  it('does not stamp them seen, even where the database still answers them', async () => {
-    // Before 349 is applied, the reads still bring the applicants back; the
-    // candidates must not be told the company opened their applications.
+  // Before 349 is applied, the reads still bring the applicants back; the
+  // candidates must not be told the company opened their applications. Each
+  // screen has its rows once it asks for their notes, and a stamp would
+  // follow within moments of that (the unsuspended tests above see one).
+  const notStamped = async () => {
+    await waitFor(() => expect(server.asked('/rest/v1/application_notes').length).toBeGreaterThan(0));
+    await expect(
+      waitFor(() => expect(server.asked('/api/mobile/v1/actions/markApplicantsSeen').length).toBeGreaterThan(0), {
+        timeout: 500,
+      }),
+    ).rejects.toThrow();
+  };
+
+  it('does not stamp them seen in the inbox, even where the database still answers them', async () => {
     server.on('GET /rest/v1/companies', [{ ...ownedCompany, suspended_at: '2026-10-01T10:00:00Z' }]);
-
-    const inbox = renderRouter(app, { initialUrl: '/employer/applicants' });
+    renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
-    await waitFor(() => expect(server.asked('/rest/v1/applications').length).toBeGreaterThan(0));
-    inbox.unmount();
+    await notStamped();
+  });
 
+  it("nor on a listing's applicants", async () => {
+    server.on('GET /rest/v1/companies', [{ ...ownedCompany, suspended_at: '2026-10-01T10:00:00Z' }]);
     renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
-    await waitFor(() => expect(server.asked('/rest/v1/application_notes').length).toBeGreaterThan(0));
-    expect(server.asked('/api/mobile/v1/actions/markApplicantsSeen')).toEqual([]);
+    await notStamped();
   });
 });
