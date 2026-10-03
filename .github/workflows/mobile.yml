@@ -13,6 +13,11 @@
 #                   resolve, or a module Hermes cannot compile, fails here
 #   expo install    the dependency versions the installed SDK expects
 #   expo-doctor     Expo's own check of the config and the native setup
+#   contract        every database request the app's tests make, replayed
+#                   against a real Postgres built from the migrations behind a
+#                   real PostgREST (scripts/contract/replay.mjs): a column, an
+#                   embed, an RPC's arguments or a grant the fixtures answer
+#                   but the real schema refuses fails here
 #
 # The native iOS build (prebuild + xcodebuild on macOS) is slower and runs on
 # main and by hand, not on every pull request.
@@ -27,6 +32,10 @@ on:
       - 'mobile/**'
       - 'src/lib/**'
       - 'messages/**'
+      - 'supabase/migrations/**'
+      - 'supabase/seed*.sql'
+      - 'supabase/tests/setup.mjs'
+      - 'scripts/contract/**'
       - '.github/workflows/mobile.yml'
   push:
     branches: [main]
@@ -34,6 +43,10 @@ on:
       - 'mobile/**'
       - 'src/lib/**'
       - 'messages/**'
+      - 'supabase/migrations/**'
+      - 'supabase/seed*.sql'
+      - 'supabase/tests/setup.mjs'
+      - 'scripts/contract/**'
       - '.github/workflows/mobile.yml'
   workflow_dispatch:
 
@@ -91,6 +104,46 @@ jobs:
         run: npx expo-doctor
         env:
           EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: '1'
+
+  contract:
+    # The app's tests answer Supabase from fixtures; here every distinct
+    # request they made goes to the real thing. The runner's own Postgres 16
+    # binaries hold the database; PostgREST is release 12, pinned by digest.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            mobile/pnpm-lock.yaml
+
+      - name: Install (website, for the database scripts; and app)
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --dir mobile install --frozen-lockfile
+
+      - name: Record the requests the app's tests make
+        working-directory: mobile
+        run: RECORD_REQUESTS="$RUNNER_TEMP/requests.jsonl" npx jest
+
+      - name: PostgREST
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/postgrest.tar.xz" \
+            https://github.com/PostgREST/postgrest/releases/download/v12.2.12/postgrest-v12.2.12-linux-static-x86-64.tar.xz
+          echo "5de4092f1719da3353c40bf96c8dec6913f2254a7cd0b61cc05f233153b557d5  $RUNNER_TEMP/postgrest.tar.xz" | sha256sum -c -
+          tar -xJf "$RUNNER_TEMP/postgrest.tar.xz" -C "$RUNNER_TEMP"
+
+      - name: Replay them against the migrations and PostgREST
+        run: POSTGREST_BIN="$RUNNER_TEMP/postgrest" node scripts/contract/replay.mjs "$RUNNER_TEMP/requests.jsonl"
 
   ios-build:
     # A real native build for the simulator: config plugins, CocoaPods, Swift
