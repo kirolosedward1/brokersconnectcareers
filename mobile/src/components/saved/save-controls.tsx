@@ -15,6 +15,7 @@ import {
   useToggleFollow,
   useToggleSavedJob,
 } from '~/features/saved/queries';
+import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
@@ -45,7 +46,9 @@ export function useSaveJob(jobId: string) {
     pending: toggle.isPending || !known,
     label: saved ? t('removeSaved') : t('save'),
     toggle: () => {
-      if (known) toggle.mutate({ jobId, saved });
+      if (!known) return;
+      haptic.selection();
+      toggle.mutate({ jobId, saved });
     },
   };
 }
@@ -223,6 +226,7 @@ export function FollowCompanyButton({ slug, label }: { slug: string; label: stri
       return;
     }
     setError(null);
+    haptic.selection();
     toggle.mutate(
       { follow: !following },
       {

@@ -1,4 +1,5 @@
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
+import { haptic } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 import { PressableScale } from './pressable-scale';
@@ -8,6 +9,10 @@ import { Text } from './text';
  * One of a few, as iOS draws it: a recessed track with the chosen option
  * raised out of it. To VoiceOver, a labelled radio group of radio buttons,
  * each checked or not — the same thing the chips said before it.
+ *
+ * At the largest text sizes three options no longer fit side by side, and a
+ * label cut short is a label not read: the options are stacked instead, each
+ * as wide as the screen, and their words wrap.
  */
 export function Segmented<T extends string>({
   label,
@@ -22,16 +27,17 @@ export function Segmented<T extends string>({
   onChange: (value: T) => void;
 }) {
   const { colors, shadow, scheme } = useTheme();
+  const stacked = useWindowDimensions().fontScale >= 1.4;
 
   return (
     <View
       accessibilityRole="radiogroup"
       accessibilityLabel={label}
       style={{
-        flexDirection: 'row',
+        flexDirection: stacked ? 'column' : 'row',
         padding: 3,
         gap: 2,
-        ...corner('full'),
+        ...corner(stacked ? 'xl' : 'full'),
         backgroundColor: scheme === 'dark' ? colors.card : colors.secondary,
       }}
     >
@@ -43,7 +49,10 @@ export function Segmented<T extends string>({
             accessibilityRole="radio"
             accessibilityState={{ checked }}
             accessibilityLabel={option.label}
-            onPress={() => onChange(option.value)}
+            onPress={() => {
+              if (!checked) haptic.selection();
+              onChange(option.value);
+            }}
             hitSlop={{ top: 4, bottom: 4 }}
             scaleTo={0.96}
             style={{
@@ -52,7 +61,8 @@ export function Segmented<T extends string>({
               alignItems: 'center',
               justifyContent: 'center',
               paddingHorizontal: space[3],
-              ...corner('full'),
+              paddingVertical: stacked ? space[2] : 0,
+              ...corner(stacked ? 'lg' : 'full'),
               backgroundColor: checked ? colors.raised : 'transparent',
               boxShadow: checked ? shadow.card : undefined,
             }}
@@ -61,7 +71,8 @@ export function Segmented<T extends string>({
               variant="small"
               weight={checked ? 'semibold' : 'medium'}
               tone={checked ? 'foreground' : 'mutedForeground'}
-              numberOfLines={1}
+              numberOfLines={stacked ? undefined : 1}
+              style={{ textAlign: 'center' }}
             >
               {option.label}
             </Text>

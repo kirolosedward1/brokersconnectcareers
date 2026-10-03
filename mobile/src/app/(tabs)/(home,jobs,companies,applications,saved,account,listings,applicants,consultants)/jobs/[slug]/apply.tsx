@@ -30,6 +30,7 @@ import {
 import { pickCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
 import { ApiError } from '~/lib/api';
+import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useHasBoard } from '~/lib/use-tabs';
@@ -181,7 +182,10 @@ function Apply({ job }: { job: JobDetail }) {
       defaultName={viewer.profile.full_name}
       defaultPhone={viewer.profile.whatsapp_phone}
       profileCv={context.data.profileCv}
-      onSent={() => setSentAt(new Date())}
+      onSent={() => {
+        haptic.success();
+        setSentAt(new Date());
+      }}
     />
   );
 }

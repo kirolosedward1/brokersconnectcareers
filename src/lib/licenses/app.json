@@ -320,6 +320,7 @@
     {"name":"expo-file-system","version":"57.0.7","license":"MIT","copyright":"Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)"},
     {"name":"expo-font","version":"57.0.4","license":"MIT","copyright":"Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)"},
     {"name":"expo-glass-effect","version":"57.0.4","license":"MIT","copyright":"Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)"},
+    {"name":"expo-haptics","version":"57.0.3","license":"MIT","copyright":"Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)"},
     {"name":"expo-image","version":"57.0.5","license":"MIT","copyright":"Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)"},
     {"name":"expo-image-loader","version":"57.0.1","license":"MIT","copyright":"Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)"},
     {"name":"expo-image-manipulator","version":"57.0.20","license":"MIT","copyright":"Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)"},

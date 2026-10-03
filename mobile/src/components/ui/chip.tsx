@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { X } from '~/components/ui/lucide';
+import { haptic } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 import { PressableScale } from './pressable-scale';
@@ -48,7 +49,11 @@ export function Chip({
       accessibilityRole={radio ? 'radio' : 'button'}
       accessibilityState={removable ? undefined : radio ? { checked: selected, disabled } : { selected, disabled }}
       accessibilityLabel={accessibilityLabel ?? label}
-      onPress={onPress}
+      onPress={() => {
+        // A choice clicks; dropping an active filter does not.
+        if (!removable) haptic.selection();
+        onPress();
+      }}
       disabled={disabled}
       hitSlop={4}
       style={({ pressed }) => ({
