@@ -504,6 +504,12 @@ report.section("14. a suspended company does not see its applicants (349)");
     select a.id, a.candidate_id from applications a join jobs j on j.id = a.job_id
      where j.company_id = '${ROWAD}' order by a.id limit 1`);
   const mine = `select count(*)::int as n from applications a join jobs j on j.id = a.job_id where j.company_id = '${ROWAD}'`;
+  // A developer tag the company's first listing does not have yet.
+  const tag = await one(`
+    select j.id as job_id, d.id as developer_id from jobs j cross join developers d
+     where j.company_id = '${ROWAD}'
+       and not exists (select 1 from job_developers x where x.job_id = j.id and x.developer_id = d.id)
+     order by j.id, d.id limit 1`);
   const digest = {
     as: null,
     sql: `select count(*)::int as n from pending_applicant_digests('30 days') d
@@ -525,11 +531,13 @@ report.section("14. a suspended company does not see its applicants (349)");
     { as: E1, sql: `insert into application_notes (application_id, author_id, body) values ('${applied.id}', '${E1}', 'ملاحظة') returning id` },
     { as: applied.candidate_id, sql: `select status from applications where id = '${applied.id}'` },
     digest,
+    { as: E1, sql: `insert into job_developers (job_id, developer_id) values ('${tag.job_id}', '${tag.developer_id}') returning job_id` },
+    { as: E1, sql: `delete from job_developers where job_id = '${tag.job_id}' and developer_id = '${tag.developer_id}' returning job_id` },
     { as: admin, sql: `select admin_set_company_suspension('${ROWAD}', false, 'رجعت بعد المراجعة')` },
     { as: E1, sql: mine },
     { as: E1, sql: `select whatsapp_phone from profiles where id = '${applied.candidate_id}'` },
   ];
-  const [, , digestBefore, before, phoneBefore, suspended, during, phoneDuring, events, moved, noted, candidateOwn, digestDuring, lifted, after, phoneAfter] =
+  const [, , digestBefore, before, phoneBefore, suspended, during, phoneDuring, events, moved, noted, candidateOwn, digestDuring, tagged, untagged, lifted, after, phoneAfter] =
     await scenario(steps);
   report.check(
     "(before: the company reads its applicants and their numbers)",
@@ -553,6 +561,11 @@ report.section("14. a suspended company does not see its applicants (349)");
     'the daily digest, which counted it, leaves the company out',
     digestBefore.rows[0]?.n > 0 && digestDuring.rows[0]?.n === 0,
     JSON.stringify({ before: digestBefore.rows[0] ?? digestBefore.error, during: digestDuring.rows[0] ?? digestDuring.error }),
+  );
+  report.check(
+    "its listings' developer tags stay its own to change, as a draft's text does",
+    tagged.ok && tagged.rows.length === 1 && untagged.ok && untagged.rows.length === 1,
+    JSON.stringify({ tagged: tagged.error ?? tagged.rows, untagged: untagged.error ?? untagged.rows }),
   );
   report.check(
     'lifted, everything comes back as it was',

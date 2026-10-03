@@ -12,12 +12,14 @@
 -- the account. Nothing is deleted: the suspension's end opens it again. The
 -- daily applicant digest leaves a suspended company out too.
 --
--- owns_job() also stands behind editing a listing's developers, which a
--- suspended company, its listings down, has no need of. Tested in
+-- owns_job() also stood behind a listing's developer tags. Those are the
+-- listing's own text, which a suspended company may still save as a draft, so
+-- their policy now asks what owns_job() asked before this file. Tested in
 -- supabase/tests/doors.test.mjs.
 -- =============================================================================
 
--- rollback: restate owns_job() from migration 308 and pending_applicant_digests() from 324
+-- rollback: restate owns_job() from migration 308 and pending_applicant_digests() from 324; job_developers_write can stay, as it asks what 308's owns_job() asked
+-- safety: rls — job_developers_write keeps the rule it had before this file (the listing's company, in good standing, through owns_company): who may change a listing's developer tags does not change
 -- safety: ships-with-code — no company on production is suspended (checked 2026-10-03), so neither order changes anything today. Before this file, the new code already says on the applicant pages that a suspended company's applicants are hidden and reads none; after it without the new code, main's pages show such a company an empty list instead
 
 create or replace function public.owns_job(target uuid)
@@ -73,3 +75,10 @@ as $$
    group by p.id
   having count(a.id) > 0;
 $$;
+
+-- A listing's developer tags: the listing's company, in good standing, as
+-- before this file. Not the applicants' door, so not closed by a suspension.
+drop policy if exists job_developers_write on job_developers;
+create policy job_developers_write on job_developers
+  for all using (exists (select 1 from jobs j where j.id = job_id and public.owns_company(j.company_id)))
+  with check (exists (select 1 from jobs j where j.id = job_id and public.owns_company(j.company_id)));
