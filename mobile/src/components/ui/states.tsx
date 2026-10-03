@@ -5,6 +5,7 @@ import { useTranslations } from 'use-intl';
 import { CloudOff, Compass, TriangleAlert, WifiOff, type LucideIcon } from '~/components/ui/lucide';
 import { ApiError, noAnswer } from '~/lib/api';
 import { useHasBoard } from '~/lib/use-tabs';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { Button } from './button';
@@ -94,9 +95,12 @@ export function EmptyState({
   icon?: LucideIcon;
 }) {
   const { colors } = useTheme();
+  // At the accessibility sizes the disc gives its room to the words: on the
+  // board it pushed the empty state's title to the bottom of the screen.
+  const large = useLargeText();
   return (
     <Centered>
-      {Icon ? (
+      {Icon && !large ? (
         <View
           accessible={false}
           style={{
@@ -120,7 +124,8 @@ export function EmptyState({
           {body}
         </Text>
       ) : null}
-      {action ? <View style={{ marginTop: space[2], alignItems: 'center' }}>{action}</View> : null}
+      {/* As wide as the screen allows, so an action that asks to stretch can; one that does not stays centred. */}
+      {action ? <View style={{ marginTop: space[2], alignItems: 'center', alignSelf: 'stretch' }}>{action}</View> : null}
     </Centered>
   );
 }

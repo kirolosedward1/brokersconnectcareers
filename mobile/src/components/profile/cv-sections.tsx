@@ -114,7 +114,8 @@ function Section({
           style={{
             width: 40,
             height: 40,
-            ...corner('xl'),
+            // The app's icon tile: a rounded square, not a disc.
+            ...corner('md'),
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: colors.muted,

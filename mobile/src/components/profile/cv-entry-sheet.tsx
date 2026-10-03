@@ -219,7 +219,7 @@ function EntryForm({
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: space[4], gap: space[3] }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: gutter, paddingVertical: space[4], gap: space[3] }}>
         <Text variant="title" weight="bold" accessibilityRole="header" style={{ flex: 1 }}>
           {heading}
         </Text>
@@ -227,7 +227,8 @@ function EntryForm({
           accessibilityRole="button"
           accessibilityLabel={t('common.close')}
           onPress={onRequestClose}
-          style={{ width: hitTarget, height: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+          // The glyph, not its 44-point box, on the page's margin.
+          style={{ width: hitTarget, height: hitTarget, marginEnd: -(hitTarget - 20) / 2, alignItems: 'center', justifyContent: 'center' }}
         >
           <X size={20} color={colors.foreground} />
         </Pressable>

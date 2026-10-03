@@ -33,7 +33,7 @@ import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useVisited } from '~/lib/use-visited';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 /**
  * The consultant directory — the website's /agents, for the companies that
@@ -220,16 +220,8 @@ function DirectoryHeader({
       </Text>
 
       {gated ? (
-        <View
-          style={{
-            gap: space[2],
-            padding: space[4],
-            ...corner('xl'),
-            borderWidth: 1,
-            borderColor: colors.primary,
-            backgroundColor: colors.secondary,
-          }}
-        >
+        // The card's own surface; the shield carries the meaning, not an outline.
+        <Card style={{ gap: space[2] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
             <ShieldCheck size={18} color={colors.primary} />
             <Text weight="medium" style={{ flexShrink: 1 }}>
@@ -248,7 +240,7 @@ function DirectoryHeader({
               />
             </View>
           ) : null}
-        </View>
+        </Card>
       ) : null}
 
       {canShortlistAgents(actor) ? (
@@ -274,6 +266,7 @@ function DirectoryHeader({
           selected={inSheet > 0}
           icon={<SlidersHorizontal size={14} color={inSheet ? colors.primaryForeground : colors.foreground} />}
           onPress={onFilters}
+          feedback={false}
         />
         <Text variant="small" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
           {t('jobs.resultsCount', { count: total })}

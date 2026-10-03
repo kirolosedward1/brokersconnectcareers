@@ -221,7 +221,7 @@ export function FilterSheetFrame({
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: space[2],
-            paddingHorizontal: space[4],
+            paddingHorizontal: gutter,
             paddingVertical: space[2],
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
@@ -232,7 +232,8 @@ export function FilterSheetFrame({
             accessibilityLabel={t('common.close')}
             onPress={onClose}
             hitSlop={8}
-            style={{ minWidth: hitTarget, minHeight: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+            // The glyph, not its 44-point box, on the page's margin.
+            style={{ minWidth: hitTarget, minHeight: hitTarget, marginStart: -(hitTarget - 22) / 2, alignItems: 'center', justifyContent: 'center' }}
           >
             <X size={22} color={colors.foreground} />
           </Pressable>
@@ -240,7 +241,7 @@ export function FilterSheetFrame({
             {t('jobs.filters')}
           </Text>
           <View style={{ minWidth: hitTarget, alignItems: 'flex-end' }}>
-            {onClear ? <Button label={t('jobs.clearFilters')} variant="ghost" size="sm" onPress={onClear} /> : null}
+            {onClear ? <Button label={t('jobs.clearFilters')} variant="ghost" size="sm" onPress={onClear} style={{ marginEnd: -space[4] }} /> : null}
           </View>
         </View>
 
@@ -248,7 +249,7 @@ export function FilterSheetFrame({
 
         <View
           style={{
-            paddingHorizontal: space[4],
+            paddingHorizontal: gutter,
             paddingTop: space[3],
             paddingBottom: Math.max(insets.bottom, space[4]),
             borderTopWidth: 1,

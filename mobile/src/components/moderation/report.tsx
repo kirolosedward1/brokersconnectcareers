@@ -181,7 +181,7 @@ function ReportSheet({
               flexDirection: 'row',
               alignItems: 'center',
               gap: space[2],
-              paddingHorizontal: space[4],
+              paddingHorizontal: gutter,
               paddingVertical: space[2],
               borderBottomWidth: 1,
               borderBottomColor: colors.border,
@@ -192,7 +192,8 @@ function ReportSheet({
               accessibilityLabel={t('common.close')}
               onPress={onClose}
               hitSlop={8}
-              style={{ minWidth: hitTarget, minHeight: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+              // The glyph, not its 44-point box, on the page's margin.
+              style={{ minWidth: hitTarget, minHeight: hitTarget, marginStart: -(hitTarget - 22) / 2, alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={22} color={colors.foreground} />
             </Pressable>

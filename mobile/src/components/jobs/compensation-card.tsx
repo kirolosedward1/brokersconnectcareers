@@ -7,6 +7,7 @@ import { formatEgp } from '@/lib/format';
 import { Text } from '~/components/ui/text';
 import { useCompensationText } from '~/features/jobs/compensation';
 import { markupTags } from '~/i18n/rich';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 
@@ -33,6 +34,9 @@ export function CompensationCard({ job, reference }: { job: Comp; reference: Sal
   const tLeads = useTranslations('leadsSource');
   const tBenefit = useTranslations('benefits');
   const { colors, shadow } = useTheme();
+  // Commission beside leads source, unless the text is at the accessibility
+  // sizes: a 150-point column broke their words there.
+  const cell = useLargeText() ? '100%' : 150;
   const pay = useCompensationText();
   const salary = pay.salary(job, locale);
   const hairline = { borderTopWidth: StyleSheet.hairlineWidth * 2, borderTopColor: colors.border };
@@ -51,7 +55,7 @@ export function CompensationCard({ job, reference }: { job: Comp; reference: Sal
         <Text variant="label" weight="semibold" tone="mutedForeground" accessibilityRole="header">
           {t('title')}
         </Text>
-        <Label icon={<Banknote size={14} color={colors.gold} />}>{t('basicSalary')}</Label>
+        <Label icon={<Banknote size={14} color={colors.mutedForeground} />}>{t('basicSalary')}</Label>
         <Text variant="title">
           <Text variant="title" weight="semibold" tone={salary.perMonth ? 'foreground' : 'mutedForeground'}>
             {salary.amount}
@@ -74,8 +78,8 @@ export function CompensationCard({ job, reference }: { job: Comp; reference: Sal
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', ...hairline }}>
-        <View style={{ flexGrow: 1, flexBasis: 150, padding: space[5], gap: space[1] }}>
-          <Label icon={<HandCoins size={14} color={colors.gold} />}>{t('commission')}</Label>
+        <View style={{ flexGrow: 1, flexBasis: cell, padding: space[5], gap: space[1] }}>
+          <Label icon={<HandCoins size={14} color={colors.mutedForeground} />}>{t('commission')}</Label>
           <Text weight="semibold">{pay.commission(job, locale)}</Text>
           {job.commission_note_ar ? (
             <Text variant="small" tone="mutedForeground">
@@ -83,20 +87,21 @@ export function CompensationCard({ job, reference }: { job: Comp; reference: Sal
             </Text>
           ) : null}
         </View>
-        <View style={{ flexGrow: 1, flexBasis: 150, padding: space[5], gap: space[1] }}>
-          <Label icon={<Target size={14} color={colors.gold} />}>{t('leadsSource')}</Label>
+        <View style={{ flexGrow: 1, flexBasis: cell, padding: space[5], gap: space[1] }}>
+          <Label icon={<Target size={14} color={colors.mutedForeground} />}>{t('leadsSource')}</Label>
           <Text weight="semibold">{tLeads(job.leads_source)}</Text>
         </View>
       </View>
 
       <View style={{ padding: space[5], gap: space[2], ...hairline }}>
-        <Label icon={<Sparkles size={14} color={colors.gold} />}>{t('benefits')}</Label>
+        <Label icon={<Sparkles size={14} color={colors.mutedForeground} />}>{t('benefits')}</Label>
         {job.benefits.length ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
             {job.benefits.map((benefit) => (
               <View
                 key={benefit}
-                style={{ paddingHorizontal: space[3], paddingVertical: space[1], ...corner('full'), backgroundColor: colors.muted }}
+                // A capsule on one line; rounded, not clipped, when a large size wraps it.
+                style={{ paddingHorizontal: space[3], paddingVertical: space[1], borderRadius: 16, borderCurve: 'continuous', backgroundColor: colors.muted }}
               >
                 <Text variant="small" weight="medium">
                   {tBenefit(benefit)}

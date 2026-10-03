@@ -4,7 +4,7 @@ import { Check, ChevronDown, X } from '~/components/ui/lucide';
 import { useTranslations } from 'use-intl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '~/theme/provider';
-import { corner, hitTarget, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { Text } from './text';
 
 export type SelectOption<T extends string | number> = { value: T; label: string };
@@ -82,7 +82,7 @@ export function Select<T extends string | number>({
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
-              paddingHorizontal: space[4],
+              paddingHorizontal: gutter,
               paddingVertical: space[3],
               borderBottomWidth: StyleSheet.hairlineWidth,
               borderBottomColor: colors.border,
@@ -96,7 +96,8 @@ export function Select<T extends string | number>({
               accessibilityLabel={t('close')}
               onPress={() => setOpen(false)}
               hitSlop={10}
-              style={{ minWidth: hitTarget, minHeight: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+              // The glyph, not its 44-point box, on the page's margin.
+              style={{ minWidth: hitTarget, minHeight: hitTarget, marginEnd: -(hitTarget - 20) / 2, alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={20} color={colors.foreground} />
             </Pressable>
@@ -118,7 +119,7 @@ export function Select<T extends string | number>({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: space[2],
-                    paddingHorizontal: space[4],
+                    paddingHorizontal: gutter,
                     backgroundColor: pressed ? colors.muted : 'transparent',
                     borderBottomWidth: StyleSheet.hairlineWidth,
                     borderBottomColor: colors.border,

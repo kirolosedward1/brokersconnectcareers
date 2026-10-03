@@ -51,7 +51,7 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
 
 function SavedSearchItem({ row }: { row: SavedSearchRow }) {
   const t = useTranslations('savedSearch');
-  const { colors, shadow } = useTheme();
+  const { colors, lift } = useTheme();
   const alerts = useSetSearchAlerts();
   const remove = useDeleteSavedSearch();
 
@@ -75,7 +75,7 @@ function SavedSearchItem({ row }: { row: SavedSearchRow }) {
         ...corner('xl'),
         borderWidth: StyleSheet.hairlineWidth * 2,
         borderColor: colors.border,
-        boxShadow: shadow.card,
+        ...lift,
         backgroundColor: colors.card,
       }}
     >

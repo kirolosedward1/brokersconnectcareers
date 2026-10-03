@@ -3,7 +3,7 @@
  *
  * `lucide-react-native`'s index requires every one of its 1,854 icons as it
  * loads — about 2 MB of the bundle and 20 to 30 ms before the first frame on
- * a phone — for the 91 used here. One module per icon loads only those. Add
+ * a phone — for the 92 used here. One module per icon loads only those. Add
  * an icon here, from `lucide-react-native/icons/<its-file-name>`, and import
  * it from this file.
  */
@@ -32,6 +32,7 @@ export { default as ChevronDown } from 'lucide-react-native/icons/chevron-down';
 export { default as ChevronLeft } from 'lucide-react-native/icons/chevron-left';
 export { default as ChevronRight } from 'lucide-react-native/icons/chevron-right';
 export { default as ChevronUp } from 'lucide-react-native/icons/chevron-up';
+export { default as CircleAlert } from 'lucide-react-native/icons/circle-alert';
 export { default as CircleDashed } from 'lucide-react-native/icons/circle-dashed';
 export { default as CircleDot } from 'lucide-react-native/icons/circle-dot';
 export { default as CirclePause } from 'lucide-react-native/icons/circle-pause';

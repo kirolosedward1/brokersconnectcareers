@@ -222,6 +222,7 @@ function BoardHeader({
           selected={inSheet > 0}
           icon={<SlidersHorizontal size={14} color={inSheet ? colors.primaryForeground : colors.foreground} />}
           onPress={onFilters}
+          feedback={false}
         />
       </View>
 
@@ -345,6 +346,7 @@ function EmptyBoard({
                     key={filter.key}
                     label={t('withoutFilter', { name: labelFor(filter), count })}
                     onPress={() => apply({ ...filters, ...filter.without })}
+                    feedback={false}
                   />
                 ))}
               </View>

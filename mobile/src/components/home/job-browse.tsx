@@ -9,6 +9,7 @@ import { ForwardChevron } from '~/components/ui/icons';
 import { SectionHeader } from '~/components/ui/section-header';
 import { Text } from '~/components/ui/text';
 import { markupTags } from '~/i18n/rich';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 
@@ -34,6 +35,8 @@ export function JobBrowse({ counts, districts }: { counts: BrowseCounts | undefi
   const tTrack = useTranslations('track');
   const tCompanyType = useTranslations('companyType');
   const { colors, shadow } = useTheme();
+  // A place's name in full at the accessibility sizes, on as many lines as it takes.
+  const large = useLargeText();
 
   if (!counts || counts.total === 0) return null;
 
@@ -121,11 +124,12 @@ export function JobBrowse({ counts, districts }: { counts: BrowseCounts | undefi
                     alignItems: 'center',
                     gap: space[3],
                     alignSelf: 'stretch',
+                    paddingVertical: large ? space[2] : 0,
                     borderTopWidth: index === 0 ? 0 : StyleSheet.hairlineWidth * 2,
                     borderTopColor: colors.border,
                   }}
                 >
-                  <Text weight="medium" numberOfLines={1} style={{ flex: 1 }}>
+                  <Text weight="medium" numberOfLines={large ? undefined : 1} style={{ flex: 1 }}>
                     {row.label}
                   </Text>
                   <View style={{ minWidth: 28, paddingHorizontal: space[2], paddingVertical: 2, ...corner('full'), backgroundColor: colors.secondary, alignItems: 'center' }}>

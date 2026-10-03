@@ -1,4 +1,4 @@
-import type { ViewStyle } from 'react-native';
+import { Platform, type ViewStyle } from 'react-native';
 
 /**
  * The app's design tokens.
@@ -81,7 +81,7 @@ export const palette = {
     border: '#272B33',
     input: '#6F7480',
     brandCyan: '#5CE1E6',
-    raised: '#2B303A',
+    raised: '#353B47',
     champagne: '#D8BC86',
     champagnePressed: '#E6CC99',
     champagneForeground: '#17120A',
@@ -115,6 +115,24 @@ export const shadows = {
 } as const;
 
 export type Shadows = { [K in keyof (typeof shadows)['light']]: string };
+
+/**
+ * The card's shadow for what repeats down a list — cards, and the buttons on
+ * them — drawn as iOS draws a shadow cheaply: one shadow on the view's own
+ * layer, whose path React Native computes from its opaque fill and corners.
+ * `boxShadow` adds a layer per shadow with a mask instead, rendered
+ * off-screen and rebuilt on every layout and press: fine once on a screen,
+ * too much on every row of a list. Only on a view with an opaque background.
+ * Other platforms keep `boxShadow`. In dark there is none: the faint inset
+ * line it stands for is not visible on a row.
+ */
+export const lifts: { [S in keyof typeof shadows]: ViewStyle } = {
+  light:
+    Platform.OS === 'ios'
+      ? { shadowColor: '#121620', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } }
+      : { boxShadow: shadows.light.card },
+  dark: Platform.OS === 'ios' ? {} : { boxShadow: shadows.dark.card },
+};
 
 /**
  * Corners, drawn as Apple draws its own (`continuous`, a squircle rather than a

@@ -17,11 +17,15 @@ type Props = TextProps & {
  * Native mirrors left to right, so Arabic sits at the right edge and a Latin
  * company name inside an Arabic list does too — as the website's `text-start`.
  */
-export function Text({ variant = 'body', weight = 'regular', tone = 'foreground', style, ...props }: Props) {
+export function Text({ variant = 'body', weight = 'regular', tone = 'foreground', style, maxFontSizeMultiplier, ...props }: Props) {
   const { colors } = useTheme();
   return (
     <NativeText
       {...props}
+      // The display size grows to twice itself and stops, as iOS's own large
+      // titles stop: beyond that a headline's longest word is wider than the
+      // phone and breaks mid-word, which Arabic's joined letters cannot take.
+      maxFontSizeMultiplier={maxFontSizeMultiplier ?? (variant === 'display' ? 2 : undefined)}
       style={[{ fontFamily: font[weight], color: colors[tone], textAlign: 'left' }, scale[variant], style]}
     />
   );

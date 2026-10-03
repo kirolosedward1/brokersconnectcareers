@@ -226,7 +226,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               hitSlop={{ top: 10, bottom: 10 }}
               style={{ flex: 1, minHeight: 24, justifyContent: 'center' }}
             >
-              <View style={{ height: 4, ...corner('full'), backgroundColor: index <= step ? colors.primary : colors.border }} />
+              <View style={{ height: 4, ...corner('full'), backgroundColor: index <= step ? colors.primary : colors.input }} />
             </Pressable>
           ))}
         </View>

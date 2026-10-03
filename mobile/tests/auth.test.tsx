@@ -1,7 +1,7 @@
 import { Alert, BackHandler, Platform, Text } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
 import { PendingPath } from '~/components/navigation/pending-path';
@@ -425,9 +425,13 @@ describe('onboarding', () => {
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.fullName), 'سارة عادل');
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
     // Who sees the directory card is asked, one choice among three, with none made for them.
-    expect(screen.getByLabelText(ar.onboarding.visibilityQuestion).props.accessibilityRole).toBe('radiogroup');
+    const visibility = screen.getByLabelText(ar.onboarding.visibilityQuestion);
+    expect(visibility.props.accessibilityRole).toBe('radiogroup');
     const hidden = screen.getByRole('radio', { name: `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}` });
-    expect(screen.getAllByRole('radio').filter((radio) => radio.props.accessibilityState?.checked).length).toBe(1); // the role only
+    expect(within(visibility).getAllByRole('radio')).toHaveLength(3);
+    expect(within(visibility).queryAllByRole('radio', { checked: true })).toHaveLength(0);
+    // The language is a choice of its own, made already: the phone's.
+    expect(screen.getByLabelText(ar.onboarding.locale).props.accessibilityRole).toBe('radiogroup');
     fireEvent.press(hidden);
     fireEvent.press(screen.getByRole('checkbox'));
     await press(ar.onboarding.submit);

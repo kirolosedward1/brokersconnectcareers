@@ -172,6 +172,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
                   key={sibling.id}
                   label={withCount(localized(locale, sibling.name_ar, sibling.name_en), count)}
                   onPress={() => open(buildLandingSlug(track, sibling.slug))}
+                  feedback={false}
                 />
               ))}
             </View>
@@ -183,7 +184,12 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
               {siblingTracks.map(({ track: sibling, count }) => (
-                <Chip key={sibling} label={withCount(tTrack(sibling), count)} onPress={() => open(buildLandingSlug(sibling, district.slug))} />
+                <Chip
+                  key={sibling}
+                  label={withCount(tTrack(sibling), count)}
+                  onPress={() => open(buildLandingSlug(sibling, district.slug))}
+                  feedback={false}
+                />
               ))}
             </View>
           </View>

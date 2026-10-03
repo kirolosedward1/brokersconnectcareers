@@ -54,9 +54,10 @@ export function HeaderBell() {
             }}
           >
             <Text
+              variant="label"
               weight="semibold"
               maxFontSizeMultiplier={1.4}
-              style={{ fontSize: 11, lineHeight: 16, color: colors.destructiveForeground }}
+              style={{ color: colors.destructiveForeground }}
             >
               {unread > 99 ? `${formatNumber(99, locale)}+` : formatNumber(unread, locale)}
             </Text>

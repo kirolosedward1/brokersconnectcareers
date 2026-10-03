@@ -86,37 +86,40 @@ export default function CompanyScreen() {
               ) : null}
             </View>
           </View>
-          <View
-            style={{
-              ...corner('xl'),
-              borderWidth: StyleSheet.hairlineWidth * 2,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-              boxShadow: shadow.card,
-              paddingHorizontal: space[4],
-              paddingVertical: space[2],
-            }}
-          >
-            {company.district ? (
-              <Fact icon={<MapPin size={15} color={colors.gold} />} label={t('location')}>
-                {localized(locale, company.district.name_ar, company.district.name_en)}
-              </Fact>
-            ) : null}
-            {company.headcount_band ? (
-              <Fact icon={<Users size={15} color={colors.gold} />} label={t('headcount')}>
-                {t(`headcountBand.${company.headcount_band}`)}
-              </Fact>
-            ) : null}
-            {website ? (
-              <Fact
-                icon={<Globe size={15} color={colors.gold} />}
-                label={t('website')}
-                onPress={() => Linking.openURL(website).catch(() => {})}
-              >
-                {website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-              </Fact>
-            ) : null}
-          </View>
+          {/* Nothing to state, no card: an empty one read as something missing. */}
+          {company.district || company.headcount_band || website ? (
+            <View
+              style={{
+                ...corner('xl'),
+                borderWidth: StyleSheet.hairlineWidth * 2,
+                borderColor: colors.border,
+                backgroundColor: colors.card,
+                boxShadow: shadow.card,
+                paddingHorizontal: space[4],
+                paddingVertical: space[2],
+              }}
+            >
+              {company.district ? (
+                <Fact icon={<MapPin size={15} color={colors.mutedForeground} />} label={t('location')}>
+                  {localized(locale, company.district.name_ar, company.district.name_en)}
+                </Fact>
+              ) : null}
+              {company.headcount_band ? (
+                <Fact icon={<Users size={15} color={colors.mutedForeground} />} label={t('headcount')}>
+                  {t(`headcountBand.${company.headcount_band}`)}
+                </Fact>
+              ) : null}
+              {website ? (
+                <Fact
+                  icon={<Globe size={15} color={colors.mutedForeground} />}
+                  label={t('website')}
+                  onPress={() => Linking.openURL(website).catch(() => {})}
+                >
+                  {website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                </Fact>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         {/* Tell me when this brokerage posts — a candidate's, or the way into an account. */}
@@ -193,10 +196,13 @@ function Fact({
   children: string;
   onPress?: () => void;
 }) {
+  // The value wraps under its label when the two do not fit side by side, at
+  // the larger text sizes: beside it, it was squeezed to nothing. The label is
+  // read as part of the value, once.
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], minHeight: 40 }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[3], rowGap: 2, minHeight: 40, paddingVertical: space[1] }}>
       {icon}
-      <Text variant="small" tone="mutedForeground" style={{ minWidth: 72 }}>
+      <Text variant="small" tone="mutedForeground" accessible={false} style={{ minWidth: 72, flexShrink: 1 }}>
         {label}
       </Text>
       <Text
@@ -206,7 +212,7 @@ function Fact({
         accessibilityLabel={`${label}: ${children}`}
         accessibilityRole={onPress ? 'link' : undefined}
         onPress={onPress}
-        style={{ flex: 1 }}
+        style={{ flexGrow: 1, flexShrink: 1, flexBasis: 160 }}
       >
         {children}
       </Text>

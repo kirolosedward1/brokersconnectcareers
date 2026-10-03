@@ -26,13 +26,14 @@ export function Card({
   onAccessibilityAction?: (event: AccessibilityActionEvent) => void;
   style?: ViewStyle;
 }) {
-  const { colors, shadow } = useTheme();
+  const { colors, lift } = useTheme();
   const base: ViewStyle = {
     borderWidth: StyleSheet.hairlineWidth * 2,
     borderColor: colors.border,
     ...corner('xl'),
     backgroundColor: colors.card,
-    boxShadow: shadow.card,
+    // The cheap shadow (tokens.ts, `lifts`): cards are the rows of every long list.
+    ...lift,
     padding: space[4],
   };
 

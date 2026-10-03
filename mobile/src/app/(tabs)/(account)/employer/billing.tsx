@@ -1,4 +1,4 @@
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
@@ -18,7 +18,7 @@ import { useBilling, useClaimFreePost } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 /**
  * The company's balance — the website's /employer/billing, read-only: the
@@ -102,7 +102,8 @@ export default function BillingScreen() {
             <Text weight="semibold" accessibilityRole="header">
               {t('billing.orders')}
             </Text>
-            <View style={{ ...corner('xl'), borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+            {/* One card, the orders its rows: the same surface as the credits above it. */}
+            <Card style={{ padding: 0 }}>
               {billing.data.orders.map((order, index) => (
                 <View
                   key={order.id}
@@ -111,7 +112,7 @@ export default function BillingScreen() {
                     alignItems: 'center',
                     gap: space[3],
                     padding: space[4],
-                    borderTopWidth: index ? 1 : 0,
+                    borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
                     borderTopColor: colors.border,
                   }}
                 >
@@ -129,7 +130,7 @@ export default function BillingScreen() {
                   />
                 </View>
               ))}
-            </View>
+            </Card>
           </View>
         ) : null}
       </ScrollView>

@@ -23,7 +23,7 @@ type Props = Omit<PressableProps, 'children'> & {
  * surface with a hairline; ghost is the label alone.
  */
 export function Button({ label, variant = 'primary', size = 'default', loading = false, icon, disabled, style, ...props }: Props) {
-  const { colors, shadow, scheme } = useTheme();
+  const { colors, lift, scheme } = useTheme();
   const height = size === 'sm' ? 36 : size === 'lg' ? 56 : hitTarget + 4;
 
   const fill = {
@@ -37,7 +37,8 @@ export function Button({ label, variant = 'primary', size = 'default', loading =
 
   const inactive = disabled || loading;
   // The primary button sits on the page in light; in dark, its fill is the lift.
-  const lifted = variant === 'primary' && scheme === 'light' && !inactive;
+  // A small one beside other controls stays flat: it repeats down lists (the applicants').
+  const lifted = variant === 'primary' && scheme === 'light' && !inactive && size !== 'sm';
 
   return (
     <PressableScale
@@ -58,7 +59,7 @@ export function Button({ label, variant = 'primary', size = 'default', loading =
           justifyContent: 'center',
           opacity: inactive && !loading ? 0.45 : 1,
         },
-        lifted ? { boxShadow: shadow.card } : null,
+        lifted ? lift : null,
         typeof style === 'function' ? style(state) : style,
       ]}
     >

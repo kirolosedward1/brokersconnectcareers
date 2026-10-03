@@ -1,5 +1,6 @@
-import { useWindowDimensions, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { haptic } from '~/lib/haptics';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 import { PressableScale } from './pressable-scale';
@@ -29,8 +30,8 @@ export function Segmented<T extends string>({
   value: T;
   onChange: (value: T) => void;
 }) {
-  const { colors, shadow, scheme } = useTheme();
-  const large = useWindowDimensions().fontScale >= 1.4;
+  const { colors, shadow } = useTheme();
+  const large = useLargeText();
 
   if (large) {
     return (
@@ -59,7 +60,7 @@ export function Segmented<T extends string>({
         padding: 3,
         gap: 2,
         ...corner('full'),
-        backgroundColor: scheme === 'dark' ? colors.card : colors.secondary,
+        backgroundColor: colors.secondary,
       }}
     >
       {options.map((option) => {
@@ -74,15 +75,20 @@ export function Segmented<T extends string>({
               if (!checked) haptic.selection();
               onChange(option.value);
             }}
+            // 36 points and the slop: the 44 a finger needs.
             hitSlop={{ top: 4, bottom: 4 }}
             scaleTo={0.96}
             style={{
               flexGrow: 1,
-              minHeight: 34,
+              minHeight: 36,
               alignItems: 'center',
               justifyContent: 'center',
               paddingHorizontal: space[3],
               ...corner('full'),
+              // The chosen one is edged as well as raised: its fill alone is
+              // barely lighter than the track (1.2:1), the edge 3:1 against it.
+              borderWidth: StyleSheet.hairlineWidth * 2,
+              borderColor: checked ? colors.input : 'transparent',
               backgroundColor: checked ? colors.raised : 'transparent',
               boxShadow: checked ? shadow.card : undefined,
             }}

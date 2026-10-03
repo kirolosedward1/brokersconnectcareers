@@ -13,6 +13,7 @@ import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
+import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
 import { Select } from '~/components/ui/select';
@@ -460,8 +461,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
           gap: space[2],
           padding: space[6],
           ...corner('xl'),
-          borderWidth: 1,
-          borderColor: colors.success,
+          // A soft tint of its meaning, as a Notice is, not an outline in it.
           backgroundColor: colors.successMuted,
         }}
       >
@@ -474,7 +474,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
         </Text>
       </View>
 
-      <View style={{ ...corner('xl'), borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+      <Card style={{ padding: 0 }}>
         {rows.map(([label, value], index) => (
           <View
             key={label}
@@ -483,7 +483,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
               justifyContent: 'space-between',
               gap: space[4],
               padding: space[4],
-              borderTopWidth: index ? 1 : 0,
+              borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
               borderTopColor: colors.border,
             }}
           >
@@ -495,7 +495,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
             </Text>
           </View>
         ))}
-      </View>
+      </Card>
 
       <View style={{ gap: space[2] }}>
         <Button label={t('apply.viewApplications')} onPress={() => router.navigate('/dashboard/applications')} />

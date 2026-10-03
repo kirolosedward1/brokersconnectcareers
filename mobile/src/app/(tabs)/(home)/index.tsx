@@ -118,6 +118,8 @@ function MarketHome() {
             placeholder={name ? t('home.searchPlaceholder') : t('landingPage.hero.searchPlaceholder')}
             accessibilityLabel={t('landingPage.hero.searchLabel')}
             leading={<Search size={18} color={colors.mutedForeground} />}
+            // The panel is the brand colour: a ring in it would vanish into it.
+            focusColor={colors.champagne}
           />
           <Button
             label={name ? t('home.searchButton') : t('landingPage.hero.cta')}

@@ -162,13 +162,17 @@ export default function InboxScreen() {
         </View>
 
         {/* Where they stand, counted under the same filters. */}
+        {/* One stage at a time: a radio group, as VoiceOver should say it. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('employer.stageFilter')}
           contentContainerStyle={{ gap: space[2] }}
         >
           <Chip
+            radio
             label={`${t('filters.any')} (${formatNumber(inbox.data?.any ?? 0, locale)})`}
             selected={!filters.stage}
             onPress={() => setFilter({ stage: undefined })}
@@ -176,6 +180,7 @@ export default function InboxScreen() {
           {STAGES.map((stage) => (
             <Chip
               key={stage}
+              radio
               label={`${t(`applicationStatus.${stage}`)} (${formatNumber(inbox.data?.counts[stage] ?? 0, locale)})`}
               selected={filters.stage === stage}
               onPress={() => setFilter({ stage })}

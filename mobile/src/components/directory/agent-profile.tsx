@@ -13,6 +13,7 @@ import { ReportButton } from '~/components/moderation/report';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
+import { Card } from '~/components/ui/card';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { recordAgentView, useAgentPage } from '~/features/directory/queries';
@@ -20,7 +21,7 @@ import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 /**
  * One consultant's page — the website's /agents/<slug>, for the directory's
@@ -105,16 +106,7 @@ export function AgentProfile({ handle }: { handle: string }) {
       >
         {/* The owner sees everything; what they need to know is what everybody else sees. */}
         {isOwner ? (
-          <View
-            style={{
-              gap: space[1],
-              padding: space[4],
-              ...corner('xl'),
-              borderWidth: 1,
-              borderColor: colors.primary,
-              backgroundColor: colors.secondary,
-            }}
-          >
+          <Card style={{ gap: space[1] }}>
             <Text variant="small" weight="semibold">
               {t('agents.ownerBanner')}
             </Text>
@@ -135,7 +127,7 @@ export function AgentProfile({ handle }: { handle: string }) {
             >
               {t('agents.ownerEdit')}
             </Text>
-          </View>
+          </Card>
         ) : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[4] }}>
@@ -187,17 +179,9 @@ export function AgentProfile({ handle }: { handle: string }) {
             </View>
           ) : null
         ) : (
-          // Locked to this company: why, and the way to open it.
-          <View
-            style={{
-              gap: space[3],
-              padding: space[4],
-              ...corner('xl'),
-              borderWidth: 1,
-              borderColor: colors.primary,
-              backgroundColor: colors.secondary,
-            }}
-          >
+          // Locked to this company: why, and the way to open it. The card's own
+          // surface; the shield carries the meaning, not an outline.
+          <Card style={{ gap: space[3] }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
               <ShieldCheck size={18} color={colors.primary} />
               <Text weight="medium" style={{ flexShrink: 1 }}>
@@ -210,7 +194,7 @@ export function AgentProfile({ handle }: { handle: string }) {
             <View style={{ alignItems: 'flex-start' }}>
               <Button label={t('agents.lockedCta')} onPress={() => router.navigate(routeInside('/employer/company', actor) as never)} />
             </View>
-          </View>
+          </Card>
         )}
 
         <View style={{ gap: space[5] }}>

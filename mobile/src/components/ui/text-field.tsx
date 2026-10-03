@@ -13,12 +13,18 @@ import { corner, font, hitTarget, space, type as scale } from '~/theme/tokens';
  * or a link: typed and read left to right, from the left edge, whatever the
  * language around it. (With the layout mirrored, the physical left is 'right'.)
  */
-export const TextField = forwardRef<TextInput, TextInputProps & { leading?: ReactNode; ltr?: boolean }>(function TextField(
-  { leading, ltr = false, style, onFocus, onBlur, ...props },
-  ref,
-) {
+export const TextField = forwardRef<
+  TextInput,
+  TextInputProps & {
+    leading?: ReactNode;
+    ltr?: boolean;
+    /** The focus ring's colour, where the brand colour is the surface around it (Home's panel). */
+    focusColor?: string;
+  }
+>(function TextField({ leading, ltr = false, focusColor, style, onFocus, onBlur, ...props }, ref) {
   const { colors, scheme } = useTheme();
   const [focused, setFocused] = useState(false);
+  const ring = focusColor ?? colors.primary;
 
   return (
     <View
@@ -30,11 +36,11 @@ export const TextField = forwardRef<TextInput, TextInputProps & { leading?: Reac
         paddingHorizontal: space[4] - 2,
         ...corner('lg'),
         borderWidth: 1,
-        borderColor: focused ? colors.primary : colors.input,
+        borderColor: focused ? ring : colors.input,
         backgroundColor: colors.card,
         // The focus ring: the border a little heavier, without moving the text.
         outlineWidth: focused ? 1 : 0,
-        outlineColor: colors.primary,
+        outlineColor: ring,
         outlineStyle: 'solid',
       }}
     >

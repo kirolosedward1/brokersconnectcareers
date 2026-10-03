@@ -186,12 +186,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-splash-screen',
       {
-        // The theme's page colours (src/theme/tokens.ts), so the launch screen
-        // gives way to the first screen without a change of tone.
+        // The light page colour (src/theme/tokens.ts), so the launch screen
+        // gives way to the first screen without a change of tone. Light only:
+        // the app opens light whatever the phone's setting until the reader
+        // picks otherwise in Account (src/theme/provider.tsx), and a dark
+        // launch screen on a dark phone flashed into the light app.
         backgroundColor: '#F6F4F0',
         image: './assets/images/splash-icon.png',
         imageWidth: 76,
-        dark: { backgroundColor: '#0A0C10', image: './assets/images/splash-icon.png' },
       },
     ],
     // The session key sits in the keychain without a biometric gate. The Face

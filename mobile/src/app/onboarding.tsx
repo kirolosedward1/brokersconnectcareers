@@ -408,9 +408,13 @@ function OnboardingForm({
         {/* Each language in its own name: this picks the language of the emails,
             and somebody who cannot read the current one has to find theirs. */}
         <Field label={t('onboarding.locale')}>
-          <View style={{ flexDirection: 'row', gap: space[2] }}>
-            <Chip label="العربية" selected={profileLocale === 'ar'} onPress={() => setProfileLocale('ar')} />
-            <Chip label="English" selected={profileLocale === 'en'} onPress={() => setProfileLocale('en')} />
+          <View
+            accessibilityRole="radiogroup"
+            accessibilityLabel={t('onboarding.locale')}
+            style={{ flexDirection: 'row', gap: space[2] }}
+          >
+            <Chip radio label="العربية" selected={profileLocale === 'ar'} onPress={() => setProfileLocale('ar')} />
+            <Chip radio label="English" selected={profileLocale === 'en'} onPress={() => setProfileLocale('en')} />
           </View>
         </Field>
 

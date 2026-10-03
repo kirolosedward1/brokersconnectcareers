@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { X } from '~/components/ui/lucide';
 import { haptic } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
-import { corner, space } from '~/theme/tokens';
+import { space } from '~/theme/tokens';
 import { PressableScale } from './pressable-scale';
 import { Text } from './text';
 
@@ -19,6 +19,10 @@ import { Text } from './text';
  * rather than a button that is selected.
  *
  * At least 36 points tall, with the slop taking the target to 44.
+ *
+ * A choice clicks (a light haptic) as it is made; not the option already
+ * chosen of a single choice, which changes nothing, and not a chip that
+ * opens or drops something (`feedback={false}`: Filters, "without X").
  */
 export function Chip({
   label,
@@ -29,6 +33,7 @@ export function Chip({
   disabled = false,
   accessibilityLabel,
   icon,
+  feedback = !removable,
 }: {
   label: string;
   onPress: () => void;
@@ -39,6 +44,8 @@ export function Chip({
   disabled?: boolean;
   accessibilityLabel?: string;
   icon?: ReactNode;
+  /** Whether pressing it clicks: a choice does; a chip that opens or drops something does not. */
+  feedback?: boolean;
 }) {
   const { colors } = useTheme();
   const solid = selected && !removable;
@@ -50,8 +57,7 @@ export function Chip({
       accessibilityState={removable ? undefined : radio ? { checked: selected, disabled } : { selected, disabled }}
       accessibilityLabel={accessibilityLabel ?? label}
       onPress={() => {
-        // A choice clicks; dropping an active filter does not.
-        if (!removable) haptic.selection();
+        if (feedback && !(radio && selected)) haptic.selection();
         onPress();
       }}
       disabled={disabled}
@@ -63,9 +69,14 @@ export function Chip({
         alignItems: 'center',
         gap: space[1] + 2,
         paddingHorizontal: space[3] + 2,
-        ...corner('full'),
-        borderWidth: solid || removable ? 0 : StyleSheet.hairlineWidth * 2,
-        borderColor: colors.border,
+        // A capsule on one line. Not corner('full'): a label wrapped at the
+        // largest text sizes would make the radius half the chip's height, and
+        // the ends of its lines would fall outside the fill.
+        borderRadius: 18,
+        borderCurve: 'continuous',
+        // An active filter is edged at 3:1: its tint alone is barely darker than the page.
+        borderWidth: solid ? 0 : StyleSheet.hairlineWidth * 2,
+        borderColor: removable ? colors.input : colors.border,
         backgroundColor: solid
           ? pressed
             ? colors.primaryPressed

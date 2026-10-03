@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Appearance, useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { palette, shadows, type Colors, type Scheme, type Shadows } from './tokens';
+import type { ViewStyle } from 'react-native';
+import { lifts, palette, shadows, type Colors, type Scheme, type Shadows } from './tokens';
 
 /**
  * Light, dark, or whatever the phone says — the website's three choices, with
@@ -19,6 +20,8 @@ type ThemeState = {
   colors: Colors;
   /** The scheme's depth: a card's shadow, a raised sheet's, the hero's. */
   shadow: Shadows;
+  /** A card's shadow for what repeats down a list (tokens.ts, `lifts`): on an opaque view only. */
+  lift: ViewStyle;
   preference: ThemePreference;
   setPreference: (preference: ThemePreference) => void;
 };
@@ -47,6 +50,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       scheme,
       colors: palette[scheme],
       shadow: shadows[scheme],
+      lift: lifts[scheme],
       preference,
       setPreference: (next) => {
         setPreferenceState(next);

@@ -12,6 +12,7 @@ import { Text } from '~/components/ui/text';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { SaveJobIcon, useSaveJob } from '~/components/saved/save-controls';
 import { useCompensationText } from '~/features/jobs/compensation';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 
@@ -29,6 +30,9 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
   const { colors } = useTheme();
   const pay = useCompensationText();
   const save = useSaveJob(job.id);
+  // At the accessibility sizes nothing is cut short: the title and company in
+  // full, and the footer's facts above the date rather than squeezed by it.
+  const large = useLargeText();
 
   const closed = !jobIsLive(job);
   const title = localized(locale, job.title_ar, job.title_en);
@@ -47,21 +51,26 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
       onAccessibilityAction={(event) => {
         if (event.nativeEvent.actionName === 'save') save.toggle();
       }}
-      style={closed ? { opacity: 0.72 } : undefined}
     >
       <View style={{ flexDirection: 'row', gap: space[3] }}>
         <CompanyLogo name={company} logoUrl={job.company.logo_url} seed={job.company.slug} size="sm" />
 
         <View style={{ flex: 1, gap: 2 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[2] }}>
-            <Text variant="headline" weight="semibold" numberOfLines={2} style={{ flex: 1 }}>
+            <Text
+              variant="headline"
+              weight="semibold"
+              tone={closed ? 'mutedForeground' : 'foreground'}
+              numberOfLines={large ? undefined : 2}
+              style={{ flex: 1 }}
+            >
               {title}
             </Text>
             {save.savable ? <SaveJobIcon save={save} /> : null}
           </View>
 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[1], rowGap: 2 }}>
-            <Text variant="small" weight="medium" numberOfLines={1} style={{ flexShrink: 1 }}>
+            <Text variant="small" weight="medium" numberOfLines={large ? undefined : 1} style={{ flexShrink: 1 }}>
               {company}
             </Text>
             {job.company.verification_status === 'verified' ? (
@@ -109,15 +118,17 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
       <View
         style={{
           flexDirection: 'row',
+          flexWrap: 'wrap',
           alignItems: 'center',
-          gap: space[3],
+          columnGap: space[3],
+          rowGap: 2,
           marginTop: space[3],
           paddingTop: space[3],
           borderTopWidth: StyleSheet.hairlineWidth * 2,
           borderTopColor: colors.border,
         }}
       >
-        <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }}>
+        <Text variant="caption" tone="mutedForeground" style={{ flexGrow: 1, flexShrink: 1, flexBasis: 160 }}>
           {[
             t(`track.${job.track}`),
             t(`experienceBand.${job.experience_band}`),
