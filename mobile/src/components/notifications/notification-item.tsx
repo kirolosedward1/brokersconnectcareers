@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import {
   BadgeCheck,
+  BadgeX,
   Ban,
   Bell,
   Briefcase,
@@ -63,6 +64,7 @@ const ICONS: Record<NotificationKind, ComponentType<LucideProps>> = {
   account_held: CirclePause,
   appeal_decided: Scale,
   new_jobs: Briefcase,
+  company_verification_revoked: BadgeX,
 };
 
 type Tone = 'success' | 'primary' | 'muted' | 'destructive' | 'warning';
@@ -92,6 +94,7 @@ const TONES: Record<NotificationKind, Tone> = {
   account_held: 'warning',
   appeal_decided: 'primary',
   new_jobs: 'primary',
+  company_verification_revoked: 'destructive',
 };
 
 function toneColors(tone: Tone, colors: Colors): { background: string; foreground: string } {

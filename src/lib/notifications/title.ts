@@ -45,6 +45,7 @@ const KNOWN: Record<NotificationKind, true> = {
   account_held: true,
   appeal_decided: true,
   new_jobs: true,
+  company_verification_revoked: true,
 };
 
 /**

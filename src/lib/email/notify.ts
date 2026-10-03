@@ -1425,6 +1425,87 @@ export async function notifyCompanyVerification(
   }
 }
 
+/**
+ * Employer: a moderator took the company's verification away (the console's
+ * "revoke"). Every member, as for the other verification decisions; the bell
+ * says it too (migration 348). Not the moderator's reason, which the console
+ * keeps: the message says where to ask.
+ */
+export async function notifyCompanyVerificationRevoked(
+  companyId: string,
+  /** A retry's own member (rebuild.ts). */
+  only?: string | null,
+): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+
+    const { data: company, error: companyError } = await admin
+      .from('companies')
+      .select('id, slug, name_ar, name_en, logo_url, version, verification_status')
+      .eq('id', companyId)
+      .maybeSingle();
+    if (companyError) readFailed('company', companyError);
+    if (!company) return 'skipped';
+    // The decision must still stand: verified again since, it is not news.
+    if (company.verification_status === 'verified') return 'skipped';
+
+    // The revocation this is about, as the console recorded it: its id keys
+    // the message, so a company verified again and revoked again hears again,
+    // and a retry of this one is the same message.
+    const { data: decision, error: decisionError } = await admin
+      .from('admin_audit_log')
+      .select('id')
+      .eq('target_type', 'company')
+      .eq('target_id', companyId)
+      .in('action', ['company.revoke'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (decisionError) readFailed('company decision', decisionError);
+    const round = decision ? `d${decision.id}` : `v${company.version}`;
+
+    return forEachMember(
+      admin,
+      companyId,
+      async (memberId) => {
+        const to = await recipient(admin, memberId, null);
+        if (!to) return 'skipped';
+
+        const t = copyFor(to.locale).companyVerificationRevoked;
+        const name = localized(to.locale, company.name_ar, company.name_en);
+
+        return deliver({
+          template: 'company_verification_revoked',
+          to: to.email,
+          userId: memberId,
+          dedupeKey: `company_verification_revoked:${companyId}:${round}:${memberId}`,
+          entity: { type: 'company', id: companyId },
+          envelope: buildEnvelope({
+            audience: audienceOf(to, null),
+            subject: t.subject,
+            preheader: t.preheader,
+            heading: t.heading,
+            blocks: [
+              { kind: 'text', value: t.body(name) },
+              {
+                kind: 'company',
+                name,
+                logoUrl: trustedLogoUrl(company.logo_url, process.env.NEXT_PUBLIC_SUPABASE_URL),
+                href: `${env.siteUrl}/companies/${company.slug}`,
+              },
+              { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/company` },
+            ],
+          }),
+        });
+      },
+      only,
+    );
+  } catch (error) {
+    console.warn('[email] verification revoked notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Optional
 // ---------------------------------------------------------------------------

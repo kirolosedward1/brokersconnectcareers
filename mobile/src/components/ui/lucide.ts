@@ -11,6 +11,7 @@ export { default as AlertTriangle } from 'lucide-react-native/icons/triangle-ale
 export { default as Archive } from 'lucide-react-native/icons/archive';
 export { default as Award } from 'lucide-react-native/icons/award';
 export { default as BadgeCheck } from 'lucide-react-native/icons/badge-check';
+export { default as BadgeX } from 'lucide-react-native/icons/badge-x';
 export { default as Ban } from 'lucide-react-native/icons/ban';
 export { default as Banknote } from 'lucide-react-native/icons/banknote';
 export { default as Bell } from 'lucide-react-native/icons/bell';

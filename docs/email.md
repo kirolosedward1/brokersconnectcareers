@@ -87,6 +87,7 @@ days; a provider's failure reason is stored with any address removed.
 | Listing expiring / expired (nightly cron) | `job_expiring` / `job_expired` | preference | `job_*:{job}:{expires_at}` |
 | Employer account approved / rejected | `account_approved` / `account_rejected` | security | `account:{user}:{decision}:{hour}` |
 | Company verified / needs documents | `company_verified` / `company_verification_needed` | transactional | `company_verification:{company}:{bool}` |
+| Company verification revoked | `company_verification_revoked` | transactional | `company_verification_revoked:{company}:{decision}:{member}` |
 | Saved search / followed company (weekly cron) | `saved_search_digest` / `company_follow_digest` | preference | `digest:{search}:{week}` |
 | Daily applicant summary (opt-in) | `applicant_digest` | preference | `applicant_digest:{user}:{day}` |
 

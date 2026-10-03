@@ -321,6 +321,60 @@ report.section('a review that asks for new papers rings the bell');
   );
 }
 
+report.section('a verification taken away rings the bell (348)');
+{
+  const revoked = `select count(*)::int as n from notifications
+                    where user_id = '${employerVerified}' and kind = 'company_verification_revoked'`;
+  const status = { as: null, sql: `select verification_status::text as status from companies where id = '${company}'` };
+  const results = await scenario([
+    { as: null, sql: revoked },
+    status,
+    { as: admin, sql: `select admin_review_company('${company}', 'revoke', 'سجل تجاري منتهي — داخلي') as status` },
+    { as: null, sql: revoked },
+    {
+      as: employerVerified,
+      sql: `select payload, href from notifications
+             where user_id = '${employerVerified}' and kind = 'company_verification_revoked'
+             order by created_at desc limit 1`,
+    },
+    { as: admin, sql: `select admin_review_company('${company}', 'verify') as status` },
+    { as: admin, sql: `select admin_review_company('${company}', 'revoke', 'تعارض في البيانات') as status` },
+    { as: null, sql: revoked },
+  ]);
+  const [start, before, first, once, latest, verified, second, twice] = results;
+  report.check(
+    '(a verified company, and the reviewer revokes it)',
+    before.rows[0]?.status === 'verified' && first.ok && first.rows[0]?.status === 'unverified',
+    JSON.stringify(before.rows[0]) + (first.error ?? ''),
+  );
+  report.check("its members hear it in the bell", once.rows[0]?.n === start.rows[0]?.n + 1, `${start.rows[0]?.n} → ${once.rows[0]?.n}`);
+  const notice = latest.rows[0];
+  report.check(
+    "naming the company and pointing at its page, not quoting the reviewer's reason",
+    Boolean(notice?.payload?.name_ar) && notice?.href === '/employer/company' && !JSON.stringify(notice?.payload ?? {}).includes('داخلي'),
+    JSON.stringify(notice ?? latest.error),
+  );
+  report.check(
+    'verified again and revoked again, it is told again',
+    verified.ok && second.ok && twice.rows[0]?.n === start.rows[0]?.n + 2,
+    `${once.rows[0]?.n} → ${twice.rows[0]?.n} ${verified.error ?? ''} ${second.error ?? ''}`,
+  );
+
+  // The database itself moving a verified company back (no reviewer): not a
+  // decision, so not told as one.
+  const quiet = await scenario([
+    { as: null, sql: revoked },
+    { as: null, sql: `update companies set verification_status = 'unverified' where id = '${company}' returning id` },
+    { as: null, sql: revoked },
+  ]);
+  const [quietBefore, moved, quietAfter] = quiet;
+  report.check(
+    'the database unverifying a company on its own tells it nothing',
+    moved.rows.length === 1 && quietAfter.rows[0]?.n === quietBefore.rows[0]?.n,
+    `${quietBefore.rows[0]?.n} → ${quietAfter.rows[0]?.n} ${moved.error ?? ''}`,
+  );
+}
+
 report.section('the profile reminder lists those who asked and have not been told');
 {
   const person = (n, nudge, days) => {

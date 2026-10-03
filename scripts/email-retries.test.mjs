@@ -13,8 +13,14 @@
 process.env.NEXT_PUBLIC_SITE_URL = 'https://brokers.example';
 process.env.NEXT_PUBLIC_SUPABASE_URL ??= 'https://abcdefghijklmnopqrst.supabase.co';
 
-const { notifyAccountDecision, notifyCandidateOfStatus, notifyCompanyVerification, notifyEmployerOfModeration, notifyVisibilityChanged } =
-  await import('../src/lib/email/notify.ts');
+const {
+  notifyAccountDecision,
+  notifyCandidateOfStatus,
+  notifyCompanyVerification,
+  notifyCompanyVerificationRevoked,
+  notifyEmployerOfModeration,
+  notifyVisibilityChanged,
+} = await import('../src/lib/email/notify.ts');
 const { REBUILDERS } = await import('../src/lib/email/rebuild.ts');
 const { sweepOutbox } = await import('../src/lib/jobs/outbox-sweep.ts');
 
@@ -304,6 +310,42 @@ section("a refusal retried quotes the moderator's reason from where the database
   ok('before it, from the listing itself', before.outcome === 'sent' && before.text.includes(REASON), before.outcome);
   const unread = await retried({ table: () => ({ data: null, error: { code: '57014', message: 'canceling statement due to statement timeout' } }) });
   ok('a reason that cannot be read fails the send, to be tried again, rather than sending it without', unread.outcome === 'failed', unread.outcome);
+}
+
+section('a verification taken away is told once per revocation, while it stands, and without its reason');
+{
+  reset();
+  globalThis.__db = {
+    companies: [
+      { id: 'C', slug: 'al-rowad', name_ar: 'الرواد', name_en: 'Al Rowad', logo_url: null, version: 4, verification_status: 'unverified' },
+    ],
+    admin_audit_log: [
+      { id: 41, target_type: 'company', target_id: 'C', action: 'company.revoke', reason: 'Register expired (internal)', created_at: '2026-10-03T10:00:00Z' },
+    ],
+    company_members: [{ company_id: 'C', user_id: 'M1' }, { company_id: 'C', user_id: 'M2' }],
+    profiles: ['M1', 'M2'].map((id) => ({ id, locale: 'en', role: 'employer', notify_status: true })),
+    profile_private: ['M1', 'M2'].map((user_id) => ({ user_id, unsubscribe_token: `t-${user_id}` })),
+  };
+  const sentTo = (who) => mail.sends.filter((send) => send.to.startsWith(`${who}@`) && send.outcome === 'sent').length;
+
+  const first = await notifyCompanyVerificationRevoked('C');
+  ok('every member is told', first === 'sent' && sentTo('M1') === 1 && sentTo('M2') === 1, `${first} M1:${sentTo('M1')} M2:${sentTo('M2')}`);
+  ok("without the reason the console keeps", !mail.sends.some((send) => send.text.includes('internal')));
+  const again = await notifyCompanyVerificationRevoked('C');
+  ok('one revocation published twice is one message each', again === 'skipped' && sentTo('M1') === 1, again);
+
+  // Verified again since: a retry of the old revocation is not news.
+  globalThis.__db.companies[0].verification_status = 'verified';
+  const stale = await REBUILDERS.company_verification_revoked('C', 'M1');
+  ok('a retry after the company was verified again is not sent', stale === 'skipped' && sentTo('M1') === 1, stale);
+
+  // Revoked again: a new decision, told again.
+  globalThis.__db.companies[0].verification_status = 'unverified';
+  globalThis.__db.admin_audit_log.push(
+    { id: 57, target_type: 'company', target_id: 'C', action: 'company.revoke', reason: 'Second look', created_at: '2026-10-05T10:00:00Z' },
+  );
+  const second = await notifyCompanyVerificationRevoked('C');
+  ok('revoked a second time, it is told again', second === 'sent' && sentTo('M1') === 2 && sentTo('M2') === 2, `${second} M1:${sentTo('M1')}`);
 }
 
 section('a move the bell calls no news is not emailed, whatever the outbox still holds');

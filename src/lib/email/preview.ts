@@ -445,6 +445,21 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
+  company_verification_revoked: (f) => {
+    const w = words(f);
+    const t = copyFor(f.locale).companyVerificationRevoked;
+    return {
+      subject: t.subject,
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.body(w.company) },
+        { kind: 'company', name: w.company, href: `${env.siteUrl}/companies/example` },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/company` },
+      ],
+    };
+  },
+
   saved_search_digest: (f) => {
     const w = words(f);
     const t = copyFor(f.locale).digest;

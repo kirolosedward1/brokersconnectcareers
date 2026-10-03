@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import {
   BadgeCheck,
+  BadgeX,
   Ban,
   Bell,
   Briefcase,
@@ -60,6 +61,7 @@ const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }
   account_held: CirclePause,
   appeal_decided: Scale,
   new_jobs: Briefcase,
+  company_verification_revoked: BadgeX,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -88,6 +90,7 @@ const TONES: Record<NotificationKind, string> = {
   account_held: 'bg-warning-muted text-warning',
   appeal_decided: 'bg-primary/10 text-primary',
   new_jobs: 'bg-primary/10 text-primary',
+  company_verification_revoked: 'bg-destructive-muted text-destructive',
 };
 
 export async function NotificationItem({

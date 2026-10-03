@@ -1657,6 +1657,7 @@
     "job_expiring": "إعلان {subject} هيخلص خلال أيام",
     "job_expired": "إعلان {subject} خلص — انشره تاني عشان تكمّل تعيين",
     "company_verification_needed": "{subject} محتاجة مستندات إضافية للتوثيق",
+    "company_verification_revoked": "تم إلغاء توثيق {subject}",
     "profile_visibility_changed": "إعدادات ظهور ملفك اتغيّرت",
     "profileVisibilityChanged": "ظهور ملفك دلوقتي: {visibility}",
     "password_changed": "كلمة السر بتاعتك اتغيّرت",

@@ -224,10 +224,13 @@ export async function reviewCompany(input: unknown): Promise<AdminResult> {
 
   // A company waiting on its review has no other way to hear the outcome. A
   // request for changes is told the same way as a rejection — with the note,
-  // which is the part they act on.
+  // which is the part they act on. A revocation is told without it: the badge
+  // went, and where to send papers again (the console keeps the reason).
   if (decision === 'verify') {
     after(() => publish({ type: 'COMPANY_VERIFIED', companyId }));
-  } else if (decision !== 'revoke') {
+  } else if (decision === 'revoke') {
+    after(() => publish({ type: 'COMPANY_VERIFICATION_REVOKED', companyId }));
+  } else {
     after(() => publish({ type: 'COMPANY_VERIFICATION_REJECTED', companyId, note }));
   }
 

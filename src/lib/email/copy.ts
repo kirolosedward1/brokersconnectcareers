@@ -287,6 +287,16 @@ export const emailCopy = {
       labelCompany: 'الشركة',
     },
 
+    companyVerificationRevoked: {
+      subject: 'تم إلغاء توثيق شركتك',
+      preheader: 'علامة التوثيق اتشالت من صفحة الشركة.',
+      heading: 'شركتك مابقتش موثّقة',
+      body: (company: string) =>
+        `علامة التوثيق اتشالت من صفحة «${company}» ومن إعلاناتها، ومعاها ملفات المستشارين المخصّصة للشركات الموثّقة. تقدر تطلب التوثيق تاني من صفحة الشركة بسجل تجاري وبطاقة ضريبية ساريين، ولو عندك سؤال ابعتلنا.`,
+      cta: 'افتح صفحة الشركة',
+      labelCompany: 'الشركة',
+    },
+
     // -----------------------------------------------------------------------
     // Optional
     // -----------------------------------------------------------------------
@@ -587,6 +597,16 @@ export const emailCopy = {
         `The document review for "${company}" could not be completed. We need a clear, current commercial register and tax card.`,
       reason: (note: string) => `Note: ${note}`,
       cta: 'Complete the details',
+      labelCompany: 'Company',
+    },
+
+    companyVerificationRevoked: {
+      subject: "Your company's verification was removed",
+      preheader: 'The badge is no longer on your company page.',
+      heading: 'Your company is no longer verified',
+      body: (company: string) =>
+        `The verified badge no longer appears on "${company}"'s page or its listings, and the consultant profiles reserved for verified companies are closed to it. You can ask for verification again from the company page, with a current commercial register and tax card. If you have a question, write to us.`,
+      cta: 'Open the company page',
       labelCompany: 'Company',
     },
 

@@ -1657,6 +1657,7 @@
     "job_expiring": "{subject} ends in a few days",
     "job_expired": "{subject} has ended — repost it to keep hiring",
     "company_verification_needed": "{subject} needs more documents to be verified",
+    "company_verification_revoked": "{subject} is no longer verified",
     "profile_visibility_changed": "Your profile visibility changed",
     "profileVisibilityChanged": "Your profile visibility is now: {visibility}",
     "password_changed": "Your password was changed",

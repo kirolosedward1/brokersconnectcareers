@@ -73,6 +73,8 @@ const KINDS = [
   'appeal_decided',
   // The day's new listings (migrations 333–334).
   'new_jobs',
+  // A company's verification taken away (migration 348).
+  'company_verification_revoked',
 ];
 
 const payload = {

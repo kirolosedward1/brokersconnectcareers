@@ -348,7 +348,9 @@ export type NotificationKind =
   | 'appeal_decided'
   // Migrations 333–334: the day's new listings from a person's saved searches
   // and followed companies (/api/cron/new-jobs).
-  | 'new_jobs';
+  | 'new_jobs'
+  // Migration 348: a moderator took a company's verification away.
+  | 'company_verification_revoked';
 
 /**
  * The payload holds data, never a rendered sentence — the site is read in two
