@@ -218,8 +218,13 @@ fi
 # screen to show every phrase, as macOS's text recognition reads it
 # (screen-check.py compares them), and fails at once on an error state. The
 # screenshot and what was read stay as ipad/<shot>.png and .txt.
+#
+# iPadOS asks before opening the link ("Open in …?") a moment after it opens,
+# sometimes only after Maestro has looked for the question and gone: when the
+# question is what the screen shows, it is answered here (at most three times)
+# and the screen read again.
 see() {
-  local udid="$1" shot="$2" phrase status deadline=$((SECONDS + 90)) args=()
+  local udid="$1" shot="$2" phrase status answered=0 deadline=$((SECONDS + 90)) args=()
   shift 2
   for phrase in "$@"; do args+=(--expect "$phrase"); done
   for phrase in "${refused[@]}"; do args+=(--refuse "$phrase"); done
@@ -232,6 +237,13 @@ see() {
       python3 "$here/screen-check.py" "${args[@]}" < "$out/ipad/$shot.txt" 2> "$out/ipad/why.txt" || status=$?
     fi
     if [ "$status" -eq 0 ]; then echo "$shot: checked"; return 0; fi
+    if [ "$status" -eq 1 ] && [ "$answered" -lt 3 ] &&
+      python3 "$here/screen-check.py" --expect 'فتح في "بروكرز كونكت"؟' < "$out/ipad/$shot.txt" 2> /dev/null; then
+      answered=$((answered + 1))
+      echo "$shot: iPadOS is still asking to open the link; answering it ($answered)"
+      maestro --device "$udid" test "$flows/confirm-link.yaml" >> "$out/ipad/links.log" 2>&1 || true
+      continue
+    fi
     if [ "$status" -eq 2 ] || [ "$SECONDS" -ge "$deadline" ]; then
       echo "$shot: $(cat "$out/ipad/why.txt")"
       return 1
