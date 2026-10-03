@@ -102,9 +102,14 @@ compare with (a new branch), it compares with the previous commit.
   `mobile/src/i18n/messages/`. Numbers inside Arabic sentences are wrapped in
   left-to-right isolates (U+2066…U+2069) — the website's `<v>` tag.
   `@formatjs` polyfills give Hermes Arabic plurals and formatting.
-- **Design.** The website's tokens (`mobile/src/theme/tokens.ts`, from
-  `globals.css`), IBM Plex Sans Arabic 400–700, light by default with light /
-  dark / system as on the site, 44-point touch targets.
+- **Design.** The brand set in a quieter key for the phone
+  (`mobile/src/theme/tokens.ts`): ivory paper with deep sapphire ink in light,
+  near-black with champagne in dark, champagne kept for what has been checked
+  (a verified company); every text pair 4.5:1, marks and field borders 3:1.
+  Cards raised with a hairline and a soft shadow, continuous corners, capsule
+  buttons and chips, a gentle press (none with Reduce Motion), a few haptics
+  (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, light by
+  default with light / dark / system as on the site, 44-point touch targets.
 - **Navigation.** Routes mirror the website's paths. Each tab is a route group
   with its own stack, and listings, company pages and the bell's feed live in
   a group all tabs share, so they open inside the tab the reader is in. The

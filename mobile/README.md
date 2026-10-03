@@ -50,7 +50,7 @@ CI runs both on every pull request that touches `mobile/`, `src/lib/` or
 | `src/features/` | Data hooks: the board, companies, the browse counts, the taxonomy; `auth/` for the captcha, Apple and Google, and where a sign-in lands. |
 | `src/lib/` | The Supabase client, the API client for `/api/mobile/v1`, the session, links. |
 | `src/i18n/` | The website's catalogue plus the app's own strings (`messages/`). |
-| `src/theme/` | The website's design tokens. |
+| `src/theme/` | The design tokens (the brand in ivory and sapphire, black and champagne), the theme, Reduce Motion. |
 | `tests/` | Jest: pure helpers, routing, and the real screens against fixtures. |
 | `scripts/check-shared.mjs` | Fails if the app would bundle anything server-only from the website. |
 
