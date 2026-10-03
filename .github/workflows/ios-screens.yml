@@ -1,6 +1,6 @@
 # The App Store screenshots, and a smoke run of the build the store gets.
-# By hand (Actions → iOS screens → Run workflow, on any branch), and on main
-# when the flows or this file change. Not on pull requests: their path filter
+# By hand (Actions → iOS screens → Run workflow, on any branch; "passes" can
+# name fewer than all four), and on main when the flows or this file change. Not on pull requests: their path filter
 # is matched against the whole pull request, so once a pull request changed
 # one of these files, every push to it restarted this forty-minute run.
 #
@@ -19,6 +19,11 @@ name: iOS screens
 
 on:
   workflow_dispatch:
+    inputs:
+      passes:
+        description: The passes to run, space-separated (store dark large-text ipad)
+        type: string
+        default: store dark large-text ipad
   push:
     branches: [main]
     paths:
@@ -121,6 +126,9 @@ jobs:
           "$HOME/.maestro/bin/maestro" --version
 
       - name: Screens
+        env:
+          # Empty on main: every pass.
+          PASSES: ${{ inputs.passes }}
         run: scripts/store-screens.sh "$APP" "$RUNNER_TEMP/screens"
 
       - name: Keep the screenshots

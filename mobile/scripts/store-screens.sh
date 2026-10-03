@@ -16,6 +16,8 @@
 #   large-text  the same iPhone at the largest accessibility text size
 #   ipad        the largest iPad, where App Review also opens an iPhone app
 #
+# PASSES="ipad" (or any of the names above, space-separated) runs only those.
+#
 # What they show is the live site's: the first listing and the first company
 # it lists. With none, the board and the company list are checked empty and the
 # pages they lead to are left out, with a warning: the set is then a smoke run,
@@ -25,7 +27,8 @@ set -euo pipefail
 
 app="$1"
 out="$2"
-flows="$(cd "$(dirname "$0")/../maestro" && pwd)"
+here="$(cd "$(dirname "$0")" && pwd)"
+flows="$(cd "$here/../maestro" && pwd)"
 site="${EXPO_PUBLIC_SITE_URL:-https://www.brokersconnect.net}"
 mkdir -p "$out"
 out="$(cd "$out" && pwd)"
@@ -57,6 +60,15 @@ if [ "$(jq -r .JOB_SLUG <<<"$live")" = none ]; then
 fi
 envs=()
 while IFS= read -r pair; do envs+=(-e "$pair"); done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' <<<"$live")
+
+passes=" ${PASSES:-store dark large-text ipad} "
+for wanted in $passes; do
+  case "$wanted" in
+    store | dark | large-text | ipad) ;;
+    *) echo "::error::no pass is called $wanted (store, dark, large-text, ipad)"; exit 1 ;;
+  esac
+done
+wants() { [[ "$passes" == *" $1 "* ]]; }
 
 runtime=$(xcrun simctl list runtimes -j |
   jq -r '[.runtimes[] | select(.platform == "iOS" and .isAvailable)] | sort_by(.version | split(".") | map(tonumber)) | last | .identifier')
@@ -100,27 +112,54 @@ device() {
 }
 
 # What a failed pass left on the screen, in the run's log, which can be read
-# where its artifact cannot: the words Maestro sees, whether the app is still
-# running, and what it logged as errors.
-explain() {
-  local name="$1" udid="$2"
-  echo "On screen when $name failed:"
+# where its artifact cannot: a sketch of the screen, the words Maestro sees,
+# whether the app is still running, any crash report, and what the app logged.
+# In a subshell that stops for nothing: a diagnosis never fails the run.
+explain() (
+  set +eo pipefail
+  name="$1" udid="$2"
+  echo "The screen when $name failed, roughly:"
+  python3 "$here/screen-sketch.py" "$out/$name/failed.png" 60 || echo "    (no sketch)"
+  echo "The words on it, as Maestro reads them:"
   if maestro --device "$udid" hierarchy > "$out/$name/hierarchy.json" 2> /dev/null; then
     jq -r '[.. | objects | .attributes? // empty | (.accessibilityText // empty), (.text // empty), (.title // empty)
             | select(type == "string" and . != "")] | unique | .[]' "$out/$name/hierarchy.json" | head -n 80 | sed 's/^/    /'
   else
     echo "    (Maestro could not read the screen)"
   fi
-  if xcrun simctl spawn "$udid" launchctl list | grep -q 'UIKitApplication:net.brokersconnect.app'; then
-    echo "The app is running."
-  else
-    echo "The app is not running."
-  fi
-  echo "What the app logged as errors in the last 10 minutes:"
-  xcrun simctl spawn "$udid" log show --last 10m --style compact \
-    --predicate 'process == "BrokersConnect" AND (messageType == error OR messageType == fault OR eventMessage CONTAINS[c] "error")' 2> /dev/null |
-    grep -v '^Timestamp' | tail -n 40 | cut -c 1-400 | sed 's/^/    /'
-}
+  # Read whole, then searched: grep -q stopping early would kill launchctl
+  # with SIGPIPE and read as "not running".
+  echo "Apps running on the simulator (pid, last exit status, label):"
+  xcrun simctl spawn "$udid" launchctl list > "$out/$name/launchctl.txt" 2>&1
+  grep 'UIKitApplication:' "$out/$name/launchctl.txt" | sed 's/^/    /'
+  grep -q 'UIKitApplication:net.brokersconnect.app' "$out/$name/launchctl.txt" || echo "    (not the app)"
+  echo "Crash reports since the pass began:"
+  find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 2 -type f -name 'BrokersConnect*' -newer "$out/$name/.started" \
+    2> /dev/null > "$out/$name/crashes.txt"
+  [ -s "$out/$name/crashes.txt" ] || echo "    none"
+  while IFS= read -r report; do
+    cp "$report" "$out/$name/"
+    echo "    $(basename "$report")"
+    tail -n +2 "$report" | jq -r '. as $r
+      | "    exception: \(.exception // "none" | tostring)",
+        "    termination: \(.termination // "none" | tostring)",
+        "    application specific: \(.asi // "none" | tostring)",
+        ((.lastExceptionBacktrace // [])[0:25][] | "      exception \($r.usedImages[.imageIndex].name // "?") \(.symbol // "?")"),
+        ((.threads[.faultingThread // 0].frames // [])[0:25][] | "      crashed \($r.usedImages[.imageIndex].name // "?") \(.symbol // "?")")' |
+      cut -c 1-400
+  done < "$out/$name/crashes.txt"
+  # The test driver's own queries run inside the app's process: left out.
+  log="$out/$name/app.log"
+  xcrun simctl spawn "$udid" log show --last 15m --style compact \
+    --predicate 'process == "BrokersConnect" AND NOT subsystem BEGINSWITH "com.apple.dt.xctest"' 2> /dev/null |
+    grep -v '^Timestamp' > "$log"
+  echo "What the app logged in the last 15 minutes: $(grep -c . "$log") lines, by subsystem:"
+  grep -oE 'BrokersConnect\[[0-9a-f:]+\] \[[^]:]+' "$log" | sed 's/.*\[//' | sort | uniq -c | sort -rn | head -n 15 | sed 's/^/    /'
+  echo "The first 25 lines:"
+  head -n 25 "$log" | cut -c 1-400 | sed 's/^/    /'
+  echo "Its errors, faults and React Native's lines (the last 50):"
+  awk '$3 == "E" || $3 == "F" || /com\.facebook\.react/' "$log" | tail -n 50 | cut -c 1-400 | sed 's/^/    /'
+)
 
 # pass <name> <simulator> <content size> <flow>
 pass() {
@@ -143,24 +182,30 @@ pass() {
 }
 
 # One iPhone for its three passes: each starts the app afresh (launch.yaml).
-phone=$(device iphone "$iphone")
-pass store "$phone" large store.yaml
-pass dark "$phone" large dark.yaml
-pass large-text "$phone" accessibility-extra-extra-extra-large store.yaml
-xcrun simctl shutdown "$phone" || true
-xcrun simctl delete "$phone" || true
+if wants store || wants dark || wants large-text; then
+  phone=$(device iphone "$iphone")
+  if wants store; then pass store "$phone" large store.yaml; fi
+  if wants dark; then pass dark "$phone" large dark.yaml; fi
+  if wants large-text; then pass large-text "$phone" accessibility-extra-extra-extra-large store.yaml; fi
+  xcrun simctl shutdown "$phone" || true
+  xcrun simctl delete "$phone" || true
+fi
 
-tablet=$(device ipad "$ipad")
-pass ipad "$tablet" large store.yaml
-xcrun simctl shutdown "$tablet" || true
-xcrun simctl delete "$tablet" || true
+if wants ipad; then
+  tablet=$(device ipad "$ipad")
+  pass ipad "$tablet" large store.yaml
+  xcrun simctl shutdown "$tablet" || true
+  xcrun simctl delete "$tablet" || true
+fi
 
 # The sizes App Store Connect checks a 6.9-inch screenshot against.
-echo "Store screenshots:"
-find "$out/store" -name '*.png' ! -path '*/debug/*' ! -name failed.png | sort | while read -r shot; do
-  printf '  %s %sx%s\n' "${shot#"$out/"}" "$(sips -g pixelWidth "$shot" | awk '/pixelWidth/ {print $2}')" \
-    "$(sips -g pixelHeight "$shot" | awk '/pixelHeight/ {print $2}')"
-done
+if [ -d "$out/store" ]; then
+  echo "Store screenshots:"
+  find "$out/store" -name '*.png' ! -path '*/debug/*' ! -name failed.png | sort | while read -r shot; do
+    printf '  %s %sx%s\n' "${shot#"$out/"}" "$(sips -g pixelWidth "$shot" | awk '/pixelWidth/ {print $2}')" \
+      "$(sips -g pixelHeight "$shot" | awk '/pixelHeight/ {print $2}')"
+  done
+fi
 
 if [ "${#failed[@]}" -gt 0 ]; then
   echo "::error::failed: ${failed[*]}"
