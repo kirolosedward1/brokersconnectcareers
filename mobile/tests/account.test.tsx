@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
-import { Alert, Linking, type AlertButton } from 'react-native';
+import { Alert, Linking, Pressable, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { ProfileRow } from '@/lib/supabase/database.types';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -158,6 +158,18 @@ function Settled({ children }: { children: ReactNode }) {
   return useSession().settled ? children : null;
 }
 
+/** What an unsubscribe link or another phone leaves behind: the account read again. */
+function ReadAgain() {
+  const queryClient = useQueryClient();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="read the account again"
+      onPress={() => void queryClient.invalidateQueries({ queryKey: ['viewer'] })}
+    />
+  );
+}
+
 function Root() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
@@ -167,6 +179,7 @@ function Root() {
           <SessionProvider>
             <Settled>
               <Stack screenOptions={{ headerShown: false }} />
+              <ReadAgain />
             </Settled>
           </SessionProvider>
         </I18nProvider>
@@ -395,6 +408,24 @@ describe('the emails', () => {
       }),
     );
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+  });
+
+  it('keeps up with a switch turned off elsewhere, and does not turn it back on with the next flip', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/emails' });
+    expect((await screen.findByLabelText(ar.account.notifyDigest)).props.value).toBe(true);
+
+    // Turned off from an email's unsubscribe link while this was open.
+    me = { ...me, notify_digest: false };
+    fireEvent.press(screen.getByRole('button', { name: 'read the account again' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.account.notifyDigest).props.value).toBe(false));
+
+    fireEvent(screen.getByLabelText(ar.account.notifyStatus), 'valueChange', false);
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/updateNotificationPreferences')).toEqual({
+        input: { notify_applications: true, notify_status: false, notify_digest: false, notify_applicant_digest: false },
+      }),
+    );
   });
 
   it('offers the profile reminder, off, where the profile has the switch, and sends it with the rest', async () => {

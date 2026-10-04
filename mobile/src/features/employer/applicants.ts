@@ -192,6 +192,52 @@ export function useInbox(filters: InboxFilters, { enabled = true }: { enabled?: 
   });
 }
 
+export type ListingTitle = { id: string; title_ar: string; title_en: string | null };
+
+/**
+ * What the inbox can be narrowed to — the website's choices: the company's
+ * newest two hundred listings, drafts and closed ones among them (their
+ * applicants are still here), whether or not anyone on screen applied to
+ * them, and the one it is narrowed to whatever its age. Built from the rows
+ * on screen, the picker lost every other listing as soon as it narrowed, and
+ * read "all listings" over a narrowed list. Kept under the listings' key, so a
+ * listing posted or edited is read again here and a status move is not.
+ */
+export function useInboxListings(chosen: string | null, { enabled = true }: { enabled?: boolean } = {}) {
+  const companyId = useCompanyId();
+  const newest = useQuery({
+    queryKey: ['employer', 'listings', 'titles', companyId],
+    enabled: enabled && Boolean(companyId),
+    queryFn: async (): Promise<ListingTitle[]> => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('id, title_ar, title_en')
+        .eq('company_id', companyId as string)
+        .order('created_at', { ascending: false })
+        .limit(APPLICANTS_CAP);
+      if (error) throw error;
+      return (data ?? []) as ListingTitle[];
+    },
+  });
+  const missing = Boolean(chosen && newest.data && !newest.data.some((job) => job.id === chosen));
+  const older = useQuery({
+    queryKey: ['employer', 'listings', 'title', companyId, chosen],
+    enabled: enabled && missing,
+    queryFn: async (): Promise<ListingTitle | null> => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('id, title_ar, title_en')
+        .eq('company_id', companyId as string)
+        .eq('id', chosen as string)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as ListingTitle | null) ?? null;
+    },
+  });
+  const listings = newest.data ?? [];
+  return { data: missing && older.data ? [older.data, ...listings] : listings, refetch: () => newest.refetch() };
+}
+
 export type Notes = {
   byApplication: Record<string, ApplicationNoteRow[]>;
   authors: Record<string, string>;

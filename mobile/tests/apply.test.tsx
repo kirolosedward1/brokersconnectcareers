@@ -3,7 +3,7 @@ import { Platform, Pressable, Share, Text } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { Actor } from '@/lib/permissions';
 import { PendingPath } from '~/components/navigation/pending-path';
@@ -176,6 +176,42 @@ describe('the form', () => {
     // Two more roles while the candidate is here, ranked against their profile.
     expect(await screen.findByText(ar.apply.nextRolesMatched)).toBeTruthy();
     expect(screen.getByText('مدير مبيعات')).toBeTruthy();
+  });
+
+  it("follows the profile's CV as it is now: one replaced in another tab while the form was open is sent in its place", async () => {
+    await signedIn();
+    renderRouter(app, { initialUrl: APPLY });
+    expect(await screen.findByText(ar.app.apply.profileCv)).toBeTruthy();
+
+    // Replaced on the profile, in another tab, while the form was open.
+    const REPLACED = `${USER_ID}/new-cv.pdf`;
+    server.on('GET /rest/v1/agent_profiles', [{ cv_path: REPLACED, tracks: ['primary'], district_ids: [newCairo.id], years_experience: 2 }]);
+    await act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await waitFor(() => expect(server.asked('/rest/v1/agent_profiles').length).toBeGreaterThan(1));
+    // The answer in.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+    await waitFor(() => expect((bodyOf('/api/mobile/v1/actions/applyToJob')?.input as { cvPath: string }).cvPath).toBe(REPLACED));
+  });
+
+  it('sends no CV when the one on the profile was taken off while the form was open', async () => {
+    await signedIn();
+    renderRouter(app, { initialUrl: APPLY });
+    expect(await screen.findByText(ar.app.apply.profileCv)).toBeTruthy();
+
+    server.on('GET /rest/v1/agent_profiles', [{ cv_path: null, tracks: ['primary'], district_ids: [newCairo.id], years_experience: 2 }]);
+    await act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await waitFor(() => expect(screen.queryByText(ar.app.apply.profileCv)).toBeNull());
+    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+    await waitFor(() => expect((bodyOf('/api/mobile/v1/actions/applyToJob')?.input as { cvPath: string | null }).cvPath).toBeNull());
   });
 
   it("uploads a picked CV to the candidate's own folder, and takes it back out when the application is refused", async () => {

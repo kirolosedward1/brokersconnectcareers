@@ -71,6 +71,10 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   const scroll = useRef<ScrollView>(null);
 
   const [idempotencyKey] = useState(() => uuid());
+  // The version the fields were filled from. The listing is read again when the
+  // app comes back to the front; sent with its new version, these fields would
+  // pass the website's check and put back what a colleague changed meanwhile.
+  const [version] = useState(() => job?.version);
   const [step, setStep] = useState(0);
   const [draft, setValues] = useState<JobValues>(() => initialValues(job, developerIds, null));
   // Leaving with something typed asks first; once saved, the wizard closes itself.
@@ -146,7 +150,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
       }
     }
     setErrors({});
-    save.mutate(toJobInput(values, { id: job?.id, version: job?.version, idempotencyKey, submit: publish }), {
+    save.mutate(toJobInput(values, { id: job?.id, version, idempotencyKey, submit: publish }), {
       // Closed once the guard has stood down (the effect above), not from here.
       onSuccess: () => setSaved(true),
       onError: (failure) => {

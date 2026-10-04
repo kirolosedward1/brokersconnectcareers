@@ -247,7 +247,9 @@ export function useUploadDocument(companyId: string) {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employer', 'company'] });
+      // The page, and Home's next step and verification figure (the employer
+      // summary): "upload them again" must not stay up once they are in.
+      queryClient.invalidateQueries({ queryKey: ['employer'] });
       // The company moves to "pending" once a paper is in.
       queryClient.invalidateQueries({ queryKey: ['viewer'] });
     },
@@ -297,12 +299,21 @@ export function useAddMember() {
 
 export function useRemoveMember() {
   const queryClient = useQueryClient();
+  const self = useSession().session?.user.id ?? null;
   return useMutation({
     mutationFn: async (userId: string) => {
       const result = await callAction('removeCompanyMember', { userId });
       if (!result.ok) throw new Error(result.error);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employer', 'company'] }),
+    onSuccess: (_, userId) => {
+      void queryClient.invalidateQueries({ queryKey: ['employer', 'company'] });
+      // An admin who takes themselves off has left the company: who they are,
+      // read again, takes every tab off it, as the website's next page does.
+      if (userId === self) {
+        void queryClient.invalidateQueries({ queryKey: ['viewer'] });
+        void queryClient.invalidateQueries({ queryKey: ['employer'] });
+      }
+    },
   });
 }
 

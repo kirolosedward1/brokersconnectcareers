@@ -23,6 +23,7 @@ import { toggled } from '~/features/jobs/filters';
 import { SaveRefused, useSaveAgentProfile, type CvChange } from '~/features/profile/queries';
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
+import { useStoredFields } from '~/lib/use-stored-fields';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 import { ChipGroup, wholeNumber } from './fields';
@@ -58,28 +59,26 @@ export function ProfileForm({
   const districts = useDistricts().data ?? [];
   const developers = useDevelopers().data ?? [];
 
-  const [fullName, setFullName] = useState(profile.full_name);
-  const [whatsapp, setWhatsapp] = useState(profile.whatsapp_phone);
-  const [visibility, setVisibility] = useState<AgentVisibility>(agent?.visibility ?? 'verified_employers_only');
-  const [availability, setAvailability] = useState<AgentAvailability>(agent?.availability ?? 'open_to_offers');
-  const [years, setYears] = useState(String(agent?.years_experience ?? 0));
-  const [headlineAr, setHeadlineAr] = useState(agent?.headline_ar ?? '');
-  const [headlineEn, setHeadlineEn] = useState(agent?.headline_en ?? '');
-  const [tracks, setTracks] = useState<JobTrack[]>(agent?.tracks ?? []);
-  const [districtIds, setDistrictIds] = useState<number[]>(agent?.district_ids ?? []);
-  const [developerChoice, setDeveloperChoice] = useState<number[]>(developerIds);
-  const [languages, setLanguages] = useState<string[]>(agent?.languages ?? ['ar']);
+  const form = useStoredFields({
+    fullName: profile.full_name,
+    whatsapp: profile.whatsapp_phone,
+    visibility: (agent?.visibility ?? 'verified_employers_only') as AgentVisibility,
+    availability: (agent?.availability ?? 'open_to_offers') as AgentAvailability,
+    years: String(agent?.years_experience ?? 0),
+    headlineAr: agent?.headline_ar ?? '',
+    headlineEn: agent?.headline_en ?? '',
+    tracks: (agent?.tracks ?? []) as JobTrack[],
+    districtIds: agent?.district_ids ?? [],
+    developerIds,
+    languages: agent?.languages ?? ['ar'],
+  });
+  const { fullName, whatsapp, visibility, availability, years, headlineAr, headlineEn, tracks, districtIds, languages } = form.fields;
+  const developerChoice = form.fields.developerIds;
   const [cv, setCv] = useState<CvChange>({ kind: 'keep' });
   const [errors, setErrors] = useState<Errors>({});
 
-  // What the form held when it was filled or last saved: leaving with anything else asks first.
-  const snapshot = (cvKind: CvChange['kind']) =>
-    JSON.stringify([
-      fullName, whatsapp, visibility, availability, years, headlineAr, headlineEn, tracks, districtIds, developerChoice, languages, cvKind,
-    ]);
-  const typedNow = snapshot(cv.kind);
-  const [savedAs, setSavedAs] = useState(typedNow);
-  useLeaveGuard(typedNow !== savedAs);
+  // Leaving with anything changed since it was filled or last saved asks first.
+  useLeaveGuard(form.dirty || cv.kind !== 'keep');
 
   const hasCv = Boolean(agent?.cv_path);
 
@@ -107,7 +106,7 @@ export function ProfileForm({
 
     setErrors({});
     // What the form holds once this is saved (a picked file is then the one on file).
-    const sending = snapshot('keep');
+    const sending = form.fields;
     save.mutate(
       {
         input: {
@@ -129,7 +128,7 @@ export function ProfileForm({
         // The picked file has been saved: a second save must not upload it again.
         onSuccess: () => {
           setCv({ kind: 'keep' });
-          setSavedAs(sending);
+          form.saved(sending);
         },
         onError: (failure) => {
           const reason = failure instanceof SaveRefused ? failure.reason : 'failed';
@@ -153,7 +152,7 @@ export function ProfileForm({
       <Field label={t('onboarding.fullName')} error={errors.fullName}>
         <TextField
           value={fullName}
-          onChangeText={setFullName}
+          onChangeText={(value) => form.set({ fullName: value })}
           accessibilityLabel={t('onboarding.fullName')}
           autoComplete="name"
           textContentType="name"
@@ -164,7 +163,7 @@ export function ProfileForm({
       <Field label={t('onboarding.whatsapp')} error={errors.whatsapp}>
         <TextField
           value={whatsapp}
-          onChangeText={setWhatsapp}
+          onChangeText={(value) => form.set({ whatsapp: value })}
           accessibilityLabel={t('onboarding.whatsapp')}
           ltr
           keyboardType="phone-pad"
@@ -195,7 +194,7 @@ export function ProfileForm({
               key={value}
               accessibilityRole="radio"
               accessibilityState={{ checked: chosen }}
-              onPress={() => setVisibility(value)}
+              onPress={() => form.set({ visibility: value })}
               style={{
                 flexDirection: 'row',
                 gap: space[3],
@@ -227,7 +226,7 @@ export function ProfileForm({
           placeholder={t('agents.availability')}
           options={AVAILABILITIES.map((value) => ({ value, label: t(`availability.${value}`) }))}
           onChange={(value) => {
-            if (value) setAvailability(value);
+            if (value) form.set({ availability: value });
           }}
         />
       </Field>
@@ -235,7 +234,7 @@ export function ProfileForm({
       <Field label={t('filters.experienceBand')} error={errors.yearsExperience}>
         <TextField
           value={years}
-          onChangeText={setYears}
+          onChangeText={(value) => form.set({ years: value })}
           accessibilityLabel={t('filters.experienceBand')}
           ltr
           keyboardType="number-pad"
@@ -246,7 +245,7 @@ export function ProfileForm({
       <Field label={t('agents.headlineAr')}>
         <TextField
           value={headlineAr}
-          onChangeText={setHeadlineAr}
+          onChangeText={(value) => form.set({ headlineAr: value })}
           accessibilityLabel={t('agents.headlineAr')}
           multiline
           maxLength={160}
@@ -257,7 +256,7 @@ export function ProfileForm({
       <Field label={t('agents.headlineEn')}>
         <TextField
           value={headlineEn}
-          onChangeText={setHeadlineEn}
+          onChangeText={(value) => form.set({ headlineEn: value })}
           accessibilityLabel={t('agents.headlineEn')}
           ltr
           multiline
@@ -270,7 +269,7 @@ export function ProfileForm({
         legend={t('agents.tracks')}
         options={JOB_TRACKS.map((track) => ({ value: track, label: t(`track.${track}`) }))}
         selected={tracks}
-        onToggle={(value) => setTracks((current) => toggled(current, value))}
+        onToggle={(value) => form.set((current) => ({ tracks: toggled(current.tracks, value) }))}
       />
 
       <ChipGroup
@@ -278,7 +277,7 @@ export function ProfileForm({
         scroll
         options={districts.map((district) => ({ value: district.id, label: localized(locale, district.name_ar, district.name_en) }))}
         selected={districtIds}
-        onToggle={(value) => setDistrictIds((current) => toggled(current, value))}
+        onToggle={(value) => form.set((current) => ({ districtIds: toggled(current.districtIds, value) }))}
         max={20}
       />
 
@@ -290,7 +289,7 @@ export function ProfileForm({
           label: localized(locale, developer.name_ar, developer.name_en),
         }))}
         selected={developerChoice}
-        onToggle={(value) => setDeveloperChoice((current) => toggled(current, value))}
+        onToggle={(value) => form.set((current) => ({ developerIds: toggled(current.developerIds, value) }))}
         max={30}
       />
 
@@ -298,7 +297,7 @@ export function ProfileForm({
         legend={t('agents.languages')}
         options={LANGUAGES.map((language) => ({ value: language, label: t(`language.${language}`) }))}
         selected={languages}
-        onToggle={(value) => setLanguages((current) => toggled(current, value))}
+        onToggle={(value) => form.set((current) => ({ languages: toggled(current.languages, value) }))}
       />
 
       <Field

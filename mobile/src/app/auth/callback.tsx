@@ -53,7 +53,7 @@ export default function OAuthCallbackScreen() {
         <AuthScroll bare>
           <View style={{ height: space[8] }} />
           <AuthHeading title={t('common.error')} body={t('common.errorBody')} />
-          <Button label={t('common.close')} variant="outline" onPress={close} />
+          <Button label={t('common.close')} variant="outline" onPress={() => close()} />
         </AuthScroll>
       </>
     );

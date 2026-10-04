@@ -85,7 +85,7 @@ export default function ConfirmLinkScreen() {
           <View style={{ height: space[8] }} />
           <AuthHeading title={t('app.offline.title')} body={t('app.offline.body')} />
           <Button label={t('common.retry')} onPress={() => void verify()} />
-          <Button label={t('common.close')} variant="ghost" onPress={close} />
+          <Button label={t('common.close')} variant="ghost" onPress={() => close()} />
         </AuthScroll>
       </>
     );
@@ -102,7 +102,7 @@ export default function ConfirmLinkScreen() {
             label={type === 'recovery' ? t('auth.sendResetLink') : t('nav.signIn')}
             onPress={() => router.replace(type === 'recovery' ? '/sign-in/forgot' : '/sign-in')}
           />
-          <Button label={t('common.close')} variant="ghost" onPress={close} />
+          <Button label={t('common.close')} variant="ghost" onPress={() => close()} />
         </AuthScroll>
       </>
     );
@@ -125,7 +125,7 @@ export default function ConfirmLinkScreen() {
               void verify();
             }}
           />
-          <Button label={t('app.auth.switchCancel')} variant="outline" onPress={close} />
+          <Button label={t('app.auth.switchCancel')} variant="outline" onPress={() => close()} />
         </AuthScroll>
       </>
     );

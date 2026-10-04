@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Linking, RefreshControl, Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -654,6 +654,35 @@ describe('the inbox', () => {
     rows = [];
     renderRouter(app, { initialUrl: '/employer/applicants?q=%D8%B2%D9%8A%D8%A7%D8%AF' });
     expect(await screen.findByText(ar.employer.searchEmpty)).toBeTruthy();
+  });
+
+  it("offers every one of the company's listings, not only the ones on screen, and names the one it is narrowed to", async () => {
+    const OTHER = '5b0c7d1e-0000-4000-8000-000000000302';
+    const OLD = '5b0c7d1e-0000-4000-8000-000000000303';
+    const titles = [
+      { id: OTHER, title_ar: 'مدير مبيعات', title_en: null },
+      { id: JOB_ID, title_ar: 'مستشار مبيعات', title_en: null },
+    ];
+    server.on('GET /rest/v1/jobs', (url: URL) =>
+      url.searchParams.get('id') === `eq.${OLD}` ? [{ id: OLD, title_ar: 'مسؤول تسويق', title_en: null }] : titles,
+    );
+    // Narrowed to one listing, with nobody new on it.
+    rows = [];
+    const result = renderRouter(app, { initialUrl: `/employer/applicants?job=${JOB_ID}&stage=new` });
+
+    // The picker names the listing, and offers the company's other one too.
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.allListings}: مستشار مبيعات` }));
+    fireEvent.press(await screen.findByRole('radio', { name: 'مدير مبيعات' }));
+    await waitFor(() => expect(result.getSearchParams()).toMatchObject({ job: OTHER }));
+    // A listing or a stage that empties the list is a filter, not "no applicants yet".
+    expect(await screen.findByText(ar.employer.filterEmpty)).toBeTruthy();
+    expect(screen.queryByText(ar.employer.noApplicants)).toBeNull();
+
+    // One older than the newest two hundred is read on its own, and named.
+    act(() => router.setParams({ job: OLD }));
+    expect(await screen.findByRole('button', { name: `${ar.employer.allListings}: مسؤول تسويق` })).toBeTruthy();
+    const read = server.asked('/rest/v1/jobs').find((request) => request.url.searchParams.get('id') === `eq.${OLD}`);
+    expect(read?.url.searchParams.get('company_id')).toBe(`eq.${ownedCompany.id}`);
   });
 
   it('keeps only the filters it knows', () => {

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Alert, Text, type AlertButton } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react-native';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { ChipGroup } from '~/components/profile/fields';
@@ -218,6 +218,43 @@ describe('a new listing', () => {
     expect(saved()[1].idempotencyKey).toBe(saved()[0].idempotencyKey);
   });
 
+  it('submits for review after a draft whose answer was lost, rather than leaving the draft that save made', async () => {
+    let stored: JobRow | null = null;
+    server.on('GET /rest/v1/jobs', () => (stored ? [stored] : []));
+    server.on('GET /rest/v1/job_developers', []);
+    server.on('POST /api/mobile/v1/actions/saveJob', (_url: URL, init?: RequestInit) => {
+      const { input } = JSON.parse(String(init?.body)) as { input: { id?: string; submit: boolean; titleAr: string; version?: number } };
+      if (!input.id && !stored) {
+        // The draft goes in, and its answer never reaches the phone.
+        stored = { ...liveJob, id: 'j-new', status: 'draft', version: 1, title_ar: input.titleAr } as JobRow;
+        throw new TypeError('Network request failed');
+      }
+      // The same key again: the website answers with the listing the first save made, as it left it.
+      if (!input.id) return { ok: true, data: { id: 'j-new' } };
+      stored = { ...(stored as JobRow), status: input.submit ? 'pending_review' : 'draft', version: (input.version ?? 0) + 1 } as JobRow;
+      return { ok: true, data: { id: 'j-new' } };
+    });
+    const result = renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+    next();
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.commissionValue), '2');
+    next();
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.descriptionAr), DESCRIPTION);
+    next();
+    fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveDraft }));
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.submitForReview }));
+    await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    // The second save came back as the first one's draft: it is then sent for review, as an edit of it.
+    expect(saved().map((input) => [input.id ?? null, input.submit, input.version ?? null])).toEqual([
+      [null, false, null],
+      [null, true, null],
+      ['j-new', true, 1],
+    ]);
+    expect((stored as JobRow | null)?.status).toBe('pending_review');
+  });
+
   it("sends the employer back to the step that holds the website's objection", async () => {
     server.on('POST /api/mobile/v1/actions/saveJob', { ok: false, error: 'invalid', fieldErrors: { descriptionAr: 'tooManyLinks' } });
     renderRouter(app, { initialUrl: '/employer/jobs/new' });
@@ -328,6 +365,38 @@ describe('a listing on the board', () => {
     renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobForm.review }));
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+    expect(await screen.findByText(ar.employer.listingMoved)).toBeTruthy();
+  });
+
+  it('sends the version it was opened on, though the listing was read again since, and so never overwrites a colleague', async () => {
+    let theirs = false;
+    // A colleague raises the salary on the website while this edit is open.
+    server.on('GET /rest/v1/jobs', () => [theirs ? { ...liveJob, version: 5, basic_salary_min: 20000, basic_salary_max: 25000 } : liveJob]);
+    server.on('POST /api/mobile/v1/actions/saveJob', { ok: false, error: 'stale' });
+    renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات للمشروعات');
+
+    // Back from another app: the listing is read again, at their version.
+    theirs = true;
+    const reads = server.asked('/rest/v1/job_developers').length;
+    try {
+      act(() => {
+        focusManager.setFocused(false);
+        focusManager.setFocused(true);
+      });
+      // The whole re-read in, its developers last, and handed to the screen.
+      await waitFor(() => expect(server.asked('/rest/v1/job_developers').length).toBeGreaterThan(reads));
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(100);
+      });
+    } finally {
+      focusManager.setFocused(undefined);
+    }
+
+    fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+    await waitFor(() => expect(saved()).toHaveLength(1));
+    expect(saved()[0].version).toBe(4);
     expect(await screen.findByText(ar.employer.listingMoved)).toBeTruthy();
   });
 

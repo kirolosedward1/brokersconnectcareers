@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { router, useRootNavigationState, useSegments } from 'expo-router';
-import { useSession } from '~/lib/session';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSession, type Viewer } from '~/lib/session';
 
 /**
  * What the website's middleware and onboarding page enforce, on the phone: a
@@ -14,6 +15,7 @@ const FLOWS = new Set(['(auth)', 'onboarding', 'mfa', 'auth']);
 
 export function SessionGate() {
   const { ready, session, viewer, secondFactorDue } = useSession();
+  const queryClient = useQueryClient();
   const segments = useSegments();
   const navigationReady = Boolean(useRootNavigationState()?.key);
   const inFlow = FLOWS.has(segments[0] ?? '');
@@ -22,8 +24,15 @@ export function SessionGate() {
   useEffect(() => {
     if (!navigationReady || !ready || !session || inFlow) return;
     if (secondFactorDue) router.push('/mfa');
-    else if (needsProfile) router.push('/onboarding');
-  }, [navigationReady, ready, session, inFlow, secondFactorDue, needsProfile]);
+    else if (needsProfile) {
+      // The read onboarding finished with is in the cache a moment before it
+      // reaches this screen: as the flow closed, the profile it had just
+      // made was not here yet, and onboarding opened a second time.
+      const latest = queryClient.getQueryData<Viewer>(['viewer', session.user.id]);
+      if (latest?.profile || latest?.profileUnreadable) return;
+      router.push('/onboarding');
+    }
+  }, [navigationReady, ready, session, inFlow, secondFactorDue, needsProfile, queryClient]);
 
   return null;
 }

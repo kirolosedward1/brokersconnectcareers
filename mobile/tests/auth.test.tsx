@@ -777,6 +777,30 @@ describe('an email link opened in the app', () => {
     expect(bodyOf('/auth/v1/verify')).toMatchObject({ token_hash: 'pkce_0123456789abcdef', type: 'signup' });
   });
 
+  it('closes the sign-up sheet under it too once the account is in, rather than show its "check your email" again', async () => {
+    profileRow = null;
+    renderRouter(app, { initialUrl: '/sign-up' });
+    fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'new@example.com');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.password), PASSWORD);
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), PASSWORD);
+    await press(ar.auth.signUp);
+    expect(await screen.findByText(ar.auth.checkEmailTitle)).toBeTruthy();
+
+    // The link in the email, opened while the sheet still says to go and find it.
+    act(() => router.push(link('signup', `${SITE}${confirmationPath({ role: null, next: null })}`) as never));
+    expect(await screen.findByText(ar.onboarding.confirmedBanner)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.fullName), 'سارة عادل');
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
+    fireEvent.press(screen.getByRole('radio', { name: `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}` }));
+    fireEvent.press(screen.getByRole('checkbox'));
+    await press(ar.onboarding.submit);
+
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(1));
+    await waitFor(() => expect(screen.queryByText(ar.onboarding.confirmedBanner)).toBeNull());
+    expect(screen.queryByText(ar.auth.checkEmailTitle)).toBeNull();
+    expect(screen.getByText('home screen')).toBeTruthy();
+  });
+
   it('sets a new password from a reset link, ends the other sessions and sends the notice', async () => {
     renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
     expect(await screen.findByText(ar.auth.newPasswordTitle)).toBeTruthy();

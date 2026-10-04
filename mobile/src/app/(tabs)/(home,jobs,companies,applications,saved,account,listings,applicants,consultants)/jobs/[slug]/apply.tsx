@@ -28,7 +28,7 @@ import {
   useNextRoles,
   type Attachment,
 } from '~/features/apply/apply';
-import { pickCv } from '~/features/cv/files';
+import { pickCv, type PickedCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
 import { ApiError } from '~/lib/api';
 import { haptic } from '~/lib/haptics';
@@ -221,8 +221,13 @@ function ApplyForm({
   const [whatsapp, setWhatsapp] = useState(defaultPhone);
   const [band, setBand] = useState<ExperienceBand | null>('junior_1_3');
   const [note, setNote] = useState('');
-  // The CV already on the profile goes with it unless the candidate says otherwise.
-  const [attachment, setAttachment] = useState<Attachment>(profileCv ? { kind: 'profile', path: profileCv } : null);
+  // The CV on the profile goes with it unless the candidate says otherwise —
+  // the one on the profile as it is now: replaced or taken off in another tab
+  // while this was open, the form follows it, and never sends a path the
+  // profile has let go of.
+  const [choice, setChoice] = useState<{ kind: 'profile' } | { kind: 'none' } | { kind: 'file'; file: PickedCv }>({ kind: 'profile' });
+  const attachment: Attachment =
+    choice.kind === 'file' ? choice : choice.kind === 'profile' && profileCv ? { kind: 'profile', path: profileCv } : null;
   const [errors, setErrors] = useState<Errors>({});
   // Leaving with a note written or a file picked asks first (the form goes once it is sent).
   useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file');
@@ -244,7 +249,7 @@ function ApplyForm({
       setErrors((current) => ({ ...current, cv: t(`validation.${picked.problem}`) }));
       return;
     }
-    setAttachment({ kind: 'file', file: picked.cv });
+    setChoice({ kind: 'file', file: picked.cv });
   };
 
   const submit = () => {
@@ -363,7 +368,7 @@ function ApplyForm({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('app.apply.removeCv')}
-              onPress={() => setAttachment(null)}
+              onPress={() => setChoice({ kind: 'none' })}
               style={{ width: hitTarget, height: hitTarget, alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={16} color={colors.mutedForeground} />
@@ -383,7 +388,7 @@ function ApplyForm({
               label={t('app.apply.useProfileCv')}
               variant="ghost"
               size="sm"
-              onPress={() => setAttachment({ kind: 'profile', path: profileCv })}
+              onPress={() => setChoice({ kind: 'profile' })}
             />
           ) : null}
         </View>

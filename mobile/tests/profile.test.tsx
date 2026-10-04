@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { Alert, Modal, Text, type AlertButton } from 'react-native';
+import { Alert, Modal, Pressable, Text, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { AgentExperienceRow, AgentProfileRow } from '@/lib/supabase/database.types';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -136,6 +136,18 @@ function Settled({ children }: { children: ReactNode }) {
   return useSession().settled ? children : null;
 }
 
+/** What applying in another tab does: the account read again. */
+function ReadAgain() {
+  const queryClient = useQueryClient();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="read the account again"
+      onPress={() => void queryClient.invalidateQueries({ queryKey: ['viewer'] })}
+    />
+  );
+}
+
 function Root() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
@@ -145,6 +157,7 @@ function Root() {
           <SessionProvider>
             <Settled>
               <Stack screenOptions={{ headerShown: false }} />
+              <ReadAgain />
             </Settled>
           </SessionProvider>
         </I18nProvider>
@@ -206,6 +219,40 @@ describe('the profile', () => {
       }),
     );
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+  });
+
+  it('keeps up with the name and number the account holds now, without touching what is being typed', async () => {
+    let me = { ...profile };
+    server.on('/rest/v1/profiles', () => [me]);
+    open();
+    expect((await screen.findByLabelText(ar.onboarding.fullName)).props.value).toBe(profile.full_name);
+    fireEvent.changeText(screen.getByLabelText(ar.agents.headlineAr), 'مستشارة مبيعات أولية');
+
+    // Applied from another tab with a new name and number: the account holds them now.
+    me = { ...me, full_name: 'سارة عادل محمود', whatsapp_phone: '+201009998887' };
+    fireEvent.press(screen.getByRole('button', { name: 'read the account again' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.onboarding.fullName).props.value).toBe('سارة عادل محمود'));
+    expect(screen.getByLabelText(ar.onboarding.whatsapp).props.value).toBe('+201009998887');
+    expect(screen.getByLabelText(ar.agents.headlineAr).props.value).toBe('مستشارة مبيعات أولية');
+
+    // A number being typed is kept when the account changes under it.
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '+201112223334');
+    me = { ...me, whatsapp_phone: '+201005556667' };
+    fireEvent.press(screen.getByRole('button', { name: 'read the account again' }));
+    await waitFor(() => expect(server.asked('/rest/v1/profiles').length).toBeGreaterThan(2));
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    expect(screen.getByLabelText(ar.onboarding.whatsapp).props.value).toBe('+201112223334');
+
+    fireEvent.press(saveButton());
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/saveAgentProfile')?.input).toMatchObject({
+        fullName: 'سارة عادل محمود',
+        whatsapp: '+201112223334',
+        headlineAr: 'مستشارة مبيعات أولية',
+      }),
+    );
   });
 
   it('takes the CV off when asked, and only then', async () => {

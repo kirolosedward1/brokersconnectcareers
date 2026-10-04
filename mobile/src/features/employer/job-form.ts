@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { JobInput } from '@/lib/mobile-api/contract';
 import { canAccessEmployerArea } from '@/lib/permissions';
@@ -283,6 +284,8 @@ async function storedAsSent(input: JobInput & { id: string }): Promise<boolean> 
 
 export function useSaveJob() {
   const queryClient = useQueryClient();
+  // The keys of new listings sent without an answer: one of those may be in.
+  const unanswered = useRef(new Set<string>());
   return useMutation({
     mutationFn: async (input: JobInput) => {
       const edit = input.id ? { ...input, id: input.id } : null;
@@ -290,13 +293,27 @@ export function useSaveJob() {
         // An edit with no answer may be in. A new listing needs no such look:
         // its idempotency key makes the one sent again the same listing.
         if (edit && !refusedAtTheDoor(error) && (await storedAsSent(edit))) return { ok: true as const, data: { id: edit.id } };
+        if (!edit && input.idempotencyKey && !refusedAtTheDoor(error)) unanswered.current.add(input.idempotencyKey);
         throw error;
       });
       if (!result.ok) {
         if (result.error === 'stale' && edit && (await storedAsSent(edit))) return edit.id;
         throw new JobSaveRefused(result.error, result.fieldErrors);
       }
-      return result.data?.id ?? null;
+      const id = result.data?.id ?? null;
+      // A new listing sent again with the key of a save that had no answer is
+      // answered with that save's listing, as that save left it: a draft, when
+      // this one is "submit for review", or with the words since changed. What
+      // this one asked for is then made an edit of that listing.
+      const resent = !edit && id !== null && input.idempotencyKey !== undefined && unanswered.current.has(input.idempotencyKey);
+      if (resent && id && !(await storedAsSent({ ...input, id }))) {
+        const { data: current } = await supabase.from('jobs').select('version').eq('id', id).maybeSingle();
+        if (current) {
+          const again = await callAction('saveJob', { ...input, id, version: current.version as number, idempotencyKey: undefined });
+          if (!again.ok) throw new JobSaveRefused(again.error, again.fieldErrors);
+        }
+      }
+      return id;
     },
     // Not waited for: the wizard closes on its own save, and while every
     // employer screen was read again first, the edited listing came back at its

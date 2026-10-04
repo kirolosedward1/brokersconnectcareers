@@ -24,6 +24,7 @@ import {
   STAGES,
   useApplicantNotes,
   useInbox,
+  useInboxListings,
   useMarkSeen,
 } from '~/features/employer/applicants';
 import { markupTags } from '~/i18n/rich';
@@ -51,6 +52,8 @@ export default function InboxScreen() {
   // Drawn at launch behind Home by the tab bar: read once the tab is opened.
   const visited = useVisited();
   const inbox = useInbox(filters, { enabled: visited });
+  const listings = useInboxListings(filters.job, { enabled: visited });
+  const choices = listings.data;
   const rows = inbox.data?.rows;
   const notes = useApplicantNotes((rows ?? []).map((row) => row.id));
   const context = useApplicantContext();
@@ -58,8 +61,8 @@ export default function InboxScreen() {
   // applicants are hidden from it (migration 349), whatever a read returns.
   useMarkSeen(viewer?.company?.suspended_at ? undefined : rows);
   const [q, setQ] = useState(filters.q);
-  // A new applicant, or a colleague's move, reaches the inbox with a pull.
-  const pull = usePullRefresh(() => Promise.all([inbox.refetch(), rows?.length ? notes.refetch() : null]));
+  // A new applicant, a colleague's move or their new listing reaches the inbox with a pull.
+  const pull = usePullRefresh(() => Promise.all([inbox.refetch(), rows?.length ? notes.refetch() : null, listings.refetch()]));
 
   const header = (
     <Stack.Screen options={{ title: t('employer.allApplicants'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
@@ -84,10 +87,6 @@ export default function InboxScreen() {
     // shown as an empty inbox.
     body = <EmptyState icon={ShieldAlert} title={t('employer.applicantsSuspendedTitle')} body={t('employer.applicantsSuspendedBody')} />;
   } else {
-    // The listings the rows came from — the choices for narrowing to one.
-    const listings = new Map<string, string>();
-    for (const row of rows ?? []) if (row.job) listings.set(row.job.id, localized(locale, row.job.title_ar, row.job.title_en));
-
     body = (
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
@@ -137,12 +136,12 @@ export default function InboxScreen() {
               />
             </View>
           </View>
-          {listings.size > 1 || filters.job ? (
+          {choices.length > 1 || filters.job ? (
             <Select
               label={t('employer.allListings')}
               value={filters.job}
               placeholder={t('employer.allListings')}
-              options={[...listings].map(([value, label]) => ({ value, label }))}
+              options={choices.map((job) => ({ value: job.id, label: localized(locale, job.title_ar, job.title_en) }))}
               onChange={(value) => setFilter({ job: value ?? undefined })}
             />
           ) : null}
@@ -204,8 +203,14 @@ export default function InboxScreen() {
               borderColor: colors.border,
             }}
           >
+            {/* A stage chip or a listing empties the list too: "no applicants
+                yet" under a chip reading "new 12" is not true. */}
             <Text weight="medium" style={{ textAlign: 'center' }}>
-              {filters.q ? t('employer.searchEmpty') : filters.band || filters.track ? t('employer.filterEmpty') : t('employer.noApplicants')}
+              {filters.q
+                ? t('employer.searchEmpty')
+                : filters.band || filters.track || filters.job || filters.stage
+                  ? t('employer.filterEmpty')
+                  : t('employer.noApplicants')}
             </Text>
           </View>
         ) : (

@@ -8,6 +8,7 @@ import { EmptyState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useSaveEmailPreferences, type EmailPreferences } from '~/features/account/settings';
 import { useSession } from '~/lib/session';
+import { useStoredFields } from '~/lib/use-stored-fields';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { UserRound } from '~/components/ui/lucide';
@@ -50,7 +51,7 @@ export default function EmailsScreen() {
       {header}
       <Switches
         employer={profile.role === 'employer'}
-        initial={{
+        stored={{
           notify_applications: profile.notify_applications,
           notify_status: profile.notify_status,
           notify_digest: profile.notify_digest,
@@ -62,12 +63,16 @@ export default function EmailsScreen() {
   );
 }
 
-function Switches({ employer, initial }: { employer: boolean; initial: EmailPreferences }) {
+function Switches({ employer, stored }: { employer: boolean; stored: EmailPreferences }) {
   const t = useTranslations('account');
   const tCommon = useTranslations('common');
   const { colors, shadow } = useTheme();
   const save = useSaveEmailPreferences();
-  const [prefs, setPrefs] = useState(initial);
+  // The switches follow what is stored — one turned off from an email's
+  // unsubscribe link, or on another phone, while this was open — so that a
+  // flip, which sends all of them, never turns it back on.
+  const switches = useStoredFields(stored);
+  const prefs = switches.fields;
   const [saved, setSaved] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -83,21 +88,20 @@ function Switches({ employer, initial }: { employer: boolean; initial: EmailPref
     ...(employer ? [] : [{ key: 'notify_digest' as const, label: t('notifyDigest'), hint: t('notifyDigestHint') }]),
     // The profile reminder, off unless turned on — offered only where the
     // database has the switch (migration 337), as on the website.
-    ...(!employer && typeof initial.notify_profile_nudge === 'boolean'
+    ...(!employer && typeof stored.notify_profile_nudge === 'boolean'
       ? [{ key: 'notify_profile_nudge' as const, label: t('notifyProfileNudge'), hint: t('notifyProfileNudgeHint') }]
       : []),
   ];
 
   const flip = (key: keyof EmailPreferences) => {
-    const before = prefs;
     const next = { ...prefs, [key]: !prefs[key] };
-    setPrefs(next);
+    switches.set({ [key]: next[key] });
     setSaved(false);
     setFailed(false);
     save.mutate(next, {
       onSuccess: () => setSaved(true),
       onError: () => {
-        setPrefs(before);
+        switches.set({ [key]: prefs[key] });
         setFailed(true);
       },
     });

@@ -10,6 +10,7 @@ import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testi
 import type { CompanyDocumentRow, CompanyRow, OrderRow, ProfileRow } from '@/lib/supabase/database.types';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
+import { useEmployerSummary } from '~/features/employer/overview';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
@@ -134,6 +135,7 @@ beforeEach(async () => {
   server.on('POST /api/mobile/v1/actions/removeCompanyMember', { ok: true });
   server.on('GET /rest/v1/orders', [] as OrderRow[]);
   server.on('GET /rest/v1/monthly_free_post_grants', []);
+  server.on('POST /rest/v1/rpc/employer_summary', { jobs_live: 0 });
   server.on('POST /api/mobile/v1/actions/claimMonthlyFreePost', { ok: true, data: { claimed: true } });
 
   await supabase.auth.signOut({ scope: 'local' });
@@ -148,6 +150,12 @@ function Settled({ children }: { children: ReactNode }) {
   return useSession().settled ? children : null;
 }
 
+/** Home's figures, read as Home reads them while the company page is open in another tab. */
+function HomeFigures() {
+  useEmployerSummary();
+  return null;
+}
+
 function Root() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
@@ -156,6 +164,7 @@ function Root() {
         <I18nProvider>
           <SessionProvider>
             <Settled>
+              <HomeFigures />
               <Stack screenOptions={{ headerShown: false }} />
             </Settled>
           </SessionProvider>
@@ -316,6 +325,19 @@ describe("the company's page, for a company admin", () => {
     await waitFor(() => expect(server.asked('/storage/v1/object/company-documents')).toHaveLength(1));
   });
 
+  it("reads Home's next step again once a paper is in, so 'upload them again' does not stay up", async () => {
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///cache/card.pdf', name: 'card.pdf', mimeType: 'application/pdf', size: 4096, lastModified: 0 }],
+    } as DocumentPicker.DocumentPickerResult);
+    renderRouter(app, { initialUrl: '/employer/company' });
+    await waitFor(() => expect(server.asked('/rest/v1/rpc/employer_summary').length).toBeGreaterThan(0));
+    const before = server.asked('/rest/v1/rpc/employer_summary').length;
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.commercialRegister}` }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/recordCompanyDocument')).toBeTruthy());
+    await waitFor(() => expect(server.asked('/rest/v1/rpc/employer_summary').length).toBeGreaterThan(before));
+  });
+
   it('takes a paper photographed, or from the library, as a JPEG — not only a file from Files', async () => {
     paperFrom = 1;
     jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
@@ -360,6 +382,19 @@ describe("the company's page, for a company admin", () => {
     fireEvent.press(screen.getByRole('button', { name: `${ar.employer.teamRemove}: —` }));
     answerAlert(alert, ar.employer.teamRemove);
     await waitFor(() => expect(input('/api/mobile/v1/actions/removeCompanyMember')).toEqual({ userId: RECRUITER }));
+    alert.mockRestore();
+  });
+
+  it('reads who this is again when an admin takes themselves off the team, which leaves the company', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    // Someone else owns the company: this admin may take themselves off.
+    company = { ...baseCompany, owner_id: RECRUITER };
+    renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.teamRemove}: أحمد سمير` }));
+    const reads = server.asked('/rest/v1/profiles').length;
+    answerAlert(alert, ar.employer.teamRemove);
+    await waitFor(() => expect(input('/api/mobile/v1/actions/removeCompanyMember')).toEqual({ userId: USER_ID }));
+    await waitFor(() => expect(server.asked('/rest/v1/profiles').length).toBeGreaterThan(reads));
     alert.mockRestore();
   });
 
