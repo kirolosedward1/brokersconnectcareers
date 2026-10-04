@@ -88,8 +88,8 @@ CANDIDATE ACCOUNT (the sign-in above)
 • The directory profile is «ملفي» (My profile), under «حسابي».
 
 EMPLOYER ACCOUNT: ${employerEmail} / ${employerPassword}
-• Tabs: «الرئيسية» (Home), «وظائفي» (My jobs), «المتقدمين» (Applicants), «الاستشاريين» (Consultants), «حسابي» (Account).
-• «وظائفي»: post a job. A new listing, and a live one whose title, pay or terms are edited, waits for our moderators before it shows, so please edit after trying the candidate part.
+• Tabs: «الرئيسية» (Home), «إعلاناتي» (My listings), «المتقدمين» (Applicants), «الاستشاريين» (Consultants), «حسابي» (Account).
+• «إعلاناتي»: post a job. A new listing, and a live one whose title, pay or terms are edited, waits for our moderators before it shows, so please edit after trying the candidate part.
 • «المتقدمين»: move the applicant through the stages, add a private note, and open the CV.
 • «الاستشاريين»: the consultants who chose to be shown to companies. It can be short while the service is new; the review candidate is kept out of it.
 

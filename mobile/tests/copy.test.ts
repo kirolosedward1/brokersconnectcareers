@@ -64,6 +64,10 @@ describe('one name for one thing', () => {
     expect(arabic.filter(([, text]) => /شاغر|شواغر|عدد الأماكن/.test(text)).map(([key]) => key)).toEqual([]);
   });
 
+  it('spells وظائف one way, as the board writes it beside its empty state', () => {
+    expect(arabic.filter(([, text]) => text.includes('وظايف')).map(([key]) => key)).toEqual([]);
+  });
+
   it('says "كلمة المرور", never "كلمة السر"', () => {
     expect(arabic.filter(([, text]) => text.includes('كلمة السر')).map(([key]) => key)).toEqual([]);
   });
