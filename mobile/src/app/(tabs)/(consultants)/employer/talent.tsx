@@ -24,6 +24,7 @@ import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useNextPage } from '~/lib/use-next-page';
+import { useHiddenAgents, withoutHiddenAgents } from '~/features/moderation/hidden-agents';
 
 /**
  * The company's shortlist — the website's /employer/talent: people worth
@@ -44,11 +45,13 @@ export default function ShortlistScreen() {
   const ids = useShortlistedIds().data;
   const districts = useDistricts().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
+  const hiddenAgents = useHiddenAgents();
   const rows = useMemo(() => {
-    const all = flattenShortlist(shortlist.data?.pages);
+    // Without the consultants hidden on this phone (hidden-agents.ts).
+    const all = withoutHiddenAgents(flattenShortlist(shortlist.data?.pages), hiddenAgents);
     // Until the ids are read, everything the list holds; after, only who is still kept.
     return ids ? all.filter((row) => ids.includes(row.id)) : all;
-  }, [shortlist.data, ids]);
+  }, [shortlist.data, ids, hiddenAgents]);
   // The whole list, not the pages loaded so far: the kept ids are all of it, and follow a removal at once.
   const total = ids?.length ?? Number(shortlist.data?.pages[0]?.[0]?.total_count ?? 0);
 

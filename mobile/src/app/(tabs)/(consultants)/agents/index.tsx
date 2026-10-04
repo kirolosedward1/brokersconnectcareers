@@ -36,6 +36,7 @@ import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useNextPage } from '~/lib/use-next-page';
+import { useHiddenAgents, withoutHiddenAgents } from '~/features/moderation/hidden-agents';
 
 /**
  * The consultant directory — the website's /agents, for the companies that
@@ -60,7 +61,9 @@ export default function DirectoryScreen() {
   const directory = useAgentDirectory(filters, { enabled: visited });
   const nextPage = useNextPage(directory);
   const pull = usePullRefresh(() => directory.refetch());
-  const agents = useMemo(() => flattenAgents(directory.data?.pages), [directory.data]);
+  // Without the consultants hidden on this phone (hidden-agents.ts).
+  const hiddenAgents = useHiddenAgents();
+  const agents = useMemo(() => withoutHiddenAgents(flattenAgents(directory.data?.pages), hiddenAgents), [directory.data, hiddenAgents]);
   const districts = useDistricts().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
   const canShortlist = canShortlistAgents(actor);

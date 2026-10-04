@@ -82,9 +82,9 @@ SAFETY
 function reviewNotes(employerEmail, employerPassword) {
   return `Brokers Connect is a job board and consultant directory for Egypt's real estate market. The app's interface is in Arabic.
 
-Candidate account: the sign-in above. Browse Jobs, open a listing and apply. Applications, Saved and the directory profile are in the tabs and under Account.
+Candidate account: the sign-in above. Browse Jobs, open the listing «مدير مبيعات (إعلان لمراجعة التطبيق)» ("Sales manager, app review listing") and apply; this account has already applied to the other review listing, which is the employer account's applicant. Applications, Saved and the directory profile are in the tabs and under Account.
 
-Employer account: ${employerEmail} / ${employerPassword}. Listings: post or edit a job (a new listing waits for our moderators before it goes live). Applicants: move an applicant through the stages, open a CV. Consultants: the directory, a consultant's contact details, the shortlist.
+Employer account: ${employerEmail} / ${employerPassword}. Listings: post or edit a job (a new listing waits for our moderators before it goes live). Applicants: move an applicant through the stages, open a CV, and open the applicant's full profile from their card. Consultants: the directory lists the consultants who chose to be shown to companies, so it can be short while the service is new; the review candidate's own profile is kept out of it.
 
 Account > Delete account deletes the signed-in account. For a company owner it sends a deletion request instead, because deleting that account would delete other people's applications to the company's listings.
 

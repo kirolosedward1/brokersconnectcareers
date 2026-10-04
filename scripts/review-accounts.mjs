@@ -1,7 +1,8 @@
 /**
  * The two accounts App Review signs in with (docs/app-store.md, "Review
  * accounts"): a candidate who has applied, and an employer whose verified
- * company has one live listing with that applicant.
+ * company has two live listings, the first with that applicant and the second
+ * left for the reviewer to apply to.
  *
  *   pnpm review-accounts                                   what it would do; reads only
  *   pnpm review-accounts --execute --confirm <ref>         makes them, or refreshes them
@@ -187,7 +188,7 @@ async function main() {
       for (const key of ['candidate', 'employer']) {
         if (existing[key]) await call(`/auth/v1/admin/users/${existing[key].id}`, { method: 'DELETE' });
       }
-      console.log('\nRemoved: the listing, its applications, the company, the directory profile, the CV and both users.');
+      console.log('\nRemoved: the listings, their applications, the company, the directory profile, the CV and both users.');
       return;
     }
 

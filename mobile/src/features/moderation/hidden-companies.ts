@@ -1,5 +1,4 @@
-import { useEffect, useSyncExternalStore } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createHiddenStore } from './hidden-store';
 
 /**
  * Companies the reader has hidden on this phone.
@@ -15,58 +14,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * Kept on the device: a list of company ids, nobody else's business, and
  * nothing the server needs in order to answer anyone else.
  */
-const KEY = 'bc.hidden-companies.v1';
+const companies = createHiddenStore('bc.hidden-companies.v1');
 
-let hidden: ReadonlySet<string> = new Set();
-let loading: Promise<void> | null = null;
-let loaded = false;
-const listeners = new Set<() => void>();
-
-function emit() {
-  for (const listener of listeners) listener();
-}
-
-function load(): Promise<void> {
-  loading ??= AsyncStorage.getItem(KEY)
-    .then((stored) => {
-      const ids = stored ? (JSON.parse(stored) as unknown) : [];
-      if (Array.isArray(ids)) hidden = new Set([...hidden, ...ids.filter((id): id is string => typeof id === 'string')]);
-    })
-    .catch(() => {})
-    .finally(() => {
-      loaded = true;
-      emit();
-    });
-  return loading;
-}
-
-function save(next: ReadonlySet<string>) {
-  hidden = next;
-  emit();
-  AsyncStorage.setItem(KEY, JSON.stringify([...next])).catch(() => {});
-}
-
-export function hideCompany(id: string) {
-  if (!hidden.has(id)) save(new Set([...hidden, id]));
-}
-
-export function unhideCompany(id: string) {
-  if (hidden.has(id)) save(new Set([...hidden].filter((existing) => existing !== id)));
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
+export const hideCompany = companies.hide;
+export const unhideCompany = companies.unhide;
 
 /** The hidden company ids, kept current wherever they change. */
 export function useHiddenCompanies(): ReadonlySet<string> {
-  useEffect(() => {
-    void load();
-  }, []);
-  return useSyncExternalStore(subscribe, () => hidden);
+  return companies.useHidden();
 }
 
 /**
@@ -76,10 +31,7 @@ export function useHiddenCompanies(): ReadonlySet<string> {
  * it until this small read came back.
  */
 export function useHiddenCompaniesLoaded(): boolean {
-  useEffect(() => {
-    void load();
-  }, []);
-  return useSyncExternalStore(subscribe, () => loaded);
+  return companies.useLoaded();
 }
 
 /** A list without the listings of hidden companies. */

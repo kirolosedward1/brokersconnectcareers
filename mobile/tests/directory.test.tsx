@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Linking, Pressable } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Alert, Linking, Pressable, type AlertButton } from 'react-native';
+import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,6 +15,7 @@ import type {
   ProfileRow,
   SavedAgentCardRow,
 } from '@/lib/supabase/database.types';
+import { unhideAgent } from '~/features/moderation/hidden-agents';
 import { useSaveRecord } from '~/features/profile/queries';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
@@ -467,6 +468,30 @@ describe("a consultant's page", () => {
     card = null;
     renderRouter(app, { initialUrl: '/agents/nobody' });
     expect(await screen.findByText(ar.common.notFound)).toBeTruthy();
+  });
+});
+
+describe('hiding a consultant', () => {
+  it('takes them out of the directory on this phone, from their page, which then says so and brings them back', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    try {
+      renderRouter(app, { initialUrl: '/agents/mona-ali' });
+      fireEvent.press(await screen.findByRole('button', { name: ar.app.moderation.hideAgent }));
+      expect(alert.mock.calls[0][0]).toBe(ar.app.moderation.hideAgentTitle.replace('{name}', 'منى علي'));
+      act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
+      expect(await screen.findByText(ar.app.moderation.hiddenAgent)).toBeTruthy();
+      expect(screen.queryByRole('button', { name: ar.app.moderation.hideAgent })).toBeNull();
+
+      // The directory, without her; the other consultant is still there.
+      act(() => router.navigate('/agents'));
+      expect(await screen.findByText(ar.agents.anonymous)).toBeTruthy();
+      expect(screen.queryByText('منى علي')).toBeNull();
+    } finally {
+      act(() => unhideAgent(mona.id));
+      alert.mockRestore();
+    }
+    // Brought back, she is listed again.
+    expect(await screen.findByText('منى علي')).toBeTruthy();
   });
 });
 

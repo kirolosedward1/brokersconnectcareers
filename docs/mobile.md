@@ -387,6 +387,10 @@ reports promptly.
   its page says it is hidden and takes it back. Kept on the device — a list of
   company ids the server has no need of — and read before the app draws
   anything, since a cold start draws the board kept from the last run at once.
+- **Hide a consultant** is the directory's block, the same way: the profile
+  leaves the directory and the shortlist on that phone
+  (`mobile/src/features/moderation/hidden-agents.ts`), and its page says it is
+  hidden and takes it back.
 
 ## Links, email and the captcha
 

@@ -9,6 +9,7 @@ import type { DistrictRow } from '@/lib/supabase/database.types';
 import { AgentCv } from '~/components/directory/agent-cv';
 import { ContactReveal, CvButton } from '~/components/directory/contact-reveal';
 import { ShortlistButton } from '~/components/directory/shortlist-controls';
+import { HiddenAgentNotice, HideAgent } from '~/components/moderation/hide-company';
 import { ReportButton } from '~/components/moderation/report';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
@@ -106,6 +107,8 @@ export function AgentProfile({ handle }: { handle: string }) {
         }
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >
+        {isOwner ? null : <HiddenAgentNotice agentId={card.id} />}
+
         {/* The owner sees everything; what they need to know is what everybody else sees. */}
         {isOwner ? (
           <Card style={{ gap: space[1] }}>
@@ -246,10 +249,12 @@ export function AgentProfile({ handle }: { handle: string }) {
           districts={districtMap}
         />
 
-        {/* Impersonation is the report a directory of people most needs to hear. */}
+        {/* Impersonation is the report a directory of people most needs to hear;
+            hiding is the reader's own block, on this phone. */}
         {isOwner ? null : (
-          <View style={{ alignItems: 'flex-start', paddingTop: space[4], borderTopWidth: 1, borderTopColor: colors.border }}>
+          <View style={{ alignItems: 'flex-start', gap: space[1], paddingTop: space[4], borderTopWidth: 1, borderTopColor: colors.border }}>
             <ReportButton target="agent" targetId={card.id} returnPath={`/agents/${card.slug}`} label={t('agents.report')} />
+            <HideAgent agentId={card.id} name={name} />
           </View>
         )}
       </ScrollView>

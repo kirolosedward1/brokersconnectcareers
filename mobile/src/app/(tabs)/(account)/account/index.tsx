@@ -225,6 +225,9 @@ export default function AccountScreen() {
             <Row
               icon={<Mail size={18} color={colors.primary} />}
               label={t('app.account.contact')}
+              // The address itself, not only a link to the mail app: a phone
+              // with no mail account set up opens nothing, and says nothing.
+              detail={supportEmail}
               onPress={() => Linking.openURL(`mailto:${supportEmail}`).catch(() => {})}
             />
           ) : null}
@@ -296,12 +299,15 @@ function openSitePage(path: '/privacy' | '/terms') {
 function Row({
   icon,
   label,
+  detail,
   onPress,
   destructive = false,
   busy = false,
 }: {
   icon: ReactNode;
   label: string;
+  /** A second line under the label, for what the row leads to (an address). */
+  detail?: string;
   onPress: () => void;
   destructive?: boolean;
   /** Its action is under way: said, and not started twice. */
@@ -348,9 +354,14 @@ function Row({
           borderTopColor: colors.border,
         }}
       >
-        <Text tone={destructive ? 'destructive' : 'foreground'} style={{ flex: 1 }}>
-          {label}
-        </Text>
+        <View style={{ flex: 1, paddingVertical: detail ? space[2] : 0 }}>
+          <Text tone={destructive ? 'destructive' : 'foreground'}>{label}</Text>
+          {detail ? (
+            <Text variant="small" tone="mutedForeground" selectable>
+              {detail}
+            </Text>
+          ) : null}
+        </View>
         {busy ? <ActivityIndicator color={colors.mutedForeground} /> : <ForwardChevron size={18} color={colors.mutedForeground} />}
       </View>
     </Pressable>

@@ -8,9 +8,10 @@
 -- migrations. Safe to run again: whatever is there already is kept.
 --
 -- What it makes, all of it labelled as the review's on every page that shows it:
---   - an employer, approved, owning a verified company with one live listing;
+--   - an employer, approved, owning a verified company with two live listings;
 --   - a candidate with a directory profile kept out of the directory and a CV,
---     who has applied to that listing, so the employer has an applicant;
+--     who has applied to the first listing, so the employer has an applicant,
+--     and not to the second, which is the one the reviewer applies to;
 --   - both having agreed to the current Terms and Privacy policy, as onboarding
 --     records it, so neither is asked again.
 --
@@ -23,8 +24,8 @@
 --   candidatePhone, employerPhone   E.164 numbers the applicant card dials
 --   terms, privacy             POLICY_VERSIONS (src/lib/policy-versions.ts)
 --   cv                         the candidate's CV path in the cvs bucket, or null
---   remove                     true to delete the company (its listing and
---                              applications with it) and the agent profile
+--   remove                     true to delete the company (its listings and
+--                              applications with them) and the agent profile
 -- =============================================================================
 
 do $$
@@ -108,6 +109,25 @@ begin
       'مفيش متطلبات: الإعلان للتجربة بس.', 'active'
     )
     returning id into v_job;
+  end if;
+
+  -- A second listing, which nobody has applied to: the one the reviewer
+  -- applies to from the candidate account. The first already has that
+  -- account's application, for the employer's pipeline, and a listing takes
+  -- one application per person.
+  if not exists (select 1 from jobs where slug = 'app-review-sales-manager') then
+    insert into jobs (
+      company_id, title_ar, title_en, slug, track, employment_type, experience_band, seats,
+      district_id, basic_salary_min, basic_salary_max, commission_type, commission_value,
+      commission_note_ar, leads_source, benefits, description_ar, requirements_ar, status
+    ) values (
+      v_company, 'مدير مبيعات (إعلان لمراجعة التطبيق)', 'Sales manager (app review listing)',
+      'app-review-sales-manager', 'resale', 'full_time', 'mid_3_5', 1,
+      v_district, 15000, 20000, 'percentage', 1.00,
+      'عمولة 1٪ من قيمة البيع.', 'company_provided', array['social_insurance', 'medical'],
+      'الإعلان ده موجود عشان فريق مراجعة متجر التطبيقات يجرّب التقديم من حساب المتقدّم. مش وظيفة حقيقية، فمتقدّمش عليه.',
+      'مفيش متطلبات: الإعلان للتجربة بس.', 'active'
+    );
   end if;
 
   -- ---------------------------------------------------------------------------

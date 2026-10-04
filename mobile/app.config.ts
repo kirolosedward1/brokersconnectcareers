@@ -136,6 +136,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         'NSPrivacyCollectedDataTypeUserID',
         'NSPrivacyCollectedDataTypeDeviceID',
         'NSPrivacyCollectedDataTypeOtherDataTypes',
+        // A company opening a consultant's profile, or asking for their number
+        // or CV: kept to show the consultant a count and for the daily limits.
+        'NSPrivacyCollectedDataTypeProductInteraction',
       ].map((type) => ({
         NSPrivacyCollectedDataType: type,
         NSPrivacyCollectedDataTypeLinked: true,
@@ -221,8 +224,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         // The base language's strings; the English ones are in assets/locales.
         photosPermission:
-          'بنستخدم صورك عشان تختار صورتك الشخصية أو لوجو شركتك، ومفيش حاجة بتترفع غير اللي انت تختاره.',
-        cameraPermission: 'بنستخدم الكاميرا عشان تصوّر صورتك الشخصية أو مستندات شركتك.',
+          'بنستخدم صورك عشان تختار صورتك الشخصية أو لوجو شركتك أو مستنداتها، ومفيش حاجة بتترفع غير اللي انت تختاره.',
+        cameraPermission: 'بنستخدم الكاميرا عشان تصوّر مستندات شركتك لتوثيقها.',
         microphonePermission: false,
       },
     ],

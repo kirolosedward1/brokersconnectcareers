@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useTranslations } from 'use-intl';
 import { useMobileConfig } from '~/features/config';
@@ -13,7 +13,8 @@ import { GoogleMark } from './google-mark';
 /**
  * "Continue with Apple" and "Continue with Google", above the form, with the
  * website's "or" under them — each shown only when the auth server will accept
- * it today (/api/mobile/v1/config asks GoTrue, as the website's pages do).
+ * it today (/api/mobile/v1/config asks GoTrue, as the website's pages do), and
+ * Google on an iPhone only beside Apple.
  *
  * Apple's is Apple's own button, drawn by iOS in the phone's language, as the
  * App Store asks; black in the light theme and white in the dark.
@@ -46,7 +47,10 @@ export function SocialSignIn({
   }, []);
 
   const apple = Boolean(config.data?.providers.apple) && appleHere;
-  const google = Boolean(config.data?.providers.google);
+  // On iPhone, Google only beside Apple: an app that offers a third-party
+  // sign-in must offer Sign in with Apple as well (App Review 4.8), and the
+  // auth server can have Google on with Apple not yet set up.
+  const google = Boolean(config.data?.providers.google) && (Platform.OS !== 'ios' || apple);
   if (!apple && !google) return null;
 
   // A promise chain, not try/finally, which the React Compiler does not compile.

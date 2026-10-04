@@ -135,9 +135,13 @@ in the app, and nothing is used to track people across apps or websites.
   itself (**Delete this account**, under signing out), without agreeing to the
   Terms first.
 - **4.8 Sign in with Apple.** Offered wherever Google is (`enabledProviders()`
-  shows both once the Apple provider is on in Supabase).
+  shows both once the Apple provider is on in Supabase). On an iPhone the app
+  shows Google only beside Apple (`mobile/src/components/auth/social-sign-in.tsx`),
+  so a build submitted before Apple is on offers neither rather than Google
+  alone.
 - **1.2 user-generated content.** Listings, companies and consultant profiles
-  can be reported (`reportTarget`), a company can be hidden on the phone, the
+  can be reported (`reportTarget`), a company or a consultant can be hidden on
+  the phone (the block: `hidden-companies.ts`, `hidden-agents.ts`), the
   Terms and the Privacy policy are agreed to at onboarding — an unticked box,
   with the person confirming they are 18 or older, recorded with the versions
   agreed to (`policy_acceptances`, migration 336) — and reports reach the
@@ -145,7 +149,10 @@ in the app, and nothing is used to track people across apps or websites.
 - **3.1.1 payments.** Nothing is sold in the app; billing shows credits and
   orders read-only, and the website's checkout is off.
 - **Export compliance.** `ITSAppUsesNonExemptEncryption` is false
-  (`usesNonExemptEncryption: false`): the app uses only the system's HTTPS.
+  (`usesNonExemptEncryption: false`): the app's encryption is the system's —
+  HTTPS, and the stored session sealed with AES-GCM through Apple's own
+  CryptoKit (`expo-crypto`, `mobile/src/lib/session-storage.ts`) — which is
+  exempt.
 - **Permissions**, each asked when it is used, with Arabic and English
   purpose strings: the photo library and camera (profile photo, logo, company
   papers) and notifications (the prompt on Home, never at launch).
@@ -170,13 +177,15 @@ project it is pointed at, once that project's migrations are applied:
 
 - a **candidate** with a directory profile — hidden from the directory, so no
   real company finds it — and a CV, who has applied to
-- the one live listing of a **verified company** whose owner, the
-  **employer**, is approved.
+- the first of two live listings of a **verified company** whose owner, the
+  **employer**, is approved. The second has no applications: it is the one the
+  reviewer applies to from the candidate account (a listing takes one
+  application per person).
 
 Both have agreed to the current Terms and Privacy policy, as onboarding records
 it. Each is labelled as the review's wherever it shows: the company is «حساب
-مراجعة التطبيق», and the listing says it is not a real job. It is on the public
-board while it is live, like every listing, so make the accounts just before
+مراجعة التطبيق», and each listing says it is not a real job. They are on the
+public board while they are live, like every listing, so make the accounts just before
 submitting and take them away once the app is approved:
 
 ```bash
@@ -192,7 +201,7 @@ Making them prints the `APP_REVIEW_*` lines `metadata:push` needs ("The
 listing, as code"); the passwords are kept nowhere else, and running it again
 sets new ones. Both profiles show the operator's number (`src/lib/business.ts`)
 unless `REVIEW_PHONE` names another, so a reviewer who taps WhatsApp reaches
-you, not a stranger. Removing deletes the listing with every application to it
+you, not a stranger. Removing deletes the listings with every application to them
 — someone who applied despite what it says loses that application — then the
 company, the CV and both users. `supabase/review-accounts.sql` is what it
 writes, tested on the real migrations (`pnpm test:review-accounts`).

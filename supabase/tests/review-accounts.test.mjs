@@ -3,8 +3,9 @@
  * migrations. Run with: pnpm test:review-accounts  (also part of pnpm test:db)
  *
  * What App Review needs to find: an employer whose verified company has a
- * live listing with an applicant, a candidate who has applied, both through
- * onboarding. What nobody else should find: the reviewer in the directory.
+ * live listing with an applicant, a candidate who has applied to it and has a
+ * second listing left to apply to, both through onboarding. What nobody else
+ * should find: the reviewer in the directory.
  * And a second run changes nothing, and the removal leaves nothing behind.
  */
 import { readFileSync } from 'node:fs';
@@ -58,9 +59,9 @@ const counts = async () =>
   one(`
     select
       (select count(*)::int from companies where slug = 'brokers-connect-app-review') as companies,
-      (select count(*)::int from jobs where slug = 'app-review-property-consultant') as jobs,
+      (select count(*)::int from jobs where slug in ('app-review-property-consultant', 'app-review-sales-manager')) as jobs,
       (select count(*)::int from applications a join jobs j on j.id = a.job_id
-         where j.slug = 'app-review-property-consultant') as applications,
+         where j.slug in ('app-review-property-consultant', 'app-review-sales-manager')) as applications,
       (select count(*)::int from agent_profiles where user_id = '${CANDIDATE}') as agent_profiles,
       (select count(*)::int from policy_acceptances where user_id in ('${CANDIDATE}', '${EMPLOYER}')) as acceptances,
       (select count(*)::int from profiles where id in ('${CANDIDATE}', '${EMPLOYER}')) as profiles
@@ -72,8 +73,8 @@ report.section('the first run makes both accounts');
 report.check('runs', (await run(PARAMS)) === null);
 const made = await counts();
 report.check(
-  'a company, a listing, an application, a directory profile, two agreements, two profiles',
-  made.companies === 1 && made.jobs === 1 && made.applications === 1 && made.agent_profiles === 1 &&
+  'a company, two listings, an application, a directory profile, two agreements, two profiles',
+  made.companies === 1 && made.jobs === 2 && made.applications === 1 && made.agent_profiles === 1 &&
     made.acceptances === 2 && made.profiles === 2,
   JSON.stringify(made),
 );
@@ -89,10 +90,14 @@ const company = await one(`
     from companies c where c.slug = 'brokers-connect-app-review'`);
 report.check('the company is verified, and the employer is its member', company.verification_status === 'verified' && company.verified_at && company.member, JSON.stringify(company));
 
-const job = await one(`
-  select status, published_at is not null as published, expires_at > now() as open
-    from jobs where slug = 'app-review-property-consultant'`);
-report.check('the listing is live, published and open', job.status === 'active' && job.published && job.open, JSON.stringify(job));
+const listings = (await db.query(`
+  select slug, status, published_at is not null as published, expires_at > now() as open
+    from jobs where slug in ('app-review-property-consultant', 'app-review-sales-manager') order by slug`)).rows;
+report.check(
+  'both listings are live, published and open',
+  listings.length === 2 && listings.every((job) => job.status === 'active' && job.published && job.open),
+  JSON.stringify(listings),
+);
 
 const agreed = await one(`
   select count(*)::int as n from policy_acceptances
@@ -125,6 +130,13 @@ report.check("the employer's bell has the application", bell.n >= 1, `${bell.n} 
 
 const mine = await as(CANDIDATE, `select a.status from applications a join jobs j on j.id = a.job_id where j.slug = 'app-review-property-consultant'`);
 report.check('the candidate sees the application', mine.ok && mine.rows.length === 1 && mine.rows[0].status === 'new', mine.error);
+
+// The reviewer's own application, from the candidate account, as the app sends it.
+const applying = await as(CANDIDATE, `
+  insert into applications (job_id, candidate_id, status, experience_band, note)
+  select id, '${CANDIDATE}', 'new', 'junior_1_3', 'review' from jobs where slug = 'app-review-sales-manager'
+  returning id`);
+report.check('the candidate can apply to the second listing', applying.ok && applying.rows.length === 1, applying.error);
 
 const own = await as(CANDIDATE, `select visibility, cv_path from agent_profiles where user_id = '${CANDIDATE}'`);
 report.check(

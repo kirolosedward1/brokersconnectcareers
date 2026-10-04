@@ -241,6 +241,12 @@ describe('the Account tab', () => {
     expect(await screen.findByText(ar.app.licenses.intro)).toBeTruthy();
   });
 
+  it('shows the address to write to, not only a link to the mail app', async () => {
+    renderRouter(app, { initialUrl: '/account' });
+    expect(await screen.findByText('help@brokersconnect.net')).toBeTruthy();
+    expect(screen.getByRole('button', { name: new RegExp(ar.app.account.contact) })).toBeTruthy();
+  });
+
   it('says who is signed in, and signs out of this phone only', async () => {
     await signedIn();
     renderRouter(app, { initialUrl: '/account' });
@@ -697,7 +703,8 @@ describe('one-tap sign-in', () => {
   });
 
   it('Google: the system browser, the code back to the app, and PKCE', async () => {
-    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: false } }));
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValue({
       type: 'success',
       url: 'brokersconnect://auth/callback?code=google-code',
@@ -719,6 +726,8 @@ describe('one-tap sign-in', () => {
   });
 
   it('Google on Android: the return also arrives as a link, and the code is exchanged once', async () => {
+    // Android has no Apple button: Google stands on its own there.
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: false } }));
     const back = 'brokersconnect://auth/callback?code=google-code';
     let opened: string | null = 'not asked';
@@ -737,10 +746,12 @@ describe('one-tap sign-in', () => {
     const exchanges = server.asked('/auth/v1/token').filter((request) => request.url.searchParams.get('grant_type') === 'pkce');
     expect(exchanges).toHaveLength(1);
     expect(screen.queryByText(ar.common.errorBody)).toBeNull();
+    os.restore();
   });
 
   it('Google: closing the browser is not an error', async () => {
-    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: false } }));
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValue({ type: 'cancel' } as Awaited<
       ReturnType<typeof WebBrowser.openAuthSessionAsync>
     >);
@@ -751,6 +762,29 @@ describe('one-tap sign-in', () => {
     expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle, disabled: false })).toBeTruthy();
     expect(screen.queryByText(ar.common.errorBody)).toBeNull();
     expect(screen.getByText(ar.auth.signInTitle)).toBeTruthy();
+  });
+});
+
+describe('one-tap sign-in, as App Review asks', () => {
+  it('offers Google on an iPhone only beside Sign in with Apple', async () => {
+    // Google on at the auth server, Apple not set up there yet.
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: false } }));
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
+    renderRouter(app, { initialUrl: '/sign-in' });
+    expect(await screen.findByText(ar.auth.signInTitle)).toBeTruthy();
+    await waitFor(() => expect(server.asked('/api/mobile/v1/config').length).toBeGreaterThan(0));
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+  });
+
+  it('offers both once Apple is on', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
+    renderRouter(app, { initialUrl: '/sign-in' });
+    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeTruthy();
   });
 });
 
