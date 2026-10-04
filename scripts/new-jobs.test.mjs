@@ -64,7 +64,7 @@ is(
 );
 is(
   'a search with no filters links to the board itself',
-  newJobsNotice([{ label: 'كل الوظايف', query: '', jobs: [job('a')] }]).href,
+  newJobsNotice([{ label: 'كل الوظائف', query: '', jobs: [job('a')] }]).href,
   '/jobs',
 );
 is(

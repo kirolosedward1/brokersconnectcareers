@@ -863,6 +863,22 @@ console.log('\n— the email copy has two halves too');
       .join('; '));
 
   check('and the same shape at every key', mismatched.length === 0, mismatched.slice(0, 8).join('; '));
+
+  /*
+    One spelling of وظائف, as the site and the app write it (the app's
+    copy.test.ts holds the catalogues to it). The emails said «وظايف» while
+    the pages they link to said «وظائف». A function's text is its source,
+    so the words inside the templates are read too.
+  */
+  const words = (value, prefix = '') => {
+    if (typeof value === 'function' || typeof value === 'string') return [[prefix, String(value)]];
+    if (value && typeof value === 'object') {
+      return Object.entries(value).flatMap(([key, inner]) => words(inner, prefix ? `${prefix}.${key}` : key));
+    }
+    return [];
+  };
+  const misspelled = words(emailCopy.ar).filter(([, text]) => /وظايف|نتايج|قايمة|قوايم|رسايل/.test(text)).map(([key]) => key);
+  check('Arabic emails spell وظائف, نتائج and the rest as the site does', misspelled.length === 0, misspelled.join(', '));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

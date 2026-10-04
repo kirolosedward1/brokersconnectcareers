@@ -68,6 +68,12 @@ describe('one name for one thing', () => {
     expect(arabic.filter(([, text]) => text.includes('وظايف')).map(([key]) => key)).toEqual([]);
   });
 
+  it('writes the hamza in the other words it had two spellings for', () => {
+    // «5 نتائج» above «شوف النتايج»; «قائمة مختصرة» beside «قايمة المرشحين».
+    const colloquial = /نتايج|قايمة|قوايم|رسايل/;
+    expect(arabic.filter(([, text]) => colloquial.test(text)).map(([key]) => key)).toEqual([]);
+  });
+
   it('says "كلمة المرور", never "كلمة السر"', () => {
     expect(arabic.filter(([, text]) => text.includes('كلمة السر')).map(([key]) => key)).toEqual([]);
   });

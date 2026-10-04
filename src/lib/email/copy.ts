@@ -21,6 +21,26 @@ import type { ApplicationStatus } from '@/lib/supabase/database.types';
 
 type Locale = 'ar' | 'en';
 
+const arabicPlural = new Intl.PluralRules('ar');
+
+/**
+ * A count in Arabic, worded as the bell words it (messages/ar.json): one and
+ * two have forms of their own, three to ten take the plural, eleven and up
+ * the singular again. `#` is the number. Until this, every number but one
+ * took the plural: «فاضل 2 أيام», «11 وظائف جديدة».
+ */
+function arabicCount(count: number, forms: { one: string; two: string; few: string; other: string }): string {
+  const category = arabicPlural.select(count);
+  const form = category === 'one' || category === 'two' || category === 'few' ? forms[category] : forms.other;
+  return form.replace('#', String(count));
+}
+
+const newListings = (count: number) =>
+  arabicCount(count, { one: 'وظيفة جديدة', two: 'وظيفتين جداد', few: '# وظائف جديدة', other: '# وظيفة جديدة' });
+
+const newApplicants = (count: number) =>
+  arabicCount(count, { one: 'متقدم جديد', two: 'متقدمين اتنين جداد', few: '# متقدمين جداد', other: '# متقدم جديد' });
+
 export const emailCopy = {
   ar: {
     siteName: 'بروكرز كونكت',
@@ -52,7 +72,7 @@ export const emailCopy = {
       subject: 'أهلاً بيك في بروكرز كونكت',
       preheader: 'ابدأ بأول إعلان وظيفة.',
       heading: 'أهلاً بيك',
-      body: 'حساب شركتك اتعمل. تقدر تنشر وظايفك وتستقبل المتقدمين في مكان واحد، وتكلّمهم على واتساب من جوه المنصة.',
+      body: 'حساب شركتك اتعمل. تقدر تنشر وظائفك وتستقبل المتقدمين في مكان واحد، وتكلّمهم على واتساب من جوه المنصة.',
       hint: 'بيانات الشركة المكتملة والتوثيق بيخلّوا الإعلان يجيب متقدمين أكتر وأجدّ.',
       cta: 'ابدأ استخدام بروكرز كونكت',
     },
@@ -81,7 +101,7 @@ export const emailCopy = {
       subject: 'كمّل ملفك عشان الشركات تشوفك',
       preheader: 'باقي شوية بيانات على ملفك.',
       heading: 'ملفك لسه ناقص',
-      body: 'الشركات بتفلتر بالخبرة والمناطق والتخصص. من غير البيانات دي ملفك مش بيظهر في نتايج بحثهم.',
+      body: 'الشركات بتفلتر بالخبرة والمناطق والتخصص. من غير البيانات دي ملفك مش بيظهر في نتائج بحثهم.',
       hint: 'الرسالة دي بتتبعت مرة واحدة بس.',
       cta: 'كمّل الملف',
     },
@@ -149,8 +169,8 @@ export const emailCopy = {
       body: (job: string, company: string) =>
         `شركة ${company} كمّلت مراجعة المتقدمين لوظيفة «${job}»، والاختيار وقع على حد تاني المرة دي.`,
       encouragement:
-        'في شركات بتنشر وظايف جديدة على المنصة كل أسبوع. خلّي ملفك محدّث وهتلاقي فرص تانية تناسب خبرتك.',
-      cta: 'اتصفح وظايف تانية',
+        'في شركات بتنشر وظائف جديدة على المنصة كل أسبوع. خلّي ملفك محدّث وهتلاقي فرص تانية تناسب خبرتك.',
+      cta: 'اتصفح وظائف تانية',
       labelJob: 'الوظيفة',
       labelCompany: 'الشركة',
     },
@@ -161,7 +181,7 @@ export const emailCopy = {
       heading: 'اتسحب طلبك',
       body: (job: string) =>
         `شِلنا طلبك على وظيفة «${job}»، والشركة مابقتش شايفاه. تقدر تقدّم تاني في أي وقت طول ما الإعلان شغال.`,
-      cta: 'اتصفح الوظايف',
+      cta: 'اتصفح الوظائف',
       labelJob: 'الوظيفة',
     },
 
@@ -186,7 +206,7 @@ export const emailCopy = {
       subject: (job: string) => `تم نشر «${job}»`,
       preheader: 'إعلانك بقى ظاهر للمتقدمين.',
       heading: 'إعلانك اتنشر',
-      body: (job: string) => `«${job}» عدّى المراجعة وبقى ظاهر في نتايج البحث.`,
+      body: (job: string) => `«${job}» عدّى المراجعة وبقى ظاهر في نتائج البحث.`,
       cta: 'شوف الإعلان',
       labelJob: 'الوظيفة',
       labelPublished: 'تاريخ النشر',
@@ -209,8 +229,8 @@ export const emailCopy = {
       heading: 'إعلانك هينتهي قريب',
       body: (job: string, days: number) =>
         days === 1
-          ? `«${job}» آخر يوم ليه بكرة. بعدها هيقف عن الظهور في نتايج البحث.`
-          : `فاضل ${days} أيام على انتهاء «${job}». بعدها هيقف عن الظهور في نتايج البحث.`,
+          ? `«${job}» آخر يوم ليه بكرة. بعدها هيقف عن الظهور في نتائج البحث.`
+          : `فاضل ${arabicCount(days, { one: 'يوم', two: 'يومين', few: '# أيام', other: '# يوم' })} على انتهاء «${job}». بعدها هيقف عن الظهور في نتائج البحث.`,
       cta: 'إدارة الوظيفة',
       labelJob: 'الوظيفة',
       labelExpires: 'ينتهي في',
@@ -222,7 +242,7 @@ export const emailCopy = {
       preheader: 'الإعلان وقف عن الظهور.',
       heading: 'انتهت مدة الإعلان',
       body: (job: string) =>
-        `«${job}» خلص مدته ووقف عن الظهور في نتايج البحث. المتقدمين اللي وصلوك لسه موجودين في لوحة التحكم.`,
+        `«${job}» خلص مدته ووقف عن الظهور في نتائج البحث. المتقدمين اللي وصلوك لسه موجودين في لوحة التحكم.`,
       cta: 'انشر الإعلان تاني',
       labelJob: 'الوظيفة',
       labelExpired: 'انتهى في',
@@ -253,9 +273,9 @@ export const emailCopy = {
     // The same decisions, for a consultant's account.
     accountApprovedCandidate: {
       subject: 'حسابك اتفعّل',
-      preheader: 'تقدر تقدّم على الوظايف دلوقتي.',
+      preheader: 'تقدر تقدّم على الوظائف دلوقتي.',
       heading: 'حسابك اتفعّل',
-      body: 'راجعنا حسابك، وبقى مفعّل تاني. تقدر تقدّم على الوظايف وتحدّث ملفك.',
+      body: 'راجعنا حسابك، وبقى مفعّل تاني. تقدر تقدّم على الوظائف وتحدّث ملفك.',
       cta: 'افتح حسابك',
     },
 
@@ -302,11 +322,10 @@ export const emailCopy = {
     // -----------------------------------------------------------------------
 
     digest: {
-      subject: (count: number, label: string) =>
-        count === 1 ? `وظيفة جديدة في «${label}»` : `${count} وظايف جديدة في «${label}»`,
-      preheader: 'وظايف جديدة تطابق البحث المحفوظ عندك.',
+      subject: (count: number, label: string) => `${newListings(count)} في «${label}»`,
+      preheader: 'وظائف جديدة تطابق البحث المحفوظ عندك.',
       heading: 'في جديد في بحثك',
-      body: (label: string) => `دي الوظايف اللي نزلت الأسبوع ده وبتطابق «${label}».`,
+      body: (label: string) => `دي الوظائف اللي نزلت الأسبوع ده وبتطابق «${label}».`,
       cta: 'شوفهم كلهم',
     },
 
@@ -322,23 +341,18 @@ export const emailCopy = {
       strings that name the mechanism change.
     */
     follow: {
-      subject: (count: number, label: string) =>
-        count === 1 ? `وظيفة جديدة في «${label}»` : `${count} وظايف جديدة في «${label}»`,
-      preheader: 'وظايف جديدة من شركة بتتابعها.',
+      subject: (count: number, label: string) => `${newListings(count)} في «${label}»`,
+      preheader: 'وظائف جديدة من شركة بتتابعها.',
       heading: 'جديد من شركة بتتابعها',
-      body: (label: string) => `«${label}» نزّلت الوظايف دي الأسبوع ده.`,
+      body: (label: string) => `«${label}» نزّلت الوظائف دي الأسبوع ده.`,
       cta: 'شوفهم كلهم',
     },
 
     applicantDigest: {
-      subject: (count: number) =>
-        count === 1 ? 'عندك متقدم جديد' : `عندك ${count} متقدمين جدد`,
+      subject: (count: number) => `عندك ${newApplicants(count)}`,
       preheader: 'ملخّص المتقدمين النهارده.',
       heading: 'متقدمين جدد',
-      body: (count: number) =>
-        count === 1
-          ? 'وصلك متقدم جديد من آخر مرة بعتنالك.'
-          : `وصلك ${count} متقدمين جدد من آخر مرة بعتنالك.`,
+      body: (count: number) => `وصلك ${newApplicants(count)} من آخر مرة بعتنالك.`,
       cta: 'شوف المتقدمين',
     },
 

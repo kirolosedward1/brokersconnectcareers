@@ -295,9 +295,9 @@ describe('the board', () => {
     expect(screen.getByLabelText('راتب أساسي').props.accessibilityRole).toBe('radiogroup');
     fireEvent.press(await screen.findByRole('button', { name: 'القاهرة الجديدة' }));
     fireEvent.press(screen.getByRole('radio', { name: 'آخر 7 أيام' }));
-    expect(await screen.findByRole('button', { name: 'شوف النتايج · ⁦7⁩' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'شوف النتائج · ⁦7⁩' })).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('button', { name: 'شوف النتايج · ⁦7⁩' }));
+    fireEvent.press(screen.getByRole('button', { name: 'شوف النتائج · ⁦7⁩' }));
     // The words typed in the search bar are kept; the rest is the sheet's.
     await waitFor(() =>
       expect(result.getSearchParams()).toEqual({
@@ -318,7 +318,7 @@ describe('the board', () => {
     const sheet = within(screen.UNSAFE_getByType(Modal));
     fireEvent.press(sheet.getByRole('button', { name: 'امسح كل الفلاتر' }));
     // Pressable at once, whether or not the count has come back.
-    fireEvent.press(sheet.getByRole('button', { name: /شوف النتايج/ }));
+    fireEvent.press(sheet.getByRole('button', { name: /شوف النتائج/ }));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'x' }));
   });
 
