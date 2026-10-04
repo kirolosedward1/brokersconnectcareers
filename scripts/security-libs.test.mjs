@@ -124,6 +124,35 @@ console.log('\n— an href');
   // the path, not the host to check.
   const slanted = 'https://www.br\u043ekersconnect.net\\@example.com';
   check(`refuses ${JSON.stringify(slanted)}`, safeHttpUrl(slanted) === null, String(safeHttpUrl(slanted)));
+  // The parser takes any run of slashes and backslashes after the scheme, and
+  // drops tabs and new lines anywhere: the host checked is the one it reads.
+  for (const lead of ['https:\\', 'https:\\\\', 'https:///', 'https:/\\', 'https:/\t/', 'https://\n']) {
+    const typed = `${lead}www.br\u043ekersconnect.net/`;
+    check(`refuses the look-alike behind ${JSON.stringify(lead)}`, safeHttpUrl(typed) === null, String(safeHttpUrl(typed)));
+  }
+  // Latin letters that pass for plain ones without an accent to give them
+  // away: small capitals, phonetic and IPA letters, a dotless i, a long s, the
+  // Kelvin sign.
+  for (const lookalike of [
+    'https://www.broker\ua731\u1d04onnect.net/', // ꜱᴄ
+    'https://\u0261oogle.com/', // ɡ
+    'https://\u0131nstagram.com/', // ı
+    'https://examp\u029fe.com/', // ʟ
+    'https://\u212aitchen.com/', // K, the Kelvin sign
+    'https://pa\u017f\u017f.com/', // ſſ
+  ]) {
+    check(`refuses the look-alike ${JSON.stringify(lookalike)}`, safeHttpUrl(lookalike) === null, String(safeHttpUrl(lookalike)));
+  }
+  // Letters a European or Vietnamese name is written with stay welcome.
+  for (const real of [
+    'https://stra\u00dfe.de/',
+    'https://bl\u00e5b\u00e6r.no/',
+    'https://\u0142\u00f3d\u017a.pl/',
+    'https://vi\u1ec7t.vn/',
+    'https://\u0219tefan.ro/',
+  ]) {
+    check(`keeps ${JSON.stringify(real)}`, safeHttpUrl(real) !== null, String(safeHttpUrl(real)));
+  }
 }
 
 console.log('\n— the one page off the site a button may send somebody to');

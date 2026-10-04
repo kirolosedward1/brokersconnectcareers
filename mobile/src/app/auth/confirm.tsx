@@ -137,12 +137,15 @@ export default function ConfirmLinkScreen() {
   }
 
   if (state === 'failed') {
-    // Somebody is signed in here, so no sign-in to offer. A confirmation:
-    // most often the account's own, opened again — confirmed, since it is
-    // signed in, and nothing to do. A reset or a new address is still to be
-    // done, and Sign-in and security is where, with no link needed.
+    // Somebody is signed in here, so no sign-in to offer, and the account is
+    // named: the link may have been for another of the person's. A
+    // confirmation, or a new address that went through: most often the
+    // account's own link opened again, and nothing to do. A reset, or a new
+    // address still waiting (new_email), is left to do, and Sign-in and
+    // security is where, with no link needed.
     if (session) {
-      const unfinished = type === 'recovery' || type === 'email_change';
+      const email = session.user.email ?? '';
+      const unfinished = type === 'recovery' || (type === 'email_change' && Boolean(session.user.new_email));
       return (
         <>
           <Stack.Screen options={{ headerShown: false }} />
@@ -152,10 +155,10 @@ export default function ConfirmLinkScreen() {
               title={t('app.auth.linkUsedTitle')}
               body={
                 type === 'recovery'
-                  ? t('app.auth.resetLinkFailed')
-                  : type === 'email_change'
-                    ? t('app.auth.emailChangeLinkFailed')
-                    : t('app.auth.linkUsedBody', { email: session.user.email ?? '' })
+                  ? t('app.auth.resetLinkFailed', { email })
+                  : unfinished
+                    ? t('app.auth.emailChangeLinkFailed', { email })
+                    : t('app.auth.linkUsedBody', { email })
               }
             />
             {unfinished ? (

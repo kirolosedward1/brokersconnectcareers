@@ -123,19 +123,32 @@ export function safeHttpUrl(value: string | null | undefined, maxLength = 200): 
 
 /**
  * The host as it was typed: Node's URL turns a non-Latin one into punycode,
- * the phone's leaves it as it is. A backslash ends it as a slash does — the
- * parser reads an http(s) address that way — so what follows one is path,
- * not a host to vouch for.
+ * the phone's leaves it as it is. Read as the parser reads an http(s)
+ * address: tabs and new lines anywhere dropped, any run of slashes and
+ * backslashes after the scheme, and the host ended by a backslash as by a
+ * slash.
  */
 function typedHost(value: string): string {
-  const rest = value.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+  const rest = value.replace(/[\t\n\r]/g, '').replace(/^[a-z][a-z0-9+.-]*:[\\/]*/i, '');
   return rest.split(/[/?#\\]/, 1)[0].replace(/^.*@/, '').replace(/:\d*$/, '');
 }
 
-const LATIN = /\p{Script=Latin}/u;
+/**
+ * The Latin letters a host may hold: the plain ones and the accented ones
+ * European and Vietnamese names are written with (Latin-1, Extended-A, the
+ * Romanian, Vietnamese and caron letters of Extended-B, Extended Additional).
+ * Not the Latin letters that pass for plain ones with no accent to give them
+ * away: small capitals, phonetic and IPA letters (ᴄ, ꜱ, ɡ, ʟ), a dotless i or
+ * j, a long s, the Kelvin sign. Listed, not folded: with the `u` flag a
+ * case-insensitive [a-z] takes ſ and K for s and k.
+ */
+const LATIN_LETTERS =
+  'A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u0130\u0132-\u0137\u0139-\u013E\u0141-\u0148\u014A-\u017E' +
+  '\u01A0\u01A1\u01AF\u01B0\u01CD-\u01DC\u0218-\u021B\u1E00-\u1E99\u1E9E\u1EA0-\u1EFF';
+const LATIN = new RegExp(`[${LATIN_LETTERS}]`, 'u');
 const ARABIC = /\p{Script=Arabic}/u;
-/** What a label may hold: Latin letters (accented too), Arabic ones with their marks, digits, - and _. */
-const LABEL = /^[\p{Script=Latin}\p{Script=Arabic}\p{Mn}0-9_-]*$/u;
+/** What a label may hold: those Latin letters, Arabic ones with their marks, digits, - and _. */
+const LABEL = new RegExp(`^[${LATIN_LETTERS}\\p{Script=Arabic}\\p{Mn}0-9_-]*$`, 'u');
 
 /**
  * Letters a host may hold: Latin, or Arabic — Egypt's own domain names — and

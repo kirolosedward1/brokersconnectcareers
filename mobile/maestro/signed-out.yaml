@@ -3,7 +3,9 @@
 # the way a person opens them. Each is waited for by something only it shows
 # and checked for the error states (checks.yaml); nothing is typed or sent, and
 # nothing is captured for the store. Runs after screens.yaml, where the tabs
-# are on screen, in the store and large-text passes (store.yaml).
+# are on screen, in the store and large-text passes (store.yaml). What is
+# tapped is scrolled to the middle first: at the largest text size it starts
+# below the fold, and stopped at the bottom edge it would sit under the tab bar.
 appId: net.brokersconnect.app
 ---
 - tapOn: "حسابي"
@@ -15,6 +17,7 @@ appId: net.brokersconnect.app
 # The sign-in sheet, from the Account card's own button.
 - scrollUntilVisible:
     element: "تسجيل الدخول"
+    centerElement: true
 - tapOn: "تسجيل الدخول"
 - extendedWaitUntil:
     visible: "أهلاً بيك تاني"
@@ -25,6 +28,7 @@ appId: net.brokersconnect.app
 # The forgotten-password page, from the link under the password.
 - scrollUntilVisible:
     element: "نسيت كلمة المرور؟"
+    centerElement: true
 - tapOn: "نسيت كلمة المرور؟"
 - extendedWaitUntil:
     visible: "اكتب إيميلك وهنبعتلك لينك تعمل بيه كلمة مرور جديدة."
@@ -41,4 +45,5 @@ appId: net.brokersconnect.app
     timeout: 30000
 - scrollUntilVisible:
     element: "تأكيد كلمة المرور"
+    centerElement: true
 - runFlow: checks.yaml

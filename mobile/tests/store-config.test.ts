@@ -206,6 +206,21 @@ describe('the review details', () => {
     expect((review?.notes ?? '').length).toBeLessThanOrEqual(4000);
   });
 
+  it('lead App Review to the listing it applies to however far down the board it sits', () => {
+    // The board puts the newest first, and a re-run of the review accounts keeps
+    // the date the listings first went up: the company's page and a direct
+    // link find it where browsing may not.
+    const notes = loaded.storeConfig(REVIEW_ENV).apple.review?.notes ?? '';
+    const sql = readFileSync(join(root, 'supabase', 'review-accounts.sql'), 'utf8');
+    const slug = sql.match(/'(app-review-sales-manager)', 'resale'/)?.[1];
+    expect(slug).toBeDefined();
+    expect(notes).toContain(`https://www.brokersconnect.net/jobs/${slug}`);
+    expect(notes).toContain('«مدير مبيعات (إعلان لمراجعة التطبيق)»');
+    expect(sql).toContain("'مدير مبيعات (إعلان لمراجعة التطبيق)'");
+    expect(notes).toContain('«حساب مراجعة التطبيق»');
+    expect(sql).toContain("'حساب مراجعة التطبيق'");
+  });
+
   it('are refused half given, naming what is missing', () => {
     const { APP_REVIEW_EMPLOYER_PASSWORD: _password, APP_REVIEW_CONTACT_PHONE: _phone, ...partial } = REVIEW_ENV;
     expect(() => loaded.storeConfig(partial)).toThrow(

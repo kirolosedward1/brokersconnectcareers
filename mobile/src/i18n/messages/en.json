@@ -60,8 +60,8 @@
     "mfaLost": "Lost the phone with your authenticator app? Write to us and we will help you back into your account.",
     "linkUsedTitle": "That link no longer works",
     "linkUsedBody": "It has been used already or has expired. You are signed in as {email}, so there is nothing more to do.",
-    "resetLinkFailed": "That link has expired or has already been used. You are signed in, so you can set a new password in Sign-in and security.",
-    "emailChangeLinkFailed": "That link has expired or has already been used, and your email address has not changed. You can ask for the change again in Sign-in and security.",
+    "resetLinkFailed": "That link has expired or has already been used. You are signed in as {email}, so you can set a new password for it in Sign-in and security.",
+    "emailChangeLinkFailed": "That link has expired or has already been used, and the change has not gone through: your account’s address is still {email}. You can ask for the change again in Sign-in and security.",
     "configFailed": "We could not get signing in ready. Check your connection and try again.",
     "configRetry": "Try again"
   },

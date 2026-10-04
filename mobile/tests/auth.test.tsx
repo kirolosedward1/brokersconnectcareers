@@ -1003,7 +1003,9 @@ describe('an email link opened in the app', () => {
       });
     });
 
-    it('says a new-address link that failed changed nothing, and where to ask again', async () => {
+    it('says a new-address link that failed left the change waiting, when one is, and where to ask again', async () => {
+      // A change asked for and not yet through: the account still has its old address.
+      user = { ...authUser(), new_email: 'new-address@example.com' } as AuthUser;
       await signedIn();
       server.on('POST /auth/v1/verify', {
         status: 403,
@@ -1011,11 +1013,25 @@ describe('an email link opened in the app', () => {
       });
       const withSecurity = { ...app, '(tabs)/(account)/account/security': () => <Text>the security screen</Text> };
       renderRouter(withSecurity, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
-      expect(await screen.findByText(ar.app.auth.emailChangeLinkFailed)).toBeTruthy();
+      expect(await screen.findByText(ar.app.auth.emailChangeLinkFailed.replace('{email}', user.email))).toBeTruthy();
       expect(screen.queryByText(ar.app.auth.linkUsedBody.replace('{email}', user.email))).toBeNull();
       expect(screen.queryByRole('button', { name: ar.nav.signIn })).toBeNull();
       await press(ar.app.account.security);
       expect(await screen.findByText('the security screen')).toBeTruthy();
+    });
+
+    it('says a new-address link opened again after the change went through is spent, naming the account', async () => {
+      // The change went through: the account has its new address, and nothing is waiting.
+      user = authUser({ email: 'new-address@example.com' });
+      await signedIn();
+      server.on('POST /auth/v1/verify', {
+        status: 403,
+        body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
+      });
+      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
+      expect(await screen.findByText(ar.app.auth.linkUsedBody.replace('{email}', 'new-address@example.com'))).toBeTruthy();
+      expect(screen.queryByText(ar.app.auth.emailChangeLinkFailed.replace('{email}', user.email))).toBeNull();
+      expect(screen.queryByRole('button', { name: ar.app.account.security })).toBeNull();
     });
 
     it('offers a failed reset link the new password here, signed in as the person is', async () => {
@@ -1025,7 +1041,8 @@ describe('an email link opened in the app', () => {
         body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
       });
       renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
-      expect(await screen.findByText(ar.app.auth.resetLinkFailed)).toBeTruthy();
+      // Which account the new password would be for: the link may have been another of the person's.
+      expect(await screen.findByText(ar.app.auth.resetLinkFailed.replace('{email}', user.email))).toBeTruthy();
       expect(screen.queryByText(ar.app.auth.linkUsedBody.replace('{email}', user.email))).toBeNull();
       expect(screen.getByRole('button', { name: ar.app.account.security })).toBeTruthy();
     });

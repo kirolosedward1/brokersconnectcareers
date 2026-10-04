@@ -414,8 +414,9 @@ reports promptly.
   account whose token has run out and cannot be refreshed yet; supabase-js
   says nobody then. A link has to be used to learn whose it is, so declining
   another account's link spends it. A link that fails for someone signed in
-  says what is left to do: nothing for a confirmation, Sign-in and security
-  for a reset or a new address.
+  names the account and says what is left to do: nothing for a confirmation
+  or a new address that went through, Sign-in and security for a reset or a
+  new address still waiting.
   `src/lib/auth/confirm-link.ts`
   reads the link for both: a reset opens the new-password screen, a
   confirmation onboarding with the door's role and the destination.
