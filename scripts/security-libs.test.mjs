@@ -95,6 +95,20 @@ console.log('\n— an href');
     'an address too long for the column even read is refused',
     safeHttpUrl(`https://example.com/${'م'.repeat(185)}`) === null,
   );
+
+  // A look-alike host: refused, here and on the phone, whose URL does not turn
+  // it to punycode and would show it as it reads.
+  for (const lookalike of [
+    'https://www.br\u043ekersconnect.net/sign-in', // a Cyrillic о among Latin letters
+    'https://\u0430\u0440\u0440\u04cf\u0435.com', // all Cyrillic, reading "apple"
+    'https://www.g\u03bf\u03bfgle.com', // Greek omicrons
+    'https://brokers\u0645\u0635\u0631.com', // Latin and Arabic in one label
+  ]) {
+    check(`refuses the look-alike ${JSON.stringify(lookalike)}`, safeHttpUrl(lookalike) === null, String(safeHttpUrl(lookalike)));
+  }
+  check('an Arabic domain name is a website', safeHttpUrl('https://\u0645\u062b\u0627\u0644.\u0645\u0635\u0631/') !== null);
+  check('as is an Arabic name under a Latin ending', safeHttpUrl('https://\u0645\u062b\u0627\u0644.com') !== null);
+  check('and a port, and capitals', safeHttpUrl('https://EXAMPLE.com:8080/x') === 'https://example.com:8080/x');
 }
 
 console.log('\n— the one page off the site a button may send somebody to');

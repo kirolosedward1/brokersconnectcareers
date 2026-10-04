@@ -21,6 +21,7 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { deleteAccountHere, type DeleteRefusal } from '~/features/account/delete';
 import { asRole, intentFromParams, type AuthIntent, type Role } from '~/features/auth/intent';
+import { keepOnboardingIntent, keptOnboardingIntent } from '~/features/auth/kept-intent';
 import { useCloseFlow, useLand } from '~/features/auth/land';
 import { signOutHere } from '~/features/push/device';
 import { useDistricts } from '~/features/taxonomy';
@@ -50,9 +51,33 @@ import { corner, space } from '~/theme/tokens';
  */
 export default function OnboardingScreen() {
   const params = useLocalSearchParams<{ next?: string; role?: string; confirmed?: string }>();
-  const intent = intentFromParams(params);
+  const given = intentFromParams(params);
   const t = useTranslations();
   const { ready, session, viewer } = useSession();
+
+  // Opened with a destination: kept for the account, in case iOS ends the app
+  // before onboarding is done (kept-intent.ts). Opened without one — the
+  // session gate reopening it after such an ending — the kept one is read back.
+  const userId = session?.user.id ?? null;
+  const givenAny = Boolean(given.next || given.role || given.confirmed);
+  const [kept, setKept] = useState<{ userId: string; intent: AuthIntent | null } | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    if (givenAny) {
+      void keepOnboardingIntent(userId, { next: given.next, role: given.role, confirmed: given.confirmed });
+      return;
+    }
+    let active = true;
+    keptOnboardingIntent(userId).then((intent) => {
+      if (active) setKept({ userId, intent });
+    });
+    return () => {
+      active = false;
+    };
+  }, [userId, givenAny, given.next, given.role, given.confirmed]);
+  const keptHere = kept && kept.userId === userId ? kept : null;
+  const intent = givenAny ? given : (keptHere?.intent ?? given);
+  const intentKnown = givenAny || Boolean(keptHere);
   const land = useLand();
   const close = useCloseFlow();
   useHoldBack();
@@ -77,7 +102,7 @@ export default function OnboardingScreen() {
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       {/* The form is drawn once the session is known, so what it offers
           (the provider's name, the door's role) is there from the start. */}
-      {ready && session && !viewer?.profile ? (
+      {ready && session && !viewer?.profile && intentKnown ? (
         <OnboardingForm
           session={session}
           intent={intent}

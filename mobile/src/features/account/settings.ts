@@ -159,8 +159,10 @@ export function useSaveEmailPreferences() {
 /**
  * The website's /api/account/export — the portability right, as JSON — handed
  * to the share sheet, from where it can be saved to Files or sent anywhere.
- * The file is written to the cache and named as the website names it.
- * Refusals are the API's: `rate_limited` after five a day.
+ * The file is written to the cache, named as the website names it, and
+ * deleted once the share sheet closes: it is the person's whole account, and
+ * a copy left behind outlived even the account's deletion. Refusals are the
+ * API's: `rate_limited` after five a day.
  */
 export async function shareMyData(userId: string, dialogTitle: string): Promise<void> {
   const data = await getJson<unknown>('/api/account/export', { signedIn: true });
@@ -168,7 +170,13 @@ export async function shareMyData(userId: string, dialogTitle: string): Promise<
   if (file.exists) file.delete();
   file.create();
   file.write(JSON.stringify(data, null, 2));
-  await Sharing.shareAsync(file.uri, { mimeType: 'application/json', UTI: 'public.json', dialogTitle });
+  await Sharing.shareAsync(file.uri, { mimeType: 'application/json', UTI: 'public.json', dialogTitle }).finally(() => {
+    try {
+      file.delete();
+    } catch {
+      // Gone already.
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------

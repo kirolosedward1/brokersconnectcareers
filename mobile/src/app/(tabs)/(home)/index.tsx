@@ -14,6 +14,7 @@ import { PolicyNotice } from '~/components/legal/policy-notice';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
 import { SectionHeader } from '~/components/ui/section-header';
+import { ErrorState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useBrowseCounts } from '~/features/browse/queries';
@@ -141,6 +142,19 @@ function MarketHome() {
       </View>
 
       {name ? null : <JobBrowse counts={counts.data} districts={districts.data} />}
+
+      {/* Nothing to show and nothing kept from a last run (a first launch with
+          no connection): said, with the way to try again — not a bare hero
+          that stays bare when the connection comes back. */}
+      {board.isError && !board.data ? (
+        <ErrorState
+          error={board.error}
+          onRetry={() => {
+            void board.refetch();
+            void counts.refetch();
+          }}
+        />
+      ) : null}
 
       {latest.length || featured.length ? (
         <View style={{ gap: space[4] }}>

@@ -98,6 +98,7 @@ export function safeHttpUrl(value: string | null | undefined, maxLength = 200): 
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
   if (!url.hostname || url.username || url.password) return null;
+  if (!plainHost(typedHost(trimmed))) return null;
 
   /*
     The address as it is read, not as it is sent. Percent-encoding writes each
@@ -118,6 +119,28 @@ export function safeHttpUrl(value: string | null | undefined, maxLength = 200): 
     }
   });
   return WEBSITE_COLUMN.test(readable) ? readable : null;
+}
+
+/** The host as it was typed: Node's URL turns a non-Latin one into punycode, the phone's leaves it as it is. */
+function typedHost(value: string): string {
+  const rest = value.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+  return rest.split(/[/?#]/, 1)[0].replace(/^.*@/, '').replace(/:\d*$/, '');
+}
+
+const ARABIC = '\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF';
+const HAS_LATIN = /[a-z]/i;
+const HAS_ARABIC = new RegExp(`[${ARABIC}]`);
+const OTHER = new RegExp(`[^a-z0-9\\-${ARABIC}]`, 'i');
+
+/**
+ * Letters a host may hold: Latin, or Arabic — Egypt's own domain names — and
+ * never both in one label, nor any other script. Cyrillic and Greek are how a
+ * look-alike of a Latin name is spelt (www.brоkersconnect.net, with a Cyrillic
+ * о): the website shows such a host as punycode, but the app shows it as it
+ * was written, and a company's "website" could pass for this site's own pages.
+ */
+function plainHost(host: string): boolean {
+  return host.split('.').every((label) => !OTHER.test(label) && !(HAS_LATIN.test(label) && HAS_ARABIC.test(label)));
 }
 
 /** companies_website_is_http (migration 307): what the column itself takes. */

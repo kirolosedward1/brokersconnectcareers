@@ -150,6 +150,20 @@ const next = () => fireEvent.press(screen.getByRole('button', { name: ar.jobForm
 const DESCRIPTION = 'بيع وحدات سكنية في مشروعات القاهرة الجديدة لعملاء الشركة.';
 
 describe('a new listing', () => {
+  it('tells an account still under review so before the wizard, where the database would refuse it', async () => {
+    server.on('/rest/v1/profiles', [{ ...employer, approval_status: 'pending' }]);
+    await rememberActor({
+      userId: USER_ID,
+      profile: { role: 'employer', approval_status: 'pending' },
+      company: { id: ownedCompany.id, verification_status: ownedCompany.verification_status },
+    });
+    renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    expect(await screen.findByText(ar.employer.pendingTitle)).toBeTruthy();
+    expect(screen.getByText(ar.employer.pendingBody)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.jobForm.titleAr)).toBeNull();
+    expect(server.asked('/api/mobile/v1/actions/saveJob')).toHaveLength(0);
+  });
+
   it('walks the four steps, asks its two questions on the way, and submits what was filled in', async () => {
     const result = renderRouter(app, { initialUrl: '/employer/jobs/new' });
 

@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { openWhenReady } from '~/lib/open-path';
 import { fetchViewer, secondFactorDue } from '~/lib/session';
 import { intentParams, type AuthIntent } from './intent';
+import { forgetOnboardingIntent } from './kept-intent';
 
 /**
  * Where a finished sign-in goes — the website's landing, step for step
@@ -39,6 +40,8 @@ export function useLand() {
         return;
       }
 
+      // Arrived: onboarding's kept destination has done its work.
+      void forgetOnboardingIntent();
       close('arrived');
       if (intent.next) openWhenReady(intent.next);
     },

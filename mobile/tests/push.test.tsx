@@ -100,6 +100,7 @@ beforeEach(async () => {
   jest.mocked(Notifications.addNotificationResponseReceivedListener).mockClear();
   jest.mocked(Notifications.unregisterForNotificationsAsync).mockClear();
   jest.mocked(Notifications.setBadgeCountAsync).mockClear();
+  jest.mocked(Notifications.dismissAllNotificationsAsync).mockClear();
   jest.mocked(Notifications.clearLastNotificationResponse).mockClear();
 
   server.on('GET /api/mobile/v1/config', mobileConfig());
@@ -482,6 +483,8 @@ describe('signing out', () => {
     expect(order.indexOf('/rest/v1/rpc/unregister_push_device')).toBeLessThan(order.indexOf('/auth/v1/logout'));
     await waitFor(() => expect(Notifications.unregisterForNotificationsAsync).toHaveBeenCalled());
     expect(Notifications.setBadgeCountAsync).toHaveBeenLastCalledWith(0);
+    // And what was delivered for them leaves Notification Center, for whoever has the phone next.
+    expect(Notifications.dismissAllNotificationsAsync).toHaveBeenCalled();
   });
 
   it('stops listening on the phone when the session ends elsewhere', async () => {

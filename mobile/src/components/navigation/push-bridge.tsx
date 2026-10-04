@@ -14,6 +14,7 @@ import {
 import { useUnreadCount } from '~/features/notifications/queries';
 import { pushTapped, takePushTap, usePushTap } from '~/features/push/taps';
 import { openWhenReady } from '~/lib/open-path';
+import { clearPersonalCache } from '~/lib/personal-cache';
 import { useSession } from '~/lib/session';
 
 /**
@@ -56,6 +57,8 @@ export function PushBridge() {
     previous.current = userId;
     if (!before || before === userId) return;
     stopListeningHere();
+    // And the files they picked or exported, left in the cache.
+    clearPersonalCache();
   }, [userId]);
 
   // Register, and again when the token changes.

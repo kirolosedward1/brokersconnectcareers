@@ -1,5 +1,6 @@
 import { Alert, BackHandler, Platform, Text } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -909,13 +910,12 @@ describe('an email link opened in the app', () => {
     });
     /** Supabase's verify, finding the account by the token alone: here, someone else's. */
     const linkFor = (person: AuthUser) => {
-      server.on('POST /auth/v1/verify', () => authSession(person));
-      // Who a token belongs to, as Supabase answers for it.
-      server.on('GET /auth/v1/user', (_url: URL, init?: RequestInit) => {
-        const token = new Headers(init?.headers).get('authorization')?.split('.')[1] ?? '';
-        const sub = (JSON.parse(Buffer.from(token, 'base64url').toString()) as { sub?: string }).sub;
-        return sub === OTHER_ID ? other : user;
-      });
+      const linked = authSession(person);
+      server.on('POST /auth/v1/verify', () => linked);
+      // Who a token belongs to, as Supabase answers for it: the link's session is the link's account.
+      server.on('GET /auth/v1/user', (_url: URL, init?: RequestInit) =>
+        new Headers(init?.headers).get('authorization') === `Bearer ${linked.access_token}` ? person : user,
+      );
     };
     const signedInAs = async () => (await supabase.auth.getSession()).data.session?.user.id;
 
@@ -996,6 +996,38 @@ describe('an email link opened in the app', () => {
     renderRouter(app, { initialUrl: '/auth/confirm?token_hash=x&type=signup' });
     expect(await screen.findByText(ar.auth.linkExpired)).toBeTruthy();
     expect(server.asked('/auth/v1/verify')).toHaveLength(0);
+  });
+});
+
+describe('onboarding cut short', () => {
+  const LANDING = `/onboarding?confirmed=1&next=${encodeURIComponent('/jobs/sales-a1b2/apply')}`;
+  const withApply = { ...app, '(tabs)/(home,account)/jobs/[slug]/apply': () => <Text>the apply form</Text> };
+
+  it('comes back with where the person was going when iOS ended the app, and goes there once done', async () => {
+    profileRow = null;
+    await signedIn();
+    try {
+      const first = renderRouter(withApply, { initialUrl: LANDING });
+      expect(await screen.findByText(ar.onboarding.confirmedBanner)).toBeTruthy();
+      // iOS ends the app while the person is off copying their number.
+      first.unmount();
+
+      // Opened again from the icon: the session gate reopens onboarding, with what it had.
+      const second = renderRouter(withApply, { initialUrl: '/' });
+      expect(await screen.findByText(ar.onboarding.confirmedBanner)).toBeTruthy();
+      fireEvent.changeText(screen.getByLabelText(ar.onboarding.fullName), 'سارة عادل');
+      fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
+      fireEvent.press(screen.getByRole('radio', { name: `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}` }));
+      fireEvent.press(screen.getByRole('checkbox'));
+      await press(ar.onboarding.submit);
+
+      expect(await screen.findByText('the apply form')).toBeTruthy();
+      expect(second.getPathname()).toBe('/jobs/sales-a1b2/apply');
+      // Arrived: nothing kept to come back to.
+      expect(await AsyncStorage.getItem('bc.onboarding-intent.v1')).toBeNull();
+    } finally {
+      await AsyncStorage.removeItem('bc.onboarding-intent.v1');
+    }
   });
 });
 

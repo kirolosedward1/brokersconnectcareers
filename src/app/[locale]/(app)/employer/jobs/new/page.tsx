@@ -37,6 +37,23 @@ export default async function NewJobPage({ params }: { params: Promise<{ locale:
     );
   }
 
+  /*
+    Still under review: every new employer starts pending (migration 16), and
+    the database takes no listing from one, not even a draft — so it is said
+    here, before the form, not after it as "restricted or suspended".
+  */
+  if (viewer.profile.approval_status === 'pending') {
+    return (
+      <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+        <p className="font-medium">{t('pendingTitle')}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t('pendingBody')}</p>
+        <Button asChild className="mt-5">
+          <Link href="/employer/company">{t('company')}</Link>
+        </Button>
+      </div>
+    );
+  }
+
   const [districts, developers] = await Promise.all([getDistricts(), getDevelopers()]);
 
   return (

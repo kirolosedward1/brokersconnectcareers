@@ -44,6 +44,7 @@ import {
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
+import { useSession } from '~/lib/session';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
@@ -68,6 +69,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   const districts = useDistricts().data ?? [];
   const developers = useDevelopers().data ?? [];
   const save = useSaveJob();
+  const { actor } = useSession();
   const scroll = useRef<ScrollView>(null);
 
   const [idempotencyKey] = useState(() => uuid());
@@ -162,7 +164,10 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
         const reason = failure instanceof JobSaveRefused ? failure.reason : 'failed';
         const fields = failure instanceof JobSaveRefused ? failure.fieldErrors : undefined;
         if (reason === 'stale' || reason === 'invalid_transition') return refuse(t('employer.listingMoved'));
-        if (reason === 'standing') return refuse(t('employer.standingBlocked'));
+        // Under review is not restricted: an account still pending is told it is being looked at.
+        if (reason === 'standing') {
+          return refuse(t(actor?.profile?.approval_status === 'pending' ? 'employer.pendingBody' : 'employer.standingBlocked'));
+        }
         if (reason === 'company_suspended') return refuse(t('employer.companySuspendedBlocked'));
         if (reason === 'post_cap' || reason === 'post_rate_limit') {
           return refuse(t(reason === 'post_cap' ? 'employer.postCapBlocked' : 'employer.postRateLimited'), 3);

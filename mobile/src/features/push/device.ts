@@ -147,6 +147,10 @@ export function stopListeningHere(): Promise<void> {
   stopping = (async () => {
     await AsyncStorage.removeItem(TOKEN_KEY).catch(() => {});
     await Notifications.setBadgeCountAsync(0).catch(() => false);
+    // What was delivered for the person leaving stays in Notification Center
+    // otherwise — an application's outcome, readable by whoever has the phone
+    // next. Setting the badge to nought leaves those alone.
+    await Notifications.dismissAllNotificationsAsync().catch(() => {});
     // Never registered without a project; and in Expo Go the registration is
     // Expo Go's own, for every project it opens.
     if (pushAvailable()) await Notifications.unregisterForNotificationsAsync().catch(() => {});

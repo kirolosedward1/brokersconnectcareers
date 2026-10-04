@@ -99,6 +99,23 @@ describe('home', () => {
     expect(screen.getByText('وظائف شركات الوساطة')).toBeTruthy();
   });
 
+  it('says it has no connection on a first launch without one, and fills in once Retry is pressed', async () => {
+    let online = false;
+    const offline = () => {
+      throw new TypeError('Network request failed');
+    };
+    server.on('/api/mobile/v1/jobs', () => (online ? board() : offline()));
+    server.on('/api/mobile/v1/browse', () => (online ? browse : offline()));
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.app.offline.title)).toBeTruthy();
+    expect(screen.queryByText(listing.title_ar)).toBeNull();
+
+    online = true;
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    expect(screen.queryByText(ar.app.offline.title)).toBeNull();
+  });
+
   it('searches the board with the words typed', async () => {
     const result = renderRouter(app, { initialUrl: '/' });
     fireEvent.changeText(await screen.findByLabelText('ابحث عن وظيفة'), 'مبيعات');

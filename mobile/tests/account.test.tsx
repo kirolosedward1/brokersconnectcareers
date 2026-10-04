@@ -3,6 +3,7 @@ import { Alert, Linking, Pressable, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
@@ -529,6 +530,9 @@ describe('a copy of the data', () => {
     expect(JSON.parse(mockWritten[uri])).toMatchObject({ account: { id: USER_ID } });
     // Asked as the person: the token rides along.
     expect(server.asked('/api/account/export')).toHaveLength(1);
+    // Shared, the copy leaves the phone: the person's whole account, in the cache.
+    const written = jest.mocked(File).mock.results.map((made) => made.value as { uri: string; delete: jest.Mock });
+    await waitFor(() => expect(written.find((made) => made.uri === uri)?.delete).toHaveBeenCalled());
   });
 
   it('says when the day’s copies are used up', async () => {
