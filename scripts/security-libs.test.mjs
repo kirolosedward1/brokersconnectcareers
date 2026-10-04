@@ -219,16 +219,23 @@ console.log('\n— who writes a photo or a logo');
   // Since migration 346 nobody may write into the public picture buckets with
   // their own session (supabase/tests/decisions.test.mjs, "a person cannot
   // write a photo straight into the public bucket"), so that what they serve
-  // is only what the server decoded and wrote again. The upload action has to
-  // write with the service role: written with the caller's session, every
-  // photo and every logo would be refused by the bucket.
+  // is only what the server decoded and wrote again. So the upload action
+  // writes with the service role whenever the server has its key. Production
+  // had no key, and written with the service role alone nobody could put a
+  // logo on their company (PR #32): without the key it writes with the
+  // caller's session, which the buckets take until 346 is applied.
   const source = readFileSync(new URL('../src/lib/actions/uploads.ts', import.meta.url), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/.*$/gm, '');
-  const clients = [...source.matchAll(/(\w+)\s*\.storage\b/g)].map((match) => match[1]);
-  check('the upload action writes the picture', clients.length > 0 && /\.upload\(/.test(source));
-  check('with the service role, every time', clients.length > 0 && clients.every((name) => name === 'admin'), clients.join(', '));
-  check('which is the admin client', /\badmin\s*=\s*createAdminClient\(\)/.test(source));
+  const chooser = /function pictureStorage\([^)]*\)[^{]*\{([\s\S]*?)\n\}/.exec(source)?.[1] ?? '';
+  const action = source.replace(/function pictureStorage[\s\S]*$/, '');
+  check('the upload action writes the picture', /\.upload\(/.test(action));
+  check('through one choice of writer, every write and every removal', /const storage = pictureStorage\(supabase\)/.test(action) && !/\b(supabase|admin)\s*\.storage\b/.test(action));
+  check('the service role whenever the server has its key', /createAdminClient\(\)\.storage/.test(chooser) && /configuredValue\(process\.env\.SUPABASE_SERVICE_ROLE_KEY\)/.test(chooser));
+  check(
+    "the caller's own session only without it",
+    /if \(!configuredValue\(process\.env\.SUPABASE_SERVICE_ROLE_KEY\)\) return session\.storage;/.test(chooser),
+  );
 }
 
 console.log('\n— secrets');

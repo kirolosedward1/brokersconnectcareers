@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { configuredValue } from '@/lib/env';
 import { AVATAR_BUCKET, COMPANY_LOGOS_BUCKET } from '@/lib/buckets';
 import { IMAGE_KINDS, MAX_BYTES, reencodeImage, sniffKind } from '@/lib/security/files';
 import { recordSecurityEvent } from '@/lib/security/events';
@@ -26,14 +27,18 @@ import type { ActionResult } from '@/lib/actions/jobs';
  * Ownership is decided the way it was before: the photo is written into the
  * caller's own folder and recorded through the caller's own session, and the
  * logo is recorded through companies_update_own, which only a company admin
- * satisfies. The service role writes the object, only after the row-level
- * check has said whose folder this is, and the object is removed again if the
- * record is refused. It has to be the service role: since migration 346 nobody
- * may write into these buckets with their own session, so that they serve only
- * what this action decoded and wrote again. Written with the caller's session,
- * every upload would be refused (scripts/security-libs.test.mjs holds this
- * action to it). Without SUPABASE_SERVICE_ROLE_KEY on the server an upload
- * answers `unavailable`, and /api/health lists the key as absent.
+ * satisfies. The object is removed again if the record is refused.
+ *
+ * Who writes the object is pictureStorage's question: the service role when
+ * the server has its key, the caller's own session when it does not. Since
+ * migration 346 nobody may write into these buckets with their own session,
+ * so that they serve only what this action decoded and wrote again; once 346
+ * is applied, the key is what keeps uploads working (docs/app-store.md,
+ * "Before the first submission", step 1). Before it, production has no key
+ * and the buckets still take the caller's session (PR #32): written with the
+ * service role alone, nobody could put a logo on their company, and the
+ * employer was told "try again" forever. scripts/security-libs.test.mjs holds
+ * the action to both.
  */
 
 const MAX_UPLOAD_FIELD = MAX_BYTES.image;
@@ -104,24 +109,18 @@ export async function uploadImage(form: FormData): Promise<UploadOutcome> {
     return { ok: false, error: 'file_type' };
   }
 
-  let admin;
-  try {
-    admin = createAdminClient();
-  } catch {
-    return { ok: false, error: 'unavailable' };
-  }
-
   const bucket = kind === 'avatar' ? AVATAR_BUCKET : COMPANY_LOGOS_BUCKET;
   // A fresh name every time: the URL is public and cached, and overwriting in
   // place would leave the old picture showing.
   const path = `${folder}/${kind === 'logo' ? 'logo-' : ''}${uuid()}.webp`;
 
-  const { error: uploadError } = await admin.storage
+  const storage = pictureStorage(supabase);
+  const { error: uploadError } = await storage
     .from(bucket)
     .upload(path, image.bytes, { contentType: 'image/webp', upsert: false, cacheControl: '31536000' });
   if (uploadError) return { ok: false, error: 'unavailable' };
 
-  const url = admin.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  const url = storage.from(bucket).getPublicUrl(path).data.publicUrl;
 
   const recorded =
     kind === 'avatar'
@@ -129,7 +128,7 @@ export async function uploadImage(form: FormData): Promise<UploadOutcome> {
       : await supabase.from('companies').update({ logo_url: url }).eq('id', folder).select('id');
 
   if (recorded.error || !recorded.data?.length) {
-    await admin.storage.from(bucket).remove([path]);
+    await storage.from(bucket).remove([path]);
     return { ok: false, error: recorded.error ? 'failed' : 'forbidden' };
   }
 
@@ -143,4 +142,18 @@ export async function uploadImage(form: FormData): Promise<UploadOutcome> {
   }
 
   return { ok: true, data: { url } };
+}
+
+/**
+ * Who writes a picture: the service role, when the server has its key, so the
+ * buckets need take nobody's own session (migration 346); without the key,
+ * the caller's session, which the buckets accept until 346 is applied.
+ */
+function pictureStorage(session: Awaited<ReturnType<typeof createClient>>) {
+  if (!configuredValue(process.env.SUPABASE_SERVICE_ROLE_KEY)) return session.storage;
+  try {
+    return createAdminClient().storage;
+  } catch {
+    return session.storage;
+  }
 }

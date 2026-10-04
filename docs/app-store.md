@@ -264,7 +264,9 @@ submitting.
    `SUPABASE_SERVICE_ROLE_KEY` first: without it account deletion answers
    "unavailable", CV and document links do not open, team invites, view
    counts, the crons, emails and pushes do nothing — in the app and on the
-   website alike. Then `RESEND_API_KEY` and `RESEND_FROM` (emails),
+   website alike. And once migration 346 is applied (step 3), photos and
+   logos can no longer be written with the person's own session, so without
+   the key they are refused too; until then uploads fall back to it. Then `RESEND_API_KEY` and `RESEND_FROM` (emails),
    `CRON_SECRET`, `SECURITY_SALT`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` with
    `TURNSTILE_SECRET_KEY` if Supabase Auth asks for a CAPTCHA, and the app's
    own (`docs/mobile.md`, Configuration): `APPLE_APP_ID`, the four `APPLE_*`
