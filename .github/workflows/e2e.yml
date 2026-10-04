@@ -69,9 +69,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Pinned: "latest" is looked up through GitHub's API, whose limit for
+      # the runners' shared addresses failed a run before any journey began.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.119.0
 
       # The migrations and seed.sql, applied by the CLI as it starts. Only
       # what the journeys use: no dashboard, image proxy, functions runtime,
