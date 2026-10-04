@@ -1,6 +1,6 @@
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { focusManager, QueryClient, type QueryKey } from '@tanstack/react-query';
+import { focusManager, QueryClient, type Query, type QueryKey } from '@tanstack/react-query';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import type { PersistedClient, PersistQueryClientProviderProps } from '@tanstack/react-query-persist-client';
 import * as Updates from 'expo-updates';
@@ -73,6 +73,24 @@ export function firstPagesOnly(client: PersistedClient): PersistedClient {
 }
 
 /**
+ * Whether a read is written for the next start: a taxonomy or an opening read
+ * with an answer. One whose last attempt failed — offline, the moment the app
+ * went to the background — is kept as the answer it had (firstPagesOnly writes
+ * it as that answer), for a day from that answer: the store's own day counts
+ * from the last write, which a read that keeps failing would renew every time
+ * the app is opened. Not when the failure was a refusal (a 4xx is an answer,
+ * and the list as it was is not one to keep drawing).
+ */
+export function keepForNextStart(query: Query): boolean {
+  if (query.state.data === undefined) return false;
+  if (query.queryKey[0] !== 'taxonomy' && !isOpeningRead(query.queryKey)) return false;
+  if (query.state.status !== 'error') return true;
+  const error = query.state.error;
+  const refused = error instanceof ApiError && error.status >= 400 && error.status < 500;
+  return !refused && Date.now() - query.state.dataUpdatedAt < DAY;
+}
+
+/**
  * What survives a restart: the taxonomies (governorates, districts, developers)
  * and the opening reads above, and nothing about the person. A cold start
  * draws them at once, on a slow connection or none, and reads them again
@@ -92,10 +110,5 @@ export const persistOptions: PersistQueryClientProviderProps['persistOptions'] =
   }),
   maxAge: DAY,
   buster: `opening-reads-1:${Updates.updateId ?? 'none'}`,
-  dehydrateOptions: {
-    // Any read with an answer to keep — a later attempt that failed does not
-    // take it away (firstPagesOnly writes it as that answer).
-    shouldDehydrateQuery: (query) =>
-      query.state.data !== undefined && (query.queryKey[0] === 'taxonomy' || isOpeningRead(query.queryKey)),
-  },
+  dehydrateOptions: { shouldDehydrateQuery: keepForNextStart },
 };

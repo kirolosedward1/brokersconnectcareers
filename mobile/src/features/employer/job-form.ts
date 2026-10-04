@@ -184,6 +184,11 @@ export function useEditableJob(id: string) {
   return useQuery({
     queryKey: ['employer', 'job', id, companyId],
     enabled: Boolean(companyId && id),
+    // Read on every visit, however fresh the copy kept since the last one: the
+    // editor is filled from this read (edit.tsx waits for it), and an edit is
+    // matched on the version it was filled from — a copy a version behind (a
+    // moderator's decision, a colleague's save) had every save refused.
+    refetchOnMount: 'always',
     queryFn: async () => {
       const { data, error } = await supabase
         .from('jobs')

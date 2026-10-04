@@ -25,7 +25,9 @@ export default function EditJobScreen() {
   if (!session || !viewer?.profile) body = <ViewerPending />;
   else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) body = <NotFoundState />;
-  else if (editable.isPending) body = <LoadingState />;
+  // Filled from a read made for this visit (useEditableJob reads on every
+  // one); the copy kept since the last only when that read fails.
+  else if (editable.isPending || (!editable.isFetchedAfterMount && !editable.isError)) body = <LoadingState />;
   else if (editable.isError && !editable.data) body = <ErrorState error={editable.error} onRetry={() => editable.refetch()} />;
   else if (!editable.data) body = <NotFoundState />;
   else {

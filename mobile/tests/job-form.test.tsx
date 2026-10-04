@@ -102,8 +102,11 @@ function Settled({ children }: { children: ReactNode }) {
   return useSession().settled ? children : null;
 }
 
+/** How long a read stays cached once nothing shows it: none, unless a test keeps it as the app does. */
+let gcTime = 0;
+
 function Root() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime } } });
   return (
     <QueryClientProvider client={client}>
       <ThemeProvider>
@@ -398,6 +401,38 @@ describe('a listing on the board', () => {
     await waitFor(() => expect(saved()).toHaveLength(1));
     expect(saved()[0].version).toBe(4);
     expect(await screen.findByText(ar.employer.listingMoved)).toBeTruthy();
+  });
+
+  it('fills the editor from a read made for this visit, not from the copy kept since the last one', async () => {
+    // Kept as the app keeps a read nothing shows any more: five minutes.
+    gcTime = 5 * 60_000;
+    try {
+      let stored = liveJob;
+      server.on('GET /rest/v1/jobs', () => [stored]);
+      // The server as it is: an edit is refused unless it names the stored version.
+      server.on('POST /api/mobile/v1/actions/saveJob', (_url: URL, init?: RequestInit) => {
+        const { input } = JSON.parse(String(init?.body)) as { input: { version?: number } };
+        return input.version === stored.version ? { ok: true, data: { id: liveJob.id } } : { ok: false, error: 'stale' };
+      });
+      renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+      expect(await screen.findByLabelText(ar.jobForm.titleAr)).toBeTruthy();
+
+      // Left without typing anything; the listing moves on meanwhile (a moderator's decision).
+      act(() => router.back());
+      expect(await screen.findByText('the console')).toBeTruthy();
+      stored = { ...liveJob, version: 5 };
+
+      // Opened again, within the five minutes.
+      act(() => router.push(`/employer/jobs/${liveJob.id}/edit` as never));
+      expect(await screen.findByLabelText(ar.jobForm.titleAr)).toBeTruthy();
+      fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
+      fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+      await waitFor(() => expect(saved()).toHaveLength(1));
+      expect(saved()[0].version).toBe(5);
+      expect(screen.queryByText(ar.employer.listingMoved)).toBeNull();
+    } finally {
+      gcTime = 0;
+    }
   });
 
   it('takes an edit whose answer was lost for saved when the listing says what it sent', async () => {

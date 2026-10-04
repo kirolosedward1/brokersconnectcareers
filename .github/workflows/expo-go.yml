@@ -89,6 +89,8 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           # Passed through the environment, never pasted into the script.
           GIVEN: ${{ inputs.message }}
+          # Characters, not bytes, for the shell's own cut below.
+          LC_ALL: C.UTF-8
           COMMIT: ${{ github.event.head_commit.message || github.event.pull_request.title }}
         run: |
           # The publish's own status, not tee's: a failed publish fails the job.

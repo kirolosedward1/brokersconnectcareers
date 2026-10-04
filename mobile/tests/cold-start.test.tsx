@@ -5,7 +5,8 @@ import { persistQueryClientRestore, persistQueryClientSave } from '@tanstack/rea
 import { Modal } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { catalogues, I18nProvider } from '~/i18n/provider';
-import { firstPagesOnly, isOpeningRead, persistOptions } from '~/lib/query';
+import { ApiError } from '~/lib/api';
+import { firstPagesOnly, isOpeningRead, keepForNextStart, persistOptions } from '~/lib/query';
 import { SessionProvider } from '~/lib/session';
 import { ThemeProvider } from '~/theme/provider';
 import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
@@ -79,8 +80,9 @@ describe('what is kept for the next start', () => {
     client.getQueryCache().build(client, { queryKey: ['browse'] }).setState({ status: 'error', error: new Error('offline') });
 
     const keep = persistOptions.dehydrateOptions?.shouldDehydrateQuery;
-    expect(failed && keep?.(failed)).toBe(true);
-    expect(keep?.(client.getQueryCache().find({ queryKey: ['browse'] }) as NonNullable<typeof failed>)).toBe(false);
+    expect(keep).toBe(keepForNextStart);
+    expect(failed && keepForNextStart(failed)).toBe(true);
+    expect(keepForNextStart(client.getQueryCache().find({ queryKey: ['browse'] }) as NonNullable<typeof failed>)).toBe(false);
 
     const written = firstPagesOnly({
       timestamp: 0,
@@ -88,6 +90,21 @@ describe('what is kept for the next start', () => {
       clientState: { mutations: [], queries: [{ queryKey: ['jobs', 'board', ''], queryHash: 'h', dehydratedAt: 0, state: failed?.state as never }] },
     });
     expect(written.clientState.queries[0].state).toMatchObject({ status: 'success', error: null, data: { pages: [board()], pageParams: [1] } });
+  });
+
+  it('not an opening read whose answer is over a day old and has failed since, nor one the server refused', () => {
+    const client = cache();
+    // Last answered two days ago, failing ever since: kept, it would be drawn for as long as the app is opened daily.
+    client.setQueryData(['jobs', 'board', ''], { pages: [board()], pageParams: [1] }, { updatedAt: Date.now() - 2 * 24 * 60 * 60 * 1000 });
+    const old = client.getQueryCache().find({ queryKey: ['jobs', 'board', ''] });
+    old?.setState({ status: 'error', error: new Error('offline') });
+    expect(old && keepForNextStart(old)).toBe(false);
+
+    // Refused: an answer, not a failure to reach the server.
+    client.setQueryData(['browse'], browse);
+    const refused = client.getQueryCache().find({ queryKey: ['browse'] });
+    refused?.setState({ status: 'error', error: new ApiError(410, 'gone') });
+    expect(refused && keepForNextStart(refused)).toBe(false);
   });
 
   it('survives a restart with the taxonomies, and nothing about the person', async () => {

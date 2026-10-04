@@ -99,7 +99,10 @@ function Switches({ employer, stored }: { employer: boolean; stored: EmailPrefer
     setSaved(false);
     setFailed(false);
     save.mutate(next, {
-      onSuccess: () => setSaved(true),
+      onSuccess: () => {
+        switches.saved(next);
+        setSaved(true);
+      },
       onError: () => {
         switches.set({ [key]: prefs[key] });
         setFailed(true);

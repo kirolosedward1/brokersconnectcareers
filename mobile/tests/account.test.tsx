@@ -428,6 +428,22 @@ describe('the emails', () => {
     );
   });
 
+  it('follows a switch flipped here once it is saved, when it is changed again elsewhere', async () => {
+    server.on('POST /api/mobile/v1/actions/updateNotificationPreferences', (_url: URL, init?: RequestInit) => {
+      me = { ...me, ...(JSON.parse(String(init?.body)) as { input: Partial<ProfileRow> }).input };
+      return { ok: true };
+    });
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/emails' });
+    fireEvent(await screen.findByLabelText(ar.account.notifyDigest), 'valueChange', false);
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+
+    // Turned back on from another phone since.
+    me = { ...me, notify_digest: true };
+    fireEvent.press(screen.getByRole('button', { name: 'read the account again' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.account.notifyDigest).props.value).toBe(true));
+  });
+
   it('offers the profile reminder, off, where the profile has the switch, and sends it with the rest', async () => {
     me = { ...me, notify_profile_nudge: false };
     await signIn();

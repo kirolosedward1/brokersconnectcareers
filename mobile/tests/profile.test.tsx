@@ -255,6 +255,55 @@ describe('the profile', () => {
     );
   });
 
+  it('keeps up with the account after a save the website stored in its own form', async () => {
+    let me = { ...profile };
+    server.on('/rest/v1/profiles', () => [me]);
+    // As the website stores them: the number in international form, the name trimmed.
+    server.on('POST /api/mobile/v1/actions/saveAgentProfile', (_url: URL, init?: RequestInit) => {
+      const { input } = JSON.parse(String(init?.body)) as { input: { fullName: string; whatsapp: string } };
+      me = { ...me, full_name: input.fullName.trim(), whatsapp_phone: input.whatsapp.replace(/^0/, '+20') };
+      return { ok: true };
+    });
+    open();
+    fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01009998887');
+    fireEvent.press(saveButton());
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+    await waitFor(() => expect(screen.getByLabelText(ar.onboarding.whatsapp).props.value).toBe('+201009998887'));
+
+    // Applied from another tab with another number since.
+    me = { ...me, whatsapp_phone: '+201005556667' };
+    fireEvent.press(screen.getByRole('button', { name: 'read the account again' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.onboarding.whatsapp).props.value).toBe('+201005556667'));
+    fireEvent.changeText(screen.getByLabelText(ar.agents.headlineAr), 'مستشارة مبيعات أولية');
+    fireEvent.press(saveButton());
+    await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/saveAgentProfile', 1)?.input).toMatchObject({ whatsapp: '+201005556667' }));
+  });
+
+  it("keeps a choice put back while the save's answer is being read again", async () => {
+    open();
+    fireEvent.press(await screen.findByRole('radio', { name: new RegExp(ar.visibility.public) }));
+    // The profile, read again after the save, held as on a slow connection.
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.on('GET /rest/v1/agent_profiles', async () => {
+      await gate;
+      return agent ? [{ ...agent, visibility: 'public' }] : [];
+    });
+    fireEvent.press(saveButton());
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+
+    // Put back before that read is in.
+    const verified = () => screen.getByRole('radio', { name: new RegExp(ar.visibility.verified_employers_only) });
+    fireEvent.press(verified());
+    await act(async () => release());
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    expect(verified().props.accessibilityState).toMatchObject({ checked: true });
+  });
+
   it('takes the CV off when asked, and only then', async () => {
     open();
     fireEvent.press(await screen.findByRole('button', { name: ar.agents.cvRemove }));
