@@ -69,8 +69,14 @@ builds the app as the App Store gets it — Release, the JavaScript bundled in
 — and runs it on iOS simulators in Arabic against the live site
 (`mobile/scripts/store-screens.sh`, the screens in `mobile/maestro/`). Each
 screen is opened by a link, checked for the app's error, offline, unavailable,
-not-found and update-required states, and captured. A crash, an error screen
-or a screen that never loads fails the run. Its artifact, `ios-screens`, holds:
+not-found and update-required states, and captured. The light and large-text
+passes then go, as a person would, through what someone signed out meets first
+— Account, the sign-in sheet, the forgotten-password page and sign-up
+(`mobile/maestro/signed-out.yaml`) — checked the same way, not captured. A
+crash, an error screen or a screen that never loads fails the run.
+`mobile/tests/maestro-flows.test.ts` holds every phrase the flows wait for to
+the catalogue, so a reworded string fails the app's check rather than this
+run. Its artifact, `ios-screens`, holds:
 
 - `store/1-home.png` … `5-company.png`: Home, the board, a listing, the
   companies and a company page on the largest iPhone, the 6.9-inch
@@ -253,7 +259,13 @@ submitting.
    All are set in Vercel → the project → Settings → Environment Variables,
    for Production.
 2. **The two Vault secrets** for the push sweep, by hand in the SQL editor
-   (`docs/mobile.md`, Pushes).
+   (`docs/mobile.md`, Pushes). And, if not done yet, **the five auth email
+   templates** pasted into Supabase (Authentication → Emails → Templates, from
+   `supabase/templates/`; `docs/email.md`, step 4). Their links go to
+   `/auth/confirm`, which the app opens. Supabase's defaults end in the
+   browser's code flow, which only the browser that asked can finish: a
+   password reset asked for in the app could never be completed, and a sign-up
+   link lands on the website's sign-in page saying the link failed.
 3. **Merge the app's pull request** into `main` (Vercel deploys it), then
    apply the migrations still pending, from your computer:
    `pnpm db:apply --execute --confirm hiwdhicwsohbipxzazmb` with
@@ -269,8 +281,10 @@ submitting.
    The build then carries over-the-air updates: later fixes go out with
    `pnpm run ota production --message "…"` in `mobile/`, without a review
    (docs/mobile.md, Over-the-air updates).
-5. **A 1024-pixel app icon** (only a 450-pixel mark exists today) and the
-   splash image.
+5. **The app icon, if you want it redrawn.** The one in the build
+   (`mobile/assets/images/icon.png`, the mark on white) is 1024 pixels and
+   opaque, as the store requires, and is enough to submit. A vector logo from a
+   designer would let it and the splash be drawn crisper.
 6. **The legal pages reviewed by a lawyer** (`docs/legal.md`, "The
    documents"), and the two review accounts ("Review accounts" above).
 7. **A development build on a real iPhone** against production, through the

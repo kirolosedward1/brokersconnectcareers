@@ -7,8 +7,9 @@
 #
 # Each pass runs on a simulator in Arabic (Egypt), the status bar at 9:41 with
 # full bars, opens the app as someone new would, and opens the screens of
-# maestro/screens.yaml by link, checking and capturing each; a failed pass
-# writes what was on the screen into the log:
+# maestro/screens.yaml by link, checking and capturing each (the store and
+# large-text passes then check the signed-out screens, maestro/signed-out.yaml);
+# a failed pass writes what was on the screen into the log:
 #
 #   store       the largest iPhone, light: the screenshots App Store Connect
 #               asks for (6.9-inch)

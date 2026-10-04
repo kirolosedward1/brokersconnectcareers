@@ -1,0 +1,44 @@
+# What someone not signed in meets before any account, App Review first:
+# Account, its sign-in button, the forgotten-password page and sign-up, opened
+# the way a person opens them. Each is waited for by something only it shows
+# and checked for the error states (checks.yaml); nothing is typed or sent, and
+# nothing is captured for the store. Runs after screens.yaml, where the tabs
+# are on screen, in the store and large-text passes (store.yaml).
+appId: net.brokersconnect.app
+---
+- tapOn: "حسابي"
+- extendedWaitUntil:
+    visible: "ادخل على حسابك"
+    timeout: 30000
+- runFlow: checks.yaml
+
+# The sign-in sheet, from the Account card's own button.
+- scrollUntilVisible:
+    element: "تسجيل الدخول"
+- tapOn: "تسجيل الدخول"
+- extendedWaitUntil:
+    visible: "أهلاً بيك تاني"
+    timeout: 30000
+- waitForAnimationToEnd
+- runFlow: checks.yaml
+
+# The forgotten-password page, from the link under the password.
+- scrollUntilVisible:
+    element: "نسيت كلمة المرور؟"
+- tapOn: "نسيت كلمة المرور؟"
+- extendedWaitUntil:
+    visible: "اكتب إيميلك وهنبعتلك لينك تعمل بيه كلمة مرور جديدة."
+    timeout: 30000
+- waitForAnimationToEnd
+- runFlow: checks.yaml
+
+# Sign-up, by link: the sheet's "create an account" is a link inside a
+# sentence, which the accessibility tree does not offer on its own.
+- openLink: brokersconnect:///sign-up
+- runFlow: confirm-link.yaml
+- extendedWaitUntil:
+    visible: "اعمل حسابك"
+    timeout: 30000
+- scrollUntilVisible:
+    element: "تأكيد كلمة المرور"
+- runFlow: checks.yaml

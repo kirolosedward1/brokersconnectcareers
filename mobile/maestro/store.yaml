@@ -1,6 +1,8 @@
-# The App Store screenshots: the app as installed, light, its five screens.
+# The App Store screenshots: the app as installed, light, its five screens;
+# then, uncaptured, the signed-out screens App Review meets first.
 appId: net.brokersconnect.app
 name: Store screens
 ---
 - runFlow: launch.yaml
 - runFlow: screens.yaml
+- runFlow: signed-out.yaml

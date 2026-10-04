@@ -636,6 +636,11 @@ In the Supabase dashboard (Authentication):
 - **URL Configuration → Redirect URLs**: add `brokersconnect://auth/callback`
   for Google in the app; the email links use the website's own callback,
   which is already listed.
+- **Emails → Templates**: the five in `supabase/templates/` (`docs/email.md`).
+  Their links go to `/auth/confirm` with a token hash, which the app opens and
+  verifies itself; Supabase's own templates end in the code flow, which only
+  the browser that asked can finish, so a reset asked for in the app would
+  never complete.
 
 ## Releasing
 
@@ -658,7 +663,8 @@ Before the first build:
   the app is on the App Store;
 - the privacy policy's section on the app (`content/legal/privacy.ar.md`)
   reviewed — the App Store requires a privacy policy URL;
-- a 1024-pixel app icon.
+- optionally, a designer's vector logo: the icon in the build is the mark at
+  1024 pixels, which is enough to submit.
 
 The whole list, in order, with the website's keys and Android's, is in
 `docs/app-store.md` ("Before the first submission").
