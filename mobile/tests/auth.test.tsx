@@ -793,6 +793,8 @@ describe('one-tap sign-in', () => {
     const exchange = server.asked('/auth/v1/token').find((request) => request.url.searchParams.get('grant_type') === 'id_token');
     expect(exchange?.body).toMatchObject({ provider: 'apple', id_token: 'apple-identity-token', nonce });
     expect(bodyOf('/auth/v1/user')).toMatchObject({ data: { full_name: 'Sara Adel' } });
+    // The Apple ID it was made with, asked about at each launch (tests/apple-credential.test.tsx).
+    expect(JSON.parse((await AsyncStorage.getItem('auth:apple-sign-in')) ?? 'null')).toEqual({ userId: USER_ID, appleUser: 'apple-user' });
   });
 
   it('Google: the system browser, the code back to the app, and PKCE', async () => {

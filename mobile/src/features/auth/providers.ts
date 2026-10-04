@@ -3,6 +3,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '~/lib/supabase';
+import { rememberAppleSignIn } from './apple-credential';
 import { awaitingOAuthReturn, OAUTH_REDIRECT } from './oauth-return';
 
 /**
@@ -85,12 +86,14 @@ export async function signInWithApple(): Promise<ProviderOutcome> {
   }
   if (!credential.identityToken) return failed('apple: no identity token');
 
-  const { error } = await supabase.auth.signInWithIdToken({
+  const { data, error } = await supabase.auth.signInWithIdToken({
     provider: 'apple',
     token: credential.identityToken,
     nonce,
   });
   if (error) return failed(error);
+  // Asked about at each launch from now on: a session made with this Apple ID ends here when Apple revokes it.
+  if (data.user) await rememberAppleSignIn(data.user.id, credential.user);
 
   /*
     Apple gives the name once — on the first sign-in with this app — and never

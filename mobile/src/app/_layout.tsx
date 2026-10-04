@@ -13,6 +13,7 @@ import { IBMPlexSansArabic_600SemiBold } from '@expo-google-fonts/ibm-plex-sans-
 import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic/700Bold';
 import { AppError, ScreenError } from '~/components/navigation/error-boundaries';
 import { PendingPath } from '~/components/navigation/pending-path';
+import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
@@ -104,6 +105,7 @@ function AppStack() {
       <SessionGate />
       <PendingPath />
       <PushBridge />
+      <AppleCredentialWatch />
     </UpdateGate>
   );
 }

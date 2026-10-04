@@ -286,7 +286,12 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   the destination nested), so the email works the same opened anywhere.
 - **Apple** is the system sheet: a SHA-256 of a random nonce goes to Apple, the
   nonce itself to `signInWithIdToken`, and the name Apple gives only once is
-  kept in `user_metadata.full_name`. **Google** runs Supabase's OAuth flow in
+  kept in `user_metadata.full_name`. The Apple ID it signed in with is kept on
+  the phone, and iOS is asked about it at launch and each time the app comes
+  back: once the person turns Sign in with Apple off for the app in Settings
+  (or Apple revokes it), that session ends on the phone with a word of why
+  (`AppleCredentialWatch`). An Apple ID iOS does not know ends nothing, and a
+  session made by password is never asked about. **Google** runs Supabase's OAuth flow in
   the system's authentication browser with PKCE, returning to
   `brokersconnect://auth/callback`. Each button appears only when
   `/api/mobile/v1/config` says the provider is on.

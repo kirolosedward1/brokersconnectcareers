@@ -63,7 +63,9 @@
     "resetLinkFailed": "That link has expired or has already been used. You are signed in as {email}, so you can set a new password for it in Sign-in and security.",
     "emailChangeLinkFailed": "That link has expired or has already been used, and the change has not gone through: your account’s address is still {email}. You can ask for the change again in Sign-in and security.",
     "configFailed": "We could not get signing in ready. Check your connection and try again.",
-    "configRetry": "Try again"
+    "configRetry": "Try again",
+    "appleRevokedTitle": "You have been signed out",
+    "appleRevokedBody": "Sign in with Apple was turned off for this app in Settings, so we signed you out on this phone. You can sign in again at any time."
   },
   "onboarding": {
     "choose": "Choose"

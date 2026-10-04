@@ -238,20 +238,32 @@ console.log('\n— receipts');
   const disabled = [];
   const stats = await checkReceipts({
     dueTickets: async () => [
-      { ticket_id: 't-ok', device_id: 'd1' },
-      { ticket_id: 't-gone', device_id: 'd2' },
-      { ticket_id: 't-later', device_id: 'd3' },
+      { ticket_id: 't-ok', device_id: 'd1', created_at: '2026-10-04T08:00:00Z' },
+      { ticket_id: 't-gone', device_id: 'd2', created_at: '2026-10-04T08:00:00Z' },
+      { ticket_id: 't-later', device_id: 'd3', created_at: '2026-10-04T08:00:00Z' },
+      { ticket_id: 't-gone-again', device_id: 'd2', created_at: '2026-10-04T08:05:00Z' },
     ],
     receipts: async () => ({
       't-ok': { status: 'ok' },
       't-gone': { status: 'error', details: { error: 'DeviceNotRegistered' } },
+      't-gone-again': { status: 'error', details: { error: 'DeviceNotRegistered' } },
     }),
     forget: async (ids) => forgotten.push(...ids),
-    disableDevices: async (ids) => disabled.push(...ids),
+    disableUnseenSince: async (phones, reason) => disabled.push(...phones.map((phone) => ({ ...phone, reason }))),
   });
-  ok('a phone Apple says has no app any more is switched off', disabled.join() === 'd2');
-  ok('answered tickets are forgotten; one without a receipt yet is asked about again', forgotten.join() === 't-ok,t-gone');
-  ok('and counted', stats.checked === 3 && stats.answered === 2 && stats.phonesOff === 1);
+  ok('a phone Apple says has no app any more is switched off', disabled.map((phone) => phone.id).join() === 'd2');
+  /*
+    Read fifteen minutes and more after the push. By then the token may have
+    been registered again — by the next person to sign in on that phone, whose
+    row it now is (register_push_device moves a token, keeping its row) — and
+    switching it off would leave them without pushes until the app next
+    starts. So the phone goes off only if it has not been registered since its
+    last refused push went out.
+  */
+  ok('as of its last refused push, so a phone registered since then stays on', disabled[0]?.since === '2026-10-04T08:05:00Z', JSON.stringify(disabled));
+  ok('for the reason Apple gave', disabled[0]?.reason === 'DeviceNotRegistered');
+  ok('answered tickets are forgotten; one without a receipt yet is asked about again', forgotten.join() === 't-ok,t-gone,t-gone-again');
+  ok('and counted', stats.checked === 4 && stats.answered === 3 && stats.phonesOff === 1);
 }
 
 console.log('\n— the Expo client');

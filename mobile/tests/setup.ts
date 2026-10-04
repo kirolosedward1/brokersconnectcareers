@@ -91,6 +91,9 @@ jest.mock('expo-apple-authentication', () => {
   return {
     isAvailableAsync: jest.fn(async () => false),
     signInAsync: jest.fn(),
+    // What iOS says of an Apple ID's sign-in with this app: still authorized, unless a test says otherwise.
+    getCredentialStateAsync: jest.fn(async () => 1),
+    AppleAuthenticationCredentialState: { REVOKED: 0, AUTHORIZED: 1, NOT_FOUND: 2, TRANSFERRED: 3 },
     formatFullName: jest.fn((name: { givenName?: string | null; familyName?: string | null }) =>
       [name.givenName, name.familyName].filter(Boolean).join(' '),
     ),

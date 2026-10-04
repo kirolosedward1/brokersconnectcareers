@@ -123,7 +123,7 @@ function receiptDeps(admin: Admin): ReceiptDeps {
       (await retryDb(() =>
         admin
           .from('push_tickets')
-          .select('ticket_id, device_id')
+          .select('ticket_id, device_id, created_at')
           .lt('created_at', new Date(Date.now() - 15 * 60_000).toISOString())
           .order('created_at', { ascending: true })
           .limit(limit),
@@ -132,7 +132,19 @@ function receiptDeps(admin: Admin): ReceiptDeps {
     forget: async (ids) => {
       await retryDb(() => admin.from('push_tickets').delete().in('ticket_id', ids));
     },
-    disableDevices: (ids, reason) => disableDevices(admin, ids, reason),
+    disableUnseenSince: async (phones, reason) => {
+      for (const { id, since } of phones) {
+        await retryDb(() =>
+          admin
+            .from('push_devices')
+            .update({ disabled_at: new Date().toISOString(), disabled_reason: reason })
+            .eq('id', id)
+            .is('disabled_at', null)
+            // Registered again since the refused push (register_push_device stamps it): the token is good again, maybe another person's.
+            .lte('last_seen_at', since),
+        );
+      }
+    },
   };
 }
 
