@@ -69,8 +69,9 @@ describe('one name for one thing', () => {
   });
 
   it('writes the hamza in the other words it had two spellings for', () => {
-    // «5 نتائج» above «شوف النتايج»; «قائمة مختصرة» beside «قايمة المرشحين».
-    const colloquial = /نتايج|قايمة|قوايم|رسايل/;
+    // «5 نتائج» above «شوف النتايج»; «قائمة مختصرة» beside «قايمة المرشحين»;
+    // «5 دقائق قراءة» beside «بعد 5 دقايق».
+    const colloquial = /نتايج|قايمة|قوايم|رسايل|دقايق/;
     expect(arabic.filter(([, text]) => colloquial.test(text)).map(([key]) => key)).toEqual([]);
   });
 

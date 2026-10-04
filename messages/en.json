@@ -861,7 +861,7 @@
     "contact": "Contact",
     "contactSelf": "This is your own account.",
     "reportsFiled": "Reports filed",
-    "reportsFiledSummary": "{count} filed, {dismissed} found to be no violation.",
+    "reportsFiledSummary": "{count, number} filed, {dismissed} found to be no violation.",
     "reporterPattern": "Most of their reports found no violation — weigh that.",
     "companiesSearchPlaceholder": "Company name in Arabic or English, or slug…",
     "colListings": "Listings",

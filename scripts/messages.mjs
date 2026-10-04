@@ -877,8 +877,22 @@ console.log('\n— the email copy has two halves too');
     }
     return [];
   };
-  const misspelled = words(emailCopy.ar).filter(([, text]) => /وظايف|نتايج|قايمة|قوايم|رسايل/.test(text)).map(([key]) => key);
+  const misspelled = words(emailCopy.ar).filter(([, text]) => /وظايف|نتايج|قايمة|قوايم|رسايل|دقايق/.test(text)).map(([key]) => key);
   check('Arabic emails spell وظائف, نتائج and the rest as the site does', misspelled.length === 0, misspelled.join(', '));
+
+  // The same words in the website's own catalogue (the app's copy.test.ts reads it too, with the app's).
+  const siteMisspelled = flatten(load('ar'))
+    .filter(([, text]) => typeof text === 'string' && /وظايف|نتايج|قايمة|قوايم|رسايل|دقايق/.test(text))
+    .map(([key]) => key);
+  check('the website writes them one way too', siteMisspelled.length === 0, siteMisspelled.join(', '));
+
+  // One email, one word for "new": the applicant digest's heading said «جدد» over a body saying «جداد».
+  const digest = emailCopy.ar.applicantDigest;
+  check(
+    "the applicant digest's heading says new as its subject and body do",
+    digest.subject(3).includes('جداد') && digest.body(3).includes('جداد') && digest.heading.includes('جداد'),
+    digest.heading,
+  );
 }
 
 console.log('\n— a count on the website takes its form');
@@ -926,6 +940,8 @@ console.log('\n— a count on the website takes its form');
   expect('one open report', en, 'admin.openListingReports', { count: 1 }, '1 open report on its listings');
   expect('three open reports', ar, 'admin.openListingReports', { count: 3 }, '3 بلاغات مفتوحة على إعلاناتها');
   expect('two reports filed', ar, 'admin.reportsFiledSummary', { count: 2, dismissed: 1 }, 'بلاغين، منهم 1 طلع مفيهوش مخالفة.');
+  // Passed as a number now, it is grouped by the message, as formatNumber grouped it.
+  expect('a thousand reports filed', en, 'admin.reportsFiledSummary', { count: 1000, dismissed: '12' }, '1,000 filed, 12 found to be no violation.');
 
   // Each label now selects its form from the number, so a caller handing it
   // formatNumber()'s string ("1,200") would get the wrong one. Every caller

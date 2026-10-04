@@ -77,6 +77,10 @@ describe('the gate', () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ minAppVersion: '1.2.0', appStoreUrl: url }));
     gate();
     expect(await screen.findByText(ar.app.update.title)).toBeTruthy();
+    // React Native's stand-ins measure nothing: the gate fills the screen.
+    const inWindow = jest
+      .spyOn(ScrollView.prototype as unknown as { measureInWindow: (...args: unknown[]) => void }, 'measureInWindow')
+      .mockImplementation((done: unknown) => (done as (x: number, y: number, w: number, h: number) => void)(0, 0, 393, 852));
     const laidOut = (words: number) => {
       const scroll = screen.UNSAFE_getByType(ScrollView);
       fireEvent(scroll, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 393, height: 852 } } });
@@ -97,6 +101,7 @@ describe('the gate', () => {
     scroll = laidOut(900);
     expect(scroll.props.alwaysBounceVertical).toBe(true);
     expect(within(scroll).getByRole('button', { name: ar.app.update.cta })).toBeTruthy();
+    inWindow.mockReset();
   });
 
   it('waits while a screen holds typed work, which it would otherwise throw away, and asks once it is let go', async () => {

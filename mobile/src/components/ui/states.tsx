@@ -1,8 +1,9 @@
-import { createContext, useContext, useState, type Context, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type Context, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
   View,
   type DimensionValue,
   type StyleProp,
@@ -47,6 +48,9 @@ function Centered({ children }: { children: ReactNode }) {
   return <CenteredScroll>{children}</CenteredScroll>;
 }
 
+/** A scroll view's ref is its native view, which measures itself; React Native's types leave that out. */
+type Measurable = { measureInWindow(done: (x: number, y: number, width: number, height: number) => void): void };
+
 /**
  * A screen of words, in the middle, that scrolls only when they are taller
  * than the room the bars leave.
@@ -57,8 +61,16 @@ function Centered({ children }: { children: ReactNode }) {
  * points below the middle of a tab with a large title, and dragged. With
  * "scrollableAxes" the insets come only with scrolling, and it scrolls —
  * bounces, so iOS counts it as scrollable — only once the words are taller
- * than the screen less the header, or the status bar, and the tab bar, or
- * the home indicator.
+ * than the room. While they fit, they sit in the middle of that room.
+ *
+ * The room is the scroll view less what covers it, where it is on the screen:
+ * a header it lies under (a large title or a search field is see-through; an
+ * ordinary one is not, and the screen starts below it), the status bar, the
+ * tab bar or the home indicator. The bars settle a moment after the first
+ * frame, and a large title folds as a page scrolls, so each is counted at the
+ * most it has covered: decided once, the words do not start or stop scrolling
+ * under the reader's finger. Until it is measured, a frame or two, it is drawn
+ * but not seen, so nothing jumps into place.
  */
 export function CenteredScroll({
   children,
@@ -71,22 +83,60 @@ export function CenteredScroll({
 }) {
   const insets = useContext(SafeAreaInsetsContext);
   const header = useContext(HeaderHeightContext);
-  const [frame, setFrame] = useState(0);
+  const screenHeight = useWindowDimensions().height;
+  const scroll = useRef<ScrollView>(null);
+  const [box, setBox] = useState<{ y: number; height: number } | null>(null);
   const [words, setWords] = useState(0);
-  const room = frame - Math.max(header ?? 0, insets?.top ?? 0) - (insets?.bottom ?? 0);
-  const taller = frame > 0 && words + 2 * padding > room;
+  const [covered, setCovered] = useState({ height: 0, top: 0, bottom: 0 });
+  const [gaveUp, setGaveUp] = useState(false);
+
+  // Where the bars end and begin on the screen: the header (or, with none,
+  // the status bar) from the top, the tab bar (or the home indicator) from
+  // the bottom — NativeTabs gives each tab the safe area its bar leaves.
+  const topEdge = Math.max(header ?? 0, insets?.top ?? 0);
+  const bottomEdge = screenHeight - (insets?.bottom ?? 0);
+  if (box) {
+    // Kept from render to render (React's "storing information from previous
+    // renders"): set only when it grows, so it settles at once.
+    const top = Math.max(0, topEdge - box.y);
+    const bottom = Math.max(0, box.y + box.height - bottomEdge);
+    if (covered.height !== box.height) setCovered({ height: box.height, top, bottom });
+    else if (top > covered.top || bottom > covered.bottom) {
+      setCovered({ height: box.height, top: Math.max(covered.top, top), bottom: Math.max(covered.bottom, bottom) });
+    }
+  }
+  // Measured or not, it is shown soon: a stand-in that never measures (or a
+  // platform that cannot) leaves the words in the middle of the scroll view.
+  useEffect(() => {
+    const timer = setTimeout(() => setGaveUp(true), 250);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const measured = box !== null && covered.height === box.height;
+  const taller = measured && words + 2 * padding > box.height - covered.top - covered.bottom;
+  // Still, the words keep clear of the bars by padding; scrolling, iOS insets them itself.
+  const clear = measured && !taller ? covered : { top: 0, bottom: 0 };
   return (
     <ScrollView
+      ref={scroll}
       style={[{ flex: 1 }, style]}
-      onLayout={(event) => setFrame(event.nativeEvent.layout.height)}
+      onLayout={() =>
+        (scroll.current as unknown as Measurable | null)?.measureInWindow((_x, y, _width, height) => setBox({ y, height }))
+      }
       contentInsetAdjustmentBehavior="scrollableAxes"
       // Still while it fits: a spinner or a message that moves under the finger feels loose.
       alwaysBounceVertical={taller}
-      contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding }}
+      contentContainerStyle={{
+        flexGrow: 1,
+        justifyContent: 'center',
+        padding,
+        paddingTop: padding + clear.top,
+        paddingBottom: padding + clear.bottom,
+      }}
     >
       <View
         onLayout={(event) => setWords(event.nativeEvent.layout.height)}
-        style={{ alignSelf: 'stretch', alignItems: 'center', gap: space[3] }}
+        style={{ alignSelf: 'stretch', alignItems: 'center', gap: space[3], opacity: measured || gaveUp ? 1 : 0 }}
       >
         {children}
       </View>

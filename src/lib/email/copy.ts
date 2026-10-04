@@ -351,7 +351,7 @@ export const emailCopy = {
     applicantDigest: {
       subject: (count: number) => `عندك ${newApplicants(count)}`,
       preheader: 'ملخّص المتقدمين النهارده.',
-      heading: 'متقدمين جدد',
+      heading: 'متقدمين جداد',
       body: (count: number) => `وصلك ${newApplicants(count)} من آخر مرة بعتنالك.`,
       cta: 'شوف المتقدمين',
     },

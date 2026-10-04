@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaInsetsContext, SafeAreaProvider } from 'react-native-safe-area-context';
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
@@ -148,21 +148,29 @@ describe('a state that is the whole screen', () => {
     height of both bars. Insets only once it scrolls ("scrollableAxes"), and
     it scrolls only when the words and the button under them are taller
     than the room the bars leave: at the largest text sizes, or on the
-    smallest phone turned on its side.
+    smallest phone turned on its side. While it fits, the words sit in the
+    middle of that room, padded clear of whatever bar covers the scroll view
+    where it is on the screen.
   */
+  const screenHeight = Dimensions.get('window').height;
   const bars = { top: 59, bottom: 83, left: 0, right: 0 };
+  let header = 155;
   function UnderTheBars({ children }: { children: ReactNode }) {
     return (
       <Providers>
         <SafeAreaInsetsContext.Provider value={bars}>
-          <HeaderHeightContext.Provider value={155}>{children}</HeaderHeightContext.Provider>
+          <HeaderHeightContext.Provider value={header}>{children}</HeaderHeightContext.Provider>
         </SafeAreaInsetsContext.Provider>
       </Providers>
     );
   }
-  const laidOut = (frame: number, words: number) => {
+  // React Native's stand-ins share one measureInWindow mock; this places the scroll view on the screen.
+  const inWindow = jest.spyOn(ScrollView.prototype as unknown as { measureInWindow: (...args: unknown[]) => void }, 'measureInWindow');
+  afterEach(() => inWindow.mockReset());
+  const laidOut = (box: { y: number; height: number }, words: number) => {
+    inWindow.mockImplementation((done: unknown) => (done as (x: number, y: number, w: number, h: number) => void)(0, box.y, 393, box.height));
     const scroll = screen.UNSAFE_getByType(ScrollView);
-    fireEvent(scroll, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 393, height: frame } } });
+    fireEvent(scroll, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 393, height: box.height } } });
     const content = within(scroll)
       .UNSAFE_getAllByType(View)
       .find((view) => typeof view.props.onLayout === 'function');
@@ -170,22 +178,67 @@ describe('a state that is the whole screen', () => {
     fireEvent(content, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 329, height: words } } });
     return screen.UNSAFE_getByType(ScrollView);
   };
+  const padded = (scroll: ReturnType<typeof screen.UNSAFE_getByType>) => {
+    const style = scroll.props.contentContainerStyle as { paddingTop: number; paddingBottom: number };
+    return [style.paddingTop, style.paddingBottom];
+  };
+  // A tab's root under a large title: the scroll view fills the screen, under both bars.
+  const wholeScreen = { y: 0, height: screenHeight };
 
-  it('sits still in the middle when it fits: no insets, nothing to drag', () => {
+  beforeEach(() => {
+    header = 155;
+  });
+
+  it('sits still in the middle of the room the bars leave when it fits: no insets, nothing to drag', () => {
     render(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />, { wrapper: UnderTheBars });
-    const scroll = laidOut(852, 260);
+    const scroll = laidOut(wholeScreen, 260);
     expect(scroll.props.contentInsetAdjustmentBehavior).toBe('scrollableAxes');
     expect(scroll.props.alwaysBounceVertical).toBe(false);
+    // 32 of its own padding, and clear of the header (155) and the tab bar (83) it lies under.
+    expect(padded(scroll)).toEqual([32 + 155, 32 + 83]);
   });
 
   it('scrolls, clear of the header and the tab bar, to the button under its words when they are taller than the room', () => {
     render(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />, { wrapper: UnderTheBars });
-    // 852 − 155 (header) − 83 (tab bar) = 614 between the bars: 600 of words
-    // and the padding around them are more.
-    const scroll = laidOut(852, 600);
+    // The screen less 155 (header) and 83 (tab bar) is the room: words that,
+    // with the padding around them, are taller scroll, and iOS insets them.
+    const scroll = laidOut(wholeScreen, screenHeight - 155 - 83 - 60);
     expect(scroll.props.contentInsetAdjustmentBehavior).toBe('scrollableAxes');
     expect(scroll.props.alwaysBounceVertical).toBe(true);
+    expect(padded(scroll)).toEqual([32, 32]);
     expect(within(scroll).getByRole('button', { name: ar.common.retry })).toBeTruthy();
+  });
+
+  it('counts a header it is not under as no part of its room', () => {
+    // Under an ordinary title the header is opaque and the screen starts
+    // below it: only the tab bar covers the scroll view. Counted twice, the
+    // header made words that fit scroll and drag by the tab bar's height.
+    header = 103;
+    render(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />, { wrapper: UnderTheBars });
+    const below = { y: 103, height: screenHeight - 103 };
+    const scroll = laidOut(below, below.height - 83 - 64 - 20);
+    expect(scroll.props.alwaysBounceVertical).toBe(false);
+    expect(padded(scroll)).toEqual([32, 32 + 83]);
+  });
+
+  it('keeps clear of a header with a search field, rather than sinking its top under it', () => {
+    // A large title and a search field always shown come to about 207 points.
+    header = 207;
+    render(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />, { wrapper: UnderTheBars });
+    const scroll = laidOut(wholeScreen, screenHeight - 207 - 83 - 64 - 10);
+    expect(scroll.props.alwaysBounceVertical).toBe(false);
+    expect(padded(scroll)).toEqual([32 + 207, 32 + 83]);
+  });
+
+  it('does not stop scrolling under the finger as the large title collapses', () => {
+    render(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />, { wrapper: UnderTheBars });
+    const words = screenHeight - 155 - 83 - 60;
+    expect(laidOut(wholeScreen, words).props.alwaysBounceVertical).toBe(true);
+    // Scrolled, the title folds into a 103-point bar: the room grows, but it
+    // was decided against the largest the header has been.
+    header = 103;
+    screen.rerender(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />);
+    expect(screen.UNSAFE_getByType(ScrollView).props.alwaysBounceVertical).toBe(true);
   });
 
   it("is a block of the list it is the empty state of, which scrolls already: not a scroll inside a scroll", () => {
