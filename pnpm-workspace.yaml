@@ -37,5 +37,13 @@ onlyBuiltDependencies:
 # 8.5.x is a minor bump within the same major and postcss holds semver
 # strictly. Proven by the only thing that can prove it: a full production
 # build, which compiles every route's CSS through exactly this dependency.
+#
+# And sharp, which decodes every logo and profile photo a person uploads
+# (src/lib/security/files.ts): before 0.35.4 it carries libvips and libheif
+# with known flaws, reported high by the same audit. The app depends on 0.35.5
+# itself; this holds Next's own copy to it too (Next 15.5 accepts ^0.35.3), so
+# one sharp is installed. scripts/images.test.mjs puts real pictures through
+# the re-encoder on whichever version this resolves.
 overrides:
   postcss: '^8.5.23'
+  sharp: '^0.35.5'
