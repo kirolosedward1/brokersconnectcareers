@@ -311,7 +311,7 @@ export function ProfileForm({
 
       <Field
         ref={inView.place('cv')}
-        label={hasCv && cv.kind !== 'remove' ? t('agents.cvReplace') : t('agents.downloadCv')}
+        label={hasCv && cv.kind !== 'remove' ? t('agents.cvReplace') : t('agents.cvUpload')}
         hint={t('agents.cvHint')}
         error={errors.cv}
       >

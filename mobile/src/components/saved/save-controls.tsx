@@ -204,6 +204,16 @@ export function SaveSearchButton({ query, defaultLabel }: { query: string; defau
 }
 
 /**
+ * Whether this reader is offered the follow: anybody signed out (asked to
+ * sign in first), and an account that saves jobs — not a company, for which
+ * a follow would be a saved search it could not undo.
+ */
+export function useOffersFollow(): boolean {
+  const { session, viewer, actor } = useSession();
+  return !(session && viewer?.profile) || canSaveJobs(actor);
+}
+
+/**
  * "Tell me when this brokerage posts." Underneath, a saved search with one
  * filter, so the reader gets the weekly email they already know, with the
  * same switch in Saved; the button says the outcome, not the mechanism.
@@ -212,13 +222,14 @@ export function FollowCompanyButton({ slug, label }: { slug: string; label: stri
   const t = useTranslations('companies');
   const tCommon = useTranslations('common');
   const { colors } = useTheme();
-  const { session, viewer, actor } = useSession();
+  const { session, viewer } = useSession();
+  const offered = useOffersFollow();
   const { following } = useFollowing(slug);
   const toggle = useToggleFollow(slug, label);
   const [error, setError] = useState<string | null>(null);
 
   const signedIn = Boolean(session && viewer?.profile);
-  if (signedIn && !canSaveJobs(actor)) return null;
+  if (!offered) return null;
 
   const onPress = () => {
     if (!signedIn) {

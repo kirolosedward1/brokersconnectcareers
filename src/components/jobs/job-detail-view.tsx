@@ -360,7 +360,7 @@ export async function JobDetailView({
             ) : null}
             <span className="inline-flex items-center gap-1">
               <Eye className="size-3.5" aria-hidden />
-              {t('views', { count: formatNumber(job.view_count, locale) })}
+              {t('views', { count: job.view_count })}
             </span>
           </p>
         </div>

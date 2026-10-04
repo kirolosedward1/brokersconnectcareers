@@ -10,7 +10,7 @@ import { Button, ICON_HIT_AREA } from '@/components/ui/button';
 import { Select } from '@/components/ui/field';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
-import { formatDate, formatEgp, formatList, formatNumber, isoDate, whatsappLink, cn } from '@/lib/utils';
+import { formatDate, formatEgp, formatList, isoDate, whatsappLink, cn } from '@/lib/utils';
 import { employerOpener } from '@/lib/whatsapp';
 import { setApplicationStatus } from '@/lib/actions/applications';
 import { reach } from '@/lib/reach';
@@ -301,9 +301,7 @@ export function ApplicantCard({
               <p className="mt-1 flex flex-wrap gap-x-3 text-xs font-medium">
                 {profile.units_closed != null ? (
                   <span>
-                    {tAgents('unitsClosedShort', {
-                      count: formatNumber(profile.units_closed, locale),
-                    })}
+                    {tAgents('unitsClosedShort', { count: profile.units_closed })}
                   </span>
                 ) : null}
                 {profile.volume_egp != null ? (

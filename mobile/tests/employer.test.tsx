@@ -291,7 +291,7 @@ describe("an employer's listings", () => {
     expect(screen.getByText('المرتب مش واضح.')).toBeTruthy();
     expect(await screen.findByRole('button', { name: ar.appeals.ask })).toBeTruthy();
     // Applicants per listing.
-    expect(screen.getByRole('button', { name: '⁦4⁩ متقدم: مستشار مبيعات' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '⁦4⁩ متقدمين: مستشار مبيعات' })).toBeTruthy();
   });
 
   it("shows a refused listing's reason from the listing itself on a database before migration 347", async () => {

@@ -29,10 +29,10 @@ export function employerToAgentOpener(params: {
   const { agentName, companyName, locale } = params;
 
   if (locale === 'en') {
-    return `Hello ${agentName}, this is ${companyName}. We found your profile on the agent directory and have an opening that may suit you.`;
+    return `Hello ${agentName}, this is ${companyName}. We found your profile on the consultant directory and have an opening that may suit you.`;
   }
 
-  return `أهلاً ${agentName}، معك ${companyName}. شفنا ملفك في دليل المسوقين وعندنا فرصة ممكن تناسبك.`;
+  return `أهلاً ${agentName}، معك ${companyName}. شفنا ملفك في دليل الاستشاريين وعندنا فرصة ممكن تناسبك.`;
 }
 
 /**

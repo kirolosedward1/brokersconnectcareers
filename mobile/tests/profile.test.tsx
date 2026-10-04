@@ -186,7 +186,7 @@ describe('the profile', () => {
   it("says what is missing, biggest gain first, over the form filled from the profile", async () => {
     open();
     expect(await screen.findByText(ar.cv.gapsTitle)).toBeTruthy();
-    expect(await screen.findByText('اكتمال الملف 45%')).toBeTruthy();
+    expect(await screen.findByText('اكتمال الملف 45٪')).toBeTruthy();
     // The objective (20), the headline (15), the record and education (10 each); the rest is done.
     expect(screen.getAllByText(/^\+\d+$/).map((badge) => badge.props.children)).toEqual(['+20', '+15', '+10', '+10']);
     expect(screen.getByText(ar.cv.gap_headline)).toBeTruthy();

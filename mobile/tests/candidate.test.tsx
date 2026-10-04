@@ -208,7 +208,7 @@ describe('the bell', () => {
     const result = renderRouter(app, { initialUrl: '/' });
 
     const bell = await screen.findByRole('button', { name: ar.notifications.title });
-    await waitFor(() => expect(bell.props.accessibilityValue).toMatchObject({ text: '1 غير مقروء' }));
+    await waitFor(() => expect(bell.props.accessibilityValue).toMatchObject({ text: 'تنبيه واحد غير مقروء' }));
     // Counted as the website counts it: the reader's own, unread.
     const count = server.asked('/rest/v1/notifications').find((request) => request.method === 'HEAD');
     expect(count?.url.searchParams.get('user_id')).toBe(`eq.${USER_ID}`);

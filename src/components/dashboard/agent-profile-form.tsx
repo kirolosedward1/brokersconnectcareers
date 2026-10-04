@@ -422,7 +422,7 @@ export function AgentProfileForm({
         />
 
         <Field
-          label={hasCv && !removeCv ? tAgents('cvReplace') : tAgents('downloadCv')}
+          label={hasCv && !removeCv ? tAgents('cvReplace') : tAgents('cvUpload')}
           hint={tAgents('cvHint')}
           error={errors.cv || undefined}
           htmlFor="cv"

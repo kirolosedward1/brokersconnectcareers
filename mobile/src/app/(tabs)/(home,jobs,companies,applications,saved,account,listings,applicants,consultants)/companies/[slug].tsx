@@ -8,7 +8,7 @@ import { CompanyLogo } from '~/components/companies/company-logo';
 import { JobCard } from '~/components/jobs/job-card';
 import { HiddenNotice, HideCompany } from '~/components/moderation/hide-company';
 import { ReportButton } from '~/components/moderation/report';
-import { FollowCompanyButton } from '~/components/saved/save-controls';
+import { FollowCompanyButton, useOffersFollow } from '~/components/saved/save-controls';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
@@ -31,7 +31,7 @@ export default function CompanyScreen() {
   const slug = typeof raw === 'string' ? raw.toLowerCase() : '';
   const locale = useLocale();
   const t = useTranslations('companies');
-  const tJobs = useTranslations('jobs');
+  const offersFollow = useOffersFollow();
   const { colors, shadow } = useTheme();
   const page = useCompany(slug);
   const pull = usePullRefresh(() => page.refetch());
@@ -157,7 +157,7 @@ export default function CompanyScreen() {
               }}
             >
               <Text tone="mutedForeground" style={{ textAlign: 'center' }}>
-                {tJobs('empty')}
+                {t('noOpenRoles', { follow: offersFollow ? 'yes' : 'no' })}
               </Text>
             </View>
           )}

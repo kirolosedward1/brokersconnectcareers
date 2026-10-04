@@ -3,7 +3,7 @@ import { Linking, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Download, FileX2, MessageCircle } from '~/components/ui/lucide';
-import { formatDate, formatEgp, formatList, formatNumber } from '@/lib/format';
+import { formatDate, formatEgp, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { clean } from '@/lib/security/sanitize';
 import { canBrowseAgentDirectory } from '@/lib/permissions';
@@ -212,7 +212,7 @@ export function ApplicantCard({
               <Text variant="caption" weight="medium">
                 {[
                   profile.units_closed != null
-                    ? t('agents.unitsClosedShort', { count: formatNumber(profile.units_closed, locale) })
+                    ? t('agents.unitsClosedShort', { count: profile.units_closed })
                     : null,
                   profile.volume_egp != null ? `${formatEgp(profile.volume_egp, locale)} ${t('common.egp')}` : null,
                 ]

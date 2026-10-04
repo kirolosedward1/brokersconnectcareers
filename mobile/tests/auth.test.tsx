@@ -206,6 +206,9 @@ const app = {
   'auth/callback': CallbackScreen,
 };
 
+/** The delete screen's field, named as the catalogue words it: the word to type, in its quotes. */
+const deleteLabel = ar.account.deleteConfirmLabel.replace('<b>{word}</b>', ar.account.deleteConfirmWord);
+
 /** Press a button once it can be pressed — the forms wait for the config first. */
 async function press(name: string | RegExp) {
   fireEvent.press(await screen.findByRole('button', { name, disabled: false }));
@@ -1257,7 +1260,7 @@ describe('deleting the account', () => {
   it('takes the word typed out, then the account', async () => {
     await signedIn();
     renderRouter(app, { initialUrl: '/account/delete' });
-    const confirm = await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`);
+    const confirm = await screen.findByLabelText(deleteLabel);
     expect(screen.getByRole('button', { name: ar.account.deleteCta }).props.accessibilityState.disabled).toBe(true);
     fireEvent.changeText(confirm, ar.account.deleteConfirmWord);
     await press(ar.account.deleteCta);
@@ -1271,7 +1274,7 @@ describe('deleting the account', () => {
   it('takes the English word too, for a keyboard with no Arabic on it (App Review)', async () => {
     await signedIn();
     renderRouter(app, { initialUrl: '/account/delete' });
-    const confirm = await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`);
+    const confirm = await screen.findByLabelText(deleteLabel);
     const button = () => screen.getByRole('button', { name: ar.account.deleteCta });
     fireEvent.changeText(confirm, 'remove');
     expect(button().props.accessibilityState.disabled).toBe(true);
@@ -1301,7 +1304,7 @@ describe('deleting the account', () => {
       throw new TypeError('Network request failed');
     });
     renderRouter(app, { initialUrl: '/account/delete' });
-    fireEvent.changeText(await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`), ar.account.deleteConfirmWord);
+    fireEvent.changeText(await screen.findByLabelText(deleteLabel), ar.account.deleteConfirmWord);
     await press(ar.account.deleteCta);
 
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
@@ -1316,7 +1319,7 @@ describe('deleting the account', () => {
       throw new TypeError('Network request failed');
     });
     renderRouter(app, { initialUrl: '/account/delete' });
-    fireEvent.changeText(await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`), ar.account.deleteConfirmWord);
+    fireEvent.changeText(await screen.findByLabelText(deleteLabel), ar.account.deleteConfirmWord);
     await press(ar.account.deleteCta);
 
     expect(await screen.findByText(ar.account.deleteUnavailable)).toBeTruthy();
@@ -1341,7 +1344,7 @@ describe('deleting the account', () => {
     await signedIn();
     renderRouter(app, { initialUrl: '/account/delete' });
     expect(await screen.findByText(ar.app.account.deleteApple)).toBeTruthy();
-    fireEvent.changeText(screen.getByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`), ar.account.deleteConfirmWord);
+    fireEvent.changeText(screen.getByLabelText(deleteLabel), ar.account.deleteConfirmWord);
     await press(ar.account.deleteCta);
 
     await waitFor(() =>
@@ -1360,7 +1363,7 @@ describe('deleting the account', () => {
       await signedIn();
       renderRouter(app, { initialUrl: '/account/delete' });
       fireEvent.changeText(
-        await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`),
+        await screen.findByLabelText(deleteLabel),
         ar.account.deleteConfirmWord,
       );
       expect(screen.queryByText(ar.app.account.deleteApple)).toBeNull();
@@ -1379,7 +1382,7 @@ describe('deleting the account', () => {
     await signedIn();
     renderRouter(app, { initialUrl: '/account/delete' });
     fireEvent.changeText(
-      await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`),
+      await screen.findByLabelText(deleteLabel),
       ar.account.deleteConfirmWord,
     );
     await press(ar.account.deleteCta);

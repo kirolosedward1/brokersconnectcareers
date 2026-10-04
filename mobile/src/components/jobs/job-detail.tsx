@@ -255,7 +255,7 @@ export function JobDetail({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Eye size={13} color={colors.mutedForeground} />
             <Text variant="caption" tone="mutedForeground">
-              {t('views', { count: formatNumber(job.view_count, locale) })}
+              {t('views', { count: job.view_count })}
             </Text>
           </View>
         </View>

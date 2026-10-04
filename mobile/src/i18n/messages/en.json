@@ -121,7 +121,7 @@
   "push": {
     "title": "Notifications on this phone",
     "switch": "Notify me on this phone",
-    "hintCandidate": "When a company opens or answers your application — everything the bell tells you, as it happens.",
+    "hintCandidate": "When your application arrives, and when the company moves it to a new stage — everything the bell tells you, as it happens.",
     "hintEmployer": "When someone applies to one of your listings — everything the bell tells you, as it happens.",
     "denied": "Notifications for Brokers Connect are turned off in your phone’s settings.",
     "openSettings": "Open Settings",
@@ -156,7 +156,7 @@
     "sendingBody": "Wait a moment until it is done, then you can leave."
   },
   "company": {
-    "docFrom": "Send the paper as",
+    "docFrom": "How do you want to send it?",
     "docCamera": "Take a photo of it",
     "docPhotos": "A photo from your library",
     "docFile": "A file (PDF or image)",
