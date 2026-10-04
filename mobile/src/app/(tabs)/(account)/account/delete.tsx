@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, Linking, ScrollView, View } from 'react-native';
 import { Stack, useNavigation } from 'expo-router';
 import { useTranslations } from 'use-intl';
+import { confirmsDeletion } from '@/lib/delete-confirmation';
 import { OPERATOR } from '@/lib/business';
 import { SignedOut } from '~/components/navigation/signed-out';
 import { Button } from '~/components/ui/button';
@@ -160,7 +161,7 @@ export default function DeleteAccountScreen() {
               variant="destructive"
               size="lg"
               loading={pending}
-              disabled={typed.trim() !== word}
+              disabled={!confirmsDeletion(typed, word)}
               onPress={remove}
             />
           </View>

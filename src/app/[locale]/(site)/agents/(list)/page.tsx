@@ -170,8 +170,11 @@ export default async function AgentsPage({
           {agents.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
               <EmptyIllustration name="choose" />
-              <p className="font-medium">{t('empty')}</p>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{t('emptyHint')}</p>
+              {/* With nothing narrowing it, the directory itself is empty: no filter to blame. */}
+              <p className="font-medium">{activeCount > 0 ? t('empty') : t('emptyDirectory')}</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                {activeCount > 0 ? t('emptyHint') : t('emptyDirectoryHint')}
+              </p>
               {/* Not a dead end: the way out is one tap, the same as the rail's. */}
               {activeCount > 0 ? (
                 <Button asChild variant="outline" className="mt-5">

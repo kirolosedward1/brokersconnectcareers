@@ -80,13 +80,26 @@ SAFETY
 
 /** What App Review reads besides the accounts: Apple reviews in English. */
 function reviewNotes(employerEmail, employerPassword) {
-  return `Brokers Connect is a job board and consultant directory for Egypt's real estate market. The app's interface is in Arabic.
+  return `Brokers Connect is a job board and consultant directory for Egypt's real estate market. The app is in Arabic: the labels to tap are quoted as the app shows them, with their meaning in brackets.
 
-Candidate account: the sign-in above. Open the listing «مدير مبيعات (إعلان لمراجعة التطبيق)» ("Sales manager, app review listing") and apply. It is on the page of the company «حساب مراجعة التطبيق» ("App Review account") under Companies, and at ${SITE}/jobs/app-review-sales-manager. This account has already applied to the other review listing, which is the employer account's applicant. Applications, Saved and the directory profile are in the tabs and under Account.
+CANDIDATE ACCOUNT (the sign-in above)
+• Tabs: «الرئيسية» (Home), «الوظائف» (Jobs), «طلباتي» (My applications), «المحفوظات» (Saved), «حسابي» (Account).
+• Apply: at the bottom of «الرئيسية», tap «شركات العقارات» (Real estate companies), then the company «حساب مراجعة التطبيق» (App Review account), then its listing «مدير مبيعات (إعلان لمراجعة التطبيق)» (Sales manager, app review listing), and apply. The same listing: ${SITE}/jobs/app-review-sales-manager. The application then shows under «طلباتي». This account has already applied to the company's other listing; that application is the employer account's applicant.
+• The directory profile is «ملفي» (My profile), under «حسابي».
 
-Employer account: ${employerEmail} / ${employerPassword}. Listings: post or edit a job (a new listing waits for our moderators before it goes live). Applicants: move an applicant through the stages, add a private note, and open the CV. Consultants: the directory lists the consultants who chose to be shown to companies, so it can be short while the service is new; the review candidate's own profile is kept out of it.
+EMPLOYER ACCOUNT: ${employerEmail} / ${employerPassword}
+• Tabs: «الرئيسية» (Home), «وظائفي» (My jobs), «المتقدمين» (Applicants), «الاستشاريين» (Consultants), «حسابي» (Account).
+• «وظائفي»: post a job. A new listing, and a live one whose title, pay or terms are edited, waits for our moderators before it shows, so please edit after trying the candidate part.
+• «المتقدمين»: move the applicant through the stages, add a private note, and open the CV.
+• «الاستشاريين»: the consultants who chose to be shown to companies. It can be short while the service is new; the review candidate is kept out of it.
 
-Account > Delete account deletes the signed-in account. For a company owner it sends a deletion request instead, because deleting that account would delete other people's applications to the company's listings.
+USER-GENERATED CONTENT
+• Report: «بلّغ عن الإعلان» (Report the listing) on a listing, «بلّغ عن الشركة» (Report the company) on a company's page, «بلّغ عن الملف» (Report the profile) on a consultant's profile. Reports go to our moderators.
+• Hide: «اخفي الشركة دي» (Hide this company) on a company's page and, for a company, «اخفي الاستشاري ده» (Hide this consultant) on a consultant's profile. Both come back from «مخفي على الموبايل ده» (Hidden on this phone), under «حسابي».
+• A new account agrees to the Terms, and confirms being 18 or over, before it can go on (sign up with an address you can receive mail at to see it). The two review accounts have already agreed.
+
+DELETING THE ACCOUNT
+«حسابي» > «حذف الحساب» (Delete account): type «حذف», or the English word delete, then tap «احذف حسابي نهائياً» (Delete my account permanently). Please try it last: deleting the candidate deletes its applications, which are the employer's applicants. The employer account owns the review company, so for it the same screen sends a deletion request instead: deleting it would delete other people's applications to the company's listings.
 
 Nothing is sold in the app.`;
 }
@@ -131,7 +144,9 @@ function storeConfig(env = process.env) {
           title: 'بروكرز كونكت',
           subtitle: 'وظائف العقارات في مصر',
           description: descriptionAr,
-          keywords: ['عقارات', 'وظائف', 'سمسار', 'استشاري عقاري', 'مبيعات', 'تسويق عقاري', 'مصر', 'توظيف', 'التجمع الخامس', 'الشيخ زايد', 'عمولة'],
+          // 100 bytes at most, and an Arabic letter is two: وظائف and مصر are in the
+          // subtitle, which App Store search reads as well.
+          keywords: ['سمسار', 'استشاري عقاري', 'تسويق عقاري', 'مبيعات', 'توظيف', 'عقارات'],
           promoText: 'وظائف البيع والتسويق العقاري في كل مصر. كل إعلان بيقول مين اللي بيوفّر العملاء.',
           marketingUrl: SITE,
           supportUrl: SITE,

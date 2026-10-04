@@ -23,11 +23,14 @@
  * own rows); the CV through Storage; everything else is
  * supabase/review-accounts.sql in one transaction, which
  * supabase/tests/review-accounts.test.mjs runs on the real migrations. Run
- * again, it keeps the two users, gives them new passwords and starts the
- * review over (what the last review left goes; see the SQL). The passwords
- * are printed once, as the APP_REVIEW_* lines store.config.js reads.
+ * again, it keeps the two users, gives them new passwords, takes off a
+ * two-step code a reviewer turned on, and starts the review over (what the
+ * last review left goes; see the SQL). The passwords are printed once, as the
+ * APP_REVIEW_* lines store.config.js reads. Last, it opens the applicant's CV
+ * on the live site as the employer, as App Review will, and says whether that
+ * worked (liveCvCheck).
  */
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -57,9 +60,69 @@ export function parseArgs(argv) {
   return args;
 }
 
-/** Random, with one of each kind of character a password policy can ask for. */
+/**
+ * Letters and digits nobody mistakes for one another: no 0 O o, no 1 l I.
+ * The employer's password is typed from the review notes, on a phone.
+ */
+const READABLE = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+
+/**
+ * Random: four groups of five of those (about 115 bits), and the last group
+ * holds one of each kind of character a password policy can ask for, the
+ * hyphens between the groups being the symbol.
+ */
 export function newPassword() {
-  return `${randomBytes(15).toString('base64url')}Aa7!`;
+  const pick = () => READABLE[randomInt(READABLE.length)];
+  const group = () => Array.from({ length: 5 }, pick).join('');
+  return `${group()}-${group()}-${group()}-${group()}-Kq7`;
+}
+
+/**
+ * A reviewer may have turned on two-step sign-in on the account; the next one
+ * would be asked for a code from a phone they never had. Taken off with the
+ * old password.
+ */
+export async function clearFactors(call, user) {
+  for (const factor of user.factors ?? []) {
+    await call(`/auth/v1/admin/users/${user.id}/factors/${factor.id}`, { method: 'DELETE' });
+  }
+}
+
+/**
+ * What App Review does as the employer, done once on the live site: open the
+ * applicant's CV. The link comes from the website with the service role, as
+ * deleting an account does; without SUPABASE_SERVICE_ROLE_KEY there, the
+ * reviewer is told to try again, and so is anyone deleting their account.
+ * Signs in as the employer (with the service key, which the auth server lets
+ * past a captcha) and signs that session out again.
+ */
+export async function liveCvCheck({ fetchImpl = fetch, site, supabaseUrl, apikey, email, password, applicationId }) {
+  try {
+    const signIn = await fetchImpl(new URL('/auth/v1/token?grant_type=password', supabaseUrl), {
+      method: 'POST',
+      headers: { apikey, Authorization: `Bearer ${apikey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!signIn.ok) return { ok: false, reason: `the employer could not sign in (${signIn.status})` };
+    const { access_token: token } = await signIn.json();
+    try {
+      const cv = await fetchImpl(new URL(`/api/cv/${applicationId}`, site), {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      if (cv.ok) return { ok: true };
+      return {
+        ok: false,
+        reason: `the website answered ${cv.status} for the applicant's CV: is SUPABASE_SERVICE_ROLE_KEY set on Vercel, and deployed?`,
+      };
+    } finally {
+      await fetchImpl(new URL('/auth/v1/logout?scope=local', supabaseUrl), {
+        method: 'POST',
+        headers: { apikey, Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
+  } catch (error) {
+    return { ok: false, reason: `no answer (${error.message})` };
+  }
 }
 
 /** A one-page PDF the employer opens as the applicant's CV. */
@@ -196,6 +259,7 @@ async function main() {
     const passwords = { candidate: newPassword(), employer: newPassword() };
     const ids = {};
     for (const key of ['candidate', 'employer']) {
+      if (existing[key]) await clearFactors(call, existing[key]);
       const user = existing[key]
         ? await call(`/auth/v1/admin/users/${existing[key].id}`, {
             method: 'PUT',
@@ -227,6 +291,29 @@ async function main() {
     console.log(`export APP_REVIEW_EMPLOYER_EMAIL='${emails.employer}'`);
     console.log(`export APP_REVIEW_EMPLOYER_PASSWORD='${passwords.employer}'`);
     console.log('\nThe passwords are not kept anywhere else: running this again sets new ones.');
+
+    const { rows } = await db.query(
+      `select a.id from applications a join jobs j on j.id = a.job_id
+        where j.slug = 'app-review-property-consultant' and a.candidate_id = $1`,
+      [ids.candidate],
+    );
+    const site = process.env.NEXT_PUBLIC_SITE_URL?.trim() || 'https://www.brokersconnect.net';
+    const live = rows[0]
+      ? await liveCvCheck({
+          site,
+          supabaseUrl,
+          apikey: serviceKey,
+          email: emails.employer,
+          password: passwords.employer,
+          applicationId: rows[0].id,
+        })
+      : { ok: false, reason: 'the application was not found' };
+    if (live.ok) {
+      console.log(`\nChecked on ${site}: the employer opens the applicant's CV.`);
+    } else {
+      console.log(`\nWARNING: on ${site}, ${live.reason}`);
+      console.log('App Review opens that CV and deletes an account; both need the key. Fix it before submitting.');
+    }
   } finally {
     await db.end();
   }

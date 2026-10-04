@@ -164,16 +164,17 @@ export default function DirectoryScreen() {
           />
         }
         ListEmptyComponent={
-          <EmptyState
-            icon={SearchX}
-            title={t('agents.empty')}
-            body={t('agents.emptyHint')}
-            action={
-              activeFilterCount(filters) > 0 ? (
-                <Button label={t('jobs.clearFilters')} variant="outline" onPress={() => apply(EMPTY_AGENT_FILTERS)} />
-              ) : undefined
-            }
-          />
+          activeFilterCount(filters) > 0 ? (
+            <EmptyState
+              icon={SearchX}
+              title={t('agents.empty')}
+              body={t('agents.emptyHint')}
+              action={<Button label={t('jobs.clearFilters')} variant="outline" onPress={() => apply(EMPTY_AGENT_FILTERS)} />}
+            />
+          ) : (
+            // Nothing narrows it: the directory itself has nobody to show yet.
+            <EmptyState icon={SearchX} title={t('agents.emptyDirectory')} body={t('agents.emptyDirectoryHint')} />
+          )
         }
         ListFooterComponent={<PageFooter query={directory} />}
         onEndReached={nextPage}

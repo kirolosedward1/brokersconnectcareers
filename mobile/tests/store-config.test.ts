@@ -1,4 +1,6 @@
 import { OPERATOR } from '@/lib/business';
+import { DELETE_WORD_ANY_KEYBOARD } from '@/lib/delete-confirmation';
+import { catalogues } from '~/i18n/provider';
 import { ENGLISH_ENABLED } from '@/lib/locale';
 
 /*
@@ -90,9 +92,10 @@ describe('the App Store listing', () => {
     expect((info.description ?? '').length).toBeLessThanOrEqual(4000);
     expect((info.promoText ?? '').length).toBeLessThanOrEqual(170);
 
-    // Apple counts the keywords joined by commas, 100 at most.
+    // Apple counts the keywords joined by commas, 100 bytes at most: an
+    // Arabic letter is two bytes of UTF-8, so a list of 92 characters was 170.
     const keywords = info.keywords ?? [];
-    expect(keywords.join(',').length).toBeLessThanOrEqual(100);
+    expect(new TextEncoder().encode(keywords.join(',')).length).toBeLessThanOrEqual(100);
     expect(new Set(keywords).size).toBe(keywords.length);
     for (const keyword of keywords) {
       expect(keyword).toBe(keyword.trim());
@@ -219,6 +222,35 @@ describe('the review details', () => {
     expect(sql).toContain("'مدير مبيعات (إعلان لمراجعة التطبيق)'");
     expect(notes).toContain('«حساب مراجعة التطبيق»');
     expect(sql).toContain("'حساب مراجعة التطبيق'");
+  });
+
+  it("name every control in the app's own Arabic words, and the ways App Review is asked about", () => {
+    // App Review reads English and taps Arabic: each label quoted is one the
+    // app shows (or a name the review accounts' SQL writes), so a reworded
+    // label fails here instead of leaving a reviewer looking for it.
+    const notes = loaded.storeConfig(REVIEW_ENV).apple.review?.notes ?? '';
+    const sql = readFileSync(join(root, 'supabase', 'review-accounts.sql'), 'utf8');
+    const shown = new Set<string>();
+    (function collect(node: unknown) {
+      if (typeof node === 'string') shown.add(node);
+      else if (node && typeof node === 'object') Object.values(node).forEach(collect);
+    })(catalogues.ar);
+    const quoted = [...notes.matchAll(/«([^»]+)»/g)].map((match) => match[1]);
+    expect(quoted.length).toBeGreaterThan(10);
+    expect(quoted.filter((label) => !shown.has(label) && !sql.includes(`'${label}'`))).toEqual([]);
+
+    const ar = catalogues.ar;
+    // The companies directory, which a candidate reaches from Home: no tab of theirs is called that.
+    expect(notes).toContain(`«${ar.nav.companies}»`);
+    // Deleting: the word asked for, and the one an English keyboard can type; last, since it takes the applicant.
+    expect(notes).toContain(`«${ar.account.deleteTitle}»`);
+    expect(notes).toContain(`«${ar.account.deleteConfirmWord}», or the English word ${DELETE_WORD_ANY_KEYBOARD}`);
+    expect(notes).toMatch(/try it last/);
+    // User-generated content: report, hide and where hidden things come back.
+    for (const label of [ar.jobs.report, ar.companies.report, ar.agents.report, ar.app.moderation.hide, ar.app.moderation.hideAgent, ar.app.moderation.hiddenList]) {
+      expect(notes).toContain(`«${label}»`);
+    }
+    expect((notes ?? '').length).toBeLessThanOrEqual(4000);
   });
 
   it('are refused half given, naming what is missing', () => {

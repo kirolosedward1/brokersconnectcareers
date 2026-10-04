@@ -8,7 +8,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { newPassword, parseArgs, projectRef, samplePdf } from './review-accounts.mjs';
+import { clearFactors, liveCvCheck, newPassword, parseArgs, projectRef, samplePdf } from './review-accounts.mjs';
 
 let pass = 0;
 let fail = 0;
@@ -49,6 +49,59 @@ check(
   passwords.every((p) => p.length >= 20 && /[a-z]/.test(p) && /[A-Z]/.test(p) && /\d/.test(p) && /[^A-Za-z0-9]/.test(p)),
 );
 check("and none breaks the quotes it is printed in", passwords.every((p) => !p.includes("'")));
+// The employer's is typed from the review notes, on a phone.
+check(
+  'and none has a character that passes for another (0 O o, 1 l I, - _)',
+  passwords.every((p) => !/[0Oo1lI_]/.test(p)),
+  passwords.find((p) => /[0Oo1lI_]/.test(p)),
+);
+
+console.log('— a two-step code a reviewer turned on');
+{
+  const asked = [];
+  const call = async (path, options = {}) => {
+    asked.push(`${options.method ?? 'GET'} ${path}`);
+    return null;
+  };
+  await clearFactors(call, { id: 'u1', factors: [{ id: 'f1' }, { id: 'f2' }] });
+  check(
+    'is taken off, so the next reviewer signs in with the password alone',
+    JSON.stringify(asked) === JSON.stringify(['DELETE /auth/v1/admin/users/u1/factors/f1', 'DELETE /auth/v1/admin/users/u1/factors/f2']),
+    JSON.stringify(asked),
+  );
+  asked.length = 0;
+  await clearFactors(call, { id: 'u2' });
+  check('and an account with none is left alone', asked.length === 0, JSON.stringify(asked));
+}
+
+console.log("— the employer opening the applicant's CV on the live site");
+{
+  const answers = (cv) => async (url, init = {}) => {
+    const href = String(url);
+    if (href.includes('/auth/v1/token')) {
+      return new Response(JSON.stringify({ access_token: 'token' }), { status: 200 });
+    }
+    if (href.includes('/auth/v1/logout')) return new Response(null, { status: 204 });
+    if (href.includes('/api/cv/')) {
+      if (init.headers?.Authorization !== 'Bearer token' || init.headers?.Accept !== 'application/json') {
+        return new Response('{}', { status: 401 });
+      }
+      return cv();
+    }
+    throw new Error(`unexpected ${href}`);
+  };
+  const base = { site: 'https://www.example.test', supabaseUrl: 'https://abc.supabase.co', apikey: 'service', email: 'e@x.test', password: 'p', applicationId: 'a1' };
+  const works = await liveCvCheck({ ...base, fetchImpl: answers(() => new Response(JSON.stringify({ url: 'https://signed' }), { status: 200 })) });
+  check('works when the website hands out the link', works.ok === true, JSON.stringify(works));
+  const broken = await liveCvCheck({ ...base, fetchImpl: answers(() => new Response(JSON.stringify({ error: 'unavailable' }), { status: 500 })) });
+  check(
+    'says so when it cannot, naming the key the website needs',
+    broken.ok === false && /500/.test(broken.reason) && /SUPABASE_SERVICE_ROLE_KEY/.test(broken.reason),
+    JSON.stringify(broken),
+  );
+  const unreachable = await liveCvCheck({ ...base, fetchImpl: async () => { throw new TypeError('fetch failed'); } });
+  check('and that it could not ask, when nothing answers', unreachable.ok === false && /no answer/.test(unreachable.reason), JSON.stringify(unreachable));
+}
 
 console.log('— the CV');
 const pdf = samplePdf().toString('latin1');

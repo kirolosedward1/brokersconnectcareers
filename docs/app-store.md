@@ -191,7 +191,8 @@ project it is pointed at, once that project's migrations are applied:
   application per person).
 
 Both have agreed to the current Terms and Privacy policy, as onboarding records
-it. Each is labelled as the review's wherever it shows: the company is «حساب
+it, and the candidate's directory visibility counts as chosen, so neither is
+asked again. Each is labelled as the review's wherever it shows: the company is «حساب
 مراجعة التطبيق», and each listing says it is not a real job. They are on the
 public board while they are live, like every listing, so make the accounts just before
 submitting and take them away once the app is approved:
@@ -207,10 +208,15 @@ pnpm review-accounts --remove --execute --confirm hiwdhicwsohbipxzazmb  # after 
 
 Making them prints the `APP_REVIEW_*` lines `metadata:push` needs ("The
 listing, as code"); the passwords are kept nowhere else, and running it again
-sets new ones. Each run also starts the review over, so run it before every
+sets new ones. They are made of letters and digits nobody mistakes for one
+another, in groups of five, since the employer's is typed from the notes on a
+phone. Then it signs in as the employer and opens the applicant's CV on the
+live site, as App Review will, and says whether that worked. Each run also starts the review over, so run it before every
 submission: what the last review left — its application to the second
 listing, the applicant moved on, a listing edited back into review or past its
-thirty days, the profile shown in the directory, the bells — goes, and
+thirty days, the profile shown in the directory, the bells, the name and number
+typed into the apply form, the email switches, the owner's deletion request, a
+two-step code turned on — goes, and
 everything is as the first run made it, each listing with the date it first
 went up and thirty days ahead: the daily new-jobs bell and the weekly alert
 count a listing by when it was published, so the first run's listings may
@@ -224,9 +230,12 @@ writes, tested on the real migrations (`pnpm test:review-accounts`).
 
 The candidate is the sign-in App Review is given; the notes, written by
 `mobile/store.config.js` (`reviewNotes`), carry the employer account and say
-where each part of the app is, that a new listing waits for moderation, how
-account deletion works for a company owner, and that nothing is sold in the
-app. "The listing, as code" above says how they reach App Store Connect.
+where each part of the app is, quoting each label in Arabic as the app shows
+it (a test holds every quoted label to the catalogue); that a new or edited
+listing waits for moderation; where reporting, hiding and the Terms are; how
+to delete an account (the word «حذف», or `delete` on an English keyboard),
+to try that last since it takes the employer's applicant, and how it works
+for a company owner; and that nothing is sold in the app. "The listing, as code" above says how they reach App Store Connect.
 
 ## Before the first submission (the owner)
 
@@ -290,13 +299,21 @@ submitting.
    opaque, as the store requires, and is enough to submit. A vector logo from a
    designer would let it and the splash be drawn crisper.
 6. **The legal pages reviewed by a lawyer** (`docs/legal.md`, "The
-   documents"), and the two review accounts ("Review accounts" above).
+   documents").
 7. **A development build on a real iPhone** against production, through the
    checklist in `docs/mobile.md` ("On a phone, before a release"), with QA
    accounts — never the demo ones.
 8. **Screenshots**: run the iOS screens workflow once production holds real
-   listings, and upload its `store` set ("Screenshots" above).
-9. **The App Store build**, from `mobile/` on your computer:
+   listings, and upload its `store` set ("Screenshots" above). Before the
+   review accounts exist, or after they are removed: Home and the board show
+   the newest listings, and the review's say they are no real job. (The
+   listing and company pages it opens skip them either way.)
+9. **The two review accounts** ("Review accounts" above), just before
+   submitting. The script ends by opening the applicant's CV on the live site
+   as the employer, as App Review will, and warns if it cannot: then the
+   website is missing `SUPABASE_SERVICE_ROLE_KEY` (step 1), which deleting an
+   account needs too.
+10. **The App Store build**, from `mobile/` on your computer:
    `npx eas-cli@latest build --platform ios --profile production --auto-submit`.
    EAS builds it with Xcode 26, which SDK 57 needs, signs it with the
    credentials it keeps, and uploads it to App Store Connect. The first upload
@@ -305,7 +322,7 @@ submitting.
    from there. Then `npx eas-cli@latest metadata:push`, with the review
    variables set ("The listing, as code"), fills in the listing, and it is
    submitted for review from App Store Connect.
-10. After the listing exists: `MOBILE_APP_STORE_URL` on Vercel, so the
+11. After the listing exists: `MOBILE_APP_STORE_URL` on Vercel, so the
    "update the app" screen can link to it, and `MOBILE_MIN_APP_VERSION` raised
    only when an older build must stop.
 

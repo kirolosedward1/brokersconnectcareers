@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
+import { confirmsDeletion, DELETE_WORD_ANY_KEYBOARD } from '@/lib/delete-confirmation';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { confirmationPath } from '~/features/auth/intent';
@@ -1174,6 +1175,28 @@ describe('deleting the account', () => {
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
     const { data } = await supabase.auth.getSession();
     expect(data.session).toBeNull();
+  });
+
+  it('takes the English word too, for a keyboard with no Arabic on it (App Review)', async () => {
+    await signedIn();
+    renderRouter(app, { initialUrl: '/account/delete' });
+    const confirm = await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`);
+    const button = () => screen.getByRole('button', { name: ar.account.deleteCta });
+    fireEvent.changeText(confirm, 'remove');
+    expect(button().props.accessibilityState.disabled).toBe(true);
+    // As an English keyboard types it, capital first.
+    fireEvent.changeText(confirm, ' Delete ');
+    expect(button().props.accessibilityState.disabled).toBe(false);
+    await press(ar.account.deleteCta);
+    await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/deleteMyAccount')).toEqual({ input: {} }));
+  });
+
+  it("holds the word any keyboard types to the English catalogue's, and takes no word that is not one", () => {
+    expect(DELETE_WORD_ANY_KEYBOARD).toBe(catalogues.en.account.deleteConfirmWord);
+    expect(confirmsDeletion(ar.account.deleteConfirmWord, ar.account.deleteConfirmWord)).toBe(true);
+    expect(confirmsDeletion('DELETE', ar.account.deleteConfirmWord)).toBe(true);
+    expect(confirmsDeletion('', ar.account.deleteConfirmWord)).toBe(false);
+    expect(confirmsDeletion('delete my account', ar.account.deleteConfirmWord)).toBe(false);
   });
 
   it('takes an account deleted whose answer was lost for deleted, as the auth server says', async () => {

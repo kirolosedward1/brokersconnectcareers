@@ -161,6 +161,21 @@ report.check(
   own.error ?? JSON.stringify(own.rows),
 );
 
+const asked = await one(`select visibility_chosen_at is not null as chosen from agent_profiles where user_id = '${CANDIDATE}'`);
+report.check(
+  "its visibility counts as chosen, so the candidate's Home does not ask who may see it",
+  asked?.chosen === true,
+  JSON.stringify(asked),
+);
+const wording = (await db.query(`
+  select description_ar from jobs where slug in ('app-review-property-consultant', 'app-review-sales-manager')
+  union all select about_ar from companies where slug = 'brokers-connect-app-review'`)).rows.map((row) => row.description_ar);
+report.check(
+  'the listings do not tell App Review not to apply, which the notes ask it to',
+  wording.length === 3 && wording.every((text) => !text.includes('متقدّمش')),
+  JSON.stringify(wording),
+);
+
 const directory = await as(FIXTURES.employerVerified, `select count(*)::int as n from agent_profiles where user_id = '${CANDIDATE}'`);
 report.check('another company browsing the directory does not see the reviewer', directory.ok && directory.rows[0].n === 0, directory.error);
 
@@ -182,6 +197,11 @@ const reviewed = [
      where job_id = (select id from jobs where slug = 'app-review-property-consultant') returning id`),
   await commitAs(EMPLOYER, `
     update jobs set title_ar = 'تجربة من فريق المراجعة' where slug = 'app-review-property-consultant' returning status`),
+  // The apply form writes the name and number typed into it onto the account.
+  await commitAs(CANDIDATE, `update profiles set full_name = 'مراجع آبل', whatsapp_phone = '+201001234567' where id = '${CANDIDATE}' returning id`),
+  // The owner's Delete account files a request, which the delete screen then shows.
+  await commitAs(EMPLOYER, `
+    select submit_support_request(gen_random_uuid(), 'account_deletion', 'طلب حذف حساب من مالك شركة المراجعة', null, null) as id`),
 ];
 report.check('a review leaves its marks', reviewed.every((step) => step.ok && step.rows.length === 1), JSON.stringify(reviewed));
 await db.exec(`
@@ -222,6 +242,16 @@ report.check(
 );
 const shownAgain = await one(`select visibility from agent_profiles where user_id = '${CANDIDATE}'`);
 report.check('the profile is out of the directory again', shownAgain?.visibility === 'hidden', JSON.stringify(shownAgain));
+const person = await one(`select full_name, whatsapp_phone from profiles where id = '${CANDIDATE}'`);
+report.check(
+  'the candidate has the name and number it was made with again',
+  person?.full_name === 'مراجع التطبيق' && person?.whatsapp_phone === PARAMS.candidatePhone,
+  JSON.stringify(person),
+);
+const request = await one(`select count(*)::int as n from support_requests where user_id = '${EMPLOYER}' and topic = 'account_deletion'`);
+report.check("the owner's deletion request from the last review is gone", request?.n === 0, JSON.stringify(request));
+const stillChosen = await one(`select visibility_chosen_at is not null as chosen from agent_profiles where user_id = '${CANDIDATE}'`);
+report.check('and its visibility still counts as chosen', stillChosen?.chosen === true, JSON.stringify(stillChosen));
 const reapplying = await as(CANDIDATE, `
   insert into applications (job_id, candidate_id, status, experience_band, note)
   select id, '${CANDIDATE}', 'new', 'junior_1_3', 'review' from jobs where slug = 'app-review-sales-manager'

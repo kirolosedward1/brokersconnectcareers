@@ -248,6 +248,8 @@
     "shortlistRemove": "Remove from shortlist",
     "lockedRecruiter": "Only a company admin can upload the verification papers, from the company page.",
     "emptyHint": "Try removing a filter or two, or change the specialism or area.",
+    "emptyDirectory": "No consultants in the directory yet.",
+    "emptyDirectoryHint": "The directory lists the consultants who chose to be shown to companies, and it grows over time. Check back soon.",
     "deniedNotice": "The consultant directory is for companies that hire. This is your profile as they see it — complete it here.",
     "cvCurrent": "Current CV",
     "cvRemove": "Remove CV",

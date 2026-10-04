@@ -7,6 +7,7 @@ import { Download, Loader2, Trash2 } from 'lucide-react';
 import { localeHref, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { deleteMyAccount, requestAccountDeletion, updateNotificationPreferences } from '@/lib/actions/account';
+import { confirmsDeletion } from '@/lib/delete-confirmation';
 import { reach } from '@/lib/reach';
 import type { ProfileRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
@@ -237,7 +238,7 @@ export function AccountSettings({
               type="button"
               variant="destructive"
               className="mt-4"
-              disabled={confirm.trim() !== CONFIRM_WORD || deleting}
+              disabled={!confirmsDeletion(confirm, CONFIRM_WORD) || deleting}
               onClick={onDelete}
             >
               {deleting ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}

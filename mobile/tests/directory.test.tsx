@@ -323,6 +323,16 @@ describe('the directory, for a verified company', () => {
     });
   });
 
+  it('says the directory is empty yet, not that a search found nothing, when nothing narrows it', async () => {
+    server.on('GET /api/mobile/v1/agents', () => directory([]));
+    renderRouter(app, { initialUrl: '/agents' });
+
+    expect(await screen.findByText(ar.agents.emptyDirectory)).toBeTruthy();
+    expect(screen.getByText(ar.agents.emptyDirectoryHint)).toBeTruthy();
+    expect(screen.queryByText(ar.agents.empty)).toBeNull();
+    expect(screen.queryByText(ar.agents.emptyHint)).toBeNull();
+  });
+
   it('says nobody matched, and offers to clear what is narrowing it', async () => {
     server.on('GET /api/mobile/v1/agents', () => directory([]));
     renderRouter(app, { initialUrl: '/agents?q=xyz' });

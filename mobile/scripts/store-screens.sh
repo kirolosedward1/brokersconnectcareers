@@ -37,7 +37,9 @@ mkdir -p "$out"
 out="$(cd "$out" && pwd)"
 
 # A listing and a company to open, as Maestro patterns: their names are
-# matched as regular expressions, so ( ) . + and the like are escaped.
+# matched as regular expressions, so ( ) . + and the like are escaped. Never
+# App Review's own (supabase/review-accounts.sql), which say they are no real
+# job: the store's screenshots would show them.
 live=$(SITE="$site" node --input-type=module -e '
   const read = async (path) => {
     const response = await fetch(process.env.SITE + path);
@@ -45,13 +47,14 @@ live=$(SITE="$site" node --input-type=module -e '
     return response.json();
   };
   const pattern = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const { jobs } = await read("/api/mobile/v1/jobs");
-  const { companies } = await read("/api/mobile/v1/companies");
+  const review = (slug) => slug.startsWith("app-review-") || slug === "brokers-connect-app-review";
+  const job = (await read("/api/mobile/v1/jobs")).jobs.find((row) => !review(row.slug));
+  const company = (await read("/api/mobile/v1/companies")).companies.find((row) => !review(row.slug));
   console.log(JSON.stringify({
-    JOB_SLUG: jobs[0]?.slug ?? "none",
-    JOB_TITLE: jobs[0] ? pattern(jobs[0].title_ar) : "none",
-    COMPANY_SLUG: companies[0]?.slug ?? "none",
-    COMPANY_NAME: companies[0] ? pattern(companies[0].name_ar) : "none",
+    JOB_SLUG: job?.slug ?? "none",
+    JOB_TITLE: job ? pattern(job.title_ar) : "none",
+    COMPANY_SLUG: company?.slug ?? "none",
+    COMPANY_NAME: company ? pattern(company.name_ar) : "none",
   }));
 ')
 echo "$live" | jq . > "$out/live.json"
