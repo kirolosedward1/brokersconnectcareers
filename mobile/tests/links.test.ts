@@ -73,7 +73,7 @@ describe('webPathToAppPath', () => {
     ['a protocol-relative path', '//evil.example/jobs'],
     ['javascript', 'javascript:alert(1)'],
     ['a data URL', 'data:text/html,hi'],
-    ['the development client', 'exp+brokers-connect://expo-development-client/?url=http%3A%2F%2F10.0.0.2%3A8081'],
+    ['the development client', 'exp+brokers-connect-careers://expo-development-client/?url=http%3A%2F%2F10.0.0.2%3A8081'],
   ])('sends %s home', (_name, input) => {
     expect(webPathToAppPath(input)).toBe('/');
   });

@@ -286,9 +286,10 @@ submitting.
    `--execute`) lists them first. 331 was applied on 2026-09-30, so it lists
    332 and anything newer.
 4. **Apple and Expo:** Apple Developer Program membership (an organisation
-   needs a D-U-N-S number) and an Expo account; `npx eas-cli@latest init`, and
-   the project id it prints written into `mobile/app.config.ts`
-   (docs/mobile.md, Releasing); an APNs key uploaded with
+   needs a D-U-N-S number). The Expo project exists
+   (`@kirolosedward1/brokers-connect-careers`, its id written into
+   `mobile/app.config.ts` on 4 October; docs/mobile.md, Releasing): sign in to
+   it with `npx eas-cli@latest login`. Then an APNs key uploaded with
    `npx eas-cli@latest credentials`; the Sign in with Apple key and Services
    ID, and the Apple provider on in Supabase (docs/mobile.md, Configuration).
    The build then carries over-the-air updates: later fixes go out with

@@ -4,12 +4,12 @@
 # publishes on the `expo-go` channel with Expo Go's runtime version and the
 # store build's settings (mobile/scripts/publish-update.mjs).
 #
-# It needs one thing from the owner's Expo account: an access token in the
-# repository's secrets as EXPO_TOKEN. Without it, it does nothing. While
-# mobile/app.config.ts carries no EAS project id, the publish finds the
-# app's project on the token's account, or creates it the first time
-# (`eas init`, in scripts/publish-update.mjs), and the summary gives its id
-# to write there for builds and pushes.
+# It needs one thing from the owner's Expo account (kirolosedward1, which
+# owns the EAS project mobile/app.config.ts names): a personal access token
+# in the repository's secrets as EXPO_TOKEN. Without it, it does nothing. A
+# fork whose app.config.ts carries no project id has the publish find or
+# create one on the token's account (`eas init`, in
+# scripts/publish-update.mjs), and the summary gives its id.
 #
 # Runs by hand (Actions → Expo Go → Run workflow, on any branch), on pushes to
 # main, and on this repository's own pull requests. Each publish replaces what

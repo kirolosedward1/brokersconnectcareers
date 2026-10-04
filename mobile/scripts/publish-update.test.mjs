@@ -113,7 +113,16 @@ is('an update published by the script is configured as that build', JSON.stringi
 is('a plain `eas update` is not (development APNs), so its fingerprint would differ', notificationsMode(plainPublish), 'development');
 
 console.log('\n— updates on and off');
-is('without an EAS project, updates are off', storeBuild.updates, { enabled: false });
+is('the store build fetches updates from the EAS project app.config.ts names', storeBuild.updates, {
+  url: 'https://u.expo.dev/5598b160-d5fd-42e3-9cfd-14097b6677e9',
+  checkAutomatically: 'ON_LOAD',
+  fallbackToCacheTimeout: 0,
+});
+is("and is that project's, under its slug and owner", [storeBuild.slug, storeBuild.owner, storeBuild.extra.eas.projectId], [
+  'brokers-connect-careers',
+  'kirolosedward1',
+  '5598b160-d5fd-42e3-9cfd-14097b6677e9',
+]);
 is('the runtime version is the fingerprint', storeBuild.runtimeVersion, { policy: 'fingerprint' });
 const withProject = await configWith({ ...production.env, EAS_PROJECT_ID: '00000000-0000-4000-8000-000000000000' });
 is('with one, they come from its EAS Update URL, checked at launch and run from the next', withProject.updates, {
@@ -140,7 +149,8 @@ console.log('\n— an update Expo Go opens, with no computer running');
 
   is('the project id from the environment first', projectIdFrom({ EAS_PROJECT_ID: 'from-env' }, "const EAS_PROJECT_ID: string | null = 'in-file';"), 'from-env');
   is('then the one app.config.ts carries', projectIdFrom({}, "const EAS_PROJECT_ID: string | null = 'in-file';"), 'in-file');
-  is("none while it is null: the publish then finds or creates the project on the token's account", projectIdFrom({}, readFileSync(join(appRoot, 'app.config.ts'), 'utf8')), null);
+  is('which is the project made on expo.dev', projectIdFrom({}, readFileSync(join(appRoot, 'app.config.ts'), 'utf8')), '5598b160-d5fd-42e3-9cfd-14097b6677e9');
+  is("none while it is null: the publish then finds or creates the project on the token's account", projectIdFrom({}, 'const EAS_PROJECT_ID: string | null = null;'), null);
   is(
     "Expo's QR page opens the channel's newest update in Expo Go",
     expoGoLink('p-1', '57.0.0'),
@@ -154,11 +164,11 @@ console.log('\n— the EAS project for Expo Go, found or created from the token 
   // api.expo.dev (EXPO_LOCAL=1): `eas whoami` with a token, then `eas init`
   // creating the project, and on the next run finding it.
   const whoami = 'owner (authenticated using EXPO_TOKEN)\nowner@example.com\n';
-  const created = JSON.stringify({ status: 'created', projectId: '11111111-2222-4333-8444-000000000001', owner: 'owner', slug: 'brokers-connect' });
+  const created = JSON.stringify({ status: 'created', projectId: '11111111-2222-4333-8444-000000000001', owner: 'owner', slug: 'brokers-connect-careers' });
 
   is('the app is named as app.config.ts names it', appIdentityFrom(readFileSync(join(appRoot, 'app.config.ts'), 'utf8')), {
     name: 'Brokers Connect',
-    slug: 'brokers-connect',
+    slug: 'brokers-connect-careers',
   });
   is("the token's account, from `eas whoami`", accountFromWhoami(whoami), 'owner');
   is(
@@ -177,15 +187,15 @@ console.log('\n— the EAS project for Expo Go, found or created from the token 
     return answers[args[0]];
   };
   const project = findOrCreateProject(
-    { name: 'Brokers Connect', slug: 'brokers-connect' },
+    { name: 'Brokers Connect', slug: 'brokers-connect-careers' },
     fake({ whoami: { status: 0, stdout: whoami, stderr: '' }, init: { status: 0, stdout: created, stderr: '' } }),
   );
   is('it asks who the token is, then has `eas init` find or create the project', calls.map((call) => call.args[0]), ['whoami', 'init']);
   is('on that account, without asking, answering in JSON', calls[1].args, ['init', '--non-interactive', '--account', 'owner', '--json', '--no-icon']);
-  is('in a scratch directory holding only the name and slug', calls[1].files, { expo: { name: 'Brokers Connect', slug: 'brokers-connect' } });
+  is('in a scratch directory holding only the name and slug', calls[1].files, { expo: { name: 'Brokers Connect', slug: 'brokers-connect-careers' } });
   is('outside any repository', calls[1].vcs, '1');
   is('which is gone afterwards', existsSync(calls[1].cwd), false);
-  is('and the id comes back', project, { projectId: '11111111-2222-4333-8444-000000000001', owner: 'owner', slug: 'brokers-connect', status: 'created' });
+  is('and the id comes back', project, { projectId: '11111111-2222-4333-8444-000000000001', owner: 'owner', slug: 'brokers-connect-careers', status: 'created' });
 
   throws(
     'without a token or a login it says what is missing',

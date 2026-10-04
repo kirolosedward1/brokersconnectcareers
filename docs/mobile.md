@@ -545,15 +545,15 @@ with the store build's settings (it talks to production), on its own
 `expo-go` channel. It uses Expo Go's runtime version (`exposdk:57.0.0`), not
 the fingerprint store builds take (`EXPO_GO_UPDATE` in `app.config.ts`).
 
-Once, with the Expo account Expo Go is signed in to: an access token
-(expo.dev → Account settings → Access tokens) as the repository secret
-`EXPO_TOKEN` (GitHub → the repository's Settings → Secrets and variables →
-Actions). That is all Expo Go needs. While `app.config.ts` carries no EAS
-project id, a publish finds the app's project (slug `brokers-connect`) on the
-token's account, or creates it the first time, with Expo's own `eas init`
-(`scripts/publish-update.mjs`). The run's summary then gives the project's id:
-it goes in `app.config.ts` in place of `null` (`EAS_PROJECT_ID`) for builds and
-push notifications. It is not a secret.
+The app's EAS project is `@kirolosedward1/brokers-connect-careers`; its id,
+slug and owner are in `app.config.ts`, and EAS refuses to publish or build when
+they differ from the project's. Once, from that account: a personal access
+token (expo.dev → Account settings → Access tokens; a robot's is refused, as
+Expo Go is signed in to a person) as the repository secret `EXPO_TOKEN`
+(GitHub → the repository's Settings → Secrets and variables → Actions). That
+is all Expo Go needs. (A fork without a project id of its own has the publish
+find or create one on the token's account with Expo's own `eas init`,
+`scripts/publish-update.mjs`, and print its id for `EAS_PROJECT_ID`.)
 
 Then, each time the phone should get the newest code:
 
@@ -579,10 +579,10 @@ things need a development build instead:
 
 - Sign in with Apple: Apple issues the token to Expo Go, so the app does not
   show the button there. Email and password, and Google, work.
-- Push notifications, which need the EAS project (`EAS_PROJECT_ID` in
-  `app.config.ts`) and a build. Until a build has a project, the app offers
-  none: no prompt on Home, and a sentence in place of the switch under
-  Account → Notifications (`pushAvailable()` in `src/features/push/device.ts`).
+- Push notifications on Android: Expo Go has had none there since SDK 53, and
+  the app offers none without Firebase (`pushAvailable()` in
+  `src/features/push/device.ts`). On the iPhone, Expo Go registers the app's
+  EAS project for pushes through its own, so they can be tried there.
 - Links that open the app (universal links and `brokersconnect://`). Expo
   Go's own `exp://…/--/<path>` links do open the page they name.
 - The version on the Account screen, and the one the update gate compares, is
@@ -713,11 +713,12 @@ a registered iPhone), `development-simulator`, `preview` (internal
 distribution) and `production` (App Store, build number incremented remotely).
 Before the first build:
 
-- an Apple Developer Program membership (an organisation needs a D-U-N-S number)
-  and an Expo account; `npx eas-cli@latest init` prints the project id, which
-  goes into `mobile/app.config.ts` (`EAS_PROJECT_ID`, in place of null). Push
-  tokens are issued for it, and the build server reads that file again, so an
-  id set only in a local shell leaves a build that cannot register for pushes;
+- an Apple Developer Program membership (an organisation needs a D-U-N-S number).
+  The Expo side exists: the project `@kirolosedward1/brokers-connect-careers`,
+  whose id, slug and owner are in `mobile/app.config.ts` (`EAS_PROJECT_ID`).
+  Push tokens are issued for it, and the build server reads that file again,
+  so an id set only in a local shell would leave a build that cannot register
+  for pushes. Sign in as that account with `npx eas-cli@latest login`;
 - an APNs key for pushes, uploaded with `npx eas-cli@latest credentials`
   (Expo sends to Apple with it);
 - confirm the bundle identifier `net.brokersconnect.app` — it cannot change once

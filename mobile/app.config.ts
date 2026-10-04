@@ -42,12 +42,14 @@ const APP_LINK_PATHS = [
 ];
 
 /**
- * The EAS project's id: `npx eas-cli@latest init` prints it, and it goes here
- * in place of null. It is not a secret. Push tokens are issued for it, and the
- * build server reads this file again, so an id kept only in a local shell
- * never reaches a build. EAS_PROJECT_ID overrides it, for a fork's own project.
+ * The EAS project's id (expo.dev: @kirolosedward1/brokers-connect-careers). It
+ * is not a secret. Push tokens are issued for it, updates are fetched from it,
+ * and the build server reads this file again, so an id kept only in a local
+ * shell never reaches a build. EAS_PROJECT_ID overrides it, for a fork's own
+ * project. The slug and owner below are that project's: EAS refuses to build
+ * or publish when they differ.
  */
-const EAS_PROJECT_ID: string | null = null;
+const EAS_PROJECT_ID: string | null = '5598b160-d5fd-42e3-9cfd-14097b6677e9';
 const easProjectId = process.env.EAS_PROJECT_ID || EAS_PROJECT_ID;
 
 /**
@@ -87,7 +89,8 @@ const forExpoGo = process.env.EXPO_GO_UPDATE === '1';
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Brokers Connect',
-  slug: 'brokers-connect',
+  slug: 'brokers-connect-careers',
+  owner: 'kirolosedward1',
   version: '1.0.0',
   orientation: 'portrait',
   // The website's mark on white, enlarged from the 450-pixel original in

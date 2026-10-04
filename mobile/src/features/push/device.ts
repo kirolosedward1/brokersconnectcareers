@@ -69,9 +69,9 @@ if (Platform.OS === 'android') {
  * Whether this build can have a push token at all.
  *
  * Expo's push service issues one only for an EAS project (app.config.ts,
- * extra.eas.projectId), and none is set up yet; Expo Go running this project
- * has none either. On Android the token comes through Firebase as well, which
- * a build has only when it was given google-services.json (app.config.ts,
+ * extra.eas.projectId; Expo Go running a published update has it too). On
+ * Android the token comes through Firebase as well, which a build has only
+ * when it was given google-services.json (app.config.ts,
  * android.googleServicesFile). Without them, the phone could be asked and say
  * yes, the token would never come, and the switch would read "on" for
  * nothing. So pushes are not offered: no prompt on Home, a sentence in the
