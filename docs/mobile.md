@@ -348,8 +348,9 @@ A push is a second delivery of a bell notification, never a different one
   (which keeps `last_seen_at` fresh) and again when its token changes.
   Signing out forgets the phone first (`signOutHere`, before the session
   goes); a session that ended any other way — revoked from another device,
-  a refresh refused — makes the phone stop listening (Apple's registration),
-  and the next sign-in registers it again. A tapped push, the one that
+  a refresh refused, another account's email link opened on the phone —
+  makes the phone stop listening (Apple's registration), and the next
+  person's registration comes after that stop. A tapped push, the one that
   launched the app included, is opened as the bell opens a notification, once
   it is known who is signed in; the icon's badge follows the bell's count. A
   push arriving while the app is open shows as a banner and refreshes the
@@ -384,7 +385,8 @@ reports promptly.
   this" and the directory on that phone
   (`mobile/src/features/moderation/hidden-companies.ts`), signed in or not;
   its page says it is hidden and takes it back. Kept on the device — a list of
-  company ids the server has no need of.
+  company ids the server has no need of — and read before the app draws
+  anything, since a cold start draws the board kept from the last run at once.
 
 ## Links, email and the captcha
 
