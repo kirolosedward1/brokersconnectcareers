@@ -26,6 +26,8 @@ import { fakeServer } from './server';
 */
 
 const ar = catalogues.ar;
+// Read from the catalogue, so that renaming a track is a change of words, not of these tests.
+const landingTitle = ar.landing.title.replace('{track}', ar.track.primary).replace('{district}', newCairo.name_ar);
 const server = fakeServer();
 
 const SPONSORED_FIRST = 'الإعلانات الممولة بتظهر في الأول، وبعدها الباقي بالترتيب اللي اخترته.';
@@ -277,7 +279,7 @@ describe('the board', () => {
       expect(await screen.findByRole('header', { name: heading })).toBeTruthy();
     }
 
-    fireEvent.press(screen.getByRole('button', { name: 'بيع أول' }));
+    fireEvent.press(screen.getByRole('button', { name: ar.track.primary }));
     // A group that takes one answer is a set of radio buttons: choosing one unchooses "any".
     fireEvent.press(screen.getByRole('radio', { name: 'براتب أساسي' }));
     expect(screen.getByRole('radio', { name: 'براتب أساسي' }).props.accessibilityState).toMatchObject({ checked: true });
@@ -343,7 +345,7 @@ describe('a listing', () => {
       facts: { listings: 1, companies: 1, withBasicSalary: 1, salaryFloor: 10000, salaryCeiling: 15000 },
     });
     renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
-    expect(await screen.findByText('وظائف بيع أول في القاهرة الجديدة')).toBeTruthy();
+    expect(await screen.findByText(landingTitle)).toBeTruthy();
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
   });
 
@@ -355,7 +357,7 @@ describe('a listing', () => {
     });
     server.on('/api/mobile/v1/jobs', { status: 503, body: { error: 'unavailable' } });
     renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
-    expect(await screen.findByText('وظائف بيع أول في القاهرة الجديدة')).toBeTruthy();
+    expect(await screen.findByText(landingTitle)).toBeTruthy();
 
     expect(await screen.findByRole('button', { name: ar.common.retry })).toBeTruthy();
     expect(screen.queryByText(ar.jobs.empty)).toBeNull();

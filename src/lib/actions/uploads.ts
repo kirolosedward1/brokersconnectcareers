@@ -26,9 +26,14 @@ import type { ActionResult } from '@/lib/actions/jobs';
  * Ownership is decided the way it was before: the photo is written into the
  * caller's own folder and recorded through the caller's own session, and the
  * logo is recorded through companies_update_own, which only a company admin
- * satisfies. The service role writes the object because the re-encoded bytes
- * are the server's — but only after the row-level check has said whose
- * folder this is, and the object is removed again if the record is refused.
+ * satisfies. The service role writes the object, only after the row-level
+ * check has said whose folder this is, and the object is removed again if the
+ * record is refused. It has to be the service role: since migration 346 nobody
+ * may write into these buckets with their own session, so that they serve only
+ * what this action decoded and wrote again. Written with the caller's session,
+ * every upload would be refused (scripts/security-libs.test.mjs holds this
+ * action to it). Without SUPABASE_SERVICE_ROLE_KEY on the server an upload
+ * answers `unavailable`, and /api/health lists the key as absent.
  */
 
 const MAX_UPLOAD_FIELD = MAX_BYTES.image;

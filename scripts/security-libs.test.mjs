@@ -7,7 +7,10 @@
  * These are the rules the server actions lean on before anything reaches the
  * database, and every one of them is the kind that silently stops being true
  * under a refactor — a regex loosened, a scheme added, a magic number typo'd.
+ * One more is read from the source: which client the upload action writes
+ * pictures with, which the buckets' policies decide.
  */
+import { readFileSync } from 'node:fs';
 import { cleanText, clean, safeHttpUrl } from '../src/lib/security/sanitize.ts';
 import { sniffKind, isOwnedPath } from '../src/lib/security/magic.ts';
 import { secretsMatch, bearerToken } from '../src/lib/security/secrets.ts';
@@ -201,6 +204,23 @@ console.log('\n— the shape of a storage path');
   check('percent-encoding refused', !isOwnedPath(`${me}/%2e%2e/cv.pdf`, me));
   check('a bare folder refused', !isOwnedPath(`${me}/`, me));
   check('spaces refused', !isOwnedPath(`${me}/my cv.pdf`, me));
+}
+
+console.log('\n— who writes a photo or a logo');
+{
+  // Since migration 346 nobody may write into the public picture buckets with
+  // their own session (supabase/tests/decisions.test.mjs, "a person cannot
+  // write a photo straight into the public bucket"), so that what they serve
+  // is only what the server decoded and wrote again. The upload action has to
+  // write with the service role: written with the caller's session, every
+  // photo and every logo would be refused by the bucket.
+  const source = readFileSync(new URL('../src/lib/actions/uploads.ts', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  const clients = [...source.matchAll(/(\w+)\s*\.storage\b/g)].map((match) => match[1]);
+  check('the upload action writes the picture', clients.length > 0 && /\.upload\(/.test(source));
+  check('with the service role, every time', clients.length > 0 && clients.every((name) => name === 'admin'), clients.join(', '));
+  check('which is the admin client', /\badmin\s*=\s*createAdminClient\(\)/.test(source));
 }
 
 console.log('\n— secrets');
