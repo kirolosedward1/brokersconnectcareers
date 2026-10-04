@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View } from 'react-native';
+import { useRef, useState } from 'react';
+import { View, type TextInput } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { Check, KeyRound, Mail } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
@@ -99,6 +99,8 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
+  // The return key moves on to the second password, and from there saves.
+  const confirmField = useRef<TextInput>(null);
 
   const hasPassword = provider === 'email';
 
@@ -155,10 +157,14 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
               textContentType="newPassword"
               autoComplete="new-password"
               autoCapitalize="none"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => confirmField.current?.focus()}
             />
           </Field>
           <Field label={t('auth.passwordConfirm')} error={error}>
             <TextField
+              ref={confirmField}
               value={confirm}
               onChangeText={setConfirm}
               accessibilityLabel={t('auth.passwordConfirm')}
@@ -167,6 +173,10 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
               textContentType="newPassword"
               autoComplete="new-password"
               autoCapitalize="none"
+              returnKeyType="go"
+              onSubmitEditing={() => {
+                if (!pending) void save();
+              }}
             />
           </Field>
           {done ? (

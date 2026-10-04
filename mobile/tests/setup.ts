@@ -2,6 +2,8 @@
   Native modules a unit test cannot reach, replaced with their published
   in-memory stand-ins. Loaded before every test file (jest.config.js).
 */
+import { createElement, type Context, type ReactNode } from 'react';
+import { Modal, ScrollView } from 'react-native';
 import { installIntlPolyfills } from '~/lib/intl-polyfills';
 
 // Format as the phone does. Node's own Intl knows every locale; the phone runs
@@ -125,3 +127,24 @@ jest.mock('expo-notifications', () => {
   };
 });
 jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '1' }));
+
+// React Native's ScrollView tells what it holds that it is inside one
+// (ScrollView.Context): lists read it to warn of a list nested in a page that
+// scrolls, and the app's empty and error states to know whether to scroll
+// themselves (src/components/ui/states.tsx). A Modal, a window of its own,
+// starts afresh. The test stand-ins for both draw their children without
+// either; they are made to say what the real ones say.
+{
+  type Drawn = { prototype: { render(this: { props: { horizontal?: boolean | null } }): ReactNode } };
+  const inside = (ScrollView as unknown as { Context: Context<{ horizontal: boolean } | null> }).Context;
+  const scroll = ScrollView as unknown as Drawn;
+  const drawScroll = scroll.prototype.render;
+  scroll.prototype.render = function () {
+    return createElement(inside.Provider, { value: { horizontal: this.props.horizontal === true } }, drawScroll.call(this));
+  };
+  const modal = Modal as unknown as Drawn;
+  const drawModal = modal.prototype.render;
+  modal.prototype.render = function () {
+    return createElement(inside.Provider, { value: null }, drawModal.call(this));
+  };
+}

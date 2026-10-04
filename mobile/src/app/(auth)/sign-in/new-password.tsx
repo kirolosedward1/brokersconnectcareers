@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View } from 'react-native';
+import { useRef, useState } from 'react';
+import { View, type TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { isAuthRetryableFetchError, type AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
@@ -34,6 +34,8 @@ export default function NewPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
+  // The return key moves on to the second password, and from there sets it.
+  const confirmField = useRef<TextInput>(null);
 
   async function submit() {
     setError(null);
@@ -99,10 +101,14 @@ export default function NewPasswordScreen() {
               autoComplete="new-password"
               textContentType="newPassword"
               passwordRules="minlength: 8;"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => confirmField.current?.focus()}
             />
           </Field>
           <Field label={t('auth.passwordConfirm')}>
             <TextField
+              ref={confirmField}
               value={passwordConfirm}
               onChangeText={setPasswordConfirm}
               accessibilityLabel={t('auth.passwordConfirm')}
@@ -113,6 +119,10 @@ export default function NewPasswordScreen() {
               autoComplete="new-password"
               textContentType="newPassword"
               passwordRules="minlength: 8;"
+              returnKeyType="go"
+              onSubmitEditing={() => {
+                if (!pending) void submit();
+              }}
             />
           </Field>
 

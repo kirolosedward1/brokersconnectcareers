@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ActionSheetIOS, Alert, RefreshControl, type AlertButton } from 'react-native';
+import { AccessibilityInfo, ActionSheetIOS, Alert, RefreshControl, type AlertButton } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -19,6 +19,7 @@ import * as CompanyScreen from '../src/app/(tabs)/(account)/employer/company';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
 import { phoneFormData, sentBody } from './multipart';
+import { placeViewsAt } from './measure';
 import { fakeServer } from './server';
 
 /*
@@ -321,12 +322,21 @@ describe("the company's page, for a company admin", () => {
     expect(screen.queryByText(ar.employer.companyMoved)).toBeNull();
   });
 
-  it('refuses an address that is not http(s) before sending anything', async () => {
-    renderRouter(app, { initialUrl: '/employer/company' });
-    fireEvent.changeText(await screen.findByLabelText(ar.companies.website), 'javascript:alert(1)');
-    fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
-    expect(await screen.findByText(ar.validation.invalidUrl)).toBeTruthy();
-    expect(server.asked('/api/mobile/v1/actions/saveCompany')).toHaveLength(0);
+  it('refuses an address that is not http(s) before sending anything — in view and said, far above Save', async () => {
+    const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
+    announce.mockClear();
+    const layout = placeViewsAt(520);
+    try {
+      renderRouter(app, { initialUrl: '/employer/company' });
+      fireEvent.changeText(await screen.findByLabelText(ar.companies.website), 'javascript:alert(1)');
+      fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
+      expect(await screen.findByText(ar.validation.invalidUrl)).toBeTruthy();
+      expect(server.asked('/api/mobile/v1/actions/saveCompany')).toHaveLength(0);
+      expect(announce).toHaveBeenCalledWith(ar.validation.invalidUrl, { queue: true });
+      await waitFor(() => expect(layout.scrollTo).toHaveBeenCalledWith({ y: 520 - 16, animated: true }));
+    } finally {
+      layout.undo();
+    }
   });
 
   it('sends the logo to the website as drawn, a PNG for the company', async () => {

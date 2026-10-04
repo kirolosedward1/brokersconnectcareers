@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { Stack } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -37,6 +38,7 @@ export default function CompanyScreen() {
   const pull = usePullRefresh(() => Promise.all([page.refetch(), queryClient.invalidateQueries({ queryKey: ['viewer'] })]));
   const company = viewer?.company ?? null;
   const header = <Stack.Screen options={{ title: t('employer.company') }} />;
+  const scroll = useRef<ScrollView>(null);
 
   let body: React.ReactNode;
   if (!session) body = <SignedOut next="/employer/company" />;
@@ -49,6 +51,7 @@ export default function CompanyScreen() {
     const isAdmin = page.data?.isAdmin ?? false;
     body = (
       <ScrollView
+        ref={scroll}
         contentInsetAdjustmentBehavior="automatic"
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
@@ -68,7 +71,7 @@ export default function CompanyScreen() {
           />
         ) : null}
         {/* Keyed on the company, not its version: a logo or a paper moves the version, and must not wipe what is being typed. */}
-        {isAdmin || !company ? <CompanyForm key={company?.id ?? 'new'} company={company} /> : null}
+        {isAdmin || !company ? <CompanyForm key={company?.id ?? 'new'} company={company} scroll={scroll} /> : null}
         {company && isAdmin ? (
           <VerificationPanel companyId={company.id} status={company.verification_status} documents={page.data?.documents ?? []} />
         ) : null}

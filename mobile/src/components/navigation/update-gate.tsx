@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Linking, View } from 'react-native';
+import { Linking, ScrollView } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
@@ -25,15 +25,18 @@ export function UpdateGate({ children }: { children: ReactNode }) {
 
   if (!required || busy) return children;
 
+  // A scroll view, for the largest text sizes: the button under the words must stay reachable.
   return (
-    <View
-      style={{
-        flex: 1,
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentInsetAdjustmentBehavior="automatic"
+      alwaysBounceVertical={false}
+      contentContainerStyle={{
+        flexGrow: 1,
         alignItems: 'center',
         justifyContent: 'center',
         gap: space[3],
         padding: space[6],
-        backgroundColor: colors.background,
       }}
     >
       <Text variant="title" weight="bold" accessibilityRole="header" style={{ textAlign: 'center' }}>
@@ -43,6 +46,6 @@ export function UpdateGate({ children }: { children: ReactNode }) {
         {t('body')}
       </Text>
       {storeUrl ? <Button label={t('cta')} size="lg" onPress={() => Linking.openURL(storeUrl).catch(() => {})} /> : null}
-    </View>
+    </ScrollView>
   );
 }

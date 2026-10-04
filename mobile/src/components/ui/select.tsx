@@ -88,7 +88,8 @@ export function Select<T extends string | number>({
               borderBottomColor: colors.border,
             }}
           >
-            <Text variant="headline" weight="semibold" accessibilityRole="header">
+            {/* Wraps at the largest text sizes, rather than pushing Close off the sheet. */}
+            <Text variant="headline" weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
               {label}
             </Text>
             <Pressable

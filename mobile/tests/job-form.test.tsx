@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Alert, Text, type AlertButton } from 'react-native';
+import { AccessibilityInfo, Alert, Text, type AlertButton } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -18,6 +18,7 @@ import * as EditJobScreen from '../src/app/(tabs)/(listings)/employer/jobs/[id]/
 import * as NewJobScreen from '../src/app/(tabs)/(listings)/employer/jobs/new';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { detail, newCairo } from './fixtures';
+import { placeViewsAt } from './measure';
 import { fakeServer } from './server';
 
 /*
@@ -223,6 +224,51 @@ describe('a new listing', () => {
       submit: true,
     });
     await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+  });
+
+  it("brings a step's error into view and says it, the button being far below the field", async () => {
+    const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
+    announce.mockClear();
+    const layout = placeViewsAt(400);
+    try {
+      renderRouter(app, { initialUrl: '/employer/jobs/new' });
+      expect(await screen.findByLabelText(`${ar.jobForm.district}: ${newCairo.name_ar}`)).toBeTruthy();
+      fireEvent.changeText(screen.getByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+      fireEvent.changeText(screen.getByLabelText(ar.jobForm.seats), '');
+      next();
+      expect(await screen.findByText(ar.validation.required)).toBeTruthy();
+      expect(announce).toHaveBeenCalledWith(ar.validation.required, { queue: true });
+      await waitFor(() => expect(layout.scrollTo).toHaveBeenCalledWith({ y: 400 - 16, animated: true }));
+    } finally {
+      layout.undo();
+    }
+  });
+
+  it("goes back to the step with the website's objection and brings the field into view", async () => {
+    server.on('POST /api/mobile/v1/actions/saveJob', { ok: false, error: 'invalid', fieldErrors: { titleAr: 'required' } });
+    const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
+    renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    expect(await screen.findByLabelText(`${ar.jobForm.district}: ${newCairo.name_ar}`)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+    next();
+    fireEvent.press(await screen.findByRole('button', { name: ar.employer.duplicateDismiss }));
+    fireEvent.changeText(screen.getByLabelText(ar.jobForm.commissionValue), '2');
+    next();
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.descriptionAr), DESCRIPTION);
+    next();
+    expect(await screen.findByText(ar.jobForm.reviewNote)).toBeTruthy();
+    announce.mockClear();
+    const layout = placeViewsAt(250);
+    try {
+      fireEvent.press(screen.getByRole('button', { name: ar.employer.submitForReview }));
+      // The title's step, with the title's error under it — in view, and said.
+      expect(await screen.findByText(ar.validation.required)).toBeTruthy();
+      expect(screen.getByLabelText(ar.jobForm.titleAr)).toBeTruthy();
+      expect(announce).toHaveBeenCalledWith(ar.validation.required, { queue: true });
+      await waitFor(() => expect(layout.scrollTo).toHaveBeenCalledWith({ y: 250 - 16, animated: true }));
+    } finally {
+      layout.undo();
+    }
   });
 
   it('saves a draft as it stands, and repeats the same key when the save is tried again', async () => {

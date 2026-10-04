@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { View } from 'react-native';
+import { View, type ScrollView } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2 } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
@@ -16,6 +16,7 @@ import { CompanyRefused, useSaveCompany } from '~/features/employer/company';
 import { useDistricts } from '~/features/taxonomy';
 import { ApiError } from '~/lib/api';
 import { useSession, type Viewer } from '~/lib/session';
+import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { webAddress } from '~/lib/web-address';
 import { useTheme } from '~/theme/provider';
@@ -64,7 +65,14 @@ const sameFields = (a: Fields, b: Fields) => (Object.keys(a) as (keyof Fields)[]
  * not change; a colleague's change to them leaves what is typed on the old
  * version, so saving says so, and the answer brings theirs in.
  */
-export function CompanyForm({ company }: { company: CompanyRow | null }) {
+export function CompanyForm({
+  company,
+  scroll,
+}: {
+  company: CompanyRow | null;
+  /** The page's scroll view: Save is below the fields, and an error is brought into view. */
+  scroll: RefObject<ScrollView | null>;
+}) {
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -82,6 +90,11 @@ export function CompanyForm({ company }: { company: CompanyRow | null }) {
   const [headcount, setHeadcount] = useState<HeadcountBand | null>(company?.headcount_band ?? null);
   const [districtId, setDistrictId] = useState<number | null>(company?.district_id ?? null);
   const [errors, setErrors] = useState<Partial<Record<Key, string>>>({});
+  const inView = useErrorsInView(scroll, ['nameAr', 'aboutAr', 'aboutEn', 'website']);
+  const refuse = (next: Partial<Record<Key, string>>) => {
+    setErrors(next);
+    inView.show(next);
+  };
   const [saved, setSaved] = useState(false);
   // The row the fields were filled from, and how to take the next version to
   // arrive: 'theirs' whole (a colleague's save got there first), or — after
@@ -123,7 +136,7 @@ export function CompanyForm({ company }: { company: CompanyRow | null }) {
     const address = webAddress(site);
     if (nameAr.trim().length < 2) local.nameAr = t('validation.required');
     if (address && !safeHttpUrl(address)) local.website = t('validation.invalidUrl');
-    if (Object.keys(local).length) return setErrors(local);
+    if (Object.keys(local).length) return refuse(local);
     setErrors({});
     const sending = typedNow;
     const basedOn = loaded?.version;
@@ -151,21 +164,21 @@ export function CompanyForm({ company }: { company: CompanyRow | null }) {
           setTakeNext(latest && latest.version !== basedOn ? sending : null);
         },
         onError: (failure) => {
-          if (failure instanceof ApiError && failure.status === 0) return setErrors({ form: t('app.offline.body') });
+          if (failure instanceof ApiError && failure.status === 0) return refuse({ form: t('app.offline.body') });
           const reason = failure instanceof CompanyRefused ? failure.reason : 'failed';
           if (reason === 'stale') {
             // "Reload to see their version": the next read of the company fills the form with it.
             setTakeNext('theirs');
-            return setErrors({ form: t('employer.companyMoved') });
+            return refuse({ form: t('employer.companyMoved') });
           }
           const fields = failure instanceof CompanyRefused ? failure.fieldErrors : undefined;
           if (fields?.aboutAr || fields?.aboutEn) {
-            return setErrors({
+            return refuse({
               ...(fields.aboutAr ? { aboutAr: t('validation.tooManyLinks') } : {}),
               ...(fields.aboutEn ? { aboutEn: t('validation.tooManyLinks') } : {}),
             });
           }
-          setErrors({ form: t('common.errorBody') });
+          refuse({ form: t('common.errorBody') });
         },
       },
     );
@@ -173,13 +186,13 @@ export function CompanyForm({ company }: { company: CompanyRow | null }) {
 
   return (
     <View style={{ gap: space[4] }}>
-      <Field label={t('companies.nameAr')} error={errors.nameAr}>
+      <Field ref={inView.place('nameAr')} label={t('companies.nameAr')} error={errors.nameAr}>
         <TextField value={nameAr} onChangeText={setNameAr} accessibilityLabel={t('companies.nameAr')} maxLength={160} />
       </Field>
       <Field label={t('companies.nameEn')}>
         <TextField value={nameEn} onChangeText={setNameEn} accessibilityLabel={t('companies.nameEn')} maxLength={160} ltr />
       </Field>
-      <Field label={t('companies.aboutAr')} error={errors.aboutAr}>
+      <Field ref={inView.place('aboutAr')} label={t('companies.aboutAr')} error={errors.aboutAr}>
         <TextField
           value={aboutAr}
           onChangeText={setAboutAr}
@@ -189,7 +202,7 @@ export function CompanyForm({ company }: { company: CompanyRow | null }) {
           style={{ minHeight: 96, paddingVertical: space[2], textAlignVertical: 'top' }}
         />
       </Field>
-      <Field label={t('companies.aboutEn')} error={errors.aboutEn}>
+      <Field ref={inView.place('aboutEn')} label={t('companies.aboutEn')} error={errors.aboutEn}>
         <TextField
           value={aboutEn}
           onChangeText={setAboutEn}
@@ -200,7 +213,7 @@ export function CompanyForm({ company }: { company: CompanyRow | null }) {
           style={{ minHeight: 96, paddingVertical: space[2], textAlignVertical: 'top' }}
         />
       </Field>
-      <Field label={t('companies.website')} error={errors.website}>
+      <Field ref={inView.place('website')} label={t('companies.website')} error={errors.website}>
         <TextField
           value={site}
           onChangeText={setSite}

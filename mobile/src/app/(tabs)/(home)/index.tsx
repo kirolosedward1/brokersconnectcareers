@@ -90,7 +90,9 @@ function MarketHome() {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      keyboardDismissMode="on-drag"
+      // The search sits in the top half: on a small phone the keyboard would cover it without this.
+      automaticallyAdjustKeyboardInsets
+      keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
       refreshControl={
         <RefreshControl

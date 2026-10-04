@@ -16,7 +16,8 @@ import { authSession, authUser, USER_ID } from './auth-fixtures';
 
 jest.mock('~/lib/session-storage', () => ({
   encryptedSessionStorage: {
-    getItem: async (key: string) => (globalThis as unknown as { __store: Map<string, string> }).__store.get(key) ?? null,
+    // Read once as the client is made, on import — before this file has put its store in place.
+    getItem: async (key: string) => (globalThis as unknown as { __store?: Map<string, string> }).__store?.get(key) ?? null,
     setItem: async (key: string, value: string) => {
       (globalThis as unknown as { __store: Map<string, string> }).__store.set(key, value);
     },

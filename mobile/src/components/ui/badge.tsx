@@ -29,6 +29,8 @@ export function Badge({ label, variant = 'default', icon }: { label: string; var
         alignItems: 'center',
         gap: space[1],
         alignSelf: 'flex-start',
+        // Never wider than the row it sits in: at the largest text sizes its label wraps instead.
+        maxWidth: '100%',
         paddingHorizontal: space[2] + 2,
         paddingVertical: 3,
         ...corner('full'),
@@ -38,7 +40,7 @@ export function Badge({ label, variant = 'default', icon }: { label: string; var
       }}
     >
       {icon}
-      <Text variant="label" weight="semibold" style={{ color: tone.text }}>
+      <Text variant="label" weight="semibold" style={{ color: tone.text, flexShrink: 1 }}>
         {label}
       </Text>
     </View>

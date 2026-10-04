@@ -98,6 +98,8 @@ export function JobDetail({
               variant="ghost"
               size="sm"
               icon={<Share2 size={16} color={colors.foreground} />}
+              // The bar does not grow with the text: capped as the bell's count is.
+              maxFontSizeMultiplier={1.4}
               onPress={share}
             />
           ),

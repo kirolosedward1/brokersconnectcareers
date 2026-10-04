@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { useState, type RefObject } from 'react';
+import { Pressable, View, type ScrollView } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2, Eye, EyeOff, FileText, Paperclip, ShieldCheck, Trash2, X } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
@@ -22,6 +22,7 @@ import { pickCv } from '~/features/cv/files';
 import { toggled } from '~/features/jobs/filters';
 import { SaveRefused, useSaveAgentProfile, type CvChange } from '~/features/profile/queries';
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
+import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useStoredFields } from '~/lib/use-stored-fields';
 import { useTheme } from '~/theme/provider';
@@ -47,10 +48,13 @@ export function ProfileForm({
   profile,
   agent,
   developerIds,
+  scroll,
 }: {
   profile: ProfileRow;
   agent: AgentProfileRow | null;
   developerIds: number[];
+  /** The page's scroll view: Save is far below the fields, and an error is brought into view. */
+  scroll: RefObject<ScrollView | null>;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -76,6 +80,11 @@ export function ProfileForm({
   const developerChoice = form.fields.developerIds;
   const [cv, setCv] = useState<CvChange>({ kind: 'keep' });
   const [errors, setErrors] = useState<Errors>({});
+  const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'yearsExperience', 'cv']);
+  const refuse = (next: Errors) => {
+    setErrors(next);
+    inView.show(next);
+  };
 
   // Leaving with anything changed since it was filled or last saved asks first.
   useLeaveGuard(form.dirty || cv.kind !== 'keep', save.isPending);
@@ -100,7 +109,7 @@ export function ProfileForm({
     if (!isValidPhone(normalisePhone(whatsapp))) local.whatsapp = t('validation.invalidPhone');
     if (!Number.isInteger(yearsExperience) || yearsExperience > 60) local.yearsExperience = t('app.profile.yearsInvalid');
     if (Object.keys(local).length) {
-      setErrors(local);
+      refuse(local);
       return;
     }
 
@@ -133,15 +142,15 @@ export function ProfileForm({
         onError: (failure) => {
           const reason = failure instanceof SaveRefused ? failure.reason : 'failed';
           const fields = failure instanceof SaveRefused ? failure.fieldErrors : undefined;
-          if (reason === 'fileTooLarge') return setErrors({ cv: t('validation.fileTooLarge') });
-          if (reason === 'upload' || reason === 'invalid_cv_path') return setErrors({ cv: t('common.errorBody') });
+          if (reason === 'fileTooLarge') return refuse({ cv: t('validation.fileTooLarge') });
+          if (reason === 'upload' || reason === 'invalid_cv_path') return refuse({ cv: t('common.errorBody') });
           if (fields?.whatsapp || fields?.cv) {
-            return setErrors({
+            return refuse({
               ...(fields.whatsapp ? { whatsapp: t('validation.invalidPhone') } : {}),
               ...(fields.cv ? { cv: t('validation.fileType') } : {}),
             });
           }
-          setErrors({ form: t('common.errorBody') });
+          refuse({ form: t('common.errorBody') });
         },
       },
     );
@@ -149,7 +158,7 @@ export function ProfileForm({
 
   return (
     <View style={{ gap: space[5] }}>
-      <Field label={t('onboarding.fullName')} error={errors.fullName}>
+      <Field ref={inView.place('fullName')} label={t('onboarding.fullName')} error={errors.fullName}>
         <TextField
           value={fullName}
           onChangeText={(value) => form.set({ fullName: value })}
@@ -160,7 +169,7 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field label={t('onboarding.whatsapp')} error={errors.whatsapp}>
+      <Field ref={inView.place('whatsapp')} label={t('onboarding.whatsapp')} error={errors.whatsapp}>
         <TextField
           value={whatsapp}
           onChangeText={(value) => form.set({ whatsapp: value })}
@@ -231,7 +240,7 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field label={t('filters.experienceBand')} error={errors.yearsExperience}>
+      <Field ref={inView.place('yearsExperience')} label={t('filters.experienceBand')} error={errors.yearsExperience}>
         <TextField
           value={years}
           onChangeText={(value) => form.set({ years: value })}
@@ -301,6 +310,7 @@ export function ProfileForm({
       />
 
       <Field
+        ref={inView.place('cv')}
         label={hasCv && cv.kind !== 'remove' ? t('agents.cvReplace') : t('agents.downloadCv')}
         hint={t('agents.cvHint')}
         error={errors.cv}

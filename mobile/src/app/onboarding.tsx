@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View, type ScrollView, type TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Session } from '@supabase/supabase-js';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -7,6 +8,7 @@ import { useLocale, useTranslations } from 'use-intl';
 import { BadgeCheck, Briefcase, Check, Eye, EyeOff, MailCheck, Search } from '~/components/ui/lucide';
 import type { OnboardingInput } from '@/lib/mobile-api/contract';
 import { localized, type Locale } from '@/lib/locale';
+import { isValidPhone, normalisePhone } from '@/lib/phone';
 import { safeHttpUrl } from '@/lib/security/sanitize';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import type { AgentVisibility, HeadcountBand } from '@/lib/supabase/database.types';
@@ -28,6 +30,7 @@ import { useDistricts } from '~/features/taxonomy';
 import { callAction } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
+import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useHoldBack } from '~/lib/use-hold-back';
 import { webAddress } from '~/lib/web-address';
 import { useTheme } from '~/theme/provider';
@@ -175,6 +178,18 @@ function OnboardingForm({
   const [visibility, setVisibility] = useState<AgentVisibility | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
+  // The button is at the bottom, below the questions: an error above them is
+  // brought into view and said. Drawn without a header, the page sits under the status bar.
+  const scroll = useRef<ScrollView>(null);
+  const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'company', 'companyWebsite', 'visibility', 'terms'], {
+    above: useSafeAreaInsets().top,
+  });
+  const refuse = (next: Record<string, string>) => {
+    setErrors(next);
+    inView.show(next);
+  };
+  // The return key moves from the name to the number (the phone pad has none of its own).
+  const whatsappField = useRef<TextInput>(null);
 
   function confirmDelete() {
     Alert.alert(t('onboarding.leaveDelete'), t('onboarding.leaveConfirm'), [
@@ -189,13 +204,17 @@ function OnboardingForm({
     const refusal = await onDelete();
     if (refusal) {
       setPending(false);
-      setErrors({ form: refusal === 'apple' ? t('app.account.deleteAppleFailed') : t('onboarding.leaveFailed') });
+      refuse({ form: refusal === 'apple' ? t('app.account.deleteAppleFailed') : t('onboarding.leaveFailed') });
     }
   }
 
   async function submit() {
     setErrors({});
+    // What the website would refuse, said before anything is sent: its own rules.
     const missing: Record<string, string> = {};
+    if (fullName.trim().length < 2) missing.fullName = t('validation.required');
+    if (!isValidPhone(normalisePhone(whatsapp))) missing.whatsapp = t('validation.invalidPhone');
+    if (role === 'employer' && companyName.trim().length < 2) missing.company = t('validation.required');
     if (role === 'candidate' && !visibility) missing.visibility = t('onboarding.visibilityRequired');
     if (!agreed) missing.terms = t('onboarding.consentRequired');
     // As the company page takes it: "nilebrokers.com" is https://nilebrokers.com.
@@ -203,7 +222,7 @@ function OnboardingForm({
     const website = role === 'employer' ? webAddress(companyWebsite) : null;
     if (website && !safeHttpUrl(website)) missing.companyWebsite = t('validation.invalidUrl');
     if (Object.keys(missing).length) {
-      setErrors(missing);
+      refuse(missing);
       return;
     }
 
@@ -230,7 +249,7 @@ function OnboardingForm({
     if (!result || !result.ok) {
       setPending(false);
       const fields = result && !result.ok ? result.fieldErrors : undefined;
-      setErrors(
+      refuse(
         fields && Object.keys(fields).length
           ? {
               ...(fields.fullName ? { fullName: t('validation.required') } : {}),
@@ -253,7 +272,7 @@ function OnboardingForm({
   const openSitePage = (path: string) => WebBrowser.openBrowserAsync(`${env.siteUrl}${path}`).catch(() => {});
 
   return (
-    <AuthScroll bare>
+    <AuthScroll ref={scroll} bare>
       <View style={{ height: space[8] }} />
 
       {intent.confirmed ? (
@@ -306,7 +325,7 @@ function OnboardingForm({
       )}
 
       <View style={{ gap: space[4] }}>
-        <Field label={t('onboarding.fullName')} error={errors.fullName}>
+        <Field ref={inView.place('fullName')} label={t('onboarding.fullName')} error={errors.fullName}>
           <TextField
             value={fullName}
             onChangeText={setFullName}
@@ -314,11 +333,15 @@ function OnboardingForm({
             autoComplete="name"
             textContentType="name"
             maxLength={120}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => whatsappField.current?.focus()}
           />
         </Field>
 
-        <Field label={t('onboarding.whatsapp')} error={errors.whatsapp}>
+        <Field ref={inView.place('whatsapp')} label={t('onboarding.whatsapp')} error={errors.whatsapp}>
           <TextField
+            ref={whatsappField}
             value={whatsapp}
             onChangeText={setWhatsapp}
             accessibilityLabel={t('onboarding.whatsapp')}
@@ -345,7 +368,7 @@ function OnboardingForm({
             <Text variant="small" weight="semibold">
               {t('onboarding.companySection')}
             </Text>
-            <Field label={t('onboarding.companyName')} error={errors.company}>
+            <Field ref={inView.place('company')} label={t('onboarding.companyName')} error={errors.company}>
               <TextField
                 value={companyName}
                 onChangeText={setCompanyName}
@@ -355,7 +378,12 @@ function OnboardingForm({
                 maxLength={160}
               />
             </Field>
-            <Field label={t('onboarding.companyWebsite')} hint={t('common.optional')} error={errors.companyWebsite}>
+            <Field
+              ref={inView.place('companyWebsite')}
+              label={t('onboarding.companyWebsite')}
+              hint={t('common.optional')}
+              error={errors.companyWebsite}
+            >
               <TextField
                 value={companyWebsite}
                 onChangeText={setCompanyWebsite}
@@ -399,7 +427,12 @@ function OnboardingForm({
         {/* Who sees a consultant's card in the directory: asked, with nothing
             chosen for them — the website's question (migration 336). */}
         {role === 'candidate' ? (
-          <View style={{ gap: space[2] }} accessibilityRole="radiogroup" accessibilityLabel={t('onboarding.visibilityQuestion')}>
+          <View
+            ref={inView.place('visibility')}
+            style={{ gap: space[2] }}
+            accessibilityRole="radiogroup"
+            accessibilityLabel={t('onboarding.visibilityQuestion')}
+          >
             <Text variant="small" weight="medium">
               {t('onboarding.visibilityQuestion')}
             </Text>
@@ -446,6 +479,7 @@ function OnboardingForm({
         {/* One element to VoiceOver, which cannot reach the links inside it:
             they are offered as its actions too. */}
         <Pressable
+          ref={inView.place('terms')}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: agreed }}
           accessibilityActions={[

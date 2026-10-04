@@ -118,6 +118,15 @@ describe('home', () => {
     expect(screen.queryByText(ar.app.offline.title)).toBeNull();
   });
 
+  it('keeps the search above the keyboard on a small phone, as the other homes do', async () => {
+    renderRouter(app, { initialUrl: '/' });
+    let node = (await screen.findByLabelText(ar.landingPage.hero.searchLabel)).parent;
+    while (node && node.props.keyboardShouldPersistTaps === undefined) node = node.parent;
+    expect(node?.props.automaticallyAdjustKeyboardInsets).toBe(true);
+    // Dragged down with the page, the keyboard goes with the finger rather than all at once.
+    expect(node?.props.keyboardDismissMode).toBe('interactive');
+  });
+
   it('searches the board with the words typed', async () => {
     const result = renderRouter(app, { initialUrl: '/' });
     fireEvent.changeText(await screen.findByLabelText('ابحث عن وظيفة'), 'مبيعات');

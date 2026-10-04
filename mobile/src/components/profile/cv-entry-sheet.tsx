@@ -18,6 +18,7 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { SaveRefused, useSaveCvEntry, type CvSection } from '~/features/profile/queries';
 import { ApiError } from '~/lib/api';
+import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useConfirmDiscard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
 import { gutter, hitTarget, space } from '~/theme/tokens';
@@ -105,6 +106,24 @@ function EntryForm({
   const [issued, setIssued] = useState(monthOf(certification?.issued));
   const [expires, setExpires] = useState(monthOf(certification?.expires));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Save is below every field: an error above it is brought into view and said.
+  const scroll = useRef<ScrollView>(null);
+  const inView = useErrorsInView(scroll, [
+    'companyName',
+    'title',
+    'started',
+    'ended',
+    'highlights',
+    'institution',
+    'graduated',
+    'name',
+    'issued',
+    'expires',
+  ]);
+  const refuse = (next: Record<string, string>) => {
+    setErrors(next);
+    inView.show(next);
+  };
 
   const typed = JSON.stringify([companyName, title, track, started, ended, highlights, institution, degree, field, graduated, name, issuer, issued, expires]);
   const [opened] = useState(typed);
@@ -118,11 +137,11 @@ function EntryForm({
   const onError = (failure: unknown) => {
     const reason = failure instanceof SaveRefused ? failure.reason : 'failed';
     const fields = failure instanceof SaveRefused ? failure.fieldErrors : undefined;
-    if (reason === 'cap') return setErrors({ form: t('cv.capReached') });
+    if (reason === 'cap') return refuse({ form: t('cv.capReached') });
     // Named, not a computed key, which the React Compiler does not compile.
-    if (fields?.ended) return setErrors({ ended: t('app.profile.endBeforeStart') });
-    if (fields?.expires) return setErrors({ expires: t('app.profile.endBeforeStart') });
-    setErrors({ form: failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody') });
+    if (fields?.ended) return refuse({ ended: t('app.profile.endBeforeStart') });
+    if (fields?.expires) return refuse({ expires: t('app.profile.endBeforeStart') });
+    refuse({ form: failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody') });
   };
   const done = { onSuccess: onClose, onError };
 
@@ -138,7 +157,7 @@ function EntryForm({
       else if (startedOn === undefined) local.started = badMonth;
       if (endedOn === undefined) local.ended = badMonth;
       else if (endedOn && startedOn && endedOn < startedOn) local.ended = t('app.profile.endBeforeStart');
-      if (Object.keys(local).length) return setErrors(local);
+      if (Object.keys(local).length) return refuse(local);
       setErrors({});
       return save.mutate(
         {
@@ -162,7 +181,7 @@ function EntryForm({
       const year = wholeNumber(graduated);
       if (!institution.trim()) local.institution = required;
       if (year !== null && (!Number.isInteger(year) || year < 1950 || year > 2100)) local.graduated = t('app.profile.yearInvalid');
-      if (Object.keys(local).length) return setErrors(local);
+      if (Object.keys(local).length) return refuse(local);
       setErrors({});
       return save.mutate(
         {
@@ -186,7 +205,7 @@ function EntryForm({
     if (issuedOn === undefined) local.issued = badMonth;
     if (expiresOn === undefined) local.expires = badMonth;
     else if (expiresOn && issuedOn && expiresOn < issuedOn) local.expires = t('app.profile.endBeforeStart');
-    if (Object.keys(local).length) return setErrors(local);
+    if (Object.keys(local).length) return refuse(local);
     setErrors({});
     save.mutate(
       {
@@ -205,12 +224,12 @@ function EntryForm({
   };
 
   const month = (label: string, value: string, set: (text: string) => void, key: string, hint?: string) => (
-    <Field label={label} hint={hint ?? t('app.profile.monthHint')} error={errors[key]}>
+    <Field ref={inView.place(key)} label={label} hint={hint ?? t('app.profile.monthHint')} error={errors[key]}>
       <TextField value={value} onChangeText={set} accessibilityLabel={label} ltr keyboardType="numbers-and-punctuation" placeholder="2024-03" maxLength={7} />
     </Field>
   );
   const text = (label: string, value: string, set: (text: string) => void, key: string, max: number, optional = false) => (
-    <Field label={label} hint={optional ? t('common.optional') : undefined} error={errors[key]}>
+    <Field ref={inView.place(key)} label={label} hint={optional ? t('common.optional') : undefined} error={errors[key]}>
       <TextField value={value} onChangeText={set} accessibilityLabel={label} maxLength={max} />
     </Field>
   );
@@ -235,6 +254,7 @@ function EntryForm({
       </View>
 
       <ScrollView
+        ref={scroll}
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: gutter, paddingTop: 0, paddingBottom: space[10], gap: space[4] }}
@@ -254,7 +274,7 @@ function EntryForm({
             </Field>
             {month(t('cv.started'), started, setStarted, 'started')}
             {month(t('cv.ended'), ended, setEnded, 'ended', t('app.profile.endedHint'))}
-            <Field label={t('cv.highlights')} error={errors.highlights}>
+            <Field ref={inView.place('highlights')} label={t('cv.highlights')} error={errors.highlights}>
               <TextField
                 value={highlights}
                 onChangeText={setHighlights}
@@ -270,7 +290,7 @@ function EntryForm({
             {text(t('cv.institution'), institution, setInstitution, 'institution', 160)}
             {text(t('cv.degree'), degree, setDegree, 'degree', 120, true)}
             {text(t('cv.field'), field, setField, 'field', 120, true)}
-            <Field label={t('cv.graduated')} hint={t('common.optional')} error={errors.graduated}>
+            <Field ref={inView.place('graduated')} label={t('cv.graduated')} hint={t('common.optional')} error={errors.graduated}>
               <TextField
                 value={graduated}
                 onChangeText={setGraduated}

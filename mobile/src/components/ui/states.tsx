@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { ActivityIndicator, StyleSheet, View, type DimensionValue } from 'react-native';
+import { createContext, useContext, type Context, type ReactNode } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, View, type DimensionValue } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { CloudOff, Compass, TriangleAlert, WifiOff, type LucideIcon } from '~/components/ui/lucide';
@@ -11,11 +11,39 @@ import { corner, gutter, space } from '~/theme/tokens';
 import { Button } from './button';
 import { Text } from './text';
 
+/**
+ * React Native's own word that something is inside a scroll view: every
+ * ScrollView gives it to what it holds — FlatList and FlashList among them,
+ * both drawn in one — and a Modal, a window of its own, starts afresh. It is
+ * not in the type definitions, hence the name given here.
+ */
+const InsideScroll =
+  (ScrollView as unknown as { Context?: Context<{ horizontal: boolean } | null> }).Context ??
+  createContext<{ horizontal: boolean } | null>(null);
+
+const centered = { alignItems: 'center', justifyContent: 'center', padding: space[8], gap: space[3] } as const;
+
+/**
+ * The words in the middle of the space there is. On a screen of their own they
+ * scroll: at the largest text sizes, or on the smallest phone on its side, a
+ * title, a few lines and a button are taller than the screen, and the button
+ * would be out of reach. In a list or a page that scrolls already they are
+ * just a block of it — a scroll inside a scroll would take the drags meant for
+ * the page.
+ */
 function Centered({ children }: { children: ReactNode }) {
+  const scroll = useContext(InsideScroll);
+  if (scroll && !scroll.horizontal) return <View style={[{ flex: 1 }, centered]}>{children}</View>;
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: space[8], gap: space[3] }}>
+    <ScrollView
+      style={{ flex: 1 }}
+      contentInsetAdjustmentBehavior="automatic"
+      // Still while it fits: a spinner or a message that bounces under the finger feels loose.
+      alwaysBounceVertical={false}
+      contentContainerStyle={[{ flexGrow: 1 }, centered]}
+    >
       {children}
-    </View>
+    </ScrollView>
   );
 }
 

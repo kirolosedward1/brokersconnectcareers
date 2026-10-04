@@ -53,13 +53,14 @@ export function TwoFactorSettings() {
     else setEnrolment(started);
   };
 
-  const verify = async () => {
+  const verify = async (typed = code) => {
     // Typed on an Arabic keyboard, the number pad gives Arabic-Indic digits.
-    const digits = westernDigits(code).replace(/\s+/g, '');
+    const digits = westernDigits(typed).replace(/\s+/g, '');
     if (!/^\d{6}$/.test(digits)) {
       setError(t('account.mfaCodeInvalid'));
       return;
     }
+    if (pending) return;
     setError(null);
     setPending(true);
     const accepted = await verifyCode(enrolment?.factorId ?? null, digits).catch(() => false);
@@ -103,18 +104,22 @@ export function TwoFactorSettings() {
       <Field label={t('account.mfaCode')} error={error}>
         <TextField
           value={code}
-          onChangeText={setCode}
+          onChangeText={(typed) => {
+            setCode(typed);
+            // The number pad has no return key: the sixth digit is the answer.
+            if (/^\d{6}$/.test(westernDigits(typed).replace(/\s+/g, ''))) void verify(typed);
+          }}
           accessibilityLabel={t('account.mfaCode')}
           ltr
           keyboardType="number-pad"
           textContentType="oneTimeCode"
           autoComplete="one-time-code"
           maxLength={6}
-          onSubmitEditing={verify}
+          onSubmitEditing={() => void verify()}
         />
       </Field>
       <View style={{ alignItems: 'flex-start' }}>
-        <Button label={t('account.mfaVerify')} loading={pending} onPress={verify} />
+        <Button label={t('account.mfaVerify')} loading={pending} onPress={() => void verify()} />
       </View>
     </>
   );

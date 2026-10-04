@@ -1,18 +1,23 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Stack } from 'expo-router';
 import { renderRouter } from 'expo-router/testing-library';
 import TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
 import { AuthScroll } from '~/components/auth/auth-scroll';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { SetupChecklist } from '~/components/employer/setup-checklist';
+import { FilterSheetFrame } from '~/components/jobs/filter-sheet';
 import { Avatar } from '~/components/ui/avatar';
+import { Badge } from '~/components/ui/badge';
+import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
 import { KeyboardRoom, roomForScreen } from '~/components/ui/keyboard-room';
 import { PageFooter } from '~/components/ui/page-footer';
+import { Select } from '~/components/ui/select';
+import { EmptyState, ErrorState } from '~/components/ui/states';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { ApiError } from '~/lib/api';
 import { env } from '~/lib/env';
@@ -130,6 +135,74 @@ describe('the end of a list', () => {
     expect(screen.getByText(ar.app.offline.body)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
     expect(query.fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('a state that is the whole screen', () => {
+  // At the largest text sizes, or on the smallest phone turned on its side,
+  // the words and the button under them can be taller than the screen.
+  it('scrolls, clear of the header and the tab bar, to the button under its words', () => {
+    render(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />, { wrapper: Providers });
+    const scroll = screen.UNSAFE_getByType(ScrollView);
+    expect(scroll.props.contentInsetAdjustmentBehavior).toBe('automatic');
+    expect(within(scroll).getByRole('button', { name: ar.common.retry })).toBeTruthy();
+  });
+
+  it("is a block of the list it is the empty state of, which scrolls already: not a scroll inside a scroll", () => {
+    render(<FlatList data={[]} renderItem={() => null} ListEmptyComponent={<EmptyState title="nothing yet" />} />, {
+      wrapper: Providers,
+    });
+    expect(screen.getByText('nothing yet')).toBeTruthy();
+    expect(screen.UNSAFE_getAllByType(ScrollView)).toHaveLength(1);
+  });
+
+  it('scrolls itself in a sheet, a window of its own, even over a page that scrolls', () => {
+    render(
+      <ScrollView>
+        <Modal visible>
+          <EmptyState title="nothing yet" />
+        </Modal>
+      </ScrollView>,
+      { wrapper: Providers },
+    );
+    expect(screen.getByText('nothing yet')).toBeTruthy();
+    expect(screen.UNSAFE_getAllByType(ScrollView)).toHaveLength(2);
+  });
+});
+
+describe('a label in a row, at the largest text sizes', () => {
+  // A line of text in a row that may not shrink runs past the row's edge
+  // rather than wrapping: past a button's fill, or pushing a sheet's buttons off the screen.
+  const shrinks = (label: ReturnType<typeof screen.getByText>) => StyleSheet.flatten(label.props.style).flexShrink;
+  const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, bottom: 34, left: 0, right: 0 } };
+
+  it('wraps inside its button, chip and badge, beside their icon', () => {
+    render(
+      <>
+        <Button label="a button" icon={<Text>·</Text>} onPress={() => {}} />
+        <Chip label="a chip" icon={<Text>·</Text>} onPress={() => {}} />
+        <Badge label="a badge" icon={<Text>·</Text>} />
+      </>,
+      { wrapper: Providers },
+    );
+    expect(shrinks(screen.getByText('a button'))).toBe(1);
+    expect(shrinks(screen.getByText('a chip'))).toBe(1);
+    expect(shrinks(screen.getByText('a badge'))).toBe(1);
+  });
+
+  it("wraps a sheet's title between its buttons", () => {
+    render(
+      <SafeAreaProvider initialMetrics={metrics}>
+        <Select label="a choice" value={null} options={[{ value: 'one', label: 'one' }]} placeholder="any" onChange={() => {}} />
+        <FilterSheetFrame visible onClose={() => {}} onClear={() => {}} applyLabel="show" onApply={() => {}}>
+          <Text>…</Text>
+        </FilterSheetFrame>
+      </SafeAreaProvider>,
+      { wrapper: Providers },
+    );
+    fireEvent.press(screen.getByRole('button', { name: 'a choice: any' }));
+    expect(shrinks(screen.getByRole('header', { name: 'a choice' }))).toBe(1);
+    expect(shrinks(screen.getByRole('header', { name: ar.jobs.filters }))).toBe(1);
   });
 });
 

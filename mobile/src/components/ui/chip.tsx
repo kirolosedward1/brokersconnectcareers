@@ -65,6 +65,8 @@ export function Chip({
       style={({ pressed }) => ({
         opacity: disabled ? 0.45 : 1,
         minHeight: 36,
+        // Never wider than the row it sits in: at the largest text sizes its label wraps instead.
+        maxWidth: '100%',
         flexDirection: 'row',
         alignItems: 'center',
         gap: space[1] + 2,
@@ -89,7 +91,7 @@ export function Chip({
       })}
     >
       {icon}
-      <Text variant="small" weight={solid || removable ? 'semibold' : 'medium'} style={{ color: text }}>
+      <Text variant="small" weight={solid || removable ? 'semibold' : 'medium'} style={{ color: text, flexShrink: 1 }}>
         {label}
       </Text>
       {removable ? (

@@ -18,6 +18,7 @@ import * as EmailsScreen from '../src/app/(tabs)/(account)/account/emails';
 import * as SecurityScreen from '../src/app/(tabs)/(account)/account/security';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID, type AuthUser } from './auth-fixtures';
 import { phoneFormData, sentBody } from './multipart';
+import { watchFocus } from './focus';
 import { fakeServer } from './server';
 
 /*
@@ -334,6 +335,22 @@ describe('signing in and security', () => {
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
   });
 
+  it('moves to the second password with the return key, and saves from there', async () => {
+    await signIn();
+    const focus = watchFocus();
+    try {
+      renderRouter(app, { initialUrl: '/account/security' });
+      fireEvent.changeText(await screen.findByLabelText(ar.account.newPassword), 'a-new-password');
+      fireEvent(screen.getByLabelText(ar.account.newPassword), 'submitEditing');
+      expect(focus.focused).toEqual([ar.auth.passwordConfirm]);
+      fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
+      fireEvent(screen.getByLabelText(ar.auth.passwordConfirm), 'submitEditing');
+      expect(await screen.findByText(ar.account.passwordSaved)).toBeTruthy();
+    } finally {
+      focus.undo();
+    }
+  });
+
   it.each([
     ['google', ar.account.oauthOnly],
     ['apple', ar.app.account.oauthOnlyApple],
@@ -368,6 +385,15 @@ describe('signing in and security', () => {
 
     fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
     fireEvent.press(screen.getByRole('button', { name: ar.account.mfaVerify }));
+    expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
+  });
+
+  it('takes the first code by itself once six digits are in: the number pad has no return key', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.mfaSetup }));
+    expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
     expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
   });
 

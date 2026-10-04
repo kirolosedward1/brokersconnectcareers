@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,11 +19,12 @@ const MARK = require('../../../assets/images/icon.png');
  * bar, and — on a `bare` screen, drawn without a header — for the status bar,
  * which the heading sat under.
  */
-export function AuthScroll({ children, bare = false }: { children: ReactNode; bare?: boolean }) {
+export function AuthScroll({ ref, children, bare = false }: { ref?: Ref<ScrollView>; children: ReactNode; bare?: boolean }) {
   const insets = useSafeAreaInsets();
   const android = Platform.OS === 'android';
   return (
     <ScrollView
+      ref={ref}
       contentInsetAdjustmentBehavior="automatic"
       automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"

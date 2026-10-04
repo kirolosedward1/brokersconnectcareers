@@ -67,9 +67,9 @@ export default function SecondFactorScreen() {
     return null;
   }
 
-  const verify = () => {
+  const verify = (typed = code) => {
     // Typed on an Arabic keyboard, the number pad gives Arabic-Indic digits.
-    const digits = westernDigits(code).replace(/\D/g, '');
+    const digits = westernDigits(typed).replace(/\D/g, '');
     if (digits.length !== 6) {
       setError(t('account.mfaCodeInvalid'));
       return;
@@ -103,7 +103,12 @@ export default function SecondFactorScreen() {
           <Field label={t('account.mfaCode')}>
             <TextField
               value={code}
-              onChangeText={setCode}
+              onChangeText={(typed) => {
+                setCode(typed);
+                // The number pad has no return key, and a code AutoFilled from Messages
+                // presses nothing: the sixth digit is the answer.
+                if (westernDigits(typed).replace(/\D/g, '').length === 6) verify(typed);
+              }}
               accessibilityLabel={t('account.mfaCode')}
               ltr
               keyboardType="number-pad"
@@ -111,11 +116,11 @@ export default function SecondFactorScreen() {
               autoComplete="one-time-code"
               maxLength={6}
               autoFocus
-              onSubmitEditing={verify}
+              onSubmitEditing={() => verify()}
             />
           </Field>
           {error ? <Notice tone="destructive">{error}</Notice> : null}
-          <Button label={t('account.mfaVerify')} size="lg" loading={pending} onPress={verify} />
+          <Button label={t('account.mfaVerify')} size="lg" loading={pending} onPress={() => verify()} />
           <Button label={t('app.auth.mfaSignOut')} variant="ghost" disabled={pending} onPress={signOut} />
           {/* Without the phone there is no code, and nothing of the account
               opens without one: the way back is a person. */}

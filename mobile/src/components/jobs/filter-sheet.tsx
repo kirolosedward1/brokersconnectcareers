@@ -237,7 +237,8 @@ export function FilterSheetFrame({
           >
             <X size={22} color={colors.foreground} />
           </Pressable>
-          <Text weight="semibold" accessibilityRole="header">
+          {/* Wraps at the largest text sizes, rather than pushing Clear off the sheet. */}
+          <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1, textAlign: 'center' }}>
             {t('jobs.filters')}
           </Text>
           <View style={{ minWidth: hitTarget, alignItems: 'flex-end' }}>

@@ -154,7 +154,7 @@ export default function ProfileScreen() {
             formY.current = event.nativeEvent.layout.y;
           }}
         >
-          <ProfileForm profile={viewer.profile} agent={agent} developerIds={developerIds} />
+          <ProfileForm profile={viewer.profile} agent={agent} developerIds={developerIds} scroll={scroll} />
         </View>
 
         {agent ? (

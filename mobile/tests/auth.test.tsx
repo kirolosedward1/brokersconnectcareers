@@ -1,4 +1,4 @@
-import { Alert, BackHandler, Linking, Platform, Text } from 'react-native';
+import { AccessibilityInfo, Alert, BackHandler, Linking, Platform, Text } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -41,6 +41,8 @@ import {
   type AuthUser,
 } from './auth-fixtures';
 import { cairo, company, companyPage, newCairo } from './fixtures';
+import { watchFocus } from './focus';
+import { placeViewsAt } from './measure';
 import { fakeServer } from './server';
 
 /*
@@ -409,6 +411,28 @@ describe('creating an account', () => {
     expect(server.asked('/auth/v1/signup')).toHaveLength(0);
   });
 
+  it('moves from field to field with the return key, and signs up from the last', async () => {
+    const focus = watchFocus();
+    try {
+      renderRouter(app, { initialUrl: '/sign-up' });
+      const email = await screen.findByLabelText(ar.auth.email);
+      expect(email.props.returnKeyType).toBe('next');
+      fireEvent.changeText(email, 'new@example.com');
+      fireEvent(email, 'submitEditing');
+      expect(focus.focused).toEqual([ar.auth.password]);
+      fireEvent.changeText(screen.getByLabelText(ar.auth.password), PASSWORD);
+      fireEvent(screen.getByLabelText(ar.auth.password), 'submitEditing');
+      expect(focus.focused).toEqual([ar.auth.password, ar.auth.passwordConfirm]);
+      fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), PASSWORD);
+      await waitFor(() => expect(screen.getByRole('button', { name: ar.auth.signUp, disabled: false })).toBeTruthy());
+      fireEvent(screen.getByLabelText(ar.auth.passwordConfirm), 'submitEditing');
+      expect(await screen.findByText(ar.auth.checkEmailTitle)).toBeTruthy();
+      expect(server.asked('/auth/v1/signup')).toHaveLength(1);
+    } finally {
+      focus.undo();
+    }
+  });
+
   it('catches a mistyped password before sending it', async () => {
     renderRouter(app, { initialUrl: '/sign-up' });
     fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'new@example.com');
@@ -458,6 +482,19 @@ describe('onboarding', () => {
     });
   });
 
+  it('moves from the name to the number with the return key', async () => {
+    profileRow = null;
+    await signedIn();
+    const focus = watchFocus();
+    try {
+      renderRouter(app, { initialUrl: '/onboarding' });
+      fireEvent(await screen.findByLabelText(ar.onboarding.fullName), 'submitEditing');
+      expect(focus.focused).toEqual([ar.onboarding.whatsapp]);
+    } finally {
+      focus.undo();
+    }
+  });
+
   it('offers the Terms and the Privacy policy inside the agreement to VoiceOver, which cannot reach its links', async () => {
     profileRow = null;
     await signedIn();
@@ -484,6 +521,28 @@ describe('onboarding', () => {
     expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
   });
 
+  it('checks the number before anything is sent, and brings the error into view and says it, far above the button', async () => {
+    profileRow = null;
+    await signedIn();
+    const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
+    announce.mockClear();
+    const layout = placeViewsAt(300);
+    try {
+      renderRouter(app, { initialUrl: '/onboarding' });
+      fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '12');
+      fireEvent.press(screen.getByRole('radio', { name: `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}` }));
+      fireEvent.press(screen.getByRole('checkbox'));
+      await press(ar.onboarding.submit);
+
+      expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
+      expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
+      expect(announce).toHaveBeenCalledWith(ar.validation.invalidPhone, { queue: true });
+      await waitFor(() => expect(layout.scrollTo).toHaveBeenCalledWith({ y: 300 - 16, animated: true }));
+    } finally {
+      layout.undo();
+    }
+  });
+
   it("asks a company for what a reviewer needs, and says which field the server refused", async () => {
     profileRow = null;
     server.on('POST /api/mobile/v1/actions/completeOnboarding', {
@@ -497,7 +556,7 @@ describe('onboarding', () => {
     // The two kinds of account are one choice, named by the question they answer.
     expect(screen.getByLabelText(ar.onboarding.roleQuestion).props.accessibilityRole).toBe('radiogroup');
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.companyName), 'نايل بروكرز');
-    fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '12');
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
     fireEvent.press(screen.getByRole('checkbox'));
     await press(ar.onboarding.submit);
 
@@ -506,7 +565,7 @@ describe('onboarding', () => {
       input: {
         role: 'employer',
         fullName: 'sara',
-        whatsapp: '12',
+        whatsapp: '01001234567',
         locale: 'ar',
         agreed: true,
         company: { nameAr: 'نايل بروكرز', website: null, headcountBand: null, districtId: null },
@@ -596,17 +655,35 @@ describe('the second factor', () => {
     await press(ar.auth.signIn);
 
     expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
-    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '000000');
+    // Short of six digits, the button says so without asking anybody.
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '12345');
     await press(ar.account.mfaVerify);
+    expect(await screen.findByText(ar.account.mfaCodeInvalid)).toBeTruthy();
+    expect(server.asked(`/auth/v1/factors/${totpFactor.id}/verify`)).toHaveLength(0);
+
+    // Six are the answer, sent as the sixth is typed.
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '000000');
+    await waitFor(() => expect(server.asked(`/auth/v1/factors/${totpFactor.id}/verify`)).toHaveLength(1));
     expect(await screen.findByText(ar.account.mfaCodeInvalid)).toBeTruthy();
 
     fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
-    await press(ar.account.mfaVerify);
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     expect(server.asked(`/auth/v1/factors/${totpFactor.id}/verify`).at(-1)?.body).toMatchObject({
       code: '123456',
       challenge_id: 'challenge-1',
     });
+  });
+
+  it('answers by itself once six digits are in: the number pad has no return key, and AutoFill presses nothing', async () => {
+    user = authUser({ factors: [totpFactor] });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '12345');
+    expect(server.asked(`/auth/v1/factors/${totpFactor.id}/verify`)).toHaveLength(0);
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+    expect(await screen.findByText('home screen')).toBeTruthy();
+    expect(server.asked(`/auth/v1/factors/${totpFactor.id}/verify`)).toHaveLength(1);
   });
 
   it('takes the code typed with Arabic-Indic digits, as an Arabic keyboard types it', async () => {
@@ -615,7 +692,6 @@ describe('the second factor', () => {
     renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '١٢٣٤٥٦');
-    await press(ar.account.mfaVerify);
     await waitFor(() =>
       expect(server.asked(`/auth/v1/factors/${totpFactor.id}/verify`).at(-1)?.body).toMatchObject({ code: '123456' }),
     );
@@ -638,7 +714,6 @@ describe('the second factor', () => {
     // A while later, so the refreshed session is a new one (the clock stands still under renderRouter).
     act(() => jest.setSystemTime(Date.now() + 60_000));
     fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
-    await press(ar.account.mfaVerify);
 
     expect(await screen.findByText('home screen')).toBeTruthy();
     // Asked once, at launch; not again once the answer was that there is nothing to ask.
@@ -898,6 +973,22 @@ describe('an email link opened in the app', () => {
     await waitFor(() => expect(screen.queryByText(ar.onboarding.confirmedBanner)).toBeNull());
     expect(screen.queryByText(ar.auth.checkEmailTitle)).toBeNull();
     expect(screen.getByText('home screen')).toBeTruthy();
+  });
+
+  it('moves to the second password with the return key, and sets it from there', async () => {
+    const focus = watchFocus();
+    try {
+      renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
+      expect(await screen.findByText(ar.auth.newPasswordTitle)).toBeTruthy();
+      fireEvent.changeText(screen.getByLabelText(ar.auth.password), 'a-new-password');
+      fireEvent(screen.getByLabelText(ar.auth.password), 'submitEditing');
+      expect(focus.focused).toEqual([ar.auth.passwordConfirm]);
+      fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
+      fireEvent(screen.getByLabelText(ar.auth.passwordConfirm), 'submitEditing');
+      await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
+    } finally {
+      focus.undo();
+    }
   });
 
   it('sets a new password from a reset link, ends the other sessions and sends the notice', async () => {

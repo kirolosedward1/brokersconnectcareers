@@ -13,6 +13,8 @@ type Props = Omit<PressableProps, 'children'> & {
   size?: 'default' | 'sm' | 'lg';
   loading?: boolean;
   icon?: ReactNode;
+  /** A cap on how far the label grows with the text size: for a button in a bar of fixed height. */
+  maxFontSizeMultiplier?: number;
 };
 
 /**
@@ -22,7 +24,17 @@ type Props = Omit<PressableProps, 'children'> & {
  * in both, for the one action on the deep hero panel; outline is a quiet
  * surface with a hairline; ghost is the label alone.
  */
-export function Button({ label, variant = 'primary', size = 'default', loading = false, icon, disabled, style, ...props }: Props) {
+export function Button({
+  label,
+  variant = 'primary',
+  size = 'default',
+  loading = false,
+  icon,
+  disabled,
+  style,
+  maxFontSizeMultiplier,
+  ...props
+}: Props) {
   const { colors, lift, scheme } = useTheme();
   const height = size === 'sm' ? 36 : size === 'lg' ? 56 : hitTarget + 4;
 
@@ -63,9 +75,15 @@ export function Button({ label, variant = 'primary', size = 'default', loading =
         typeof style === 'function' ? style(state) : style,
       ]}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
+      {/* The label wraps within the fill at the largest text sizes, rather than running past it. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], maxWidth: '100%' }}>
         {loading ? <ActivityIndicator color={fill.text} /> : icon}
-        <Text weight="semibold" variant={size === 'sm' ? 'small' : 'body'} style={{ color: fill.text }}>
+        <Text
+          weight="semibold"
+          variant={size === 'sm' ? 'small' : 'body'}
+          maxFontSizeMultiplier={maxFontSizeMultiplier}
+          style={{ color: fill.text, flexShrink: 1, textAlign: 'center' }}
+        >
           {label}
         </Text>
       </View>

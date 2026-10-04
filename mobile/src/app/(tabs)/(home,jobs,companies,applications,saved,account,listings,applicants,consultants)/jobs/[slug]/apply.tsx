@@ -33,6 +33,7 @@ import { useJob } from '~/features/jobs/queries';
 import { ApiError } from '~/lib/api';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
+import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
@@ -216,6 +217,7 @@ function ApplyForm({
   const { colors } = useTheme();
   const apply = useApplyToJob();
   const scroll = useRef<ScrollView>(null);
+  const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'experienceBand', 'cv']);
 
   const [fullName, setFullName] = useState(defaultName);
   const [whatsapp, setWhatsapp] = useState(defaultPhone);
@@ -238,8 +240,8 @@ function ApplyForm({
 
   const showErrors = (next: Errors) => {
     setErrors(next);
-    // The fields are above the button: bring them back into view.
-    scroll.current?.scrollTo({ y: 0, animated: true });
+    // The fields are above the button: the first wrong one is brought back into view, and said.
+    inView.show(next);
   };
 
   const choose = async () => {
@@ -273,8 +275,8 @@ function ApplyForm({
         onSuccess: onSent,
         onError: (failure) => {
           const reason = failure instanceof ApplyRefused ? failure.reason : 'failed';
-          if (reason === 'already_applied') return setErrors({ form: t('apply.alreadyApplied') });
-          if (reason === 'rate_limit') return setErrors({ form: t('apply.rateLimit') });
+          if (reason === 'already_applied') return showErrors({ form: t('apply.alreadyApplied') });
+          if (reason === 'rate_limit') return showErrors({ form: t('apply.rateLimit') });
           if (reason === 'fileTooLarge' || reason === 'fileType') return showErrors({ cv: t(`validation.${reason}`) });
           if (reason === 'upload' || reason === 'invalid_cv_path') return showErrors({ cv: t('common.errorBody') });
           const fields = failure instanceof ApplyRefused ? failure.fieldErrors : undefined;
@@ -287,7 +289,7 @@ function ApplyForm({
               ...(fields.note || fields.jobId ? { form: t('common.errorBody') } : {}),
             });
           }
-          setErrors({ form: t('common.errorBody') });
+          showErrors({ form: t('common.errorBody') });
         },
       },
     );
@@ -311,7 +313,7 @@ function ApplyForm({
         </Text>
       </View>
 
-      <Field label={t('apply.fullName')} error={errors.fullName}>
+      <Field ref={inView.place('fullName')} label={t('apply.fullName')} error={errors.fullName}>
         <TextField
           value={fullName}
           onChangeText={setFullName}
@@ -322,7 +324,7 @@ function ApplyForm({
         />
       </Field>
 
-      <Field label={t('apply.whatsapp')} error={errors.whatsapp}>
+      <Field ref={inView.place('whatsapp')} label={t('apply.whatsapp')} error={errors.whatsapp}>
         <TextField
           value={whatsapp}
           onChangeText={setWhatsapp}
@@ -334,7 +336,7 @@ function ApplyForm({
         />
       </Field>
 
-      <Field label={t('apply.experienceBand')} error={errors.experienceBand}>
+      <Field ref={inView.place('experienceBand')} label={t('apply.experienceBand')} error={errors.experienceBand}>
         <Select
           label={t('apply.experienceBand')}
           value={band}
@@ -344,7 +346,7 @@ function ApplyForm({
         />
       </Field>
 
-      <Field label={t('apply.cv')} hint={t('apply.cvOptional')} error={errors.cv}>
+      <Field ref={inView.place('cv')} label={t('apply.cv')} hint={t('apply.cvOptional')} error={errors.cv}>
         {attachment ? (
           <View
             style={{

@@ -45,9 +45,25 @@ import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
+import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+
+/** The fields that can be refused, as each step shows them, top first. */
+const FIELD_ORDER = [
+  'titleAr',
+  'titleEn',
+  'districtId',
+  'seats',
+  'basicSalaryMin',
+  'basicSalaryMax',
+  'commissionValue',
+  'commissionNoteAr',
+  'descriptionAr',
+  'descriptionEn',
+  'requirementsAr',
+] as const;
 
 /**
  * Posting a listing, or changing one — the website's four-step JobForm:
@@ -71,6 +87,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   const save = useSaveJob();
   const { actor } = useSession();
   const scroll = useRef<ScrollView>(null);
+  const inView = useErrorsInView(scroll, FIELD_ORDER);
 
   const [idempotencyKey] = useState(() => uuid());
   // The version the fields were filled from. The listing is read again when the
@@ -111,8 +128,12 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
         ? t(`validation.${problem as Exclude<Problem, 'numberInvalid'>}`)
         : t('validation.required');
 
-  const show = (problems: Partial<Record<FieldKey, Problem>>) =>
-    setErrors(Object.fromEntries(Object.entries(problems).map(([key, problem]) => [key, say(problem as string)])));
+  /** Errors under their fields, the first brought into view and said: Next and Submit are far below them. */
+  const show = (problems: Partial<Record<FieldKey, Problem>>) => {
+    const messages = Object.fromEntries(Object.entries(problems).map(([key, problem]) => [key, say(problem as string)]));
+    setErrors(messages);
+    inView.show(messages);
+  };
 
   const goTo = (next: number) => {
     setStep(next);
@@ -123,6 +144,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   const refuse = (message: string, where = step) => {
     setErrors({ form: message });
     goTo(where);
+    inView.show({ form: message });
   };
 
   // Only the latest lookup's answer is shown: a slower one for an earlier district must not replace it.
@@ -177,8 +199,10 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
           const where = stepOf(Object.keys(fields));
           // A field with no place on any step (the developers past their limit) is not refused in silence.
           if (where == null) return refuse(t('common.errorBody'));
-          setErrors(Object.fromEntries(Object.entries(fields).map(([key, message]) => [key, say(message)])));
+          const messages = Object.fromEntries(Object.entries(fields).map(([key, message]) => [key, say(message)]));
+          setErrors(messages);
           goTo(where);
+          inView.show(messages);
           return;
         }
         refuse(t('common.errorBody'));
@@ -192,7 +216,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     max: number,
     options: { hint?: string; ltr?: boolean; lines?: number } = {},
   ) => (
-    <Field label={label} hint={options.hint} error={errors[key]}>
+    <Field ref={inView.place(key)} label={label} hint={options.hint} error={errors[key]}>
       <TextField
         value={values[key]}
         onChangeText={set(key)}
@@ -309,7 +333,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               onChange={(value) => value && set('experienceBand')(value)}
             />
           </Field>
-          <Field label={t('jobForm.district')} error={errors.districtId}>
+          <Field ref={inView.place('districtId')} label={t('jobForm.district')} error={errors.districtId}>
             <Select
               label={t('jobForm.district')}
               value={values.districtId}
@@ -319,7 +343,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               onChange={(value) => value != null && set('districtId')(value)}
             />
           </Field>
-          <Field label={t('jobForm.seats')} hint={t('jobForm.seatsHint')} error={errors.seats}>
+          <Field ref={inView.place('seats')} label={t('jobForm.seats')} hint={t('jobForm.seatsHint')} error={errors.seats}>
             <TextField
               value={values.seats}
               onChangeText={set('seats')}
@@ -334,7 +358,12 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
 
       {step === 1 ? (
         <View style={{ gap: space[4] }}>
-          <Field label={t('jobForm.basicSalaryMin')} hint={t('jobForm.salaryHint')} error={errors.basicSalaryMin}>
+          <Field
+            ref={inView.place('basicSalaryMin')}
+            label={t('jobForm.basicSalaryMin')}
+            hint={t('jobForm.salaryHint')}
+            error={errors.basicSalaryMin}
+          >
             <TextField
               value={values.basicSalaryMin}
               onChangeText={set('basicSalaryMin')}
@@ -344,7 +373,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               maxLength={11}
             />
           </Field>
-          <Field label={t('jobForm.basicSalaryMax')} error={errors.basicSalaryMax}>
+          <Field ref={inView.place('basicSalaryMax')} label={t('jobForm.basicSalaryMax')} error={errors.basicSalaryMax}>
             <TextField
               value={values.basicSalaryMax}
               onChangeText={set('basicSalaryMax')}
@@ -379,7 +408,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
             />
           </Field>
           {values.commissionType === 'percentage' ? (
-            <Field label={t('jobForm.commissionValue')} error={errors.commissionValue}>
+            <Field ref={inView.place('commissionValue')} label={t('jobForm.commissionValue')} error={errors.commissionValue}>
               <TextField
                 value={values.commissionValue}
                 onChangeText={set('commissionValue')}

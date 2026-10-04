@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { View } from 'react-native';
+import { useRef, useState, type ReactNode } from 'react';
+import { View, type TextInput } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import type { AuthError } from '@supabase/supabase-js';
@@ -51,6 +51,9 @@ export default function SignUpScreen() {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // The return key moves on to the next field, and from the last one signs up, as on sign-in.
+  const passwordField = useRef<TextInput>(null);
+  const confirmField = useRef<TextInput>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [resent, setResent] = useState<'sent' | 'wait' | 'offline' | null>(null);
 
@@ -199,11 +202,15 @@ export default function SignUpScreen() {
             autoCorrect={false}
             autoComplete="email"
             textContentType="username"
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => passwordField.current?.focus()}
           />
         </Field>
 
         <Field label={t('auth.password')}>
           <TextField
+            ref={passwordField}
             value={password}
             onChangeText={setPassword}
             accessibilityLabel={t('auth.password')}
@@ -214,11 +221,15 @@ export default function SignUpScreen() {
             autoComplete="new-password"
             textContentType="newPassword"
             passwordRules="minlength: 8;"
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => confirmField.current?.focus()}
           />
         </Field>
 
         <Field label={t('auth.passwordConfirm')}>
           <TextField
+            ref={confirmField}
             value={passwordConfirm}
             onChangeText={setPasswordConfirm}
             accessibilityLabel={t('auth.passwordConfirm')}
@@ -229,6 +240,10 @@ export default function SignUpScreen() {
             autoComplete="new-password"
             textContentType="newPassword"
             passwordRules="minlength: 8;"
+            returnKeyType="go"
+            onSubmitEditing={() => {
+              if (!pending && !captchaBlocks(captcha)) void submit();
+            }}
           />
         </Field>
 

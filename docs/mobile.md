@@ -117,6 +117,16 @@ compare with (a new branch), it compares with the previous commit.
   buttons and chips, a gentle press (none with Reduce Motion), a few haptics
   (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, light by
   default with light / dark / system as on the site, 44-point touch targets.
+- **Forms and large text.** A form's button is below its fields, so a refusal
+  is brought to them: `useErrorsInView` (`mobile/src/lib/use-errors-in-view.ts`)
+  scrolls the first field with an error into view and has VoiceOver say it —
+  iOS reads out no error by itself. The return key moves to the next field and
+  submits from the last; a six-digit code answers as its sixth digit is typed
+  (the number pad has no return key). An empty or error state that is a
+  screen of its own scrolls (`mobile/src/components/ui/states.tsx`), so at the
+  largest text sizes its button is never left behind the tab bar; inside a
+  list it is a block of the list. Labels beside icons wrap rather than run
+  past their button, chip or badge.
 - **Navigation.** Routes mirror the website's paths. Each tab is a route group
   with its own stack, and listings, company pages and the bell's feed live in
   a group all tabs share, so they open inside the tab the reader is in. The

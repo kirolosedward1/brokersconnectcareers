@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
-import { Alert, Platform, Pressable, Share, Text, type AlertButton } from 'react-native';
+import { AccessibilityInfo, Alert, Platform, Pressable, Share, Text, type AlertButton } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import type { Actor } from '@/lib/permissions';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { useWithdrawApplication } from '~/features/applications/queries';
@@ -21,6 +21,7 @@ import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,
 import * as ApplyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/jobs/[slug]/apply';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
 import { board, cairo, jobPage, listing, newCairo } from './fixtures';
+import { placeViewsAt } from './measure';
 import { fakeServer } from './server';
 
 /*
@@ -353,14 +354,22 @@ describe('the form', () => {
     expect(uploads()[0].url.pathname).toMatch(/\.docx$/);
   });
 
-  it('catches a phone number the website would refuse, without sending anything', async () => {
+  it('catches a phone number the website would refuse, without sending anything — in view and said', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
-
-    fireEvent.changeText(await screen.findByLabelText(ar.apply.whatsapp), '123');
-    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
-    expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
-    expect(server.asked('/api/mobile/v1/actions/applyToJob')).toHaveLength(0);
+    const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
+    announce.mockClear();
+    const layout = placeViewsAt(260);
+    try {
+      renderRouter(app, { initialUrl: APPLY });
+      fireEvent.changeText(await screen.findByLabelText(ar.apply.whatsapp), '123');
+      fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+      expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
+      expect(server.asked('/api/mobile/v1/actions/applyToJob')).toHaveLength(0);
+      expect(announce).toHaveBeenCalledWith(ar.validation.invalidPhone, { queue: true });
+      await waitFor(() => expect(layout.scrollTo).toHaveBeenCalledWith({ y: 260 - 16, animated: true }));
+    } finally {
+      layout.undo();
+    }
   });
 
   it("says the website's words when it has had enough applications for today", async () => {
@@ -458,6 +467,12 @@ describe('sharing a listing', () => {
     renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.share }));
     expect(share).toHaveBeenCalledWith({ message: listing.title_ar, url });
+  });
+
+  it("keeps its word in the bar to the bar's size at the largest text sizes, as the bell does", async () => {
+    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    const button = await screen.findByRole('button', { name: ar.jobs.share });
+    expect(within(button).getByText(ar.jobs.share).props.maxFontSizeMultiplier).toBe(1.4);
   });
 
   it('puts the link inside the message on Android, which shares the message alone', async () => {

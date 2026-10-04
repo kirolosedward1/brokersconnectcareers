@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Alert, Modal, Pressable, Text, type AlertButton } from 'react-native';
+import { AccessibilityInfo, Alert, Modal, Pressable, Text, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -14,6 +14,7 @@ import { ThemeProvider } from '~/theme/provider';
 import * as ProfileScreen from '../src/app/(tabs)/(account)/account/profile';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
+import { placeViewsAt } from './measure';
 import { fakeServer } from './server';
 
 /*
@@ -354,12 +355,21 @@ describe('the profile', () => {
     expect(server.asked('/storage/v1/object/cvs')).toHaveLength(0);
   });
 
-  it('catches a phone number the website would refuse, before sending anything', async () => {
-    open();
-    fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '12');
-    fireEvent.press(saveButton());
-    expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
-    expect(server.asked('/api/mobile/v1/actions/saveAgentProfile')).toHaveLength(0);
+  it('catches a phone number the website would refuse, before sending anything — in view and said, far above Save', async () => {
+    const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
+    announce.mockClear();
+    const layout = placeViewsAt(700);
+    try {
+      open();
+      fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '12');
+      fireEvent.press(saveButton());
+      expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
+      expect(server.asked('/api/mobile/v1/actions/saveAgentProfile')).toHaveLength(0);
+      expect(announce).toHaveBeenCalledWith(ar.validation.invalidPhone, { queue: true });
+      await waitFor(() => expect(layout.scrollTo).toHaveBeenCalledWith({ y: 700 - 16, animated: true }));
+    } finally {
+      layout.undo();
+    }
   });
 
   it('never offers an empty form over a profile it could not read', async () => {
@@ -519,16 +529,25 @@ describe('the CV sections', () => {
     );
   });
 
-  it('catches an end before the start, before sending anything', async () => {
+  it('catches an end before the start, before sending anything — in view in the sheet, and said', async () => {
     open();
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'سيتي سكيب');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
     fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
     fireEvent.changeText(screen.getByLabelText(ar.cv.ended), '2022-01');
-    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
-    expect(await screen.findByText(ar.app.profile.endBeforeStart)).toBeTruthy();
-    expect(server.asked('/api/mobile/v1/actions/saveExperience')).toHaveLength(0);
+    const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
+    announce.mockClear();
+    const layout = placeViewsAt(320);
+    try {
+      fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+      expect(await screen.findByText(ar.app.profile.endBeforeStart)).toBeTruthy();
+      expect(server.asked('/api/mobile/v1/actions/saveExperience')).toHaveLength(0);
+      expect(announce).toHaveBeenCalledWith(ar.app.profile.endBeforeStart, { queue: true });
+      await waitFor(() => expect(layout.scrollTo).toHaveBeenCalledWith({ y: 320 - 16, animated: true }));
+    } finally {
+      layout.undo();
+    }
   });
 
   it('asks before an entry typed into the sheet is thrown away, by its X or by pulling the sheet down', async () => {
