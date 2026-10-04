@@ -141,7 +141,8 @@ in the app, and nothing is used to track people across apps or websites.
   alone.
 - **1.2 user-generated content.** Listings, companies and consultant profiles
   can be reported (`reportTarget`), a company or a consultant can be hidden on
-  the phone (the block: `hidden-companies.ts`, `hidden-agents.ts`), the
+  the phone (the block: `hidden-companies.ts`, `hidden-agents.ts`) and
+  brought back from Account → "Hidden on this phone", the
   Terms and the Privacy policy are agreed to at onboarding — an unticked box,
   with the person confirming they are 18 or older, recorded with the versions
   agreed to (`policy_acceptances`, migration 336) — and reports reach the
@@ -166,7 +167,8 @@ Connect's age-rating questionnaire, set the minimum age to 18 / the "18+"
 rating where offered, rather than the 4+ the content questions alone would give).
 The content answers: no violence, sexual content, gambling, drugs or medical
 content; user-generated content exists and is moderated; the in-app browser
-opens the website's own pages ("unrestricted web access": no).
+opens the pages the app names — the website's, a licence's text, the
+captcha's own links — and has no address bar ("unrestricted web access": no).
 
 ## Review accounts
 

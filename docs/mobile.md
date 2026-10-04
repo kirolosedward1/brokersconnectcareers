@@ -265,8 +265,11 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   `brokersconnect://auth/callback`. Each button appears only when
   `/api/mobile/v1/config` says the provider is on.
 - **Second factor.** An account with an authenticator is asked for its code
-  after any sign-in, before anything else opens (the website asks only in the
-  admin console); signing out is the way out for someone without the phone.
+  after any sign-in, before anything else opens — and on the website before
+  any page of the account (`src/lib/auth/second-factor.ts`), which asked only
+  in the admin console until October 2026; signing out is the way out for
+  someone without the phone. The database asks it of admins only
+  (docs/security/THREAT_MODEL.md, section 5).
 - **Onboarding** runs the website's `completeOnboarding` and adds agreeing to
   the Terms of use, which the App Store requires of an app where people publish
   to each other. A session with no profile — just signed in, restored at launch,
@@ -402,8 +405,12 @@ reports promptly.
   (`TEAMID.net.brokersconnect.app`) is set on Vercel.
 - **Email links** go to `/auth/confirm` with a token hash. The website verifies
   it after a "Continue" press; the app, opening the same URL, verifies it
-  itself at once (mail scanners do not open apps), asking first only when
-  another account is signed in on the phone. `src/lib/auth/confirm-link.ts`
+  itself at once (mail scanners do not open apps) — with a client that keeps
+  nothing (`features/auth/verify-link.ts`), because Supabase answers with the
+  session of whoever the token belongs to. Taken when nobody is signed in or
+  it is the same account; for another account, whatever kind of link (a new
+  address's included), the person is asked first, naming both.
+  `src/lib/auth/confirm-link.ts`
   reads the link for both: a reset opens the new-password screen, a
   confirmation onboarding with the door's role and the destination.
 - **Captcha.** When Supabase Auth requires Turnstile, the app loads
