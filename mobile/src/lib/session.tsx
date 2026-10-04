@@ -135,9 +135,10 @@ export function actorOf(viewer: Viewer): Actor {
  * The session as stored on this phone, read without the network: whether
  * somebody is signed in here is known at once, even when their access token
  * has expired and cannot be refreshed yet (offline at launch, after an hour
- * away), which supabase-js's own answer waits on for up to half a minute.
+ * away), which supabase-js's own answer waits on for up to half a minute —
+ * and then gives as nobody, though the session is kept.
  */
-async function storedSession(): Promise<Session | null> {
+export async function storedSession(): Promise<Session | null> {
   const raw = await encryptedSessionStorage.getItem(SESSION_KEY);
   if (!raw) return null;
   try {

@@ -4,6 +4,7 @@ import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { useQuery } from '@tanstack/react-query';
+import { forgetOnboardingIntent } from '~/features/auth/kept-intent';
 import { callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { encryptedSessionStorage } from '~/lib/session-storage';
@@ -182,6 +183,10 @@ const SIGN_OUT_TIMEOUT_MS = 3000;
  * write over a session removed while its refresh was on the way.
  */
 export async function signOutHere(): Promise<void> {
+  // Where onboarding was going (the door's role, the listing) was kept for
+  // iOS ending the app midway, not for a person who chose to leave: signed
+  // in again, onboarding asks afresh rather than fix the role it was given.
+  await forgetOnboardingIntent();
   await Promise.race([
     forgetThisPhone().catch(() => {}),
     new Promise((resolve) => setTimeout(resolve, FORGET_TIMEOUT_MS)),

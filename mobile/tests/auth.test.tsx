@@ -1,4 +1,4 @@
-import { Alert, BackHandler, Platform, Text } from 'react-native';
+import { Alert, BackHandler, Linking, Platform, Text } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -9,8 +9,9 @@ import { PendingPath } from '~/components/navigation/pending-path';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { confirmationPath } from '~/features/auth/intent';
 import { catalogues, I18nProvider } from '~/i18n/provider';
+import { encryptedSessionStorage } from '~/lib/session-storage';
 import { SessionProvider } from '~/lib/session';
-import { supabase } from '~/lib/supabase';
+import { SESSION_KEY, supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as AuthLayout from '../src/app/(auth)/_layout';
 import * as SignInScreen from '../src/app/(auth)/sign-in/index';
@@ -676,6 +677,18 @@ describe('the second factor', () => {
     const { data } = await supabase.auth.getSession();
     expect(data.session).toBeNull();
   });
+
+  it('tells someone without the phone where to write, since nothing opens without the code', async () => {
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    user = authUser({ factors: [totpFactor] });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.app.auth.mfaLost)).toBeTruthy();
+    // The address the website names (config), shown on the button itself.
+    await press(new RegExp(`${ar.app.account.contact}.*help@brokersconnect\\.net`));
+    expect(open).toHaveBeenCalledWith('mailto:help@brokersconnect.net');
+    open.mockRestore();
+  });
 });
 
 describe('one-tap sign-in', () => {
@@ -966,6 +979,56 @@ describe('an email link opened in the app', () => {
       expect(screen.queryByText(ar.app.auth.switchTitle)).toBeNull();
       expect(screen.queryByRole('button', { name: ar.nav.signIn })).toBeNull();
     });
+
+    it("asks too while this account's token has run out and its refresh has no answer", async () => {
+      // Signed in an hour ago: the token has run out and the auth server is
+      // not answering its refresh (no connection, a 503, the app's own hold
+      // after a 429). supabase-js answers that nobody is signed in; the phone
+      // still has this account, and the app shows it.
+      await encryptedSessionStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify({ ...authSession(user), expires_at: Math.floor(Date.now() / 1000) - 60 }),
+      );
+      server.on('POST /auth/v1/token', { status: 503, body: { message: 'unavailable' } });
+      linkFor(other);
+      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/profile`) });
+      expect(await screen.findByText(ar.app.auth.switchTitle)).toBeTruthy();
+      const stored = JSON.parse((await encryptedSessionStorage.getItem(SESSION_KEY)) ?? 'null') as {
+        user?: { id: string };
+      } | null;
+      expect(stored?.user?.id).toBe(USER_ID);
+      // supabase-js's own refresh, tried for half a minute, gives up and keeps the session.
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(60_000);
+      });
+    });
+
+    it('says a new-address link that failed changed nothing, and where to ask again', async () => {
+      await signedIn();
+      server.on('POST /auth/v1/verify', {
+        status: 403,
+        body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
+      });
+      const withSecurity = { ...app, '(tabs)/(account)/account/security': () => <Text>the security screen</Text> };
+      renderRouter(withSecurity, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
+      expect(await screen.findByText(ar.app.auth.emailChangeLinkFailed)).toBeTruthy();
+      expect(screen.queryByText(ar.app.auth.linkUsedBody.replace('{email}', user.email))).toBeNull();
+      expect(screen.queryByRole('button', { name: ar.nav.signIn })).toBeNull();
+      await press(ar.app.account.security);
+      expect(await screen.findByText('the security screen')).toBeTruthy();
+    });
+
+    it('offers a failed reset link the new password here, signed in as the person is', async () => {
+      await signedIn();
+      server.on('POST /auth/v1/verify', {
+        status: 403,
+        body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
+      });
+      renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
+      expect(await screen.findByText(ar.app.auth.resetLinkFailed)).toBeTruthy();
+      expect(screen.queryByText(ar.app.auth.linkUsedBody.replace('{email}', user.email))).toBeNull();
+      expect(screen.getByRole('button', { name: ar.app.account.security })).toBeTruthy();
+    });
   });
 
   it('offers to sign in instead of a spent link, still on the way the link was going', async () => {
@@ -1025,6 +1088,27 @@ describe('onboarding cut short', () => {
       expect(second.getPathname()).toBe('/jobs/sales-a1b2/apply');
       // Arrived: nothing kept to come back to.
       expect(await AsyncStorage.getItem('bc.onboarding-intent.v1')).toBeNull();
+    } finally {
+      await AsyncStorage.removeItem('bc.onboarding-intent.v1');
+    }
+  });
+
+  it('forgets the door it came in by once the person signs out of onboarding', async () => {
+    profileRow = null;
+    await signedIn();
+    try {
+      const first = renderRouter(app, { initialUrl: '/onboarding?role=employer' });
+      expect(await screen.findByText(ar.onboarding.roleKnownEmployer)).toBeTruthy();
+      // The wrong door: out, by onboarding's own way out.
+      await press(ar.nav.signOut);
+      await waitFor(async () => expect((await supabase.auth.getSession()).data.session).toBeNull());
+      first.unmount();
+
+      // In again later, with nothing saying which kind of account: asked, not told.
+      await signedIn();
+      renderRouter(app, { initialUrl: '/onboarding' });
+      expect(await screen.findByText(ar.onboarding.roleQuestion)).toBeTruthy();
+      expect(screen.queryByText(ar.onboarding.roleKnownEmployer)).toBeNull();
     } finally {
       await AsyncStorage.removeItem('bc.onboarding-intent.v1');
     }

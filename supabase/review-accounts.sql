@@ -37,6 +37,8 @@ declare
   v_company   uuid;
   v_job       uuid;
   v_district  int;
+  v_first_published  timestamptz;
+  v_second_published timestamptz;
 begin
   if v_candidate is null or v_employer is null or v_candidate = v_employer then
     raise exception 'review.params needs two different users';
@@ -52,6 +54,16 @@ begin
   -- (applications_job_id_fkey restricts); anyone who applied to a review
   -- listing despite what it says loses that application with it. `remove`
   -- stops there.
+  --
+  -- When each listing first went up is kept: the daily new-jobs bell and the
+  -- weekly alert count a listing by its publication, and listings published
+  -- afresh on every run were announced again, each time, to everyone whose
+  -- saved search they match. Their thirty days start again.
+  select max(j.published_at) filter (where j.slug = 'app-review-property-consultant'),
+         max(j.published_at) filter (where j.slug = 'app-review-sales-manager')
+    into v_first_published, v_second_published
+    from jobs j join companies c on c.id = j.company_id
+   where c.slug = 'brokers-connect-app-review' and c.owner_id = v_employer;
   delete from applications
    where job_id in (select j.id from jobs j join companies c on c.id = j.company_id
                      where c.slug = 'brokers-connect-app-review' and c.owner_id = v_employer);
@@ -109,14 +121,16 @@ begin
     insert into jobs (
       company_id, title_ar, title_en, slug, track, employment_type, experience_band, seats,
       district_id, basic_salary_min, basic_salary_max, commission_type, commission_value,
-      commission_note_ar, leads_source, benefits, description_ar, requirements_ar, status
+      commission_note_ar, leads_source, benefits, description_ar, requirements_ar, status,
+      published_at, expires_at
     ) values (
       v_company, 'استشاري عقاري (إعلان لمراجعة التطبيق)', 'Property consultant (app review listing)',
       'app-review-property-consultant', 'primary', 'full_time', 'junior_1_3', 1,
       v_district, 8000, 12000, 'percentage', 1.50,
       'عمولة 1.5٪ من قيمة الوحدة.', 'company_provided', array['social_insurance'],
       'الإعلان ده موجود عشان فريق مراجعة متجر التطبيقات يجرّب التقديم ومتابعة المتقدمين. مش وظيفة حقيقية، فمتقدّمش عليه.',
-      'مفيش متطلبات: الإعلان للتجربة بس.', 'active'
+      'مفيش متطلبات: الإعلان للتجربة بس.', 'active',
+      v_first_published, now() + interval '30 days'
     )
     returning id into v_job;
   end if;
@@ -129,14 +143,16 @@ begin
     insert into jobs (
       company_id, title_ar, title_en, slug, track, employment_type, experience_band, seats,
       district_id, basic_salary_min, basic_salary_max, commission_type, commission_value,
-      commission_note_ar, leads_source, benefits, description_ar, requirements_ar, status
+      commission_note_ar, leads_source, benefits, description_ar, requirements_ar, status,
+      published_at, expires_at
     ) values (
       v_company, 'مدير مبيعات (إعلان لمراجعة التطبيق)', 'Sales manager (app review listing)',
       'app-review-sales-manager', 'resale', 'full_time', 'mid_3_5', 1,
       v_district, 15000, 20000, 'percentage', 1.00,
       'عمولة 1٪ من قيمة البيع.', 'company_provided', array['social_insurance', 'medical'],
       'الإعلان ده موجود عشان فريق مراجعة متجر التطبيقات يجرّب التقديم من حساب المتقدّم. مش وظيفة حقيقية، فمتقدّمش عليه.',
-      'مفيش متطلبات: الإعلان للتجربة بس.', 'active'
+      'مفيش متطلبات: الإعلان للتجربة بس.', 'active',
+      v_second_published, now() + interval '30 days'
     );
   end if;
 

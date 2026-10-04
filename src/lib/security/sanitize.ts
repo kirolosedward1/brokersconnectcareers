@@ -121,16 +121,21 @@ export function safeHttpUrl(value: string | null | undefined, maxLength = 200): 
   return WEBSITE_COLUMN.test(readable) ? readable : null;
 }
 
-/** The host as it was typed: Node's URL turns a non-Latin one into punycode, the phone's leaves it as it is. */
+/**
+ * The host as it was typed: Node's URL turns a non-Latin one into punycode,
+ * the phone's leaves it as it is. A backslash ends it as a slash does — the
+ * parser reads an http(s) address that way — so what follows one is path,
+ * not a host to vouch for.
+ */
 function typedHost(value: string): string {
   const rest = value.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
-  return rest.split(/[/?#]/, 1)[0].replace(/^.*@/, '').replace(/:\d*$/, '');
+  return rest.split(/[/?#\\]/, 1)[0].replace(/^.*@/, '').replace(/:\d*$/, '');
 }
 
-const ARABIC = '\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF';
-const HAS_LATIN = /[a-z]/i;
-const HAS_ARABIC = new RegExp(`[${ARABIC}]`);
-const OTHER = new RegExp(`[^a-z0-9\\-${ARABIC}]`, 'i');
+const LATIN = /\p{Script=Latin}/u;
+const ARABIC = /\p{Script=Arabic}/u;
+/** What a label may hold: Latin letters (accented too), Arabic ones with their marks, digits, - and _. */
+const LABEL = /^[\p{Script=Latin}\p{Script=Arabic}\p{Mn}0-9_-]*$/u;
 
 /**
  * Letters a host may hold: Latin, or Arabic — Egypt's own domain names — and
@@ -138,9 +143,18 @@ const OTHER = new RegExp(`[^a-z0-9\\-${ARABIC}]`, 'i');
  * look-alike of a Latin name is spelt (www.brоkersconnect.net, with a Cyrillic
  * о): the website shows such a host as punycode, but the app shows it as it
  * was written, and a company's "website" could pass for this site's own pages.
+ * Accented Latin (café.com) is Latin, and an IPv6 address has no letters to
+ * imitate anything with.
  */
 function plainHost(host: string): boolean {
-  return host.split('.').every((label) => !OTHER.test(label) && !(HAS_LATIN.test(label) && HAS_ARABIC.test(label)));
+  if (/^\[[0-9a-f:.]+\]$/i.test(host)) return true;
+  return host.split('.').every((label) => {
+    if (!LABEL.test(label)) return false;
+    const arabic = ARABIC.test(label);
+    // Marks belong to Arabic letters here; on Latin ones they draw dots and accents onto look-alikes.
+    if (!arabic && /\p{Mn}/u.test(label)) return false;
+    return !(arabic && LATIN.test(label));
+  });
 }
 
 /** companies_website_is_http (migration 307): what the column itself takes. */

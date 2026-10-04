@@ -47,7 +47,17 @@ is(
 const page = readFileSync(join(ROOT, 'src/app/[locale]/(app)/dashboard/account/page.tsx'), 'utf8');
 is(
   'the account page draws the challenge alone while the factor is due',
-  /if \(mfaEnrolled && mfaLevel === 'aal1'\) \{[\s\S]*?mode="challenge"[\s\S]*?\}/.test(page),
+  /if \(mfaEnrolled && mfaLevel === 'aal1'\) \{[\s\S]*?return \([\s\S]*?<MfaSettings locale=\{locale\} enrolled level="aal1"/.test(page),
+  true,
+);
+is(
+  "with the admin console's banner for an admin only, now that every account is asked",
+  /<MfaSettings locale=\{locale\} enrolled level="aal1" mode=\{isAdmin \? 'challenge' : null\}/.test(page),
+  true,
+);
+is(
+  'and a way to a person for someone without the phone',
+  /if \(mfaEnrolled && mfaLevel === 'aal1'\) \{[\s\S]*?t\.rich\('mfaLost'/.test(page),
   true,
 );
 

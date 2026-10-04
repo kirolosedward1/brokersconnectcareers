@@ -1555,6 +1555,7 @@
     "mfaChallengeBody": "Enter the code from your authenticator app to continue.",
     "mfaRequiredBanner": "Admin accounts must set up two-step verification before the admin console opens.",
     "mfaChallengeBanner": "Confirm with a code from your authenticator app so the admin console opens in this session.",
+    "mfaLost": "Lost the phone with your authenticator app? Write to <link>{email}</link> and we will help you back into your account.",
     "mfaCodeInvalid": "That code is not right. Try the new number in the app.",
     "deleteBlockedSuspended": "Your account is suspended, so it can’t be deleted from here while the decision stands. You can ask for the suspension to be reviewed from your dashboard, or contact us and we’ll close the account once the case is done.",
     "deleteRequestCta": "Ask us to delete it",

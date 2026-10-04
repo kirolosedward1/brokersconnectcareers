@@ -7,6 +7,8 @@ import { AvatarUpload } from '@/components/dashboard/avatar-upload';
 import { safeNext } from '@/lib/safe-next';
 import { MfaSettings } from '@/components/dashboard/mfa-settings';
 import { requireProfile } from '@/lib/auth';
+import { OPERATOR } from '@/lib/business';
+import { configuredValue, env } from '@/lib/env';
 import { createClient } from '@/lib/supabase/server';
 
 export async function generateMetadata({
@@ -67,12 +69,26 @@ export default async function AccountPage({
     account page here meanwhile).
   */
   if (mfaEnrolled && mfaLevel === 'aal1') {
+    // Without the phone there is no code, and every page of the account waits
+    // on one: the way back is a person, at the footer's address.
+    const help = configuredValue(env.supportEmail) ?? OPERATOR.email;
     return (
       <div className="mx-auto max-w-2xl px-4 py-8">
         <h1 className="text-xl font-bold">{t('title')}</h1>
         <div className="mt-8">
-          <MfaSettings locale={locale} enrolled level="aal1" mode="challenge" afterVerify={afterVerify} />
+          {/* The banner names the admin console: only an admin is on the way there. */}
+          <MfaSettings locale={locale} enrolled level="aal1" mode={isAdmin ? 'challenge' : null} afterVerify={afterVerify} />
         </div>
+        <p className="mt-4 text-sm text-muted-foreground">
+          {t.rich('mfaLost', {
+            email: help,
+            link: (chunks) => (
+              <a href={`mailto:${help}`} dir="ltr" className="underline underline-offset-4 hover:text-foreground">
+                {chunks}
+              </a>
+            ),
+          })}
+        </p>
       </div>
     );
   }

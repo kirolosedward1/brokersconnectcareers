@@ -109,6 +109,21 @@ console.log('\n— an href');
   check('an Arabic domain name is a website', safeHttpUrl('https://\u0645\u062b\u0627\u0644.\u0645\u0635\u0631/') !== null);
   check('as is an Arabic name under a Latin ending', safeHttpUrl('https://\u0645\u062b\u0627\u0644.com') !== null);
   check('and a port, and capitals', safeHttpUrl('https://EXAMPLE.com:8080/x') === 'https://example.com:8080/x');
+  // Hosts as they are, which the look-alike rule must not take for one:
+  // accented Latin (stored as punycode), an underscore, an IPv6 address.
+  for (const [real, kept] of [
+    ['https://café.com/', 'https://xn--caf-dma.com/'],
+    ['https://münchen.de/', 'https://xn--mnchen-3ya.de/'],
+    ['https://my_shop.example.com/', 'https://my_shop.example.com/'],
+    ['https://[::1]/', 'https://[::1]/'],
+    ['https://[2001:db8::1]:8443/x', 'https://[2001:db8::1]:8443/x'],
+  ]) {
+    check(`keeps ${JSON.stringify(real)}`, safeHttpUrl(real) === kept, String(safeHttpUrl(real)));
+  }
+  // A backslash ends the host, as the parser reads it: what comes after is
+  // the path, not the host to check.
+  const slanted = 'https://www.br\u043ekersconnect.net\\@example.com';
+  check(`refuses ${JSON.stringify(slanted)}`, safeHttpUrl(slanted) === null, String(safeHttpUrl(slanted)));
 }
 
 console.log('\n— the one page off the site a button may send somebody to');

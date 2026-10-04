@@ -187,6 +187,9 @@ report.check('a review leaves its marks', reviewed.every((step) => step.ok && st
 await db.exec(`
   update jobs set published_at = now() - interval '31 days', expires_at = now() - interval '1 day'
    where slug = 'app-review-sales-manager'`);
+const publishedBefore = (await db.query(`
+  select slug, published_at::text as at from jobs
+   where slug in ('app-review-property-consultant', 'app-review-sales-manager') order by slug`)).rows;
 
 report.check('runs again', (await run(PARAMS)) === null);
 const again = await counts();
@@ -200,6 +203,14 @@ report.check(
   relisted.length === 2 && relisted.every((job) => job.status === 'active' && job.open) &&
     relisted[0].title_ar === 'استشاري عقاري (إعلان لمراجعة التطبيق)',
   JSON.stringify(relisted),
+);
+const publishedAfter = (await db.query(`
+  select slug, published_at::text as at from jobs
+   where slug in ('app-review-property-consultant', 'app-review-sales-manager') order by slug`)).rows;
+report.check(
+  'each listing keeps when it first went up, so the new-jobs bell and the weekly alert do not announce it again',
+  publishedBefore.length === 2 && JSON.stringify(publishedAfter) === JSON.stringify(publishedBefore),
+  JSON.stringify({ publishedBefore, publishedAfter }),
 );
 const restarted = (await db.query(`
   select j.slug, a.status from applications a join jobs j on j.id = a.job_id

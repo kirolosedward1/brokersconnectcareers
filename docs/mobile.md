@@ -409,7 +409,13 @@ reports promptly.
   nothing (`features/auth/verify-link.ts`), because Supabase answers with the
   session of whoever the token belongs to. Taken when nobody is signed in or
   it is the same account; for another account, whatever kind of link (a new
-  address's included), the person is asked first, naming both.
+  address's included), the person is asked first, naming both. Who is signed
+  in is read from the phone's stored session (`storedSession`), which keeps an
+  account whose token has run out and cannot be refreshed yet; supabase-js
+  says nobody then. A link has to be used to learn whose it is, so declining
+  another account's link spends it. A link that fails for someone signed in
+  says what is left to do: nothing for a confirmation, Sign-in and security
+  for a reset or a new address.
   `src/lib/auth/confirm-link.ts`
   reads the link for both: a reset opens the new-password screen, a
   confirmation onboarding with the door's role and the destination.

@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
+import { OPERATOR } from '@/lib/business';
 import { westernDigits } from '@/lib/search/arabic';
 import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
+import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { intentFromParams } from '~/features/auth/intent';
 import { useCloseFlow, useLand } from '~/features/auth/land';
+import { useMobileConfig } from '~/features/config';
 import { signOutHere } from '~/features/push/device';
 import { supabase } from '~/lib/supabase';
 import { useHoldBack } from '~/lib/use-hold-back';
@@ -28,6 +31,8 @@ import { space } from '~/theme/tokens';
  */
 export default function SecondFactorScreen() {
   const t = useTranslations();
+  const config = useMobileConfig();
+  const supportEmail = config.data?.supportEmail || OPERATOR.email;
   const params = useLocalSearchParams<{ next?: string; role?: string; confirmed?: string }>();
   const intent = intentFromParams(params);
   const land = useLand();
@@ -112,6 +117,17 @@ export default function SecondFactorScreen() {
           {error ? <Notice tone="destructive">{error}</Notice> : null}
           <Button label={t('account.mfaVerify')} size="lg" loading={pending} onPress={verify} />
           <Button label={t('app.auth.mfaSignOut')} variant="ghost" disabled={pending} onPress={signOut} />
+          {/* Without the phone there is no code, and nothing of the account
+              opens without one: the way back is a person. */}
+          <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center' }}>
+            {t('app.auth.mfaLost')}
+          </Text>
+          <Button
+            label={`${t('app.account.contact')} · ${supportEmail}`}
+            variant="ghost"
+            size="sm"
+            onPress={() => Linking.openURL(`mailto:${supportEmail}`).catch(() => {})}
+          />
         </View>
       </AuthScroll>
     </>

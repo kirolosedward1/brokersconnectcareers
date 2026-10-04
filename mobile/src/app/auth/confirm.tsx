@@ -12,7 +12,7 @@ import { useCloseFlow, useLand } from '~/features/auth/land';
 import { checkLink } from '~/features/auth/verify-link';
 import { env } from '~/lib/env';
 import { openWhenReady } from '~/lib/open-path';
-import { useSession } from '~/lib/session';
+import { storedSession, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { space } from '~/theme/tokens';
 
@@ -103,7 +103,11 @@ export default function ConfirmLinkScreen() {
       await go();
       return;
     }
-    const current = (await supabase.auth.getSession()).data.session;
+    // Who is signed in here, as the phone has it: supabase-js answers nobody
+    // while a token that has run out cannot be refreshed (no connection, a
+    // 503, the app's own hold after a 429) — and the link would be taken
+    // over an account the app still shows, without a word.
+    const current = await storedSession();
     if (current && current.user.id !== result.session.user.id) {
       setState('idle');
       setOther(result.session);
@@ -133,9 +137,12 @@ export default function ConfirmLinkScreen() {
   }
 
   if (state === 'failed') {
-    // Somebody is signed in here: most often the link's own account, opening
-    // a link it has used already. Nothing to do, and no sign-in to offer.
+    // Somebody is signed in here, so no sign-in to offer. A confirmation:
+    // most often the account's own, opened again — confirmed, since it is
+    // signed in, and nothing to do. A reset or a new address is still to be
+    // done, and Sign-in and security is where, with no link needed.
     if (session) {
+      const unfinished = type === 'recovery' || type === 'email_change';
       return (
         <>
           <Stack.Screen options={{ headerShown: false }} />
@@ -143,9 +150,24 @@ export default function ConfirmLinkScreen() {
             <View style={{ height: space[8] }} />
             <AuthHeading
               title={t('app.auth.linkUsedTitle')}
-              body={t('app.auth.linkUsedBody', { email: session.user.email ?? '' })}
+              body={
+                type === 'recovery'
+                  ? t('app.auth.resetLinkFailed')
+                  : type === 'email_change'
+                    ? t('app.auth.emailChangeLinkFailed')
+                    : t('app.auth.linkUsedBody', { email: session.user.email ?? '' })
+              }
             />
-            <Button label={t('common.close')} onPress={() => close()} />
+            {unfinished ? (
+              <Button
+                label={t('app.account.security')}
+                onPress={() => {
+                  close();
+                  openWhenReady('/account/security');
+                }}
+              />
+            ) : null}
+            <Button label={t('common.close')} variant={unfinished ? 'ghost' : undefined} onPress={() => close()} />
           </AuthScroll>
         </>
       );
