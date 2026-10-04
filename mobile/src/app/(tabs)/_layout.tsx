@@ -1,5 +1,6 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useTranslations } from 'use-intl';
+import { useLayoutDirection } from '~/lib/direction';
 import { useSession } from '~/lib/session';
 import { tabsFor } from '~/lib/tabs';
 import { useTheme } from '~/theme/provider';
@@ -23,15 +24,22 @@ import { useTheme } from '~/theme/provider';
  *
  * Each icon twice: an SF Symbol for iOS and a Material symbol for Android,
  * which has no SF Symbols and drew the tabs with none.
+ *
+ * The bar runs the way the screens do. iOS lays a tab bar out by the language
+ * the app is running in, not by React Native's direction: on an iPhone set to
+ * English, and in Expo Go, which lays it out in Expo Go's own language, the
+ * bar ran left to right, Home on the left, under screens running right to
+ * left. Its direction is given to it, and through it to the screens inside.
  */
 export default function TabsLayout() {
   const t = useTranslations();
   const { colors } = useTheme();
   const tabs = tabsFor(useSession().actor);
+  const direction = useLayoutDirection();
 
   return (
     // Android: every tab says its name, not only the one open (Material hides the rest past three tabs).
-    <NativeTabs tintColor={colors.primary} labelVisibilityMode="labeled">
+    <NativeTabs tintColor={colors.primary} labelVisibilityMode="labeled" unstable_nativeProps={{ direction }}>
       <NativeTabs.Trigger name="(home)">
         <NativeTabs.Trigger.Label>{t('app.tabs.home')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />

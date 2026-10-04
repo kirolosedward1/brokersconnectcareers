@@ -109,6 +109,11 @@ compare with (a new branch), it compares with the previous commit.
   `mobile/src/i18n/messages/`. Numbers inside Arabic sentences are wrapped in
   left-to-right isolates (U+2066…U+2069) — the website's `<v>` tag.
   `@formatjs` polyfills give Hermes Arabic plurals and formatting.
+  The first layout is measured (`mobile/src/lib/direction.ts`): a screen
+  created before the direction was set came up left to right, and the app then
+  sets it and starts again once, behind the splash screen. The tab bar is given
+  the measured direction: iOS lays native bars out in the language the app runs
+  in, which is English on an iPhone set to English and in Expo Go.
 - **Design.** The brand set in a quieter key for the phone
   (`mobile/src/theme/tokens.ts`): ivory paper with deep sapphire ink in light,
   near-black with champagne in dark, champagne kept for what has been checked
@@ -529,7 +534,16 @@ from the App Store, run `pnpm start:go` on a computer on the same Wi-Fi as the
 iPhone, and scan the QR code it prints with the iPhone's camera
 (`pnpm start:go --tunnel` when the two are not on the same network). Right to
 left comes from `extra.forcesRTL` in `app.config.ts`, which Expo Go reads from
-the manifest.
+the manifest. Expo Go sets it only after it has started the app when it opens
+an update from the network or comes back from its own home screen, so the app
+can come up laid out left to right; it notices and starts again once
+(`mobile/src/lib/direction.ts`), which shows as a second splash screen.
+
+Sign in with Google returns to the app at `brokersconnect://auth/callback`,
+which has to be among Supabase's redirect URLs (Authentication → URL
+Configuration). Without it Supabase sends the browser to the website instead,
+and the person ends up signed in to the website inside the sign-in sheet while
+the app stays signed out. Email and password need nothing set up.
 
 Sign in first, on both sides, to the same Expo account (a free one will do):
 `npx expo login` on the computer, and the account icon in Expo Go's top corner
