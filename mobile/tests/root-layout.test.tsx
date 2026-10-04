@@ -1,6 +1,10 @@
 import { Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { act, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import * as SplashScreen from 'expo-splash-screen';
+import { router } from 'expo-router';
+import { render } from '@testing-library/react-native';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { catalogues } from '~/i18n/provider';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
 import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
@@ -15,6 +19,11 @@ import { fakeServer } from './server';
   run at once, so the companies the reader hid on this phone have to be known
   before that — or their listings show until the phone answers.
 */
+
+jest.mock('expo-splash-screen', () => ({
+  preventAutoHideAsync: jest.fn(async () => true),
+  hideAsync: jest.fn(async () => true),
+}));
 
 jest.mock('~/lib/session-storage', () => ({
   encryptedSessionStorage: { getItem: async () => null, setItem: async () => {}, removeItem: async () => {} },
@@ -51,7 +60,11 @@ it("draws nothing before the phone has said which companies are hidden, and then
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const getItem = jest.spyOn(AsyncStorage, 'getItem').mockImplementation(async (key: string) => {
+  // The storage module is already a mock: spyOn hands back that same mock, and
+  // mockRestore would leave it with no implementation for the tests after this one.
+  const getItem = jest.spyOn(AsyncStorage, 'getItem');
+  const stored = getItem.getMockImplementation();
+  getItem.mockImplementation(async (key: string) => {
     if (key !== HIDDEN_KEY) return null;
     await gate;
     return JSON.stringify([listing.company.id]);
@@ -80,6 +93,64 @@ it("draws nothing before the phone has said which companies are hidden, and then
     expect(await screen.findByText(other.title_ar)).toBeTruthy();
     expect(screen.queryByText(listing.title_ar)).toBeNull();
   } finally {
-    getItem.mockRestore();
+    if (stored) getItem.mockImplementation(stored);
+    else getItem.mockRestore();
   }
+});
+
+describe('a screen that throws while it is drawn', () => {
+  const ar = catalogues.ar;
+  const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+
+  it('says something went wrong and draws it again on request, and the rest of the app stays', async () => {
+    // A Home that fails to draw until it is asked again.
+    let broken = true;
+    function Home() {
+      if (broken) throw new Error('a field the screen did not expect');
+      return <Text>home, drawn</Text>;
+    }
+    const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      renderRouter(
+        { _layout: RootLayout, '(tabs)/_layout': TabsLayout, [STACK]: TabStack, '(tabs)/(home)/index': Home, '(tabs)/(jobs)/jobs/index': BoardScreen },
+        { initialUrl: '/' },
+      );
+      expect(await screen.findByText(ar.common.error)).toBeTruthy();
+      expect(screen.getByText(ar.common.errorBody)).toBeTruthy();
+
+      // The rest of the app is still there: another tab opens and draws.
+      act(() => router.navigate('/jobs'));
+      // Longer than findBy's own second: the board waits for the session and the hidden companies first.
+      await act(async () => {
+        jest.advanceTimersByTime(3000);
+      });
+      // (The other company's listing: the test above leaves Nile Brokers hidden on this phone.)
+      expect(await screen.findByText(other.title_ar)).toBeTruthy();
+      act(() => router.navigate('/'));
+
+      // And Home draws when asked again.
+      broken = false;
+      fireEvent.press(await screen.findByRole('button', { name: ar.common.retry }));
+      expect(await screen.findByText('home, drawn')).toBeTruthy();
+      expect(screen.queryByText(ar.common.error)).toBeNull();
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  it('has a last screen of its own for when what failed is under every screen, with the splash taken down', async () => {
+    const hide = jest.mocked(SplashScreen.hideAsync);
+    hide.mockClear();
+    const retry = jest.fn(async () => {});
+    const { ErrorBoundary } = RootLayout as { ErrorBoundary?: (props: { error: Error; retry: () => Promise<void> }) => React.ReactNode };
+    expect(ErrorBoundary).toBeDefined();
+    if (!ErrorBoundary) return;
+    // Drawn with no provider around it: the theme, the catalogue and the session are what failed.
+    render(<ErrorBoundary error={new Error('the cache could not be read')} retry={retry} />);
+    expect(screen.getByText(ar.common.error)).toBeTruthy();
+    expect(screen.getByText(ar.common.errorBody)).toBeTruthy();
+    await waitFor(() => expect(hide).toHaveBeenCalled());
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
+    expect(retry).toHaveBeenCalledTimes(1);
+  });
 });

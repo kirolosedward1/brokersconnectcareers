@@ -142,6 +142,15 @@ compare with (a new branch), it compares with the previous commit.
   right after a sign-in waits the same way (`open-path.ts`, `PendingPath`), so
   it is never asked of a tab bar not yet drawn for the account. A website page
   the app has no screen for offers to open it in the in-app browser.
+- **When a screen fails to draw.** Every screen is drawn inside an error
+  boundary (`screenErrorBoundary` in `src/app/_layout.tsx`,
+  `src/components/navigation/error-boundaries.tsx`): one that throws says
+  something went wrong and offers to draw itself again, with its header and
+  the tab bar still there. A release build has nothing else to catch it, so
+  without this the whole app would close. When what fails is the root layout
+  itself or a provider under every screen, a last screen of its own takes
+  over, with no theme, catalogue or session to lean on, and takes the splash
+  screen down so it can be seen.
 - **An employer's Home** is the website's `/employer` overview: the one next
   action (`employerNextAction`, shared), where the account and the company
   stand (a first review, a hold, a suspension — the company's with its own

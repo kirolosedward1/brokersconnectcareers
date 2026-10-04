@@ -11,6 +11,7 @@ import { IBMPlexSansArabic_400Regular } from '@expo-google-fonts/ibm-plex-sans-a
 import { IBMPlexSansArabic_500Medium } from '@expo-google-fonts/ibm-plex-sans-arabic/500Medium';
 import { IBMPlexSansArabic_600SemiBold } from '@expo-google-fonts/ibm-plex-sans-arabic/600SemiBold';
 import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic/700Bold';
+import { AppError, ScreenError } from '~/components/navigation/error-boundaries';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
@@ -27,11 +28,17 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 /**
  * The tabs are always underneath: a link that opens straight onto a sheet (an
- * email link, onboarding) closes onto the app, not onto nothing.
+ * email link, onboarding) closes onto the app, not onto nothing. And every
+ * screen is drawn inside ScreenError, so one that throws says so and offers to
+ * draw itself again instead of taking the app down with it.
  */
 export const unstable_settings = {
   anchor: '(tabs)',
+  screenErrorBoundary: ScreenError,
 };
+
+/** When what throws is this layout or a provider it draws, which every screen stands on. */
+export { AppError as ErrorBoundary };
 
 /**
  * Everything the screens stand on: the website's font, cached server state,
