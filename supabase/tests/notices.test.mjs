@@ -76,12 +76,18 @@ async function freshApplication() {
 
 const move = (application, status) => db.exec(`update applications set status = '${status}' where id = '${application}'`);
 
-/** The stage notices this application has rung, oldest first. */
+/**
+ * The stage notices this application has rung, oldest first. In the order
+ * they were written — each move is a transaction of its own (xmin), one
+ * statement (cmin) — not by created_at: two moves in the same millisecond
+ * share a timestamp under PGlite's clock, and then a random id decided the
+ * order, so the test failed now and then (CI on 899ac9e).
+ */
 const told = async (application) =>
   (
     await rows(`select dedupe_key, payload->>'status' as status from notifications
                  where kind = 'application_moved' and dedupe_key like 'application_moved:${application}:%'
-                 order by created_at, id`)
+                 order by xmin::text::bigint, cmin::text::bigint, created_at, id`)
   ).map((row) => ({ key: row.dedupe_key.slice(`application_moved:${application}:`.length), status: row.status }));
 const keys = async (application) => (await told(application)).map((notice) => notice.key);
 
