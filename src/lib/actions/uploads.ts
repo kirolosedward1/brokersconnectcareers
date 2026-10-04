@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { AVATAR_BUCKET, COMPANY_LOGOS_BUCKET } from '@/lib/buckets';
 import { IMAGE_KINDS, MAX_BYTES, reencodeImage, sniffKind } from '@/lib/security/files';
 import { recordSecurityEvent } from '@/lib/security/events';
@@ -25,9 +24,18 @@ import type { ActionResult } from '@/lib/actions/jobs';
  * Ownership is decided the way it was before: the photo is written into the
  * caller's own folder and recorded through the caller's own session, and the
  * logo is recorded through companies_update_own, which only a company admin
- * satisfies. The service role writes the object because the re-encoded bytes
- * are the server's — but only after the row-level check has said whose
- * folder this is, and the object is removed again if the record is refused.
+ * satisfies. The object is written with that same session, not with the
+ * service role.
+ *
+ * It used to be written with the service role, on the reasoning that the
+ * re-encoded bytes are the server's. That reasoning cost the feature: the key
+ * is not set on production, so createAdminClient() threw on every upload and
+ * the employer got "try again" forever — nobody could put a logo on their
+ * company, and no candidate could set a photo. The bucket policies already
+ * say who may write where ("owners manage their company logo" checks
+ * owns_company on the folder; avatars check auth.uid()), so the caller's own
+ * session satisfies them, and doing it this way also means a bug here cannot
+ * write outside what the caller is allowed to touch.
  */
 
 const MAX_UPLOAD_FIELD = MAX_BYTES.image;
@@ -88,24 +96,17 @@ export async function uploadImage(form: FormData): Promise<UploadOutcome> {
     return { ok: false, error: 'file_type' };
   }
 
-  let admin;
-  try {
-    admin = createAdminClient();
-  } catch {
-    return { ok: false, error: 'unavailable' };
-  }
-
   const bucket = kind === 'avatar' ? AVATAR_BUCKET : COMPANY_LOGOS_BUCKET;
   // A fresh name every time: the URL is public and cached, and overwriting in
   // place would leave the old picture showing.
   const path = `${folder}/${kind === 'logo' ? 'logo-' : ''}${uuid()}.webp`;
 
-  const { error: uploadError } = await admin.storage
+  const { error: uploadError } = await supabase.storage
     .from(bucket)
     .upload(path, image.bytes, { contentType: 'image/webp', upsert: false, cacheControl: '31536000' });
   if (uploadError) return { ok: false, error: 'unavailable' };
 
-  const url = admin.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  const url = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 
   const recorded =
     kind === 'avatar'
@@ -113,7 +114,7 @@ export async function uploadImage(form: FormData): Promise<UploadOutcome> {
       : await supabase.from('companies').update({ logo_url: url }).eq('id', folder).select('id');
 
   if (recorded.error || !recorded.data?.length) {
-    await admin.storage.from(bucket).remove([path]);
+    await supabase.storage.from(bucket).remove([path]);
     return { ok: false, error: recorded.error ? 'failed' : 'forbidden' };
   }
 
