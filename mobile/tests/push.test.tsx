@@ -12,9 +12,10 @@ import { PushBridge } from '~/components/navigation/push-bridge';
 import { PushPrompt } from '~/components/push/push-prompt';
 import { pushAvailable, signOutHere } from '~/features/push/device';
 import { catalogues, I18nProvider } from '~/i18n/provider';
-import { rememberActor } from '~/lib/last-actor';
+import { readLastActor, rememberActor } from '~/lib/last-actor';
+import { encryptedSessionStorage } from '~/lib/session-storage';
 import { SessionProvider, useSession } from '~/lib/session';
-import { supabase } from '~/lib/supabase';
+import { SESSION_KEY, supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as AlertsScreen from '../src/app/(tabs)/(account)/account/alerts';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
@@ -496,6 +497,52 @@ describe('signing out', () => {
       await supabase.auth.signOut({ scope: 'local' });
     });
     await waitFor(() => expect(Notifications.unregisterForNotificationsAsync).toHaveBeenCalled());
+  });
+});
+
+describe('a session that ended before the app was listening', () => {
+  it("stops listening, and forgets the person, when a cold start's refresh is refused before any screen", async () => {
+    // Signed out on the website while the app was closed: this phone still
+    // holds their push token and remembers them, and their session has run out.
+    await AsyncStorage.setItem('push:token', TOKEN);
+    const stored = JSON.parse((await encryptedSessionStorage.getItem(SESSION_KEY)) ?? 'null') as Record<string, unknown>;
+    await encryptedSessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...stored, expires_at: Math.floor(Date.now() / 1000) - 60 }));
+    server.on('POST /auth/v1/token', {
+      status: 400,
+      body: { code: 400, error_code: 'refresh_token_not_found', msg: 'Invalid Refresh Token: Refresh Token Not Found' },
+    });
+    // supabase-js refreshes as it starts, before the app has drawn anything:
+    // refused, the session is cleared with nobody yet listening for it.
+    const { data } = await supabase.auth.getSession();
+    expect(data.session).toBeNull();
+
+    renderRouter(app, { initialUrl: '/' });
+    await waitFor(() => expect(Notifications.unregisterForNotificationsAsync).toHaveBeenCalled());
+    expect(await AsyncStorage.getItem('push:token')).toBeNull();
+    expect(Notifications.dismissAllNotificationsAsync).toHaveBeenCalled();
+    // Nor is the next cold start drawn, or its links routed, for them.
+    await waitFor(async () => expect(await readLastActor()).toBeNull());
+  });
+});
+
+describe('a cold start whose refresh has no answer', () => {
+  it('keeps listening and remembers the person: they are still signed in, only offline', async () => {
+    await AsyncStorage.setItem('push:token', TOKEN);
+    const stored = JSON.parse((await encryptedSessionStorage.getItem(SESSION_KEY)) ?? 'null') as Record<string, unknown>;
+    await encryptedSessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...stored, expires_at: Math.floor(Date.now() / 1000) - 60 }));
+    server.on('POST /auth/v1/token', () => {
+      throw new TypeError('Network request failed');
+    });
+
+    renderRouter(app, { initialUrl: '/' });
+    // supabase-js tries the refresh for half a minute, then keeps the session:
+    // long enough for any clean-up to have run, were it going to.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(60_000);
+    });
+    expect(Notifications.unregisterForNotificationsAsync).not.toHaveBeenCalled();
+    expect(await AsyncStorage.getItem('push:token')).toBe(TOKEN);
+    expect((await readLastActor())?.userId).toBe(USER_ID);
   });
 });
 

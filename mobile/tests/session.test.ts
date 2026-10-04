@@ -228,6 +228,85 @@ describe("a call to the website while the session cannot be refreshed", () => {
   });
 });
 
+describe('a refresh that never answers', () => {
+  it('is given up on in seconds and tried again, and the call says no answer within its own time', async () => {
+    const { SESSION_KEY, callAction, ApiError } = fresh();
+    store().set(SESSION_KEY, JSON.stringify(expired()));
+    let refreshes = 0;
+    network((url, init) => {
+      if (url.pathname !== '/auth/v1/token') return json({ ok: true });
+      refreshes += 1;
+      // A stalled connection: nothing comes back until the request is given up on.
+      return new Promise<Response>((_, reject) =>
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError'))),
+      );
+    });
+
+    const call = callAction('announcePasswordChange').catch((error: unknown) => error);
+    let settled = false;
+    void call.then(() => {
+      settled = true;
+    });
+    await jest.advanceTimersByTimeAsync(31_000);
+    expect(settled).toBe(true);
+    const failure = await call;
+    expect(failure).toBeInstanceOf(ApiError);
+    expect((failure as InstanceType<typeof ApiError>).status).toBe(0);
+    expect(refreshes).toBeGreaterThan(1);
+    expect(store().has(SESSION_KEY)).toBe(true);
+    await jest.advanceTimersByTimeAsync(60_000);
+  });
+});
+
+describe('a refresh answered by a page from in front of the auth server', () => {
+  it("keeps the session: a firewall's 403 page is no refusal from the auth server", async () => {
+    const { supabase, SESSION_KEY } = fresh();
+    store().set(SESSION_KEY, JSON.stringify(expired()));
+    network((url) =>
+      url.pathname === '/auth/v1/token'
+        ? new Response('<html><body>Error 1020: Access denied</body></html>', { status: 403, headers: { 'content-type': 'text/html' } })
+        : json([]),
+    );
+    const read = supabase.auth.getSession();
+    await jest.advanceTimersByTimeAsync(60_000);
+    await read;
+    expect(store().has(SESSION_KEY)).toBe(true);
+  });
+
+  it('and still ends it when the auth server itself refuses the refresh', async () => {
+    const { supabase, SESSION_KEY } = fresh();
+    store().set(SESSION_KEY, JSON.stringify(expired()));
+    network((url) =>
+      url.pathname === '/auth/v1/token'
+        ? json({ code: 400, error_code: 'refresh_token_not_found', msg: 'Invalid Refresh Token: Refresh Token Not Found' }, 400)
+        : json([]),
+    );
+    const read = supabase.auth.getSession();
+    await jest.advanceTimersByTimeAsync(60_000);
+    await read;
+    expect(store().has(SESSION_KEY)).toBe(false);
+  });
+});
+
+describe('a phone whose clock is an hour out', () => {
+  it('judges when a session runs out by its own clock, so it does not refresh before every read', async () => {
+    const { supabase } = fresh();
+    let tokens = 0;
+    network((url) => {
+      if (url.pathname !== '/auth/v1/token') return json([]);
+      tokens += 1;
+      // Dated by the auth server, whose clock is an hour behind this phone's:
+      // by the phone's, an hour-long session that has already run out.
+      return json({ ...authSession(authUser()), expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) - 60 });
+    });
+    const { error } = await supabase.auth.signInWithPassword({ email: 'sara@example.com', password: 'correct-horse' });
+    expect(error).toBeNull();
+    for (let read = 0; read < 5; read += 1) await supabase.from('applications').select('id');
+    // The sign-in, and no refresh after it.
+    expect(tokens).toBe(1);
+  });
+});
+
 describe('an account with no profile', () => {
   it('is believed only from the auth server; a deleted account is signed out, not sent to onboarding', async () => {
     const { supabase, SESSION_KEY, loadViewer } = fresh();

@@ -55,7 +55,8 @@ export function UserMenu({
       // header on every page, and a static import put the whole Supabase client
       // (~65 KB gzipped) in every visitor's first load to serve one button.
       const { createClient } = await import('@/lib/supabase/client');
-      await createClient().auth.signOut();
+      // This browser only: the phone's session, and any other, stays signed in.
+      await createClient().auth.signOut({ scope: 'local' });
       /*
         A document navigation, not a router push. Signing out changes who the
         server thinks you are, and a client push races the refresh that was

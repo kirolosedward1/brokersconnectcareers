@@ -5,6 +5,7 @@ import { useLocale } from 'use-intl';
 import {
   destinationOf,
   forgetThisPhone,
+  holdsPushToken,
   notificationIdOf,
   pushAvailable,
   registerThisPhone,
@@ -15,7 +16,7 @@ import { useUnreadCount } from '~/features/notifications/queries';
 import { pushTapped, takePushTap, usePushTap } from '~/features/push/taps';
 import { openWhenReady } from '~/lib/open-path';
 import { clearPersonalCache } from '~/lib/personal-cache';
-import { useSession } from '~/lib/session';
+import { storedSession, useSession } from '~/lib/session';
 
 /**
  * Pushes, beside the root stack (mounted once the tab bar can be drawn):
@@ -60,6 +61,27 @@ export function PushBridge() {
     // And the files they picked or exported, left in the cache.
     clearPersonalCache();
   }, [userId]);
+
+  // Ended before anything here was listening: a cold start whose refresh the
+  // auth server refused (signed out on the website, a password changed
+  // elsewhere) clears the session before any screen mounts, so the change
+  // from somebody to nobody above is never seen. A push token still held here
+  // is what that person left; it goes the same way. Only once the stored
+  // session is gone too: a refresh that could not be answered keeps it, and
+  // the person is still signed in.
+  useEffect(() => {
+    if (!ready || userId) return;
+    let live = true;
+    (async () => {
+      if (!(await holdsPushToken()) || (await storedSession())) return;
+      if (!live) return;
+      stopListeningHere();
+      clearPersonalCache();
+    })().catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [ready, userId]);
 
   // Register, and again when the token changes.
   useEffect(() => {

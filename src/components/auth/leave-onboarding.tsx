@@ -43,7 +43,8 @@ export function LeaveOnboarding({ locale, signOutLabel }: { locale: Locale; sign
   function signOut() {
     startTransition(async () => {
       const { createClient } = await import('@/lib/supabase/client');
-      await createClient().auth.signOut();
+      // This browser only: the phone's session, and any other, stays signed in.
+      await createClient().auth.signOut({ scope: 'local' });
       // A document navigation, as the user menu does: who the server thinks
       // you are has just changed.
       window.location.assign(localeHref(locale, '/'));

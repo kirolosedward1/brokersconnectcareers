@@ -52,6 +52,14 @@ const DATA_PATHS = ['/rest/v1/', '/storage/v1/'];
  */
 let refreshHeldUntil = 0;
 
+/**
+ * A refresh that never answered held every read and write behind it until iOS
+ * gave up on the connection, about a minute, and auth-js then waited another
+ * before trying again. Ten seconds without an answer counts as none, and
+ * auth-js tries again within its own half minute.
+ */
+const REFRESH_TIMEOUT_MS = 10_000;
+
 async function signedInFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
   const path = url.startsWith(env.supabaseUrl) ? url.slice(env.supabaseUrl.length) : '';
@@ -66,12 +74,56 @@ async function signedInFetch(input: RequestInfo | URL, init?: RequestInit): Prom
   if (refresh && Date.now() < refreshHeldUntil) {
     throw new TypeError('Network request failed: the auth service asked to wait');
   }
-  const response = await fetch(input, init);
+  const response = refresh && !init?.signal ? await withinRefreshTime(input, init) : await fetch(input, init);
   if (refresh && response.status === 429 && accessTokenExpired(await encryptedSessionStorage.getItem(SESSION_KEY))) {
     refreshHeldUntil = Date.now() + waitAskedFor(response.headers.get('retry-after'));
     throw new TypeError('Network request failed: the auth service asked to wait');
   }
-  return response;
+  // The auth server refuses a refresh in JSON. A page answering in its place
+  // (a firewall's "access denied", a proxy's) is not its answer, and auth-js
+  // took that page's 403 for the session refused and signed the person out.
+  if (refresh && response.status >= 400 && response.status < 500 && !(response.headers.get('content-type') ?? '').includes('json')) {
+    throw new TypeError('Network request failed: the auth service did not answer the refresh');
+  }
+  return response.ok && SESSION_ANSWERS.test(path) ? onPhoneClock(response) : response;
+}
+
+/** The auth server's answers that carry a session: a sign-in or refresh, an email link, a second factor. */
+const SESSION_ANSWERS = /^\/auth\/v1\/(token\?|verify|factors\/[^/?]+\/verify)/;
+
+/**
+ * When a session runs out, on this phone's clock. The auth server dates it by
+ * its own, and auth-js compares that with the phone's: on a phone set an hour
+ * wrong by hand, a new session read as run out already (a refresh before
+ * every request, using up the allowance of every phone behind the same
+ * address) or as good for an hour past its end (every read refused). Its
+ * lifetime, counted from now here, is right whatever the phone's clock says.
+ */
+async function onPhoneClock(response: Response): Promise<Response> {
+  if (!(response.headers.get('content-type') ?? '').includes('json')) return response;
+  const body = (await response
+    .clone()
+    .json()
+    .catch(() => null)) as { access_token?: unknown; expires_in?: unknown } | null;
+  if (!body || typeof body.access_token !== 'string' || typeof body.expires_in !== 'number') return response;
+  const headers = new Headers(response.headers);
+  headers.delete('content-length');
+  return new Response(JSON.stringify({ ...body, expires_at: Math.round(Date.now() / 1000) + body.expires_in }), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+/** A refresh request, given up on (aborted) after REFRESH_TIMEOUT_MS. */
+async function withinRefreshTime(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const late = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(late);
+  }
 }
 
 /** Retry-After in milliseconds — seconds or a date — between a second and ten minutes; a minute when unsaid. */

@@ -93,6 +93,13 @@ compare with (a new branch), it compares with the previous commit.
   session in app storage. `src/lib/session.tsx` mirrors the website's
   `getViewer()` — the profile row, and for employers the company — and every
   show-or-hide decision comes from `src/lib/permissions.ts`, the website's own.
+  A refresh is given up on after ten seconds without an answer and tried
+  again within supabase-js's half minute, and a call to the website counts the
+  wait for its token within its own thirty seconds. Only the auth server's own
+  refusal (JSON) ends a session: a page answering in its place, a firewall's
+  403, is no answer. A new session's expiry is counted from its lifetime on
+  the phone's clock, so a phone set an hour wrong neither refreshes before
+  every request nor sends tokens that ran out.
 - **Data.** TanStack Query. Only the taxonomy (districts, governorates,
   developers) is kept across launches, for a day, as the website caches it.
   Lists page twenty at a time and are de-duplicated by id, since offsets shift
@@ -287,7 +294,9 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   signing out and deleting the account, which runs the Account tab's own path
   (`mobile/src/features/account/delete.ts`); the website's onboarding page has
   the same two (`src/components/auth/leave-onboarding.tsx`).
-- **The Account tab** signs out of this phone only (`scope: 'local'`), and
+- **The Account tab** signs out of this phone only (`scope: 'local'`), as the
+  website's menus sign out of that browser only, so signing out of one never
+  signs the other out; a password change ends the other sessions. It
   deletes the account through `deleteMyAccount` — for an Apple account after
   asking Apple for a fresh authorization code, so the website can revoke the
   grant. An account that owns a company cannot be deleted at a tap — the
@@ -362,7 +371,12 @@ A push is a second delivery of a bell notification, never a different one
   goes); a session that ended any other way — revoked from another device,
   a refresh refused, another account's email link opened on the phone —
   makes the phone stop listening (Apple's registration), and the next
-  person's registration comes after that stop. A tapped push, the one that
+  person's registration comes after that stop. That includes a refresh
+  refused as the app starts, before anything listens for the sign-out: a push
+  token still held with no session stored is the sign of it, and the phone
+  stops listening, clears the files the person picked and forgets them as the
+  remembered account. A refresh with no answer is not one: the session stays
+  stored and nothing is cleared. A tapped push, the one that
   launched the app included, is opened as the bell opens a notification, once
   it is known who is signed in; the icon's badge follows the bell's count. A
   push arriving while the app is open shows as a banner and refreshes the
@@ -635,7 +649,7 @@ On the website (Vercel):
 
 | Variable | For |
 | --- | --- |
-| `MOBILE_MIN_APP_VERSION` | The lowest app version `/api/mobile/v1/config` accepts; below it the app asks to be updated. |
+| `MOBILE_MIN_APP_VERSION` | The lowest app version `/api/mobile/v1/config` accepts; below it the app asks to be updated. Raised while the app is open, it waits until no form holds typed work. |
 | `MOBILE_APP_STORE_URL` | The app's App Store page (`https://apps.apple.com/...` only), where the "update the app" screen leads; unset until the app is listed. |
 | `MOBILE_MIN_ANDROID_APP_VERSION` | The same floor for the Android app, whose builds are numbered apart; `MOBILE_MIN_APP_VERSION` when unset. |
 | `MOBILE_PLAY_STORE_URL` | The app's Play Store page (`https://play.google.com/...` only), where the Android app's "update the app" screen leads. |

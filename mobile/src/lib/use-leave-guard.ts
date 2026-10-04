@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { Alert } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
@@ -21,6 +21,36 @@ export function useConfirmDiscard() {
   );
 }
 
+/** How many screens hold typed work right now: what the update gate waits for (UpdateGate). */
+let held = 0;
+const watchers = new Set<() => void>();
+function holdBy(change: number) {
+  held += change;
+  for (const watcher of watchers) watcher();
+}
+
+/** Counts this screen as holding typed work while `holding`. */
+export function useHoldsWork(holding: boolean) {
+  useEffect(() => {
+    if (!holding) return;
+    holdBy(1);
+    return () => holdBy(-1);
+  }, [holding]);
+}
+
+/** Whether any screen holds typed work that leaving would throw away. */
+export function useWorkInProgress(): boolean {
+  return useSyncExternalStore(
+    (watcher) => {
+      watchers.add(watcher);
+      return () => {
+        watchers.delete(watcher);
+      };
+    },
+    () => held > 0,
+  );
+}
+
 /**
  * The same question for leaving the screen itself, while `dirty`. While
  * `sending`, the screen is held instead, and says why: what was typed is on its
@@ -31,6 +61,7 @@ export function useLeaveGuard(dirty: boolean, sending = false) {
   const t = useTranslations();
   const navigation = useNavigation();
   const confirm = useConfirmDiscard();
+  useHoldsWork(dirty || sending);
   usePreventRemove(dirty || sending, ({ data }) => {
     if (sending) {
       Alert.alert(t('app.leave.sendingTitle'), t('app.leave.sendingBody'), [{ text: t('app.leave.stay'), style: 'cancel' }]);

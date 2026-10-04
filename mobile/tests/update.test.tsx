@@ -2,6 +2,7 @@ import { Linking, Platform, Text } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { UpdateGate } from '~/components/navigation/update-gate';
+import { useHoldsWork } from '~/lib/use-leave-guard';
 import { isOlderThan } from '~/features/update';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { ThemeProvider } from '~/theme/provider';
@@ -69,6 +70,35 @@ describe('the gate', () => {
     fireEvent.press(screen.getByRole('button', { name: ar.app.update.cta }));
     expect(openURL).toHaveBeenCalledWith(url);
     openURL.mockRestore();
+  });
+
+  it('waits while a screen holds typed work, which it would otherwise throw away, and asks once it is let go', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ minAppVersion: '1.2.0' }));
+    // Half a listing typed when the website, read again on coming back to the app, starts asking for 1.2.0.
+    function Typing({ holding }: { holding: boolean }) {
+      useHoldsWork(holding);
+      return <Text>half a listing</Text>;
+    }
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    const tree = (holding: boolean) => (
+      <QueryClientProvider client={client}>
+        <ThemeProvider>
+          <I18nProvider>
+            <UpdateGate>
+              <Typing holding={holding} />
+            </UpdateGate>
+          </I18nProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    );
+    const { rerender } = render(tree(true));
+    await settle();
+    expect(screen.getByText('half a listing')).toBeTruthy();
+    expect(screen.queryByText(ar.app.update.title)).toBeNull();
+
+    // Saved, or thrown away on purpose: now the update is asked for.
+    rerender(tree(false));
+    expect(await screen.findByText(ar.app.update.title)).toBeTruthy();
   });
 
   it('offers no button before the app is listed', async () => {

@@ -229,7 +229,8 @@ export function AppShell({
   async function signOut() {
     // Loaded when it is used, as the public header's menu does.
     const { createClient } = await import('@/lib/supabase/client');
-    await createClient().auth.signOut();
+    // This browser only: the phone's session, and any other, stays signed in.
+    await createClient().auth.signOut({ scope: 'local' });
     /*
       A document navigation, not a router push. Signing out changes who the
       server thinks you are, and a client push races the refresh that was

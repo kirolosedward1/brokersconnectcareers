@@ -93,12 +93,32 @@ async function currentToken(): Promise<string | null> {
 const TIMEOUT_MS = 30_000;
 const UPLOAD_TIMEOUT_MS = 90_000;
 
+/** What `pending` answers, or no answer once `ms` have passed. */
+function within<T>(pending: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const late = setTimeout(() => reject(new ApiError(0, 'offline')), ms);
+    pending.then(
+      (value) => {
+        clearTimeout(late);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(late);
+        reject(error);
+      },
+    );
+  });
+}
+
 async function send(path: string, init: RequestInit, withToken: boolean): Promise<Response> {
-  const timeout = init.body instanceof FormData ? UPLOAD_TIMEOUT_MS : TIMEOUT_MS;
+  // One time limit for the whole call, the token's refresh included: a refresh
+  // that hung kept a write waiting before its own time had even started.
+  const deadline = Date.now() + (init.body instanceof FormData ? UPLOAD_TIMEOUT_MS : TIMEOUT_MS);
+  const left = () => Math.max(deadline - Date.now(), 1_000);
   const attempt = (token: string | null) =>
     fetch(`${env.siteUrl}${path}`, {
       ...init,
-      signal: AbortSignal.timeout(timeout),
+      signal: AbortSignal.timeout(left()),
       credentials: 'omit',
       headers: {
         accept: 'application/json',
@@ -109,7 +129,7 @@ async function send(path: string, init: RequestInit, withToken: boolean): Promis
 
   let response: Response;
   try {
-    const token = withToken ? await currentToken() : null;
+    const token = withToken ? await within(currentToken(), left()) : null;
     response = await attempt(token);
 
     if (response.status === 401 && token) {

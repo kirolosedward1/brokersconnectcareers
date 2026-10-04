@@ -183,6 +183,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // half minute in the foreground) brings a usable one.
         if (data.session || !isAuthRetryableFetchError(error)) setSession(data.session);
         setReady(true);
+        // Nobody, for sure, and nothing stored: a session the auth server
+        // refused as the app started, before this listened for the sign-out
+        // (signed out on the website while the app was closed). The person
+        // the phone remembers is gone with it; left, the next cold start drew
+        // their tab bar and routed links for them.
+        if (!data.session && !isAuthRetryableFetchError(error)) {
+          storedSession()
+            .then(async (stored) => {
+              if (stored || !(await readLastActor())) return;
+              await rememberActor(null);
+              if (active) setRemembered({ loaded: true, actor: null });
+            })
+            .catch(() => {});
+        }
       })
       // The session storage failing is no reason to wait forever.
       .catch(() => {

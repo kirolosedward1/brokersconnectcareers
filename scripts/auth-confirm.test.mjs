@@ -11,7 +11,7 @@
  * rules on their own, and the route's two safety properties read off its
  * source: a GET never spends a link, and a POST from another site is refused.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { register } from 'node:module';
 
@@ -123,6 +123,24 @@ is(
   true,
 );
 is('the page is never cached or indexed', /'cache-control': 'no-store'/.test(route) && /noindex/.test(route), true);
+
+console.log('\n— signing out on the website');
+{
+  // supabase-js signs every session out unless told otherwise, the phone's
+  // included: someone signing out of the website at work found the app signed
+  // out too. A person's own "sign out" is this browser's, as the app's is that
+  // phone's; ending the others belongs to a password change ('others'), and an
+  // account deleted has nothing left to keep (src/lib/actions/account.ts).
+  const files = readdirSync(join(ROOT, 'src', 'components'), { recursive: true }).filter((file) =>
+    String(file).endsWith('.tsx'),
+  );
+  const bare = files.filter((file) => /auth\.signOut\(\s*\)/.test(readFileSync(join(ROOT, 'src', 'components', String(file)), 'utf8')));
+  is('no component signs every session out', bare, []);
+  const local = files.filter((file) =>
+    /auth\.signOut\(\{ scope: 'local' \}\)/.test(readFileSync(join(ROOT, 'src', 'components', String(file)), 'utf8')),
+  );
+  is('the menus and onboarding sign this browser out', local.length >= 3, true);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

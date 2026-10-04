@@ -144,6 +144,11 @@ export async function forgetThisPhone(): Promise<void> {
  * which a session that is already gone can no longer remove), and the icon's
  * count goes. The next sign-in registers the phone again.
  */
+/** Whether this phone still holds a push token, which only a signed-in person's registration leaves. */
+export async function holdsPushToken(): Promise<boolean> {
+  return Boolean(await AsyncStorage.getItem(TOKEN_KEY).catch(() => null));
+}
+
 export function stopListeningHere(): Promise<void> {
   stopping = (async () => {
     await AsyncStorage.removeItem(TOKEN_KEY).catch(() => {});
