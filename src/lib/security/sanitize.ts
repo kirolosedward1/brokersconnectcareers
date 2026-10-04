@@ -139,12 +139,14 @@ function typedHost(value: string): string {
  * Romanian, Vietnamese and caron letters of Extended-B, Extended Additional).
  * Not the Latin letters that pass for plain ones with no accent to give them
  * away: small capitals, phonetic and IPA letters (ᴄ, ꜱ, ɡ, ʟ), a dotless i or
- * j, a long s, the Kelvin sign. Listed, not folded: with the `u` flag a
+ * j, a long s, the Kelvin sign; nor a capital I with a dot (İ), which the
+ * parsers write as an i with a second dot, nor the medieval letters past
+ * Vietnamese's (ỻ, ỽ, ỿ). Listed, not folded: with the `u` flag a
  * case-insensitive [a-z] takes ſ and K for s and k.
  */
 const LATIN_LETTERS =
-  'A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u0130\u0132-\u0137\u0139-\u013E\u0141-\u0148\u014A-\u017E' +
-  '\u01A0\u01A1\u01AF\u01B0\u01CD-\u01DC\u0218-\u021B\u1E00-\u1E99\u1E9E\u1EA0-\u1EFF';
+  'A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u012F\u0132-\u0137\u0139-\u013E\u0141-\u0148\u014A-\u017E' +
+  '\u01A0\u01A1\u01AF\u01B0\u01CD-\u01DC\u0218-\u021B\u1E00-\u1E99\u1E9E\u1EA0-\u1EF9';
 const LATIN = new RegExp(`[${LATIN_LETTERS}]`, 'u');
 const ARABIC = /\p{Script=Arabic}/u;
 /** What a label may hold: those Latin letters, Arabic ones with their marks, digits, - and _. */

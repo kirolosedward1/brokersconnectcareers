@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { isAuthRetryableFetchError, type Session } from '@supabase/supabase-js';
+import { isAuthRetryableFetchError, type Session, type User } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
 import { asConfirmType, confirmDestination, isTokenHash } from '@/lib/auth/confirm-link';
 import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
@@ -49,6 +49,8 @@ export default function ConfirmLinkScreen() {
   const [state, setState] = useState<'idle' | 'verifying' | 'failed' | 'offline'>(valid ? 'idle' : 'failed');
   // The link's own account, checked and waiting for the person to say whether to switch to it.
   const [other, setOther] = useState<Session | null>(null);
+  // A link that failed for somebody signed in: their account as the server has it now (accountNow).
+  const [account, setAccount] = useState<User | null>(null);
   // Checked, but taking it into the app had no answer: tried again with the same session.
   const checked = useRef<Session | null>(null);
   const started = useRef(false);
@@ -94,7 +96,12 @@ export default function ConfirmLinkScreen() {
     setState('verifying');
     const result = await checkLink(type, tokenHash);
     if (result.kind === 'error') {
-      setState(isAuthRetryableFetchError(result.error) ? 'offline' : 'failed');
+      if (isAuthRetryableFetchError(result.error)) {
+        setState('offline');
+        return;
+      }
+      setAccount(await accountNow());
+      setState('failed');
       return;
     }
     if (result.kind === 'accepted') {
@@ -141,11 +148,12 @@ export default function ConfirmLinkScreen() {
     // named: the link may have been for another of the person's. A
     // confirmation, or a new address that went through: most often the
     // account's own link opened again, and nothing to do. A reset, or a new
-    // address still waiting (new_email), is left to do, and Sign-in and
-    // security is where, with no link needed.
+    // address still waiting (new_email, as the server has it: accountNow), is
+    // left to do, and Sign-in and security is where, with no link needed.
     if (session) {
-      const email = session.user.email ?? '';
-      const unfinished = type === 'recovery' || (type === 'email_change' && Boolean(session.user.new_email));
+      const signedIn = account ?? session.user;
+      const email = signedIn.email ?? '';
+      const unfinished = type === 'recovery' || (type === 'email_change' && Boolean(signedIn.new_email));
       return (
         <>
           <Stack.Screen options={{ headerShown: false }} />
@@ -219,4 +227,26 @@ export default function ConfirmLinkScreen() {
       <LoadingState />
     </>
   );
+}
+
+/**
+ * The account signed in here as the auth server has it now. The one this
+ * phone stored is only renewed by a sign-in, a change made here or the hourly
+ * refresh, so an address change asked for, or finished, on another device is
+ * not in it, and a failed link would be explained from the wrong side of it.
+ * Null — the stored one is used — when nobody is signed in, or the server has
+ * not answered within ten seconds.
+ */
+function accountNow(): Promise<User | null> {
+  return new Promise((resolve) => {
+    const late = setTimeout(() => resolve(null), 10_000);
+    supabase.auth
+      .getUser()
+      .then(({ data, error }) => (error ? null : data.user))
+      .catch(() => null)
+      .then((user) => {
+        clearTimeout(late);
+        resolve(user);
+      });
+  });
 }

@@ -143,6 +143,12 @@ console.log('\n— an href');
     'https://examp\u029fe.com/', // ʟ
     'https://\u212aitchen.com/', // K, the Kelvin sign
     'https://pa\u017f\u017f.com/', // ſſ
+    // A capital I with a dot, which both parsers write as i and a combining dot,
+    // and the medieval letters past Vietnamese's: the Welsh ll and v, a looped y.
+    'https://\u0130nstagram.com/', // İ
+    'https://www.\u1effoutube.com/', // ỿ
+    'https://ma\u1efbs.com/', // ỻ
+    'https://\u1efdimeo.com/', // ỽ
   ]) {
     check(`refuses the look-alike ${JSON.stringify(lookalike)}`, safeHttpUrl(lookalike) === null, String(safeHttpUrl(lookalike)));
   }
@@ -153,6 +159,8 @@ console.log('\n— an href');
     'https://\u0142\u00f3d\u017a.pl/',
     'https://vi\u1ec7t.vn/',
     'https://\u0219tefan.ro/',
+    'https://c\u00e1i-\u0111\u1eb9p-\u1ef9.vn/', // the last Vietnamese letter, ỹ
+    'https://\u012fstorija.lt/', // į, the last before the dotted capital I
   ]) {
     check(`keeps ${JSON.stringify(real)}`, safeHttpUrl(real) !== null, String(safeHttpUrl(real)));
   }

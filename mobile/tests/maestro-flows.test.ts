@@ -56,18 +56,53 @@ const KEYS: Record<string, string> = {
 
 const FLOWS = join(__dirname, '..', 'maestro');
 const SYSTEM = new Set(['فتح|Open']);
-/** Where a flow names text to find on screen: a command's own value, or a selector's `text`. */
-const TEXT_KEYS = new Set(['tapOn', 'assertVisible', 'assertNotVisible', 'visible', 'notVisible', 'element', 'text']);
+/**
+ * Where a flow names text to find on screen: a command's own value, a
+ * selector's `text`, and the selectors placed relative to another.
+ */
+const TEXT_KEYS = new Set([
+  'tapOn',
+  'doubleTapOn',
+  'longPressOn',
+  'assertVisible',
+  'assertNotVisible',
+  'copyTextFrom',
+  'visible',
+  'notVisible',
+  'element',
+  'text',
+  'below',
+  'above',
+  'leftOf',
+  'rightOf',
+  'childOf',
+  'containsChild',
+  'containsDescendants',
+]);
+/**
+ * Strings that are no text on screen: a command with no argument (under no
+ * key), the app, a flow's name, a file run, a link opened, a screenshot's
+ * name, a condition. Any other key holding a string fails the test below, so
+ * a new way of naming text is sorted into one list or the other.
+ */
+const OTHER_KEYS = new Set(['', 'appId', 'name', 'file', 'runFlow', 'openLink', 'takeScreenshot', 'true']);
 
-function textsIn(node: unknown, key: string | null, into: string[]): string[] {
+/** The strings in a flow by the key they sit under; an item of a list sits under the list's key. */
+function stringsIn(node: unknown, key: string, into: { key: string; value: string }[]): { key: string; value: string }[] {
   if (typeof node === 'string') {
-    if (key && TEXT_KEYS.has(key)) into.push(node);
+    into.push({ key, value: node });
   } else if (Array.isArray(node)) {
-    for (const item of node) textsIn(item, null, into);
+    for (const item of node) stringsIn(item, key, into);
   } else if (node && typeof node === 'object') {
-    for (const [child, value] of Object.entries(node)) textsIn(value, child, into);
+    for (const [child, value] of Object.entries(node)) stringsIn(value, child, into);
   }
   return into;
+}
+
+function textsIn(node: unknown): string[] {
+  return stringsIn(node, '', [])
+    .filter(({ key }) => TEXT_KEYS.has(key))
+    .map(({ value }) => value);
 }
 
 /**
@@ -91,13 +126,12 @@ function textOf(path: string): unknown {
     .reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], catalogues.ar);
 }
 
-const phrases = readdirSync(FLOWS)
+const documents = readdirSync(FLOWS)
   .filter((name) => name.endsWith('.yaml'))
-  .flatMap((flow) =>
-    parseAllDocuments(readFileSync(join(FLOWS, flow), 'utf8'))
-      .flatMap((document) => textsIn(document.toJS(), null, []))
-      .map((phrase) => ({ flow, phrase })),
-  )
+  .flatMap((flow) => parseAllDocuments(readFileSync(join(FLOWS, flow), 'utf8')).map((document) => ({ flow, document: document.toJS() })));
+
+const phrases = documents
+  .flatMap(({ flow, document }) => textsIn(document).map((phrase) => ({ flow, phrase })))
   .filter(({ phrase }) => !phrase.includes('${') && !SYSTEM.has(phrase));
 
 describe('the iOS run’s flows', () => {
@@ -111,6 +145,15 @@ describe('the iOS run’s flows', () => {
     const text = textOf(KEYS[phrase]);
     expect(typeof text).toBe('string');
     expect(maestroMatches(phrase, text as string)).toBe(true);
+  });
+
+  it('knows every key a flow puts a string under, as text on screen or not', () => {
+    const unknown = documents.flatMap(({ flow, document }) =>
+      stringsIn(document, '', [])
+        .filter(({ key }) => !TEXT_KEYS.has(key) && !OTHER_KEYS.has(key))
+        .map(({ key, value }) => `${flow}: ${key}: ${value}`),
+    );
+    expect(unknown).toEqual([]);
   });
 
   it('names no key a flow no longer looks for', () => {
@@ -127,7 +170,12 @@ describe('the iOS run’s flows', () => {
     // A selector's `text`, single quotes, a comment after the value.
     const forms = parseAllDocuments(
       "appId: x\n---\n- tapOn:\n    text: 'أهلاً'\n- assertVisible: \"بيك\" # a note\n- scrollUntilVisible:\n    element:\n      text: تاني\n",
-    ).flatMap((document) => textsIn(document.toJS(), null, []));
+    ).flatMap((document) => textsIn(document.toJS()));
     expect(forms).toEqual(['أهلاً', 'بيك', 'تاني']);
+    // The other commands that find text, a selector placed by another, and a list of them.
+    const more = parseAllDocuments(
+      'appId: x\n---\n- longPressOn: واحد\n- doubleTapOn: اتنين\n- tapOn:\n    text: تلاتة\n    below: أربعة\n- assertVisible:\n    text: خمسة\n    childOf:\n      text: ستة\n    containsDescendants:\n      - سبعة\n      - text: تمانية\n',
+    ).flatMap((document) => textsIn(document.toJS()));
+    expect(more).toEqual(['واحد', 'اتنين', 'تلاتة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'تمانية']);
   });
 });

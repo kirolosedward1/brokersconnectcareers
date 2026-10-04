@@ -1034,6 +1034,35 @@ describe('an email link opened in the app', () => {
       expect(screen.queryByRole('button', { name: ar.app.account.security })).toBeNull();
     });
 
+    it('reads where a change stands from the server, when it was asked for on another device', async () => {
+      // Signed in here before the change was asked for, on the website: the
+      // account this phone stored has no new address waiting, the server's has.
+      await signedIn();
+      user = { ...user, new_email: 'new-address@example.com' } as AuthUser;
+      server.on('POST /auth/v1/verify', {
+        status: 403,
+        body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
+      });
+      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
+      expect(await screen.findByText(ar.app.auth.emailChangeLinkFailed.replace('{email}', user.email))).toBeTruthy();
+      expect(screen.getByRole('button', { name: ar.app.account.security })).toBeTruthy();
+    });
+
+    it('and from the server when the change went through on another device', async () => {
+      // Asked for here, finished on a computer: this phone still has the old
+      // address with a change waiting; the server has the new one and nothing waiting.
+      user = { ...authUser(), new_email: 'new-address@example.com' } as AuthUser;
+      await signedIn();
+      user = authUser({ email: 'new-address@example.com' });
+      server.on('POST /auth/v1/verify', {
+        status: 403,
+        body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
+      });
+      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
+      expect(await screen.findByText(ar.app.auth.linkUsedBody.replace('{email}', 'new-address@example.com'))).toBeTruthy();
+      expect(screen.queryByRole('button', { name: ar.app.account.security })).toBeNull();
+    });
+
     it('offers a failed reset link the new password here, signed in as the person is', async () => {
       await signedIn();
       server.on('POST /auth/v1/verify', {

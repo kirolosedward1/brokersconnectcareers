@@ -425,7 +425,9 @@ reports promptly.
   another account's link spends it. A link that fails for someone signed in
   names the account and says what is left to do: nothing for a confirmation
   or a new address that went through, Sign-in and security for a reset or a
-  new address still waiting.
+  new address still waiting. Which of those it is comes from the auth server
+  at that moment, not the account the phone stored, since the change may have
+  been asked for or finished on another device.
   `src/lib/auth/confirm-link.ts`
   reads the link for both: a reset opens the new-password screen, a
   confirmation onboarding with the door's role and the destination.
