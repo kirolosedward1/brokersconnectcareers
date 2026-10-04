@@ -1,6 +1,16 @@
-import { createContext, useContext, type Context, type ReactNode } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View, type DimensionValue } from 'react-native';
+import { createContext, useContext, useState, type Context, type ReactNode } from 'react';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  View,
+  type DimensionValue,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { HeaderHeightContext } from 'expo-router/react-navigation';
 import { useTranslations } from 'use-intl';
 import { CloudOff, Compass, TriangleAlert, WifiOff, type LucideIcon } from '~/components/ui/lucide';
 import { ApiError, noAnswer } from '~/lib/api';
@@ -34,15 +44,52 @@ const centered = { alignItems: 'center', justifyContent: 'center', padding: spac
 function Centered({ children }: { children: ReactNode }) {
   const scroll = useContext(InsideScroll);
   if (scroll && !scroll.horizontal) return <View style={[{ flex: 1 }, centered]}>{children}</View>;
+  return <CenteredScroll>{children}</CenteredScroll>;
+}
+
+/**
+ * A screen of words, in the middle, that scrolls only when they are taller
+ * than the room the bars leave.
+ *
+ * Inside a navigation or tab controller iOS gives a scroll view the bars'
+ * height as insets ("automatic") even when what it holds fits, and content as
+ * tall as the screen plus those insets always scrolls: the words sat some 120
+ * points below the middle of a tab with a large title, and dragged. With
+ * "scrollableAxes" the insets come only with scrolling, and it scrolls —
+ * bounces, so iOS counts it as scrollable — only once the words are taller
+ * than the screen less the header, or the status bar, and the tab bar, or
+ * the home indicator.
+ */
+export function CenteredScroll({
+  children,
+  padding = space[8],
+  style,
+}: {
+  children: ReactNode;
+  padding?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const insets = useContext(SafeAreaInsetsContext);
+  const header = useContext(HeaderHeightContext);
+  const [frame, setFrame] = useState(0);
+  const [words, setWords] = useState(0);
+  const room = frame - Math.max(header ?? 0, insets?.top ?? 0) - (insets?.bottom ?? 0);
+  const taller = frame > 0 && words + 2 * padding > room;
   return (
     <ScrollView
-      style={{ flex: 1 }}
-      contentInsetAdjustmentBehavior="automatic"
-      // Still while it fits: a spinner or a message that bounces under the finger feels loose.
-      alwaysBounceVertical={false}
-      contentContainerStyle={[{ flexGrow: 1 }, centered]}
+      style={[{ flex: 1 }, style]}
+      onLayout={(event) => setFrame(event.nativeEvent.layout.height)}
+      contentInsetAdjustmentBehavior="scrollableAxes"
+      // Still while it fits: a spinner or a message that moves under the finger feels loose.
+      alwaysBounceVertical={taller}
+      contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding }}
     >
-      {children}
+      <View
+        onLayout={(event) => setWords(event.nativeEvent.layout.height)}
+        style={{ alignSelf: 'stretch', alignItems: 'center', gap: space[3] }}
+      >
+        {children}
+      </View>
     </ScrollView>
   );
 }

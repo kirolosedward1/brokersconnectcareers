@@ -228,9 +228,20 @@ export type ReceiptDeps = {
   dueTickets(limit: number): Promise<Pick<PushTicketRow, 'ticket_id' | 'device_id' | 'created_at'>[]>;
   receipts(ids: string[]): Promise<Record<string, ExpoReceipt>>;
   forget(ids: string[]): Promise<void>;
-  /** Switches each phone off unless it was registered again after `since` (its row's last_seen_at). */
-  disableUnseenSince(phones: { id: string; since: string }[], reason: string): Promise<void>;
+  /**
+   * Switches the phone off unless it was registered again after `since` (its
+   * row's last_seen_at). True if it was switched off.
+   */
+  disableUnseenSince(id: string, since: string, reason: string): Promise<boolean>;
 };
+
+/**
+ * Phones switched off at once. Each has its own "since", so it is a statement
+ * apiece; one after another, the hundreds a broadcast to people who deleted
+ * the app brings back could outlast the run, and then the same tickets are
+ * read and the same phones patched again next minute.
+ */
+const PHONES_AT_ONCE = 10;
 
 export type ReceiptStats = { checked: number; answered: number; phonesOff: number };
 
@@ -262,12 +273,17 @@ export async function checkReceipts(deps: ReceiptDeps, options: { limit?: number
     if (!since || Date.parse(ticket.created_at) > Date.parse(since)) off.set(ticket.device_id, ticket.created_at);
   }
 
-  if (off.size) {
-    await deps.disableUnseenSince(
-      [...off].map(([id, since]) => ({ id, since })),
-      'DeviceNotRegistered',
+  // Counted as the database answers: a phone registered again since is not switched off.
+  let phonesOff = 0;
+  const phones = [...off];
+  for (let start = 0; start < phones.length; start += PHONES_AT_ONCE) {
+    const switched = await Promise.all(
+      phones
+        .slice(start, start + PHONES_AT_ONCE)
+        .map(([id, since]) => deps.disableUnseenSince(id, since, 'DeviceNotRegistered')),
     );
+    phonesOff += switched.filter(Boolean).length;
   }
   if (answered.length) await deps.forget(answered);
-  return { checked: tickets.length, answered: answered.length, phonesOff: off.size };
+  return { checked: tickets.length, answered: answered.length, phonesOff };
 }

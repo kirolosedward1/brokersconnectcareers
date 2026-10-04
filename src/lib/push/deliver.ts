@@ -132,18 +132,18 @@ function receiptDeps(admin: Admin): ReceiptDeps {
     forget: async (ids) => {
       await retryDb(() => admin.from('push_tickets').delete().in('ticket_id', ids));
     },
-    disableUnseenSince: async (phones, reason) => {
-      for (const { id, since } of phones) {
-        await retryDb(() =>
-          admin
-            .from('push_devices')
-            .update({ disabled_at: new Date().toISOString(), disabled_reason: reason })
-            .eq('id', id)
-            .is('disabled_at', null)
-            // Registered again since the refused push (register_push_device stamps it): the token is good again, maybe another person's.
-            .lte('last_seen_at', since),
-        );
-      }
+    disableUnseenSince: async (id, since, reason) => {
+      const switched = await retryDb(() =>
+        admin
+          .from('push_devices')
+          .update({ disabled_at: new Date().toISOString(), disabled_reason: reason })
+          .eq('id', id)
+          .is('disabled_at', null)
+          // Registered again since the refused push (register_push_device stamps it): the token is good again, maybe another person's.
+          .lte('last_seen_at', since)
+          .select('id'),
+      );
+      return (switched?.length ?? 0) > 0;
     },
   };
 }

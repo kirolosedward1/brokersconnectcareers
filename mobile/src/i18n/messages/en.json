@@ -65,7 +65,7 @@
     "configFailed": "We could not get signing in ready. Check your connection and try again.",
     "configRetry": "Try again",
     "appleRevokedTitle": "You have been signed out",
-    "appleRevokedBody": "Sign in with Apple was turned off for this app in Settings, so we signed you out on this phone. You can sign in again at any time."
+    "appleRevokedBody": "Sign in with Apple is no longer on for this app, so we signed you out on this phone. You can sign in again at any time."
   },
   "onboarding": {
     "choose": "Choose"

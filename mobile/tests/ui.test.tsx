@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import { FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaInsetsContext, SafeAreaProvider } from 'react-native-safe-area-context';
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Stack } from 'expo-router';
+import { HeaderHeightContext } from 'expo-router/react-navigation';
 import { renderRouter } from 'expo-router/testing-library';
 import TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
 import { AuthScroll } from '~/components/auth/auth-scroll';
@@ -139,12 +140,51 @@ describe('the end of a list', () => {
 });
 
 describe('a state that is the whole screen', () => {
-  // At the largest text sizes, or on the smallest phone turned on its side,
-  // the words and the button under them can be taller than the screen.
-  it('scrolls, clear of the header and the tab bar, to the button under its words', () => {
-    render(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />, { wrapper: Providers });
+  /*
+    Under a large title and over the tab bar, iOS gives a scroll view the
+    bars' height as insets whenever it is inside a navigation or tab
+    controller ("automatic"), even when what it holds fits: then the words
+    sat some 120 points below the middle and dragged up and down by the
+    height of both bars. Insets only once it scrolls ("scrollableAxes"), and
+    it scrolls only when the words and the button under them are taller
+    than the room the bars leave: at the largest text sizes, or on the
+    smallest phone turned on its side.
+  */
+  const bars = { top: 59, bottom: 83, left: 0, right: 0 };
+  function UnderTheBars({ children }: { children: ReactNode }) {
+    return (
+      <Providers>
+        <SafeAreaInsetsContext.Provider value={bars}>
+          <HeaderHeightContext.Provider value={155}>{children}</HeaderHeightContext.Provider>
+        </SafeAreaInsetsContext.Provider>
+      </Providers>
+    );
+  }
+  const laidOut = (frame: number, words: number) => {
     const scroll = screen.UNSAFE_getByType(ScrollView);
-    expect(scroll.props.contentInsetAdjustmentBehavior).toBe('automatic');
+    fireEvent(scroll, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 393, height: frame } } });
+    const content = within(scroll)
+      .UNSAFE_getAllByType(View)
+      .find((view) => typeof view.props.onLayout === 'function');
+    if (!content) throw new Error('the words are not measured');
+    fireEvent(content, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 329, height: words } } });
+    return screen.UNSAFE_getByType(ScrollView);
+  };
+
+  it('sits still in the middle when it fits: no insets, nothing to drag', () => {
+    render(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />, { wrapper: UnderTheBars });
+    const scroll = laidOut(852, 260);
+    expect(scroll.props.contentInsetAdjustmentBehavior).toBe('scrollableAxes');
+    expect(scroll.props.alwaysBounceVertical).toBe(false);
+  });
+
+  it('scrolls, clear of the header and the tab bar, to the button under its words when they are taller than the room', () => {
+    render(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />, { wrapper: UnderTheBars });
+    // 852 − 155 (header) − 83 (tab bar) = 614 between the bars: 600 of words
+    // and the padding around them are more.
+    const scroll = laidOut(852, 600);
+    expect(scroll.props.contentInsetAdjustmentBehavior).toBe('scrollableAxes');
+    expect(scroll.props.alwaysBounceVertical).toBe(true);
     expect(within(scroll).getByRole('button', { name: ar.common.retry })).toBeTruthy();
   });
 

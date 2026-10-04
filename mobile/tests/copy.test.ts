@@ -117,6 +117,15 @@ describe('a promise', () => {
     expect(catalogues.en.app.push.hintCandidate).not.toMatch(/opens/);
   });
 
+  it('says Sign in with Apple stopped, not that the person turned it off in Settings', () => {
+    // The website revokes it too, while deleting an account made with Apple; a
+    // deletion that then fails leaves the person signed in until the app
+    // comes back and finds the grant gone, which they never touched in Settings.
+    expect(catalogues.en.app.auth.appleRevokedBody).not.toMatch(/Settings|turned off/);
+    expect(catalogues.ar.app.auth.appleRevokedBody).not.toMatch(/الإعدادات|وقفت/);
+    expect(catalogues.ar.app.auth.appleRevokedBody).toContain('«تسجيل الدخول بـ Apple»');
+  });
+
   it('suggests following a company with no roles only to whoever can follow it', () => {
     expect(ar('companies.noOpenRoles', { follow: 'yes' })).toContain('تابعها');
     expect(ar('companies.noOpenRoles', { follow: 'no' })).not.toContain('تابعها');

@@ -1,4 +1,4 @@
-import { Linking, Platform, ScrollView, Text } from 'react-native';
+import { Linking, Platform, ScrollView, Text, View } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { UpdateGate } from '~/components/navigation/update-gate';
@@ -72,13 +72,30 @@ describe('the gate', () => {
     openURL.mockRestore();
   });
 
-  it('scrolls to the button under its words, at the largest text sizes, clear of the status bar', async () => {
+  it('scrolls to the button under its words, clear of the status bar, only when they are taller than the screen', async () => {
     const url = 'https://apps.apple.com/app/brokers-connect/id000000000';
     server.on('GET /api/mobile/v1/config', mobileConfig({ minAppVersion: '1.2.0', appStoreUrl: url }));
     gate();
     expect(await screen.findByText(ar.app.update.title)).toBeTruthy();
-    const scroll = screen.UNSAFE_getByType(ScrollView);
-    expect(scroll.props.contentInsetAdjustmentBehavior).toBe('automatic');
+    const laidOut = (words: number) => {
+      const scroll = screen.UNSAFE_getByType(ScrollView);
+      fireEvent(scroll, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 393, height: 852 } } });
+      const content = within(scroll)
+        .UNSAFE_getAllByType(View)
+        .find((view) => typeof view.props.onLayout === 'function');
+      if (!content) throw new Error('the words are not measured');
+      fireEvent(content, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 345, height: words } } });
+      return screen.UNSAFE_getByType(ScrollView);
+    };
+
+    // As it usually is: still, in the middle, nothing to drag.
+    let scroll = laidOut(240);
+    expect(scroll.props.contentInsetAdjustmentBehavior).toBe('scrollableAxes');
+    expect(scroll.props.alwaysBounceVertical).toBe(false);
+
+    // At the largest text sizes: taller than the screen, so it scrolls, inset from the bars.
+    scroll = laidOut(900);
+    expect(scroll.props.alwaysBounceVertical).toBe(true);
     expect(within(scroll).getByRole('button', { name: ar.app.update.cta })).toBeTruthy();
   });
 

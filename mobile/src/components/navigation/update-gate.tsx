@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Linking, ScrollView } from 'react-native';
+import { Linking } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
+import { CenteredScroll } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useUpdateRequired } from '~/features/update';
 import { useWorkInProgress } from '~/lib/use-leave-guard';
@@ -25,20 +26,9 @@ export function UpdateGate({ children }: { children: ReactNode }) {
 
   if (!required || busy) return children;
 
-  // A scroll view, for the largest text sizes: the button under the words must stay reachable.
+  // Scrolls at the largest text sizes, where the button under the words must stay reachable.
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      contentInsetAdjustmentBehavior="automatic"
-      alwaysBounceVertical={false}
-      contentContainerStyle={{
-        flexGrow: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: space[3],
-        padding: space[6],
-      }}
-    >
+    <CenteredScroll padding={space[6]} style={{ backgroundColor: colors.background }}>
       <Text variant="title" weight="bold" accessibilityRole="header" style={{ textAlign: 'center' }}>
         {t('title')}
       </Text>
@@ -46,6 +36,6 @@ export function UpdateGate({ children }: { children: ReactNode }) {
         {t('body')}
       </Text>
       {storeUrl ? <Button label={t('cta')} size="lg" onPress={() => Linking.openURL(storeUrl).catch(() => {})} /> : null}
-    </ScrollView>
+    </CenteredScroll>
   );
 }

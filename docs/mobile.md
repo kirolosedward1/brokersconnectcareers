@@ -123,10 +123,13 @@ compare with (a new branch), it compares with the previous commit.
   iOS reads out no error by itself. The return key moves to the next field and
   submits from the last; a six-digit code answers as its sixth digit is typed
   (the number pad has no return key). An empty or error state that is a
-  screen of its own scrolls (`mobile/src/components/ui/states.tsx`), so at the
-  largest text sizes its button is never left behind the tab bar; inside a
-  list it is a block of the list. Labels beside icons wrap rather than run
-  past their button, chip or badge.
+  screen of its own scrolls once it is taller than the room the header and the
+  tab bar leave (`CenteredScroll` in `mobile/src/components/ui/states.tsx`), so
+  at the largest text sizes its button is never left behind the tab bar; while
+  it fits it stays still in the middle, because iOS would otherwise add the
+  bars' height to it as insets and let it drag. Inside a list it is a block of
+  the list. Labels beside icons wrap rather than run past their button, chip
+  or badge.
 - **Navigation.** Routes mirror the website's paths. Each tab is a route group
   with its own stack, and listings, company pages and the bell's feed live in
   a group all tabs share, so they open inside the tab the reader is in. The
@@ -288,9 +291,10 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   nonce itself to `signInWithIdToken`, and the name Apple gives only once is
   kept in `user_metadata.full_name`. The Apple ID it signed in with is kept on
   the phone, and iOS is asked about it at launch and each time the app comes
-  back: once the person turns Sign in with Apple off for the app in Settings
-  (or Apple revokes it), that session ends on the phone with a word of why
-  (`AppleCredentialWatch`). An Apple ID iOS does not know ends nothing, and a
+  back: once the person turns Sign in with Apple off for the app in Settings,
+  Apple revokes it, or the website did while deleting the account (and the
+  deletion then failed), that session ends on the phone with a word that it
+  stopped, blaming nobody (`AppleCredentialWatch`). An Apple ID iOS does not know ends nothing, and a
   session made by password is never asked about. **Google** runs Supabase's OAuth flow in
   the system's authentication browser with PKCE, returning to
   `brokersconnect://auth/callback`. Each button appears only when
@@ -650,6 +654,16 @@ production, with QA accounts made for it — never the demo accounts.
   app (once `APPLE_APP_ID` is set).
 - Delete a QA account from the app; for one made with Apple, Apple's
   "Sign in with Apple" list no longer shows the app.
+- Signed in with Apple, stop using it for the app (Settings → your name →
+  Sign in with Apple): back in the app, it signs out and says why.
+- Signed in on the phone and on the website: signing out of the website
+  leaves the phone signed in; changing the password there signs it out.
+- On the smallest iPhone, at the largest text size (Settings → Accessibility
+  → Display & Text Size → Larger Text): press onboarding's, the job wizard's
+  and the profile's button with a field left wrong — the screen scrolls to
+  it and VoiceOver reads it; the return key moves through the fields; a
+  two-step code signs in as its sixth digit is typed; an empty list's
+  button is not under the tab bar.
 - On Android as well, when it ships: every form's lowest field stays above the
   keyboard, Back on onboarding and the second factor stays put, and the tab
   icons show.
