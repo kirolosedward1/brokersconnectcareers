@@ -124,14 +124,14 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
                     <span >
                       {pack.seats === null
                         ? t('unlimitedSeats')
-                        : t('seatsUpTo', { count: formatNumber(pack.seats, locale) })}
+                        : t('seatsUpTo', { count: pack.seats })}
                     </span>
                   </li>
                   <li className="flex items-center gap-2">
                     <Check className="size-3.5 shrink-0" aria-hidden />
                     {/* Same reason as the expiry line: a phrase, not a
                          figure. `.numeral` put "يوماً" before the number. */}
-                    <span>{t('days', { count: formatNumber(pack.days, locale) })}</span>
+                    <span>{t('days', { count: pack.days })}</span>
                   </li>
                 </ul>
 

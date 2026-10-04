@@ -243,7 +243,7 @@ export default async function AdminCompanyPage({
             actions={
               openJobReports ? (
                 <Link href="/admin/reports?type=job" className="text-xs text-destructive hover:underline">
-                  {t('openListingReports', { count: formatNumber(openJobReports, locale) })}
+                  {t('openListingReports', { count: openJobReports })}
                 </Link>
               ) : null
             }
@@ -258,7 +258,7 @@ export default async function AdminCompanyPage({
                       {localized(locale, job.title_ar, job.title_en)}
                     </Link>
                     <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {t('applicantsN', { count: formatNumber(job.applications[0]?.count ?? 0, locale) })}
+                      {t('applicantsN', { count: job.applications[0]?.count ?? 0 })}
                       <JobStatusBadge status={job.status} expiresAt={job.expires_at} />
                     </span>
                   </li>

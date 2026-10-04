@@ -132,7 +132,7 @@ export default async function AdminAgentPage({ params }: { params: Promise<{ loc
               <Facts
                 items={[
                   { label: t('colSlug'), value: <code dir="ltr" className="text-xs">{agent.slug}</code> },
-                  { label: t('colYears'), value: t('yearsN', { count: formatNumber(agent.years_experience, locale) }) },
+                  { label: t('colYears'), value: t('yearsN', { count: agent.years_experience }) },
                   { label: t('track'), value: formatList(agent.tracks.map((track) => tTrack(track)), locale) || '—' },
                   { label: t('district'), value: formatList(districtNames, locale) || '—' },
                   { label: t('languages'), value: agent.languages.join(' · ') || '—' },

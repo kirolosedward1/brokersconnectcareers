@@ -881,5 +881,71 @@ console.log('\n— the email copy has two halves too');
   check('Arabic emails spell وظائف, نتائج and the rest as the site does', misspelled.length === 0, misspelled.join(', '));
 }
 
+console.log('\n— a count on the website takes its form');
+{
+  /*
+    Arabic has a form for one, one for two, the plural for three to ten and
+    the singular from eleven; English has one and the rest. These labels put
+    the number in front of one fixed word, so both blog posts read «2 دقيقة
+    قراءة», a three-seat pack «حتى 3 وظيفة خالية», and the admin console
+    "1 applicants" and "Used 1 times". The app's catalogue strings are held
+    to the same in mobile/tests/copy.test.ts.
+  */
+  const { createTranslator } = await import('next-intl');
+  const ar = createTranslator({ locale: 'ar', messages: load('ar') });
+  const en = createTranslator({ locale: 'en', messages: load('en') });
+  const said = (t, key, values) => {
+    try {
+      return t(key, values);
+    } catch (error) {
+      return `(threw: ${error.message})`;
+    }
+  };
+  const expect = (label, t, key, values, wanted) => {
+    const got = said(t, key, values);
+    check(`${label}: ${wanted}`, got === wanted, `got ${got}`);
+  };
+
+  expect('a two-minute post', ar, 'blog.readingTime', { count: 2 }, 'دقيقتين قراءة');
+  expect('a five-minute post', ar, 'blog.readingTime', { count: 5 }, '5 دقائق قراءة');
+  expect('a twelve-minute post', ar, 'blog.readingTime', { count: 12 }, '12 دقيقة قراءة');
+  expect('the single pack', ar, 'billing.seatsUpTo', { count: 3 }, 'حتى 3 وظائف خالية');
+  expect('the bulk pack', ar, 'billing.seatsUpTo', { count: 15 }, 'حتى 15 وظيفة خالية');
+  expect('the single pack', en, 'billing.seatsUpTo', { count: 3 }, 'Up to 3 seats');
+  expect('a pack of one', en, 'billing.seatsUpTo', { count: 1 }, 'Up to 1 seat');
+  expect('a pack’s days', ar, 'billing.days', { count: 30 }, '30 يوماً');
+  expect('a short pack', ar, 'billing.days', { count: 7 }, '7 أيام');
+  expect('one applicant', en, 'admin.applicantsN', { count: 1 }, '1 applicant');
+  expect('two applicants', ar, 'admin.applicantsN', { count: 2 }, 'متقدمين اتنين');
+  expect('four applicants', ar, 'admin.applicantsN', { count: 4 }, '4 متقدمين');
+  expect('one year', en, 'admin.yearsN', { count: 1 }, '1 yr');
+  expect('three years', ar, 'admin.yearsN', { count: 3 }, '3 سنين');
+  expect('used once', en, 'admin.inUse', { count: 1 }, 'Used once');
+  expect('used twice', ar, 'admin.inUse', { count: 2 }, 'مستخدم مرتين');
+  expect('used five times', ar, 'admin.inUse', { count: 5 }, 'مستخدم 5 مرات');
+  expect('one open report', en, 'admin.openListingReports', { count: 1 }, '1 open report on its listings');
+  expect('three open reports', ar, 'admin.openListingReports', { count: 3 }, '3 بلاغات مفتوحة على إعلاناتها');
+  expect('two reports filed', ar, 'admin.reportsFiledSummary', { count: 2, dismissed: 1 }, 'بلاغين، منهم 1 طلع مفيهوش مخالفة.');
+
+  // Each label now selects its form from the number, so a caller handing it
+  // formatNumber()'s string ("1,200") would get the wrong one. Every caller
+  // passes the number itself.
+  const callers = [
+    'src/components/home/employer-landing.tsx',
+    'src/app/[locale]/(app)/employer/billing/page.tsx',
+    'src/app/[locale]/(app)/admin/companies/[id]/page.tsx',
+    'src/app/[locale]/(app)/admin/users/[id]/page.tsx',
+    'src/app/[locale]/(app)/admin/agents/[id]/page.tsx',
+    'src/app/[locale]/(app)/admin/agents/page.tsx',
+    'src/app/[locale]/(app)/admin/taxonomy/page.tsx',
+  ];
+  const formatted = callers.filter((file) =>
+    /\b(seatsUpTo|days|applicantsN|yearsN|inUse|openListingReports|reportsFiledSummary)', \{ count: (formatNumber|n)\(/.test(
+      readFileSync(join(ROOT, file), 'utf8'),
+    ),
+  );
+  check('their callers pass the number, not formatNumber’s text', formatted.length === 0, formatted.join(', '));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

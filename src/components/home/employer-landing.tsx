@@ -208,9 +208,9 @@ export async function EmployerLanding({
                 <p className="mt-3 text-sm text-muted-foreground">
                   {pack.seats === null
                     ? tBilling('unlimitedSeats')
-                    : tBilling('seatsUpTo', { count: formatNumber(pack.seats, locale) })}
+                    : tBilling('seatsUpTo', { count: pack.seats })}
                   {' · '}
-                  {tBilling('days', { count: formatNumber(pack.days, locale) })}
+                  {tBilling('days', { count: pack.days })}
                 </p>
               </li>
             ))}

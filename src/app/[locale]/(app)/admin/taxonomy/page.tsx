@@ -141,7 +141,7 @@ export default async function AdminTaxonomyPage({
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {uses > 0 ? (
-                    <Badge variant="outline">{t('inUse', { count: formatNumber(uses, locale) })}</Badge>
+                    <Badge variant="outline">{t('inUse', { count: uses })}</Badge>
                   ) : (
                     <ConfirmAction
                       lever={{ do: 'deleteTaxonomy', kind, id: row.id }}

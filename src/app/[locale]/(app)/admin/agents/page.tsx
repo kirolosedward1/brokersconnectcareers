@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { mustPage } from '@/lib/admin/read';
 import { PAGE_SIZE, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
 import { looseArabicNeedle } from '@/lib/search/needle';
-import { formatDate, formatNumber } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import type { AgentAvailability, AgentVisibility, ApprovalStatus } from '@/lib/supabase/database.types';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -106,7 +106,7 @@ export default async function AdminAgentsPage({
     {
       key: 'years',
       header: t('colYears'),
-      cell: (row) => t('yearsN', { count: formatNumber(row.years_experience, locale) }),
+      cell: (row) => t('yearsN', { count: row.years_experience }),
       mobile: 'meta',
     },
     { key: 'availability', header: t('colAvailability'), cell: (row) => tAvailability(row.availability), mobile: 'meta' },

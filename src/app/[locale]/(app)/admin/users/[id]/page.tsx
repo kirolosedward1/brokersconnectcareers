@@ -316,7 +316,7 @@ export default async function AdminUserPage({
 
           <Section title={t('reportsFiled')}>
             <p className="text-sm">
-              {t('reportsFiledSummary', { count: n(filed.length), dismissed: n(dismissed) })}
+              {t('reportsFiledSummary', { count: filed.length, dismissed: n(dismissed) })}
             </p>
             {badFaith ? <p className="mt-1 text-sm text-warning">{t('reportsBadFaith', { count: n(badFaith) })}</p> : null}
             {badFaith || (filed.length >= 3 && dismissed / filed.length >= 0.5) ? (
