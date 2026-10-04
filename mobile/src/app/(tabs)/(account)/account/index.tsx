@@ -97,7 +97,7 @@ export default function AccountScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: t('app.tabs.account'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
+      <Stack.Screen options={{ title: t('app.tabs.account'), headerLargeTitleEnabled: true, headerRight: () => <HeaderBell /> }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}

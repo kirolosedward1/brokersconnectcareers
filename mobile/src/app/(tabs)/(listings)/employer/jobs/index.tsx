@@ -61,7 +61,7 @@ export default function ListingsScreen() {
   const pull = usePullRefresh(() => listings.refetch());
 
   const header = (
-    <Stack.Screen options={{ title: t('employer.jobs'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
+    <Stack.Screen options={{ title: t('employer.jobs'), headerLargeTitleEnabled: true, headerRight: () => <HeaderBell /> }} />
   );
   const newJob = () => router.push('/employer/jobs/new' as never);
 

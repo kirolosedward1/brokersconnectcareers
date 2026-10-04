@@ -83,7 +83,7 @@ export default function DirectoryScreen() {
     <Stack.Screen
       options={{
         title: t('nav.agents'),
-        headerLargeTitle: true,
+        headerLargeTitleEnabled: true,
         headerRight: () => <HeaderBell />,
         headerSearchBarOptions: {
           ref: searchBar,

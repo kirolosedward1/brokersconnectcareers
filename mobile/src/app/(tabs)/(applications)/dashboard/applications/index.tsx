@@ -104,7 +104,7 @@ export default function ApplicationsScreen() {
   return (
     <>
       <Stack.Screen
-        options={{ title: t('dashboard.applications'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }}
+        options={{ title: t('dashboard.applications'), headerLargeTitleEnabled: true, headerRight: () => <HeaderBell /> }}
       />
       {body}
     </>

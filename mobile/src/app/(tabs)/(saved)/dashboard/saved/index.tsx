@@ -141,7 +141,7 @@ export default function SavedScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: t('app.tabs.saved'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
+      <Stack.Screen options={{ title: t('app.tabs.saved'), headerLargeTitleEnabled: true, headerRight: () => <HeaderBell /> }} />
       {body}
     </>
   );

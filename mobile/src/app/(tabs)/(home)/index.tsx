@@ -50,7 +50,7 @@ export default function HomeScreen() {
   const { viewer, actor } = useSession();
   return (
     <>
-      <Stack.Screen options={{ title: t('meta.siteName'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
+      <Stack.Screen options={{ title: t('meta.siteName'), headerLargeTitleEnabled: true, headerRight: () => <HeaderBell /> }} />
       {canAccessEmployerArea(actor) ? (
         <EmployerHome profile={viewer?.profile ?? null} company={viewer?.company ?? null} />
       ) : canAccessCandidateArea(actor) ? (

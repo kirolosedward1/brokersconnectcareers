@@ -95,7 +95,7 @@ export default function BoardScreen() {
     <Stack.Screen
       options={{
         title: t('jobs.title'),
-        headerLargeTitle: true,
+        headerLargeTitleEnabled: true,
         headerRight: () => <HeaderBell />,
         headerSearchBarOptions: {
           ref: searchBar,
