@@ -1,7 +1,9 @@
 import { Stack, Tabs } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { persistQueryClientRestore, persistQueryClientSave } from '@tanstack/react-query-persist-client';
-import { act, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { Modal } from 'react-native';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { firstPagesOnly, isOpeningRead, persistOptions } from '~/lib/query';
 import { SessionProvider } from '~/lib/session';
@@ -65,6 +67,27 @@ describe('what is kept for the next start', () => {
       clientState: { mutations: [], queries: [{ queryKey: ['jobs', 'board', ''], queryHash: 'h', dehydratedAt: 0, state: { data: two } as never }] },
     });
     expect(kept.clientState.queries[0].state.data).toEqual({ pages: [board()], pageParams: [1] });
+  });
+
+  it('an opening read whose last re-read failed, as the answer it had — and not one that never had an answer', () => {
+    const client = cache();
+    client.setQueryData(['jobs', 'board', ''], { pages: [board()], pageParams: [1] });
+    // Read again offline: the read failed, the listings it had are still on screen.
+    const failed = client.getQueryCache().find({ queryKey: ['jobs', 'board', ''] });
+    failed?.setState({ status: 'error', error: new Error('offline'), fetchFailureCount: 1 });
+    // Never answered at all.
+    client.getQueryCache().build(client, { queryKey: ['browse'] }).setState({ status: 'error', error: new Error('offline') });
+
+    const keep = persistOptions.dehydrateOptions?.shouldDehydrateQuery;
+    expect(failed && keep?.(failed)).toBe(true);
+    expect(keep?.(client.getQueryCache().find({ queryKey: ['browse'] }) as NonNullable<typeof failed>)).toBe(false);
+
+    const written = firstPagesOnly({
+      timestamp: 0,
+      buster: '',
+      clientState: { mutations: [], queries: [{ queryKey: ['jobs', 'board', ''], queryHash: 'h', dehydratedAt: 0, state: failed?.state as never }] },
+    });
+    expect(written.clientState.queries[0].state).toMatchObject({ status: 'success', error: null, data: { pages: [board()], pageParams: [1] } });
   });
 
   it('survives a restart with the taxonomies, and nothing about the person', async () => {
@@ -131,6 +154,63 @@ describe('the board on a cold start', () => {
     await waitFor(() => expect(server.asked('/api/mobile/v1/jobs').length).toBe(1));
     await act(async () => reading.release());
     expect(screen.getByText(listing.title_ar)).toBeTruthy();
+  });
+
+  it('does not cancel the re-read of the kept listings for the next page, and fetches that page once the re-read is in', async () => {
+    const client = cache();
+    const fresh = { ...listing, id: '5b0c7d1e-0000-4000-8000-000000000201', slug: 'fresh-a1b2', title_ar: 'مدير مبيعات' };
+    const second = { ...listing, id: '5b0c7d1e-0000-4000-8000-000000000202', slug: 'second-a1b2', title_ar: 'مسؤول تسويق' };
+    // What the last run kept, a while ago: the first of two pages.
+    client.setQueryData(['jobs', 'board', ''], { pages: [board([listing], { pageCount: 2, total: 21 })], pageParams: [1] }, { updatedAt: Date.now() - 60 * 60 * 1000 });
+    const reading = held(() => board([fresh], { pageCount: 2, total: 21 }));
+    server.on('/api/mobile/v1/jobs', (url: URL) =>
+      url.searchParams.get('page') === '2' ? board([second], { page: 2, pageCount: 2, total: 21 }) : reading.handler(),
+    );
+    const pageTwo = () => server.asked('/api/mobile/v1/jobs').some((request) => request.url.searchParams.get('page') === '2');
+
+    renderRouter(app(client), { initialUrl: '/(jobs)/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    await waitFor(() => expect(server.asked('/api/mobile/v1/jobs').length).toBe(1));
+
+    // The end of the list, reached while the kept page is being read again.
+    act(() => screen.UNSAFE_getByType(FlashList).props.onEndReached());
+    expect(pageTwo()).toBe(false);
+
+    await act(async () => reading.release());
+    // The re-read went through: today's first page in place of the kept one…
+    expect(await screen.findByText(fresh.title_ar)).toBeTruthy();
+    // …and the next page after it.
+    await waitFor(() => expect(pageTwo()).toBe(true));
+    expect(await screen.findByText(second.title_ar)).toBeTruthy();
+  });
+
+  it('keeps the filter sheet open with what was chosen in it, and the filters, when the first read fails', async () => {
+    const client = cache();
+    const reading = held(() => ({ status: 500, body: { error: 'boom' } }));
+    server.on('/api/mobile/v1/jobs', reading.handler);
+    renderRouter(app(client), { initialUrl: '/(jobs)/jobs' });
+
+    // Opened while the first listings are on their way.
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.filters }));
+    expect(screen.UNSAFE_getByType(Modal).props.visible).toBe(true);
+
+    await act(async () => reading.release());
+    expect(await screen.findByText(ar.common.error)).toBeTruthy();
+    expect(screen.UNSAFE_getByType(Modal).props.visible).toBe(true);
+    // Under it, the way to change them is still there, beside "try again".
+    expect(screen.getByRole('radio', { name: ar.jobs.sortNewest })).toBeTruthy();
+    expect(screen.getByRole('button', { name: ar.common.retry })).toBeTruthy();
+  });
+
+  it("keeps the company the board is narrowed to when the filters are cleared before the first listings are in", async () => {
+    const client = cache();
+    const reading = held(() => board());
+    server.on('/api/mobile/v1/jobs', reading.handler);
+    const result = renderRouter(app(client), { initialUrl: '/(jobs)/jobs?company=nile-brokers&track=primary&district=new-cairo' });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.clearFilters }));
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ company: 'nile-brokers' }));
+    await act(async () => reading.release());
   });
 
   it('offers its filters and its order while the first listings are on their way', async () => {

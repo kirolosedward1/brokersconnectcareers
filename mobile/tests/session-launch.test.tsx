@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen } from '@testing-library/react-native';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
-import { SESSION_KEY } from '~/lib/supabase';
+import { SESSION_KEY, supabase } from '~/lib/supabase';
 import { tabsFor } from '~/lib/tabs';
 import { authSession, authUser, USER_ID } from './auth-fixtures';
 
@@ -43,7 +43,8 @@ it('is signed in at once from what the phone stored, and stays signed in while t
     throw new TypeError('Network request failed');
   }) as unknown as typeof fetch;
 
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // No clean-up timers left running once the test is done (gcTime).
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   render(
     <QueryClientProvider client={client}>
       <SessionProvider>
@@ -64,5 +65,39 @@ it('is signed in at once from what the phone stored, and stays signed in while t
   });
   expect(screen.getByText(/ready=true session=yes tabs=home,jobs,applications,saved,account/)).toBeTruthy();
   expect(store.has(SESSION_KEY)).toBe(true);
+  jest.useRealTimers();
+});
+
+it("takes the last person's data off the screen when a reset link signs another account in", async () => {
+  jest.useFakeTimers();
+  store.clear();
+  store.set(SESSION_KEY, JSON.stringify(authSession(authUser())));
+  await AsyncStorage.clear();
+  const other = authUser({ id: 'c0000000-0000-4000-8000-0000000000b2', email: 'omar@example.com' });
+  const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+  globalThis.fetch = jest.fn(async (input: RequestInfo | URL) => {
+    const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+    return url.pathname === '/auth/v1/verify' ? json(authSession(other)) : json([]);
+  }) as unknown as typeof fetch;
+
+  // No clean-up timers left running once the test is done (gcTime).
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+  client.setQueryData(['saved', 'jobs'], ['a listing the last person saved']);
+  render(
+    <QueryClientProvider client={client}>
+      <SessionProvider>
+        <Probe />
+      </SessionProvider>
+    </QueryClientProvider>,
+  );
+  await act(async () => {
+    await jest.advanceTimersByTimeAsync(50);
+  });
+
+  // The link was for another account: its session replaces this one, with an event of its own.
+  await act(async () => {
+    await supabase.auth.verifyOtp({ type: 'recovery', token_hash: 'pkce_0123456789abcdef' });
+  });
+  expect(client.getQueryData(['saved', 'jobs'])).toBeUndefined();
   jest.useRealTimers();
 });

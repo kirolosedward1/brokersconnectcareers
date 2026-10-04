@@ -16,6 +16,7 @@ import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
 import { roomForScreen } from '~/components/ui/keyboard-room';
+import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
 import { I18nProvider } from '~/i18n/provider';
 import { persistOptions, queryClient } from '~/lib/query';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -72,12 +73,16 @@ export default function RootLayout() {
  */
 function AppStack() {
   const { settled } = useSession();
+  // A cold start draws the board kept from the last run at once: not before
+  // the phone has said whose listings the reader hid.
+  const hiddenKnown = useHiddenCompaniesLoaded();
+  const ready = settled && hiddenKnown;
 
   useEffect(() => {
-    if (settled) SplashScreen.hideAsync().catch(() => {});
-  }, [settled]);
+    if (ready) SplashScreen.hideAsync().catch(() => {});
+  }, [ready]);
 
-  if (!settled) return null;
+  if (!ready) return null;
 
   return (
     <UpdateGate>

@@ -23,6 +23,7 @@ import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
+import { useNextPage } from '~/lib/use-next-page';
 
 /**
  * The company's shortlist — the website's /employer/talent: people worth
@@ -38,6 +39,7 @@ export default function ShortlistScreen() {
   const t = useTranslations();
   const { actor } = useSession();
   const shortlist = useShortlist();
+  const nextPage = useNextPage(shortlist);
   const pull = usePullRefresh(() => shortlist.refetch());
   const ids = useShortlistedIds().data;
   const districts = useDistricts().data;
@@ -108,9 +110,7 @@ export default function ShortlistScreen() {
           />
         }
         ListFooterComponent={<PageFooter query={shortlist} />}
-        onEndReached={() => {
-          if (shortlist.hasNextPage && !shortlist.isFetchingNextPage) shortlist.fetchNextPage();
-        }}
+        onEndReached={nextPage}
         onEndReachedThreshold={0.5}
         refreshing={pull.refreshing}
         onRefresh={pull.onRefresh}

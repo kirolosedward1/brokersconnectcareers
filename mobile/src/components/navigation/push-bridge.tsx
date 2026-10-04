@@ -30,8 +30,9 @@ import { useSession } from '~/lib/session';
  * - The app icon's badge is the bell's unread count, as the website's pushes
  *   set it.
  * - When the session ends by any road — a sign-out elsewhere, an expired
- *   refresh — the phone stops listening for pushes, so a lock screen no longer
- *   shows the last person's news. The next sign-in registers it again.
+ *   refresh, another account's email link — the phone stops listening for
+ *   pushes, so a lock screen no longer shows the last person's news. The next
+ *   sign-in registers it again.
  */
 export function PushBridge() {
   const { ready, session, viewer, viewerLoading } = useSession();
@@ -41,6 +42,21 @@ export function PushBridge() {
   const hasProfile = Boolean(viewer?.profile);
   const state = usePushState().data;
   const wanted = Boolean(pushAvailable() && userId && hasProfile && state?.permission === 'granted' && !state.off);
+
+  // The session ended, by whichever road — or another person's began without
+  // a sign-out (an email link opened for another account): stop listening on
+  // this phone. The last person's row is theirs to remove, and their session
+  // is gone; left registered, their news kept reaching the lock screen while
+  // somebody else used the app. The new person's registration, below, waits
+  // for this (registerThisPhone), so runs after it — declared first, this
+  // runs first.
+  const previous = useRef(userId);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = userId;
+    if (!before || before === userId) return;
+    stopListeningHere();
+  }, [userId]);
 
   // Register, and again when the token changes.
   useEffect(() => {
@@ -120,15 +136,6 @@ export function PushBridge() {
     if (!userId || unread === undefined) return;
     Notifications.setBadgeCountAsync(unread).catch(() => {});
   }, [userId, unread]);
-
-  // The session ended, by whichever road: stop listening on this phone.
-  const previous = useRef(userId);
-  useEffect(() => {
-    const before = previous.current;
-    previous.current = userId;
-    if (!before || userId) return;
-    stopListeningHere();
-  }, [userId]);
 
   return null;
 }

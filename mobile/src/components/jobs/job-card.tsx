@@ -42,11 +42,35 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
   const companyLeads = job.leads_source === 'company_provided';
   const leadsTone = companyLeads ? colors.primary : colors.mutedForeground;
   const flags = job.is_featured || closed || applied;
+  const commission = job.commission_type === 'percentage' && job.commission_value != null ? pay.commission(job, locale) : null;
+  const facts = [
+    t(`track.${job.track}`),
+    t(`experienceBand.${job.experience_band}`),
+    `${formatNumber(job.seats, locale)} ${t('jobs.seatsLabel', { count: job.seats })}`,
+  ].join(' · ');
+
+  // One element to VoiceOver, so it says everything the card shows: who and
+  // where, then what is true of it (featured, closed, applied to), what it
+  // pays and the rest — a closed listing read as an open one was the cost.
+  const spoken = [
+    formatList([title, company, district], locale),
+    job.company.verification_status === 'verified' ? t('companies.verified') : null,
+    job.is_featured ? t('jobs.featured') : null,
+    closed ? t('jobs.closedShort') : null,
+    applied ? t('jobs.applied') : null,
+    salary.perMonth ? `${salary.amount} ${salary.perMonth}` : salary.amount,
+    commission,
+    t(`leadsSource.${job.leads_source}_short`),
+    facts,
+    job.published_at ? formatRelativeDay(job.published_at, locale) : null,
+  ]
+    .filter(Boolean)
+    .join('. ');
 
   return (
     <Card
       onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
-      accessibilityLabel={formatList([title, company, district], locale)}
+      accessibilityLabel={spoken}
       accessibilityActions={save.savable ? [{ name: 'save', label: save.label }] : undefined}
       onAccessibilityAction={(event) => {
         if (event.nativeEvent.actionName === 'save') save.toggle();
@@ -101,9 +125,9 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
           {salary.perMonth ? <Text variant="small" tone="mutedForeground">{` ${salary.perMonth}`}</Text> : null}
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[3], rowGap: 2 }}>
-          {job.commission_type === 'percentage' && job.commission_value != null ? (
+          {commission ? (
             <Text variant="small" weight="medium">
-              {pay.commission(job, locale)}
+              {commission}
             </Text>
           ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -129,11 +153,7 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
         }}
       >
         <Text variant="caption" tone="mutedForeground" style={{ flexGrow: 1, flexShrink: 1, flexBasis: 160 }}>
-          {[
-            t(`track.${job.track}`),
-            t(`experienceBand.${job.experience_band}`),
-            `${formatNumber(job.seats, locale)} ${t('jobs.seatsLabel', { count: job.seats })}`,
-          ].join(' · ')}
+          {facts}
         </Text>
         {job.published_at ? (
           <Text variant="caption" tone="mutedForeground">

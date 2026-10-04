@@ -39,6 +39,7 @@ import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
+import { useNextPage } from '~/lib/use-next-page';
 
 const SORTS: JobSort[] = ['newest', 'salary', 'seats'];
 
@@ -64,6 +65,8 @@ export default function BoardScreen() {
   const query = boardQuery(filters);
 
   const board = useJobBoard(query);
+
+  const nextPage = useNextPage(board);
   // The spinner is the reader's pull, not a re-read on coming back to the app.
   const pull = usePullRefresh(() => board.refetch());
   const hidden = useHiddenCompanies();
@@ -146,10 +149,29 @@ export default function BoardScreen() {
   }
 
   if (board.isError && !board.data) {
+    // The filters stay as on the way in — a filter sheet open when the read
+    // failed stays open with what was chosen in it, and a narrowed board can
+    // be widened rather than only tried again.
     return (
       <>
         {header}
-        <ErrorState error={board.error} onRetry={() => board.refetch()} />
+        {sheet}
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
+        >
+          <BoardHeader
+            filters={filters}
+            first={undefined}
+            apply={apply}
+            onFilters={openFilters}
+            hasResults={false}
+            sponsoredShown={false}
+            loading
+          />
+          <ErrorState error={board.error} onRetry={() => board.refetch()} />
+        </ScrollView>
       </>
     );
   }
@@ -187,9 +209,7 @@ export default function BoardScreen() {
             unfiltered={countActiveFilters(filters) === 0}
           />
         }
-        onEndReached={() => {
-          if (board.hasNextPage && !board.isFetchingNextPage) board.fetchNextPage();
-        }}
+        onEndReached={nextPage}
         onEndReachedThreshold={0.5}
         refreshing={pull.refreshing}
         onRefresh={pull.onRefresh}
@@ -313,7 +333,10 @@ function BoardHeader({
               label={t('clearFilters')}
               variant="ghost"
               size="sm"
-              onPress={() => apply(company ? { ...EMPTY_FILTERS, companySlug: filters.companySlug } : EMPTY_FILTERS)}
+              // The pinned company is not a filter: it stays, as on the website —
+              // and while the answer that names it is not in yet (loading, or
+              // failed), the address's own pin is kept rather than dropped.
+              onPress={() => apply(company || !first ? { ...EMPTY_FILTERS, companySlug: filters.companySlug } : EMPTY_FILTERS)}
             />
           ) : null}
         </View>

@@ -35,6 +35,7 @@ import { useVisited } from '~/lib/use-visited';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
+import { useNextPage } from '~/lib/use-next-page';
 
 /**
  * The consultant directory — the website's /agents, for the companies that
@@ -57,6 +58,7 @@ export default function DirectoryScreen() {
   // Drawn at launch behind Home by the tab bar: searched once the tab is opened.
   const visited = useVisited();
   const directory = useAgentDirectory(filters, { enabled: visited });
+  const nextPage = useNextPage(directory);
   const pull = usePullRefresh(() => directory.refetch());
   const agents = useMemo(() => flattenAgents(directory.data?.pages), [directory.data]);
   const districts = useDistricts().data;
@@ -169,9 +171,7 @@ export default function DirectoryScreen() {
           />
         }
         ListFooterComponent={<PageFooter query={directory} />}
-        onEndReached={() => {
-          if (directory.hasNextPage && !directory.isFetchingNextPage) directory.fetchNextPage();
-        }}
+        onEndReached={nextPage}
         onEndReachedThreshold={0.5}
         refreshing={pull.refreshing}
         onRefresh={pull.onRefresh}

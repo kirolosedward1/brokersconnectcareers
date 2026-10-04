@@ -418,9 +418,19 @@ function OnboardingForm({
           </View>
         </Field>
 
+        {/* One element to VoiceOver, which cannot reach the links inside it:
+            they are offered as its actions too. */}
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{ checked: agreed }}
+          accessibilityActions={[
+            { name: 'terms', label: t('footer.terms') },
+            { name: 'privacy', label: t('footer.privacy') },
+          ]}
+          onAccessibilityAction={(event) => {
+            if (event.nativeEvent.actionName === 'terms') openSitePage('/terms');
+            if (event.nativeEvent.actionName === 'privacy') openSitePage('/privacy');
+          }}
           onPress={() => setAgreed((value) => !value)}
           style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3], minHeight: 44 }}
         >

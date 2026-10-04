@@ -405,6 +405,38 @@ describe('the applications', () => {
     alert.mockRestore();
   });
 
+  it('reads them again when a withdrawal is refused, so the row says where it stands now', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    // The company moved it on while the list was open: the withdrawal is refused.
+    server.on('POST /api/mobile/v1/actions/withdrawApplication', () => {
+      applications = [application({ status: 'hired' })];
+      return { ok: false, error: 'forbidden' };
+    });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/dashboard/applications' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
+    act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
+
+    expect(await screen.findByText(ar.applicationStatus.hired)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.dashboard.withdraw })).toBeNull();
+    alert.mockRestore();
+  });
+
+  it('takes the row away when the answer to a withdrawal was lost but it went in', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    server.on('POST /api/mobile/v1/actions/withdrawApplication', () => {
+      applications = [];
+      return { status: 502, body: { error: 'bad_gateway' } };
+    });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/dashboard/applications' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
+    act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
+
+    expect(await screen.findByText(ar.dashboard.emptyApplications)).toBeTruthy();
+    alert.mockRestore();
+  });
+
   it('never says "you have not applied" when the read failed', async () => {
     server.on('GET /rest/v1/applications', { status: 500, body: { message: 'boom' } });
     await signedIn();

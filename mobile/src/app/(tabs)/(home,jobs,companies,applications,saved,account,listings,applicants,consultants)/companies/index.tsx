@@ -22,6 +22,7 @@ import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
+import { useNextPage } from '~/lib/use-next-page';
 
 /**
  * The company directory — the website's /companies: companies with a live
@@ -44,6 +45,8 @@ export default function CompaniesScreen() {
   );
 
   const directory = useCompanyDirectory(query);
+
+  const nextPage = useNextPage(directory);
   const pull = usePullRefresh(() => directory.refetch());
   const hidden = useHiddenCompanies();
   const companies = useMemo(
@@ -171,9 +174,7 @@ export default function CompaniesScreen() {
           />
         }
         ListFooterComponent={<PageFooter query={directory} />}
-        onEndReached={() => {
-          if (directory.hasNextPage && !directory.isFetchingNextPage) directory.fetchNextPage();
-        }}
+        onEndReached={nextPage}
         onEndReachedThreshold={0.5}
         refreshing={pull.refreshing}
         onRefresh={pull.onRefresh}

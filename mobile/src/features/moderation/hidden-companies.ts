@@ -19,6 +19,7 @@ const KEY = 'bc.hidden-companies.v1';
 
 let hidden: ReadonlySet<string> = new Set();
 let loading: Promise<void> | null = null;
+let loaded = false;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -29,12 +30,13 @@ function load(): Promise<void> {
   loading ??= AsyncStorage.getItem(KEY)
     .then((stored) => {
       const ids = stored ? (JSON.parse(stored) as unknown) : [];
-      if (Array.isArray(ids)) {
-        hidden = new Set([...hidden, ...ids.filter((id): id is string => typeof id === 'string')]);
-        emit();
-      }
+      if (Array.isArray(ids)) hidden = new Set([...hidden, ...ids.filter((id): id is string => typeof id === 'string')]);
     })
-    .catch(() => {});
+    .catch(() => {})
+    .finally(() => {
+      loaded = true;
+      emit();
+    });
   return loading;
 }
 
@@ -65,6 +67,19 @@ export function useHiddenCompanies(): ReadonlySet<string> {
     void load();
   }, []);
   return useSyncExternalStore(subscribe, () => hidden);
+}
+
+/**
+ * Whether the phone has said which companies are hidden. The app waits for
+ * it before drawing anything (the root layout): a cold start draws the board
+ * kept from the last run at once, and a hidden company's listings showed on
+ * it until this small read came back.
+ */
+export function useHiddenCompaniesLoaded(): boolean {
+  useEffect(() => {
+    void load();
+  }, []);
+  return useSyncExternalStore(subscribe, () => loaded);
 }
 
 /** A list without the listings of hidden companies. */

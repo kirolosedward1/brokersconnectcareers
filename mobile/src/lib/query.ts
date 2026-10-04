@@ -47,9 +47,12 @@ export function isOpeningRead(key: QueryKey): boolean {
 }
 
 /**
- * A long list kept by its first page only: a board scrolled ten pages deep
- * is not ten pages to write on every change, and a cold start shows the top
- * of it anyway.
+ * What is written for the next start. A long list is kept by its first page
+ * only: a board scrolled ten pages deep is not ten pages to write on every
+ * change, and a cold start shows the top of it anyway. A read whose last
+ * attempt failed — offline, the moment the app went to the background — is
+ * kept as the answer it last had, not as a failure: the next start draws
+ * it, then reads it again.
  */
 export function firstPagesOnly(client: PersistedClient): PersistedClient {
   return {
@@ -57,9 +60,13 @@ export function firstPagesOnly(client: PersistedClient): PersistedClient {
     clientState: {
       ...client.clientState,
       queries: client.clientState.queries.map((query) => {
-        const data = query.state.data as { pages?: unknown[]; pageParams?: unknown[] } | undefined;
-        if (!data || !Array.isArray(data.pages) || data.pages.length <= 1) return query;
-        return { ...query, state: { ...query.state, data: { pages: data.pages.slice(0, 1), pageParams: (data.pageParams ?? []).slice(0, 1) } } };
+        const state =
+          query.state.status === 'error'
+            ? { ...query.state, status: 'success' as const, error: null, fetchFailureCount: 0, fetchFailureReason: null }
+            : query.state;
+        const data = state.data as { pages?: unknown[]; pageParams?: unknown[] } | undefined;
+        if (!data || !Array.isArray(data.pages) || data.pages.length <= 1) return { ...query, state };
+        return { ...query, state: { ...state, data: { pages: data.pages.slice(0, 1), pageParams: (data.pageParams ?? []).slice(0, 1) } } };
       }),
     },
   };
@@ -86,7 +93,9 @@ export const persistOptions: PersistQueryClientProviderProps['persistOptions'] =
   maxAge: DAY,
   buster: `opening-reads-1:${Updates.updateId ?? 'none'}`,
   dehydrateOptions: {
+    // Any read with an answer to keep — a later attempt that failed does not
+    // take it away (firstPagesOnly writes it as that answer).
     shouldDehydrateQuery: (query) =>
-      query.state.status === 'success' && (query.queryKey[0] === 'taxonomy' || isOpeningRead(query.queryKey)),
+      query.state.data !== undefined && (query.queryKey[0] === 'taxonomy' || isOpeningRead(query.queryKey)),
   },
 };

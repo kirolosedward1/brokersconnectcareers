@@ -181,6 +181,26 @@ describe('the board', () => {
     }
   });
 
+  it('tells VoiceOver everything a card shows: sponsored, closed, the pay and the rest, not only who and where', async () => {
+    server.on('/api/mobile/v1/jobs', board([{ ...listing, is_featured: true, expires_at: new Date(Date.now() - 86_400_000).toISOString() }]));
+    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+
+    const card = screen.getByRole('link', { name: new RegExp(`^${listing.title_ar}`) });
+    const spoken = card.props.accessibilityLabel as string;
+    for (const said of [
+      'إعلان ممول',
+      ar.jobs.closedShort,
+      ar.companies.verified,
+      '⁦10,000⁩ – ⁦15,000⁩ جنيه',
+      ar.leadsSource.company_provided_short,
+      ar.track.primary,
+      ar.experienceBand.junior_1_3,
+    ]) {
+      expect(spoken).toContain(said);
+    }
+  });
+
   it('says "no basic salary", not "commission only", for a listing that has no commission either', async () => {
     server.on(
       '/api/mobile/v1/jobs',

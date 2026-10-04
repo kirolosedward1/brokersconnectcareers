@@ -449,6 +449,21 @@ describe('onboarding', () => {
     });
   });
 
+  it('offers the Terms and the Privacy policy inside the agreement to VoiceOver, which cannot reach its links', async () => {
+    profileRow = null;
+    await signedIn();
+    renderRouter(app, { initialUrl: '/onboarding' });
+    const agreement = await screen.findByRole('checkbox');
+    expect(agreement.props.accessibilityActions.map((action: { label: string }) => action.label)).toEqual([ar.footer.terms, ar.footer.privacy]);
+
+    fireEvent(agreement, 'accessibilityAction', { nativeEvent: { actionName: 'terms' } });
+    expect(WebBrowser.openBrowserAsync).toHaveBeenLastCalledWith(`${SITE}/terms`);
+    fireEvent(agreement, 'accessibilityAction', { nativeEvent: { actionName: 'privacy' } });
+    expect(WebBrowser.openBrowserAsync).toHaveBeenLastCalledWith(`${SITE}/privacy`);
+    // Neither ticks the box.
+    expect(agreement.props.accessibilityState).toMatchObject({ checked: false });
+  });
+
   it('asks for the agreement, the age and the directory choice before anything is created', async () => {
     profileRow = null;
     await signedIn();

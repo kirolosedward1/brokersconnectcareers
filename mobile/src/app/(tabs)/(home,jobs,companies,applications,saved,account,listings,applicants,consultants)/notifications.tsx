@@ -20,6 +20,7 @@ import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
+import { useNextPage } from '~/lib/use-next-page';
 
 type LinkNotice = 'gone' | 'unavailable' | 'failed' | null;
 
@@ -55,6 +56,8 @@ export default function NotificationsScreen() {
   const userId = session?.user.id ?? null;
 
   const feed = useNotificationFeed();
+
+  const nextPage = useNextPage(feed);
   // Every push reads the feed again; the spinner is the pull's alone.
   const pull = usePullRefresh(() =>
     Promise.all([feed.refetch(), queryClient.invalidateQueries({ queryKey: ['notifications', 'unread'] })]),
@@ -167,9 +170,7 @@ export default function NotificationsScreen() {
         renderItem={({ item }) => (
           <NotificationItem notification={item} opening={opening === item.id} onPress={() => open(item)} />
         )}
-        onEndReached={() => {
-          if (feed.hasNextPage && !feed.isFetchingNextPage) feed.fetchNextPage();
-        }}
+        onEndReached={nextPage}
         onEndReachedThreshold={0.5}
         ListFooterComponent={<PageFooter query={feed} />}
         refreshControl={

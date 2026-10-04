@@ -202,6 +202,32 @@ describe('a read while the session cannot be refreshed', () => {
   });
 });
 
+describe("a call to the website while the session cannot be refreshed", () => {
+  it('never goes out as nobody either, and is said as no answer', async () => {
+    const { SESSION_KEY, callAction, ApiError } = fresh();
+    store().set(SESSION_KEY, JSON.stringify(expired()));
+    // The auth server is failing; the website would answer — as it would a stranger.
+    network((url) => (url.pathname.startsWith('/auth/v1/') ? json({ message: 'upstream unavailable' }, 503) : json({ ok: false, error: 'unauthenticated' })));
+
+    const call = callAction('announcePasswordChange').catch((error: unknown) => error);
+    await jest.advanceTimersByTimeAsync(60_000);
+    const failure = await call;
+
+    expect(failure).toBeInstanceOf(ApiError);
+    expect((failure as InstanceType<typeof ApiError>).status).toBe(0);
+    expect(sent.filter((request) => request.path.startsWith('/api/mobile/v1/'))).toHaveLength(0);
+    // Still signed in here.
+    expect(store().has(SESSION_KEY)).toBe(true);
+  });
+
+  it('goes out without a token when nobody is signed in, for the actions that allow it', async () => {
+    const { callAction } = fresh();
+    network(() => json({ ok: true }));
+    await expect(callAction('requestPasswordReset', { email: 'sara@example.com' })).resolves.toMatchObject({ ok: true });
+    expect(sent.find((request) => request.path.startsWith('/api/mobile/v1/'))?.bearer).toBeNull();
+  });
+});
+
 describe('an account with no profile', () => {
   it('is believed only from the auth server; a deleted account is signed out, not sent to onboarding', async () => {
     const { supabase, SESSION_KEY, loadViewer } = fresh();

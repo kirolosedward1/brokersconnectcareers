@@ -202,14 +202,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
       setSession(next);
       // Someone else's data must not be on screen for a frame after a switch —
-      // a switch, not the same person signing in again.
+      // a switch, not the same person signing in again. A reset link opened
+      // for another account switches too, with an event of its own.
       const nextUser = next?.user.id ?? null;
-      if (event === 'SIGNED_OUT' || (event === 'SIGNED_IN' && nextUser !== lastUser)) {
+      const arrived = event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY';
+      if (event === 'SIGNED_OUT' || (arrived && nextUser !== lastUser)) {
         queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'taxonomy' });
       }
       lastUser = nextUser;
       // A usable token again: whatever failed while there was none is read again.
-      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+      if (event === 'TOKEN_REFRESHED' || arrived) {
         queryClient.invalidateQueries({ predicate: (query) => query.state.status === 'error' });
       }
       if (event === 'SIGNED_OUT') {

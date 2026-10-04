@@ -32,6 +32,7 @@ import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
+import { useNextPage } from '~/lib/use-next-page';
 
 const STATUS_VARIANT: Record<JobStatus, 'default' | 'success' | 'warning' | 'destructive'> = {
   draft: 'default',
@@ -55,6 +56,7 @@ export default function ListingsScreen() {
   const { colors } = useTheme();
   const { session, viewer, actor } = useSession();
   const listings = useMyListings();
+  const nextPage = useNextPage(listings);
   // A push about a new applicant reads the counts again; the spinner is the pull's alone.
   const pull = usePullRefresh(() => listings.refetch());
 
@@ -131,9 +133,7 @@ export default function ListingsScreen() {
           </View>
         }
         ListFooterComponent={<PageFooter query={listings} />}
-        onEndReached={() => {
-          if (listings.hasNextPage && !listings.isFetchingNextPage) listings.fetchNextPage();
-        }}
+        onEndReached={nextPage}
         onEndReachedThreshold={0.5}
         {...pull}
       />

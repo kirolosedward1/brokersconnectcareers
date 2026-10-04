@@ -496,6 +496,48 @@ describe('signing out', () => {
   });
 });
 
+describe('another account taking over the phone without a sign-out', () => {
+  // An email link opened for another account: its session replaces this one.
+  const OTHER = authUser({ id: 'c0000000-0000-4000-8000-0000000000b2', email: 'omar@example.com' });
+  async function switchToOther() {
+    server.on('POST /auth/v1/token', () => authSession(OTHER));
+    await act(async () => {
+      await supabase.auth.signInWithPassword({ email: OTHER.email, password: PASSWORD });
+    });
+  }
+
+  it("stops this phone hearing the last person's news, while the new one has no profile yet", async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/' });
+    await waitFor(() => expect(registered()).toHaveLength(1));
+
+    // On their way to onboarding: nothing to register them for yet.
+    server.on('/rest/v1/profiles', () => []);
+    await switchToOther();
+    await waitFor(() => expect(Notifications.unregisterForNotificationsAsync).toHaveBeenCalled());
+    expect(registered()).toHaveLength(1);
+  });
+
+  it('registers it for the new person once that stop is done, not before it', async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    renderRouter(app, { initialUrl: '/' });
+    await waitFor(() => expect(registered()).toHaveLength(1));
+
+    const order: string[] = [];
+    jest.mocked(Notifications.unregisterForNotificationsAsync).mockImplementationOnce(async () => {
+      order.push('stopped');
+    });
+    jest.mocked(Notifications.getExpoPushTokenAsync).mockImplementationOnce(async () => {
+      order.push('token');
+      return { type: 'expo', data: TOKEN };
+    });
+    me = { ...profile, id: OTHER.id, full_name: 'عمر حسن' };
+    await switchToOther();
+    await waitFor(() => expect(registered()).toHaveLength(2));
+    expect(order).toEqual(['stopped', 'token']);
+  });
+});
+
 describe('the badge', () => {
   it("is the bell's unread count", async () => {
     unread = 3;

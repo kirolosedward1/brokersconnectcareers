@@ -6,7 +6,8 @@ import {
 } from '@/lib/mobile-api/contract';
 import { isAuthApiError, isAuthRetryableFetchError, isAuthSessionMissingError } from '@supabase/supabase-js';
 import { env } from './env';
-import { supabase } from './supabase';
+import { encryptedSessionStorage } from './session-storage';
+import { SESSION_KEY, supabase } from './supabase';
 
 /**
  * The app's side of /api/mobile/v1 (see src/lib/mobile-api/contract.ts on the
@@ -73,7 +74,14 @@ function refreshRefused(error: unknown): boolean {
 
 async function currentToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
+  if (data.session) return data.session.access_token;
+  // None while a session is still stored on the phone: its refresh failed
+  // without being refused (offline, the auth service down or asking to
+  // wait). Sent without a token, the call was answered as a stranger's —
+  // "unauthenticated", the directory as nobody may see it — so it is said
+  // as no answer, as the database's reads are (supabase.ts), and tried again.
+  if (await encryptedSessionStorage.getItem(SESSION_KEY)) throw new ApiError(0, 'offline');
+  return null;
 }
 
 /**

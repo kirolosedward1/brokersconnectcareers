@@ -29,6 +29,9 @@ const TOKEN_KEY = 'push:token';
 const offKey = (userId: string) => `push:off:${userId}`;
 const promptKey = (userId: string) => `push:prompt-dismissed:${userId}`;
 
+/** The last stop (stopListeningHere), for a registration to wait for. */
+let stopping: Promise<void> = Promise.resolve();
+
 /** What the database accepts for a version (push_devices_app_version_check). */
 const APP_VERSION = /^[0-9]{1,4}(\.[0-9]{1,4}){0,3}$/;
 
@@ -104,6 +107,9 @@ export async function askPermission(): Promise<PushPermission> {
  * a development build, no network) or the database refused it.
  */
 export async function registerThisPhone(locale: string): Promise<string> {
+  // A stop on its way for the person before finishes first, so Apple's
+  // registration is not undone under the new one.
+  await stopping;
   const { data: token } = await Notifications.getExpoPushTokenAsync();
   const version = Application.nativeApplicationVersion;
   const { error } = await supabase.rpc('register_push_device', {
@@ -137,13 +143,17 @@ export async function forgetThisPhone(): Promise<void> {
  * which a session that is already gone can no longer remove), and the icon's
  * count goes. The next sign-in registers the phone again.
  */
-export async function stopListeningHere(): Promise<void> {
-  await AsyncStorage.removeItem(TOKEN_KEY).catch(() => {});
-  await Notifications.setBadgeCountAsync(0).catch(() => false);
-  // Never registered without a project; and in Expo Go the registration is
-  // Expo Go's own, for every project it opens.
-  if (pushAvailable()) await Notifications.unregisterForNotificationsAsync().catch(() => {});
+export function stopListeningHere(): Promise<void> {
+  stopping = (async () => {
+    await AsyncStorage.removeItem(TOKEN_KEY).catch(() => {});
+    await Notifications.setBadgeCountAsync(0).catch(() => false);
+    // Never registered without a project; and in Expo Go the registration is
+    // Expo Go's own, for every project it opens.
+    if (pushAvailable()) await Notifications.unregisterForNotificationsAsync().catch(() => {});
+  })();
+  return stopping;
 }
+
 
 /** Give up waiting after this long: signing out must never hang on the network. */
 const FORGET_TIMEOUT_MS = 4000;

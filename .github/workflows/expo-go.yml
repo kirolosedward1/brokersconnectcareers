@@ -94,7 +94,11 @@ jobs:
           # The publish's own status, not tee's: a failed publish fails the job.
           set -o pipefail
           message="${GIVEN:-${COMMIT:-Expo Go update}}"
-          message="$(printf '%s' "$message" | head -n 1 | cut -c 1-200)"
+          # Its first line, at most 200 characters, in the shell itself: cut
+          # counts bytes and can halve an Arabic letter, and under pipefail a
+          # pipe whose reader stops early (head) can fail the step.
+          message="${message%%$'\n'*}"
+          message="${message:0:200}"
           pnpm run ota expo-go --message "$message (${GITHUB_SHA::7})" --non-interactive 2>&1 | tee "$RUNNER_TEMP/publish.log"
           # One match each, and none is not an error here.
           link=$(grep -m 1 -o 'https://qr.expo.dev/eas-update?[^ ]*' "$RUNNER_TEMP/publish.log" || true)
