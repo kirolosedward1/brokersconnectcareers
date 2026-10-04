@@ -5,7 +5,8 @@
 -- (as scripts/seed-demo.mjs does, for the same reason: GoTrue's own rows), uploads
 -- the candidate's CV, sets `review.params` and runs this file in one
 -- transaction; supabase/tests/review-accounts.test.mjs runs it on the real
--- migrations. Safe to run again: whatever is there already is kept.
+-- migrations. Every run starts the review over (below), so it is the one to
+-- run again before each submission, with new passwords.
 --
 -- What it makes, all of it labelled as the review's on every page that shows it:
 --   - an employer, approved, owning a verified company with two live listings;
@@ -41,15 +42,24 @@ begin
     raise exception 'review.params needs two different users';
   end if;
 
+  -- What the last review left goes first, so each review starts where the
+  -- first did: the reviewer's own application to the second listing (a listing
+  -- takes one application per person, so the next reviewer could not apply),
+  -- the applicant moved on, a listing edited back into review or past its
+  -- thirty days, the profile shown in the directory, the bells full of it.
+  -- The company goes with its listings and every application to them — the
+  -- applications first, since a listing is never deleted from under them
+  -- (applications_job_id_fkey restricts); anyone who applied to a review
+  -- listing despite what it says loses that application with it. `remove`
+  -- stops there.
+  delete from applications
+   where job_id in (select j.id from jobs j join companies c on c.id = j.company_id
+                     where c.slug = 'brokers-connect-app-review' and c.owner_id = v_employer);
+  delete from companies where slug = 'brokers-connect-app-review' and owner_id = v_employer;
+  delete from agent_profiles where user_id = v_candidate;
+  delete from notifications where user_id in (v_candidate, v_employer);
+
   if coalesce((p->>'remove')::boolean, false) then
-    -- The applications first: a listing is never deleted from under them
-    -- (applications_job_id_fkey restricts). Anyone who applied to the review
-    -- listing despite what it says loses that application with it.
-    delete from applications
-     where job_id in (select j.id from jobs j join companies c on c.id = j.company_id
-                       where c.slug = 'brokers-connect-app-review' and c.owner_id = v_employer);
-    delete from companies where slug = 'brokers-connect-app-review' and owner_id = v_employer;
-    delete from agent_profiles where user_id = v_candidate;
     return;
   end if;
 

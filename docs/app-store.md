@@ -199,7 +199,11 @@ pnpm review-accounts --remove --execute --confirm hiwdhicwsohbipxzazmb  # after 
 
 Making them prints the `APP_REVIEW_*` lines `metadata:push` needs ("The
 listing, as code"); the passwords are kept nowhere else, and running it again
-sets new ones. Both profiles show the operator's number (`src/lib/business.ts`)
+sets new ones. Each run also starts the review over, so run it before every
+submission: what the last review left — its application to the second
+listing, the applicant moved on, a listing edited back into review or past its
+thirty days, the profile shown in the directory, the bells — goes, and
+everything is as the first run made it. Both profiles show the operator's number (`src/lib/business.ts`)
 unless `REVIEW_PHONE` names another, so a reviewer who taps WhatsApp reaches
 you, not a stranger. Removing deletes the listings with every application to them
 — someone who applied despite what it says loses that application — then the

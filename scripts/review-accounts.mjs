@@ -23,8 +23,9 @@
  * own rows); the CV through Storage; everything else is
  * supabase/review-accounts.sql in one transaction, which
  * supabase/tests/review-accounts.test.mjs runs on the real migrations. Run
- * again, it keeps what is there and gives both accounts new passwords. The
- * passwords are printed once, as the APP_REVIEW_* lines store.config.js reads.
+ * again, it keeps the two users, gives them new passwords and starts the
+ * review over (what the last review left goes; see the SQL). The passwords
+ * are printed once, as the APP_REVIEW_* lines store.config.js reads.
  */
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';

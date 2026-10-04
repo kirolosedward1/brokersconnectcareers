@@ -26,8 +26,10 @@ export default function EditJobScreen() {
   else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   else if (!viewer.company) body = <NotFoundState />;
   // Filled from a read made for this visit (useEditableJob reads on every
-  // one); the copy kept since the last only when that read fails.
-  else if (editable.isPending || (!editable.isFetchedAfterMount && !editable.isError)) body = <LoadingState />;
+  // one); the copy kept since the last only when that read fails. Waiting on
+  // the read itself, not on the query's last outcome: a query whose last read
+  // failed still says so while this visit's read is on its way.
+  else if (editable.isPending || (!editable.isFetchedAfterMount && editable.isFetching)) body = <LoadingState />;
   else if (editable.isError && !editable.data) body = <ErrorState error={editable.error} onRetry={() => editable.refetch()} />;
   else if (!editable.data) body = <NotFoundState />;
   else {

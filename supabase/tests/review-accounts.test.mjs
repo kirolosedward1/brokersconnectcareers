@@ -6,7 +6,7 @@
  * live listing with an applicant, a candidate who has applied to it and has a
  * second listing left to apply to, both through onboarding. What nobody else
  * should find: the reviewer in the directory.
- * And a second run changes nothing, and the removal leaves nothing behind.
+ * And a second run starts the review over, and the removal leaves nothing behind.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -52,6 +52,22 @@ async function run(params) {
     return null;
   } catch (error) {
     return error.message;
+  }
+}
+
+/** As `as`, but kept: what a reviewer does in the app stays done. */
+async function commitAs(userId, sql) {
+  await db.exec('begin');
+  try {
+    await db.exec(`set local role authenticated;`);
+    await db.exec(`set local request.jwt.claim.sub = '${userId}';`);
+    await db.exec(`set local request.jwt.claims = '${JSON.stringify({ role: 'authenticated', sub: userId })}';`);
+    const result = await db.query(sql);
+    await db.exec('commit');
+    return { ok: true, rows: result.rows };
+  } catch (error) {
+    await db.exec('rollback');
+    return { ok: false, error: error.message, rows: [] };
   }
 }
 
@@ -151,9 +167,67 @@ report.check('another company browsing the directory does not see the reviewer',
 // ---------------------------------------------------------------------------
 report.section('running it again');
 
+// A review, as App Review uses the two accounts: the candidate applies to the
+// second listing and shows their profile in the directory; the employer moves
+// the applicant on and edits a listing, which sends it back to review; and the
+// second listing's thirty days run out before the next submission.
+const reviewed = [
+  await commitAs(CANDIDATE, `
+    insert into applications (job_id, candidate_id, status, experience_band, note)
+    select id, '${CANDIDATE}', 'new', 'junior_1_3', 'review' from jobs where slug = 'app-review-sales-manager'
+    returning id`),
+  await commitAs(CANDIDATE, `update agent_profiles set visibility = 'public' where user_id = '${CANDIDATE}' returning id`),
+  await commitAs(EMPLOYER, `
+    update applications set status = 'shortlisted'
+     where job_id = (select id from jobs where slug = 'app-review-property-consultant') returning id`),
+  await commitAs(EMPLOYER, `
+    update jobs set title_ar = 'تجربة من فريق المراجعة' where slug = 'app-review-property-consultant' returning status`),
+];
+report.check('a review leaves its marks', reviewed.every((step) => step.ok && step.rows.length === 1), JSON.stringify(reviewed));
+await db.exec(`
+  update jobs set published_at = now() - interval '31 days', expires_at = now() - interval '1 day'
+   where slug = 'app-review-sales-manager'`);
+
 report.check('runs again', (await run(PARAMS)) === null);
 const again = await counts();
-report.check('changes nothing', JSON.stringify(again) === JSON.stringify(made), JSON.stringify(again));
+report.check('makes the same rows again', JSON.stringify(again) === JSON.stringify(made), JSON.stringify(again));
+
+const relisted = (await db.query(`
+  select slug, status, title_ar, expires_at > now() as open
+    from jobs where slug in ('app-review-property-consultant', 'app-review-sales-manager') order by slug`)).rows;
+report.check(
+  'both listings are live again, as the first run wrote them, with thirty days ahead',
+  relisted.length === 2 && relisted.every((job) => job.status === 'active' && job.open) &&
+    relisted[0].title_ar === 'استشاري عقاري (إعلان لمراجعة التطبيق)',
+  JSON.stringify(relisted),
+);
+const restarted = (await db.query(`
+  select j.slug, a.status from applications a join jobs j on j.id = a.job_id
+   where a.candidate_id = '${CANDIDATE}'`)).rows;
+report.check(
+  "the employer's applicant is new again, and the second listing has no application",
+  restarted.length === 1 && restarted[0].slug === 'app-review-property-consultant' && restarted[0].status === 'new',
+  JSON.stringify(restarted),
+);
+const shownAgain = await one(`select visibility from agent_profiles where user_id = '${CANDIDATE}'`);
+report.check('the profile is out of the directory again', shownAgain?.visibility === 'hidden', JSON.stringify(shownAgain));
+const reapplying = await as(CANDIDATE, `
+  insert into applications (job_id, candidate_id, status, experience_band, note)
+  select id, '${CANDIDATE}', 'new', 'junior_1_3', 'review' from jobs where slug = 'app-review-sales-manager'
+  returning id`);
+report.check('the next reviewer can apply to the second listing', reapplying.ok && reapplying.rows.length === 1, reapplying.error);
+const bells = (await db.query(`
+  select case when user_id = '${EMPLOYER}' then 'employer' else 'candidate' end as who, kind
+    from notifications where user_id in ('${EMPLOYER}', '${CANDIDATE}') order by who, kind`)).rows;
+report.check(
+  "the bells hold what a first run puts there, and nothing of the last review's",
+  JSON.stringify(bells) ===
+    JSON.stringify([
+      { who: 'candidate', kind: 'application_submitted' },
+      { who: 'employer', kind: 'application_received' },
+    ]),
+  JSON.stringify(bells),
+);
 
 const sameUser = await run({ ...PARAMS, employer: CANDIDATE });
 report.check('refuses one user for both accounts', /two different users/.test(sameUser ?? ''), sameUser);

@@ -435,6 +435,46 @@ describe('a listing on the board', () => {
     }
   });
 
+  it("waits for this visit's read even when the last visit's read failed", async () => {
+    gcTime = 5 * 60_000;
+    try {
+      let stored = liveJob;
+      let failing = false;
+      server.on('GET /rest/v1/jobs', () => (failing ? { status: 503, body: { message: 'unavailable' } } : [stored]));
+      server.on('POST /api/mobile/v1/actions/saveJob', (_url: URL, init?: RequestInit) => {
+        const { input } = JSON.parse(String(init?.body)) as { input: { version?: number } };
+        return input.version === stored.version ? { ok: true, data: { id: liveJob.id } } : { ok: false, error: 'stale' };
+      });
+      renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+      expect(await screen.findByLabelText(ar.jobForm.titleAr)).toBeTruthy();
+      act(() => router.back());
+      expect(await screen.findByText('the console')).toBeTruthy();
+
+      // Opened again on a bad connection: the read fails, and the copy kept
+      // since the first visit is what there is to edit.
+      failing = true;
+      act(() => router.push(`/employer/jobs/${liveJob.id}/edit` as never));
+      expect(await screen.findByLabelText(ar.jobForm.titleAr)).toBeTruthy();
+      act(() => router.back());
+      expect(await screen.findByText('the console')).toBeTruthy();
+
+      // The listing moves on; the connection is good again. Opened a third
+      // time, the editor is filled from this visit's read — the query still
+      // says its last read failed while this one is on its way.
+      failing = false;
+      stored = { ...liveJob, version: 5 };
+      act(() => router.push(`/employer/jobs/${liveJob.id}/edit` as never));
+      fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مدير مبيعات أول');
+      fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
+      fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+      await waitFor(() => expect(saved()).toHaveLength(1));
+      expect(saved()[0].version).toBe(5);
+      expect(screen.queryByText(ar.employer.listingMoved)).toBeNull();
+    } finally {
+      gcTime = 0;
+    }
+  });
+
   it('takes an edit whose answer was lost for saved when the listing says what it sent', async () => {
     let stored = liveJob;
     server.on('GET /rest/v1/jobs', () => [stored]);

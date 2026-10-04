@@ -84,7 +84,7 @@ function reviewNotes(employerEmail, employerPassword) {
 
 Candidate account: the sign-in above. Browse Jobs, open the listing «مدير مبيعات (إعلان لمراجعة التطبيق)» ("Sales manager, app review listing") and apply; this account has already applied to the other review listing, which is the employer account's applicant. Applications, Saved and the directory profile are in the tabs and under Account.
 
-Employer account: ${employerEmail} / ${employerPassword}. Listings: post or edit a job (a new listing waits for our moderators before it goes live). Applicants: move an applicant through the stages, open a CV, and open the applicant's full profile from their card. Consultants: the directory lists the consultants who chose to be shown to companies, so it can be short while the service is new; the review candidate's own profile is kept out of it.
+Employer account: ${employerEmail} / ${employerPassword}. Listings: post or edit a job (a new listing waits for our moderators before it goes live). Applicants: move an applicant through the stages, add a private note, and open the CV. Consultants: the directory lists the consultants who chose to be shown to companies, so it can be short while the service is new; the review candidate's own profile is kept out of it.
 
 Account > Delete account deletes the signed-in account. For a company owner it sends a deletion request instead, because deleting that account would delete other people's applications to the company's listings.
 
@@ -121,6 +121,9 @@ function storeConfig(env = process.env) {
   return {
     configVersion: 0,
     apple: {
+      // The App Store version the listing is for: the build's own (app.config.ts),
+      // or App Store Connect opens 1.0 and offers it no 1.0.0 build.
+      version: '1.0.0',
       copyright: `2026 ${OPERATOR}`,
       categories: ['BUSINESS'],
       info: {
@@ -175,7 +178,8 @@ function storeConfig(env = process.env) {
         parentalControls: false,
         // Listings, company pages and consultant profiles, all reportable.
         userGeneratedContent: true,
-        // The in-app browser opens the website's own pages only.
+        // The in-app browser opens the pages the app names (the website's, a
+        // licence's text, the captcha's own links) and has no address bar.
         unrestrictedWebAccess: false,
         kidsAgeBand: null,
         ageRatingOverride: 'NONE',

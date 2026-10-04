@@ -32,6 +32,7 @@ type Review = {
 type StoreConfig = {
   configVersion: number;
   apple: {
+    version?: string;
     copyright?: string;
     categories?: string[];
     info: Record<string, Info>;
@@ -118,6 +119,23 @@ describe('the App Store listing', () => {
       const lang = parsed.searchParams.get('lang') ?? 'ar';
       expect(existsSync(join(root, 'content', 'legal', `${slug}.${lang}.md`))).toBe(true);
     }
+  });
+
+  it("is for the version the build carries, which App Store Connect matches builds to", () => {
+    const appConfig = readFileSync(join(__dirname, '..', 'app.config.ts'), 'utf8');
+    const built = appConfig.match(/^\s*version: '([^']+)',$/m)?.[1];
+    expect(built).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(listing.apple.version).toBe(built);
+  });
+
+  it('builds with the Node and pnpm the checks run on', () => {
+    const eas = JSON.parse(readFileSync(join(__dirname, '..', 'eas.json'), 'utf8'));
+    // Node from the repository's .nvmrc (a major), pnpm 10, as CI installs
+    // them: pnpm 10 is what reads this project's settings from
+    // pnpm-workspace.yaml (nodeLinker: hoisted); an older one ignores them.
+    const major = readFileSync(join(root, '.nvmrc'), 'utf8').trim();
+    expect(eas.build.base.node.split('.')[0]).toBe(major);
+    expect(eas.build.base.pnpm.split('.')[0]).toBe('10');
   });
 
   it('says the same things in both languages', () => {
