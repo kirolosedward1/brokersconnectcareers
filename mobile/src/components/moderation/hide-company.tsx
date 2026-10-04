@@ -11,9 +11,18 @@ import { space } from '~/theme/tokens';
 
 /**
  * "Hide this company", asked once with what it does (see hidden-companies.ts).
- * Gone once it is hidden: the page's HiddenNotice then says so and takes it back.
+ * Gone once it is hidden: the page's HiddenNotice then says so and takes it
+ * back, as Account → "Hidden on this phone" does from anywhere.
  */
-export function HideCompany({ companyId, companyName }: { companyId: string; companyName: string }) {
+export function HideCompany({
+  companyId,
+  companyName,
+  companySlug,
+}: {
+  companyId: string;
+  companyName: string;
+  companySlug: string;
+}) {
   const t = useTranslations();
   const { colors } = useTheme();
   const hidden = useHiddenCompanies().has(companyId);
@@ -28,7 +37,11 @@ export function HideCompany({ companyId, companyName }: { companyId: string; com
       onPress={() =>
         Alert.alert(t('app.moderation.hideTitle', { company: companyName }), t('app.moderation.hideBody'), [
           { text: t('common.cancel'), style: 'cancel' },
-          { text: t('app.moderation.hideConfirm'), style: 'destructive', onPress: () => hideCompany(companyId) },
+          {
+            text: t('app.moderation.hideConfirm'),
+            style: 'destructive',
+            onPress: () => hideCompany(companyId, { name: companyName, slug: companySlug }),
+          },
         ])
       }
     />
@@ -55,7 +68,7 @@ export function HiddenNotice({ companyId }: { companyId: string }) {
  * once with what it does, and gone once they are hidden, when the profile's
  * HiddenAgentNotice says so and takes it back.
  */
-export function HideAgent({ agentId, name }: { agentId: string; name: string }) {
+export function HideAgent({ agentId, name, slug }: { agentId: string; name: string; slug: string }) {
   const t = useTranslations();
   const { colors } = useTheme();
   const hidden = useHiddenAgents().has(agentId);
@@ -70,7 +83,8 @@ export function HideAgent({ agentId, name }: { agentId: string; name: string }) 
       onPress={() =>
         Alert.alert(t('app.moderation.hideAgentTitle', { name }), t('app.moderation.hideAgentBody'), [
           { text: t('common.cancel'), style: 'cancel' },
-          { text: t('app.moderation.hideConfirm'), style: 'destructive', onPress: () => hideAgent(agentId) },
+          // Its own word: the company's is feminine in Arabic, a consultant's is not.
+          { text: t('app.moderation.hideAgentConfirm'), style: 'destructive', onPress: () => hideAgent(agentId, { name, slug }) },
         ])
       }
     />

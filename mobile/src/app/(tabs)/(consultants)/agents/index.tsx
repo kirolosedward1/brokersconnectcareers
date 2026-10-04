@@ -37,6 +37,7 @@ import { gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useNextPage } from '~/lib/use-next-page';
 import { useHiddenAgents, withoutHiddenAgents } from '~/features/moderation/hidden-agents';
+import { totalShown } from '~/features/moderation/hidden-store';
 
 /**
  * The consultant directory — the website's /agents, for the companies that
@@ -63,7 +64,8 @@ export default function DirectoryScreen() {
   const pull = usePullRefresh(() => directory.refetch());
   // Without the consultants hidden on this phone (hidden-agents.ts).
   const hiddenAgents = useHiddenAgents();
-  const agents = useMemo(() => withoutHiddenAgents(flattenAgents(directory.data?.pages), hiddenAgents), [directory.data, hiddenAgents]);
+  const read = useMemo(() => flattenAgents(directory.data?.pages), [directory.data]);
+  const agents = useMemo(() => withoutHiddenAgents(read, hiddenAgents), [read, hiddenAgents]);
   const districts = useDistricts().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
   const canShortlist = canShortlistAgents(actor);
@@ -156,7 +158,7 @@ export default function DirectoryScreen() {
         ListHeaderComponent={
           <DirectoryHeader
             filters={filters}
-            total={directory.data?.pages[0]?.total ?? 0}
+            total={totalShown(directory.data?.pages[0]?.total ?? 0, read.length, agents.length)}
             apply={apply}
             onFilters={() => setSheetOpen(true)}
           />
@@ -210,7 +212,9 @@ function DirectoryHeader({
   const labelFor = useAgentFilterLabel();
   const active = activeAgentFilters(filters);
   const inSheet = sheetFilterCount(filters);
-  const shortlisted = useShortlistedIds().data?.length ?? 0;
+  // Who is kept and still shown: a consultant hidden on this phone is in neither list.
+  const hiddenAgents = useHiddenAgents();
+  const shortlisted = (useShortlistedIds().data ?? []).filter((id) => !hiddenAgents.has(id)).length;
 
   // The gate, explained once. An admin reads everything and needs no explanation.
   const gated = !isAdmin(actor) && !hasVerifiedCompany(actor);

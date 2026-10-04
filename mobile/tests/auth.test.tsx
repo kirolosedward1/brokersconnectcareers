@@ -765,6 +765,41 @@ describe('one-tap sign-in', () => {
   });
 });
 
+describe('a form whose config could not be read', () => {
+  it('waits, says so, and reads the config again when asked — never sends without the check', async () => {
+    let online = false;
+    server.on('GET /api/mobile/v1/config', () =>
+      online ? mobileConfig() : { status: 503, body: { error: 'unavailable' } },
+    );
+    renderRouter(app, { initialUrl: '/sign-up' });
+    expect(await screen.findByText(ar.app.auth.configFailed)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.auth.email), 'new@example.com');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.password), PASSWORD);
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), PASSWORD);
+    // Held: whether Supabase asks for a check is not known.
+    expect(screen.getByRole('button', { name: ar.auth.signUp }).props.accessibilityState?.disabled).toBe(true);
+
+    online = true;
+    fireEvent.press(screen.getByRole('button', { name: ar.app.auth.configRetry }));
+    await waitFor(() => expect(screen.queryByText(ar.app.auth.configFailed)).toBeNull());
+    await press(ar.auth.signUp);
+    expect(await screen.findByText(ar.auth.checkEmailTitle)).toBeTruthy();
+  });
+
+  it("says a check the auth server refused is that, not something unknown", async () => {
+    server.on('POST /auth/v1/signup', {
+      status: 400,
+      body: { code: 400, error_code: 'captcha_failed', msg: 'captcha protection: request disallowed (no captcha response)' },
+    });
+    renderRouter(app, { initialUrl: '/sign-up' });
+    fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'new@example.com');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.password), PASSWORD);
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), PASSWORD);
+    await press(ar.auth.signUp);
+    expect(await screen.findByText(ar.auth.errCaptcha)).toBeTruthy();
+  });
+});
+
 describe('one-tap sign-in, as App Review asks', () => {
   it('offers Google on an iPhone only beside Sign in with Apple', async () => {
     // Google on at the auth server, Apple not set up there yet.
@@ -858,18 +893,93 @@ describe('an email link opened in the app', () => {
     await press(ar.auth.resetPassword);
 
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
-    expect(bodyOf('/auth/v1/user')).toMatchObject({ password: 'a-new-password' });
+    // The password set (a PUT), not the read of who the link's session is.
+    expect(server.asked('/auth/v1/user').find((request) => request.method === 'PUT')?.body).toMatchObject({
+      password: 'a-new-password',
+    });
     expect(server.asked('/auth/v1/logout')[0]?.url.searchParams.get('scope')).toBe('others');
   });
 
-  it('asks before signing out the account already here', async () => {
-    await signedIn();
-    renderRouter(app, { initialUrl: link('signup', `${SITE}/auth/callback?next=/onboarding`) });
-    expect(await screen.findByText(ar.app.auth.switchTitle)).toBeTruthy();
-    expect(screen.getByText(`انت داخل دلوقتي بحساب ${user.email}. اللينك ده هيدخّلك بالحساب اللي اتبعتله الإيميل بداله.`)).toBeTruthy();
-    await press(ar.app.auth.switchCancel);
-    expect(await screen.findByText('home screen')).toBeTruthy();
-    expect(server.asked('/auth/v1/verify')).toHaveLength(0);
+  describe('with an account signed in here', () => {
+    const OTHER_ID = '8b7c7f1e-0000-4000-8000-0000000000ee';
+    const other = authUser({
+      id: OTHER_ID,
+      email: 'someone-else@example.com',
+      identities: [{ id: OTHER_ID, user_id: OTHER_ID, provider: 'email', identity_data: { email: 'someone-else@example.com' } }],
+    });
+    /** Supabase's verify, finding the account by the token alone: here, someone else's. */
+    const linkFor = (person: AuthUser) => {
+      server.on('POST /auth/v1/verify', () => authSession(person));
+      // Who a token belongs to, as Supabase answers for it.
+      server.on('GET /auth/v1/user', (_url: URL, init?: RequestInit) => {
+        const token = new Headers(init?.headers).get('authorization')?.split('.')[1] ?? '';
+        const sub = (JSON.parse(Buffer.from(token, 'base64url').toString()) as { sub?: string }).sub;
+        return sub === OTHER_ID ? other : user;
+      });
+    };
+    const signedInAs = async () => (await supabase.auth.getSession()).data.session?.user.id;
+
+    it("asks, naming both, before another account's link signs this one out — a new address's too", async () => {
+      await signedIn();
+      linkFor(other);
+      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/profile`) });
+      expect(await screen.findByText(ar.app.auth.switchTitle)).toBeTruthy();
+      expect(
+        screen.getByText(ar.app.auth.switchBody.replace('{email}', user.email).replace('{other}', other.email)),
+      ).toBeTruthy();
+      // Checked, and nothing of it taken while the question is open.
+      expect(server.asked('/auth/v1/verify')).toHaveLength(1);
+      expect(await signedInAs()).toBe(USER_ID);
+
+      await press(ar.app.auth.switchCancel);
+      expect(await screen.findByText('home screen')).toBeTruthy();
+      expect(await signedInAs()).toBe(USER_ID);
+    });
+
+    it('switches to the link\'s account when told to', async () => {
+      await signedIn();
+      linkFor(other);
+      renderRouter(app, { initialUrl: link('signup', `${SITE}/auth/callback?next=/onboarding`) });
+      await press(ar.app.auth.switchContinue);
+      await waitFor(async () => expect(await signedInAs()).toBe(OTHER_ID));
+    });
+
+    it("takes this account's own link without a question", async () => {
+      await signedIn();
+      linkFor(user);
+      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
+      await waitFor(() => expect(server.asked('/auth/v1/verify')).toHaveLength(1));
+      expect(await screen.findByRole('button', { name: ar.app.account.security })).toBeTruthy();
+      expect(screen.queryByText(ar.app.auth.switchTitle)).toBeNull();
+      expect(await signedInAs()).toBe(USER_ID);
+    });
+
+    it('says a link already used is spent, and offers no sign-in to someone signed in', async () => {
+      await signedIn();
+      server.on('POST /auth/v1/verify', {
+        status: 403,
+        body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
+      });
+      renderRouter(app, { initialUrl: link('signup', `${SITE}/auth/callback?next=/onboarding`) });
+      expect(await screen.findByText(ar.app.auth.linkUsedTitle)).toBeTruthy();
+      expect(screen.getByText(ar.app.auth.linkUsedBody.replace('{email}', user.email))).toBeTruthy();
+      expect(screen.queryByText(ar.app.auth.switchTitle)).toBeNull();
+      expect(screen.queryByRole('button', { name: ar.nav.signIn })).toBeNull();
+    });
+  });
+
+  it('offers to sign in instead of a spent link, still on the way the link was going', async () => {
+    server.on('POST /auth/v1/verify', {
+      status: 403,
+      body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
+    });
+    const result = renderRouter(app, {
+      initialUrl: link('signup', `${SITE}${confirmationPath({ role: null, next: '/jobs/sales-a1b2' })}`),
+    });
+    expect(await screen.findByText(ar.auth.linkExpired)).toBeTruthy();
+    await press(ar.nav.signIn);
+    expect(await screen.findByLabelText(ar.auth.email)).toBeTruthy();
+    expect(result.getSearchParams()).toMatchObject({ next: '/jobs/sales-a1b2' });
   });
 
   it('says a broken or spent link is one, and offers the way forward', async () => {

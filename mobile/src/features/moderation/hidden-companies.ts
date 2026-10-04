@@ -1,4 +1,4 @@
-import { createHiddenStore } from './hidden-store';
+import { createHiddenStore, type HiddenEntry } from './hidden-store';
 
 /**
  * Companies the reader has hidden on this phone.
@@ -7,8 +7,9 @@ import { createHiddenStore } from './hidden-store';
  * is abusing it; on a job board that is a company whose listings they never
  * want to see again. Hidden here, the company's listings leave the board, the
  * home screen and "roles like this", and it leaves the directory — on this
- * phone, signed in or not, until the reader takes it back from the company's
- * own page. Reporting it (reportTarget) is what reaches the team; hiding is
+ * phone, signed in or not, until the reader takes it back — from Account →
+ * "Hidden on this phone", or from the company's own page, which says it is
+ * hidden. Reporting it (reportTarget) is what reaches the team; hiding is
  * the reader's own relief in the meantime.
  *
  * Kept on the device: a list of company ids, nobody else's business, and
@@ -22,6 +23,11 @@ export const unhideCompany = companies.unhide;
 /** The hidden company ids, kept current wherever they change. */
 export function useHiddenCompanies(): ReadonlySet<string> {
   return companies.useHidden();
+}
+
+/** The hidden companies with the names they had, for Account → "Hidden on this phone". */
+export function useHiddenCompanyEntries(): readonly HiddenEntry[] {
+  return companies.useEntries();
 }
 
 /**

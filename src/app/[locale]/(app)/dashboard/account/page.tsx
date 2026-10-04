@@ -4,6 +4,7 @@ import { asLocale } from '@/i18n/routing';
 import { AccountSettings } from '@/components/dashboard/account-settings';
 import { CredentialsSettings } from '@/components/dashboard/credentials-settings';
 import { AvatarUpload } from '@/components/dashboard/avatar-upload';
+import { safeNext } from '@/lib/safe-next';
 import { MfaSettings } from '@/components/dashboard/mfa-settings';
 import { requireProfile } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -28,11 +29,11 @@ export default async function AccountPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ mfa?: string }>;
+  searchParams: Promise<{ mfa?: string; next?: string }>;
 }) {
   const locale = asLocale((await params).locale);
   setRequestLocale(locale);
-  const { mfa } = await searchParams;
+  const { mfa, next } = await searchParams;
 
   const viewer = await requireProfile(locale);
   const t = await getTranslations('account');
@@ -56,6 +57,25 @@ export default async function AccountPage({
   const mfaEnrolled = assurance?.nextLevel === 'aal2';
   const mfaMode = mfa === 'required' ? 'required' : mfa === 'challenge' ? 'challenge' : null;
   const isAdmin = viewer.profile.role === 'admin';
+  // Where the code was asked on the way to (the middleware's `next`), or the console.
+  const afterVerify = safeNext(next ?? null) ?? (isAdmin ? '/admin' : '/dashboard/account');
+
+  /*
+    Signed in with the password alone on an account with an authenticator:
+    the code, and nothing else of the account — not its address, its password
+    or its settings — until it is answered (the middleware sends every
+    account page here meanwhile).
+  */
+  if (mfaEnrolled && mfaLevel === 'aal1') {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-8">
+        <h1 className="text-xl font-bold">{t('title')}</h1>
+        <div className="mt-8">
+          <MfaSettings locale={locale} enrolled level="aal1" mode="challenge" afterVerify={afterVerify} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -74,7 +94,7 @@ export default async function AccountPage({
           enrolled={mfaEnrolled}
           level={mfaLevel}
           mode={mfaMode}
-          afterVerify={isAdmin ? '/admin' : '/dashboard/account'}
+          afterVerify={afterVerify}
         />
 
         <AccountSettings

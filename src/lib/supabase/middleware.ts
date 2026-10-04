@@ -19,7 +19,7 @@ export async function updateSession(
   request: NextRequest,
   response: NextResponse,
   { checkAdmin = false }: { checkAdmin?: boolean } = {},
-): Promise<{ user: User | null; response: NextResponse; isAdmin?: boolean | null }> {
+): Promise<{ user: User | null; response: NextResponse; isAdmin?: boolean | null; secondFactorDue?: boolean }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -71,7 +71,18 @@ export async function updateSession(
       isAdmin = error ? null : data?.role === 'admin';
     }
 
-    return { user, response, isAdmin };
+    /*
+      An authenticator on the account that this session has not answered:
+      what the session's own token proved (aal) against what the account could
+      prove (a verified factor). Read from the session, no request.
+    */
+    let secondFactorDue = false;
+    if (user) {
+      const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      secondFactorDue = data?.currentLevel === 'aal1' && data.nextLevel === 'aal2';
+    }
+
+    return { user, response, isAdmin, secondFactorDue };
   } catch (error) {
     // A network failure reaching the auth server is not a reason to fail the
     // request. Protected routes will redirect to sign-in, which is the right

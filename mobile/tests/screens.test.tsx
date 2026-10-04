@@ -12,6 +12,7 @@ import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
 import * as CompaniesScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/companies/index';
+import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as NotFoundScreen from '../src/app/+not-found';
 import { board, browse, cairo, company, companyPage, directory, jobPage, listing, newCairo } from './fixtures';
 import { fakeServer } from './server';
@@ -84,6 +85,7 @@ const app = {
   '(tabs)/(home)/index': HomeScreen,
   '(tabs)/(jobs)/jobs/index': BoardScreen,
   '(tabs)/(companies)/companies/index': CompaniesScreen,
+  '(tabs)/(account)/account/hidden': HiddenScreen,
   '+not-found': NotFoundScreen,
 };
 
@@ -401,6 +403,12 @@ describe('reporting and hiding', () => {
     renderRouter(app, { initialUrl: '/(companies)/companies' });
     await screen.findByText(/شركات العقارات|الشركات/);
     await waitFor(() => expect(screen.queryByText('نايل بروكرز') === null).toBe(true));
+    screen.unmount();
+
+    // Listed by name under Account, out of every list as it is.
+    renderRouter(app, { initialUrl: '/account/hidden' });
+    expect(await screen.findByText('نايل بروكرز')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'رجّع نايل بروكرز' })).toBeTruthy();
     screen.unmount();
 
     renderRouter(app, { initialUrl: '/(companies)/companies/nile-brokers' });

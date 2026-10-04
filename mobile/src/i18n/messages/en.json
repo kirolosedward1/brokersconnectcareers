@@ -53,10 +53,14 @@
     "captchaRetry": "Load the check again",
     "verifying": "Checking your link…",
     "switchTitle": "You are signed in with another account",
-    "switchBody": "You are signed in as {email}. This link signs you in with the account the email was sent to instead.",
+    "switchBody": "You are signed in as {email}. This link is for {other}: going on signs you out of yours on this phone and signs in with that one.",
     "switchContinue": "Continue with that account",
     "switchCancel": "Stay in my account",
-    "mfaSignOut": "I do not have the code — sign out"
+    "mfaSignOut": "I do not have the code — sign out",
+    "linkUsedTitle": "That link no longer works",
+    "linkUsedBody": "It has been used already or has expired. You are signed in as {email}, so there is nothing more to do.",
+    "configFailed": "We could not get signing in ready. Check your connection and try again.",
+    "configRetry": "Try again"
   },
   "onboarding": {
     "choose": "Choose"
@@ -64,15 +68,26 @@
   "moderation": {
     "hide": "Hide this company",
     "hideTitle": "Hide {company}?",
-    "hideBody": "You will not see its listings in the app on this phone again. You can bring it back from the company's page at any time.",
+    "hideBody": "You will not see its listings in the app on this phone again. You can bring it back at any time from “Hidden on this phone” in Account.",
     "hideConfirm": "Hide it",
     "hidden": "You have hidden this company, so its listings do not appear for you in the app.",
     "unhide": "Show this company again",
     "hideAgent": "Hide this consultant",
     "hideAgentTitle": "Hide {name}?",
-    "hideAgentBody": "You will not see them in the consultant directory or your shortlist on this phone again. You can bring them back from their page at any time.",
+    "hideAgentBody": "You will not see them in the consultant directory or your shortlist on this phone again. You can bring them back at any time from “Hidden on this phone” in Account.",
     "hiddenAgent": "You have hidden this consultant, so they do not appear for you in the directory or your shortlist.",
-    "unhideAgent": "Show this consultant again"
+    "unhideAgent": "Show this consultant again",
+    "hideAgentConfirm": "Hide them",
+    "hiddenList": "Hidden on this phone",
+    "hiddenListLede": "The companies and consultants you hid stay out of the app on this phone. Bring any of them back whenever you like.",
+    "hiddenCompanies": "Companies",
+    "hiddenAgents": "Consultants",
+    "hiddenNothing": "Nothing is hidden",
+    "hiddenNothingBody": "When you hide a company or a consultant, it appears here so you can bring it back.",
+    "unnamedCompany": "A company you hid",
+    "unnamedAgent": "A consultant you hid",
+    "showAgain": "Show again",
+    "showAgainNamed": "Show {name} again"
   },
   "applications": {
     "withdrawTitle": "Withdraw your application to “{title}”?",

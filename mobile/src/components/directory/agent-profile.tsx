@@ -254,7 +254,7 @@ export function AgentProfile({ handle }: { handle: string }) {
         {isOwner ? null : (
           <View style={{ alignItems: 'flex-start', gap: space[1], paddingTop: space[4], borderTopWidth: 1, borderTopColor: colors.border }}>
             <ReportButton target="agent" targetId={card.id} returnPath={`/agents/${card.slug}`} label={t('agents.report')} />
-            <HideAgent agentId={card.id} name={name} />
+            <HideAgent agentId={card.id} name={name} slug={card.slug} />
           </View>
         )}
       </ScrollView>

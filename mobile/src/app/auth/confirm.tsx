@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { isAuthRetryableFetchError } from '@supabase/supabase-js';
+import { isAuthRetryableFetchError, type Session } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
 import { asConfirmType, confirmDestination, isTokenHash } from '@/lib/auth/confirm-link';
 import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
 import { Button } from '~/components/ui/button';
 import { LoadingState } from '~/components/ui/states';
-import { intentFromPath } from '~/features/auth/intent';
+import { intentFromPath, intentParams } from '~/features/auth/intent';
 import { useCloseFlow, useLand } from '~/features/auth/land';
+import { checkLink } from '~/features/auth/verify-link';
 import { env } from '~/lib/env';
 import { openWhenReady } from '~/lib/open-path';
 import { useSession } from '~/lib/session';
@@ -24,10 +25,13 @@ import { space } from '~/theme/tokens';
  * (src/lib/auth/confirm-link.ts): a reset goes to the new-password screen, a
  * confirmation to onboarding with the page the person was on their way to.
  *
- * Tapping a link is the person asking for it, so it is verified at once — the
+ * Tapping a link is the person asking for it, so it is checked at once — the
  * website's extra "Continue" step exists for mail scanners, which do not open
- * apps. Unless another account is signed in on this phone: then the person
- * is asked first, since going on signs that account out.
+ * apps. Checked, not yet taken (verify-link.ts): the account it belongs to is
+ * known first. Nobody signed in here, or that same account: it is taken. Some
+ * other account signed in: the person is asked, naming both, since going on
+ * signs theirs out — whatever kind of link it is, a new address included,
+ * which anyone can send for an account of their own.
  */
 export default function ConfirmLinkScreen() {
   const t = useTranslations();
@@ -39,26 +43,17 @@ export default function ConfirmLinkScreen() {
   const type = asConfirmType(params.type);
   const tokenHash = isTokenHash(params.token_hash) ? params.token_hash : null;
   const valid = Boolean(type && tokenHash);
+  const destination = type ? confirmDestination(type, params.redirect_to ?? null, env.siteUrl) : null;
 
   // 'offline': no answer — the link may well still be good, so it is not called expired.
   const [state, setState] = useState<'idle' | 'verifying' | 'failed' | 'offline'>(valid ? 'idle' : 'failed');
+  // The link's own account, checked and waiting for the person to say whether to switch to it.
+  const [other, setOther] = useState<Session | null>(null);
+  // Checked, but taking it into the app had no answer: tried again with the same session.
+  const checked = useRef<Session | null>(null);
   const started = useRef(false);
-  // A new address is confirmed by the account it belongs to, which is the one
-  // signed in: nothing to ask. Any other link while signed in asks first.
-  const ask = state === 'idle' && ready && Boolean(session) && type !== 'email_change';
 
-  const verify = useCallback(async () => {
-    if (!type || !tokenHash) return;
-    setState('verifying');
-    const { error } = await supabase.auth
-      .verifyOtp({ type, token_hash: tokenHash })
-      .catch((failure: unknown) => ({ error: failure }));
-    if (error) {
-      setState(isAuthRetryableFetchError(error) ? 'offline' : 'failed');
-      return;
-    }
-
-    const destination = confirmDestination(type, params.redirect_to ?? null, env.siteUrl);
+  const go = useCallback(async () => {
     if (type === 'recovery') {
       router.replace('/sign-in/new-password');
       return;
@@ -69,13 +64,59 @@ export default function ConfirmLinkScreen() {
       return;
     }
     await land(intentFromPath(destination));
-  }, [type, tokenHash, params.redirect_to, land, close]);
+  }, [type, destination, land, close]);
+
+  /** The link's session made this phone's, then on to where the link leads. */
+  const take = useCallback(
+    async (linked: Session) => {
+      setOther(null);
+      setState('verifying');
+      const { error } = await supabase.auth
+        .setSession({ access_token: linked.access_token, refresh_token: linked.refresh_token })
+        .catch((failure: unknown) => ({ error: failure }));
+      if (error) {
+        checked.current = linked;
+        setState(isAuthRetryableFetchError(error) ? 'offline' : 'failed');
+        return;
+      }
+      checked.current = null;
+      await go();
+    },
+    [go],
+  );
+
+  const verify = useCallback(async () => {
+    if (!type || !tokenHash) return;
+    if (checked.current) {
+      await take(checked.current);
+      return;
+    }
+    setState('verifying');
+    const result = await checkLink(type, tokenHash);
+    if (result.kind === 'error') {
+      setState(isAuthRetryableFetchError(result.error) ? 'offline' : 'failed');
+      return;
+    }
+    if (result.kind === 'accepted') {
+      // Taken with no one to sign in (the first of an email change's two
+      // links): nothing changes on this phone.
+      await go();
+      return;
+    }
+    const current = (await supabase.auth.getSession()).data.session;
+    if (current && current.user.id !== result.session.user.id) {
+      setState('idle');
+      setOther(result.session);
+      return;
+    }
+    await take(result.session);
+  }, [type, tokenHash, take, go]);
 
   useEffect(() => {
-    if (!ready || !valid || ask || started.current) return;
+    if (!ready || !valid || started.current) return;
     started.current = true;
     void verify();
-  }, [ready, valid, ask, verify]);
+  }, [ready, valid, verify]);
 
   if (state === 'offline') {
     return (
@@ -92,6 +133,23 @@ export default function ConfirmLinkScreen() {
   }
 
   if (state === 'failed') {
+    // Somebody is signed in here: most often the link's own account, opening
+    // a link it has used already. Nothing to do, and no sign-in to offer.
+    if (session) {
+      return (
+        <>
+          <Stack.Screen options={{ headerShown: false }} />
+          <AuthScroll bare>
+            <View style={{ height: space[8] }} />
+            <AuthHeading
+              title={t('app.auth.linkUsedTitle')}
+              body={t('app.auth.linkUsedBody', { email: session.user.email ?? '' })}
+            />
+            <Button label={t('common.close')} onPress={() => close()} />
+          </AuthScroll>
+        </>
+      );
+    }
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -100,7 +158,12 @@ export default function ConfirmLinkScreen() {
           <AuthHeading title={t('common.error')} body={t('auth.linkExpired')} />
           <Button
             label={type === 'recovery' ? t('auth.sendResetLink') : t('nav.signIn')}
-            onPress={() => router.replace(type === 'recovery' ? '/sign-in/forgot' : '/sign-in')}
+            onPress={() =>
+              type === 'recovery'
+                ? router.replace('/sign-in/forgot')
+                : // Signing in instead still goes where the link was going.
+                  router.replace({ pathname: '/sign-in', params: intentParams(intentFromPath(destination)) })
+            }
           />
           <Button label={t('common.close')} variant="ghost" onPress={() => close()} />
         </AuthScroll>
@@ -108,7 +171,7 @@ export default function ConfirmLinkScreen() {
     );
   }
 
-  if (ask) {
+  if (other) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -116,15 +179,9 @@ export default function ConfirmLinkScreen() {
           <View style={{ height: space[8] }} />
           <AuthHeading
             title={t('app.auth.switchTitle')}
-            body={t('app.auth.switchBody', { email: session?.user.email ?? '' })}
+            body={t('app.auth.switchBody', { email: session?.user.email ?? '', other: other.user.email ?? '' })}
           />
-          <Button
-            label={t('app.auth.switchContinue')}
-            onPress={() => {
-              started.current = true;
-              void verify();
-            }}
-          />
+          <Button label={t('app.auth.switchContinue')} onPress={() => void take(other)} />
           <Button label={t('app.auth.switchCancel')} variant="outline" onPress={() => close()} />
         </AuthScroll>
       </>

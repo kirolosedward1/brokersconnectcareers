@@ -39,7 +39,12 @@ export type CaptchaMessage =
  * not loaded yet. `ready`: a token is in hand. `interactive`: Cloudflare wants
  * the person to tap the box. `failed`: the widget could not run.
  */
-export type CaptchaStatus = 'off' | 'checking' | 'ready' | 'interactive' | 'failed';
+/**
+ * 'unknown': the config could not be read, so whether a check is asked for is
+ * not known — and a form sent without one, where Supabase asks for it, is
+ * refused every time, while nothing reads the config again with the form open.
+ */
+export type CaptchaStatus = 'off' | 'unknown' | 'checking' | 'ready' | 'interactive' | 'failed';
 
 /** A message from the page, or null for anything else a web page might post. */
 export function parseCaptchaMessage(data: string): CaptchaMessage | null {
@@ -136,10 +141,14 @@ export function useCaptcha(action: CaptchaAction) {
     setGeneration((n) => n + 1);
   }, []);
 
+  const known = Boolean(config.data);
   return {
     /** Not yet known whether one is needed: the config has not answered. */
     loading: config.isPending,
-    status: enabled ? status : ('off' as const),
+    status: !known && !config.isPending ? ('unknown' as const) : enabled ? status : ('off' as const),
+    /** The config read again, after it could not be ('unknown'). */
+    retry: () => void config.refetch(),
+    retrying: config.isFetching,
     /** Sent with the request, or omitted when no captcha is asked for. */
     token: enabled ? token : null,
     renew,

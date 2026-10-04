@@ -41,14 +41,30 @@ function hex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+/** Running in Expo Go: a tester's phone, never App Review's, which sees the app itself. */
+export function inExpoGo(): boolean {
+  return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+}
+
 /**
  * Sign in with Apple, where it can work: not in Expo Go, which the phone offers
  * it to but which Apple then issues the token to, under Expo Go's own bundle
  * id, and Supabase refuses it.
  */
 export function appleAvailable(): Promise<boolean> {
-  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return Promise.resolve(false);
+  if (inExpoGo()) return Promise.resolve(false);
   return AppleAuthentication.isAvailableAsync().catch(() => false);
+}
+
+/**
+ * Whether "Continue with Google" is offered: when the auth server takes it,
+ * and on an iPhone only beside Sign in with Apple — an app that offers a
+ * third-party sign-in must offer Apple's as well (App Review 4.8), and the
+ * auth server can have Google on with Apple not yet set up. Except in Expo Go,
+ * where Apple's cannot work at all (above): there Google stands alone.
+ */
+export function offerGoogle({ google, apple, ios }: { google: boolean; apple: boolean; ios: boolean }): boolean {
+  return google && (!ios || apple || inExpoGo());
 }
 
 export async function signInWithApple(): Promise<ProviderOutcome> {

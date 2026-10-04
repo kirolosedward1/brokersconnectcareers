@@ -18,6 +18,7 @@ import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { flattenCompanies, useCompanyDirectory, type CompanyQuery } from '~/features/companies/queries';
 import { useHiddenCompanies } from '~/features/moderation/hidden-companies';
+import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
@@ -49,11 +50,9 @@ export default function CompaniesScreen() {
   const nextPage = useNextPage(directory);
   const pull = usePullRefresh(() => directory.refetch());
   const hidden = useHiddenCompanies();
-  const companies = useMemo(
-    () => flattenCompanies(directory.data?.pages).filter((company) => !hidden.has(company.id)),
-    [directory.data, hidden],
-  );
-  const total = directory.data?.pages[0]?.total ?? 0;
+  const read = useMemo(() => flattenCompanies(directory.data?.pages), [directory.data]);
+  const companies = useMemo(() => read.filter((company) => !hidden.has(company.id)), [read, hidden]);
+  const total = totalShown(directory.data?.pages[0]?.total ?? 0, read.length, companies.length);
   const { data: districts } = useDistricts();
   const district = districts?.find((item) => item.slug === query.district);
   const narrowed = Boolean(query.q || query.district || query.verified);

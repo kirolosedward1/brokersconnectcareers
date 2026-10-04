@@ -35,6 +35,7 @@ import { boardQuery, filtersToParams, sheetFilterCount, useFilterLabel } from '~
 import { useAppliedJobIds } from '~/features/jobs/marks';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
@@ -70,8 +71,10 @@ export default function BoardScreen() {
   // The spinner is the reader's pull, not a re-read on coming back to the app.
   const pull = usePullRefresh(() => board.refetch());
   const hidden = useHiddenCompanies();
-  const jobs = useMemo(() => withoutHidden(flattenBoard(board.data?.pages), hidden), [board.data, hidden]);
+  const read = useMemo(() => flattenBoard(board.data?.pages), [board.data]);
+  const jobs = useMemo(() => withoutHidden(read, hidden), [read, hidden]);
   const first = board.data?.pages[0];
+  const total = totalShown(first?.total ?? 0, read.length, jobs.length);
   const applied = useAppliedJobIds(useMemo(() => jobs.map((job) => job.id), [jobs]));
 
   const apply = (next: JobFilters) => router.setParams(filtersToParams(next));
@@ -195,6 +198,7 @@ export default function BoardScreen() {
           <BoardHeader
             filters={filters}
             first={first}
+            total={total}
             apply={apply}
             onFilters={openFilters}
             hasResults={jobs.length > 0}
@@ -229,6 +233,7 @@ function Separator() {
 function BoardHeader({
   filters,
   first,
+  total = 0,
   apply,
   onFilters,
   hasResults,
@@ -237,6 +242,8 @@ function BoardHeader({
 }: {
   filters: JobFilters;
   first: JobBoardResponse | undefined;
+  /** How many listings there are, without those of the companies this phone hides. */
+  total?: number;
   apply: (next: JobFilters) => void;
   onFilters: () => void;
   hasResults: boolean;
@@ -261,7 +268,7 @@ function BoardHeader({
           <View style={{ flexGrow: 1 }} />
         ) : (
           <Text variant="small" weight="medium" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
-            {t('resultsCount', { count: first?.total ?? 0 })}
+            {t('resultsCount', { count: total })}
           </Text>
         )}
         <Chip
@@ -366,6 +373,8 @@ function EmptyBoard({
 }: {
   filters: JobFilters;
   first: JobBoardResponse | undefined;
+  /** How many listings there are, without those of the companies this phone hides. */
+  total?: number;
   apply: (next: JobFilters) => void;
 }) {
   const t = useTranslations('jobs');

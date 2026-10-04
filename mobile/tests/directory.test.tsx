@@ -4,7 +4,9 @@ import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createTranslator } from 'use-intl';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { formatNumber, intlFormats } from '@/lib/format';
 import type { AgentDirectoryResponse } from '@/lib/mobile-api/reads';
 import type {
   AgentCardDetail,
@@ -24,6 +26,7 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as AgentScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/agents/[slug]';
 import * as PreviewScreen from '../src/app/(tabs)/(account)/account/profile/preview';
+import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as DirectoryScreen from '../src/app/(tabs)/(consultants)/agents/index';
 import * as ShortlistScreen from '../src/app/(tabs)/(consultants)/employer/talent';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
@@ -247,6 +250,7 @@ const app = {
   '(tabs)/(consultants)/agents/[slug]': AgentScreen,
   '(tabs)/(consultants)/employer/talent': ShortlistScreen,
   '(tabs)/(account)/account/profile/preview': PreviewScreen,
+  '(tabs)/(account)/account/hidden': HiddenScreen,
 };
 
 const input = (path: string, index = 0) => (server.asked(path)[index]?.body as { input: Record<string, unknown> } | undefined)?.input;
@@ -492,6 +496,44 @@ describe('hiding a consultant', () => {
     }
     // Brought back, she is listed again.
     expect(await screen.findByText('منى علي')).toBeTruthy();
+  });
+
+  it('counts them out of the directory and the shortlist, and brings them back from Account', async () => {
+    const tr = createTranslator({ locale: 'ar', messages: ar, formats: intlFormats, timeZone: 'Africa/Cairo' });
+    kept = [mona.id];
+    renderRouter(app, { initialUrl: '/agents' });
+    expect(await screen.findByText('منى علي')).toBeTruthy();
+    expect(screen.getByText(tr('jobs.resultsCount', { count: 2 }))).toBeTruthy();
+    expect(await screen.findByLabelText(`${ar.employer.shortlist}: ${formatNumber(1, 'ar')}`)).toBeTruthy();
+
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    try {
+      act(() => router.push('/agents/mona-ali'));
+      fireEvent.press(await screen.findByRole('button', { name: ar.app.moderation.hideAgent }));
+      const confirm = (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive');
+      // His own word in Arabic: the company's "hide it" is feminine.
+      expect(confirm?.text).toBe(ar.app.moderation.hideAgentConfirm);
+      act(() => confirm?.onPress?.());
+      expect(await screen.findByText(ar.app.moderation.hiddenAgent)).toBeTruthy();
+    } finally {
+      alert.mockRestore();
+    }
+
+    // Out of the directory, its total and the shortlist's count alike.
+    act(() => router.navigate('/agents'));
+    expect(await screen.findByText(tr('jobs.resultsCount', { count: 1 }))).toBeTruthy();
+    expect(screen.queryByText('منى علي')).toBeNull();
+    expect(screen.getByLabelText(`${ar.employer.shortlist}: ${formatNumber(0, 'ar')}`)).toBeTruthy();
+
+    // Account → "Hidden on this phone": listed by name, and shown again from there.
+    act(() => router.push('/account/hidden'));
+    expect(await screen.findByText('منى علي')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.moderation.showAgainNamed.replace('{name}', 'منى علي') }));
+    expect(await screen.findByText(ar.app.moderation.hiddenNothing)).toBeTruthy();
+
+    act(() => router.navigate('/agents'));
+    expect(await screen.findByText('منى علي')).toBeTruthy();
+    expect(screen.getByText(tr('jobs.resultsCount', { count: 2 }))).toBeTruthy();
   });
 });
 

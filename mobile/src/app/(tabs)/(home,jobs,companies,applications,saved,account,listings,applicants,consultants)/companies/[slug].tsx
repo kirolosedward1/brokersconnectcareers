@@ -180,7 +180,7 @@ export default function CompanyScreen() {
           }}
         >
           <ReportButton target="company" targetId={company.id} returnPath={`/companies/${company.slug}`} label={t('report')} />
-          <HideCompany companyId={company.id} companyName={name} />
+          <HideCompany companyId={company.id} companyName={name} companySlug={company.slug} />
         </View>
       </ScrollView>
     </>

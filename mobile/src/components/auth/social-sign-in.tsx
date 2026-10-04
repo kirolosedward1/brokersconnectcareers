@@ -3,7 +3,7 @@ import { Platform, View } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useTranslations } from 'use-intl';
 import { useMobileConfig } from '~/features/config';
-import { appleAvailable, signInWithApple, signInWithGoogle, type ProviderOutcome } from '~/features/auth/providers';
+import { appleAvailable, offerGoogle, signInWithApple, signInWithGoogle, type ProviderOutcome } from '~/features/auth/providers';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
@@ -47,10 +47,8 @@ export function SocialSignIn({
   }, []);
 
   const apple = Boolean(config.data?.providers.apple) && appleHere;
-  // On iPhone, Google only beside Apple: an app that offers a third-party
-  // sign-in must offer Sign in with Apple as well (App Review 4.8), and the
-  // auth server can have Google on with Apple not yet set up.
-  const google = Boolean(config.data?.providers.google) && (Platform.OS !== 'ios' || apple);
+  // On iPhone, Google only beside Apple (providers.ts, offerGoogle).
+  const google = offerGoogle({ google: Boolean(config.data?.providers.google), apple, ios: Platform.OS === 'ios' });
   if (!apple && !google) return null;
 
   // A promise chain, not try/finally, which the React Compiler does not compile.

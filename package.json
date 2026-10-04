@@ -68,7 +68,7 @@
     "test:earnings": "node --experimental-strip-types scripts/earnings.test.mjs",
     "test:share": "node --experimental-strip-types scripts/share-source.test.mjs",
     "test:mobile-api": "node --experimental-strip-types scripts/mobile-api.test.mjs",
-    "test:auth-confirm": "node --experimental-strip-types scripts/auth-confirm.test.mjs",
+    "test:auth-confirm": "node --experimental-strip-types scripts/auth-confirm.test.mjs && node --experimental-strip-types scripts/second-factor.test.mjs",
     "test:app-links": "node --experimental-strip-types scripts/app-links.test.mjs",
     "test:apple": "node --experimental-strip-types scripts/apple-revoke.test.mjs",
     "test:release": "node scripts/release/apply.test.mjs && node scripts/release/rehearse.test.mjs",

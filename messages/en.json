@@ -315,6 +315,7 @@
     "errEmailTaken": "That email is already registered. Try signing in.",
     "errEmailUnconfirmed": "Confirm your email first — check your inbox.",
     "errTooMany": "Too many attempts in a short time. Wait a moment and try again.",
+    "errCaptcha": "The security check did not go through. Wait a moment and try again.",
     "forgotTitle": "Forgot your password?",
     "forgotBody": "Enter your email and we will send you a link to set a new one.",
     "resetSent": "If that email is registered, a link is on its way. Check your spam folder too.",

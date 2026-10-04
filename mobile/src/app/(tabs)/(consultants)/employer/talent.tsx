@@ -52,8 +52,11 @@ export default function ShortlistScreen() {
     // Until the ids are read, everything the list holds; after, only who is still kept.
     return ids ? all.filter((row) => ids.includes(row.id)) : all;
   }, [shortlist.data, ids, hiddenAgents]);
-  // The whole list, not the pages loaded so far: the kept ids are all of it, and follow a removal at once.
-  const total = ids?.length ?? Number(shortlist.data?.pages[0]?.[0]?.total_count ?? 0);
+  // The whole list, not the pages loaded so far: the kept ids are all of it, and follow a removal at once —
+  // without the consultants hidden on this phone, who are not in it either.
+  const total = ids
+    ? ids.filter((id) => !hiddenAgents.has(id)).length
+    : Number(shortlist.data?.pages[0]?.[0]?.total_count ?? 0);
 
   const header = <Stack.Screen options={{ title: t('employer.shortlist') }} />;
 

@@ -8,6 +8,7 @@ import {
   Building2,
   Download,
   ExternalLink,
+  EyeOff,
   FileText,
   Lock,
   LogOut,
@@ -33,6 +34,8 @@ import { LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { shareMyData } from '~/features/account/settings';
 import { useMobileConfig } from '~/features/config';
+import { useHiddenAgentEntries } from '~/features/moderation/hidden-agents';
+import { useHiddenCompanyEntries } from '~/features/moderation/hidden-companies';
 import { signOutHere } from '~/features/push/device';
 import { appVersion } from '~/features/update';
 import { ApiError } from '~/lib/api';
@@ -57,6 +60,8 @@ export default function AccountScreen() {
   const { colors, preference, setPreference } = useTheme();
   const { ready, session, viewer, actor } = useSession();
   const config = useMobileConfig();
+  // What this phone hides, signed in or not: the way back to it, once there is any.
+  const hiddenCount = useHiddenCompanyEntries().length + useHiddenAgentEntries().length;
   // The website's own fallback (its footer and the config route): the
   // operator's published address when no support inbox is set.
   const supportEmail = config.data?.supportEmail || OPERATOR.email;
@@ -251,6 +256,16 @@ export default function AccountScreen() {
             />
           ) : null}
         </Group>
+
+        {hiddenCount ? (
+          <Group>
+            <Row
+              icon={<EyeOff size={18} color={colors.primary} />}
+              label={t('app.moderation.hiddenList')}
+              onPress={() => router.push('/account/hidden')}
+            />
+          </Group>
+        ) : null}
 
         {/* One tap away, signed in or not, as the store and the law expect of
             an app: the policies a person agrees to, the notices owed to the
