@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Linking, ScrollView, View } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { Stack, useNavigation } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { OPERATOR } from '@/lib/business';
 import { SignedOut } from '~/components/navigation/signed-out';
@@ -34,6 +34,7 @@ import { gutter, space } from '~/theme/tokens';
  */
 export default function DeleteAccountScreen() {
   const t = useTranslations();
+  const navigation = useNavigation();
   const { session, viewer } = useSession();
   const config = useMobileConfig();
   const [typed, setTyped] = useState('');
@@ -82,7 +83,9 @@ export default function DeleteAccountScreen() {
       return;
     }
 
-    router.back();
+    // This screen's own Back: the app's would take whatever is in front if the
+    // person moved on while the account was being deleted.
+    if (navigation.canGoBack()) navigation.goBack();
     Alert.alert(t('app.account.deleted'));
   }
 

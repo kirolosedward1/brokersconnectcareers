@@ -278,6 +278,49 @@ describe("the company's page, for a company admin", () => {
     await waitFor(() => expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe('ما كتبه الزميل'));
   });
 
+  it('keeps a correction typed while its save is read back, and saves it on the new version', async () => {
+    // The database: matched on the version, then moved on; the read back after the save is slow.
+    let release: () => void = () => {};
+    let hold = false;
+    server.on('GET /rest/v1/companies', () =>
+      hold ? new Promise((resolve) => (release = () => resolve([company]))) : company ? [company] : [],
+    );
+    server.on('POST /api/mobile/v1/actions/saveCompany', (_url: URL, init?: RequestInit) => {
+      const { input: sent } = JSON.parse(String(init?.body)) as { input: { version?: number; aboutAr: string | null } };
+      const current = company as CompanyRow;
+      if (sent.version !== current.version) return { ok: false, error: 'stale' };
+      company = { ...current, about_ar: sent.aboutAr, version: current.version + 1 };
+      hold = true;
+      return { ok: true, data: { id: baseCompany.id } };
+    });
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    const first = 'وساطة عقارية في القاهرة الجديدة.';
+    const corrected = 'وساطة عقارية في التجمع الخامس.';
+    fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), first);
+    fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/saveCompany')).toHaveLength(1));
+    // The save is not done until its version is here: no second save on the old one meanwhile.
+    expect(screen.getByRole('button', { name: ar.common.save }).props.accessibilityState).toMatchObject({ busy: true });
+
+    // A word corrected while the company is read back.
+    fireEvent.changeText(screen.getByLabelText(ar.companies.aboutAr), corrected);
+    await act(async () => {
+      hold = false;
+      release();
+    });
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+    // The read back does not put the first save's words over the correction.
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(corrected);
+
+    // Saved again: on the version the first save made, and taken, not refused as a colleague's.
+    fireEvent.press(await screen.findByRole('button', { name: ar.common.save, disabled: false }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/saveCompany')).toHaveLength(2));
+    expect(input('/api/mobile/v1/actions/saveCompany', 1)).toMatchObject({ aboutAr: corrected, version: 4 });
+    await waitFor(() => expect((company as CompanyRow).about_ar).toBe(corrected));
+    expect(screen.queryByText(ar.employer.companyMoved)).toBeNull();
+  });
+
   it('refuses an address that is not http(s) before sending anything', async () => {
     renderRouter(app, { initialUrl: '/employer/company' });
     fireEvent.changeText(await screen.findByLabelText(ar.companies.website), 'javascript:alert(1)');

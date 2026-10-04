@@ -78,7 +78,7 @@ export function ProfileForm({
   const [errors, setErrors] = useState<Errors>({});
 
   // Leaving with anything changed since it was filled or last saved asks first.
-  useLeaveGuard(form.dirty || cv.kind !== 'keep');
+  useLeaveGuard(form.dirty || cv.kind !== 'keep', save.isPending);
 
   const hasCv = Boolean(agent?.cv_path);
 

@@ -1014,6 +1014,40 @@ describe('deleting the account', () => {
     expect(data.session).toBeNull();
   });
 
+  it('takes an account deleted whose answer was lost for deleted, as the auth server says', async () => {
+    await signedIn();
+    // The website deletes the account, and its answer never reaches the phone.
+    server.on('POST /api/mobile/v1/actions/deleteMyAccount', () => {
+      server.on('GET /auth/v1/user', {
+        status: 403,
+        body: { code: 403, error_code: 'user_not_found', msg: 'User from sub claim in JWT does not exist' },
+      });
+      throw new TypeError('Network request failed');
+    });
+    renderRouter(app, { initialUrl: '/account/delete' });
+    fireEvent.changeText(await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`), ar.account.deleteConfirmWord);
+    await press(ar.account.deleteCta);
+
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
+    expect(screen.queryByText(ar.account.deleteUnavailable)).toBeNull();
+    expect((await supabase.auth.getSession()).data.session).toBeNull();
+  });
+
+  it('says it could not delete when the answer was lost and the account is still there', async () => {
+    jest.mocked(Alert.alert).mockClear();
+    await signedIn();
+    server.on('POST /api/mobile/v1/actions/deleteMyAccount', () => {
+      throw new TypeError('Network request failed');
+    });
+    renderRouter(app, { initialUrl: '/account/delete' });
+    fireEvent.changeText(await screen.findByLabelText(`اكتب ${ar.account.deleteConfirmWord} عشان تأكّد.`), ar.account.deleteConfirmWord);
+    await press(ar.account.deleteCta);
+
+    expect(await screen.findByText(ar.account.deleteUnavailable)).toBeTruthy();
+    expect(Alert.alert).not.toHaveBeenCalledWith(ar.app.account.deleted);
+    expect((await supabase.auth.getSession()).data.session).not.toBeNull();
+  });
+
   it('asks Apple for a fresh code first, for an account made with Apple', async () => {
     user = authUser({
       app_metadata: { provider: 'apple', providers: ['apple'] },

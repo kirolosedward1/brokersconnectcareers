@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Platform, Pressable, Share, Text } from 'react-native';
+import { Alert, Platform, Pressable, Share, Text, type AlertButton } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -292,6 +292,38 @@ describe('the form', () => {
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     const path = uploads()[0].url.pathname.replace('/storage/v1/object/cvs/', '');
     await waitFor(() => expect(bodyOf('/storage/v1/object/cvs')).toEqual({ prefixes: [path] }));
+  });
+
+  it('holds the form while the application is on its way, and says so rather than "not saved"', async () => {
+    let answer: (value: unknown) => void = () => {};
+    server.on('POST /api/mobile/v1/actions/applyToJob', () => new Promise((resolve) => (answer = resolve)));
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    try {
+      await signedIn();
+      const result = renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+      fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
+      await waitFor(() => expect(result.getPathname()).toBe(APPLY));
+      expect(await screen.findByText(ar.app.apply.profileCv)).toBeTruthy();
+      fireEvent.changeText(screen.getByLabelText(ar.apply.note), 'متاحة من أول الشهر.');
+      fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+      await waitFor(() => expect(server.asked('/api/mobile/v1/actions/applyToJob')).toHaveLength(1));
+
+      // Back while it is being sent: held, and told why — no way to leave it unsaved.
+      act(() => router.back());
+      expect(alert).toHaveBeenCalledWith(ar.app.leave.sendingTitle, ar.app.leave.sendingBody, expect.any(Array));
+      const choices = alert.mock.calls[0][2] as AlertButton[];
+      expect(choices.find((button) => button.style === 'destructive')).toBeUndefined();
+      expect(result.getPathname()).toBe(APPLY);
+
+      // Answered: the candidate sees that it went in.
+      await act(async () => {
+        answer({ ok: true });
+        await jest.advanceTimersByTimeAsync(300);
+      });
+      expect(await screen.findByText(ar.apply.success)).toBeTruthy();
+    } finally {
+      alert.mockRestore();
+    }
   });
 
   it('refuses a file that is too big, or is not a CV, before anything is sent', async () => {

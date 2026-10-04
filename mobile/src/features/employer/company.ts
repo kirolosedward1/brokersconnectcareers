@@ -98,9 +98,11 @@ export function useSaveCompany() {
       if (!result.ok) throw new CompanyRefused(result.error, result.fieldErrors);
     },
     // The company row is part of who the viewer is: a new one, or a new version.
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['viewer'] });
+    // Waited for, so the save is not done until its version is here: a second
+    // save before it was sent on the old one and refused as a colleague's.
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['employer'] });
+      await queryClient.invalidateQueries({ queryKey: ['viewer'] });
     },
     // A colleague's save got there first: read theirs, which the form then shows.
     onError: (error) => {

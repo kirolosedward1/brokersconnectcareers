@@ -294,6 +294,28 @@ describe('the feed', () => {
     expect(result.getPathname()).not.toBe('/notifications');
   });
 
+  it('leaves the reader where they went when the answer comes after they left the feed', async () => {
+    let answer: (value: unknown) => void = () => {};
+    server.on('POST /api/mobile/v1/actions/openNotification', () => new Promise((resolve) => (answer = resolve)));
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: '/dashboard/applications' });
+    await waitFor(() => expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']));
+    act(() => router.push('/notifications'));
+    fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/openNotification')).toHaveLength(1));
+
+    // A slow answer: the reader goes back and opens a listing meanwhile.
+    act(() => router.back());
+    act(() => router.push('/jobs/sales-a1b2'));
+    expect(await screen.findByText('listing page')).toBeTruthy();
+    await act(async () => {
+      answer({ ok: true, data: { href: '/dashboard/applications' } });
+      await jest.advanceTimersByTimeAsync(200);
+    });
+    // The listing they opened stays: nothing of the feed's answer moves it.
+    expect(result.getPathname()).toBe('/jobs/sales-a1b2');
+  });
+
   it('says why when a tapped push opened it for a page that is gone', async () => {
     await signedIn();
     renderRouter(app, { initialUrl: '/notifications?link=gone' });

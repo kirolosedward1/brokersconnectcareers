@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import type { User } from '@supabase/supabase-js';
+import { isAuthRetryableFetchError, type AuthError, type User } from '@supabase/supabase-js';
 import { appleAuthorizationCode } from '~/features/auth/providers';
 import { callAction } from '~/lib/api';
 import { supabase } from '~/lib/supabase';
@@ -46,6 +46,13 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   const result = await callAction('deleteMyAccount', appleCode ? { appleAuthorizationCode: appleCode } : {}).catch(
     () => null,
   );
+  // No answer — a connection dropped, the half minute ran out — is not "not
+  // deleted": the website deletes the account, then answers. Asked whether it
+  // still knows this account, the auth server settles it.
+  if (!result && (await accountGone())) {
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    return null;
+  }
   if (!result?.ok) {
     const code = result && !result.ok ? result.error : null;
     return code === 'owns_company'
@@ -60,4 +67,23 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   // The account no longer exists (its phones went with it); what is left on this phone goes too.
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
   return null;
+}
+
+/**
+ * Whether the auth server says this session's account is no more: refused
+ * outright (401, 403, 404, user_not_found), as it answers for a user deleted
+ * from under a token. No answer, or the account read back, is not gone.
+ */
+async function accountGone(): Promise<boolean> {
+  const { data, error } = await supabase.auth
+    .getUser()
+    .catch((failure: unknown) => ({ data: { user: null }, error: failure as AuthError }));
+  if (data.user || !error || isAuthRetryableFetchError(error)) return false;
+  return (
+    error.status === 401 ||
+    error.status === 403 ||
+    error.status === 404 ||
+    error.code === 'user_not_found' ||
+    error.code === 'session_not_found'
+  );
 }

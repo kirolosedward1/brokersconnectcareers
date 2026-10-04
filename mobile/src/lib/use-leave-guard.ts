@@ -21,9 +21,21 @@ export function useConfirmDiscard() {
   );
 }
 
-/** The same question for leaving the screen itself, while `dirty`. */
-export function useLeaveGuard(dirty: boolean) {
+/**
+ * The same question for leaving the screen itself, while `dirty`. While
+ * `sending`, the screen is held instead, and says why: what was typed is on its
+ * way, leaving would not stop it, only hide how it went — and "not saved, will
+ * be lost" would not be true.
+ */
+export function useLeaveGuard(dirty: boolean, sending = false) {
+  const t = useTranslations();
   const navigation = useNavigation();
   const confirm = useConfirmDiscard();
-  usePreventRemove(dirty, ({ data }) => confirm(() => navigation.dispatch(data.action)));
+  usePreventRemove(dirty || sending, ({ data }) => {
+    if (sending) {
+      Alert.alert(t('app.leave.sendingTitle'), t('app.leave.sendingBody'), [{ text: t('app.leave.stay'), style: 'cancel' }]);
+      return;
+    }
+    confirm(() => navigation.dispatch(data.action));
+  });
 }

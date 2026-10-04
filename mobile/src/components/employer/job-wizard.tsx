@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Scale, TriangleAlert } from '~/components/ui/lucide';
 import { formatEgp, formatNumber } from '@/lib/format';
@@ -80,13 +80,17 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   // Leaving with something typed asks first; once saved, the wizard closes itself.
   const [opened] = useState(() => JSON.stringify(initialValues(job, developerIds, null)));
   const [saved, setSaved] = useState(false);
-  useLeaveGuard(!saved && JSON.stringify(draft) !== opened);
+  useLeaveGuard(!saved && JSON.stringify(draft) !== opened, !saved && save.isPending);
+  // Closed by its own navigation, not the app's: answered after the employer
+  // switched tabs, the app's Back took whatever screen was in front there, and
+  // the wizard stayed open, saved, never to close.
+  const navigation = useNavigation();
   useEffect(() => {
     if (saved) {
-      if (router.canGoBack()) router.back();
+      if (navigation.canGoBack()) navigation.goBack();
       else router.replace('/employer/jobs' as never);
     }
-  }, [saved]);
+  }, [saved, navigation]);
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [similar, setSimilar] = useState<{ id: string; title: string; seats: number } | null>(null);
   const [reference, setReference] = useState<SalaryReferenceRow | null>(null);

@@ -75,12 +75,16 @@ export default function NotificationsScreen() {
   const newestShown = rows[0]?.created_at ?? null;
 
   const follow = (href: string) => {
+    // Answered after the reader left the feed — back, or another tab — where
+    // they went is where they stay: the app's own Back would take whatever
+    // screen is in front now, a listing opened meanwhile.
+    if (!navigation.isFocused()) return;
     const target = routeInside(href, actor);
     // The page the bell was opened from, when that is where the notification
     // leads: back to it, rather than a second copy of it on top of the feed.
     const routes = navigation.getState()?.routes ?? [];
     const below = routes.length > 1 ? routes[routes.length - 2] : null;
-    if (below && pathOfRoute(below) === target) router.back();
+    if (below && pathOfRoute(below) === target) navigation.goBack();
     else router.navigate(target as Href);
   };
 

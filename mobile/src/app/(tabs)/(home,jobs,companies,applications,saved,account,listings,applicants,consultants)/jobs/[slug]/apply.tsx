@@ -229,8 +229,9 @@ function ApplyForm({
   const attachment: Attachment =
     choice.kind === 'file' ? choice : choice.kind === 'profile' && profileCv ? { kind: 'profile', path: profileCv } : null;
   const [errors, setErrors] = useState<Errors>({});
-  // Leaving with a note written or a file picked asks first (the form goes once it is sent).
-  useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file');
+  // Leaving with a note written or a file picked asks first (the form goes once
+  // it is sent); while it is being sent, the screen waits for the answer.
+  useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file', apply.isPending);
 
   const title = localized(locale, job.title_ar, job.title_en);
   const company = localized(locale, job.company.name_ar, job.company.name_en);

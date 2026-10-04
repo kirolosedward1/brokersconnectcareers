@@ -137,6 +137,14 @@ const app = {
   '(tabs)/(listings)/employer/jobs/[id]/edit': EditJobScreen,
 };
 
+/** The same, with a second tab beside the listings: the applicants, as an employer has them. */
+const tabbed = {
+  ...app,
+  '(tabs)/(applicants)/_layout': { default: () => <Stack />, unstable_settings: { anchor: 'employer/applicants/index' } },
+  '(tabs)/(applicants)/employer/applicants/index': () => <Text>the inbox</Text>,
+  '(tabs)/(applicants)/employer/applicants/one': () => <Text>one applicant</Text>,
+};
+
 const saved = () => server.asked('/api/mobile/v1/actions/saveJob').map((request) => (request.body as { input: Record<string, unknown> }).input);
 const next = () => fireEvent.press(screen.getByRole('button', { name: ar.jobForm.next }));
 const DESCRIPTION = 'بيع وحدات سكنية في مشروعات القاهرة الجديدة لعملاء الشركة.';
@@ -473,6 +481,34 @@ describe('a listing on the board', () => {
     } finally {
       gcTime = 0;
     }
+  });
+
+  it("closes itself, not the other tab's screen, when its save is answered after the employer moved on", async () => {
+    let answer: (value: unknown) => void = () => {};
+    server.on('GET /rest/v1/jobs', [liveJob]);
+    server.on('POST /api/mobile/v1/actions/saveJob', () => new Promise((resolve) => (answer = resolve)));
+    const result = renderRouter(tabbed, { initialUrl: '/employer/jobs' });
+    expect(await screen.findByText('the console')).toBeTruthy();
+    act(() => router.push(`/employer/jobs/${liveJob.id}/edit` as never));
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات للمشروعات');
+    fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
+    await waitFor(() => expect(saved()).toHaveLength(1));
+
+    // A slow answer: meanwhile an applicant is opened in the other tab.
+    fireEvent.press(screen.getAllByText('(applicants)')[0]);
+    act(() => router.push('/employer/applicants/one' as never));
+    expect(await screen.findByText('one applicant')).toBeTruthy();
+    await act(async () => {
+      answer({ ok: true, data: { id: liveJob.id } });
+      await jest.advanceTimersByTimeAsync(200);
+    });
+
+    // The applicant stays open; the wizard has closed in its own tab.
+    expect(result.getPathname()).toBe('/employer/applicants/one');
+    fireEvent.press(screen.getAllByText('(listings)')[0]);
+    await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    expect(saved()).toHaveLength(1);
   });
 
   it('takes an edit whose answer was lost for saved when the listing says what it sent', async () => {

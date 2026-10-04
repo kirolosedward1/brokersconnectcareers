@@ -148,7 +148,9 @@
     "title": "Leave without saving?",
     "body": "What you typed here has not been saved, and will be lost.",
     "stay": "Keep editing",
-    "discard": "Leave"
+    "discard": "Leave",
+    "sendingTitle": "Still sending",
+    "sendingBody": "Wait a moment until it is done, then you can leave."
   },
   "company": {
     "docFrom": "Send the paper as",
