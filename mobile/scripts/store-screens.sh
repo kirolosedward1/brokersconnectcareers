@@ -188,6 +188,24 @@ explain() (
   awk '$3 == "E" || $3 == "F" || /com\.facebook\.react/' "$log" | tail -n 50 | cut -c 1-400 | sed 's/^/    /'
 )
 
+# annotate <name>: the step Maestro failed on and the words on the screen, as
+# an annotation on the run — read where neither the log nor the artifact can
+# be (through the API, as the run's check annotations).
+annotate() (
+  set +eo pipefail
+  name="$1"
+  {
+    echo "Maestro's last lines:"
+    grep -v '^[[:space:]]*$' "$out/$name/maestro.log" | tail -n 14
+    echo "The screen, as macOS reads it:"
+    "$ocr" "$out/$name/failed.png" 2> /dev/null | head -n 30
+  } | cut -c 1-200 | python3 -c '
+import sys
+text = sys.stdin.read()[:3500]
+print("::error title=" + sys.argv[1] + " pass::" + text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
+' "$name"
+)
+
 # pass <name> <simulator> <content size> <flow>
 pass() {
   local name="$1" udid="$2" size="$3" flow="$4" status=0
@@ -195,7 +213,9 @@ pass() {
   xcrun simctl ui "$udid" content_size "$size"
   mkdir -p "$out/$name"
   touch "$out/$name/.started"
-  (cd "$out/$name" && maestro --device "$udid" test "${envs[@]}" --debug-output "$out/$name/debug" "$flows/$flow") || status=$?
+  (cd "$out/$name" && maestro --device "$udid" test "${envs[@]}" --debug-output "$out/$name/debug" "$flows/$flow") \
+    > "$out/$name/maestro.log" 2>&1 || status=$?
+  cat "$out/$name/maestro.log"
   # takeScreenshot writes into Maestro's workspace, which is where it ran or,
   # for some versions, the flows' own folder: the pass's shots come from either.
   find "$flows" -maxdepth 1 -type f -name '[0-9]-*.png' -newer "$out/$name/.started" -exec mv {} "$out/$name/" \;
@@ -203,6 +223,7 @@ pass() {
     failed+=("$name")
     xcrun simctl io "$udid" screenshot "$out/$name/failed.png" > /dev/null 2>&1 || true
     explain "$name" "$udid"
+    annotate "$name"
     echo "::error::$name: the screens did not all open cleanly (maestro exited $status)"
   fi
   echo "::endgroup::"
