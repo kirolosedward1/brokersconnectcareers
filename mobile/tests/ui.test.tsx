@@ -18,7 +18,7 @@ import { Chip } from '~/components/ui/chip';
 import { KeyboardRoom, roomForScreen } from '~/components/ui/keyboard-room';
 import { PageFooter } from '~/components/ui/page-footer';
 import { Select } from '~/components/ui/select';
-import { EmptyState, ErrorState } from '~/components/ui/states';
+import { EmptyState, ErrorState, InSheet } from '~/components/ui/states';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { ApiError } from '~/lib/api';
 import { env } from '~/lib/env';
@@ -239,6 +239,61 @@ describe('a state that is the whole screen', () => {
     header = 103;
     screen.rerender(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />);
     expect(screen.UNSAFE_getByType(ScrollView).props.alwaysBounceVertical).toBe(true);
+  });
+
+  it("waits for a large title's own height, which comes a tenth of a second late, before it is seen", () => {
+    // The first frame has the header at an ordinary bar's height; the large
+    // title's comes 100 ms later (the native stack's debounce). Shown at the
+    // first measure, the words dropped some 26 points once they were in view.
+    jest.useFakeTimers();
+    try {
+      header = 98;
+      render(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />, { wrapper: UnderTheBars });
+      const opacity = () => {
+        const content = within(screen.UNSAFE_getByType(ScrollView))
+          .UNSAFE_getAllByType(View)
+          .find((view) => typeof view.props.onLayout === 'function');
+        return StyleSheet.flatten(content?.props.style).opacity;
+      };
+      laidOut(wholeScreen, 260);
+      expect(opacity()).toBe(0);
+      act(() => jest.advanceTimersByTime(100));
+      header = 155;
+      screen.rerender(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />);
+      act(() => jest.advanceTimersByTime(149));
+      expect(opacity()).toBe(0);
+      act(() => jest.advanceTimersByTime(1));
+      expect(opacity()).toBe(1);
+      expect(padded(screen.UNSAFE_getByType(ScrollView))).toEqual([32 + 155, 32 + 83]);
+      // Seen, it stays seen whatever moves after.
+      header = 103;
+      screen.rerender(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />);
+      expect(opacity()).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("in a sheet, keeps clear of the sheet's own edges: not the status bar above it, but the home indicator over its foot", () => {
+    // A sheet is measured from its own top, which is below the status bar, and
+    // runs to the foot of the phone. Counted against the phone's own edges the
+    // words sat some 46 points below the sheet's middle.
+    header = 0;
+    const sheetBars = { top: 59, bottom: 34, left: 0, right: 0 };
+    render(<ErrorState error={new ApiError(0, 'offline')} onRetry={() => {}} />, {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <Providers>
+          <SafeAreaInsetsContext.Provider value={sheetBars}>
+            <HeaderHeightContext.Provider value={header}>
+              <InSheet.Provider value>{children}</InSheet.Provider>
+            </HeaderHeightContext.Provider>
+          </SafeAreaInsetsContext.Provider>
+        </Providers>
+      ),
+    });
+    const scroll = laidOut({ y: 0, height: 783 }, 260);
+    expect(scroll.props.alwaysBounceVertical).toBe(false);
+    expect(padded(scroll)).toEqual([32, 32 + 34]);
   });
 
   it("is a block of the list it is the empty state of, which scrolls already: not a scroll inside a scroll", () => {

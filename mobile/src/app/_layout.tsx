@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, type ReactElement, type ReactNode } from 'react';
+import { Platform } from 'react-native';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationTheme } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -19,6 +20,7 @@ import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
 import { roomForScreen } from '~/components/ui/keyboard-room';
+import { InSheet } from '~/components/ui/states';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
 import { I18nProvider } from '~/i18n/provider';
 import { useDirectionState } from '~/lib/direction';
@@ -103,7 +105,7 @@ function AppStack() {
 
   return (
     <UpdateGate>
-      <Stack screenOptions={{ headerShown: false }} screenLayout={roomForScreen}>
+      <Stack screenOptions={{ headerShown: false }} screenLayout={rootScreenLayout}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
         <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
@@ -117,6 +119,24 @@ function AppStack() {
       <AppleCredentialWatch />
     </UpdateGate>
   );
+}
+
+/** What an iPhone presents as a sheet: below the status bar, over the screen it came from. */
+const SHEETS = new Set(['modal', 'formSheet', 'pageSheet']);
+
+/**
+ * Each of the root stack's screens: in a room for the keyboard
+ * (roomForScreen), and, when an iPhone presents it as a sheet — the sign-in
+ * sheet, the email links — told so (InSheet): what is drawn in a sheet is
+ * measured from the sheet's own top, not the phone's.
+ */
+function rootScreenLayout(props: {
+  route: { name: string };
+  options: { presentation?: string };
+  children: ReactElement;
+}): ReactElement {
+  const sheet = Platform.OS === 'ios' && SHEETS.has(props.options.presentation ?? '');
+  return <InSheet.Provider value={sheet}>{roomForScreen(props)}</InSheet.Provider>;
 }
 
 /** The navigators' colours and title font, from the theme. */

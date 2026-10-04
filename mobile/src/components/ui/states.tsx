@@ -52,6 +52,20 @@ function Centered({ children }: { children: ReactNode }) {
 type Measurable = { measureInWindow(done: (x: number, y: number, width: number, height: number) => void): void };
 
 /**
+ * A screen presented as a sheet on an iPhone (the root stack says so: see
+ * src/app/_layout.tsx). A sheet starts below the status bar and runs to the
+ * bottom of the phone, and what is drawn in it is measured from the sheet's
+ * own top: the status bar is no part of it, and the home indicator covers its
+ * foot wherever the sheet's own height ends.
+ */
+export const InSheet = createContext(false);
+
+/** The bars settle this long after the last of them moves (a large title's height comes 100 ms late). */
+const SETTLE_MS = 150;
+/** Shown by then whatever happens: a stand-in that never measures, or bars that never settle. */
+const SHOW_ANYWAY_MS = 400;
+
+/**
  * A screen of words, in the middle, that scrolls only when they are taller
  * than the room the bars leave.
  *
@@ -69,8 +83,10 @@ type Measurable = { measureInWindow(done: (x: number, y: number, width: number, 
  * tab bar or the home indicator. The bars settle a moment after the first
  * frame, and a large title folds as a page scrolls, so each is counted at the
  * most it has covered: decided once, the words do not start or stop scrolling
- * under the reader's finger. Until it is measured, a frame or two, it is drawn
- * but not seen, so nothing jumps into place.
+ * under the reader's finger. Until the measures have held still for a moment
+ * it is drawn but not seen, so nothing jumps into place: the first frame has a
+ * large title's header at the height of an ordinary one, and its own comes a
+ * tenth of a second later.
  */
 export function CenteredScroll({
   children,
@@ -83,36 +99,48 @@ export function CenteredScroll({
 }) {
   const insets = useContext(SafeAreaInsetsContext);
   const header = useContext(HeaderHeightContext);
+  const inSheet = useContext(InSheet);
   const screenHeight = useWindowDimensions().height;
   const scroll = useRef<ScrollView>(null);
   const [box, setBox] = useState<{ y: number; height: number } | null>(null);
   const [words, setWords] = useState(0);
   const [covered, setCovered] = useState({ height: 0, top: 0, bottom: 0 });
+  const [shown, setShown] = useState(false);
   const [gaveUp, setGaveUp] = useState(false);
 
   // Where the bars end and begin on the screen: the header (or, with none,
   // the status bar) from the top, the tab bar (or the home indicator) from
-  // the bottom — NativeTabs gives each tab the safe area its bar leaves.
-  const topEdge = Math.max(header ?? 0, insets?.top ?? 0);
+  // the bottom — NativeTabs gives each tab the safe area its bar leaves. In a
+  // sheet, measured from its own top: its own header, if any, and the home
+  // indicator over its foot.
+  const topEdge = inSheet ? (header ?? 0) : Math.max(header ?? 0, insets?.top ?? 0);
   const bottomEdge = screenHeight - (insets?.bottom ?? 0);
   if (box) {
     // Kept from render to render (React's "storing information from previous
     // renders"): set only when it grows, so it settles at once.
     const top = Math.max(0, topEdge - box.y);
-    const bottom = Math.max(0, box.y + box.height - bottomEdge);
+    const bottom = inSheet ? (insets?.bottom ?? 0) : Math.max(0, box.y + box.height - bottomEdge);
     if (covered.height !== box.height) setCovered({ height: box.height, top, bottom });
     else if (top > covered.top || bottom > covered.bottom) {
       setCovered({ height: box.height, top: Math.max(covered.top, top), bottom: Math.max(covered.bottom, bottom) });
     }
   }
+
+  const measured = box !== null && covered.height === box.height;
+  // Shown once what it is measured against has held still, and then for good.
+  const measures = measured ? `${box.y}:${box.height}:${covered.top}:${covered.bottom}:${words}` : null;
+  useEffect(() => {
+    if (shown || measures === null) return;
+    const timer = setTimeout(() => setShown(true), SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [measures, shown]);
   // Measured or not, it is shown soon: a stand-in that never measures (or a
   // platform that cannot) leaves the words in the middle of the scroll view.
   useEffect(() => {
-    const timer = setTimeout(() => setGaveUp(true), 250);
+    const timer = setTimeout(() => setGaveUp(true), SHOW_ANYWAY_MS);
     return () => clearTimeout(timer);
   }, []);
 
-  const measured = box !== null && covered.height === box.height;
   const taller = measured && words + 2 * padding > box.height - covered.top - covered.bottom;
   // Still, the words keep clear of the bars by padding; scrolling, iOS insets them itself.
   const clear = measured && !taller ? covered : { top: 0, bottom: 0 };
@@ -136,7 +164,7 @@ export function CenteredScroll({
     >
       <View
         onLayout={(event) => setWords(event.nativeEvent.layout.height)}
-        style={{ alignSelf: 'stretch', alignItems: 'center', gap: space[3], opacity: measured || gaveUp ? 1 : 0 }}
+        style={{ alignSelf: 'stretch', alignItems: 'center', gap: space[3], opacity: shown || gaveUp ? 1 : 0 }}
       >
         {children}
       </View>

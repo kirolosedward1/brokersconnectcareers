@@ -1,9 +1,11 @@
+import { useContext } from 'react';
 import { Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { router } from 'expo-router';
 import { render } from '@testing-library/react-native';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { InSheet } from '~/components/ui/states';
 import { catalogues } from '~/i18n/provider';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
@@ -152,5 +154,30 @@ describe('a screen that throws while it is drawn', () => {
     await waitFor(() => expect(hide).toHaveBeenCalled());
     fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
     expect(retry).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('a screen the root stack presents as a sheet', () => {
+  // What is drawn in a sheet is measured from the sheet's own top, which is
+  // below the status bar (src/components/ui/states.tsx, InSheet).
+  function Where({ name }: { name: string }) {
+    return <Text>{`${name}: ${useContext(InSheet) ? 'sheet' : 'screen'}`}</Text>;
+  }
+  const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+
+  it('is told it is one; the tabs under it are not', async () => {
+    renderRouter(
+      {
+        _layout: RootLayout,
+        '(tabs)/_layout': TabsLayout,
+        [STACK]: TabStack,
+        '(tabs)/(home)/index': () => <Where name="home" />,
+        'auth/callback': () => <Where name="callback" />,
+      },
+      { initialUrl: '/' },
+    );
+    expect(await screen.findByText('home: screen')).toBeTruthy();
+    act(() => router.push('/auth/callback'));
+    expect(await screen.findByText('callback: sheet')).toBeTruthy();
   });
 });
