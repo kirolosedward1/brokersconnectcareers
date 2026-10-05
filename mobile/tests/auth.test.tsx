@@ -29,6 +29,7 @@ import * as CallbackScreen from '../src/app/auth/callback';
 import { redirectSystemPath } from '../src/app/+native-intent';
 import * as MfaScreen from '../src/app/mfa';
 import * as OnboardingScreen from '../src/app/onboarding';
+import * as WelcomeScreen from '../src/app/welcome';
 import {
   authSession,
   authUser,
@@ -204,6 +205,7 @@ const app = {
   mfa: MfaScreen,
   'auth/confirm': ConfirmScreen,
   'auth/callback': CallbackScreen,
+  welcome: WelcomeScreen,
 };
 
 /** The delete screen's field, named as the catalogue words it: the word to type, in its quotes. */
@@ -327,6 +329,17 @@ describe('signing in with a password', () => {
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     expect(screen.queryByText(ar.auth.signInTitle)).toBeNull();
     expect(bodyOf('/auth/v1/token')).toMatchObject({ email: 'sara@example.com', password: PASSWORD });
+  });
+
+  it('closes the first launch\'s welcome along with the sheet when the sign-in began there', async () => {
+    renderRouter(app, { initialUrl: '/welcome' });
+    await press(ar.nav.signIn);
+    await fillSignIn('sara@example.com', PASSWORD);
+    await press(ar.auth.signIn);
+
+    expect(await screen.findByText('home screen')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByTestId('welcome')).toBeNull());
+    expect(screen.queryByText(ar.auth.signInTitle)).toBeNull();
   });
 
   it('goes on to where the person was headed', async () => {

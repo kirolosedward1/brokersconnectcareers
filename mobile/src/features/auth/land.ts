@@ -49,8 +49,12 @@ export function useLand() {
   );
 }
 
-/** The sign-in flow's screens as the root stack names them: the sheet, and the ones that stand alone. */
-const FLOW_SCREENS = new Set(['(auth)', 'onboarding', 'mfa', 'auth/confirm', 'auth/callback']);
+/**
+ * The sign-in flow's screens as the root stack names them: the sheet, the
+ * ones that stand alone, and the welcome a first launch opens on, which a
+ * sign-in started from it closes along with the sheet.
+ */
+const FLOW_SCREENS = new Set(['(auth)', 'onboarding', 'mfa', 'auth/confirm', 'auth/callback', 'welcome']);
 
 /**
  * Close the flow this screen belongs to: the whole sign-in sheet from any

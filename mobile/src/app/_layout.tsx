@@ -1,4 +1,4 @@
-import { useEffect, type ReactElement, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import { Platform, View } from 'react-native';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationTheme } from 'expo-router';
 import { LocaleDirContext } from 'expo-router/react-navigation';
@@ -19,9 +19,11 @@ import { AppleCredentialWatch } from '~/components/navigation/apple-credential-w
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
+import { WelcomeGate } from '~/components/navigation/welcome-gate';
 import { roomForScreen } from '~/components/ui/keyboard-room';
 import { InSheet } from '~/components/ui/states';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
+import { useWelcomeDrawn } from '~/features/welcome';
 import { I18nProvider } from '~/i18n/provider';
 import { appDirection } from '~/lib/direction';
 import { persistOptions, queryClient } from '~/lib/query';
@@ -87,9 +89,14 @@ export default function RootLayout() {
   );
 }
 
+/** Longest the splash screen waits for the welcome to be drawn, once the app is ready. */
+const WELCOME_WAIT_MS = 1500;
+
 /**
  * The screens, once the tab bar can be drawn for the person using the app —
  * the same person a link that opened the app was routed for (+native-intent).
+ * The splash screen comes down onto the first screen the launch is for: the
+ * welcome, on a first signed-out launch (WelcomeGate), or Home.
  */
 function AppStack() {
   const { settled } = useSession();
@@ -97,10 +104,22 @@ function AppStack() {
   // the phone has said whose listings the reader hid.
   const hiddenKnown = useHiddenCompaniesLoaded();
   const ready = settled && hiddenKnown;
+  const [welcome, setWelcome] = useState<'deciding' | 'opened' | 'not'>('deciding');
+  const welcomeDrawn = useWelcomeDrawn();
+  const [waitedEnough, setWaitedEnough] = useState(false);
+  const decided = useCallback((opened: boolean) => setWelcome(opened ? 'opened' : 'not'), []);
 
+  // Never held for good, whatever the welcome does.
   useEffect(() => {
-    if (ready) SplashScreen.hideAsync().catch(() => {});
+    if (!ready) return;
+    const timer = setTimeout(() => setWaitedEnough(true), WELCOME_WAIT_MS);
+    return () => clearTimeout(timer);
   }, [ready]);
+
+  const firstScreen = welcome === 'not' || (welcome === 'opened' && welcomeDrawn) || waitedEnough;
+  useEffect(() => {
+    if (ready && firstScreen) SplashScreen.hideAsync().catch(() => {});
+  }, [ready, firstScreen]);
 
   if (!ready) return null;
 
@@ -113,7 +132,10 @@ function AppStack() {
         <Stack.Screen name="mfa" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         <Stack.Screen name="auth/confirm" options={{ presentation: 'modal' }} />
         <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
+        {/* Under the splash screen at once, and answered rather than swiped away. */}
+        <Stack.Screen name="welcome" options={{ presentation: 'fullScreenModal', animation: 'none', gestureEnabled: false }} />
       </Stack>
+      <WelcomeGate onDecided={decided} />
       <SessionGate />
       <PendingPath />
       <PushBridge />

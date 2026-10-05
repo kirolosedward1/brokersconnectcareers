@@ -1,9 +1,20 @@
 # Opens the app as someone who has just installed it: nothing stored, nobody
-# signed in, Home on screen.
+# signed in. A first launch opens on the welcome (src/app/welcome.tsx), which
+# is captured and then answered the way someone looking around answers it, so
+# Home is on screen at the end.
 appId: net.brokersconnect.app
 ---
 - launchApp:
     clearState: true
+- extendedWaitUntil:
+    visible: "تصفّح من غير حساب"
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: 0-welcome
+- tapOn: "تصفّح من غير حساب"
+- extendedWaitUntil:
+    notVisible: "تصفّح من غير حساب"
+    timeout: 15000
 - extendedWaitUntil:
     visible: "منصة متخصصة لوظائف العقارات في مصر"
     timeout: 90000

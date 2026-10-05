@@ -2,7 +2,9 @@ import { I18nManager, StyleSheet, Text } from 'react-native';
 import * as Updates from 'expo-updates';
 import { render } from '@testing-library/react-native';
 import { renderRouter, screen } from 'expo-router/testing-library';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TextField } from '~/components/ui/text-field';
+import { resetWelcomeForTests, WELCOME_KEY } from '~/features/welcome';
 import { appDirection } from '~/lib/direction';
 import { ThemeProvider } from '~/theme/provider';
 import * as RootLayout from '../src/app/_layout';
@@ -45,7 +47,10 @@ beforeAll(() => {
   globalThis.fetch = server.fetch as unknown as typeof fetch;
 });
 
-beforeEach(() => {
+beforeEach(async () => {
+  // Past the first launch's welcome (tests/welcome.test.tsx has it): this opens on Home.
+  await AsyncStorage.setItem(WELCOME_KEY, 'done');
+  resetWelcomeForTests();
   server.on('GET /api/mobile/v1/config', mobileConfig());
   server.on('/rest/v1/districts', [newCairo]);
   server.on('/rest/v1/governorates', [cairo]);
