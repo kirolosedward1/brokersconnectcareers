@@ -195,8 +195,11 @@ annotate() (
   set +eo pipefail
   name="$1"
   {
+    # A Maestro exception's own message is at its top, its stack below it.
+    echo "Maestro's errors:"
+    grep -E 'Exception|Error|Caused by|FAILED' "$out/$name/maestro.log" | grep -vE '^[[:space:]]+at ' | head -n 8
     echo "Maestro's last lines:"
-    grep -v '^[[:space:]]*$' "$out/$name/maestro.log" | tail -n 14
+    grep -v '^[[:space:]]*$' "$out/$name/maestro.log" | grep -vE '^[[:space:]]+at ' | tail -n 10
     echo "The screen, as macOS reads it:"
     "$ocr" "$out/$name/failed.png" 2> /dev/null | head -n 30
   } | cut -c 1-200 | python3 -c '
