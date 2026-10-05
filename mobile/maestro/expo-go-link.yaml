@@ -1,0 +1,13 @@
+# Opens LINK — the app's newest update on the expo-go channel — in Expo Go as
+# from outside it, and answers when iOS asks first ("Open in …?").
+# scripts/expo-go-look.sh opens its screens with this and reads them itself.
+appId: host.exp.Exponent
+---
+- openLink: ${LINK}
+# The question takes a moment to appear.
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: "فتح|Open"
+    commands:
+      - tapOn: "فتح|Open"

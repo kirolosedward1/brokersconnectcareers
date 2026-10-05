@@ -22,7 +22,9 @@ const { parseAllDocuments } = require(join(__dirname, '..', 'node_modules', 'yam
   screen draws, and held to that key's text as Maestro matches it: rewording
   the key fails this test, whatever other key happens to say the same words.
   A phrase built from what the live site supplies (${JOB_TITLE}) is the
-  site's, and iOS's own question before opening a link is the system's.
+  site's, iOS's own question before opening a link is the system's, and what
+  Expo Go asks the first time it opens the app (expo-go-alerts.yaml) is Expo
+  Go's.
 */
 
 /** The key each phrase is the text of, on the screen the flow looks for it on. */
@@ -55,7 +57,7 @@ const KEYS: Record<string, string> = {
 };
 
 const FLOWS = join(__dirname, '..', 'maestro');
-const SYSTEM = new Set(['فتح|Open']);
+const SYSTEM = new Set(['فتح|Open', 'Continue', 'Allow']);
 /**
  * Where a flow names text to find on screen: a command's own value, a
  * selector's `text`, and the selectors placed relative to another.

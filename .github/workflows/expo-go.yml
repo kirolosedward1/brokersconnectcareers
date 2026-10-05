@@ -49,6 +49,8 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    outputs:
+      published: ${{ steps.token.outputs.present }}
     defaults:
       run:
         working-directory: mobile
@@ -119,3 +121,49 @@ jobs:
               echo "The EAS project's id is \`$project\`. Builds and push notifications need it written in \`mobile/app.config.ts\` in place of \`null\` (\`EAS_PROJECT_ID\`)."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  look:
+    # What was just published, opened in Expo Go on an iPhone simulator as the
+    # owner's phone opens it — from Expo's servers, in English, then again from
+    # Expo Go's own home — and read back: the run's annotations say where every
+    # line sat on each screen, and a tab bar laid out left to right fails it
+    # (mobile/scripts/expo-go-look.sh).
+    needs: publish
+    if: needs.publish.outputs.published == 'yes'
+    # Xcode 26, as for the native build in mobile.yml.
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      # Pinned as in ios-screens.yml.
+      MAESTRO_VERSION: 2.6.0
+      MAESTRO_CLI_NO_ANALYTICS: '1'
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
+    steps:
+      - uses: actions/checkout@v4
+
+      # Maestro runs on Java.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          "$HOME/.maestro/bin/maestro" --version
+
+      - name: Open it in Expo Go
+        run: scripts/expo-go-look.sh "$RUNNER_TEMP/expo-go"
+
+      - name: Keep the screens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-go-screens
+          path: ${{ runner.temp }}/expo-go
+          if-no-files-found: warn
+          retention-days: 14

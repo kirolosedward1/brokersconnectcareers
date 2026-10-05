@@ -1,9 +1,12 @@
 // The words on a screenshot, read by macOS's text recognition, top to bottom.
 //
-//     swift scripts/screen-text.swift <screenshot.png>
+//     swift scripts/screen-text.swift <screenshot.png> [--boxes]
 //
 // Used by scripts/store-screens.sh when a pass fails: it says what the screen
-// showed even when the test driver could read nothing of it.
+// showed even when the test driver could read nothing of it. With --boxes,
+// each line also says where it sits, in percent of the screen — how far down,
+// and its left and right edges — which is how scripts/expo-go-look.sh tells
+// right to left from left to right.
 import AppKit
 import Vision
 
@@ -30,7 +33,15 @@ do {
 } catch {
     fail("\(error)")
 }
+let boxes = CommandLine.arguments.dropFirst(2).contains("--boxes")
 // Vision's boxes start at the bottom left.
 for line in (request.results ?? []).sorted(by: { $0.boundingBox.maxY > $1.boundingBox.maxY }) {
-    if let text = line.topCandidates(1).first?.string { print(text) }
+    guard let text = line.topCandidates(1).first?.string else { continue }
+    if boxes {
+        let box = line.boundingBox
+        let percent = { (value: CGFloat) in Int((value * 100).rounded()) }
+        print("y\(percent(1 - box.maxY)) x\(percent(box.minX))-\(percent(box.maxX))  \(text)")
+    } else {
+        print(text)
+    }
 }
