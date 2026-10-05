@@ -109,11 +109,14 @@ compare with (a new branch), it compares with the previous commit.
   `mobile/src/i18n/messages/`. Numbers inside Arabic sentences are wrapped in
   left-to-right isolates (U+2066…U+2069) — the website's `<v>` tag.
   `@formatjs` polyfills give Hermes Arabic plurals and formatting.
-  The first layout is measured (`mobile/src/lib/direction.ts`): a screen
-  created before the direction was set came up left to right, and the app then
-  sets it and starts again once, behind the splash screen. The tab bar is given
-  the measured direction: iOS lays native bars out in the language the app runs
-  in, which is English on an iPhone set to English and in Expo Go.
+  The app says its own direction (`mobile/src/lib/direction.ts`) rather than
+  rely on the one React Native fixes when the screen is created, which Expo Go
+  sets too late: the root layout lays every view out in it, every navigator's
+  header and back gesture is told it (React Navigation's `LocaleDirContext`),
+  and so is the tab bar — iOS lays native bars out in the language the app runs
+  in, which is English on an iPhone set to English and in Expo Go. Text fields
+  are aligned to the physical edge (`TextField`): React Native mirrors
+  `textAlign` for text it lays out, not for what is typed into a field.
 - **Design.** The brand set in a quieter key for the phone
   (`mobile/src/theme/tokens.ts`): ivory paper with deep sapphire ink in light,
   near-black with champagne in dark, champagne kept for what has been checked
@@ -533,11 +536,10 @@ The quickest way onto a phone, with no Apple developer account: install Expo Go
 from the App Store, run `pnpm start:go` on a computer on the same Wi-Fi as the
 iPhone, and scan the QR code it prints with the iPhone's camera
 (`pnpm start:go --tunnel` when the two are not on the same network). Right to
-left comes from `extra.forcesRTL` in `app.config.ts`, which Expo Go reads from
-the manifest. Expo Go sets it only after it has started the app when it opens
-an update from the network or comes back from its own home screen, so the app
-can come up laid out left to right; it notices and starts again once
-(`mobile/src/lib/direction.ts`), which shows as a second splash screen.
+left comes from `extra.forcesRTL` in `app.config.ts`. Expo Go applies it only
+after it has created the screen when it opens an update from the network or
+comes back from its own home screen, so the app sets its direction itself
+(`mobile/src/lib/direction.ts`) and runs right to left either way.
 
 Sign in with Google returns to the app at `brokersconnect://auth/callback`,
 which has to be among Supabase's redirect URLs (Authentication → URL

@@ -37,6 +37,7 @@ describe('a large title', () => {
   });
 
   it('is still asked for on the tabs that have one', () => {
-    expect(sources.filter(({ text }) => /\bheaderLargeTitleEnabled:\s*true/.test(text)).length).toBeGreaterThanOrEqual(9);
+    // Every tab's first screen but Home, whose title is the website's logo.
+    expect(sources.filter(({ text }) => /\bheaderLargeTitleEnabled:\s*true/.test(text)).length).toBeGreaterThanOrEqual(8);
   });
 });

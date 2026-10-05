@@ -1,6 +1,7 @@
 import { useEffect, type ReactElement, type ReactNode } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationTheme } from 'expo-router';
+import { LocaleDirContext } from 'expo-router/react-navigation';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -12,7 +13,6 @@ import { IBMPlexSansArabic_400Regular } from '@expo-google-fonts/ibm-plex-sans-a
 import { IBMPlexSansArabic_500Medium } from '@expo-google-fonts/ibm-plex-sans-arabic/500Medium';
 import { IBMPlexSansArabic_600SemiBold } from '@expo-google-fonts/ibm-plex-sans-arabic/600SemiBold';
 import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic/700Bold';
-import { DirectionProbe } from '~/components/navigation/direction-probe';
 import { AppError, ScreenError } from '~/components/navigation/error-boundaries';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
@@ -23,7 +23,7 @@ import { roomForScreen } from '~/components/ui/keyboard-room';
 import { InSheet } from '~/components/ui/states';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
 import { I18nProvider } from '~/i18n/provider';
-import { useDirectionState } from '~/lib/direction';
+import { appDirection } from '~/lib/direction';
 import { persistOptions, queryClient } from '~/lib/query';
 import { SessionProvider, useSession } from '~/lib/session';
 import { ThemeProvider, useTheme } from '~/theme/provider';
@@ -50,8 +50,11 @@ export { AppError as ErrorBoundary };
  * the theme, the website's catalogue, and who is signed in. The splash screen
  * stays up until the font is ready and the phone has said who was signed in
  * last, so no screen is ever drawn in the system font first, nor with a tab
- * bar that changes a moment later — nor before the first layout has shown
- * which way the screen runs (DirectionProbe, src/lib/direction.ts).
+ * bar that changes a moment later.
+ *
+ * All of it in the app's direction (src/lib/direction.ts): every view laid
+ * out in it, and every navigator's header and back gesture told it, whatever
+ * direction the screen was created with — Expo Go creates it left to right.
  */
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -62,24 +65,25 @@ export default function RootLayout() {
   });
 
   return (
-    <>
-      <DirectionProbe />
-      {fontsLoaded || fontError ? (
-        <SafeAreaProvider>
-          <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
-            <ThemeProvider>
-              <I18nProvider>
-                <SessionProvider>
-                  <Navigation>
-                    <AppStack />
-                  </Navigation>
-                </SessionProvider>
-              </I18nProvider>
-            </ThemeProvider>
-          </PersistQueryClientProvider>
-        </SafeAreaProvider>
-      ) : null}
-    </>
+    <View testID="app-direction" style={{ flex: 1, direction: appDirection }}>
+      <LocaleDirContext.Provider value={appDirection}>
+        {fontsLoaded || fontError ? (
+          <SafeAreaProvider>
+            <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+              <ThemeProvider>
+                <I18nProvider>
+                  <SessionProvider>
+                    <Navigation>
+                      <AppStack />
+                    </Navigation>
+                  </SessionProvider>
+                </I18nProvider>
+              </ThemeProvider>
+            </PersistQueryClientProvider>
+          </SafeAreaProvider>
+        ) : null}
+      </LocaleDirContext.Provider>
+    </View>
   );
 }
 
@@ -93,15 +97,12 @@ function AppStack() {
   // the phone has said whose listings the reader hid.
   const hiddenKnown = useHiddenCompaniesLoaded();
   const ready = settled && hiddenKnown;
-  // Laid out the wrong way, the app is about to start again: nothing is drawn
-  // meanwhile, and the splash screen stays until the direction is known.
-  const direction = useDirectionState();
 
   useEffect(() => {
-    if (ready && direction === 'settled') SplashScreen.hideAsync().catch(() => {});
-  }, [ready, direction]);
+    if (ready) SplashScreen.hideAsync().catch(() => {});
+  }, [ready]);
 
-  if (!ready || direction === 'reloading') return null;
+  if (!ready) return null;
 
   return (
     <UpdateGate>

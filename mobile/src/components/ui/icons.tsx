@@ -1,4 +1,4 @@
-import { I18nManager } from 'react-native';
+import { appDirection } from '~/lib/direction';
 import { ChevronLeft, ChevronRight, SendHorizontal, type LucideProps } from './lucide';
 
 /**
@@ -7,12 +7,12 @@ import { ChevronLeft, ChevronRight, SendHorizontal, type LucideProps } from './l
  * right, the same component points right, with nothing to change at call sites.
  */
 export function ForwardChevron(props: LucideProps) {
-  return I18nManager.isRTL ? <ChevronLeft {...props} /> : <ChevronRight {...props} />;
+  return appDirection === 'rtl' ? <ChevronLeft {...props} /> : <ChevronRight {...props} />;
 }
 
 /** "Send" pointing the way the text runs, as the website flips it (`rtl-flip`). */
 export function SendForward(props: LucideProps) {
   return (
-    <SendHorizontal {...props} style={[props.style, I18nManager.isRTL ? { transform: [{ scaleX: -1 }] } : null]} />
+    <SendHorizontal {...props} style={[props.style, appDirection === 'rtl' ? { transform: [{ scaleX: -1 }] } : null]} />
   );
 }

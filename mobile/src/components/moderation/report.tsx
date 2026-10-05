@@ -12,6 +12,7 @@ import { KeyboardRoom } from '~/components/ui/keyboard-room';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { callAction } from '~/lib/api';
+import { appDirection } from '~/lib/direction';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { corner, font, gutter, hitTarget, space, type as scale } from '~/theme/tokens';
@@ -273,7 +274,8 @@ function ReportSheet({
                   color: colors.foreground,
                   fontFamily: font.regular,
                   fontSize: scale.body.fontSize,
-                  textAlign: 'left',
+                  // The physical edge, as in TextField: a field's text is not mirrored for right to left.
+                  textAlign: appDirection === 'rtl' ? 'right' : 'left',
                 }}
               />
               <Text variant="caption" tone="mutedForeground">

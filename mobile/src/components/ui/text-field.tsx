@@ -1,5 +1,6 @@
 import { forwardRef, useState, type ReactNode } from 'react';
-import { I18nManager, TextInput, View, type TextInputProps } from 'react-native';
+import { TextInput, View, type TextInputProps } from 'react-native';
+import { appDirection } from '~/lib/direction';
 import { useTheme } from '~/theme/provider';
 import { corner, font, hitTarget, space, type as scale } from '~/theme/tokens';
 
@@ -7,11 +8,15 @@ import { corner, font, hitTarget, space, type as scale } from '~/theme/tokens';
  * The website's input, set for the phone: a field 50 points tall on the card
  * surface, its border drawn in ink while it has the cursor, the body size so
  * iOS never zooms, an optional mark at the start. Right to left with the rest
- * of the app — `textAlign: 'left'` is the logical start, as on Text.
+ * of the app: what is typed starts at the right edge.
  *
  * `ltr` is the website's `dir="ltr"` on an email, a password, a phone number
  * or a link: typed and read left to right, from the left edge, whatever the
- * language around it. (With the layout mirrored, the physical left is 'right'.)
+ * language around it.
+ *
+ * A field's alignment is the physical edge, unlike Text's: React Native
+ * mirrors 'left' and 'right' for text it lays out itself, not for what is
+ * typed into a field, which drew Arabic from the left edge.
  */
 export const TextField = forwardRef<
   TextInput,
@@ -66,7 +71,7 @@ export const TextField = forwardRef<
             fontFamily: font.regular,
             fontSize: scale.body.fontSize,
             color: colors.foreground,
-            textAlign: ltr && I18nManager.isRTL ? 'right' : 'left',
+            textAlign: !ltr && appDirection === 'rtl' ? 'right' : 'left',
             writingDirection: ltr ? 'ltr' : undefined,
             paddingVertical: 0,
           },

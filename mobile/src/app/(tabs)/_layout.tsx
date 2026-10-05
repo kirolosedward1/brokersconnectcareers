@@ -1,6 +1,6 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useTranslations } from 'use-intl';
-import { useLayoutDirection } from '~/lib/direction';
+import { appDirection } from '~/lib/direction';
 import { useSession } from '~/lib/session';
 import { tabsFor } from '~/lib/tabs';
 import { useTheme } from '~/theme/provider';
@@ -29,17 +29,17 @@ import { useTheme } from '~/theme/provider';
  * the app is running in, not by React Native's direction: on an iPhone set to
  * English, and in Expo Go, which lays it out in Expo Go's own language, the
  * bar ran left to right, Home on the left, under screens running right to
- * left. Its direction is given to it, and through it to the screens inside.
+ * left. The app's direction is given to it (src/lib/direction.ts), and
+ * through it to the screens inside.
  */
 export default function TabsLayout() {
   const t = useTranslations();
   const { colors } = useTheme();
   const tabs = tabsFor(useSession().actor);
-  const direction = useLayoutDirection();
 
   return (
     // Android: every tab says its name, not only the one open (Material hides the rest past three tabs).
-    <NativeTabs tintColor={colors.primary} labelVisibilityMode="labeled" unstable_nativeProps={{ direction }}>
+    <NativeTabs tintColor={colors.primary} labelVisibilityMode="labeled" unstable_nativeProps={{ direction: appDirection }}>
       <NativeTabs.Trigger name="(home)">
         <NativeTabs.Trigger.Label>{t('app.tabs.home')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />

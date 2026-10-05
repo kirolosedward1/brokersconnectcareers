@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'use-intl';
 import { Briefcase, Building2, Check, Search } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
+import { BrandLogo } from '~/components/brand/brand-logo';
 import { CandidateHome } from '~/components/home/candidate-home';
 import { EmployerHome } from '~/components/home/employer-home';
 import { Hero } from '~/components/home/hero';
@@ -50,7 +51,8 @@ export default function HomeScreen() {
   const { viewer, actor } = useSession();
   return (
     <>
-      <Stack.Screen options={{ title: t('meta.siteName'), headerLargeTitleEnabled: true, headerRight: () => <HeaderBell /> }} />
+      {/* The website's logo for a title, as its header has it: the name stays the title for Back and VoiceOver. */}
+      <Stack.Screen options={{ title: t('meta.siteName'), headerTitle: () => <BrandLogo />, headerRight: () => <HeaderBell /> }} />
       {canAccessEmployerArea(actor) ? (
         <EmployerHome profile={viewer?.profile ?? null} company={viewer?.company ?? null} />
       ) : canAccessCandidateArea(actor) ? (

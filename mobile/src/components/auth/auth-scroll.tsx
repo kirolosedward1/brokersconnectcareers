@@ -1,12 +1,9 @@
 import type { ReactNode, Ref } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Image } from 'expo-image';
+import { Platform, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { BrandLogo } from '~/components/brand/brand-logo';
+import { gutter, space } from '~/theme/tokens';
 import { Text } from '~/components/ui/text';
-
-const MARK = require('../../../assets/images/icon.png');
 
 /**
  * The page every sign-in screen sits on: scrolls with the keyboard up, keeps
@@ -42,32 +39,15 @@ export function AuthScroll({ ref, children, bare = false }: { ref?: Ref<ScrollVi
 }
 
 /**
- * The page's heading and the sentence under it, under the brand's mark on
- * its white tile — the app's own icon, as the home screen shows it — so a
- * sheet that asks for a password says whose it is. The mark is drawing; the
- * heading says the words.
+ * The page's heading and the sentence under it, under the website's logo —
+ * as the website's own sign-in page has it — so a sheet that asks for a
+ * password says whose it is.
  */
 export function AuthHeading({ title, body }: { title: string; body?: string | null }) {
-  const { colors, shadow } = useTheme();
   return (
     <View style={{ gap: space[1] }}>
-      <View
-        accessible={false}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={{
-          width: 56,
-          height: 56,
-          marginBottom: space[3],
-          ...corner('lg'),
-          borderWidth: StyleSheet.hairlineWidth * 2,
-          borderColor: colors.border,
-          backgroundColor: '#FFFFFF',
-          boxShadow: shadow.card,
-          overflow: 'hidden',
-        }}
-      >
-        <Image source={MARK} contentFit="cover" style={{ flex: 1 }} accessible={false} />
+      <View style={{ alignItems: 'flex-start', marginBottom: space[4] }}>
+        <BrandLogo size="form" />
       </View>
       <Text variant="display" weight="bold" accessibilityRole="header">
         {title}

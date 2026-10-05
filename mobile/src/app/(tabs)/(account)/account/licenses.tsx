@@ -1,4 +1,4 @@
-import { I18nManager, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import * as WebBrowser from 'expo-web-browser';
@@ -7,6 +7,7 @@ import notices from '@/lib/licenses/app.json';
 import { spdxUrl, type AssetNotice, type LicenseText, type Notices, type PackageNotice } from '@/lib/licenses/notices';
 import { Text } from '~/components/ui/text';
 import { markupTags } from '~/i18n/rich';
+import { appDirection } from '~/lib/direction';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 
@@ -35,7 +36,7 @@ type Row =
  * when right-to-left is forced, as in the text field's left-to-right mode).
  */
 function ltr() {
-  return { writingDirection: 'ltr', textAlign: I18nManager.isRTL ? 'right' : 'left' } as const;
+  return { writingDirection: 'ltr', textAlign: appDirection === 'rtl' ? 'right' : 'left' } as const;
 }
 
 export default function LicensesScreen() {
