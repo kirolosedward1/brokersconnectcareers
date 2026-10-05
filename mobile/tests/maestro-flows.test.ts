@@ -85,10 +85,10 @@ const TEXT_KEYS = new Set([
 /**
  * Strings that are no text on screen: a command with no argument (under no
  * key), the app, a flow's name, a file run, a link opened, a screenshot's
- * name, a condition. Any other key holding a string fails the test below, so
+ * name, a condition, a point tapped or swiped between. Any other key holding a string fails the test below, so
  * a new way of naming text is sorted into one list or the other.
  */
-const OTHER_KEYS = new Set(['', 'appId', 'name', 'file', 'runFlow', 'openLink', 'takeScreenshot', 'true']);
+const OTHER_KEYS = new Set(['', 'appId', 'name', 'file', 'runFlow', 'openLink', 'takeScreenshot', 'true', 'point', 'start', 'end']);
 
 /** The strings in a flow by the key they sit under; an item of a list sits under the list's key. */
 function stringsIn(node: unknown, key: string, into: { key: string; value: string }[]): { key: string; value: string }[] {

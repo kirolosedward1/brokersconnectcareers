@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
@@ -48,20 +48,15 @@ export default function WelcomeScreen() {
   ];
 
   return (
-    <ScrollView
-      testID="welcome"
-      style={{ backgroundColor: colors.background }}
-      onLayout={welcomeDrawn}
-      contentContainerStyle={{
-        flexGrow: 1,
-        justifyContent: 'space-between',
-        gap: space[8],
-        paddingHorizontal: gutter,
-        paddingTop: insets.top + space[6],
-        paddingBottom: insets.bottom + space[5],
-      }}
-    >
-      <View style={{ gap: space[8] }}>
+    <View testID="welcome" onLayout={welcomeDrawn} style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView
+        contentContainerStyle={{
+          gap: space[8],
+          paddingHorizontal: gutter,
+          paddingTop: insets.top + space[6],
+          paddingBottom: space[6],
+        }}
+      >
         <View style={{ alignItems: 'center' }}>
           <BrandLogo size="hero" stacked />
         </View>
@@ -76,13 +71,24 @@ export default function WelcomeScreen() {
             </View>
           ))}
         </Hero>
-      </View>
+      </ScrollView>
 
-      <View style={{ gap: space[3] }}>
+      {/* The ways on stay at the foot of the screen, whatever the phone's size or text size. */}
+      <View
+        style={{
+          gap: space[3],
+          paddingHorizontal: gutter,
+          paddingTop: space[3],
+          paddingBottom: insets.bottom + space[4],
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.border,
+          backgroundColor: colors.background,
+        }}
+      >
         <Button label={t('nav.signUp')} size="lg" onPress={() => router.push('/sign-up')} />
         <Button label={t('nav.signIn')} variant="outline" size="lg" onPress={() => router.push('/sign-in')} />
-        <Button label={t('app.welcome.browse')} variant="ghost" size="lg" onPress={browse} />
-        <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center', marginTop: space[1] }}>
+        <Button label={t('app.welcome.browse')} variant="ghost" onPress={browse} />
+        <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center' }}>
           {`${t('app.welcome.employer')} `}
           <Text
             variant="small"
@@ -96,6 +102,6 @@ export default function WelcomeScreen() {
           </Text>
         </Text>
       </View>
-    </ScrollView>
+    </View>
   );
 }

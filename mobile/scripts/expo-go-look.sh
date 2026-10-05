@@ -76,6 +76,28 @@ open_app() {
     { echo "Maestro could not open /${1:-}:"; tail -n 15 "$out/maestro.log" | sed 's/^/    /'; }
 }
 
+# close_menu: taps the X of Expo Go's developer menu, where the text
+# recognition reads it on the screen (scripts/screen-text.swift --boxes); or,
+# not read, swipes the menu down.
+close_menu() {
+  local point
+  "$ocr" "$work/menu.png" --boxes > "$work/menu.boxes" 2> /dev/null || true
+  point=$(python3 - "$work/menu.boxes" <<'PY'
+import re, sys
+for raw in open(sys.argv[1], encoding="utf-8"):
+    m = re.match(r"y(-?\d+) x(-?\d+)-(-?\d+)  (.*)", raw.rstrip("\n"))
+    if m and m[4].strip() in ("X", "x", "×") and int(m[2]) > 60:
+        print(f"{(int(m[2]) + int(m[3])) // 2}%,{int(m[1]) + 1}%")
+        break
+PY
+  )
+  if [ -n "$point" ]; then
+    maestro --device "$udid" test -e "POINT=$point" "$flows/expo-go-tap.yaml" >> "$out/maestro.log" 2>&1 || true
+  else
+    maestro --device "$udid" test "$flows/expo-go-swipe-down.yaml" >> "$out/maestro.log" 2>&1 || true
+  fi
+}
+
 # see <shot> <phrase>...: reads the screen until it shows every phrase (up to
 # three minutes: the first open downloads the update), answering Expo Go's
 # first-time tour of its developer menu on the way. Fails at once on an error
@@ -93,6 +115,14 @@ see() {
       # over the app: answered first, or it hides the tab bar from the reading.
       if grep -qE '^(Continue|Allow)$' "$out/$shot.txt"; then
         maestro --device "$udid" test "$flows/expo-go-alerts.yaml" >> "$out/maestro.log" 2>&1 || true
+        sleep 2
+        continue
+      fi
+      # The developer menu itself, which the tour leaves open over the app:
+      # closed with its X, found where the text recognition read it.
+      if grep -qE '^(Go home|SDK Version)$' "$out/$shot.txt"; then
+        cp "$out/$shot.png" "$work/menu.png"
+        close_menu
         sleep 2
         continue
       fi
