@@ -11,10 +11,15 @@ appId: net.brokersconnect.app
     timeout: 90000
 - waitForAnimationToEnd
 - takeScreenshot: 0-welcome
-- tapOn: "تصفّح من غير حساب"
-- extendedWaitUntil:
-    notVisible: "تصفّح من غير حساب"
-    timeout: 15000
+# Tapped again if the welcome is still up: on a simulator just booted, the
+# first tap of a pass was once lost (the same tap closed it in every other pass).
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: "تصفّح من غير حساب"
+      - extendedWaitUntil:
+          notVisible: "تصفّح من غير حساب"
+          timeout: 10000
 - extendedWaitUntil:
     visible: "منصة متخصصة لوظائف العقارات في مصر"
     timeout: 90000
