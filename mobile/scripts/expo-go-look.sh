@@ -11,8 +11,8 @@
 # screen before it applies the app's right to left when it opens an update
 # from the network and when it comes back from its own home screen, and lays
 # its bars out in its own language — English here, as on an iPhone set to
-# English. So it opens the update, Home and then three screens by link, then
-# goes back to Expo Go's home and opens the app again from there. Each screen
+# English. So it opens the update — the welcome, then Home — and three screens
+# by link, then goes back to Expo Go's home and opens the app again from there. Each screen
 # is read by macOS's text recognition with where every line sits (percent of
 # the screen: how far down, left and right edges), into the run's log and its
 # annotations, with a verdict on the tab bar: Home must be its rightmost tab.
@@ -89,15 +89,17 @@ see() {
     status=1
     if xcrun simctl io "$udid" screenshot "$out/$shot.png" > /dev/null 2>&1 &&
       "$ocr" "$out/$shot.png" > "$out/$shot.txt" 2> /dev/null; then
+      # Expo Go's tour of its developer menu, or iOS asking about notifications,
+      # over the app: answered first, or it hides the tab bar from the reading.
+      if grep -qE '^(Continue|Allow)$' "$out/$shot.txt"; then
+        maestro --device "$udid" test "$flows/expo-go-alerts.yaml" >> "$out/maestro.log" 2>&1 || true
+        sleep 2
+        continue
+      fi
       status=0
       python3 "$here/screen-check.py" "${args[@]}" < "$out/$shot.txt" 2> "$out/$shot.why" || status=$?
     fi
     if [ "$status" -eq 0 ]; then break; fi
-    # Expo Go's tour of its developer menu, or iOS asking about notifications, over the app.
-    if grep -qE '^(Continue|Allow)$' "$out/$shot.txt" 2> /dev/null; then
-      maestro --device "$udid" test "$flows/expo-go-alerts.yaml" >> "$out/maestro.log" 2>&1 || true
-      continue
-    fi
     if [ "$status" -eq 2 ] || [ "$SECONDS" -ge "$deadline" ]; then
       failed+=("$shot")
       echo "::error title=Expo Go: $shot::$(cat "$out/$shot.why" 2> /dev/null || echo 'the screen could not be read')"
@@ -145,23 +147,28 @@ print("::notice title=Expo Go: " + sys.argv[1] + "::" + text.replace("%", "%25")
 ' "$shot" <<<"$text"
 )
 
-# The first open, from the network: the case that came up left to right.
+# The first open, from the network: the case that came up left to right. A
+# first launch opens on the welcome; looking around without an account goes on
+# to Home (maestro/expo-go-browse.yaml).
 open_app
-see 1-home 'منصة متخصصة لوظائف العقارات في مصر'
+see 1-welcome 'تصفّح من غير حساب'
+maestro --device "$udid" test "$flows/expo-go-browse.yaml" >> "$out/maestro.log" 2>&1 ||
+  { echo "Maestro could not answer the welcome:"; tail -n 15 "$out/maestro.log" | sed 's/^/    /'; }
+see 2-home 'منصة متخصصة لوظائف العقارات في مصر'
 open_app jobs
-see 2-jobs 'الفلاتر'
+see 3-jobs 'الفلاتر'
 open_app account
-see 3-account 'ادخل على حسابك'
+see 4-account 'ادخل على حسابك'
 open_app sign-in
-see 4-sign-in 'أهلاً بيك تاني'
+see 5-sign-in 'أهلاً بيك تاني'
 
 # Back to Expo Go's own home, and the app opened again from there: the other case.
 xcrun simctl terminate "$udid" host.exp.Exponent > /dev/null 2>&1 || true
 xcrun simctl launch "$udid" host.exp.Exponent > /dev/null
 sleep 8
-xcrun simctl io "$udid" screenshot "$out/5-expo-go-home.png" > /dev/null 2>&1 || true
+xcrun simctl io "$udid" screenshot "$out/6-expo-go-home.png" > /dev/null 2>&1 || true
 open_app
-see 6-home-again 'منصة متخصصة لوظائف العقارات في مصر'
+see 7-home-again 'منصة متخصصة لوظائف العقارات في مصر'
 
 for verdict in "$out"/*.verdict; do
   if grep -q 'LEFT TO RIGHT' "$verdict"; then

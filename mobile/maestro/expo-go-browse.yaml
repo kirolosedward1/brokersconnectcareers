@@ -1,0 +1,6 @@
+# Answers the first launch's welcome the way someone looking around does
+# (scripts/expo-go-look.sh), in Expo Go.
+appId: host.exp.Exponent
+---
+- tapOn: "تصفّح من غير حساب"
+- waitForAnimationToEnd
