@@ -1,6 +1,8 @@
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { haptic } from '~/lib/haptics';
 import { useLargeText } from '~/theme/large-text';
+import { useReduceMotion } from '~/theme/reduce-motion';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 import { PressableScale } from './pressable-scale';
@@ -30,7 +32,7 @@ export function Segmented<T extends string>({
   value: T;
   onChange: (value: T) => void;
 }) {
-  const { colors, shadow } = useTheme();
+  const { colors } = useTheme();
   const large = useLargeText();
 
   if (large) {
@@ -85,14 +87,9 @@ export function Segmented<T extends string>({
               justifyContent: 'center',
               paddingHorizontal: space[3],
               ...corner('full'),
-              // The chosen one is edged as well as raised: its fill alone is
-              // barely lighter than the track (1.2:1), the edge 3:1 against it.
-              borderWidth: StyleSheet.hairlineWidth * 2,
-              borderColor: checked ? colors.input : 'transparent',
-              backgroundColor: checked ? colors.raised : 'transparent',
-              boxShadow: checked ? shadow.card : undefined,
             }}
           >
+            <Raised checked={checked} />
             <Text
               variant="small"
               weight={checked ? 'semibold' : 'medium'}
@@ -106,5 +103,48 @@ export function Segmented<T extends string>({
         );
       })}
     </View>
+  );
+}
+
+/**
+ * The chosen option's raised surface. Choosing another hands it over: this one
+ * sinks back into the track as the new one rises out of it, quickly, rather
+ * than the two swapping in a single frame. Still with Reduce Motion on.
+ *
+ * Edged as well as raised: its fill alone is barely lighter than the track
+ * (1.2:1), the edge 3:1 against it.
+ */
+function Raised({ checked }: { checked: boolean }) {
+  const { colors, shadow } = useTheme();
+  const reduceMotion = useReduceMotion();
+  const [up] = useState(() => new Animated.Value(checked ? 1 : 0));
+
+  useEffect(() => {
+    const animation = Animated.timing(up, {
+      toValue: checked ? 1 : 0,
+      duration: reduceMotion ? 0 : 200,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [up, checked, reduceMotion]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          ...corner('full'),
+          borderWidth: StyleSheet.hairlineWidth * 2,
+          borderColor: colors.input,
+          backgroundColor: colors.raised,
+          boxShadow: shadow.card,
+          opacity: up,
+          transform: [{ scale: up.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }],
+        },
+      ]}
+    />
   );
 }

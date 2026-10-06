@@ -15,10 +15,10 @@ import { fakeServer } from './server';
 
 /*
   A first launch, signed out, opens on the welcome: the website's logo, what
-  the board is, and the three ways on. Looking around without an account
-  closes it onto Home for good; a launch by a link, or with somebody signed
-  in, never shows it. The splash screen stays up until it is drawn, so Home
-  never flashes first.
+  the board is, and the three ways on — create an account, sign in, or skip.
+  Skipping closes it onto Home for good; a launch by a link, or with somebody
+  signed in, never shows it. The splash screen stays up until it is drawn, so
+  Home never flashes first.
 */
 
 jest.mock('expo-splash-screen', () => ({
@@ -83,7 +83,9 @@ async function drawn() {
 
 it('opens a first signed-out launch on the welcome, under the splash screen until it is drawn', async () => {
   launch();
-  expect(await screen.findByRole('button', { name: ar.app.welcome.browse })).toBeTruthy();
+  const skip = await screen.findByRole('button', { name: ar.app.welcome.skip });
+  // Skip says where it leads.
+  expect(skip.props.accessibilityHint).toBe(ar.app.welcome.skipHint);
   expect(screen.getByRole('button', { name: ar.nav.signUp })).toBeTruthy();
   expect(screen.getByRole('button', { name: ar.nav.signIn })).toBeTruthy();
   // The website's logo, read as its name.
@@ -95,10 +97,10 @@ it('opens a first signed-out launch on the welcome, under the splash screen unti
   expect(hide).toHaveBeenCalled();
 });
 
-it('closes onto Home when the reader looks around without an account, and is not shown again', async () => {
+it('closes onto Home when the reader skips it, and is not shown again', async () => {
   launch();
   await drawn();
-  fireEvent.press(await screen.findByRole('button', { name: ar.app.welcome.browse }));
+  fireEvent.press(await screen.findByRole('button', { name: ar.app.welcome.skip }));
   await act(async () => {});
   expect(screen.queryByTestId('welcome')).toBeNull();
   expect(screen.getByText('home-screen')).toBeTruthy();

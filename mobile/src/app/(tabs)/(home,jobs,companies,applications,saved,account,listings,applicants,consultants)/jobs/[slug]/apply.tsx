@@ -13,6 +13,7 @@ import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
+import { Appear } from '~/components/motion/appear';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
@@ -37,7 +38,7 @@ import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
 
 /**
  * Applying to a listing — the website's /jobs/<slug>/apply, at the same path
@@ -462,7 +463,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
     >
-      <View
+      <Appear
         accessibilityLiveRegion="polite"
         style={{
           alignItems: 'center',
@@ -473,14 +474,16 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
           backgroundColor: colors.successMuted,
         }}
       >
-        <CheckCircle2 size={36} color={colors.success} />
+        <Appear from="none" scale={0.5} delay={motion.stagger * 2}>
+          <CheckCircle2 size={36} color={colors.success} />
+        </Appear>
         <Text variant="title" weight="bold" accessibilityRole="header" style={{ textAlign: 'center' }}>
           {t('apply.success')}
         </Text>
         <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center' }}>
           {t('apply.successBody')}
         </Text>
-      </View>
+      </Appear>
 
       <Card style={{ padding: 0 }}>
         {rows.map(([label, value], index) => (

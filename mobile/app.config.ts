@@ -75,16 +75,27 @@ const FACE_ID_PURPOSE = 'بنستخدم Face ID عشان تقفل التطبيق
  * Without an EAS project there is nowhere to fetch from: updates are off, and
  * a build runs the code it was built with.
  */
-const updates = easProjectId
-  ? { url: `https://u.expo.dev/${easProjectId}`, checkAutomatically: 'ON_LOAD' as const, fallbackToCacheTimeout: 0 }
-  : { enabled: false };
-
 /**
  * An update for Expo Go (`pnpm run ota expo-go`, scripts/publish-update.mjs)
  * runs on Expo Go's native code, not this app's: its runtime version is Expo
  * Go's SDK ("exposdk:57.0.0"), which no fingerprint of this app matches.
  */
 const forExpoGo = process.env.EXPO_GO_UPDATE === '1';
+
+/**
+ * A store build opens at once on what it has and takes a new update from its
+ * next launch (fallbackToCacheTimeout 0), so nobody's screen changes under
+ * them. Expo Go is where the app is tried while it is being made: there it
+ * waits for the newest update (up to half a minute, then whatever it has), so
+ * what is opened is what was last published, not the one before it.
+ */
+const updates = easProjectId
+  ? {
+      url: `https://u.expo.dev/${easProjectId}`,
+      checkAutomatically: 'ON_LOAD' as const,
+      fallbackToCacheTimeout: forExpoGo ? 30_000 : 0,
+    }
+  : { enabled: false };
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -98,8 +109,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: './assets/images/icon.png',
   scheme: 'brokersconnect',
   userInterfaceStyle: 'automatic',
-  // Checked at launch and downloaded in the background; it runs from the next
-  // launch on, so nobody's screen changes under them (fallbackToCacheTimeout 0).
+  // Checked at launch; a store build downloads it in the background and runs
+  // it from the next launch on (`updates`, above).
   runtimeVersion: forExpoGo ? { policy: 'sdkVersion' } : { policy: 'fingerprint' },
   updates,
   ios: {

@@ -11,7 +11,6 @@ import {
   EyeOff,
   FileText,
   Lock,
-  LogOut,
   Mail,
   MailCheck,
   Receipt,
@@ -28,7 +27,7 @@ import { HeaderBell } from '~/components/notifications/header-bell';
 import { Avatar } from '~/components/ui/avatar';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
-import { ForwardChevron } from '~/components/ui/icons';
+import { ForwardChevron, SignOutMark } from '~/components/ui/icons';
 import { Segmented } from '~/components/ui/segmented';
 import { LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
@@ -238,7 +237,7 @@ export default function AccountScreen() {
           ) : null}
           {session ? (
             <Row
-              icon={<LogOut size={18} color={colors.primary} />}
+              icon={<SignOutMark size={18} color={colors.primary} />}
               label={t('nav.signOut')}
               busy={signingOut}
               onPress={() => {

@@ -125,6 +125,15 @@ compare with (a new branch), it compares with the previous commit.
   buttons and chips, a gentle press (none with Reduce Motion), a few haptics
   (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, light by
   default with light / dark / system as on the site, 44-point touch targets.
+- **Motion** (`mobile/src/components/motion/`, timings in `tokens.ts`): what
+  arrives fades in as it rises its last few points, a screen's parts a beat
+  apart (`Appear`); a flow's next step slides in from the side the reading
+  goes to — the left, in Arabic — and its progress bar grows from the right
+  (`ProgressBar`); loading placeholders breathe (`Pulse`); a saved bookmark
+  swells and settles (`Pop`); the chosen option of a segmented control is
+  handed over rather than swapped. All on the native thread. Transforms are
+  physical, so whatever slides takes its side from `appDirection`. With Reduce
+  Motion on, nothing travels or drifts: things only fade, quickly.
 - **Forms and large text.** A form's button is below its fields, so a refusal
   is brought to them: `useErrorsInView` (`mobile/src/lib/use-errors-in-view.ts`)
   scrolls the first field with an error into view and has VoiceOver say it —
@@ -313,10 +322,22 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   in the admin console until October 2026; signing out is the way out for
   someone without the phone. The database asks it of admins only
   (docs/security/THREAT_MODEL.md, section 5).
+- **The welcome** (`mobile/src/app/welcome.tsx`) opens a first launch with
+  nobody signed in, under the splash screen: the website's mark at the centre
+  of an emblem with the board's three promises drifting at its edge, the
+  headline, and the ways on — create an account, sign in, or Skip at the top,
+  which the App Store asks an app to allow wherever an account is not needed.
+  Skipping or signing in answers it on that phone for good
+  (`mobile/src/features/welcome.ts`); a launch by a link never shows it.
 - **Onboarding** runs the website's `completeOnboarding` and adds agreeing to
   the Terms of use, which the App Store requires of an app where people publish
-  to each other. A session with no profile — just signed in, restored at launch,
-  or arriving from a link — is sent there by the session gate
+  to each other. It asks in short steps, with a progress bar and a way back:
+  the kind of account (only when the way in did not settle it), the name and
+  WhatsApp number (and a company's details), who sees a consultant's card in
+  the directory, then the language and the agreement. Each step is checked
+  before the next; a refusal from the website takes the person back to the
+  step that asks for the field. A session with no profile — just signed in,
+  restored at launch, or arriving from a link — is sent there by the session gate
   (`mobile/src/components/navigation/session-gate.tsx`). Its ways out are
   signing out and deleting the account, which runs the Account tab's own path
   (`mobile/src/features/account/delete.ts`); the website's onboarding page has
@@ -583,7 +604,12 @@ Then, each time the phone should get the newest code:
 On the phone, Expo Go lists the app under Projects (signed in to the same
 account), or scan the QR code on that page with the camera. Expo Go opens the
 app and keeps it in its list, so later it is one tap. Each publish replaces
-what it opens next.
+what it opens next: an update made for Expo Go waits for the newest publish
+before it opens (up to half a minute, then whatever it has —
+`fallbackToCacheTimeout` in `app.config.ts`), where a store build opens at once
+and takes a new update from its next launch. An Expo Go that last opened the
+app before an update carried that setting opens its cached copy once more:
+swipe Expo Go away and open the app again.
 
 Expo Go from the App Store runs one SDK at a time. Today that is 57, this
 app's. When it moves to the next SDK, the app has to move too
@@ -660,7 +686,11 @@ production, with QA accounts made for it — never the demo accounts.
 - A saved search with alerts on: the next morning the bell has the day's new
   listings that match it.
 - Onboarding: "Delete this account" under signing out deletes an account that
-  never finished it, and the app is back at the start.
+  never finished it, and the app is back at the start. Back from a later step
+  keeps what was typed.
+- A first launch (delete the app first): the welcome comes up under the splash
+  screen with nothing jumping into place, its parts arriving in turn; Skip
+  fades it away onto Home, and it does not come back.
 - An over-the-air update (`pnpm run ota preview --message "…"` to a preview
   build): it shows after the app is closed and opened twice.
 - Offline (airplane mode): the screens say so rather than spin; signing out
@@ -675,7 +705,7 @@ production, with QA accounts made for it — never the demo accounts.
 - Signed in on the phone and on the website: signing out of the website
   leaves the phone signed in; changing the password there signs it out.
 - On the smallest iPhone, at the largest text size (Settings → Accessibility
-  → Display & Text Size → Larger Text): press onboarding's, the job wizard's
+  → Display & Text Size → Larger Text): press onboarding's Next, the job wizard's
   and the profile's button with a field left wrong — the screen scrolls to
   it and VoiceOver reads it; the return key moves through the fields; a
   two-step code signs in as its sixth digit is typed; an empty list's

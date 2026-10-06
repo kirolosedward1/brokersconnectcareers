@@ -68,7 +68,14 @@
     "appleRevokedBody": "Sign in with Apple is no longer on for this app, so we signed you out on this phone. You can sign in again at any time."
   },
   "onboarding": {
-    "choose": "Choose"
+    "choose": "Choose",
+    "roleBody": "So we can set the app up for what you need.",
+    "detailsTitle": "Tell us about you",
+    "detailsTitleEmployer": "Tell us about you and your company",
+    "detailsBody": "Your name, and the WhatsApp number companies will reach you on.",
+    "detailsBodyEmployer": "Your name and WhatsApp number, and the company details we review before your first listing.",
+    "finishTitle": "One last step",
+    "finishBody": "Choose your language and agree to the terms, and your account is ready."
   },
   "moderation": {
     "hide": "Hide this company",
@@ -168,7 +175,12 @@
     "intro": "This app is built on open-source software, written by many people and published for anyone to use. Here is every package in it, with its version, its licence and its copyright holders, and at the end the text of each licence."
   },
   "welcome": {
-    "browse": "Browse without an account",
-    "employer": "Hiring for a company?"
+    "employer": "Hiring for a company?",
+    "skip": "Skip",
+    "skipHint": "Browse the jobs without an account; you can make one any time.",
+    "lead": "Pay and commission in numbers on every listing, and applying takes under a minute.",
+    "factPay": "Pay in numbers",
+    "factApply": "Apply in a minute",
+    "factWhatsapp": "Talk on WhatsApp"
   }
 }

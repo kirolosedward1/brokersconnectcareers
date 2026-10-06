@@ -15,6 +15,8 @@ import { HeaderHeightContext } from 'expo-router/react-navigation';
 import { useTranslations } from 'use-intl';
 import { CloudOff, Compass, TriangleAlert, WifiOff, type LucideIcon } from '~/components/ui/lucide';
 import { ApiError, noAnswer } from '~/lib/api';
+import { Appear } from '~/components/motion/appear';
+import { Pulse } from '~/components/motion/pulse';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
@@ -44,7 +46,7 @@ const centered = { alignItems: 'center', justifyContent: 'center', padding: spac
  */
 function Centered({ children }: { children: ReactNode }) {
   const scroll = useContext(InsideScroll);
-  if (scroll && !scroll.horizontal) return <View style={[{ flex: 1 }, centered]}>{children}</View>;
+  if (scroll && !scroll.horizontal) return <Appear style={[{ flex: 1 }, centered]}>{children}</Appear>;
   return <CenteredScroll>{children}</CenteredScroll>;
 }
 
@@ -164,9 +166,12 @@ export function CenteredScroll({
     >
       <View
         onLayout={(event) => setWords(event.nativeEvent.layout.height)}
-        style={{ alignSelf: 'stretch', alignItems: 'center', gap: space[3], opacity: shown || gaveUp ? 1 : 0 }}
+        style={{ alignSelf: 'stretch', opacity: shown || gaveUp ? 1 : 0 }}
       >
-        {children}
+        {/* Seen, it fades in where it was measured, rather than appearing at once. */}
+        <Appear play={shown || gaveUp} distance={8} style={{ alignSelf: 'stretch', alignItems: 'center', gap: space[3] }}>
+          {children}
+        </Appear>
       </View>
     </ScrollView>
   );
@@ -187,9 +192,10 @@ export function LoadingState() {
  * what to do about it, and the way to do it.
  */
 /**
- * A list on its way: the shape of the cards that will fill it, still, in the
- * page's muted tone — the place the content will land, rather than a spinner
- * in the middle of nothing. Said as "loading" to VoiceOver, like the spinner.
+ * A list on its way: the shape of the cards that will fill it, in the page's
+ * muted tone, breathing one after another while they wait — the place the
+ * content will land, rather than a spinner in the middle of nothing. Said as
+ * "loading" to VoiceOver, like the spinner.
  */
 export function SkeletonList({
   count = 3,
@@ -214,8 +220,9 @@ export function SkeletonList({
       style={{ flex: 1, padding: inset ? gutter : 0, gap: space[3] }}
     >
       {Array.from({ length: count }, (_, index) => (
-        <View
+        <Pulse
           key={index}
+          phase={index * 140}
           style={{
             ...corner('xl'),
             borderWidth: StyleSheet.hairlineWidth * 2,
@@ -238,7 +245,7 @@ export function SkeletonList({
               {bar('38%', 10)}
             </View>
           )}
-        </View>
+        </Pulse>
       ))}
     </View>
   );

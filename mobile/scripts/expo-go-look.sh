@@ -178,13 +178,14 @@ print("::notice title=Expo Go: " + sys.argv[1] + "::" + text.replace("%", "%25")
 )
 
 # The first open, from the network: the case that came up left to right. A
-# first launch opens on the welcome; looking around without an account goes on
-# to Home (maestro/expo-go-browse.yaml).
+# first launch opens on the welcome; skipping it goes on to Home
+# (maestro/expo-go-browse.yaml), known by its tab bar — the welcome has the
+# headline too.
 open_app
-see 1-welcome 'تصفّح من غير حساب'
+see 1-welcome 'إنشاء حساب'
 maestro --device "$udid" test "$flows/expo-go-browse.yaml" >> "$out/maestro.log" 2>&1 ||
   { echo "Maestro could not answer the welcome:"; tail -n 15 "$out/maestro.log" | sed 's/^/    /'; }
-see 2-home 'منصة متخصصة لوظائف العقارات في مصر'
+see 2-home 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
 open_app jobs
 see 3-jobs 'الفلاتر'
 open_app account
@@ -198,7 +199,7 @@ xcrun simctl launch "$udid" host.exp.Exponent > /dev/null
 sleep 8
 xcrun simctl io "$udid" screenshot "$out/6-expo-go-home.png" > /dev/null 2>&1 || true
 open_app
-see 7-home-again 'منصة متخصصة لوظائف العقارات في مصر'
+see 7-home-again 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
 
 for verdict in "$out"/*.verdict; do
   if grep -q 'LEFT TO RIGHT' "$verdict"; then

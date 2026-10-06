@@ -36,7 +36,7 @@ const KEYS: Record<string, string> = {
   'الصفحة مش موجودة': 'common.notFound',
   'في نسخة أحدث من التطبيق': 'app.update.title',
   // The first launch's welcome, Home, the tabs and the appearance switch.
-  'تصفّح من غير حساب': 'app.welcome.browse',
+  'تخطي': 'app.welcome.skip',
   'منصة متخصصة لوظائف العقارات في مصر': 'landingPage.hero.title',
   'الرئيسية': 'app.tabs.home',
   'حسابي': 'app.tabs.account',

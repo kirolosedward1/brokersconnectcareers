@@ -180,6 +180,18 @@ export const type = {
 
 /**
  * Motion: a press settles the pressed thing slightly into the page, quickly in
- * and gently out. Nothing moves when the phone asks for reduced motion.
+ * and gently out. What arrives on a screen fades in as it rises a little way
+ * (`appear`, `appearDistance`), its parts a beat apart (`stagger`); a step of
+ * a flow slides in from the side the reading goes to (`step`). When the phone
+ * asks for reduced motion nothing travels: things only fade (`fade`).
  */
-export const motion = { pressScale: 0.97, pressIn: 90, pressOut: 180 } as const;
+export const motion = {
+  pressScale: 0.97,
+  pressIn: 90,
+  pressOut: 180,
+  appear: 460,
+  appearDistance: 14,
+  stagger: 70,
+  step: 320,
+  fade: 200,
+} as const;

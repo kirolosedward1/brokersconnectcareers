@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { BellPlus, BellRing, Bookmark, BookmarkCheck, Check } from '~/components/ui/lucide';
 import { canSaveJobs } from '@/lib/permissions';
+import { Pop } from '~/components/motion/pop';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
@@ -73,11 +74,13 @@ export function SaveJobIcon({ save }: { save: ReturnType<typeof useSaveJob> }) {
         justifyContent: 'center',
       }}
     >
-      {save.saved ? (
-        <BookmarkCheck size={20} color={colors.primary} />
-      ) : (
-        <Bookmark size={20} color={colors.mutedForeground} />
-      )}
+      <Pop on={save.saved}>
+        {save.saved ? (
+          <BookmarkCheck size={20} color={colors.primary} />
+        ) : (
+          <Bookmark size={20} color={colors.mutedForeground} />
+        )}
+      </Pop>
     </Pressable>
   );
 }
@@ -100,7 +103,9 @@ export function SaveJobButton({ jobId, slug }: { jobId: string; slug: string }) 
       accessibilityState={{ selected: save.saved, busy: save.pending, disabled: save.pending }}
       disabled={save.pending}
       icon={
-        save.saved ? <BookmarkCheck size={18} color={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />
+        <Pop on={save.saved}>
+          {save.saved ? <BookmarkCheck size={18} color={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />}
+        </Pop>
       }
       onPress={() => (signedIn ? save.toggle() : signInThenReturn(`/jobs/${slug}`))}
     />

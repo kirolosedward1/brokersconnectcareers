@@ -223,6 +223,27 @@ async function fillSignIn(email: string, password: string) {
 
 const bodyOf = (path: string, index = 0) => server.asked(path)[index]?.body as Record<string, unknown> | undefined;
 
+/** Onboarding's way on, from one step to the next. */
+const onward = () => press(ar.jobForm.next);
+const HIDDEN = `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}`;
+const EMPLOYER = `${ar.onboarding.roleEmployer}. ${ar.onboarding.roleEmployerHint}`;
+
+/**
+ * Onboarding answered as a consultant, step by step: past the role when it is
+ * asked, the name and number, who sees the card, and the agreement.
+ */
+async function answerOnboarding(name = 'سارة عادل') {
+  expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
+  if (screen.queryByLabelText(ar.onboarding.roleQuestion)) await onward();
+  fireEvent.changeText(await screen.findByLabelText(ar.onboarding.fullName), name);
+  fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
+  await onward();
+  fireEvent.press(await screen.findByRole('radio', { name: HIDDEN }));
+  await onward();
+  fireEvent.press(await screen.findByRole('checkbox'));
+  await press(ar.onboarding.submit);
+}
+
 /** Signed in before the app opens, the way a returning person is. */
 async function signedIn() {
   const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: PASSWORD });
@@ -469,19 +490,39 @@ describe('onboarding', () => {
     await press(ar.auth.signIn);
 
     expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
+    // A step at a time, and where it is in them, to VoiceOver too.
+    const stepOf = (current: number, total: number) =>
+      ar.app.jobs.wizardStep.replace('<v>{current}</v>', `\u2066${current}\u2069`).replace('<v>{total}</v>', `\u2066${total}\u2069`);
+    expect(screen.getByRole('progressbar', { name: stepOf(1, 4) })).toBeTruthy();
+    // First the kind of account, the consultant's offered.
+    expect(screen.getByLabelText(ar.onboarding.roleQuestion).props.accessibilityRole).toBe('radiogroup');
+    expect(screen.getByRole('radio', { name: `${ar.onboarding.roleCandidate}. ${ar.onboarding.roleCandidateHint}`, checked: true })).toBeTruthy();
+    // No way back from the first step; sign out and delete are there instead.
+    expect(screen.queryByRole('button', { name: ar.common.back })).toBeNull();
+    await onward();
+
     // The name offered is the address's, as on the website when no provider gave one.
-    expect(screen.getByDisplayValue('sara')).toBeTruthy();
+    expect(await screen.findByDisplayValue('sara')).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: stepOf(2, 4) })).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.fullName), 'سارة عادل');
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
+    await onward();
+
     // Who sees the directory card is asked, one choice among three, with none made for them.
-    const visibility = screen.getByLabelText(ar.onboarding.visibilityQuestion);
+    const visibility = await screen.findByLabelText(ar.onboarding.visibilityQuestion);
     expect(visibility.props.accessibilityRole).toBe('radiogroup');
-    const hidden = screen.getByRole('radio', { name: `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}` });
     expect(within(visibility).getAllByRole('radio')).toHaveLength(3);
     expect(within(visibility).queryAllByRole('radio', { checked: true })).toHaveLength(0);
+    fireEvent.press(screen.getByRole('radio', { name: HIDDEN }));
+    // Back keeps what was typed.
+    await press(ar.common.back);
+    expect(await screen.findByDisplayValue('سارة عادل')).toBeTruthy();
+    await onward();
+    expect(await screen.findByRole('radio', { name: HIDDEN, checked: true })).toBeTruthy();
+    await onward();
+
     // The language is a choice of its own, made already: the phone's.
-    expect(screen.getByLabelText(ar.onboarding.locale).props.accessibilityRole).toBe('radiogroup');
-    fireEvent.press(hidden);
+    expect((await screen.findByLabelText(ar.onboarding.locale)).props.accessibilityRole).toBe('radiogroup');
     fireEvent.press(screen.getByRole('checkbox'));
     await press(ar.onboarding.submit);
 
@@ -504,6 +545,7 @@ describe('onboarding', () => {
     const focus = watchFocus();
     try {
       renderRouter(app, { initialUrl: '/onboarding' });
+      await onward();
       fireEvent(await screen.findByLabelText(ar.onboarding.fullName), 'submitEditing');
       expect(focus.focused).toEqual([ar.onboarding.whatsapp]);
     } finally {
@@ -515,6 +557,11 @@ describe('onboarding', () => {
     profileRow = null;
     await signedIn();
     renderRouter(app, { initialUrl: '/onboarding' });
+    await onward();
+    fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01001234567');
+    await onward();
+    fireEvent.press(await screen.findByRole('radio', { name: HIDDEN }));
+    await onward();
     const agreement = await screen.findByRole('checkbox');
     expect(agreement.props.accessibilityActions.map((action: { label: string }) => action.label)).toEqual([ar.footer.terms, ar.footer.privacy]);
 
@@ -526,18 +573,25 @@ describe('onboarding', () => {
     expect(agreement.props.accessibilityState).toMatchObject({ checked: false });
   });
 
-  it('asks for the agreement, the age and the directory choice before anything is created', async () => {
+  it('asks for the directory choice, then the agreement and the age, before anything is created', async () => {
     profileRow = null;
     await signedIn();
     renderRouter(app, { initialUrl: '/onboarding' });
+    await onward();
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01001234567');
+    await onward();
+    // Who sees the card: answered before going on.
+    await screen.findByLabelText(ar.onboarding.visibilityQuestion);
+    await onward();
+    expect(await screen.findByText(ar.onboarding.visibilityRequired)).toBeTruthy();
+    fireEvent.press(screen.getByRole('radio', { name: HIDDEN }));
+    await onward();
     await press(ar.onboarding.submit);
     expect(await screen.findByText(ar.onboarding.consentRequired)).toBeTruthy();
-    expect(screen.getByText(ar.onboarding.visibilityRequired)).toBeTruthy();
     expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
   });
 
-  it('checks the number before anything is sent, and brings the error into view and says it, far above the button', async () => {
+  it('checks the number before going on, and brings the error into view and says it', async () => {
     profileRow = null;
     await signedIn();
     const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
@@ -545,10 +599,9 @@ describe('onboarding', () => {
     const layout = placeViewsAt(300);
     try {
       renderRouter(app, { initialUrl: '/onboarding' });
+      await onward();
       fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '12');
-      fireEvent.press(screen.getByRole('radio', { name: `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}` }));
-      fireEvent.press(screen.getByRole('checkbox'));
-      await press(ar.onboarding.submit);
+      await onward();
 
       expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
       expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
@@ -568,15 +621,21 @@ describe('onboarding', () => {
     });
     await signedIn();
     renderRouter(app, { initialUrl: '/onboarding' });
-    fireEvent.press(await screen.findByRole('radio', { name: `${ar.onboarding.roleEmployer}. ${ar.onboarding.roleEmployerHint}` }));
+    fireEvent.press(await screen.findByRole('radio', { name: EMPLOYER }));
     // The two kinds of account are one choice, named by the question they answer.
     expect(screen.getByLabelText(ar.onboarding.roleQuestion).props.accessibilityRole).toBe('radiogroup');
+    await onward();
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.companyName), 'نايل بروكرز');
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
-    fireEvent.press(screen.getByRole('checkbox'));
+    await onward();
+    // A company is not asked about a consultant's card: the agreement is next, and last.
+    expect(screen.queryByLabelText(ar.onboarding.visibilityQuestion)).toBeNull();
+    fireEvent.press(await screen.findByRole('checkbox'));
     await press(ar.onboarding.submit);
 
+    // Refused: back on the step that asks for the number, with the reason under it.
     expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
+    expect(screen.getByLabelText(ar.onboarding.whatsapp)).toBeTruthy();
     expect(bodyOf('/api/mobile/v1/actions/completeOnboarding')).toEqual({
       input: {
         role: 'employer',
@@ -593,19 +652,21 @@ describe('onboarding', () => {
     profileRow = null;
     await signedIn();
     renderRouter(app, { initialUrl: '/onboarding' });
-    fireEvent.press(await screen.findByRole('radio', { name: `${ar.onboarding.roleEmployer}. ${ar.onboarding.roleEmployerHint}` }));
+    fireEvent.press(await screen.findByRole('radio', { name: EMPLOYER }));
+    await onward();
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.companyName), 'نايل بروكرز');
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
-    fireEvent.press(screen.getByRole('checkbox'));
 
-    // Not an address: said before anything is sent.
+    // Not an address: said before going on.
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.companyWebsite), 'نايل بروكرز دوت كوم');
-    await press(ar.onboarding.submit);
+    await onward();
     expect(await screen.findByText(ar.validation.invalidUrl)).toBeTruthy();
-    expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
+    expect(screen.queryByRole('checkbox')).toBeNull();
 
     // A bare domain is the https address.
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.companyWebsite), 'nilebrokers.com');
+    await onward();
+    fireEvent.press(await screen.findByRole('checkbox'));
     await press(ar.onboarding.submit);
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(1));
     expect((bodyOf('/api/mobile/v1/actions/completeOnboarding') as { input: { company: { website: string } } }).input.company.website).toBe(
@@ -981,11 +1042,7 @@ describe('an email link opened in the app', () => {
     // The link in the email, opened while the sheet still says to go and find it.
     act(() => router.push(link('signup', `${SITE}${confirmationPath({ role: null, next: null })}`) as never));
     expect(await screen.findByText(ar.onboarding.confirmedBanner)).toBeTruthy();
-    fireEvent.changeText(screen.getByLabelText(ar.onboarding.fullName), 'سارة عادل');
-    fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
-    fireEvent.press(screen.getByRole('radio', { name: `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}` }));
-    fireEvent.press(screen.getByRole('checkbox'));
-    await press(ar.onboarding.submit);
+    await answerOnboarding();
 
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(1));
     await waitFor(() => expect(screen.queryByText(ar.onboarding.confirmedBanner)).toBeNull());
@@ -1234,11 +1291,7 @@ describe('onboarding cut short', () => {
       // Opened again from the icon: the session gate reopens onboarding, with what it had.
       const second = renderRouter(withApply, { initialUrl: '/' });
       expect(await screen.findByText(ar.onboarding.confirmedBanner)).toBeTruthy();
-      fireEvent.changeText(screen.getByLabelText(ar.onboarding.fullName), 'سارة عادل');
-      fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
-      fireEvent.press(screen.getByRole('radio', { name: `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}` }));
-      fireEvent.press(screen.getByRole('checkbox'));
-      await press(ar.onboarding.submit);
+      await answerOnboarding();
 
       expect(await screen.findByText('the apply form')).toBeTruthy();
       expect(second.getPathname()).toBe('/jobs/sales-a1b2/apply');

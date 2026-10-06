@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { CheckCircle2, CircleAlert, TriangleAlert } from '~/components/ui/lucide';
+import { Appear } from '~/components/motion/appear';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 import { Text } from './text';
@@ -52,7 +53,8 @@ export function Notice({
     );
 
   return (
-    <View
+    <Appear
+      distance={6}
       accessibilityRole={tone === 'destructive' ? 'alert' : undefined}
       accessibilityLiveRegion={tone === 'destructive' ? 'polite' : undefined}
       style={{
@@ -82,6 +84,6 @@ export function Notice({
           <View style={{ flex: 1 }}>{body}</View>
         </View>
       )}
-    </View>
+    </Appear>
   );
 }
