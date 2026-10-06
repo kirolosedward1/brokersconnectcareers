@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Application from 'expo-application';
+import * as Updates from 'expo-updates';
 import { useMobileConfig } from '~/features/config';
 
 /**
@@ -27,6 +28,24 @@ export function isOlderThan(version: string, minimum: string): boolean {
 /** This build's version: the native one, or the config's in a development client. */
 export function appVersion(): string | null {
   return Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? null;
+}
+
+/** The version Account shows: in Expo Go the app's own, where the native one is Expo Go's. */
+export function shownVersion(): string | null {
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return Constants.expoConfig?.version ?? null;
+  return appVersion();
+}
+
+/**
+ * When the code this phone runs was published: its update's time, or the
+ * build's for the code the build shipped with. Shown under the version, so a
+ * phone can be checked against the newest publish at a glance — Expo Go keeps
+ * running the copy it opened until it is opened afresh.
+ */
+export function publishedAt(): Date | null {
+  const manifest = Constants.manifest2 as { createdAt?: string } | null | undefined;
+  const at = Updates.createdAt ?? (manifest?.createdAt ? new Date(manifest.createdAt) : null);
+  return at && !Number.isNaN(at.getTime()) ? at : null;
 }
 
 /**

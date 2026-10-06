@@ -125,6 +125,14 @@ compare with (a new branch), it compares with the previous commit.
   buttons and chips, a gentle press (none with Reduce Motion), a few haptics
   (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, light by
   default with light / dark / system as on the site, 44-point touch targets.
+- **The logo** is the website's own artwork, `public/brand/logo-ar.png`: in
+  Home's bar, above the sign-in forms, and its wordmark on the welcome. The app
+  has it in two parts, the wordmark and the mark, cut at the gap between them,
+  so that in dark mode the wordmark alone takes the page's ink
+  (`mobile/src/components/brand/brand-logo.tsx`); side by side they are the
+  file pixel for pixel, which `mobile/tests/brand.test.ts` checks against the
+  website's copy. In English the name is written beside the mark, as on the
+  English website, since the artwork's wordmark is Arabic.
 - **Motion** (`mobile/src/components/motion/`, timings in `tokens.ts`): what
   arrives fades in as it rises its last few points, a screen's parts a beat
   apart (`Appear`); a flow's next step slides in from the side the reading
@@ -325,7 +333,7 @@ for rule, over Supabase Auth directly — as the website's browser code does:
 - **The welcome** (`mobile/src/app/welcome.tsx`) opens a first launch with
   nobody signed in, under the splash screen: the website's mark at the centre
   of an emblem with the board's three promises drifting at its edge, the
-  headline, and the ways on — create an account, sign in, or Skip at the top,
+  logo's wordmark, the headline, and the ways on — create an account, sign in, or Skip at the top,
   which the App Store asks an app to allow wherever an account is not needed.
   Skipping or signing in answers it on that phone for good
   (`mobile/src/features/welcome.ts`); a launch by a link never shows it. A
@@ -603,15 +611,22 @@ Then, each time the phone should get the newest code:
   `pnpm run ota expo-go --message "what changed"` in `mobile/`, which finds or
   creates the project the same way and prints the same link.
 
-On the phone, Expo Go lists the app under Projects (signed in to the same
-account), or scan the QR code on that page with the camera. Expo Go opens the
-app and keeps it in its list, so later it is one tap. Each publish replaces
-what it opens next: an update made for Expo Go waits for the newest publish
-before it opens (up to half a minute, then whatever it has —
-`fallbackToCacheTimeout` in `app.config.ts`), where a store build opens at once
-and takes a new update from its next launch. An Expo Go that last opened the
-app before an update carried that setting opens its cached copy once more:
-swipe Expo Go away and open the app again.
+On the phone, open the channel's link: scan the QR code on that page with the
+camera, long-press it on the phone itself, or paste
+`exp://u.expo.dev/<EAS_PROJECT_ID>?channel-name=expo-go&runtime-version=exposdk:57.0.0`
+into Safari. That link is the channel, so it always opens the newest publish,
+and Expo Go keeps it under Recently opened: later it is one tap. Not an update
+picked from the project's page under Projects: each of those is that one
+update, for good, and the entry it leaves in Recently opened opens it again
+whatever has been published since. Account's last line says when the running
+copy was published, to check against the newest.
+
+Each publish replaces what the link opens next: an update made for Expo Go
+waits for the newest publish before it opens (up to half a minute, then
+whatever it has — `fallbackToCacheTimeout` in `app.config.ts`), where a store
+build opens at once and takes a new update from its next launch. Expo Go keeps
+the app running in the background: swipe Expo Go away before opening it, and
+the copy that opens is the newest.
 
 Expo Go from the App Store runs one SDK at a time. Today that is 57, this
 app's. When it moves to the next SDK, the app has to move too

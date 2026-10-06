@@ -4,9 +4,9 @@ import { Image } from 'expo-image';
 import { router, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
-import { useTranslations } from 'use-intl';
+import { useLocale, useTranslations } from 'use-intl';
 import { AuthSwitch } from '~/components/auth/auth-scroll';
-import { LOGO_MARK } from '~/components/brand/brand-logo';
+import { LOGO_MARK, Wordmark } from '~/components/brand/brand-logo';
 import { Appear } from '~/components/motion/appear';
 import { Float } from '~/components/motion/float';
 import { Button } from '~/components/ui/button';
@@ -48,6 +48,7 @@ const AT = {
  */
 export default function WelcomeScreen() {
   const t = useTranslations();
+  const locale = useLocale();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -122,10 +123,15 @@ export default function WelcomeScreen() {
         <Emblem size={emblem} play={shown} />
 
         <View style={{ gap: space[2] }}>
-          <Appear play={shown} delay={AT.words}>
-            <Text variant="small" weight="semibold" tone="goldForeground" style={styles.centred}>
-              {t('meta.siteName')}
-            </Text>
+          {/* The logo's wordmark under its mark: the website's own lettering, not the name typed out. */}
+          <Appear play={shown} delay={AT.words} style={{ alignItems: 'center', paddingBottom: space[1] }}>
+            {locale === 'ar' ? (
+              <Wordmark height={compact ? 26 : 30} />
+            ) : (
+              <Text variant="small" weight="semibold" tone="goldForeground" style={styles.centred}>
+                {t('meta.siteName')}
+              </Text>
+            )}
           </Appear>
           <Appear play={shown} delay={AT.words + motion.stagger}>
             <Text variant="display" weight="bold" accessibilityRole="header" style={styles.centred}>

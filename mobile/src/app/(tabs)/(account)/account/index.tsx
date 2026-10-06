@@ -2,7 +2,8 @@ import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { useTranslations } from 'use-intl';
+import { useLocale, useTranslations } from 'use-intl';
+import { formatDateTime } from '@/lib/format';
 import {
   BellRing,
   Building2,
@@ -36,7 +37,7 @@ import { useMobileConfig } from '~/features/config';
 import { useHiddenAgentEntries } from '~/features/moderation/hidden-agents';
 import { useHiddenCompanyEntries } from '~/features/moderation/hidden-companies';
 import { signOutHere } from '~/features/push/device';
-import { appVersion } from '~/features/update';
+import { publishedAt, shownVersion } from '~/features/update';
 import { ApiError } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
@@ -56,6 +57,7 @@ import { corner, gutter, hitTarget, space } from '~/theme/tokens';
  */
 export default function AccountScreen() {
   const t = useTranslations();
+  const locale = useLocale();
   const { colors, preference, setPreference } = useTheme();
   const { ready, session, viewer, actor } = useSession();
   const config = useMobileConfig();
@@ -66,7 +68,8 @@ export default function AccountScreen() {
   const supportEmail = config.data?.supportEmail || OPERATOR.email;
   const [exporting, setExporting] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const version = appVersion() ?? '';
+  const version = shownVersion() ?? '';
+  const published = publishedAt();
 
   const themes: { value: ThemePreference; label: string }[] = [
     { value: 'light', label: t('theme.light') },
@@ -297,6 +300,7 @@ export default function AccountScreen() {
           {version ? (
             <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
               {t('app.account.version', { version })}
+              {published ? ` · ${t('app.account.published', { date: formatDateTime(published, locale) })}` : ''}
             </Text>
           ) : null}
         </View>

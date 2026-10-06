@@ -167,6 +167,24 @@ export function formatRelativeDay(
   );
 }
 
+/** A moment to the minute, in Cairo's calendar and clock, as "6 Oct, 23:04". */
+export function formatDateTime(value: string | Date, locale: string): string {
+  const date = readDate(value);
+  if (!date) return '';
+  const tag = NUMBER_LOCALE(locale);
+  return formatter(
+    `date-time ${tag}`,
+    () =>
+      new Intl.DateTimeFormat(tag, {
+        day: 'numeric',
+        month: 'short',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'Africa/Cairo',
+      }),
+  ).format(date);
+}
+
 /** Day and month only — for a chart axis, where the year is the same on every tick. */
 export function formatDayMonth(value: string | Date, locale: string): string {
   const date = readDate(value);

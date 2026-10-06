@@ -32,6 +32,7 @@
     "deleteAppleFailed": "We could not confirm with Apple. Try again.",
     "deleted": "Your account has been deleted.",
     "version": "Version {version}",
+    "published": "Updated {date}",
     "security": "Sign-in and security",
     "oauthOnlyApple": "This account signs in with Apple, so there is no password to change.",
     "mfaOpenApp": "Open in your authenticator app",
