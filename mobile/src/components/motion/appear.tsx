@@ -32,8 +32,9 @@ type Props = Omit<ViewProps, 'style'> & {
  * stutter them. With Reduce Motion on they only fade, quickly, as iOS's own
  * screens do then.
  *
- * Only how it looks changes: the children are laid out, read by VoiceOver and
- * pressable from the first frame.
+ * Only how it looks changes: the children are laid out and read by VoiceOver
+ * from the first frame. (iOS takes no taps on what is wholly transparent: a
+ * part waiting its turn takes them once it shows.)
  */
 export function Appear({
   children,

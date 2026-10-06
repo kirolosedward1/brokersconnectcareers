@@ -27,14 +27,15 @@ jest.mock('expo-splash-screen', () => ({
 }));
 
 const mockStored = new Map<string, string>();
+// Asked once already as the Supabase client is made, at import, before the map above exists: nothing stored then.
 jest.mock('~/lib/session-storage', () => ({
   encryptedSessionStorage: {
-    getItem: async (key: string) => mockStored.get(key) ?? null,
+    getItem: async (key: string) => mockStored?.get(key) ?? null,
     setItem: async (key: string, value: string) => {
-      mockStored.set(key, value);
+      mockStored?.set(key, value);
     },
     removeItem: async (key: string) => {
-      mockStored.delete(key);
+      mockStored?.delete(key);
     },
   },
 }));

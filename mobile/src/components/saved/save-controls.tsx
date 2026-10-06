@@ -40,15 +40,20 @@ export function useSaveJob(jobId: string) {
   const { ids, known } = useSavedJobIds();
   const saved = ids.has(jobId);
   const toggle = useToggleSavedJob();
+  // The reader's own taps that saved: what the bookmark's pop answers (Pop).
+  const [saves, setSaves] = useState(0);
   return {
+    jobId,
     savable: canSaveJobs(actor),
     saved,
+    saves,
     // Until the bookmarks are read, a press could take one off (the website toggles).
     pending: toggle.isPending || !known,
     label: saved ? t('removeSaved') : t('save'),
     toggle: () => {
       if (!known) return;
       haptic.selection();
+      if (!saved) setSaves((count) => count + 1);
       toggle.mutate({ jobId, saved });
     },
   };
@@ -74,7 +79,7 @@ export function SaveJobIcon({ save }: { save: ReturnType<typeof useSaveJob> }) {
         justifyContent: 'center',
       }}
     >
-      <Pop on={save.saved}>
+      <Pop key={save.jobId} trigger={save.saves}>
         {save.saved ? (
           <BookmarkCheck size={20} color={colors.primary} />
         ) : (
@@ -103,7 +108,7 @@ export function SaveJobButton({ jobId, slug }: { jobId: string; slug: string }) 
       accessibilityState={{ selected: save.saved, busy: save.pending, disabled: save.pending }}
       disabled={save.pending}
       icon={
-        <Pop on={save.saved}>
+        <Pop key={jobId} trigger={save.saves}>
           {save.saved ? <BookmarkCheck size={18} color={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />}
         </Pop>
       }
