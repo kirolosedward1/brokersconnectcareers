@@ -9,8 +9,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  *
  * `unknown` until the phone has answered; a phone that cannot answer counts
  * as answered, so a storage failure never shows the welcome on every launch.
+ *
+ * The second welcome (Skip at the top, the emblem) asks again on a phone that
+ * answered the first, once.
  */
-export const WELCOME_KEY = 'bc.welcome.v1';
+export const WELCOME_KEY = 'bc.welcome.v2';
 
 export type WelcomeState = 'unknown' | 'due' | 'done';
 

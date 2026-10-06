@@ -9,8 +9,11 @@ import { useSession } from '~/lib/session';
  * app opened as itself — not by a link, which goes where it leads. Decided
  * once a launch, when the session, the phone and the navigation have all
  * answered; `onDecided` says whether it opened, so the splash screen stays
- * up until the first screen is the right one. A session, from any sign-in,
- * answers the welcome for good.
+ * up until the first screen is the right one.
+ *
+ * Signing in answers the welcome for good. A session the launch found does
+ * not: a phone that was signed in when a new welcome came is welcomed at its
+ * first launch with nobody signed in.
  */
 export function WelcomeGate({ onDecided }: { onDecided: (opened: boolean) => void }) {
   const { ready, session } = useSession();
@@ -19,9 +22,13 @@ export function WelcomeGate({ onDecided }: { onDecided: (opened: boolean) => voi
   const pathname = usePathname();
   const decided = useRef(false);
 
+  // Nobody signed in, at some point since the session was known: a session after that is a sign-in.
+  const signedOut = useRef(false);
   useEffect(() => {
-    if (session) welcomeAnswered();
-  }, [session]);
+    if (!ready) return;
+    if (!session) signedOut.current = true;
+    else if (signedOut.current) welcomeAnswered();
+  }, [ready, session]);
 
   useEffect(() => {
     if (decided.current || !navigationReady || !ready || welcome === 'unknown') return;

@@ -4,7 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import { catalogues } from '~/i18n/provider';
 import { resetWelcomeForTests, WELCOME_KEY } from '~/features/welcome';
-import { SESSION_KEY } from '~/lib/supabase';
+import { SESSION_KEY, supabase } from '~/lib/supabase';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
 import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
@@ -16,9 +16,9 @@ import { fakeServer } from './server';
 /*
   A first launch, signed out, opens on the welcome: the website's logo, what
   the board is, and the three ways on — create an account, sign in, or skip.
-  Skipping closes it onto Home for good; a launch by a link, or with somebody
-  signed in, never shows it. The splash screen stays up until it is drawn, so
-  Home never flashes first.
+  Skipping or signing in closes it for good; a launch by a link, or with
+  somebody signed in, never shows it. The splash screen stays up until it is
+  drawn, so Home never flashes first.
 */
 
 jest.mock('expo-splash-screen', () => ({
@@ -49,6 +49,9 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
+  // Nobody signed in from the test before.
+  server.on('POST /auth/v1/logout', {});
+  await supabase.auth.signOut({ scope: 'local' });
   mockStored.clear();
   await AsyncStorage.clear();
   resetWelcomeForTests();
@@ -124,7 +127,7 @@ it('leaves a launch by a link where the link leads', async () => {
   expect(await AsyncStorage.getItem(WELCOME_KEY)).toBeNull();
 });
 
-it('never shows to somebody signed in, and counts their sign-in as its answer', async () => {
+it('never shows to somebody signed in, and waits for the first launch with nobody signed in', async () => {
   const user = authUser();
   mockStored.set(SESSION_KEY, JSON.stringify(authSession(user)));
   server.on('GET /auth/v1/user', user);
@@ -134,5 +137,30 @@ it('never shows to somebody signed in, and counts their sign-in as its answer', 
   expect(await screen.findByText('home-screen')).toBeTruthy();
   await act(async () => {});
   expect(screen.queryByTestId('welcome')).toBeNull();
+  // A session the launch found is no answer: a phone signed in when a new welcome came still has it to see.
+  expect(await AsyncStorage.getItem(WELCOME_KEY)).toBeNull();
+
+  // Signed out since: the next launch opens on it.
+  screen.unmount();
+  mockStored.clear();
+  resetWelcomeForTests();
+  launch();
+  expect(await screen.findByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
+});
+
+it('counts signing in as its answer', async () => {
+  const user = authUser();
+  server.on('POST /auth/v1/token', () => authSession(user));
+  server.on('GET /auth/v1/user', user);
+  server.on('/rest/v1/profiles', [profile]);
+  server.on('/rest/v1/rpc/my_company_id', () => null);
+  launch();
+  await drawn();
+  expect(await AsyncStorage.getItem(WELCOME_KEY)).toBeNull();
+
+  await act(async () => {
+    const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: 'correct-horse' });
+    expect(error).toBeNull();
+  });
   expect(await AsyncStorage.getItem(WELCOME_KEY)).toBe('done');
 });

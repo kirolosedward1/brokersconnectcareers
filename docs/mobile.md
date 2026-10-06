@@ -328,7 +328,9 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   headline, and the ways on — create an account, sign in, or Skip at the top,
   which the App Store asks an app to allow wherever an account is not needed.
   Skipping or signing in answers it on that phone for good
-  (`mobile/src/features/welcome.ts`); a launch by a link never shows it.
+  (`mobile/src/features/welcome.ts`); a launch by a link never shows it. A
+  session the launch finds is no answer: a phone that was signed in when a new
+  welcome came shows it at its first launch with nobody signed in.
 - **Onboarding** runs the website's `completeOnboarding` and adds agreeing to
   the Terms of use, which the App Store requires of an app where people publish
   to each other. It asks in short steps, with a progress bar and a way back:
