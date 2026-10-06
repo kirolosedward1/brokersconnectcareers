@@ -115,6 +115,22 @@ describe("a flow's progress", () => {
 });
 
 describe('a drawing that drifts', () => {
+  it('drifts a few times, then rests: the screen settles', () => {
+    const loop = jest.spyOn(Animated, 'loop');
+    try {
+      render(
+        <Float phase={200}>
+          <Text>يطفو</Text>
+        </Float>,
+        { wrapper: Providers },
+      );
+      expect(loop).toHaveBeenCalledWith(expect.anything(), { iterations: 2 });
+      expect(timing).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ useNativeDriver: true }));
+    } finally {
+      loop.mockRestore();
+    }
+  });
+
   it('stays still with reduced motion asked for', () => {
     jest.mocked(useReduceMotion).mockReturnValue(true);
     render(
