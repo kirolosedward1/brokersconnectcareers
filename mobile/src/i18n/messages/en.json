@@ -183,5 +183,8 @@
     "factPay": "Pay in numbers",
     "factApply": "Apply in a minute",
     "factWhatsapp": "Talk on WhatsApp"
+  },
+  "companies": {
+    "searchPlaceholder": "Search by company name"
   }
 }

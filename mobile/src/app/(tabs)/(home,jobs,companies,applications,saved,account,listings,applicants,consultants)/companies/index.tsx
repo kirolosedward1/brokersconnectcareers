@@ -8,7 +8,7 @@ import { BadgeCheck, Briefcase, Building2, MapPin } from '~/components/ui/lucide
 import type { CompanyListItem } from '@/lib/read-types';
 import { formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { useHeaderBell } from '~/components/notifications/header-bell';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { Button } from '~/components/ui/button';
 import { PageFooter } from '~/components/ui/page-footer';
@@ -33,6 +33,7 @@ import { useNextPage } from '~/lib/use-next-page';
  */
 export default function CompaniesScreen() {
   const t = useTranslations();
+  const bell = useHeaderBell();
   const locale = useLocale();
   const { colors } = useTheme();
   const params = useLocalSearchParams<{ q?: string; district?: string; verified?: string }>();
@@ -76,10 +77,11 @@ export default function CompaniesScreen() {
       options={{
         title: t('companies.title'),
         headerLargeTitleEnabled: true,
-        headerRight: () => <HeaderBell />,
+        headerRight: bell,
         headerSearchBarOptions: {
           ref: searchBar,
-          placeholder: t('companies.title'),
+          // Not the title again, which now stands right above it.
+          placeholder: t('app.companies.searchPlaceholder'),
           hideWhenScrolling: false,
           autoCapitalize: 'none',
           tintColor: colors.primary,

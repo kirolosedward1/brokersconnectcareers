@@ -3,6 +3,7 @@
 pass expects.
 
     screen-text <shot.png> | screen-check.py [--expect PHRASE]... [--refuse PHRASE]...
+    screen-text <shot.png> --boxes | screen-check.py --band TOP-BOTTOM [--expect PHRASE]...
 
 Exits 0 when every expected phrase is there and no refused one, 1 when an
 expected phrase is missing (the screen may still be loading), 2 when a refused
@@ -14,6 +15,10 @@ shadda, take one hamza form for another, or wrap a line where the screen did.
 So both sides are compared without vowel marks or tatweel, with the letters
 it confuses folded together, punctuation as space and spaces collapsed, and
 every line joined into one text.
+
+With --band, what is read is screen-text's --boxes, and only the lines that
+start between TOP and BOTTOM percent of the way down the screen count: a
+title in the header, not the same word in the tab bar.
 """
 import argparse
 import re
@@ -33,8 +38,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--expect", action="append", default=[])
     parser.add_argument("--refuse", action="append", default=[])
+    parser.add_argument("--band", help="TOP-BOTTOM, in percent of the screen's height")
     args = parser.parse_args()
-    seen = " " + normal(" ".join(sys.stdin.read().splitlines())) + " "
+    lines = sys.stdin.read().splitlines()
+    if args.band:
+        top, bottom = (int(edge) for edge in args.band.split("-"))
+        boxes = (re.match(r"y(-?\d+) x-?\d+--?\d+  (.*)", line) for line in lines)
+        lines = [box[2] for box in boxes if box and top <= int(box[1]) <= bottom]
+    seen = " " + normal(" ".join(lines)) + " "
     for phrase in args.refuse:
         if " " + normal(phrase) + " " in seen:
             print(f"an error state is on screen: {phrase}", file=sys.stderr)

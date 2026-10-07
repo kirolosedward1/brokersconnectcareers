@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
@@ -8,6 +9,19 @@ import { useUnreadCount } from '~/features/notifications/queries';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget } from '~/theme/tokens';
+
+/**
+ * The bell as a header's trailing item (`headerRight`), or no item at all for
+ * somebody with no feed. A header handed an item that draws nothing still
+ * keeps a place for it: on iOS 26 an empty glass circle at the top of every
+ * tab, which a signed-out reader took for a button that does nothing.
+ */
+export function useHeaderBell(): (() => ReactElement) | undefined {
+  const { session, viewer } = useSession();
+  return session && viewer?.profile ? bell : undefined;
+}
+
+const bell = () => <HeaderBell />;
 
 /**
  * The bell, at the trailing end of each tab's first screen — the website keeps

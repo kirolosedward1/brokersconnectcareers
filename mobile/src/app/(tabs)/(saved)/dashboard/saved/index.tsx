@@ -4,7 +4,7 @@ import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { jobIsLive } from '@/lib/job-state';
 import { JobCard } from '~/components/jobs/job-card';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { useHeaderBell } from '~/components/notifications/header-bell';
 import { SavedSearchList } from '~/components/saved/saved-search-list';
 import { Button } from '~/components/ui/button';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
@@ -29,6 +29,7 @@ import { usePullRefresh } from '~/lib/use-pull-refresh';
  */
 export default function SavedScreen() {
   const t = useTranslations();
+  const bell = useHeaderBell();
   const { colors } = useTheme();
   const { session } = useSession();
   const jobs = useSavedJobs();
@@ -141,7 +142,7 @@ export default function SavedScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: t('app.tabs.saved'), headerLargeTitleEnabled: true, headerRight: () => <HeaderBell /> }} />
+      <Stack.Screen options={{ title: t('app.tabs.saved'), headerLargeTitleEnabled: true, headerRight: bell }} />
       {body}
     </>
   );

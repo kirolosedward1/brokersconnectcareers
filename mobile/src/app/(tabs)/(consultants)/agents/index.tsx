@@ -11,7 +11,7 @@ import { canBrowseAgentDirectory, canShortlistAgents, hasVerifiedCompany, isAdmi
 import { AgentCard } from '~/components/directory/agent-card';
 import { DirectoryClosed } from '~/components/directory/directory-closed';
 import { DirectoryFilterSheet } from '~/components/directory/directory-filter-sheet';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
 import { PageFooter } from '~/components/ui/page-footer';
 import { Card } from '~/components/ui/card';
@@ -52,6 +52,7 @@ import { totalShown } from '~/features/moderation/hidden-store';
  */
 export default function DirectoryScreen() {
   const t = useTranslations();
+  const bell = useHeaderBell();
   const { colors } = useTheme();
   const { actor } = useSession();
   const raw = useLocalSearchParams();
@@ -84,7 +85,7 @@ export default function DirectoryScreen() {
       options={{
         title: t('nav.agents'),
         headerLargeTitleEnabled: true,
-        headerRight: () => <HeaderBell />,
+        headerRight: bell,
         headerSearchBarOptions: {
           ref: searchBar,
           placeholder: t('agents.searchPlaceholder'),

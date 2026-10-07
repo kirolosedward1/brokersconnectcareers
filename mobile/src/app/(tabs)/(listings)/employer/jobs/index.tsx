@@ -10,7 +10,7 @@ import { localized } from '@/lib/locale';
 import { isSuspended } from '@/lib/permissions';
 import type { JobStatus } from '@/lib/supabase/database.types';
 import { AppealPanel } from '~/components/moderation/appeal-panel';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
@@ -53,6 +53,7 @@ const STATUS_VARIANT: Record<JobStatus, 'default' | 'success' | 'warning' | 'des
  */
 export default function ListingsScreen() {
   const t = useTranslations();
+  const bell = useHeaderBell();
   const { colors } = useTheme();
   const { session, viewer, actor } = useSession();
   const listings = useMyListings();
@@ -61,7 +62,7 @@ export default function ListingsScreen() {
   const pull = usePullRefresh(() => listings.refetch());
 
   const header = (
-    <Stack.Screen options={{ title: t('employer.jobs'), headerLargeTitleEnabled: true, headerRight: () => <HeaderBell /> }} />
+    <Stack.Screen options={{ title: t('employer.jobs'), headerLargeTitleEnabled: true, headerRight: bell }} />
   );
   const newJob = () => router.push('/employer/jobs/new' as never);
 

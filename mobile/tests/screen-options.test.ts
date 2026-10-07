@@ -41,3 +41,10 @@ describe('a large title', () => {
     expect(sources.filter(({ text }) => /\bheaderLargeTitleEnabled:\s*true/.test(text)).length).toBeGreaterThanOrEqual(8);
   });
 });
+
+describe("a tab's header", () => {
+  it('is never handed the bell as an item that may draw nothing', () => {
+    // An item that draws nothing still has its place: on iOS 26 an empty glass circle (useHeaderBell).
+    expect(sources.filter(({ text }) => /headerRight:\s*\(\)\s*=>\s*<HeaderBell/.test(text)).map(({ file }) => file)).toEqual([]);
+  });
+});

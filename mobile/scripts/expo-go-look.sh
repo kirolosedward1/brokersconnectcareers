@@ -17,8 +17,14 @@
 # the screen: how far down, left and right edges), into the run's log and its
 # annotations, with a verdict on the tab bar: Home must be its rightmost tab.
 #
-# A screen that never shows what it should, or a tab bar laid out left to
-# right, fails it.
+# Each tab's large title is looked for in the header too, under the status bar
+# and above the search field, not only in the tab bar: iOS 26 left a painted
+# bar's large title empty until the screen was scrolled. And the board is
+# scrolled down and back up, to read the tab bar shrinking to the open tab and
+# coming back (iOS 26), reported in the annotations.
+#
+# A screen that never shows what it should, a tab without its title, or a tab
+# bar laid out left to right, fails it.
 set -euo pipefail
 
 out="$1"
@@ -141,11 +147,12 @@ see() {
   report "$shot"
 }
 
-# report <shot>: where the words sit, and whether the tab bar runs right to
-# left, into the log and (the first ten) as annotations.
+# report <shot> [note]: where the words sit, and whether the tab bar runs
+# right to left, into the log and (the first ten) as annotations.
 report() (
   set +eo pipefail
   shot="$1"
+  note="${2:+ ($2)}"
   verdict=$(python3 - "$out/$shot.boxes" <<'PY'
 import re, sys
 lines = []
@@ -165,17 +172,36 @@ else:
     print("tab bar: LEFT TO RIGHT (Home at the left)")
 PY
   )
-  echo "::group::$shot — $verdict"
+  echo "::group::$shot — $verdict$note"
   cat "$out/$shot.boxes"
   echo "::endgroup::"
   echo "$verdict" > "$out/$shot.verdict"
-  text="$verdict"$'\n'"$(head -n 40 "$out/$shot.boxes")"
+  text="$verdict$note"$'\n'"$(head -n 40 "$out/$shot.boxes")"
   python3 -c '
 import sys
 text = sys.stdin.read()[:3800]
 print("::notice title=Expo Go: " + sys.argv[1] + "::" + text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
 ' "$shot" <<<"$text"
 )
+
+# in_header <shot> <title>: the large title, read where the header draws it —
+# between 10% and 20% of the way down, under the status bar and above any
+# search field — and not only as the tab's name in the bar at the bottom.
+in_header() {
+  if ! python3 "$here/screen-check.py" --band 10-20 --expect "$2" < "$out/$1.boxes" 2> "$out/$1.header"; then
+    failed+=("$1: no large title")
+    echo "::error title=Expo Go: $1::the large title «$2» is not in the header"
+  fi
+}
+
+# glance <shot> <what was done>: the screen as it is now, read and reported.
+# A tab bar whose names are not read there has shrunk to the open tab (iOS 26).
+glance() {
+  sleep 2
+  xcrun simctl io "$udid" screenshot "$out/$1.png" > /dev/null 2>&1 || true
+  "$ocr" "$out/$1.png" --boxes > "$out/$1.boxes" 2> /dev/null || true
+  report "$1" "$2"
+}
 
 # The first open, from the network: the case that came up left to right. A
 # first launch opens on the welcome; skipping it goes on to Home
@@ -188,8 +214,17 @@ maestro --device "$udid" test "$flows/expo-go-browse.yaml" >> "$out/maestro.log"
 see 2-home 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
 open_app jobs
 see 3-jobs 'الفلاتر'
+in_header 3-jobs 'الوظائف'
+maestro --device "$udid" test "$flows/expo-go-scroll-down.yaml" >> "$out/maestro.log" 2>&1 || true
+glance 3b-jobs-scrolled-down 'scrolled down: the bar shrinks, its names unread'
+maestro --device "$udid" test "$flows/expo-go-scroll-up.yaml" >> "$out/maestro.log" 2>&1 || true
+glance 3c-jobs-scrolled-up 'scrolled back up: the bar is back, names and all'
+open_app companies
+see 3d-companies 'الموثّقة بس'
+in_header 3d-companies 'شركات العقارات'
 open_app account
 see 4-account 'ادخل على حسابك'
+in_header 4-account 'حسابي'
 open_app sign-in
 see 5-sign-in 'أهلاً بيك تاني'
 

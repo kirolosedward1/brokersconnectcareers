@@ -17,7 +17,7 @@ import {
 import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { useHeaderBell } from '~/components/notifications/header-bell';
 import { PageFooter } from '~/components/ui/page-footer';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { FilterSheet } from '~/components/jobs/filter-sheet';
@@ -60,6 +60,7 @@ const SORTS: JobSort[] = ['newest', 'salary', 'seats'];
  */
 export default function BoardScreen() {
   const t = useTranslations();
+  const bell = useHeaderBell();
   const { colors } = useTheme();
   const raw = useLocalSearchParams();
   const filters = useMemo(() => parseJobFilters(raw as SearchParams), [raw]);
@@ -96,7 +97,7 @@ export default function BoardScreen() {
       options={{
         title: t('jobs.title'),
         headerLargeTitleEnabled: true,
-        headerRight: () => <HeaderBell />,
+        headerRight: bell,
         headerSearchBarOptions: {
           ref: searchBar,
           placeholder: t('filters.searchPlaceholder'),

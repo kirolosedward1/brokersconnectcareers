@@ -1,0 +1,5 @@
+# Goes down the screen, the way a reader goes down a list (scripts/expo-go-look.sh).
+appId: host.exp.Exponent
+---
+- scroll
+- waitForAnimationToEnd

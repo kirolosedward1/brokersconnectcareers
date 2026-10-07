@@ -24,7 +24,7 @@ import {
 import { OPERATOR } from '@/lib/business';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { PhotoControls } from '~/components/account/photo-controls';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Avatar } from '~/components/ui/avatar';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
@@ -57,6 +57,7 @@ import { corner, gutter, hitTarget, space } from '~/theme/tokens';
  */
 export default function AccountScreen() {
   const t = useTranslations();
+  const bell = useHeaderBell();
   const locale = useLocale();
   const { colors, preference, setPreference } = useTheme();
   const { ready, session, viewer, actor } = useSession();
@@ -99,7 +100,7 @@ export default function AccountScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: t('app.tabs.account'), headerLargeTitleEnabled: true, headerRight: () => <HeaderBell /> }} />
+      <Stack.Screen options={{ title: t('app.tabs.account'), headerLargeTitleEnabled: true, headerRight: bell }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}

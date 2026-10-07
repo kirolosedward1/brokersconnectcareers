@@ -6,7 +6,7 @@ import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
@@ -30,6 +30,7 @@ import { corner, gutter, space } from '~/theme/tokens';
  */
 export default function ApplicationsScreen() {
   const t = useTranslations();
+  const bell = useHeaderBell();
   const { colors, shadow } = useTheme();
   const { session } = useSession();
   const applications = useMyApplications();
@@ -104,7 +105,7 @@ export default function ApplicationsScreen() {
   return (
     <>
       <Stack.Screen
-        options={{ title: t('dashboard.applications'), headerLargeTitleEnabled: true, headerRight: () => <HeaderBell /> }}
+        options={{ title: t('dashboard.applications'), headerLargeTitleEnabled: true, headerRight: bell }}
       />
       {body}
     </>

@@ -7,7 +7,7 @@ import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testi
 import type { NotificationRow } from '@/lib/supabase/database.types';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { SessionGate } from '~/components/navigation/session-gate';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { HeaderBell, useHeaderBell } from '~/components/notifications/header-bell';
 import type { CandidateApplication } from '~/features/applications/queries';
 import { feedPage } from '~/features/notifications/queries';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -180,6 +180,11 @@ function TabBar() {
   );
 }
 
+/** What a tab's header is given at its trailing end (useHeaderBell): the bell, or nothing at all. */
+function BellItem() {
+  return <Text>{useHeaderBell() ? 'header item: the bell' : 'header item: none'}</Text>;
+}
+
 const SHARED = '(tabs)/(home,applications)';
 
 const app = {
@@ -193,6 +198,7 @@ const app = {
     <View>
       <Text>home screen</Text>
       <HeaderBell />
+      <BellItem />
     </View>
   ),
   '(tabs)/(applications)/dashboard/applications/index': ApplicationsScreen,
@@ -209,6 +215,7 @@ describe('the bell', () => {
 
     const bell = await screen.findByRole('button', { name: ar.notifications.title });
     await waitFor(() => expect(bell.props.accessibilityValue).toMatchObject({ text: 'تنبيه واحد غير مقروء' }));
+    expect(screen.getByText('header item: the bell')).toBeTruthy();
     // Counted as the website counts it: the reader's own, unread.
     const count = server.asked('/rest/v1/notifications').find((request) => request.method === 'HEAD');
     expect(count?.url.searchParams.get('user_id')).toBe(`eq.${USER_ID}`);
@@ -224,6 +231,8 @@ describe('the bell', () => {
     renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText('home screen')).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.notifications.title })).toBeNull();
+    // Not even an empty place for it: iOS 26 draws one as a glass circle with nothing in it.
+    expect(screen.getByText('header item: none')).toBeTruthy();
     expect(server.asked('/rest/v1/notifications')).toHaveLength(0);
   });
 });

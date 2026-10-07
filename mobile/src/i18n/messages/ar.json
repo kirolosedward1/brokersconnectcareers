@@ -183,5 +183,8 @@
     "factPay": "الراتب بالأرقام",
     "factApply": "تقديم في دقيقة",
     "factWhatsapp": "تواصل واتساب"
+  },
+  "companies": {
+    "searchPlaceholder": "دوّر باسم الشركة"
   }
 }

@@ -10,7 +10,7 @@ import { CandidateHome } from '~/components/home/candidate-home';
 import { EmployerHome } from '~/components/home/employer-home';
 import { Hero } from '~/components/home/hero';
 import { JobBrowse } from '~/components/home/job-browse';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { useHeaderBell } from '~/components/notifications/header-bell';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
@@ -48,11 +48,12 @@ import { usePullRefresh } from '~/lib/use-pull-refresh';
  */
 export default function HomeScreen() {
   const t = useTranslations();
+  const bell = useHeaderBell();
   const { viewer, actor } = useSession();
   return (
     <>
       {/* The website's logo for a title, as its header has it: the name stays the title for Back and VoiceOver. */}
-      <Stack.Screen options={{ title: t('meta.siteName'), headerTitle: () => <BrandLogo />, headerRight: () => <HeaderBell /> }} />
+      <Stack.Screen options={{ title: t('meta.siteName'), headerTitle: () => <BrandLogo />, headerRight: bell }} />
       {canAccessEmployerArea(actor) ? (
         <EmployerHome profile={viewer?.profile ?? null} company={viewer?.company ?? null} />
       ) : canAccessCandidateArea(actor) ? (

@@ -1,6 +1,7 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useTranslations } from 'use-intl';
 import { appDirection } from '~/lib/direction';
+import { liquidGlass } from '~/lib/liquid-glass';
 import { useSession } from '~/lib/session';
 import { tabsFor } from '~/lib/tabs';
 import { useTheme } from '~/theme/provider';
@@ -31,6 +32,10 @@ import { useTheme } from '~/theme/provider';
  * bar ran left to right, Home on the left, under screens running right to
  * left. The app's direction is given to it (src/lib/direction.ts), and
  * through it to the screens inside.
+ *
+ * On iOS 26 the bar shrinks out of the way as the reader scrolls down a list,
+ * to the open tab alone, and comes back as they scroll up — the way Instagram's
+ * does. Earlier iOS, and Android, keep it as it is.
  */
 export default function TabsLayout() {
   const t = useTranslations();
@@ -39,7 +44,12 @@ export default function TabsLayout() {
 
   return (
     // Android: every tab says its name, not only the one open (Material hides the rest past three tabs).
-    <NativeTabs tintColor={colors.primary} labelVisibilityMode="labeled" unstable_nativeProps={{ direction: appDirection }}>
+    <NativeTabs
+      tintColor={colors.primary}
+      labelVisibilityMode="labeled"
+      minimizeBehavior={liquidGlass() ? 'onScrollDown' : undefined}
+      unstable_nativeProps={{ direction: appDirection }}
+    >
       <NativeTabs.Trigger name="(home)">
         <NativeTabs.Trigger.Label>{t('app.tabs.home')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />

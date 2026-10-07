@@ -175,7 +175,9 @@ function Navigation({ children }: { children: ReactNode }) {
           ...base.colors,
           primary: colors.primary,
           background: colors.background,
-          card: colors.card,
+          // The headers' colour: the page's, so a bar is one with the screen under it
+          // (src/components/navigation/stack-options.ts).
+          card: colors.background,
           text: colors.foreground,
           border: colors.border,
         },

@@ -1,0 +1,7 @@
+# Comes back up the screen: a finger drawn down it (scripts/expo-go-look.sh).
+appId: host.exp.Exponent
+---
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+- waitForAnimationToEnd

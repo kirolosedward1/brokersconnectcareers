@@ -9,7 +9,7 @@ import { isSuspended } from '@/lib/permissions';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
 import { ApplicantCard } from '~/components/employer/applicant-card';
 import { useApplicantContext } from '~/components/employer/applicant-context';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
@@ -44,6 +44,7 @@ import { corner, gutter, hitTarget, space } from '~/theme/tokens';
  */
 export default function InboxScreen() {
   const t = useTranslations();
+  const bell = useHeaderBell();
   const locale = useLocale();
   const { colors } = useTheme();
   const params = useLocalSearchParams();
@@ -65,7 +66,7 @@ export default function InboxScreen() {
   const pull = usePullRefresh(() => Promise.all([inbox.refetch(), rows?.length ? notes.refetch() : null, listings.refetch()]));
 
   const header = (
-    <Stack.Screen options={{ title: t('employer.allApplicants'), headerLargeTitleEnabled: true, headerRight: () => <HeaderBell /> }} />
+    <Stack.Screen options={{ title: t('employer.allApplicants'), headerLargeTitleEnabled: true, headerRight: bell }} />
   );
   const narrowed = Boolean(filters.q || filters.band || filters.track || filters.job);
   const setFilter = (next: Record<string, string | undefined>) => router.setParams(next as never);
