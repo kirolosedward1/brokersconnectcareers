@@ -339,15 +339,16 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   in the admin console until October 2026; signing out is the way out for
   someone without the phone. The database asks it of admins only
   (docs/security/THREAT_MODEL.md, section 5).
-- **The welcome** (`mobile/src/app/welcome.tsx`) opens a first launch with
+- **The welcome** (`mobile/src/app/welcome.tsx`) opens every launch with
   nobody signed in, under the splash screen: the website's mark at the centre
   of an emblem with the board's three promises drifting at its edge, the
   logo's wordmark, the headline, and the ways on — create an account, sign in, or Skip at the top,
   which the App Store asks an app to allow wherever an account is not needed.
-  Skipping or signing in answers it on that phone for good
-  (`mobile/src/features/welcome.ts`); a launch by a link never shows it. A
-  session the launch finds is no answer: a phone that was signed in when a new
-  welcome came shows it at its first launch with nobody signed in.
+  Skip closes it until the app is next started; signing in closes it with the
+  sign-in sheet; a launch by a link never shows it, and goes where the link
+  leads. Signing out opens it again, faded in over the tabs once whatever was
+  signed out from has closed (`mobile/src/components/navigation/welcome-gate.tsx`).
+  Nothing about it is kept on the phone (`mobile/src/features/welcome.ts`).
 - **Onboarding** runs the website's `completeOnboarding` and adds agreeing to
   the Terms of use, which the App Store requires of an app where people publish
   to each other. It asks in short steps, with a progress bar and a way back:
@@ -714,9 +715,11 @@ production, with QA accounts made for it — never the demo accounts.
 - Onboarding: "Delete this account" under signing out deletes an account that
   never finished it, and the app is back at the start. Back from a later step
   keeps what was typed.
-- A first launch (delete the app first): the welcome comes up under the splash
-  screen with nothing jumping into place, its parts arriving in turn; Skip
-  fades it away onto Home, and it does not come back.
+- A launch with nobody signed in: the welcome comes up under the splash
+  screen with nothing jumping into place, Skip at once and the rest arriving
+  in turn; Skip fades it away onto Home. Closed and opened again (swiped away
+  in the app switcher), it is there again; signed in, it never is; signing
+  out on Account fades it in.
 - An over-the-air update (`pnpm run ota preview --message "…"` to a preview
   build): it shows after the app is closed and opened twice.
 - Offline (airplane mode): the screens say so rather than spin; signing out

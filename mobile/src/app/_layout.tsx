@@ -96,7 +96,7 @@ const WELCOME_WAIT_MS = 1500;
  * The screens, once the tab bar can be drawn for the person using the app —
  * the same person a link that opened the app was routed for (+native-intent).
  * The splash screen comes down onto the first screen the launch is for: the
- * welcome, on a first signed-out launch (WelcomeGate), or Home.
+ * welcome, on a launch with nobody signed in (WelcomeGate), or Home.
  */
 function AppStack() {
   const { settled } = useSession();
@@ -132,8 +132,16 @@ function AppStack() {
         <Stack.Screen name="mfa" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         <Stack.Screen name="auth/confirm" options={{ presentation: 'modal' }} />
         <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
-        {/* Under the splash screen at once, and answered rather than swiped away. */}
-        <Stack.Screen name="welcome" options={{ presentation: 'fullScreenModal', animation: 'none', gestureEnabled: false }} />
+        {/* Answered rather than swiped away. At a launch it is under the splash
+            screen at once; after a sign-out it fades in over the tabs. */}
+        <Stack.Screen
+          name="welcome"
+          options={({ route }) => ({
+            presentation: 'fullScreenModal',
+            animation: (route.params as { after?: string } | undefined)?.after === 'sign-out' ? 'fade' : 'none',
+            gestureEnabled: false,
+          })}
+        />
       </Stack>
       <WelcomeGate onDecided={decided} />
       <SessionGate />

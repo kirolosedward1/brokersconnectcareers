@@ -14,37 +14,40 @@ import { ForwardChevron } from '~/components/ui/icons';
 import { Banknote, Clock, MessageCircle, type LucideProps } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
-import { welcomeAnswered, welcomeDrawn } from '~/features/welcome';
+import { welcomeDrawn } from '~/features/welcome';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, motion, space } from '~/theme/tokens';
 
 /**
  * When the screen's parts arrive, after the first frame: the splash screen
  * comes down onto that frame (the root layout), and what moves under it is
- * never seen. The emblem first, its facts, the words, then the ways on.
+ * never seen. Skip first — it opens at every launch with nobody signed in, and
+ * someone who has seen it before is not kept waiting for the way past it
+ * (iOS takes no taps on what has not begun to show) — then the emblem, its
+ * facts, the words, and the ways on.
  */
 const BEAT = 160;
 const AT = {
+  skip: 0,
   emblem: BEAT,
   mark: BEAT + 140,
   facts: BEAT + 300,
   words: BEAT + 260,
   ways: BEAT + 480,
-  skip: BEAT + 640,
 };
 
 /**
- * The first screen of a first launch, signed out (src/components/navigation/welcome-gate.tsx):
- * the website's mark at the centre of an emblem, the three facts the board is
- * built on drifting around it, what the board is in one line, and the ways
- * on — create an account, sign in, or skip and look around without one,
- * which the App Store asks an app to allow wherever an account is not needed.
- * A company has its own way in, to the employer's sign-up.
+ * The first screen of every launch with nobody signed in, and where signing
+ * out leads (src/components/navigation/welcome-gate.tsx): the website's mark
+ * at the centre of an emblem, the three facts the board is built on drifting
+ * around it, what the board is in one line, and the ways on — create an
+ * account, sign in, or skip and look around without one, which the App Store
+ * asks an app to allow wherever an account is not needed. A company has its
+ * own way in, to the employer's sign-up.
  *
- * Over Home, which is already drawn underneath: skipping fades it away onto
- * the board's newest listings. Signing in closes it with the sign-in sheet
- * (useCloseFlow, which counts it among the flow's screens). Either answers it
- * on this phone for good.
+ * Over the tabs, already drawn underneath — Home, at a launch: skipping fades
+ * it away onto them until the app is next started. Signing in closes it with
+ * the sign-in sheet (useCloseFlow, which counts it among the flow's screens).
  */
 export default function WelcomeScreen() {
   const t = useTranslations();
@@ -61,9 +64,10 @@ export default function WelcomeScreen() {
     navigation.setOptions({ animation: 'fade' });
   }, [navigation]);
 
+  // This screen's own Back, whatever has been opened since.
   const skip = () => {
-    welcomeAnswered();
-    router.back();
+    if (navigation.canGoBack()) navigation.goBack();
+    else router.replace('/');
   };
 
   // The emblem takes what the phone can spare: a quarter of its height (a

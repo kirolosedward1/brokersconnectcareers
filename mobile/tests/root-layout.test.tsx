@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import { render } from '@testing-library/react-native';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { InSheet } from '~/components/ui/states';
-import { resetWelcomeForTests, WELCOME_KEY } from '~/features/welcome';
+import { resetWelcomeForTests } from '~/features/welcome';
 import { catalogues } from '~/i18n/provider';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
@@ -49,9 +49,8 @@ beforeAll(() => {
 
 beforeEach(async () => {
   await AsyncStorage.clear();
-  // Past the first launch's welcome (tests/welcome.test.tsx has it): these open on Home.
-  await AsyncStorage.setItem(WELCOME_KEY, 'done');
-  resetWelcomeForTests();
+  // Without the welcome a signed-out launch opens on (tests/welcome.test.tsx has it): these open on Home.
+  resetWelcomeForTests(false);
   server.on('GET /api/mobile/v1/config', mobileConfig());
   server.on('/rest/v1/districts', [newCairo]);
   server.on('/rest/v1/governorates', [cairo]);

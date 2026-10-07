@@ -352,7 +352,7 @@ describe('signing in with a password', () => {
     expect(bodyOf('/auth/v1/token')).toMatchObject({ email: 'sara@example.com', password: PASSWORD });
   });
 
-  it('closes the first launch\'s welcome along with the sheet when the sign-in began there', async () => {
+  it('closes the welcome along with the sheet when the sign-in began there', async () => {
     renderRouter(app, { initialUrl: '/welcome' });
     await press(ar.nav.signIn);
     await fillSignIn('sara@example.com', PASSWORD);

@@ -1,6 +1,18 @@
-# Skips the first launch's welcome, the way someone looking around does
-# (scripts/expo-go-look.sh), in Expo Go.
+# Skips the welcome a launch with nobody signed in opens on, the way someone
+# looking around does (scripts/expo-go-look.sh), in Expo Go.
 appId: host.exp.Exponent
 ---
-- tapOn: "تخطي"
+- extendedWaitUntil:
+    visible: "تخطي"
+    timeout: 20000
 - waitForAnimationToEnd
+# Tapped again if the welcome is still up: a sheet of Expo Go's own can come
+# up over the app for a moment and take the first tap (as launch.yaml's first
+# tap was once lost on a simulator just booted).
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: "تخطي"
+      - extendedWaitUntil:
+          notVisible: "تخطي"
+          timeout: 10000

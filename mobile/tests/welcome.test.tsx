@@ -1,9 +1,10 @@
-import { Text } from 'react-native';
+import { Pressable, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
+import { router } from 'expo-router';
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import { catalogues } from '~/i18n/provider';
-import { resetWelcomeForTests, WELCOME_KEY } from '~/features/welcome';
+import { resetWelcomeForTests } from '~/features/welcome';
 import { SESSION_KEY, supabase } from '~/lib/supabase';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
@@ -14,11 +15,11 @@ import { board, browse, cairo, newCairo } from './fixtures';
 import { fakeServer } from './server';
 
 /*
-  A first launch, signed out, opens on the welcome: the website's logo, what
-  the board is, and the three ways on — create an account, sign in, or skip.
-  Skipping or signing in closes it for good; a launch by a link, or with
-  somebody signed in, never shows it. The splash screen stays up until it is
-  drawn, so Home never flashes first.
+  Every launch with nobody signed in opens on the welcome: the website's logo,
+  what the board is, and the three ways on — create an account, sign in, or
+  skip. Skipping closes it until the app is next started; a launch by a link,
+  or with somebody signed in, never shows it; signing out brings it back. The
+  splash screen stays up until it is drawn, so Home never flashes first.
 */
 
 jest.mock('expo-splash-screen', () => ({
@@ -64,6 +65,21 @@ beforeEach(async () => {
   server.on('/api/mobile/v1/jobs', board([]));
 });
 
+/** A screen over the tabs that somebody signs out from — the code, onboarding — and that then closes. */
+function SignOutHere() {
+  return (
+    <Pressable accessibilityRole="button" onPress={() => router.back()}>
+      <Text>close-here</Text>
+    </Pressable>
+  );
+}
+
+async function signOut() {
+  await act(async () => {
+    await supabase.auth.signOut({ scope: 'local' });
+  });
+}
+
 function launch(initialUrl = '/') {
   renderRouter(
     {
@@ -73,9 +89,19 @@ function launch(initialUrl = '/') {
       '(tabs)/(home)/index': () => <Text>home-screen</Text>,
       '(tabs)/(jobs)/jobs/index': () => <Text>board-screen</Text>,
       welcome: WelcomeScreen,
+      mfa: SignOutHere,
     },
     { initialUrl },
   );
+}
+
+/** Somebody signed in on this phone, as a launch finds them. */
+function signedIn() {
+  const user = authUser();
+  mockStored.set(SESSION_KEY, JSON.stringify(authSession(user)));
+  server.on('GET /auth/v1/user', user);
+  server.on('/rest/v1/profiles', [profile]);
+  server.on('/rest/v1/rpc/my_company_id', () => null);
 }
 
 /** The welcome, as iOS lays it out: drawn. */
@@ -85,7 +111,7 @@ async function drawn() {
   await act(async () => {});
 }
 
-it('opens a first signed-out launch on the welcome, under the splash screen until it is drawn', async () => {
+it('opens a signed-out launch on the welcome, under the splash screen until it is drawn', async () => {
   launch();
   const skip = await screen.findByRole('button', { name: ar.app.welcome.skip });
   // Skip says where it leads.
@@ -101,22 +127,21 @@ it('opens a first signed-out launch on the welcome, under the splash screen unti
   expect(hide).toHaveBeenCalled();
 });
 
-it('closes onto Home when the reader skips it, and is not shown again', async () => {
+it('closes onto Home when the reader skips it, until the app is next started', async () => {
   launch();
   await drawn();
   fireEvent.press(await screen.findByRole('button', { name: ar.app.welcome.skip }));
   await act(async () => {});
   expect(screen.queryByTestId('welcome')).toBeNull();
   expect(screen.getByText('home-screen')).toBeTruthy();
-  expect(await AsyncStorage.getItem(WELCOME_KEY)).toBe('done');
+  // Nothing about it is kept on the phone.
+  expect((await AsyncStorage.getAllKeys()).filter((key) => key.includes('welcome'))).toEqual([]);
 
-  // The next launch opens on Home.
+  // The next launch, still signed out, opens on it again.
   screen.unmount();
   resetWelcomeForTests();
   launch();
-  expect(await screen.findByText('home-screen')).toBeTruthy();
-  await act(async () => {});
-  expect(screen.queryByTestId('welcome')).toBeNull();
+  expect(await screen.findByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
 });
 
 it('leaves a launch by a link where the link leads', async () => {
@@ -124,44 +149,59 @@ it('leaves a launch by a link where the link leads', async () => {
   expect(await screen.findByText('board-screen')).toBeTruthy();
   await act(async () => {});
   expect(screen.queryByTestId('welcome')).toBeNull();
-  // Not answered: the next plain launch still welcomes.
-  expect(await AsyncStorage.getItem(WELCOME_KEY)).toBeNull();
 });
 
-it('never shows to somebody signed in, and waits for the first launch with nobody signed in', async () => {
-  const user = authUser();
-  mockStored.set(SESSION_KEY, JSON.stringify(authSession(user)));
-  server.on('GET /auth/v1/user', user);
-  server.on('/rest/v1/profiles', [profile]);
-  server.on('/rest/v1/rpc/my_company_id', () => null);
+it('never shows to somebody signed in, and opens when they sign out', async () => {
+  signedIn();
   launch();
   expect(await screen.findByText('home-screen')).toBeTruthy();
   await act(async () => {});
   expect(screen.queryByTestId('welcome')).toBeNull();
-  // A session the launch found is no answer: a phone signed in when a new welcome came still has it to see.
-  expect(await AsyncStorage.getItem(WELCOME_KEY)).toBeNull();
 
-  // Signed out since: the next launch opens on it.
-  screen.unmount();
-  mockStored.clear();
-  resetWelcomeForTests();
-  launch();
-  expect(await screen.findByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
+  await signOut();
+  fireEvent.press(await screen.findByRole('button', { name: ar.app.welcome.skip }));
+  await act(async () => {});
+  expect(screen.queryByTestId('welcome')).toBeNull();
+  expect(screen.getByText('home-screen')).toBeTruthy();
 });
 
-it('counts signing in as its answer', async () => {
-  const user = authUser();
-  server.on('POST /auth/v1/token', () => authSession(user));
-  server.on('GET /auth/v1/user', user);
-  server.on('/rest/v1/profiles', [profile]);
-  server.on('/rest/v1/rpc/my_company_id', () => null);
+it('waits for the screen somebody signed out from to close, and opens over the tabs', async () => {
+  signedIn();
   launch();
-  await drawn();
-  expect(await AsyncStorage.getItem(WELCOME_KEY)).toBeNull();
+  expect(await screen.findByText('home-screen')).toBeTruthy();
+  await act(async () => {
+    router.push('/mfa');
+  });
 
+  expect(await screen.findByText('close-here')).toBeTruthy();
+  await signOut();
+  // Not over the screen still closing, which its own Back would close instead.
+  expect(screen.queryByTestId('welcome')).toBeNull();
+
+  fireEvent.press(screen.getByText('close-here'));
+  expect(await screen.findByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
+  expect(screen.queryByText('close-here')).toBeNull();
+});
+
+it('is not opened by signing out when signing in again came first', async () => {
+  const user = authUser();
+  signedIn();
+  server.on('POST /auth/v1/token', () => authSession(user));
+  launch();
+  expect(await screen.findByText('home-screen')).toBeTruthy();
+  await act(async () => {
+    router.push('/mfa');
+  });
+
+  expect(await screen.findByText('close-here')).toBeTruthy();
+  await signOut();
+  expect(screen.queryByTestId('welcome')).toBeNull();
   await act(async () => {
     const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: 'correct-horse' });
     expect(error).toBeNull();
   });
-  expect(await AsyncStorage.getItem(WELCOME_KEY)).toBe('done');
+  fireEvent.press(screen.getByText('close-here'));
+  await act(async () => {});
+  expect(screen.queryByTestId('welcome')).toBeNull();
+  expect(screen.getByText('home-screen')).toBeTruthy();
 });

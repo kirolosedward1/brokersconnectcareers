@@ -1,7 +1,7 @@
 # Opens the app as someone who has just installed it: nothing stored, nobody
-# signed in. A first launch opens on the welcome (src/app/welcome.tsx), which
-# is captured and then skipped, the way someone looking around answers it, so
-# Home is on screen at the end.
+# signed in. A launch with nobody signed in opens on the welcome
+# (src/app/welcome.tsx), which is captured and then skipped, the way someone
+# looking around answers it, so Home is on screen at the end.
 appId: net.brokersconnect.app
 ---
 - launchApp:

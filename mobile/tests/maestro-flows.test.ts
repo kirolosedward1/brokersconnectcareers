@@ -35,7 +35,7 @@ const KEYS: Record<string, string> = {
   'الخدمة مش متاحة دلوقتي': 'app.unavailable.title',
   'الصفحة مش موجودة': 'common.notFound',
   'في نسخة أحدث من التطبيق': 'app.update.title',
-  // The first launch's welcome, Home, the tabs and the appearance switch.
+  // The welcome, Home, the tabs and the appearance switch.
   'تخطي': 'app.welcome.skip',
   'منصة متخصصة لوظائف العقارات في مصر': 'landingPage.hero.title',
   'الرئيسية': 'app.tabs.home',
