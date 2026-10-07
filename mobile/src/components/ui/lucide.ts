@@ -3,7 +3,7 @@
  *
  * `lucide-react-native`'s index requires every one of its 1,854 icons as it
  * loads — about 2 MB of the bundle and 20 to 30 ms before the first frame on
- * a phone — for the 96 used here. One module per icon loads only those. Add
+ * a phone — for the 97 used here. One module per icon loads only those. Add
  * an icon here, from `lucide-react-native/icons/<its-file-name>`, and import
  * it from this file.
  */
@@ -23,6 +23,7 @@ export { default as BookmarkCheck } from 'lucide-react-native/icons/bookmark-che
 export { default as Briefcase } from 'lucide-react-native/icons/briefcase';
 export { default as BriefcaseBusiness } from 'lucide-react-native/icons/briefcase-business';
 export { default as Building2 } from 'lucide-react-native/icons/building-complex';
+export { default as Calendar } from 'lucide-react-native/icons/calendar';
 export { default as CalendarClock } from 'lucide-react-native/icons/calendar-clock';
 export { default as CalendarX2 } from 'lucide-react-native/icons/calendar-x-2';
 export { default as Check } from 'lucide-react-native/icons/check';

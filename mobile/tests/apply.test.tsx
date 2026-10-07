@@ -179,6 +179,27 @@ describe('the form', () => {
     expect(screen.getByText('مدير مبيعات')).toBeTruthy();
   });
 
+  it('asks who sees the application above the button, the answer a tap away', async () => {
+    await signedIn();
+    renderRouter(app, { initialUrl: APPLY });
+
+    const question = await screen.findByRole('button', { name: ar.apply.privacyTitle });
+    expect(ar.apply.privacyTitle.endsWith('؟')).toBe(true);
+    expect(question.props.accessibilityState).toEqual(expect.objectContaining({ expanded: false }));
+    expect(screen.queryByText(ar.apply.privacyBody)).toBeNull();
+
+    fireEvent.press(question);
+    expect(screen.getByRole('button', { name: ar.apply.privacyTitle }).props.accessibilityState).toEqual(
+      expect.objectContaining({ expanded: true }),
+    );
+    expect(screen.getByText(ar.apply.privacyBody)).toBeTruthy();
+    expect(screen.getByText(ar.apply.privacyProfile)).toBeTruthy();
+    expect(screen.getByText(ar.apply.privacyNote)).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: ar.apply.privacyTitle }));
+    expect(screen.queryByText(ar.apply.privacyBody)).toBeNull();
+  });
+
   it("follows the profile's CV as it is now: one replaced in another tab while the form was open is sent in its place", async () => {
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });

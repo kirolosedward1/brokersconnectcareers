@@ -2,7 +2,19 @@ import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { CalendarX2, CheckCircle2, CircleSlash, FileText, Paperclip, ShieldAlert, ShieldCheck, UserRound, X } from '~/components/ui/lucide';
+import {
+  CalendarX2,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  CircleSlash,
+  FileText,
+  Paperclip,
+  ShieldAlert,
+  ShieldCheck,
+  UserRound,
+  X,
+} from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
 import type { JobDetail } from '@/lib/job-list';
 import { jobIsLive } from '@/lib/job-state';
@@ -409,23 +421,50 @@ function ApplyForm({
         />
       </Field>
 
-      {/* What pressing the button gives away, said before it is pressed. */}
-      <View
-        style={{
-          flexDirection: 'row',
-          gap: space[3],
-          padding: space[4],
-          ...corner('xl'),
-          borderWidth: StyleSheet.hairlineWidth * 2,
-          borderColor: colors.border,
-          backgroundColor: colors.muted,
-        }}
+      <WhoSees />
+
+      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+
+      <Button label={t('apply.submit')} size="lg" loading={apply.isPending} onPress={submit} />
+    </ScrollView>
+  );
+}
+
+/**
+ * What pressing the button gives away, said before it is pressed: the
+ * question always in view above the button, its answer a tap away, so the
+ * form is not a wall of text on the way to it.
+ */
+function WhoSees() {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  const [open, setOpen] = useState(false);
+  const Chevron = open ? ChevronUp : ChevronDown;
+
+  return (
+    <View
+      style={{
+        ...corner('xl'),
+        borderWidth: StyleSheet.hairlineWidth * 2,
+        borderColor: colors.border,
+        backgroundColor: colors.muted,
+      }}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen(!open)}
+        style={{ minHeight: hitTarget, flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[4] }}
       >
         <ShieldCheck size={20} color={colors.mutedForeground} />
-        <View style={{ flex: 1, gap: space[1] }}>
-          <Text variant="small" weight="semibold">
-            {t('apply.privacyTitle')}
-          </Text>
+        <Text variant="small" weight="semibold" style={{ flex: 1 }}>
+          {t('apply.privacyTitle')}
+        </Text>
+        <Chevron size={18} color={colors.mutedForeground} />
+      </Pressable>
+      {open ? (
+        // Under the question, where its words start: past the shield.
+        <View style={{ gap: space[1], paddingBottom: space[4], paddingStart: space[4] + 20 + space[3], paddingEnd: space[4] }}>
           <Text variant="small" tone="mutedForeground">
             {t('apply.privacyBody')}
           </Text>
@@ -436,12 +475,8 @@ function ApplyForm({
             {t('apply.privacyNote')}
           </Text>
         </View>
-      </View>
-
-      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
-
-      <Button label={t('apply.submit')} size="lg" loading={apply.isPending} onPress={submit} />
-    </ScrollView>
+      ) : null}
+    </View>
   );
 }
 

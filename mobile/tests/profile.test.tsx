@@ -6,6 +6,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { AgentExperienceRow, AgentProfileRow } from '@/lib/supabase/database.types';
+import { monthNames } from '~/components/ui/month-field';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -420,13 +421,20 @@ describe('the sales record', () => {
   });
 });
 
+/** A month picked as a reader does: the field, then its year, then the month. */
+function pickMonth(field: string, year: number, month: number) {
+  fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${field}: `) }));
+  fireEvent.press(screen.getByRole('radio', { name: String(year) }));
+  fireEvent.press(screen.getByRole('radio', { name: `${monthNames('ar')[month - 1]} ${year}` }));
+}
+
 describe('the CV sections', () => {
   it('adds a job from a sheet, dated by its month', async () => {
     open();
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'سيتي سكيب');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
+    pickMonth(ar.cv.started, 2023, 5);
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
 
     await waitFor(() =>
@@ -475,7 +483,7 @@ describe('the CV sections', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), '  سيتي سكيب ');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
+    pickMonth(ar.cv.started, 2023, 5);
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
 
     // The database has it: the sheet closes, and nothing is sent twice.
@@ -489,7 +497,7 @@ describe('the CV sections', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'بالم هيلز');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مستشار مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2022-01');
+    pickMonth(ar.cv.started, 2022, 1);
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
     expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
     expect(screen.getByLabelText(ar.cv.company).props.value).toBe('بالم هيلز');
@@ -534,8 +542,8 @@ describe('the CV sections', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'سيتي سكيب');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.ended), '2022-01');
+    pickMonth(ar.cv.started, 2023, 5);
+    pickMonth(ar.cv.ended, 2022, 1);
     const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
     announce.mockClear();
     const layout = placeViewsAt(320);

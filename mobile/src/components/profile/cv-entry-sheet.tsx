@@ -11,6 +11,7 @@ import type {
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
+import { MonthField } from '~/components/ui/month-field';
 import { KeyboardRoom } from '~/components/ui/keyboard-room';
 import { Notice } from '~/components/ui/notice';
 import { Select } from '~/components/ui/select';
@@ -32,7 +33,8 @@ export type CvEntry =
 /**
  * Adding a CV entry, or changing one — the website's inline forms, as a sheet.
  * Each saves on its own: a mistake in a certification never holds a job just
- * typed hostage. Dates are a year and a month, as the entries show them.
+ * typed hostage. Dates are a year and a month, as the entries show them,
+ * picked from a sheet rather than typed.
  */
 export function CvEntrySheet({ agentId, entry, onClose }: { agentId: string; entry: CvEntry | null; onClose: () => void }) {
   // Whether the form has been typed in: the sheet pulled down asks first then.
@@ -223,9 +225,10 @@ function EntryForm({
     );
   };
 
-  const month = (label: string, value: string, set: (text: string) => void, key: string, hint?: string) => (
-    <Field ref={inView.place(key)} label={label} hint={hint ?? t('app.profile.monthHint')} error={errors[key]}>
-      <TextField value={value} onChangeText={set} accessibilityLabel={label} ltr keyboardType="numbers-and-punctuation" placeholder="2024-03" maxLength={7} />
+  // Picked from a sheet, not typed (MonthField); `clearLabel` for a date that may be left empty.
+  const month = (label: string, value: string, set: (text: string) => void, key: string, hint?: string, clearLabel?: string) => (
+    <Field ref={inView.place(key)} label={label} hint={hint} error={errors[key]}>
+      <MonthField label={label} value={value} onChange={set} clearLabel={clearLabel} />
     </Field>
   );
   const text = (label: string, value: string, set: (text: string) => void, key: string, max: number, optional = false) => (
@@ -273,7 +276,7 @@ function EntryForm({
               />
             </Field>
             {month(t('cv.started'), started, setStarted, 'started')}
-            {month(t('cv.ended'), ended, setEnded, 'ended', t('app.profile.endedHint'))}
+            {month(t('cv.ended'), ended, setEnded, 'ended', t('app.profile.endedHint'), t('app.profile.stillThere'))}
             <Field ref={inView.place('highlights')} label={t('cv.highlights')} error={errors.highlights}>
               <TextField
                 value={highlights}
@@ -305,8 +308,8 @@ function EntryForm({
           <>
             {text(t('cv.certName'), name, setName, 'name', 160)}
             {text(t('cv.issuer'), issuer, setIssuer, 'issuer', 160, true)}
-            {month(t('cv.issued'), issued, setIssued, 'issued')}
-            {month(t('cv.expires'), expires, setExpires, 'expires')}
+            {month(t('cv.issued'), issued, setIssued, 'issued', t('common.optional'), t('app.profile.monthClear'))}
+            {month(t('cv.expires'), expires, setExpires, 'expires', t('common.optional'), t('app.profile.monthClear'))}
           </>
         )}
 
