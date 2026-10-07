@@ -13,11 +13,13 @@ const { join, relative } = require('node:path') as {
 declare const __dirname: string;
 
 /*
-  A large title is asked for by its current name, headerLargeTitleEnabled.
-  The old one, headerLargeTitle, still draws it, but expo-router's native
-  stack debounces the header's height only under the new name: under the old
-  one every step of the title collapsing as a list scrolls is a state update,
-  and the whole screen is drawn again for each.
+  No screen asks for iOS's large title. On iOS 26 one under a painted bar is
+  not drawn until the screen is scrolled: the tabs opened on an empty band
+  over their search field (the owner's iPhone). On a clear bar it is drawn
+  mirrored at the left edge wherever iOS itself runs left to right — in Expo
+  Go, and on any iPhone not set to Arabic — under the bar the app turns right
+  to left: the Expo Go check read «الوظائف» as «فألكهاا». The bar's own title,
+  centred, is drawn right from the first frame, in either.
 */
 
 const SRC = join(__dirname, '..', 'src');
@@ -32,13 +34,8 @@ function files(dir: string): string[] {
 const sources = files(SRC).map((file) => ({ file: relative(SRC, file), text: readFileSync(file, 'utf8') }));
 
 describe('a large title', () => {
-  it('is asked for under the name the native stack debounces', () => {
-    expect(sources.filter(({ text }) => /\bheaderLargeTitle\s*:/.test(text)).map(({ file }) => file)).toEqual([]);
-  });
-
-  it('is still asked for on the tabs that have one', () => {
-    // Every tab's first screen but Home, whose title is the website's logo.
-    expect(sources.filter(({ text }) => /\bheaderLargeTitleEnabled:\s*true/.test(text)).length).toBeGreaterThanOrEqual(8);
+  it('is asked for by no screen, under either name', () => {
+    expect(sources.filter(({ text }) => /\bheaderLargeTitle(Enabled)?\s*:\s*true/.test(text)).map(({ file }) => file)).toEqual([]);
   });
 });
 

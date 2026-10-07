@@ -84,7 +84,6 @@ export default function DirectoryScreen() {
     <Stack.Screen
       options={{
         title: t('nav.agents'),
-        headerLargeTitleEnabled: true,
         headerRight: bell,
         headerSearchBarOptions: {
           ref: searchBar,

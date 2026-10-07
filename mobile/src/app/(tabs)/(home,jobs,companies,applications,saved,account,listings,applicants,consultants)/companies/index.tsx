@@ -76,7 +76,6 @@ export default function CompaniesScreen() {
     <Stack.Screen
       options={{
         title: t('companies.title'),
-        headerLargeTitleEnabled: true,
         headerRight: bell,
         headerSearchBarOptions: {
           ref: searchBar,

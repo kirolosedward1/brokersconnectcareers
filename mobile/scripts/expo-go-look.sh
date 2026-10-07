@@ -17,11 +17,12 @@
 # the screen: how far down, left and right edges), into the run's log and its
 # annotations, with a verdict on the tab bar: Home must be its rightmost tab.
 #
-# Each tab's large title is looked for in the header too, under the status bar
-# and above the search field, not only in the tab bar: iOS 26 left a painted
-# bar's large title empty until the screen was scrolled. And the board is
-# scrolled down and back up, to read the tab bar shrinking to the open tab and
-# coming back (iOS 26), reported in the annotations.
+# Each tab's title is looked for in its header's bar too, not only as its name
+# in the tab bar: iOS 26 left the tabs' large titles empty until the screen
+# was scrolled, then drew them mirrored, and the tabs now take the bar's own
+# title. And the board is scrolled down and back up, to read the tab bar
+# shrinking to the open tab and coming back (iOS 26), reported in the
+# annotations.
 #
 # A screen that never shows what it should, a tab without its title, or a tab
 # bar laid out left to right, fails it.
@@ -184,13 +185,13 @@ print("::notice title=Expo Go: " + sys.argv[1] + "::" + text.replace("%", "%25")
 ' "$shot" <<<"$text"
 )
 
-# in_header <shot> <title>: the large title, read where the header draws it —
-# between 10% and 20% of the way down, under the status bar and above any
-# search field — and not only as the tab's name in the bar at the bottom.
+# in_header <shot> <title>: the screen's title, read where the header's bar
+# draws it — between 5% and 12% of the way down, under the status bar — and
+# not only as the tab's name in the bar at the bottom.
 in_header() {
-  if ! python3 "$here/screen-check.py" --band 10-20 --expect "$2" < "$out/$1.boxes" 2> "$out/$1.header"; then
-    failed+=("$1: no large title")
-    echo "::error title=Expo Go: $1::the large title «$2» is not in the header"
+  if ! python3 "$here/screen-check.py" --band 5-12 --expect "$2" < "$out/$1.boxes" 2> "$out/$1.header"; then
+    failed+=("$1: no title")
+    echo "::error title=Expo Go: $1::the title «$2» is not in the header"
   fi
 }
 

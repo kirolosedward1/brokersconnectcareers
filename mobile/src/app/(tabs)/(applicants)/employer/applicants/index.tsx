@@ -66,7 +66,7 @@ export default function InboxScreen() {
   const pull = usePullRefresh(() => Promise.all([inbox.refetch(), rows?.length ? notes.refetch() : null, listings.refetch()]));
 
   const header = (
-    <Stack.Screen options={{ title: t('employer.allApplicants'), headerLargeTitleEnabled: true, headerRight: bell }} />
+    <Stack.Screen options={{ title: t('employer.allApplicants'), headerRight: bell }} />
   );
   const narrowed = Boolean(filters.q || filters.band || filters.track || filters.job);
   const setFilter = (next: Record<string, string | undefined>) => router.setParams(next as never);

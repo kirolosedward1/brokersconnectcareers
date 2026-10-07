@@ -159,11 +159,14 @@ compare with (a new branch), it compares with the previous commit.
   with its own stack, and listings, company pages and the bell's feed live in
   a group all tabs share, so they open inside the tab the reader is in. On
   iOS 26 the tab bar shrinks to the open tab as a list scrolls down and comes
-  back as it scrolls up (`minimizeBehavior`), and a tab's large title sits on
-  a clear bar: given a colour, iOS 26 keeps the title's room and leaves it
-  empty until the screen is scrolled (`mobile/src/components/navigation/stack-options.ts`).
-  The bell is a header item only for somebody with a feed (`useHeaderBell`):
-  an item that draws nothing still shows, as an empty glass circle. The
+  back as it scrolls up (`minimizeBehavior`). No screen has iOS's large title:
+  on iOS 26 one under a painted bar is not drawn until the screen is
+  scrolled, and on a clear bar it is drawn mirrored at the left edge wherever
+  iOS runs left to right (Expo Go, an iPhone not set to Arabic) under the bar
+  the app turns right to left. The bar's own title is drawn from the first
+  frame (`mobile/src/components/navigation/stack-options.ts`). The bell is a
+  header item only for somebody with a feed (`useHeaderBell`): an item that
+  draws nothing still shows, as an empty glass circle. The
   tab bar depends on who is signed in (`mobile/src/lib/tabs.ts`, from
   `src/lib/permissions.ts`): signed out it is Home · Jobs · Companies ·
   Account; a candidate's is their console — Home · Jobs · Applications ·

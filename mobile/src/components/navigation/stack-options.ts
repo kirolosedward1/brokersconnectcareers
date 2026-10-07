@@ -1,6 +1,5 @@
 import type { ComponentProps } from 'react';
 import type { Stack } from 'expo-router';
-import { liquidGlass } from '~/lib/liquid-glass';
 import { useTheme } from '~/theme/provider';
 import { font } from '~/theme/tokens';
 
@@ -12,23 +11,22 @@ type StackOptions = NonNullable<ComponentProps<typeof Stack>['screenOptions']>;
  * page background behind every screen. Used by each tab's stack and by the
  * sign-in sheet, so a pushed screen looks the same wherever it opens.
  *
- * iOS 26 draws a large title only on a clear bar. Given a colour, the bar keeps
- * the title's room and leaves it empty until the screen is scrolled: the tabs'
- * first screens (Jobs, Companies, Account…) opened on a blank band over their
- * search field. There the bar's colour is left to React Navigation, which keeps
- * a large-title bar clear and paints every other bar the navigation theme's
- * `card` — the page background (src/app/_layout.tsx). Before iOS 26, and on
- * Android, the bar is painted here, as it always was.
+ * No screen asks for iOS's large title. On iOS 26 a large title under a
+ * painted bar is not drawn until the screen is scrolled (the tabs opened on an
+ * empty band over their search field), and on a clear bar it is drawn
+ * mirrored at the left edge whenever iOS itself runs left to right — in Expo
+ * Go, and on any iPhone not set to Arabic — under the bar the app turns right
+ * to left (src/lib/direction.ts). The bar's own title is drawn right from the
+ * first frame (tests/screen-options.test.ts).
  */
 export function useStackOptions(): Exclude<StackOptions, (...args: never[]) => unknown> {
   const { colors } = useTheme();
   return {
     headerTintColor: colors.primary,
     headerTitleStyle: { fontFamily: font.semibold, color: colors.foreground },
-    headerLargeTitleStyle: { fontFamily: font.bold, color: colors.foreground },
     headerBackButtonDisplayMode: 'minimal',
     headerShadowVisible: false,
-    ...(liquidGlass() ? {} : { headerStyle: { backgroundColor: colors.background } }),
+    headerStyle: { backgroundColor: colors.background },
     contentStyle: { backgroundColor: colors.background },
   };
 }
