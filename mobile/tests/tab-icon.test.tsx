@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { accountTabIcon } from '~/components/navigation/tab-bar';
 import { CircleUserRound } from '~/components/ui/lucide';
+import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 
 /*
@@ -12,7 +13,8 @@ import { useSession } from '~/lib/session';
 
 jest.mock('~/lib/session', () => ({ useSession: jest.fn() }));
 
-const OWN_PHOTO = 'http://127.0.0.1:9/storage/v1/object/public/avatars/8b7c7f1e-0000-4000-8000-000000000001/photo.webp';
+// The project's own storage, wherever the tests are pointed (CI names the real project).
+const OWN_PHOTO = `${env.supabaseUrl}/storage/v1/object/public/avatars/8b7c7f1e-0000-4000-8000-000000000001/photo.webp`;
 const Icon = accountTabIcon({ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }, CircleUserRound);
 
 function signedInWith(avatarUrl: string | null) {
