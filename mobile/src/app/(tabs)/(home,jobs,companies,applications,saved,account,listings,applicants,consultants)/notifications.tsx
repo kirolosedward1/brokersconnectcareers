@@ -14,6 +14,7 @@ import { PageFooter } from '~/components/ui/page-footer';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { markReadLocally, useMarkAllRead, useNotificationFeed, useUnreadCount } from '~/features/notifications/queries';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { callAction } from '~/lib/api';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
@@ -63,6 +64,7 @@ export default function NotificationsScreen() {
     Promise.all([feed.refetch(), queryClient.invalidateQueries({ queryKey: ['notifications', 'unread'] })]),
   );
   const unread = useUnreadCount().data ?? 0;
+  const shrink = useShrinkingTabBar();
   const markAll = useMarkAllRead();
   const navigation = useNavigation();
   // A tapped push whose link is gone opens here with the reason in the address.
@@ -166,6 +168,7 @@ export default function NotificationsScreen() {
   } else {
     body = (
       <FlashList
+        {...shrink}
         data={rows}
         keyExtractor={(row) => row.id}
         contentInsetAdjustmentBehavior="automatic"

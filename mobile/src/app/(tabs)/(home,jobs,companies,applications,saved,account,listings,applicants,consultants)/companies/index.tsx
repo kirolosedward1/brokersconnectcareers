@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import type { SearchBarCommands } from 'react-native-screens';
 import { BadgeCheck, Briefcase, Building2, MapPin } from '~/components/ui/lucide';
@@ -20,6 +20,7 @@ import { flattenCompanies, useCompanyDirectory, type CompanyQuery } from '~/feat
 import { useHiddenCompanies } from '~/features/moderation/hidden-companies';
 import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
+import { useTabList } from '~/features/tab-bar';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
@@ -50,6 +51,7 @@ export default function CompaniesScreen() {
 
   const nextPage = useNextPage(directory);
   const pull = usePullRefresh(() => directory.refetch());
+  const list = useTabList<FlashListRef<CompanyListItem>>();
   const hidden = useHiddenCompanies();
   const read = useMemo(() => flattenCompanies(directory.data?.pages), [directory.data]);
   const companies = useMemo(() => read.filter((company) => !hidden.has(company.id)), [read, hidden]);
@@ -115,6 +117,7 @@ export default function CompaniesScreen() {
     <>
       {header}
       <FlashList
+        {...list}
         data={companies}
         keyExtractor={(company) => company.id}
         renderItem={({ item }) => <CompanyRow company={item} />}

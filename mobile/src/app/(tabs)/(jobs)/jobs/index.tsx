@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import { SearchX, SlidersHorizontal } from '~/components/ui/lucide';
 import type { SearchBarCommands } from 'react-native-screens';
@@ -16,6 +16,7 @@ import {
 } from '@/lib/job-filters';
 import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
+import type { JobListItem } from '@/lib/job-list';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { PageFooter } from '~/components/ui/page-footer';
@@ -37,6 +38,7 @@ import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
+import { useTabList } from '~/features/tab-bar';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
@@ -71,6 +73,7 @@ export default function BoardScreen() {
   const nextPage = useNextPage(board);
   // The spinner is the reader's pull, not a re-read on coming back to the app.
   const pull = usePullRefresh(() => board.refetch());
+  const list = useTabList<FlashListRef<JobListItem>>();
   const hidden = useHiddenCompanies();
   const read = useMemo(() => flattenBoard(board.data?.pages), [board.data]);
   const jobs = useMemo(() => withoutHidden(read, hidden), [read, hidden]);
@@ -184,6 +187,7 @@ export default function BoardScreen() {
       {header}
       {sheet}
       <FlashList
+        {...list}
         data={jobs}
         keyExtractor={(job) => job.id}
         renderItem={({ item }) => <JobCard job={item} applied={applied.has(item.id)} />}

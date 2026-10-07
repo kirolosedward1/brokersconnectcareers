@@ -14,6 +14,7 @@ import { PushPrompt } from '~/components/push/push-prompt';
 import { StatStrip } from '~/components/dashboard/stat-strip';
 import { JobBrowse } from '~/components/home/job-browse';
 import { JobCard } from '~/components/jobs/job-card';
+import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { ForwardChevron } from '~/components/ui/icons';
@@ -30,6 +31,7 @@ import {
 import { useUnchosenVisibility } from '~/features/policies';
 import { useAgentProfile, useCandidateSummary } from '~/features/profile/queries';
 import { useDistricts } from '~/features/taxonomy';
+import { useTabList } from '~/features/tab-bar';
 import { inOwnTab } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
@@ -88,9 +90,11 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   // applications again too, and a spinner that starts by itself pushes the
   // page down under the reader's finger.
   const pull = usePullRefresh(refresh);
+  const list = useTabList();
 
   return (
     <ScrollView
+      {...list}
       contentInsetAdjustmentBehavior="automatic"
       // An appeal is typed on Home: its Send takes the first tap, and the field is lifted above the keyboard.
       keyboardShouldPersistTaps="handled"
@@ -104,6 +108,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
         compact
         title={profile ? t('dashboard.candidateGreeting', { name: profile.full_name }) : t('dashboard.overview')}
         subtitle={t('dashboard.candidateLede')}
+        aside={profile ? <HeroPhoto profile={profile} /> : undefined}
       />
 
       {profile ? <StandingNotice profile={profile} /> : null}
@@ -288,6 +293,18 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   );
 }
 
+/**
+ * The reader's photo beside the greeting, in a rounded frame of light on the
+ * panel — their first letter on its colour until they add one (on Account).
+ */
+function HeroPhoto({ profile }: { profile: ProfileRow }) {
+  return (
+    <View style={styles.photoFrame}>
+      <Avatar name={profile.full_name} src={profile.avatar_url} seed={profile.id} size="lg" shape="rounded" />
+    </View>
+  );
+}
+
 function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll: () => void }) {
   const t = useTranslations('dashboard');
   const { colors } = useTheme();
@@ -406,3 +423,15 @@ function VisibilityAsk() {
     </Notice>
   );
 }
+
+const styles = StyleSheet.create({
+  // A hairline of light around the photo, a little off it, on the deep panel.
+  photoFrame: {
+    padding: 3,
+    borderRadius: 22,
+    borderCurve: 'continuous',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.28)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+});

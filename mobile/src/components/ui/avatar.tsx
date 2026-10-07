@@ -6,7 +6,8 @@ import { env } from '~/lib/env';
 import { Text } from './text';
 
 /**
- * A person, as a circle — the website's Avatar: the photo when there is one
+ * A person, as a circle — the website's Avatar — or, `rounded`, a square with
+ * soft corners (Home's greeting): the photo when there is one
  * the site would fetch (its own storage, or a Google picture), otherwise the
  * first letter on a colour derived from a stable seed. The hues are the
  * website's (oklch 0.55 0.12 across the cyan→magenta arc, 0.54 for the two
@@ -28,22 +29,30 @@ export function Avatar({
   src,
   seed,
   size = 'sm',
+  shape = 'circle',
 }: {
   name: string;
   src?: string | null;
   seed?: string;
   size?: keyof typeof SIZES;
+  shape?: 'circle' | 'rounded';
 }) {
   const px = SIZES[size];
   const photo = trustedAvatarUrl(src, env.supabaseUrl);
   // Which photo failed, not whether one did: a list reuses this component for
   // other people as it scrolls, and a failure must not follow the row.
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
-  const shape = { width: px, height: px, borderRadius: px / 2, overflow: 'hidden' as const };
+  const frame = {
+    width: px,
+    height: px,
+    borderRadius: shape === 'rounded' ? Math.round(px * 0.28) : px / 2,
+    borderCurve: 'continuous' as const,
+    overflow: 'hidden' as const,
+  };
 
   if (photo && failedPhoto !== photo) {
     return (
-      <View accessible={false} style={shape}>
+      <View accessible={false} style={frame}>
         <Image
           source={{ uri: photo }}
           recyclingKey={photo}
@@ -62,7 +71,7 @@ export function Avatar({
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={{ ...shape, alignItems: 'center', justifyContent: 'center', backgroundColor: hueFor(seed || name) }}
+      style={{ ...frame, alignItems: 'center', justifyContent: 'center', backgroundColor: hueFor(seed || name) }}
     >
       <Text weight="bold" variant={size === 'lg' ? 'title' : 'small'} style={{ color: '#FFFFFF' }}>
         {Array.from(name.trim())[0] ?? '?'}

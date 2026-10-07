@@ -10,8 +10,8 @@ import { LOGO_MARK, Wordmark } from '~/components/brand/brand-logo';
 import { Appear } from '~/components/motion/appear';
 import { Float } from '~/components/motion/float';
 import { Button } from '~/components/ui/button';
-import { ForwardChevron } from '~/components/ui/icons';
-import { Banknote, Clock, MessageCircle, type LucideProps } from '~/components/ui/lucide';
+import { ForwardChevron, SignInMark } from '~/components/ui/icons';
+import { Banknote, Clock, MessageCircle, UserRoundPlus, type LucideProps } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
 import { welcomeDrawn } from '~/features/welcome';
@@ -161,11 +161,22 @@ export default function WelcomeScreen() {
           paddingBottom: insets.bottom + space[4],
         }}
       >
-        <Button label={t('nav.signUp')} size="lg" onPress={() => router.push('/sign-up')} />
+        <Button
+          label={t('nav.signUp')}
+          size="lg"
+          icon={<UserRoundPlus size={20} color={colors.primaryForeground} />}
+          onPress={() => router.push('/sign-up')}
+        />
         {compact ? (
           <AuthSwitch question={t('auth.hasAccount')} action={t('nav.signIn')} onPress={() => router.push('/sign-in')} />
         ) : (
-          <Button label={t('nav.signIn')} variant="outline" size="lg" onPress={() => router.push('/sign-in')} />
+          <Button
+            label={t('nav.signIn')}
+            variant="outline"
+            size="lg"
+            icon={<SignInMark size={20} color={colors.foreground} />}
+            onPress={() => router.push('/sign-in')}
+          />
         )}
         <Text variant="small" tone="mutedForeground" style={[styles.centred, { paddingTop: space[1] }]}>
           {`${t('app.welcome.employer')} `}

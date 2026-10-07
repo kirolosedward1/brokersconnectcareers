@@ -485,23 +485,26 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
         </Text>
       </Appear>
 
+      {/* Read from the right as Arabic is: the labels a column at the start,
+          each value beside its own, starting where the others do — not
+          pushed to the far edge, where it read as a left-to-right table. */}
       <Card style={{ padding: 0 }}>
         {rows.map(([label, value], index) => (
           <View
             key={label}
             style={{
               flexDirection: 'row',
-              justifyContent: 'space-between',
+              alignItems: 'flex-start',
               gap: space[4],
               padding: space[4],
               borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
               borderTopColor: colors.border,
             }}
           >
-            <Text variant="small" tone="mutedForeground">
+            <Text variant="small" tone="mutedForeground" style={{ width: 112 }}>
               {label}
             </Text>
-            <Text variant="small" weight="medium" style={{ flexShrink: 1, textAlign: 'right' }}>
+            <Text variant="small" weight="medium" style={{ flex: 1 }}>
               {value}
             </Text>
           </View>

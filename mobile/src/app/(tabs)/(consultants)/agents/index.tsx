@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import type { SearchBarCommands } from 'react-native-screens';
 import { SearchX, ShieldCheck, SlidersHorizontal, UserRoundCheck } from '~/components/ui/lucide';
 import { EMPTY_AGENT_FILTERS, parseAgentFilters, type AgentFilters } from '@/lib/agent-filters';
 import { formatNumber } from '@/lib/format';
 import { canBrowseAgentDirectory, canShortlistAgents, hasVerifiedCompany, isAdmin } from '@/lib/permissions';
+import type { AgentCardRow } from '@/lib/supabase/database.types';
 import { AgentCard } from '~/components/directory/agent-card';
 import { DirectoryClosed } from '~/components/directory/directory-closed';
 import { DirectoryFilterSheet } from '~/components/directory/directory-filter-sheet';
@@ -29,6 +30,7 @@ import {
 import { flattenAgents, useAgentDirectory, useShortlistedIds } from '~/features/directory/queries';
 import { useCompanyPage } from '~/features/employer/company';
 import { useDistricts } from '~/features/taxonomy';
+import { useTabList } from '~/features/tab-bar';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useVisited } from '~/lib/use-visited';
@@ -63,6 +65,7 @@ export default function DirectoryScreen() {
   const directory = useAgentDirectory(filters, { enabled: visited });
   const nextPage = useNextPage(directory);
   const pull = usePullRefresh(() => directory.refetch());
+  const list = useTabList<FlashListRef<AgentCardRow>>();
   // Without the consultants hidden on this phone (hidden-agents.ts).
   const hiddenAgents = useHiddenAgents();
   const read = useMemo(() => flattenAgents(directory.data?.pages), [directory.data]);
@@ -146,6 +149,7 @@ export default function DirectoryScreen() {
       {header}
       {sheet}
       <FlashList
+        {...list}
         data={agents}
         keyExtractor={(agent) => agent.id}
         renderItem={({ item }) => (

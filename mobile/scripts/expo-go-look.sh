@@ -22,9 +22,9 @@
 # Each tab's title is looked for in its header's bar too, not only as its name
 # in the tab bar: iOS 26 left the tabs' large titles empty until the screen
 # was scrolled, then drew them mirrored, and the tabs now take the bar's own
-# title. And the board is scrolled down and back up, to read the tab bar
-# shrinking to the open tab and coming back (iOS 26), reported in the
-# annotations.
+# title. And the board is scrolled down and back up: scrolled down, the tab
+# bar grows smaller and its names go (src/components/navigation/tab-bar.tsx),
+# so none is read; scrolled back up, all four are read again.
 #
 # A screen that never shows what it should, a tab without its title, or a tab
 # bar laid out left to right, fails it.
@@ -198,7 +198,6 @@ in_header() {
 }
 
 # glance <shot> <what was done>: the screen as it is now, read and reported.
-# A tab bar whose names are not read there has shrunk to the open tab (iOS 26).
 glance() {
   sleep 2
   xcrun simctl io "$udid" screenshot "$out/$1.png" > /dev/null 2>&1 || true
@@ -214,6 +213,21 @@ skip() {
     { echo "Maestro could not answer the welcome:"; tail -n 15 "$out/maestro.log" | sed 's/^/    /'; }
 }
 
+# bar_names <shot>: how many of the signed-out tab bar's four names are read at
+# the foot of the screen.
+bar_names() {
+  python3 - "$out/$1.boxes" <<'PY'
+import re, sys
+names = {"الرئيسية", "الوظائف", "الشركات", "حسابي"}
+read = set()
+for raw in open(sys.argv[1], encoding="utf-8"):
+    m = re.match(r"y(-?\d+) x(-?\d+)-(-?\d+)  (.*)", raw.rstrip("\n"))
+    if m and int(m[1]) >= 85 and m[4].strip() in names:
+        read.add(m[4].strip())
+print(len(read))
+PY
+}
+
 # The first open, from the network: the case that came up left to right. A
 # launch with nobody signed in opens on the welcome; skipping it goes on to Home.
 open_app
@@ -224,9 +238,17 @@ open_app jobs
 see 3-jobs 'الفلاتر'
 in_header 3-jobs 'الوظائف'
 maestro --device "$udid" test "$flows/expo-go-scroll-down.yaml" >> "$out/maestro.log" 2>&1 || true
-glance 3b-jobs-scrolled-down 'scrolled down: the bar shrinks, its names unread'
+glance 3b-jobs-scrolled-down 'scrolled down: the bar smaller, its names gone'
+if [ "$(bar_names 3b-jobs-scrolled-down)" != 0 ]; then
+  failed+=("3b-jobs-scrolled-down: the tab bar kept its names")
+  echo "::error title=Expo Go: 3b-jobs-scrolled-down::the tab bar's names are still read after scrolling down"
+fi
 maestro --device "$udid" test "$flows/expo-go-scroll-up.yaml" >> "$out/maestro.log" 2>&1 || true
-glance 3c-jobs-scrolled-up 'scrolled back up: the bar is back, names and all'
+glance 3c-jobs-scrolled-up 'scrolled back up: the bar whole again, names and all'
+if [ "$(bar_names 3c-jobs-scrolled-up)" != 4 ]; then
+  failed+=("3c-jobs-scrolled-up: the tab bar's names did not come back")
+  echo "::error title=Expo Go: 3c-jobs-scrolled-up::not all four of the tab bar's names are read after scrolling back up"
+fi
 open_app companies
 see 3d-companies 'الموثّقة بس'
 in_header 3d-companies 'شركات العقارات'

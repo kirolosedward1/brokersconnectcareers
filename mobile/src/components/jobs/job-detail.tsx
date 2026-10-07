@@ -24,6 +24,7 @@ import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { useAppliedJobIds } from '~/features/jobs/marks';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { callAction } from '~/lib/api';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
@@ -58,6 +59,7 @@ export function JobDetail({
   const tCompanies = useTranslations('companies');
   const tLanding = useTranslations('landing');
   const tApply = useTranslations('apply');
+  const shrink = useShrinkingTabBar();
   const { colors } = useTheme();
   const { session, viewer, actor } = useSession();
 
@@ -106,6 +108,7 @@ export function JobDetail({
         }}
       />
       <ScrollView
+        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}

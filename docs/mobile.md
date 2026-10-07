@@ -112,9 +112,10 @@ compare with (a new branch), it compares with the previous commit.
   The app says its own direction (`mobile/src/lib/direction.ts`) rather than
   rely on the one React Native fixes when the screen is created, which Expo Go
   sets too late: the root layout lays every view out in it, every navigator's
-  header and back gesture is told it (React Navigation's `LocaleDirContext`),
-  and so is the tab bar — iOS lays native bars out in the language the app runs
-  in, which is English on an iPhone set to English and in Expo Go. Text fields
+  header and back gesture is told it (React Navigation's `LocaleDirContext`).
+  The tab bar is the app's own, laid out like every other view: iOS lays its
+  native bars out in the language the app runs in, which is English on an
+  iPhone set to English and in Expo Go. Text fields
   are aligned to the physical edge (`TextField`): React Native mirrors
   `textAlign` for text it lays out, not for what is typed into a field.
 - **Design.** The brand set in a quieter key for the phone
@@ -157,9 +158,23 @@ compare with (a new branch), it compares with the previous commit.
   or badge.
 - **Navigation.** Routes mirror the website's paths. Each tab is a route group
   with its own stack, and listings, company pages and the bell's feed live in
-  a group all tabs share, so they open inside the tab the reader is in. On
-  iOS 26 the tab bar shrinks to the open tab as a list scrolls down and comes
-  back as it scrolls up (`minimizeBehavior`). No screen has iOS's large title:
+  a group all tabs share, so they open inside the tab the reader is in. The
+  tab bar is the app's own (`mobile/src/components/navigation/tab-bar.tsx`), a
+  capsule floating at the foot of the screen with every tab the reader has,
+  each an icon over its name. As a list scrolls down it grows smaller and the
+  names go, every tab kept, the way Instagram's does; scrolling back up,
+  reaching the top, or another screen coming into view brings it back whole
+  (`useTabList` and `useShrinkingTabBar` in `mobile/src/features/tab-bar.ts`,
+  on each tab's list and the pages opened inside a tab). iOS 26's own bar
+  shrinks to the open tab alone instead. Pressing the open tab again goes back
+  to its first screen, then to the top of that screen's list. Its band is part
+  of the layout, so screens end above it and need no room made under their
+  last line. The Account tab shows the reader's own photo once they have put
+  one on their account. Home has a header of its own
+  (`mobile/src/components/home/home-frame.tsx`), slimmer than iOS's: the logo
+  at its start (in Arabic, the right) and the bell at its end; it slides away
+  under the status bar as the list scrolls down and comes back as it scrolls
+  up, on the tab bar's signal. No screen has iOS's large title:
   on iOS 26 one under a painted bar is not drawn until the screen is
   scrolled, and on a clear bar it is drawn mirrored at the left edge wherever
   iOS runs left to right (Expo Go, an iPhone not set to Arabic) under the bar

@@ -19,6 +19,7 @@ import { Button } from '~/components/ui/button';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { useEmployerSummary, useEmployerTrend } from '~/features/employer/overview';
+import { useTabList } from '~/features/tab-bar';
 import { noAnswer } from '~/lib/api';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
@@ -64,6 +65,7 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
       queryClient.invalidateQueries({ queryKey: ['appeal'] }),
     ]),
   );
+  const list = useTabList();
 
   const header = <Hero compact title={t('dashboard.overview')} subtitle={t('dashboard.employerLede')} />;
   const standing = profile ? <StandingNotice profile={profile} company={company} /> : null;
@@ -208,6 +210,7 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
 
   return (
     <ScrollView
+      {...list}
       contentInsetAdjustmentBehavior="automatic"
       // An appeal is typed on Home: its Send takes the first tap, and the field is lifted above the keyboard.
       keyboardShouldPersistTaps="handled"

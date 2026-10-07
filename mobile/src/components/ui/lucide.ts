@@ -3,7 +3,7 @@
  *
  * `lucide-react-native`'s index requires every one of its 1,854 icons as it
  * loads — about 2 MB of the bundle and 20 to 30 ms before the first frame on
- * a phone — for the 92 used here. One module per icon loads only those. Add
+ * a phone — for the 96 used here. One module per icon loads only those. Add
  * an icon here, from `lucide-react-native/icons/<its-file-name>`, and import
  * it from this file.
  */
@@ -37,6 +37,8 @@ export { default as CircleDashed } from 'lucide-react-native/icons/circle-dashed
 export { default as CircleDot } from 'lucide-react-native/icons/circle-dot';
 export { default as CirclePause } from 'lucide-react-native/icons/circle-pause';
 export { default as CircleSlash } from 'lucide-react-native/icons/circle-slash';
+export { default as CircleUserRound } from 'lucide-react-native/icons/circle-user-round';
+export { default as ClipboardList } from 'lucide-react-native/icons/clipboard-list';
 export { default as Clock } from 'lucide-react-native/icons/clock';
 export { default as CloudOff } from 'lucide-react-native/icons/cloud-off';
 export { default as Compass } from 'lucide-react-native/icons/compass';
@@ -53,12 +55,14 @@ export { default as Gift } from 'lucide-react-native/icons/gift';
 export { default as Globe } from 'lucide-react-native/icons/globe';
 export { default as GraduationCap } from 'lucide-react-native/icons/graduation-cap';
 export { default as HandCoins } from 'lucide-react-native/icons/hand-coins';
+export { default as House } from 'lucide-react-native/icons/house';
 export { default as ImageUp } from 'lucide-react-native/icons/image-up';
 export { default as Inbox } from 'lucide-react-native/icons/inbox';
 export { default as Info } from 'lucide-react-native/icons/info';
 export { default as KeyRound } from 'lucide-react-native/icons/key-round';
 export { default as LifeBuoy } from 'lucide-react-native/icons/life-buoy';
 export { default as Lock } from 'lucide-react-native/icons/lock';
+export { default as LogIn } from 'lucide-react-native/icons/log-in';
 export { default as LogOut } from 'lucide-react-native/icons/log-out';
 export { default as Mail } from 'lucide-react-native/icons/mail';
 export { default as MailCheck } from 'lucide-react-native/icons/mail-check';

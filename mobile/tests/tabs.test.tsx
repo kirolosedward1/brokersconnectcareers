@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Platform, Text } from 'react-native';
+import { Text } from 'react-native';
 import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -19,11 +19,11 @@ import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } f
 import { fakeServer } from './server';
 
 /*
-  The app's own tab bar — NativeTabs, not the JavaScript stand-in the routing
-  tests use — which draws the first screen of every tab at launch, out of
-  sight, and draws them all again whenever the set of tabs changes. What a
-  hidden tab may do at launch, and what survives an approval arriving while
-  the app is open.
+  The app's own tabs layout — not the stand-in the routing tests use — whose
+  set of tabs follows the person, and whose tabs' screens are all drawn again
+  whenever that set changes. What a tab nobody has opened may do at launch,
+  and what survives an approval arriving while the app is open. The bar
+  itself is tests/tab-bar.test.tsx.
 */
 
 jest.mock('~/lib/session-storage', () => {
@@ -204,30 +204,5 @@ describe('an approval that arrives while the app is open', () => {
     act(() => router.navigate('/agents'));
     await waitFor(() => expect(server.asked('/api/mobile/v1/agents').length).toBeGreaterThan(0));
     expect(screen.queryByText(ar.agents.title)).toBeNull();
-  });
-});
-
-describe('the tab bar', () => {
-  const version = Object.getOwnPropertyDescriptor(Platform, 'Version');
-  afterEach(() => {
-    if (version) Object.defineProperty(Platform, 'Version', version);
-  });
-
-  /** How the tab bar is told to shrink, on the iOS given. */
-  async function minimizeOn(ios: string) {
-    Object.defineProperty(Platform, 'Version', { configurable: true, get: () => ios });
-    renderRouter(app, { initialUrl: '/' });
-    expect(await screen.findByText('home-screen')).toBeTruthy();
-    const bars = screen.UNSAFE_root.findAll((node) => node.type === ('RNSTabsHostIOS' as unknown as typeof node.type));
-    expect(bars.length).toBeGreaterThan(0);
-    return bars[0].props.tabBarMinimizeBehavior;
-  }
-
-  it('shrinks to the open tab as a list scrolls down, and comes back as it scrolls up, on iOS 26', async () => {
-    expect(await minimizeOn('26.0')).toBe('onScrollDown');
-  });
-
-  it('is left as it was before iOS 26, which has no such bar and would warn', async () => {
-    expect(await minimizeOn('18.6')).toBeUndefined();
   });
 });

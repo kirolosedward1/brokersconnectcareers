@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Trash2,
   UserRound,
+  UserRoundPlus,
 } from '~/components/ui/lucide';
 import { OPERATOR } from '@/lib/business';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
@@ -28,7 +29,7 @@ import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Avatar } from '~/components/ui/avatar';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
-import { ForwardChevron, SignOutMark } from '~/components/ui/icons';
+import { ForwardChevron, SignInMark, SignOutMark } from '~/components/ui/icons';
 import { Segmented } from '~/components/ui/segmented';
 import { LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
@@ -37,6 +38,7 @@ import { useMobileConfig } from '~/features/config';
 import { useHiddenAgentEntries } from '~/features/moderation/hidden-agents';
 import { useHiddenCompanyEntries } from '~/features/moderation/hidden-companies';
 import { signOutHere } from '~/features/push/device';
+import { useTabList } from '~/features/tab-bar';
 import { publishedAt, shownVersion } from '~/features/update';
 import { ApiError } from '~/lib/api';
 import { env } from '~/lib/env';
@@ -68,6 +70,7 @@ export default function AccountScreen() {
   // operator's published address when no support inbox is set.
   const supportEmail = config.data?.supportEmail || OPERATOR.email;
   const [exporting, setExporting] = useState(false);
+  const list = useTabList();
   const [signingOut, setSigningOut] = useState(false);
   const version = shownVersion() ?? '';
   const published = publishedAt();
@@ -102,6 +105,7 @@ export default function AccountScreen() {
     <>
       <Stack.Screen options={{ title: t('app.tabs.account'), headerRight: bell }} />
       <ScrollView
+        {...list}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
       >
@@ -155,11 +159,23 @@ export default function AccountScreen() {
               </Text>
               <Text tone="mutedForeground">{t('app.account.signedOutBody')}</Text>
             </View>
-            <Button label={t('nav.signIn')} size="lg" onPress={() => router.push('/sign-in')} />
-            <Button label={t('nav.signUp')} variant="outline" size="lg" onPress={() => router.push('/sign-up')} />
+            <Button
+              label={t('nav.signIn')}
+              size="lg"
+              icon={<SignInMark size={20} color={colors.primaryForeground} />}
+              onPress={() => router.push('/sign-in')}
+            />
+            <Button
+              label={t('nav.signUp')}
+              variant="outline"
+              size="lg"
+              icon={<UserRoundPlus size={20} color={colors.foreground} />}
+              onPress={() => router.push('/sign-up')}
+            />
             <Button
               label={t('app.auth.forCompanies')}
               variant="ghost"
+              icon={<Building2 size={18} color={colors.foreground} />}
               onPress={() => router.push({ pathname: '/sign-up', params: { role: 'employer' } })}
             />
           </View>

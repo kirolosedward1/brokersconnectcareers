@@ -15,6 +15,7 @@ import { useBrowseCounts, useLanding } from '~/features/browse/queries';
 import { boardQuery, filtersToParams } from '~/features/jobs/filters';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useDistricts } from '~/features/taxonomy';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
@@ -41,6 +42,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const districts = useDistricts();
   const hasBoard = useHasBoard();
   const pull = usePullRefresh(() => Promise.all([landing.refetch(), board.refetch()]));
+  const shrink = useShrinkingTabBar();
 
   if (landing.isPending) return <LoadingState />;
   if (landing.isError && !landing.data) {
@@ -91,6 +93,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
     <>
       <Stack.Screen options={{ title: '' }} />
       <ScrollView
+        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />

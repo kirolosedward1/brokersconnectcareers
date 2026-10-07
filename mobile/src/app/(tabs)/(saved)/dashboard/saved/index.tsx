@@ -11,6 +11,7 @@ import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAppliedJobIds } from '~/features/jobs/marks';
 import { useSavedJobs, useSavedSearches } from '~/features/saved/queries';
+import { useTabList } from '~/features/tab-bar';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
@@ -35,6 +36,7 @@ export default function SavedScreen() {
   const jobs = useSavedJobs();
   const searches = useSavedSearches();
   const pull = usePullRefresh(() => Promise.all([jobs.refetch(), searches.refetch()]));
+  const list = useTabList();
 
   const saved = useMemo(() => jobs.data ?? [], [jobs.data]);
   const applied = useAppliedJobIds(useMemo(() => saved.map((job) => job.id), [saved]));
@@ -65,6 +67,7 @@ export default function SavedScreen() {
   } else {
     body = (
       <ScrollView
+        {...list}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[8] }}
         refreshControl={

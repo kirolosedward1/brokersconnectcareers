@@ -194,4 +194,6 @@ export const motion = {
   stagger: 70,
   step: 320,
   fade: 200,
+  /** The tab bar and Home's header stepping aside as a list scrolls down, and back. */
+  bars: 260,
 } as const;

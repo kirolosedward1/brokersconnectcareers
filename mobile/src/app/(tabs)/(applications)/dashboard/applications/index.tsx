@@ -18,6 +18,7 @@ import {
   useWithdrawApplication,
   type CandidateApplication,
 } from '~/features/applications/queries';
+import { useTabList } from '~/features/tab-bar';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
@@ -36,6 +37,7 @@ export default function ApplicationsScreen() {
   const applications = useMyApplications();
   // A push about a move reads the list again; the spinner is the pull's alone.
   const pull = usePullRefresh(() => applications.refetch());
+  const list = useTabList();
 
   let body: React.ReactNode;
   if (!session) {
@@ -55,6 +57,7 @@ export default function ApplicationsScreen() {
     const rows = applications.data.filter((application) => application.job);
     body = (
       <ScrollView
+        {...list}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
         refreshControl={

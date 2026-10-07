@@ -27,6 +27,7 @@ import {
   useInboxListings,
   useMarkSeen,
 } from '~/features/employer/applicants';
+import { useTabList } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useSession } from '~/lib/session';
@@ -64,6 +65,7 @@ export default function InboxScreen() {
   const [q, setQ] = useState(filters.q);
   // A new applicant, a colleague's move or their new listing reaches the inbox with a pull.
   const pull = usePullRefresh(() => Promise.all([inbox.refetch(), rows?.length ? notes.refetch() : null, listings.refetch()]));
+  const list = useTabList();
 
   const header = (
     <Stack.Screen options={{ title: t('employer.allApplicants'), headerRight: bell }} />
@@ -90,6 +92,7 @@ export default function InboxScreen() {
   } else {
     body = (
       <ScrollView
+        {...list}
         contentInsetAdjustmentBehavior="automatic"
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"

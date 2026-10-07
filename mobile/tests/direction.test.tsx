@@ -4,6 +4,7 @@ import { render } from '@testing-library/react-native';
 import { renderRouter, screen } from 'expo-router/testing-library';
 import { TextField } from '~/components/ui/text-field';
 import { resetWelcomeForTests } from '~/features/welcome';
+import { catalogues } from '~/i18n/provider';
 import { appDirection } from '~/lib/direction';
 import { ThemeProvider } from '~/theme/provider';
 import * as RootLayout from '../src/app/_layout';
@@ -82,10 +83,14 @@ it('lays every view out right to left, tells the headers and the tab bar, and ne
   // Every view under the root: React Native lays out and aligns text by the nearest direction set.
   expect(StyleSheet.flatten(screen.getByTestId('app-direction').props.style).direction).toBe('rtl');
 
-  // The tab bar: iOS would lay it out in the language the app runs in.
-  const tabs = hosts('RNSTabsHostIOS');
-  expect(tabs.length).toBeGreaterThan(0);
-  expect(tabs[0].props.layoutDirection).toBe('rtl');
+  // The tab bar is the app's own, laid out as every view is — Home first, so
+  // at the right — with nothing on the way to it turning it left to right
+  // (iOS's own laid itself out in the language the app runs in).
+  expect(screen.getAllByRole('tab')[0].props.accessibilityLabel).toBe(catalogues.ar.app.tabs.home);
+  for (let node = screen.getByTestId('tab-bar'); node; node = node.parent as typeof node) {
+    const style = typeof node.props.style === 'function' ? undefined : StyleSheet.flatten(node.props.style);
+    expect(style?.direction).not.toBe('ltr');
+  }
 
   // The headers and their back gestures: the native stack's own direction.
   const headers = hosts('RNSScreenStackHeaderConfig');

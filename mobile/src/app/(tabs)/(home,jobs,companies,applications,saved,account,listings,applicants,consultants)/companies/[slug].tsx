@@ -14,6 +14,7 @@ import { Button } from '~/components/ui/button';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useCompany } from '~/features/companies/queries';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
 import { useHasBoard } from '~/lib/use-tabs';
@@ -36,6 +37,7 @@ export default function CompanyScreen() {
   const page = useCompany(slug);
   const pull = usePullRefresh(() => page.refetch());
   const hasBoard = useHasBoard();
+  const shrink = useShrinkingTabBar();
 
   if (page.isPending) {
     return (
@@ -70,6 +72,7 @@ export default function CompanyScreen() {
     <>
       <Stack.Screen options={{ title: '' }} />
       <ScrollView
+        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}

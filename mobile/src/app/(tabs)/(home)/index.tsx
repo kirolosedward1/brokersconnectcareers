@@ -5,12 +5,11 @@ import { useLocale, useTranslations } from 'use-intl';
 import { Briefcase, Building2, Check, Search } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
-import { BrandLogo } from '~/components/brand/brand-logo';
 import { CandidateHome } from '~/components/home/candidate-home';
 import { EmployerHome } from '~/components/home/employer-home';
+import { HomeFrame } from '~/components/home/home-frame';
 import { Hero } from '~/components/home/hero';
 import { JobBrowse } from '~/components/home/job-browse';
-import { useHeaderBell } from '~/components/notifications/header-bell';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
@@ -22,6 +21,7 @@ import { useBrowseCounts } from '~/features/browse/queries';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { useDistricts } from '~/features/taxonomy';
+import { useTabList } from '~/features/tab-bar';
 import { inOwnTab } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { tabsFor } from '~/lib/tabs';
@@ -48,19 +48,20 @@ import { usePullRefresh } from '~/lib/use-pull-refresh';
  */
 export default function HomeScreen() {
   const t = useTranslations();
-  const bell = useHeaderBell();
   const { viewer, actor } = useSession();
   return (
     <>
-      {/* The website's logo for a title, as its header has it: the name stays the title for Back and VoiceOver. */}
-      <Stack.Screen options={{ title: t('meta.siteName'), headerTitle: () => <BrandLogo />, headerRight: bell }} />
-      {canAccessEmployerArea(actor) ? (
-        <EmployerHome profile={viewer?.profile ?? null} company={viewer?.company ?? null} />
-      ) : canAccessCandidateArea(actor) ? (
-        <CandidateHome profile={viewer?.profile ?? null} />
-      ) : (
-        <MarketHome />
-      )}
+      {/* Its own header (HomeFrame), not the stack's: the name stays the title for Back and VoiceOver. */}
+      <Stack.Screen options={{ title: t('meta.siteName'), headerShown: false }} />
+      <HomeFrame>
+        {canAccessEmployerArea(actor) ? (
+          <EmployerHome profile={viewer?.profile ?? null} company={viewer?.company ?? null} />
+        ) : canAccessCandidateArea(actor) ? (
+          <CandidateHome profile={viewer?.profile ?? null} />
+        ) : (
+          <MarketHome />
+        )}
+      </HomeFrame>
     </>
   );
 }
@@ -76,6 +77,7 @@ function MarketHome() {
   const counts = useBrowseCounts();
   // The spinner is the reader's pull, not a re-read on coming back to the app.
   const pull = usePullRefresh(() => Promise.all([board.refetch(), counts.refetch()]));
+  const list = useTabList();
   const districts = useDistricts();
 
   const jobs = withoutHidden(flattenBoard(board.data?.pages), useHiddenCompanies()).slice(0, 20);
@@ -92,6 +94,7 @@ function MarketHome() {
 
   return (
     <ScrollView
+      {...list}
       contentInsetAdjustmentBehavior="automatic"
       // The search sits in the top half: on a small phone the keyboard would cover it without this.
       automaticallyAdjustKeyboardInsets
