@@ -20,6 +20,13 @@ it("is the website's own mark, byte for byte", () => {
   expect(app('logo-mark.png').equals(site('logo-mark.png'))).toBe(true);
 });
 
+/* The welcome's photograph is the website's hero, the same file: a new one on the website fails this until the app has it too. */
+it("opens on the website's own hero photograph, byte for byte", () => {
+  const welcome = readFileSync(join(__dirname, '..', 'assets', 'images', 'welcome-photo.jpg'));
+  const hero = readFileSync(join(__dirname, '..', '..', 'public', 'media', 'hero-poster.jpg'));
+  expect(welcome.equals(hero)).toBe(true);
+});
+
 /*
   The lockup (public/brand/logo-ar.png) comes in two parts, its wordmark and
   its mark, cut at the gap between them so the wordmark alone can take the

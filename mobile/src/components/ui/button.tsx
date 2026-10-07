@@ -5,7 +5,7 @@ import { corner, hitTarget, space } from '~/theme/tokens';
 import { PressableScale } from './pressable-scale';
 import { Text } from './text';
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'champagne';
+type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'champagne' | 'glass';
 
 type Props = Omit<PressableProps, 'children'> & {
   label: string;
@@ -17,12 +17,20 @@ type Props = Omit<PressableProps, 'children'> & {
   maxFontSizeMultiplier?: number;
 };
 
+/** White over a dark picture, as much of it as lets the picture through: a control's fill, pressed, and edge. */
+export const GLASS = {
+  fill: 'rgba(255, 255, 255, 0.14)',
+  pressed: 'rgba(255, 255, 255, 0.26)',
+  edge: 'rgba(255, 255, 255, 0.32)',
+} as const;
+
 /**
  * A capsule, never smaller than a finger: 48 points by default, 56 for the
  * one thing a screen is for, 36 (with slop to 44) beside other controls.
  * Primary is ink-blue in light and champagne in dark; champagne is champagne
  * in both, for the one action on the deep hero panel; outline is a quiet
- * surface with a hairline; ghost is the label alone.
+ * surface with a hairline; ghost is the label alone; glass is see-through,
+ * white on a hairline, for beside it over a photograph or the hero.
  */
 export function Button({
   label,
@@ -45,6 +53,7 @@ export function Button({
     ghost: { background: 'transparent', pressed: colors.muted, text: colors.foreground, border: 'transparent' },
     destructive: { background: colors.destructive, pressed: colors.destructive, text: colors.destructiveForeground, border: 'transparent' },
     champagne: { background: colors.champagne, pressed: colors.champagnePressed, text: colors.champagneForeground, border: 'transparent' },
+    glass: { background: GLASS.fill, pressed: GLASS.pressed, text: colors.onHero, border: GLASS.edge },
   }[variant];
 
   const inactive = disabled || loading;
@@ -64,7 +73,7 @@ export function Button({
           minHeight: height,
           paddingHorizontal: size === 'sm' ? space[4] : space[5],
           ...corner('full'),
-          borderWidth: variant === 'outline' ? StyleSheet.hairlineWidth * 2 : 0,
+          borderWidth: variant === 'outline' || variant === 'glass' ? StyleSheet.hairlineWidth * 2 : 0,
           borderColor: fill.border,
           backgroundColor: state.pressed ? fill.pressed : fill.background,
           alignItems: 'center',

@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
+import { useMemo, useState, type ComponentProps } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import { SearchX, SlidersHorizontal } from '~/components/ui/lucide';
-import type { SearchBarCommands } from 'react-native-screens';
 import {
   activeFilterList,
   countActiveFilters,
@@ -63,7 +62,6 @@ const SORTS: JobSort[] = ['newest', 'salary', 'seats'];
 export default function BoardScreen() {
   const t = useTranslations();
   const bell = useHeaderBell();
-  const { colors } = useTheme();
   const raw = useLocalSearchParams();
   const filters = useMemo(() => parseJobFilters(raw as SearchParams), [raw]);
   const query = boardQuery(filters);
@@ -85,35 +83,9 @@ export default function BoardScreen() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const openFilters = () => setSheetOpen(true);
 
-  // The header's search field follows the filter, whichever way it changed:
-  // typed here, carried in a link, or dropped with its chip.
-  const searchBar = useRef<SearchBarCommands>(null);
-  useEffect(() => {
-    searchBar.current?.setText(filters.q);
-  }, [filters.q]);
-  const clearSearch = () => {
-    if (filters.q) apply({ ...filters, q: '' });
-  };
-
-  const header = (
-    <Stack.Screen
-      options={{
-        title: t('jobs.title'),
-        headerRight: bell,
-        headerSearchBarOptions: {
-          ref: searchBar,
-          placeholder: t('filters.searchPlaceholder'),
-          hideWhenScrolling: false,
-          autoCapitalize: 'none',
-          tintColor: colors.primary,
-          onSearchButtonPress: (event) => apply({ ...filters, q: event.nativeEvent.text.trim().slice(0, 120) }),
-          // Leaving the search drops it: Cancel on iOS, the field's close on Android.
-          onCancelButtonPress: clearSearch,
-          onClose: clearSearch,
-        },
-      }}
-    />
-  );
+  // No search bar over the board: the words are searched from the filter
+  // sheet, as on the website's panel, and shown as a chip like any filter.
+  const header = <Stack.Screen options={{ title: t('jobs.title'), headerRight: bell }} />;
 
   const sheet = (
     <FilterSheet

@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale, useTranslations } from 'use-intl';
-import { X } from '~/components/ui/lucide';
+import { Search, X } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import type { JobFilters } from '@/lib/job-filters';
 import { localized } from '@/lib/locale';
@@ -20,6 +20,7 @@ import type { DistrictRow } from '@/lib/supabase/database.types';
 import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
 import { Text } from '~/components/ui/text';
+import { TextField } from '~/components/ui/text-field';
 import { boardQuery, clearSheetFilters, sheetFilterCount, toggled } from '~/features/jobs/filters';
 import { useBoardTotal } from '~/features/jobs/queries';
 import { useDistricts, useGovernorates } from '~/features/taxonomy';
@@ -29,10 +30,10 @@ import { gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * Every filter the website's /jobs panel has (src/components/jobs/job-filters.tsx),
- * in the same order and the same words: where the leads come from, a basic
- * salary and how much, the commission, when it was posted, the track, the kind
- * of company, experience, the contract, and the districts grouped by
- * governorate.
+ * in the same order and the same words: the words to search for, where the
+ * leads come from, a basic salary and how much, the commission, when it was
+ * posted, the track, the kind of company, experience, the contract, and the
+ * districts grouped by governorate.
  *
  * On the website each tick reloads the board beside the panel. Here the board
  * is under the sheet, so the choices are kept as a draft and the button says
@@ -52,31 +53,64 @@ export function FilterSheet({
 }) {
   const t = useTranslations();
   const locale = useLocale();
+  const { colors } = useTheme();
   const [draft, setDraft] = useState(filters);
+  // The words as they are typed; counted once the typing stops, not per letter.
+  const [words, setWords] = useState(filters.q);
   const [open, setOpen] = useState(visible);
 
   // Each time it opens, it starts from what the board is showing.
   if (visible !== open) {
     setOpen(visible);
-    if (visible) setDraft(filters);
+    if (visible) {
+      setDraft(filters);
+      setWords(filters.q);
+    }
   }
 
   const query = boardQuery(draft);
   const total = useBoardTotal(query, visible);
-  const count = sheetFilterCount(draft);
+  const typed = { ...draft, q: searchWords(words) };
+  const count = sheetFilterCount(typed);
 
   return (
     <FilterSheetFrame
       visible={visible}
       onClose={onClose}
-      onClear={count > 0 ? () => setDraft(clearSheetFilters(draft)) : null}
+      onClear={
+        count > 0
+          ? () => {
+              setWords('');
+              setDraft(clearSheetFilters(typed));
+            }
+          : null
+      }
       applyLabel={
         total.data === undefined
           ? t('filters.showResults')
           : t.markup('jobs.showResultsCount', { count: formatNumber(total.data, locale), ...markupTags })
       }
-      onApply={() => onApply(draft)}
+      // What is typed counts even if the keyboard is still up.
+      onApply={() => onApply(typed)}
     >
+      <View style={{ gap: space[2] }}>
+        <Text variant="small" weight="semibold" accessibilityRole="header">
+          {t('filters.search')}
+        </Text>
+        <TextField
+          value={words}
+          onChangeText={setWords}
+          onEndEditing={() => setDraft(typed)}
+          placeholder={t('filters.searchPlaceholder')}
+          accessibilityLabel={t('filters.search')}
+          returnKeyType="search"
+          enterKeyHint="search"
+          autoCapitalize="none"
+          autoCorrect={false}
+          leading={<Search size={18} color={colors.mutedForeground} />}
+        />
+      </View>
+
       <FilterGroup title={t('filters.leadsSource')}>
         {LEADS_SOURCES.map((value) => (
           <Chip
@@ -187,6 +221,11 @@ export function FilterSheet({
   );
 }
 
+/** The words as the board searches them: trimmed, and no longer than the website lets them be. */
+function searchWords(typed: string): string {
+  return typed.trim().slice(0, 120);
+}
+
 /**
  * The sheet itself, shared by the board and the consultant directory: a close
  * button, the title, "clear" when there is something to clear; the groups;
@@ -246,7 +285,14 @@ export function FilterSheetFrame({
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: gutter, gap: space[6] }}>{children}</ScrollView>
+        {/* A choice tapped while the keyboard is up is taken at the first tap. */}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ padding: gutter, gap: space[6] }}
+        >
+          {children}
+        </ScrollView>
 
         <View
           style={{

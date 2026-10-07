@@ -272,10 +272,20 @@ describe('the Account tab', () => {
     expect(await screen.findByText(ar.app.licenses.intro)).toBeTruthy();
   });
 
-  it('shows the address to write to, not only a link to the mail app', async () => {
+  it('writes to the address without showing it, and tells it when no mail app can', async () => {
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    // Alert.alert is the suite's own stand-in (above).
+    jest.mocked(Alert.alert).mockClear();
     renderRouter(app, { initialUrl: '/account' });
-    expect(await screen.findByText('help@brokersconnect.net')).toBeTruthy();
-    expect(screen.getByRole('button', { name: new RegExp(ar.app.account.contact) })).toBeTruthy();
+    await press(ar.app.account.contact);
+    expect(open).toHaveBeenCalledWith('mailto:help@brokersconnect.net');
+    expect(screen.queryByText('help@brokersconnect.net')).toBeNull();
+    expect(Alert.alert).not.toHaveBeenCalled();
+
+    open.mockRejectedValue(new Error('no mail app'));
+    await press(ar.app.account.contact);
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.contact, 'help@brokersconnect.net'));
+    open.mockRestore();
   });
 
   it('says who is signed in, and signs out of this phone only', async () => {

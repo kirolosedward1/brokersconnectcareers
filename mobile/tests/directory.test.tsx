@@ -355,6 +355,95 @@ describe('the directory, for a company not verified yet', () => {
   });
 });
 
+describe('the search over the directory', () => {
+  it('searches the words typed, and the clear mark drops them', async () => {
+    renderRouter(app, { initialUrl: '/agents' });
+    await screen.findByText('منى علي');
+
+    // The app's own field (tests/search-field.test.tsx): iOS's search bar ran left to right on a phone set to English.
+    const field = screen.getByLabelText(ar.filters.search);
+    expect(field.props.placeholder).toBe(ar.agents.searchPlaceholder);
+    fireEvent.changeText(field, '  مدير مبيعات  ');
+    fireEvent(field, 'submitEditing');
+    await waitFor(() => expect(server.asked('/api/mobile/v1/agents').at(-1)?.url.searchParams.get('q')).toBe('مدير مبيعات'));
+    expect(await screen.findByRole('button', { name: ar.jobs.removeFilter.replace('{name}', '«مدير مبيعات»') })).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: ar.app.search.clear }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/agents').at(-1)?.url.searchParams.has('q')).toBe(false));
+    expect(screen.getByLabelText(ar.filters.search).props.value).toBe('');
+    expect(screen.queryByRole('button', { name: ar.app.search.clear })).toBeNull();
+  });
+
+  it('shows the words a link carries, and empties once their chip is taken off', async () => {
+    renderRouter(app, { initialUrl: '/agents?q=ريسيل' });
+    await screen.findByText('منى علي');
+    expect(screen.getByLabelText(ar.filters.search).props.value).toBe('ريسيل');
+
+    fireEvent.press(screen.getByRole('button', { name: ar.jobs.removeFilter.replace('{name}', '«ريسيل»') }));
+    await waitFor(() => expect(screen.getByLabelText(ar.filters.search).props.value).toBe(''));
+  });
+});
+
+describe('the directory, for a company whose account is not approved yet', () => {
+  let navigate: jest.SpyInstance | null = null;
+  afterEach(() => {
+    navigate?.mockRestore();
+    navigate = null;
+  });
+
+  beforeEach(async () => {
+    me = { ...employerProfile, approval_status: 'pending' };
+    await rememberActor({
+      userId: USER_ID,
+      profile: { role: 'employer', approval_status: 'pending' },
+      company: { id: ownedCompany.id, verification_status: 'unverified' },
+    });
+  });
+
+  it("says the consultants open once the company is verified, and takes its admin to the papers", async () => {
+    company = { ...verified, verification_status: 'unverified' };
+    server.on('GET /rest/v1/company_members', () => [
+      { user_id: USER_ID, role: 'admin', created_at: '2026-09-01T10:00:00Z', profile: { full_name: 'أحمد سمير' } },
+    ]);
+    navigate = jest.spyOn(router, 'navigate').mockImplementation(() => {});
+    renderRouter(app, { initialUrl: '/agents' });
+
+    expect(await screen.findByText(ar.app.directory.verifyTitle)).toBeTruthy();
+    expect(screen.getByText(ar.app.directory.verifyBody)).toBeTruthy();
+    // Nothing asked of the directory, and nothing to search in it.
+    expect(server.asked('/api/mobile/v1/agents')).toHaveLength(0);
+    expect(screen.queryByLabelText(ar.filters.search)).toBeNull();
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.agents.lockedCta }));
+    expect(navigate).toHaveBeenCalledWith('/employer/company');
+    expect(screen.queryByText(ar.agents.lockedRecruiter)).toBeNull();
+  });
+
+  it('tells a recruiter who can verify the company, with no button of their own', async () => {
+    company = { ...verified, verification_status: 'unverified' };
+    renderRouter(app, { initialUrl: '/agents' });
+
+    expect(await screen.findByText(ar.app.directory.verifyTitle)).toBeTruthy();
+    expect(screen.getByText(ar.app.directory.verifyBody)).toBeTruthy();
+    expect(await screen.findByText(ar.agents.lockedRecruiter)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.agents.lockedCta })).toBeNull();
+  });
+
+  it('says a verified company opens it once the account is reviewed', async () => {
+    company = { ...verified };
+    await rememberActor({
+      userId: USER_ID,
+      profile: { role: 'employer', approval_status: 'pending' },
+      company: { id: ownedCompany.id, verification_status: 'verified' },
+    });
+    renderRouter(app, { initialUrl: '/agents' });
+
+    expect(await screen.findByText(ar.employer.pendingTitle)).toBeTruthy();
+    expect(screen.getByText(ar.app.directory.reviewing)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.agents.lockedCta })).toBeNull();
+  });
+});
+
 describe("a consultant's page", () => {
   it('shows the card and the CV the database lets this company see, and records that the company looked', async () => {
     renderRouter(app, { initialUrl: '/agents/mona-ali' });

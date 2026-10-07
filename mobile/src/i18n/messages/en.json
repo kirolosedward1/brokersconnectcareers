@@ -39,7 +39,9 @@
     "mfaNoApp": "No authenticator app on this phone opened it. Enter the key below in yours.",
     "mfaDisableConfirm": "Turn off two-step verification?",
     "mfaDisableBody": "Signing in will ask for your password only.",
-    "exportLimit": "You have downloaded a copy of your data several times today. Try again tomorrow."
+    "exportLimit": "You have downloaded a copy of your data several times today. Try again tomorrow.",
+    "notifications": "Notifications",
+    "messages": "Messages"
   },
   "jobs": {
     "loadMore": "Load more",
@@ -190,5 +192,13 @@
   },
   "companies": {
     "searchPlaceholder": "Search by company name"
+  },
+  "search": {
+    "clear": "Clear search"
+  },
+  "directory": {
+    "verifyTitle": "Verify your company to see the consultants",
+    "verifyBody": "You can't view the consultant directory until your company is verified with its official papers.",
+    "reviewing": "The directory opens for you as soon as we finish reviewing your account."
   }
 }

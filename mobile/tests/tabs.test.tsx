@@ -173,7 +173,7 @@ describe('a tab nobody has opened', () => {
 });
 
 describe('an approval that arrives while the app is open', () => {
-  it('leaves the tabs, and a listing half written, as they were; the directory says who it is for until then', async () => {
+  it('leaves the tabs, and a listing half written, as they were; the directory says it opens after the review', async () => {
     employer = { ...employer, approval_status: 'pending' };
     await rememberActor({
       userId: USER_ID,
@@ -185,7 +185,8 @@ describe('an approval that arrives while the app is open', () => {
     expect(await screen.findByText('draft-1')).toBeTruthy();
 
     act(() => router.navigate('/agents'));
-    expect(await screen.findByText(ar.agents.subtitle)).toBeTruthy();
+    // A verified company's account still under review (tests/directory.test.tsx has the rest).
+    expect(await screen.findByText(ar.app.directory.reviewing)).toBeTruthy();
     expect(server.asked('/api/mobile/v1/agents')).toHaveLength(0);
     act(() => router.navigate('/employer/jobs/new'));
 

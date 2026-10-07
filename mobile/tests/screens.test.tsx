@@ -256,15 +256,21 @@ describe('the board', () => {
     await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
   });
 
-  it('drops the words searched when the search is left, by Cancel on iOS or the close on Android', async () => {
-    for (const leave of ['onCancelButtonPress', 'onClose'] as const) {
-      const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?q=villa&track=primary' });
-      await screen.findByText(listing.title_ar);
-      const bar = screen.UNSAFE_root.find((node) => node.props.placeholder === 'مثال: استشاري عقاري' && Boolean(node.props[leave]));
-      act(() => bar.props[leave]({ nativeEvent: {} }));
-      await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
-      result.unmount();
-    }
+  it('has no search bar over it: the words are searched from the filter sheet, as on the website', async () => {
+    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?track=primary' });
+    await screen.findByText(listing.title_ar);
+    expect(screen.UNSAFE_root.findAll((node) => node.props.placeholder === ar.filters.searchPlaceholder)).toHaveLength(0);
+
+    fireEvent.press(screen.getByRole('button', { name: 'الفلاتر · 1' }));
+    const sheet = within(screen.UNSAFE_getByType(Modal));
+    const field = sheet.getByLabelText(ar.filters.search);
+    fireEvent.changeText(field, '  مدير مبيعات  ');
+    // Applied as typed, even with the keyboard still up.
+    fireEvent.press(sheet.getByRole('button', { name: /شوف النتائج/ }));
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'مدير مبيعات', track: 'primary' }));
+    // A chip like any filter's, which takes the words off again.
+    fireEvent.press(await screen.findByLabelText(ar.jobs.removeFilter.replace('{name}', '«مدير مبيعات»')));
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
   });
 
   it('offers the one filter to drop when nothing matches', async () => {
@@ -282,9 +288,9 @@ describe('the board', () => {
     const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?q=%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA' });
     await screen.findByText(listing.title_ar);
 
-    fireEvent.press(screen.getByRole('button', { name: 'الفلاتر' }));
-    // The groups, in the website's order and words.
-    for (const heading of ['مصدر العملاء', 'راتب أساسي', 'راتب أساسي من', 'نوع العمولة', 'تاريخ النشر', 'التخصص', 'نوع الشركة', 'سنوات الخبرة', 'نوع التعاقد', 'المنطقة']) {
+    fireEvent.press(screen.getByRole('button', { name: 'الفلاتر · 1' }));
+    // The words, then the groups, in the website's order and words.
+    for (const heading of ['بحث بالكلمات', 'مصدر العملاء', 'راتب أساسي', 'راتب أساسي من', 'نوع العمولة', 'تاريخ النشر', 'التخصص', 'نوع الشركة', 'سنوات الخبرة', 'نوع التعاقد', 'المنطقة']) {
       expect(await screen.findByRole('header', { name: heading })).toBeTruthy();
     }
 
@@ -298,7 +304,7 @@ describe('the board', () => {
     expect(await screen.findByRole('button', { name: 'شوف النتائج · ⁦7⁩' })).toBeTruthy();
 
     fireEvent.press(screen.getByRole('button', { name: 'شوف النتائج · ⁦7⁩' }));
-    // The words typed in the search bar are kept; the rest is the sheet's.
+    // The words the board was searched by are in the sheet's first field, and kept.
     await waitFor(() =>
       expect(result.getSearchParams()).toEqual({
         q: 'مبيعات',
@@ -310,16 +316,17 @@ describe('the board', () => {
     );
   });
 
-  it('clears what the sheet chose, and nothing else', async () => {
-    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?q=x&track=primary&pay=10000' });
+  it('clears what the sheet chose, the words with it, and nothing else', async () => {
+    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?q=x&track=primary&pay=10000&sort=salary' });
     await screen.findByText(listing.title_ar);
-    fireEvent.press(screen.getByRole('button', { name: 'الفلاتر · 2' }));
+    fireEvent.press(screen.getByRole('button', { name: 'الفلاتر · 3' }));
     // The sheet's own button, not the board's behind it.
     const sheet = within(screen.UNSAFE_getByType(Modal));
     fireEvent.press(sheet.getByRole('button', { name: 'امسح كل الفلاتر' }));
+    expect(sheet.getByLabelText(ar.filters.search).props.value).toBe('');
     // Pressable at once, whether or not the count has come back.
     fireEvent.press(sheet.getByRole('button', { name: /شوف النتائج/ }));
-    await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'x' }));
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ sort: 'salary' }));
   });
 
   it('re-sorts', async () => {
@@ -390,6 +397,24 @@ describe('companies', () => {
     renderRouter(app, { initialUrl: '/(companies)/companies' });
     expect(await screen.findByText('نايل بروكرز')).toBeTruthy();
     expect(screen.getByLabelText(/وظيفة مفتوحة واحدة/)).toBeTruthy();
+  });
+
+  it('searches them by name, and shows the words a link carries', async () => {
+    const result = renderRouter(app, { initialUrl: '/(companies)/companies?verified=1' });
+    await screen.findByText('نايل بروكرز');
+    const field = screen.getByLabelText(ar.filters.search);
+    expect(field.props.placeholder).toBe(ar.app.companies.searchPlaceholder);
+    fireEvent.changeText(field, ' نايل ');
+    fireEvent(field, 'submitEditing');
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'نايل', verified: '1' }));
+    // Its chip and the field's clear mark each take the words off.
+    fireEvent.press(screen.getByRole('button', { name: ar.app.search.clear }));
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ verified: '1' }));
+    result.unmount();
+
+    renderRouter(app, { initialUrl: '/(companies)/companies?q=%D9%86%D8%A7%D9%8A%D9%84' });
+    await screen.findByText('نايل بروكرز');
+    expect(screen.getByLabelText(ar.filters.search).props.value).toBe('نايل');
   });
 
   it("shows a company's page", async () => {

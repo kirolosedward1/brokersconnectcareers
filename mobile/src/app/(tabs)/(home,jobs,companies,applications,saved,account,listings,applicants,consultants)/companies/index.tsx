@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import type { SearchBarCommands } from 'react-native-screens';
 import { BadgeCheck, Briefcase, Building2, MapPin } from '~/components/ui/lucide';
 import type { CompanyListItem } from '@/lib/read-types';
 import { formatList, formatNumber } from '@/lib/format';
@@ -12,6 +11,7 @@ import { useHeaderBell } from '~/components/notifications/header-bell';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { Button } from '~/components/ui/button';
 import { PageFooter } from '~/components/ui/page-footer';
+import { SearchField } from '~/components/ui/search-field';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
 import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
@@ -69,37 +69,28 @@ export default function CompaniesScreen() {
     });
   };
 
-  const searchBar = useRef<SearchBarCommands>(null);
-  useEffect(() => {
-    searchBar.current?.setText(query.q);
-  }, [query.q]);
+  const header = <Stack.Screen options={{ title: t('companies.title'), headerRight: bell }} />;
 
-  const header = (
-    <Stack.Screen
-      options={{
-        title: t('companies.title'),
-        headerRight: bell,
-        headerSearchBarOptions: {
-          ref: searchBar,
-          // Not the title again, which now stands right above it.
-          placeholder: t('app.companies.searchPlaceholder'),
-          hideWhenScrolling: false,
-          autoCapitalize: 'none',
-          tintColor: colors.primary,
-          onSearchButtonPress: (event) => set({ q: event.nativeEvent.text.trim().slice(0, 120) }),
-          onCancelButtonPress: () => {
-            if (query.q) set({ q: '' });
-          },
-        },
-      }}
-    />
+  // The search, over whatever is below it, so the words stay in view while their answer comes.
+  const searched = (content: ReactNode) => (
+    <View style={{ flex: 1 }}>
+      <SearchField
+        value={query.q}
+        label={t('filters.search')}
+        // Not the title again, which stands right above it.
+        placeholder={t('app.companies.searchPlaceholder')}
+        onSearch={(q) => set({ q })}
+        style={{ marginHorizontal: gutter, marginTop: space[2], marginBottom: space[1] }}
+      />
+      {content}
+    </View>
   );
 
   if (directory.isPending) {
     return (
       <>
         {header}
-        <SkeletonList count={5} compact />
+        {searched(<SkeletonList count={5} compact />)}
       </>
     );
   }
@@ -108,7 +99,7 @@ export default function CompaniesScreen() {
     return (
       <>
         {header}
-        <ErrorState error={directory.error} onRetry={() => directory.refetch()} />
+        {searched(<ErrorState error={directory.error} onRetry={() => directory.refetch()} />)}
       </>
     );
   }
@@ -116,72 +107,74 @@ export default function CompaniesScreen() {
   return (
     <>
       {header}
-      <FlashList
-        {...list}
-        data={companies}
-        keyExtractor={(company) => company.id}
-        renderItem={({ item }) => <CompanyRow company={item} />}
-        ItemSeparatorComponent={Separator}
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardDismissMode="on-drag"
-        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
-        ListHeaderComponent={
-          <View style={{ gap: space[3], marginBottom: space[4] }}>
-            <Text variant="small" tone="mutedForeground">
-              {t('companies.lede')}
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
-              <Chip
-                label={t('filters.verifiedOnly')}
-                selected={query.verified}
-                icon={<BadgeCheck size={14} color={query.verified ? colors.primaryForeground : colors.gold} />}
-                onPress={() => set({ verified: !query.verified })}
-              />
-              {query.q ? (
+      {searched(
+        <FlashList
+          {...list}
+          data={companies}
+          keyExtractor={(company) => company.id}
+          renderItem={({ item }) => <CompanyRow company={item} />}
+          ItemSeparatorComponent={Separator}
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
+          ListHeaderComponent={
+            <View style={{ gap: space[3], marginBottom: space[4] }}>
+              <Text variant="small" tone="mutedForeground">
+                {t('companies.lede')}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
                 <Chip
-                  label={`«${query.q}»`}
-                  removable
-                  accessibilityLabel={t('jobs.removeFilter', { name: query.q })}
-                  onPress={() => set({ q: '' })}
+                  label={t('filters.verifiedOnly')}
+                  selected={query.verified}
+                  icon={<BadgeCheck size={14} color={query.verified ? colors.primaryForeground : colors.gold} />}
+                  onPress={() => set({ verified: !query.verified })}
                 />
-              ) : null}
-              {district ? (
-                <Chip
-                  label={localized(locale, district.name_ar, district.name_en)}
-                  removable
-                  accessibilityLabel={t('jobs.removeFilter', { name: localized(locale, district.name_ar, district.name_en) })}
-                  onPress={() => set({ district: null })}
-                />
+                {query.q ? (
+                  <Chip
+                    label={`«${query.q}»`}
+                    removable
+                    accessibilityLabel={t('jobs.removeFilter', { name: query.q })}
+                    onPress={() => set({ q: '' })}
+                  />
+                ) : null}
+                {district ? (
+                  <Chip
+                    label={localized(locale, district.name_ar, district.name_en)}
+                    removable
+                    accessibilityLabel={t('jobs.removeFilter', { name: localized(locale, district.name_ar, district.name_en) })}
+                    onPress={() => set({ district: null })}
+                  />
+                ) : null}
+              </View>
+              {companies.length ? (
+                <Text variant="caption" tone="mutedForeground">
+                  {t('jobs.resultsCount', { count: total })}
+                </Text>
               ) : null}
             </View>
-            {companies.length ? (
-              <Text variant="caption" tone="mutedForeground">
-                {t('jobs.resultsCount', { count: total })}
-              </Text>
-            ) : null}
-          </View>
-        }
-        ListEmptyComponent={
-          <EmptyState
-            title={t('companies.empty')}
-            icon={Building2}
-            action={
-              narrowed ? (
-                <Button
-                  label={t('jobs.clearFilters')}
-                  variant="outline"
-                  onPress={() => router.setParams({ q: undefined, district: undefined, verified: undefined })}
-                />
-              ) : undefined
-            }
-          />
-        }
-        ListFooterComponent={<PageFooter query={directory} />}
-        onEndReached={nextPage}
-        onEndReachedThreshold={0.5}
-        refreshing={pull.refreshing}
-        onRefresh={pull.onRefresh}
-      />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              title={t('companies.empty')}
+              icon={Building2}
+              action={
+                narrowed ? (
+                  <Button
+                    label={t('jobs.clearFilters')}
+                    variant="outline"
+                    onPress={() => router.setParams({ q: undefined, district: undefined, verified: undefined })}
+                  />
+                ) : undefined
+              }
+            />
+          }
+          ListFooterComponent={<PageFooter query={directory} />}
+          onEndReached={nextPage}
+          onEndReachedThreshold={0.5}
+          refreshing={pull.refreshing}
+          onRefresh={pull.onRefresh}
+        />,
+      )}
     </>
   );
 }

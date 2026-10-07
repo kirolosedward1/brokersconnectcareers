@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import type { SearchBarCommands } from 'react-native-screens';
 import { SearchX, ShieldCheck, SlidersHorizontal, UserRoundCheck } from '~/components/ui/lucide';
 import { EMPTY_AGENT_FILTERS, parseAgentFilters, type AgentFilters } from '@/lib/agent-filters';
 import { formatNumber } from '@/lib/format';
@@ -15,6 +14,7 @@ import { DirectoryFilterSheet } from '~/components/directory/directory-filter-sh
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
 import { PageFooter } from '~/components/ui/page-footer';
+import { SearchField } from '~/components/ui/search-field';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
 import { ForwardChevron } from '~/components/ui/icons';
@@ -55,7 +55,6 @@ import { totalShown } from '~/features/moderation/hidden-store';
 export default function DirectoryScreen() {
   const t = useTranslations();
   const bell = useHeaderBell();
-  const { colors } = useTheme();
   const { actor } = useSession();
   const raw = useLocalSearchParams();
   const filters = useMemo(() => parseAgentFilters(raw as Record<string, string | string[] | undefined>), [raw]);
@@ -77,30 +76,21 @@ export default function DirectoryScreen() {
   const apply = (next: AgentFilters) => router.setParams(agentFiltersToParams(next));
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // The header's search field follows the words, whichever way they changed.
-  const searchBar = useRef<SearchBarCommands>(null);
-  useEffect(() => {
-    searchBar.current?.setText(filters.q);
-  }, [filters.q]);
+  const header = <Stack.Screen options={{ title: t('nav.agents'), headerRight: bell }} />;
 
-  const header = (
-    <Stack.Screen
-      options={{
-        title: t('nav.agents'),
-        headerRight: bell,
-        headerSearchBarOptions: {
-          ref: searchBar,
-          placeholder: t('agents.searchPlaceholder'),
-          hideWhenScrolling: false,
-          autoCapitalize: 'none',
-          tintColor: colors.primary,
-          onSearchButtonPress: (event) => apply({ ...filters, q: event.nativeEvent.text.trim().slice(0, 120) }),
-          onCancelButtonPress: () => {
-            if (filters.q) apply({ ...filters, q: '' });
-          },
-        },
-      }}
-    />
+  // The search, over whatever is below it — the cards, or their loading and
+  // errors — so the words stay in view while their answer comes.
+  const searched = (content: ReactNode) => (
+    <View style={{ flex: 1 }}>
+      <SearchField
+        value={filters.q}
+        label={t('filters.search')}
+        placeholder={t('agents.searchPlaceholder')}
+        onSearch={(q) => apply({ ...filters, q })}
+        style={{ marginHorizontal: gutter, marginTop: space[2], marginBottom: space[1] }}
+      />
+      {content}
+    </View>
   );
 
   const sheet = (
@@ -130,7 +120,7 @@ export default function DirectoryScreen() {
       <>
         {header}
         {sheet}
-        <LoadingState />
+        {searched(<LoadingState />)}
       </>
     );
   }
@@ -139,7 +129,7 @@ export default function DirectoryScreen() {
     return (
       <>
         {header}
-        <ErrorState error={directory.error} onRetry={() => directory.refetch()} />
+        {searched(<ErrorState error={directory.error} onRetry={() => directory.refetch()} />)}
       </>
     );
   }
@@ -148,44 +138,46 @@ export default function DirectoryScreen() {
     <>
       {header}
       {sheet}
-      <FlashList
-        {...list}
-        data={agents}
-        keyExtractor={(agent) => agent.id}
-        renderItem={({ item }) => (
-          <AgentCard agent={item} districts={districtMap} shortlistable={canShortlist && item.is_unlocked} />
-        )}
-        ItemSeparatorComponent={Separator}
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardDismissMode="on-drag"
-        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
-        ListHeaderComponent={
-          <DirectoryHeader
-            filters={filters}
-            total={totalShown(directory.data?.pages[0]?.total ?? 0, read.length, agents.length)}
-            apply={apply}
-            onFilters={() => setSheetOpen(true)}
-          />
-        }
-        ListEmptyComponent={
-          activeFilterCount(filters) > 0 ? (
-            <EmptyState
-              icon={SearchX}
-              title={t('agents.empty')}
-              body={t('agents.emptyHint')}
-              action={<Button label={t('jobs.clearFilters')} variant="outline" onPress={() => apply(EMPTY_AGENT_FILTERS)} />}
+      {searched(
+        <FlashList
+          {...list}
+          data={agents}
+          keyExtractor={(agent) => agent.id}
+          renderItem={({ item }) => (
+            <AgentCard agent={item} districts={districtMap} shortlistable={canShortlist && item.is_unlocked} />
+          )}
+          ItemSeparatorComponent={Separator}
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
+          ListHeaderComponent={
+            <DirectoryHeader
+              filters={filters}
+              total={totalShown(directory.data?.pages[0]?.total ?? 0, read.length, agents.length)}
+              apply={apply}
+              onFilters={() => setSheetOpen(true)}
             />
-          ) : (
-            // Nothing narrows it: the directory itself has nobody to show yet.
-            <EmptyState icon={SearchX} title={t('agents.emptyDirectory')} body={t('agents.emptyDirectoryHint')} />
-          )
-        }
-        ListFooterComponent={<PageFooter query={directory} />}
-        onEndReached={nextPage}
-        onEndReachedThreshold={0.5}
-        refreshing={pull.refreshing}
-        onRefresh={pull.onRefresh}
-      />
+          }
+          ListEmptyComponent={
+            activeFilterCount(filters) > 0 ? (
+              <EmptyState
+                icon={SearchX}
+                title={t('agents.empty')}
+                body={t('agents.emptyHint')}
+                action={<Button label={t('jobs.clearFilters')} variant="outline" onPress={() => apply(EMPTY_AGENT_FILTERS)} />}
+              />
+            ) : (
+              // Nothing narrows it: the directory itself has nobody to show yet.
+              <EmptyState icon={SearchX} title={t('agents.emptyDirectory')} body={t('agents.emptyDirectoryHint')} />
+            )
+          }
+          ListFooterComponent={<PageFooter query={directory} />}
+          onEndReached={nextPage}
+          onEndReachedThreshold={0.5}
+          refreshing={pull.refreshing}
+          onRefresh={pull.onRefresh}
+        />,
+      )}
     </>
   );
 }

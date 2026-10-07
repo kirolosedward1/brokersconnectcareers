@@ -217,14 +217,15 @@ export default function AccountScreen() {
                 label={t('app.account.security')}
                 onPress={() => router.push('/account/security')}
               />
+              {/* One word each; the screens they open say the rest. */}
               <Row
                 icon={<BellRing size={18} color={colors.primary} />}
-                label={t('app.push.title')}
+                label={t('app.account.notifications')}
                 onPress={() => router.push('/account/alerts')}
               />
               <Row
                 icon={<MailCheck size={18} color={colors.primary} />}
-                label={t('account.emailsTitle')}
+                label={t('app.account.messages')}
                 onPress={() => router.push('/account/emails')}
               />
               <Row
@@ -249,10 +250,10 @@ export default function AccountScreen() {
             <Row
               icon={<Mail size={18} color={colors.primary} />}
               label={t('app.account.contact')}
-              // The address itself, not only a link to the mail app: a phone
-              // with no mail account set up opens nothing, and says nothing.
-              detail={supportEmail}
-              onPress={() => Linking.openURL(`mailto:${supportEmail}`).catch(() => {})}
+              // A phone with no mail app to write it opens nothing: it is told the address instead.
+              onPress={() =>
+                Linking.openURL(`mailto:${supportEmail}`).catch(() => Alert.alert(t('app.account.contact'), supportEmail))
+              }
             />
           ) : null}
           {session ? (
@@ -334,15 +335,12 @@ function openSitePage(path: '/privacy' | '/terms') {
 function Row({
   icon,
   label,
-  detail,
   onPress,
   destructive = false,
   busy = false,
 }: {
   icon: ReactNode;
   label: string;
-  /** A second line under the label, for what the row leads to (an address). */
-  detail?: string;
   onPress: () => void;
   destructive?: boolean;
   /** Its action is under way: said, and not started twice. */
@@ -389,14 +387,9 @@ function Row({
           borderTopColor: colors.border,
         }}
       >
-        <View style={{ flex: 1, paddingVertical: detail ? space[2] : 0 }}>
-          <Text tone={destructive ? 'destructive' : 'foreground'}>{label}</Text>
-          {detail ? (
-            <Text variant="small" tone="mutedForeground" selectable>
-              {detail}
-            </Text>
-          ) : null}
-        </View>
+        <Text tone={destructive ? 'destructive' : 'foreground'} style={{ flex: 1 }}>
+          {label}
+        </Text>
         {busy ? <ActivityIndicator color={colors.mutedForeground} /> : <ForwardChevron size={18} color={colors.mutedForeground} />}
       </View>
     </Pressable>

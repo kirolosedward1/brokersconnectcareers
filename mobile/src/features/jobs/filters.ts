@@ -57,24 +57,18 @@ export function filtersToParams(filters: JobFilters): BoardParams {
 }
 
 /**
- * What the filter sheet edits: every group the website's filter panel has.
- * Not the words (the search bar's), and not a company or a governorate, which
- * only a link sets — each has its own chip to take it off.
+ * What the filter sheet edits: the words and every group the website's filter
+ * panel has. Not a company or a governorate, which only a link sets — each has
+ * its own chip to take it off.
  */
 export function sheetFilterCount(filters: JobFilters): number {
-  return (
-    countActiveFilters(filters) -
-    (filters.q ? 1 : 0) -
-    (filters.companySlug ? 1 : 0) -
-    (filters.governorateSlug ? 1 : 0)
-  );
+  return countActiveFilters(filters) - (filters.companySlug ? 1 : 0) - (filters.governorateSlug ? 1 : 0);
 }
 
-/** The sheet's groups cleared; the words, the company, the governorate and the order kept. */
+/** The sheet cleared, the words with it; the company, the governorate and the order kept. */
 export function clearSheetFilters(filters: JobFilters): JobFilters {
   return {
     ...EMPTY_FILTERS,
-    q: filters.q,
     companySlug: filters.companySlug,
     governorateSlug: filters.governorateSlug,
     sort: filters.sort,

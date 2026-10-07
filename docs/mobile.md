@@ -265,7 +265,15 @@ compare with (a new branch), it compares with the previous commit.
   (`src/lib/agent-filters.ts`, shared) and in a sheet that counts as the
   employer chooses; cards are anonymous until the company is verified, and a
   company that is not is told why once — the papers are a company admin's to
-  upload, so a recruiter is told who can. **A consultant's page**
+  upload, so a recruiter is told who can. Until the account itself is approved
+  the tab says the consultants open once the company is verified, with the way
+  to its papers (`mobile/src/components/directory/directory-closed.tsx`).
+  Its search, like the companies directory's, is a field of the app's own at
+  the top of the screen (`mobile/src/components/ui/search-field.tsx`): iOS's
+  header search bar is laid out by the phone's language, not the app's, so it
+  ran left to right under the Arabic on a phone set to English and in Expo Go.
+  The board has no search bar: its words are the filter sheet's first field,
+  as they head the website's filter panel. **A consultant's page**
   (`/agents/<slug>`, or `/agents/<id>` for a locked card) reads
   `get_agent_card()` and the CV under the employer's own session, so the
   database decides what shows; the number and the CV are asked for with
@@ -355,9 +363,12 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   someone without the phone. The database asks it of admins only
   (docs/security/THREAT_MODEL.md, section 5).
 - **The welcome** (`mobile/src/app/welcome.tsx`) opens every launch with
-  nobody signed in, under the splash screen: the website's mark at the centre
-  of an emblem with the board's three promises drifting at its edge, the
-  logo's wordmark, the headline, and the ways on — create an account, sign in, or Skip at the top,
+  nobody signed in, under the splash screen: the website's own hero photograph
+  (`mobile/assets/images/welcome-photo.jpg`, the same file as
+  `public/media/hero-poster.jpg`, which `tests/brand.test.ts` holds equal)
+  across the screen under a sapphire veil darkening to midnight, and over it in
+  white the logo, the headline, the board's three promises, and the ways on —
+  create an account, sign in, or Skip at the top,
   which the App Store asks an app to allow wherever an account is not needed.
   Skip closes it until the app is next started; signing in closes it with the
   sign-in sheet; a launch by a link never shows it, and goes where the link
