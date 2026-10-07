@@ -98,6 +98,79 @@ export function safeHttpUrl(value: string | null | undefined, maxLength = 200): 
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
   if (!url.hostname || url.username || url.password) return null;
+  if (!plainHost(typedHost(trimmed))) return null;
 
-  return url.toString();
+  /*
+    The address as it is read, not as it is sent. Percent-encoding writes each
+    Arabic letter as six characters, so a 63-character Facebook page became
+    233 and broke the column's rule (migration 307: 190 after the scheme) — a
+    company page that would not save, an onboarding that made no company. A
+    run of escapes is written back only when it decodes to letters, marks or
+    digits; a space, a slash, a percent sign or an invisible direction mark
+    stays escaped, and a browser escapes the letters again when the link is
+    followed.
+  */
+  const readable = url.toString().replace(/(?:%[89a-f][0-9a-f])+/gi, (run) => {
+    try {
+      const decoded = decodeURIComponent(run);
+      return /^[\p{L}\p{M}\p{N}]+$/u.test(decoded) ? decoded : run;
+    } catch {
+      return run;
+    }
+  });
+  return WEBSITE_COLUMN.test(readable) ? readable : null;
 }
+
+/**
+ * The host as it was typed: Node's URL turns a non-Latin one into punycode,
+ * the phone's leaves it as it is. Read as the parser reads an http(s)
+ * address: tabs and new lines anywhere dropped, any run of slashes and
+ * backslashes after the scheme, and the host ended by a backslash as by a
+ * slash.
+ */
+function typedHost(value: string): string {
+  const rest = value.replace(/[\t\n\r]/g, '').replace(/^[a-z][a-z0-9+.-]*:[\\/]*/i, '');
+  return rest.split(/[/?#\\]/, 1)[0].replace(/^.*@/, '').replace(/:\d*$/, '');
+}
+
+/**
+ * The Latin letters a host may hold: the plain ones and the accented ones
+ * European and Vietnamese names are written with (Latin-1, Extended-A, the
+ * Romanian, Vietnamese and caron letters of Extended-B, Extended Additional).
+ * Not the Latin letters that pass for plain ones with no accent to give them
+ * away: small capitals, phonetic and IPA letters (ᴄ, ꜱ, ɡ, ʟ), a dotless i or
+ * j, a long s, the Kelvin sign; nor a capital I with a dot (İ), which the
+ * parsers write as an i with a second dot, nor the medieval letters past
+ * Vietnamese's (ỻ, ỽ, ỿ). Listed, not folded: with the `u` flag a
+ * case-insensitive [a-z] takes ſ and K for s and k.
+ */
+const LATIN_LETTERS =
+  'A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u012F\u0132-\u0137\u0139-\u013E\u0141-\u0148\u014A-\u017E' +
+  '\u01A0\u01A1\u01AF\u01B0\u01CD-\u01DC\u0218-\u021B\u1E00-\u1E99\u1E9E\u1EA0-\u1EF9';
+const LATIN = new RegExp(`[${LATIN_LETTERS}]`, 'u');
+const ARABIC = /\p{Script=Arabic}/u;
+/** What a label may hold: those Latin letters, Arabic ones with their marks, digits, - and _. */
+const LABEL = new RegExp(`^[${LATIN_LETTERS}\\p{Script=Arabic}\\p{Mn}0-9_-]*$`, 'u');
+
+/**
+ * Letters a host may hold: Latin, or Arabic — Egypt's own domain names — and
+ * never both in one label, nor any other script. Cyrillic and Greek are how a
+ * look-alike of a Latin name is spelt (www.brоkersconnect.net, with a Cyrillic
+ * о): the website shows such a host as punycode, but the app shows it as it
+ * was written, and a company's "website" could pass for this site's own pages.
+ * Accented Latin (café.com) is Latin, and an IPv6 address has no letters to
+ * imitate anything with.
+ */
+function plainHost(host: string): boolean {
+  if (/^\[[0-9a-f:.]+\]$/i.test(host)) return true;
+  return host.split('.').every((label) => {
+    if (!LABEL.test(label)) return false;
+    const arabic = ARABIC.test(label);
+    // Marks belong to Arabic letters here; on Latin ones they draw dots and accents onto look-alikes.
+    if (!arabic && /\p{Mn}/u.test(label)) return false;
+    return !(arabic && LATIN.test(label));
+  });
+}
+
+/** companies_website_is_http (migration 307): what the column itself takes. */
+const WEBSITE_COLUMN = /^https?:\/\/[^\s]{1,190}$/i;

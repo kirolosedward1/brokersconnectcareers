@@ -1,5 +1,5 @@
 import { getTranslations, getLocale } from 'next-intl/server';
-import { Briefcase, Building2, Search, Users } from 'lucide-react';
+import { Briefcase, Building2, Search } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { Illustration } from '@/components/illustration';
@@ -11,7 +11,7 @@ import { ChipRow } from '@/components/ui/chip-row';
  * On this site a dead URL is usually a listing that closed — links get shared
  * on WhatsApp and opened weeks later, long after the role was filled. Somebody
  * who lands here still wants a job in the same market, so the page offers the
- * search they came to do and the three places worth going next, instead of one
+ * search they came to do and the places worth going next, instead of one
  * button back to the homepage that loses them.
  *
  * The search is a plain GET form, so it works with no JavaScript, and it posts
@@ -25,10 +25,15 @@ export default async function NotFound() {
 
   const action = locale === 'ar' ? '/jobs' : `/${locale}/jobs`;
 
+  /*
+    Not the consultant directory: it is for approved employers, and offered
+    here it sent everybody else to sign in or back to their own console. This
+    page is rendered into static pages too, so it cannot ask who is reading;
+    an employer has the directory in the header.
+  */
   const elsewhere = [
     { href: '/jobs', label: tNav('jobs'), icon: Briefcase },
     { href: '/companies', label: tNav('companies'), icon: Building2 },
-    { href: '/agents', label: tNav('agents'), icon: Users },
   ] as const;
 
   return (
@@ -52,7 +57,7 @@ export default async function NotFound() {
             name="q"
             placeholder={tHome('searchPlaceholder')}
             aria-label={tHome('searchPlaceholder')}
-            className="h-12 w-full rounded-lg border border-border bg-card px-4 ps-11 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
+            className="h-12 w-full rounded-lg border border-input bg-card px-4 ps-11 text-base outline-hidden placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-primary"
           />
         </div>
         <Button type="submit" size="lg" className="shrink-0 px-8">
@@ -61,7 +66,7 @@ export default async function NotFound() {
       </form>
 
       {/* Centred and wrapping, which is how the hero stranded its last chip on
-          an empty line. Three today, and the list grows. */}
+          an empty line. Two today, and the list grows. */}
       <ChipRow center className="mt-8 justify-center">
         {elsewhere.map(({ href, label, icon: Icon }) => (
           <Link

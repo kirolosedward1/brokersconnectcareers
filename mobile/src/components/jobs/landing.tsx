@@ -17,7 +17,9 @@ import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useDistricts } from '~/features/taxonomy';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
+import { SearchX } from '~/components/ui/lucide';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * One track in one district — the website's TrackDistrictLanding at
@@ -38,9 +40,10 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const counts = useBrowseCounts();
   const districts = useDistricts();
   const hasBoard = useHasBoard();
+  const pull = usePullRefresh(() => Promise.all([landing.refetch(), board.refetch()]));
 
   if (landing.isPending) return <LoadingState />;
-  if (landing.isError) {
+  if (landing.isError && !landing.data) {
     return <ErrorState error={landing.error} onRetry={() => landing.refetch()} />;
   }
 
@@ -90,25 +93,21 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
-          <RefreshControl
-            refreshing={landing.isRefetching || board.isRefetching}
-            onRefresh={() => {
-              landing.refetch();
-              board.refetch();
-            }}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
         }
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[5] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
       >
         <View style={{ gap: space[2] }}>
           <Text variant="title" weight="bold" accessibilityRole="header">
             {t('title', { track: trackName, district: districtName })}
           </Text>
           <Text tone="mutedForeground">{t('subtitle', { track: trackName, district: districtName })}</Text>
-          <Text variant="small" tone="mutedForeground">
-            {tJobs('resultsCount', { count: total })}
-          </Text>
+          {/* Counted only once read: a failed read is not "no results". */}
+          {board.data ? (
+            <Text variant="small" tone="mutedForeground">
+              {tJobs('resultsCount', { count: total })}
+            </Text>
+          ) : null}
           {factLines.length ? (
             <View accessibilityLabel={t('factsLabel')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
               {factLines.map((line) => (
@@ -117,7 +116,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
                   style={{
                     borderWidth: 1,
                     borderColor: colors.border,
-                    borderRadius: radius.md,
+                    ...corner('md'),
                     backgroundColor: colors.card,
                     paddingHorizontal: space[2],
                     paddingVertical: space[1],
@@ -132,6 +131,9 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
 
         {board.isPending ? (
           <LoadingState />
+        ) : board.isError && !board.data ? (
+          // Never "no jobs here" for a read that failed.
+          <ErrorState error={board.error} onRetry={() => board.refetch()} />
         ) : jobs.length ? (
           <View style={{ gap: space[2] }}>
             {jobs.slice(0, 20).map((job) => (
@@ -140,6 +142,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
           </View>
         ) : (
           <EmptyState
+            icon={SearchX}
             title={tJobs('empty')}
             action={hasBoard ? <Button label={tJobs('title')} variant="outline" onPress={() => router.navigate('/jobs')} /> : null}
           />
@@ -164,6 +167,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
                   key={sibling.id}
                   label={withCount(localized(locale, sibling.name_ar, sibling.name_en), count)}
                   onPress={() => open(buildLandingSlug(track, sibling.slug))}
+                  feedback={false}
                 />
               ))}
             </View>
@@ -175,7 +179,12 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
               {siblingTracks.map(({ track: sibling, count }) => (
-                <Chip key={sibling} label={withCount(tTrack(sibling), count)} onPress={() => open(buildLandingSlug(sibling, district.slug))} />
+                <Chip
+                  key={sibling}
+                  label={withCount(tTrack(sibling), count)}
+                  onPress={() => open(buildLandingSlug(sibling, district.slug))}
+                  feedback={false}
+                />
               ))}
             </View>
           </View>

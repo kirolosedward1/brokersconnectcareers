@@ -10,10 +10,11 @@ import { Button, ICON_HIT_AREA } from '@/components/ui/button';
 import { Select } from '@/components/ui/field';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
-import { formatDate, formatEgp, formatList, formatNumber, isoDate, whatsappLink, cn } from '@/lib/utils';
+import { formatDate, formatEgp, formatList, isoDate, whatsappLink, cn } from '@/lib/utils';
 import { employerOpener } from '@/lib/whatsapp';
 import { setApplicationStatus } from '@/lib/actions/applications';
 import { reach } from '@/lib/reach';
+import { clean } from '@/lib/security/sanitize';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -106,7 +107,6 @@ export function ApplicantCard({
   const t = useTranslations('employer');
   const tStatus = useTranslations('applicationStatus');
   const tExp = useTranslations('experienceBand');
-  const tJobs = useTranslations('jobs');
   const tCommon = useTranslations('common');
   const tAgents = useTranslations('agents');
   const tTrack = useTranslations('track');
@@ -116,19 +116,43 @@ export function ApplicantCard({
   const [reason, setReason] = useState(application.decision_note ?? '');
   const [savedReason, setSavedReason] = useState(application.decision_note ?? '');
   const [conflict, setConflict] = useState(false);
+  // The save that did not come back, until the server is seen holding it.
+  const [failed, setFailed] = useState<{ status: ApplicationStatus; reason: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
+
+  /*
+    What the server holds, followed after every refresh. The inbox keys a card
+    by its application, so a refresh brings this card new props rather than a
+    new card, and a copy taken when it mounted went stale: after a colleague's
+    move it went on showing the old stage, and every move from it was refused
+    as theirs. The box follows only while nobody has typed in it.
+  */
+  const storedReason = application.decision_note ?? '';
+  const [stored, setStored] = useState({ status: application.status, reason: storedReason });
+  if (stored.status !== application.status || stored.reason !== storedReason) {
+    setStored({ status: application.status, reason: storedReason });
+    setStatus(application.status);
+    setSavedReason(storedReason);
+    if (reason === savedReason) setReason(storedReason);
+    // A save with no answer that landed after all: the server holds what was
+    // sent (the reason as it stores it), so it did not fail.
+    if (failed && failed.status === application.status && (clean(failed.reason.trim(), true) || '') === storedReason) {
+      setFailed(null);
+    }
+  }
 
   const candidate = application.candidate;
   const profile = candidate?.agent_profiles ?? null;
   const headline = profile ? localized(locale, profile.headline_ar, profile.headline_en) : '';
 
-  function save(next: ApplicationStatus, decisionNote: string) {
+  function save(next: ApplicationStatus, decisionNote: string, restoreBox?: string) {
     const previousStatus = status;
     const previousReason = savedReason;
     setStatus(next);
     setSavedReason(decisionNote);
     setConflict(false);
+    setFailed(null);
 
     startTransition(async () => {
       const result = await reach(setApplicationStatus({
@@ -146,12 +170,22 @@ export function ApplicantCard({
       if (!result.ok) {
         setStatus(previousStatus);
         setSavedReason(previousReason);
-        setReason(previousReason);
+        // A move that emptied the box for the new stage puts back what it showed.
+        if (restoreBox !== undefined) setReason(restoreBox);
+        // What they typed stays in the box, and the card says it was not
+        // saved. Put back to the stored words, a failed save took their
+        // sentence away and the button then read "Saved" over nothing new —
+        // the notes below keep a draft the same way.
         if (result.error === 'moved_already') {
           setConflict(true);
           // Their move is the one that stands, and it is already on the
           // server — so re-read rather than describe it from here.
           router.refresh();
+        } else {
+          setFailed({ status: next, reason: decisionNote });
+          // No answer: the move may have landed and only the answer been
+          // lost, so read what the server holds.
+          if (result.error === 'network') router.refresh();
         }
         return;
       }
@@ -160,7 +194,22 @@ export function ApplicantCard({
   }
 
   function onStatusChange(event: React.ChangeEvent<HTMLSelectElement>) {
-    save(event.target.value as ApplicationStatus, reason);
+    /*
+      A reason belongs to the decision it was written for, and the candidate
+      reads it beside that stage. So a move carries a reason only when one was
+      typed for it — words in the box that are not the saved ones. The saved
+      reason stays with its own stage: sent along, a rejection's "not enough
+      experience" reached the candidate again under "shortlisted". And at
+      "new" the box is hidden, so nothing in it is on screen to send.
+    */
+    const typed = status !== 'new' && reason.trim() !== savedReason.trim();
+    if (typed) {
+      save(event.target.value as ApplicationStatus, reason);
+    } else {
+      const shown = reason;
+      setReason('');
+      save(event.target.value as ApplicationStatus, '', shown);
+    }
   }
 
   return (
@@ -182,7 +231,7 @@ export function ApplicantCard({
             <FactLine className="mt-0.5 text-sm text-muted-foreground">
               {application.experience_band ? <span>{tExp(application.experience_band)}</span> : null}
               <time dateTime={isoDate(application.created_at)}>
-                {tJobs('postedOn', { date: formatDate(application.created_at, locale) })}
+                {t('applicantReceivedOn', { date: formatDate(application.created_at, locale) })}
               </time>
             </FactLine>
           </div>
@@ -198,8 +247,11 @@ export function ApplicantCard({
       {profile ? (
         <Link
           href={`/agents/${profile.slug}`}
+          // Named by what it shows, with "view profile" as its description:
+          // an aria-label of those two words replaced the visible text, so
+          // every applicant's link had the same name and voice control could
+          // not reach it by what is on screen.
           title={tAgents('viewProfile')}
-          aria-label={tAgents('viewProfile')}
           // A rule down the leading edge, not a box. Inside a card that is
           // already bordered, a second border around the record, a third around
           // the magnifier and a fill behind the note made every applicant four
@@ -213,7 +265,7 @@ export function ApplicantCard({
             panel already looks like — a card you can open — and repeated it
             once per applicant down a list of them. The whole panel is the
             link, so the affordance was never the sentence; it is one mark at
-            the end of the row, named for a screen reader and on hover.
+            the end of the row, described for a screen reader and on hover.
 
             A magnifier rather than an arrow: an arrow says "onward", which is
             true of every link on the page, and what this one actually offers
@@ -249,9 +301,7 @@ export function ApplicantCard({
               <p className="mt-1 flex flex-wrap gap-x-3 text-xs font-medium">
                 {profile.units_closed != null ? (
                   <span>
-                    {tAgents('unitsClosedShort', {
-                      count: formatNumber(profile.units_closed, locale),
-                    })}
+                    {tAgents('unitsClosedShort', { count: profile.units_closed })}
                   </span>
                 ) : null}
                 {profile.volume_egp != null ? (
@@ -269,7 +319,7 @@ export function ApplicantCard({
               'group-hover/profile:bg-primary/5 group-hover/profile:text-primary',
             )}
           >
-            <Search className="size-4" />
+            <Search className="size-4" aria-hidden />
           </span>
         </Link>
       ) : (
@@ -324,7 +374,7 @@ export function ApplicantCard({
           <Button asChild variant="outline" size="sm">
             {/* Route handler mints a 5-minute signed URL per click. */}
             <a href={`/api/cv/${application.id}`} target="_blank" rel="noopener noreferrer">
-              <Download />
+              <Download aria-hidden />
               {t('downloadCv')}
             </a>
           </Button>
@@ -338,6 +388,10 @@ export function ApplicantCard({
         {conflict ? (
           <p role="alert" className="w-full text-xs text-destructive">
             {t('applicantMovedAlready')}
+          </p>
+        ) : failed ? (
+          <p role="alert" className="w-full text-xs text-destructive">
+            {tCommon('errorBody')}
           </p>
         ) : null}
 

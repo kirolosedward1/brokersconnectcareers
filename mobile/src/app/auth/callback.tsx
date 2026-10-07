@@ -32,25 +32,28 @@ export default function OAuthCallbackScreen() {
     if (!ready || started.current) return;
     started.current = true;
     if (session && !params.code) {
-      void land(NO_INTENT);
+      void land(NO_INTENT).catch(() => setFailed(true));
       return;
     }
     const query = new URLSearchParams(params).toString();
-    void completeOAuth(`${OAUTH_REDIRECT}?${query}`).then(async (outcome) => {
-      if (outcome.ok) await land(NO_INTENT);
-      else if (outcome.cancelled) close();
-      else setFailed(true);
-    });
+    void completeOAuth(`${OAUTH_REDIRECT}?${query}`)
+      .then(async (outcome) => {
+        if (outcome.ok) await land(NO_INTENT);
+        else if (outcome.cancelled) close();
+        else setFailed(true);
+      })
+      // Thrown rather than answered: said, never a spinner that does not end.
+      .catch(() => setFailed(true));
   }, [ready, session, params, land, close]);
 
   if (failed) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <AuthScroll>
+        <AuthScroll bare>
           <View style={{ height: space[8] }} />
           <AuthHeading title={t('common.error')} body={t('common.errorBody')} />
-          <Button label={t('common.close')} variant="outline" onPress={close} />
+          <Button label={t('common.close')} variant="outline" onPress={() => close()} />
         </AuthScroll>
       </>
     );

@@ -15,6 +15,8 @@
  *
  * Pure, so the rules can be tested without a server.
  */
+import { isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js';
+
 export type Bearer =
   | { kind: 'none' }
   | { kind: 'token'; token: string }
@@ -41,4 +43,23 @@ export function readBearer(header: string | null | undefined): Bearer {
 /** The `WWW-Authenticate` value for a 401, per RFC 6750. */
 export function challenge(reason: 'unauthenticated' | 'invalid_token'): string {
   return reason === 'invalid_token' ? 'Bearer error="invalid_token"' : 'Bearer';
+}
+
+/**
+ * What a failed token check means: the auth server refused the token (401 —
+ * the app refreshes, and signs out if the refresh is refused too) or did not
+ * answer (503 — the app keeps its session and says the service is down).
+ *
+ * Refused: no user and no error, any 4xx the auth server sent, and a session
+ * the auth server no longer has. A session ended elsewhere — a sign-out on
+ * the website (every session, by default), a password changed or reset —
+ * comes back from GoTrue as 403 session_not_found, which auth-js reports as
+ * AuthSessionMissingError rather than an AuthApiError. Read as an outage, it
+ * kept the phone on "service unavailable" for up to an hour, every write
+ * failing, until the access token expired.
+ */
+export function tokenRefused(error: unknown): boolean {
+  if (!error) return true;
+  if (isAuthSessionMissingError(error)) return true;
+  return isAuthApiError(error) && error.status >= 400 && error.status < 500;
 }

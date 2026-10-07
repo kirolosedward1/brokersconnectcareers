@@ -98,24 +98,33 @@ export async function SetupChecklist({
       <ol className="mt-5 space-y-3">
         {steps.map((step) => (
           <li key={step.key} className="flex items-start gap-3">
+            {/* The mark says where the step stands, so it says it in words
+                too: the icons alone left a screen reader the label and the
+                hint, and no way to tell a finished step from one not begun. */}
             <span
-              aria-hidden
               className={
                 'mt-0.5 grid size-6 shrink-0 place-items-center rounded-full ' +
                 (step.state === 'done'
-                  ? 'bg-success text-white'
+                  ? 'bg-success text-success-foreground'
                   : step.state === 'waiting'
                     ? 'bg-warning-muted text-warning'
                     : 'border border-border text-muted-foreground')
               }
             >
               {step.state === 'done' ? (
-                <Check className="size-3.5" />
+                <Check className="size-3.5" aria-hidden />
               ) : step.state === 'waiting' ? (
-                <Clock className="size-3.5" />
+                <Clock className="size-3.5" aria-hidden />
               ) : (
-                <CircleDashed className="size-3.5" />
+                <CircleDashed className="size-3.5" aria-hidden />
               )}
+              <span className="sr-only">
+                {step.state === 'done'
+                  ? t('setupStateDone')
+                  : step.state === 'waiting'
+                    ? t('setupStateWaiting')
+                    : t('setupStateTodo')}
+              </span>
             </span>
 
             <div className="min-w-0 flex-1">

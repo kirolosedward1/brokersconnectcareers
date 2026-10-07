@@ -202,5 +202,35 @@ console.log('\n— nothing trusts the active label on its own');
   );
 }
 
+/*
+  And an inner join that holds nothing back.
+
+  `open_roles:jobs!inner (count)` read as "only companies with a live listing,
+  and how many". PostgREST's aggregate always yields a row — a count of 0 when
+  nothing matches — so the inner join kept every company: production's
+  directory listed eight, six with nothing open, under a total of two
+  (2026-09-29). An `!inner` embed that filters has to select the rows
+  themselves and count them after.
+*/
+console.log('\n— no inner join on a bare count');
+{
+  const offenders = [];
+  (function collect(dir) {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) collect(full);
+      else if (/\.tsx?$/.test(entry)) {
+        code(full)
+          .split('\n')
+          .forEach((line, index) => {
+            if (/!inner\s*\(\s*count\s*\)/.test(line)) offenders.push(`${full.replace(ROOT + '/', '')}:${index + 1}`);
+          });
+      }
+    }
+  })(join(ROOT, 'src'));
+
+  check('no `!inner (count)` embed, which filters nothing', offenders.length === 0, offenders.join('; '));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

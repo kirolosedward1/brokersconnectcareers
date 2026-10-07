@@ -37,14 +37,24 @@ const ALWAYS_OVER_HERO = ['/employers'];
  */
 export function HeaderShell({
   hasHomeHero,
+  bandBelow = false,
   children,
 }: {
   /** Whether `/` is currently drawing its hero — false once signed in. */
   hasHomeHero: boolean;
+  /**
+   * Whether a band is drawn under the header (PolicyNotice, asking somebody
+   * signed in to agree to the policies again). The header then stays the
+   * solid bar on every page: fixed over the film on `/employers`, it sat on
+   * top of the band — its button and links under the bar, the bar's white
+   * type over the band's light ground.
+   */
+  bandBelow?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const overHero = ALWAYS_OVER_HERO.includes(pathname) || (pathname === '/' && hasHomeHero);
+  const overHero =
+    !bandBelow && (ALWAYS_OVER_HERO.includes(pathname) || (pathname === '/' && hasHomeHero));
 
   const [scrolled, setScrolled] = useState(false);
 
@@ -67,8 +77,10 @@ export function HeaderShell({
       className={cn(
         'group/header z-40 transition-colors duration-150',
         overHero ? 'fixed inset-x-0 top-0' : 'sticky top-0',
+        // On the film the focus ring is white, as it is in the hero below:
+        // the brand blue is all but invisible against it.
         floating
-          ? 'border-b border-transparent bg-transparent text-white'
+          ? 'border-b border-transparent bg-transparent text-white [--ring:white]'
           // Solid, not translucent. A blurred header over a scrolling list of
           // job cards means the type behind it shows through the type in it.
           : 'border-b border-border/70 bg-background shadow-xs',

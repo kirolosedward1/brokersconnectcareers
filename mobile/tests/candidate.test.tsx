@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 import { Alert, Text, View, type AlertButton } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { NotificationRow } from '@/lib/supabase/database.types';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { SessionGate } from '~/components/navigation/session-gate';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { HeaderBell, useHeaderBell } from '~/components/notifications/header-bell';
 import type { CandidateApplication } from '~/features/applications/queries';
 import { feedPage } from '~/features/notifications/queries';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -180,6 +180,11 @@ function TabBar() {
   );
 }
 
+/** What a tab's header is given at its trailing end (useHeaderBell): the bell, or nothing at all. */
+function BellItem() {
+  return <Text>{useHeaderBell() ? 'header item: the bell' : 'header item: none'}</Text>;
+}
+
 const SHARED = '(tabs)/(home,applications)';
 
 const app = {
@@ -188,10 +193,12 @@ const app = {
   [`${SHARED}/_layout`]: TabStack,
   [`${SHARED}/notifications`]: NotificationsScreen,
   [`${SHARED}/jobs/[slug]`]: () => <Text>listing page</Text>,
+  [`${SHARED}/companies/[slug]`]: () => <Text>company page</Text>,
   '(tabs)/(home)/index': () => (
     <View>
       <Text>home screen</Text>
       <HeaderBell />
+      <BellItem />
     </View>
   ),
   '(tabs)/(applications)/dashboard/applications/index': ApplicationsScreen,
@@ -207,7 +214,8 @@ describe('the bell', () => {
     const result = renderRouter(app, { initialUrl: '/' });
 
     const bell = await screen.findByRole('button', { name: ar.notifications.title });
-    await waitFor(() => expect(bell.props.accessibilityValue).toMatchObject({ text: '1 غير مقروء' }));
+    await waitFor(() => expect(bell.props.accessibilityValue).toMatchObject({ text: 'تنبيه واحد غير مقروء' }));
+    expect(screen.getByText('header item: the bell')).toBeTruthy();
     // Counted as the website counts it: the reader's own, unread.
     const count = server.asked('/rest/v1/notifications').find((request) => request.method === 'HEAD');
     expect(count?.url.searchParams.get('user_id')).toBe(`eq.${USER_ID}`);
@@ -223,6 +231,8 @@ describe('the bell', () => {
     renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText('home screen')).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.notifications.title })).toBeNull();
+    // Not even an empty place for it: iOS 26 draws one as a glass circle with nothing in it.
+    expect(screen.getByText('header item: none')).toBeTruthy();
     expect(server.asked('/rest/v1/notifications')).toHaveLength(0);
   });
 });
@@ -259,6 +269,66 @@ describe('the feed', () => {
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);
     expect(bodyOf('/api/mobile/v1/actions/openNotification')).toEqual({ input: { id: feed[0].id } });
+  });
+
+  it("tells of a followed company's new listings as the website does, and opens the company", async () => {
+    feed = [
+      notification({
+        id: 'n0000000-0000-4000-8000-000000000003',
+        kind: 'new_jobs',
+        payload: { count: 2, source: 'follow', slug: 'nile-brokers', name_ar: 'النيل للوساطة', name_en: null },
+        href: '/companies/nile-brokers',
+      }),
+    ];
+    server.on('POST /api/mobile/v1/actions/openNotification', { ok: true, data: { href: '/companies/nile-brokers' } });
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: '/notifications' });
+
+    fireEvent.press(await screen.findByText('النيل للوساطة نزّلت وظيفتين جداد'));
+    await waitFor(() => expect(result.getPathname()).toBe('/companies/nile-brokers'));
+    expect(screen.getByText('company page')).toBeTruthy();
+    expect(bodyOf('/api/mobile/v1/actions/openNotification')).toEqual({ input: { id: feed[0].id } });
+  });
+
+  it('goes back to the page the bell was opened from when that is where it leads, rather than a second copy', async () => {
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: '/dashboard/applications' });
+    await waitFor(() => expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']));
+    act(() => router.push('/notifications'));
+    fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
+
+    await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
+    // One screen in the tab: Back does not show the feed again.
+    act(() => router.back());
+    expect(result.getPathname()).not.toBe('/notifications');
+  });
+
+  it('leaves the reader where they went when the answer comes after they left the feed', async () => {
+    let answer: (value: unknown) => void = () => {};
+    server.on('POST /api/mobile/v1/actions/openNotification', () => new Promise((resolve) => (answer = resolve)));
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: '/dashboard/applications' });
+    await waitFor(() => expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']));
+    act(() => router.push('/notifications'));
+    fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/openNotification')).toHaveLength(1));
+
+    // A slow answer: the reader goes back and opens a listing meanwhile.
+    act(() => router.back());
+    act(() => router.push('/jobs/sales-a1b2'));
+    expect(await screen.findByText('listing page')).toBeTruthy();
+    await act(async () => {
+      answer({ ok: true, data: { href: '/dashboard/applications' } });
+      await jest.advanceTimersByTimeAsync(200);
+    });
+    // The listing they opened stays: nothing of the feed's answer moves it.
+    expect(result.getPathname()).toBe('/jobs/sales-a1b2');
+  });
+
+  it('says why when a tapped push opened it for a page that is gone', async () => {
+    await signedIn();
+    renderRouter(app, { initialUrl: '/notifications?link=gone' });
+    expect(await screen.findByText(ar.notifications.linkGone)).toBeTruthy();
   });
 
   it('says so when the page a notification pointed at is gone', async () => {
@@ -362,6 +432,38 @@ describe('the applications', () => {
     expect(bodyOf('/api/mobile/v1/actions/withdrawApplication')).toEqual({
       input: { applicationId: 'a0000000-0000-4000-8000-000000000001' },
     });
+    expect(await screen.findByText(ar.dashboard.emptyApplications)).toBeTruthy();
+    alert.mockRestore();
+  });
+
+  it('reads them again when a withdrawal is refused, so the row says where it stands now', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    // The company moved it on while the list was open: the withdrawal is refused.
+    server.on('POST /api/mobile/v1/actions/withdrawApplication', () => {
+      applications = [application({ status: 'hired' })];
+      return { ok: false, error: 'forbidden' };
+    });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/dashboard/applications' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
+    act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
+
+    expect(await screen.findByText(ar.applicationStatus.hired)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.dashboard.withdraw })).toBeNull();
+    alert.mockRestore();
+  });
+
+  it('takes the row away when the answer to a withdrawal was lost but it went in', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    server.on('POST /api/mobile/v1/actions/withdrawApplication', () => {
+      applications = [];
+      return { status: 502, body: { error: 'bad_gateway' } };
+    });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/dashboard/applications' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
+    act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
+
     expect(await screen.findByText(ar.dashboard.emptyApplications)).toBeTruthy();
     alert.mockRestore();
   });

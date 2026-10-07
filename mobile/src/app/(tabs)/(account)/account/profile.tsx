@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { Eye, Info } from 'lucide-react-native';
+import { Compass, Eye, Info, UserRound } from '~/components/ui/lucide';
 import { canAccessCandidateArea } from '@/lib/permissions';
 import { AppealPanel } from '~/components/moderation/appeal-panel';
 import { CvSections } from '~/components/profile/cv-sections';
@@ -18,7 +18,8 @@ import { useAgentProfile, useCandidateSummary, useCompleteness, useCvSections } 
 import { markupTags } from '~/i18n/rich';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * The candidate's directory profile — the website's /dashboard/profile, which
@@ -40,6 +41,7 @@ export default function ProfileScreen() {
   const profile = useAgentProfile();
   const agent = profile.data?.agent ?? null;
   const cv = useCvSections(agent?.id ?? null);
+  const pull = usePullRefresh(() => Promise.all([profile.refetch(), cv.refetch()]));
   const completeness = useCompleteness(agent?.id ?? null).data ?? null;
   const views = useCandidateSummary().data?.profile_views_30d ?? 0;
 
@@ -50,6 +52,7 @@ export default function ProfileScreen() {
       <>
         {header}
         <EmptyState
+          icon={UserRound}
           title={t('app.account.signedOutTitle')}
           action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
         />
@@ -69,11 +72,12 @@ export default function ProfileScreen() {
     return (
       <>
         {header}
-        <EmptyState title={t('common.notFound')} body={t('common.notFoundBody')} />
+        <EmptyState icon={Compass} title={t('common.notFound')} body={t('common.notFoundBody')} />
       </>
     );
   }
-  if (profile.isError) {
+  // A failed re-read keeps the form (and the entry being typed in its sheet); only a first read that failed is an error page.
+  if (profile.isError && !profile.data) {
     return (
       <>
         {header}
@@ -82,8 +86,6 @@ export default function ProfileScreen() {
     );
   }
   const developerIds = profile.data?.developerIds ?? [];
-
-  const refreshing = profile.isRefetching || cv.isRefetching;
 
   return (
     <>
@@ -96,15 +98,12 @@ export default function ProfileScreen() {
         keyboardDismissMode="interactive"
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              profile.refetch();
-              cv.refetch();
-            }}
+            refreshing={pull.refreshing}
+            onRefresh={pull.onRefresh}
             tintColor={colors.primary}
           />
         }
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >
         <Text tone="mutedForeground">{t('dashboard.profileLede')}</Text>
 
@@ -155,13 +154,13 @@ export default function ProfileScreen() {
             formY.current = event.nativeEvent.layout.y;
           }}
         >
-          <ProfileForm profile={viewer.profile} agent={agent} developerIds={developerIds} />
+          <ProfileForm profile={viewer.profile} agent={agent} developerIds={developerIds} scroll={scroll} />
         </View>
 
         {agent ? (
           <>
             <RecordForm key={agent.id} agent={agent} completeness={completeness} />
-            {cv.isError ? (
+            {cv.isError && !cv.data ? (
               <ErrorState error={cv.error} onRetry={() => cv.refetch()} />
             ) : cv.data ? (
               <CvSections agentId={agent.id} sections={cv.data} />

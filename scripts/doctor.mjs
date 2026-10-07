@@ -62,23 +62,32 @@ try {
   process.exit(1);
 }
 
+// What to run when the schema or its rows are short. Not db:push:url on a
+// database with data: it re-runs every migration, then the seed and the grants
+// (docs/disaster-recovery.md). db:apply reads the database's own ledger and
+// applies only what is missing — migration 342 brings the search aliases.
+const APPLY =
+  'Run: pnpm db:apply — it lists what this database is missing; again with --execute to apply.' +
+  ' (A new, empty project only: pnpm db:push:url.)';
+
 console.log('\nschema');
 for (const [table, minimum] of [
   ['governorates', 7],
   ['districts', 21],
   ['developers', 17],
-  // Migration 68 creates the table; seed.sql fills it. A database that got
-  // the one without the other searches, but «القاهرة الجديدة» finds nothing.
+  // Migration 68 creates the table; seed.sql fills it, and migration 342 on a
+  // database seeded before it. Without the rows search still works, but
+  // «القاهرة الجديدة» finds nothing.
   ['search_aliases', 25],
 ]) {
   const response = await rest(`${table}?select=id`);
   if (!response.ok) {
-    bad(`${table} not readable (HTTP ${response.status})`, 'Run: pnpm db:push:url');
+    bad(`${table} not readable (HTTP ${response.status})`, APPLY);
     continue;
   }
   const rows = await response.json();
   if (rows.length >= minimum) ok(`${table}`, `${rows.length} rows`);
-  else bad(`${table} has ${rows.length} rows, expected ${minimum}`, 'Run: pnpm db:push:url');
+  else bad(`${table} has ${rows.length} rows, expected ${minimum}`, APPLY);
 }
 
 // An anonymous read of jobs proves the public board policy is in place.
@@ -92,7 +101,7 @@ if (jobs.ok) {
         '      Run: node scripts/seed-demo.mjs',
     );
 } else {
-  bad(`jobs not readable (HTTP ${jobs.status})`, 'Run: pnpm db:push:url');
+  bad(`jobs not readable (HTTP ${jobs.status})`, APPLY);
 }
 
 // Every live listing needs a search document or the keyword search skips it.
@@ -107,9 +116,9 @@ if (live.ok && documents.ok) {
   const indexed = new Set((await documents.json()).map((row) => row.job_id));
   const missing = liveIds.filter((id) => !indexed.has(id));
   if (!missing.length) ok('every live listing is searchable', `${liveIds.length}`);
-  else bad(`${missing.length} live listings have no search document`, 'Run: pnpm db:push:url');
+  else bad(`${missing.length} live listings have no search document`, APPLY);
 } else if (!documents.ok) {
-  bad(`job_search_documents not readable (HTTP ${documents.status})`, 'Run: pnpm db:push:url');
+  bad(`job_search_documents not readable (HTTP ${documents.status})`, APPLY);
 }
 
 // Public profiles are meant to be readable anonymously; gated ones are not.

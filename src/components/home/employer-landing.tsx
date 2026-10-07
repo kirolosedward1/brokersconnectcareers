@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { HeroShell } from '@/components/home/hero-shell';
 import { StepTabs } from '@/components/home/step-tabs';
 import { Illustration } from '@/components/illustration';
-import { POST_PACKS } from '@/lib/taxonomy';
+import { PACKS_ON_SALE } from '@/lib/taxonomy';
 import { BILLING_ENABLED } from '@/lib/env';
 import { formatEgp, formatNumber } from '@/lib/utils';
 
@@ -37,6 +37,8 @@ export async function EmployerLanding({
   signedIn: boolean;
 }) {
   const t = await getTranslations('landingPage');
+  const tBilling = await getTranslations('billing');
+  const tCommon = await getTranslations('common');
 
   // A signed-out visitor sent to the posting form bounces off the auth wall and
   // arrives at a generic sign-in, having lost the fact that they are an
@@ -180,35 +182,44 @@ export async function EmployerLanding({
         </div>
       </section>
 
-      {/* Pricing, priced at zero while BILLING_ENABLED is off — showing the
-          real tiers now means the day it flips is not a surprise. */}
+      {/* Pricing. While billing is off, posting is free and that is all this
+          says: it was a grid of tiers at zero beside struck-through prices
+          nobody had ever been charged — a discount that does not exist, for
+          prices that are still a hypothesis — under the packs' raw keys. The
+          tiers show when they are what a company would actually pay. */}
       <section className="shell py-12 sm:py-14" aria-labelledby="employer-packs">
         <h2 id="employer-packs" className="text-xl font-bold sm:text-2xl">
-          {t('employerHero.trustFree')}
+          {BILLING_ENABLED ? tBilling('packs') : t('employerHero.trustFree')}
         </h2>
 
-        <ul className="mt-5 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-          {POST_PACKS.map((pack) => (
-            <li key={pack.key} className="bg-card p-5">
-              <p className="text-sm font-medium text-muted-foreground">{pack.key}</p>
-              <p className="mt-2 text-2xl font-bold">
-                <span className="numeral">
-                  {BILLING_ENABLED ? formatEgp(pack.priceEgp, locale) : formatEgp(0, locale)}
-                </span>
-              </p>
-              {BILLING_ENABLED ? null : (
-                <p className="numeral mt-1 text-xs text-muted-foreground line-through">
-                  {formatEgp(pack.priceEgp, locale)}
+        {BILLING_ENABLED ? (
+          <ul className="mt-5 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3">
+            {PACKS_ON_SALE.map((pack) => (
+              <li key={pack.key} className="bg-card p-5">
+                <p className="text-sm font-medium text-muted-foreground">
+                  {tBilling(`packName.${pack.key}`)}
                 </p>
-              )}
-              <p className="mt-3 text-sm text-muted-foreground">
-                <span className="numeral">
-                  {pack.seats ? formatNumber(pack.seats, locale) : '∞'} · {formatNumber(pack.days, locale)}
-                </span>
-              </p>
-            </li>
-          ))}
-        </ul>
+                <p className="mt-2 text-2xl font-bold">
+                  <span className="numeral">{formatEgp(pack.priceEgp, locale)}</span>
+                  <span className="ms-1 text-sm font-normal text-muted-foreground">
+                    {tCommon('egp')}
+                  </span>
+                </p>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {pack.seats === null
+                    ? tBilling('unlimitedSeats')
+                    : tBilling('seatsUpTo', { count: pack.seats })}
+                  {' · '}
+                  {tBilling('days', { count: pack.days })}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 max-w-2xl leading-relaxed text-muted-foreground">
+            {tBilling('disabledBody')}
+          </p>
+        )}
       </section>
 
       {/* The closing ask, as a line. It was a gradient poster with a grid

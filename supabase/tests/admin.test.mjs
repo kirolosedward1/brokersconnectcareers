@@ -205,7 +205,7 @@ report.section('listing moderation follows the lifecycle, and records itself');
 
   const changes = await session(admin, async (q) => {
     await q(`select admin_moderate_job('${pendingJob}', 'request_changes', 'اكتب الراتب')`);
-    return (await q(`select status, rejection_note from jobs where id = '${pendingJob}'`))[0];
+    return (await q(`select j.status, m.rejection_note from jobs j left join job_moderation m on m.job_id = j.id where j.id = '${pendingJob}'`))[0];
   });
   report.check('requesting changes sends it back with the note',
     changes.value?.status === 'rejected' && changes.value.rejection_note === 'اكتب الراتب',
@@ -215,7 +215,7 @@ report.section('listing moderation follows the lifecycle, and records itself');
     await q(`select admin_moderate_job('${liveJob}', 'unpublish', 'إعلان وهمي')`);
     const down = (await q(`select status from jobs where id = '${liveJob}'`))[0].status;
     await q(`select admin_moderate_job('${liveJob}', 'restore')`);
-    const back = (await q(`select status, rejection_note from jobs where id = '${liveJob}'`))[0];
+    const back = (await q(`select j.status, m.rejection_note from jobs j left join job_moderation m on m.job_id = j.id where j.id = '${liveJob}'`))[0];
     return { down, back };
   });
   report.check('a takedown comes off the board and a restore puts it back',

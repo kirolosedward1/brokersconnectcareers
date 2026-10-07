@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, Switch, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
@@ -8,8 +8,10 @@ import { EmptyState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useSaveEmailPreferences, type EmailPreferences } from '~/features/account/settings';
 import { useSession } from '~/lib/session';
+import { useStoredFields } from '~/lib/use-stored-fields';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
+import { UserRound } from '~/components/ui/lucide';
 
 /**
  * What we email — the website's switches on /dashboard/account: each kind of
@@ -27,6 +29,7 @@ export default function EmailsScreen() {
       <>
         {header}
         <EmptyState
+          icon={UserRound}
           title={t('app.account.signedOutTitle')}
           action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
         />
@@ -48,23 +51,28 @@ export default function EmailsScreen() {
       {header}
       <Switches
         employer={profile.role === 'employer'}
-        initial={{
+        stored={{
           notify_applications: profile.notify_applications,
           notify_status: profile.notify_status,
           notify_digest: profile.notify_digest,
           notify_applicant_digest: profile.notify_applicant_digest,
+          notify_profile_nudge: profile.notify_profile_nudge,
         }}
       />
     </>
   );
 }
 
-function Switches({ employer, initial }: { employer: boolean; initial: EmailPreferences }) {
+function Switches({ employer, stored }: { employer: boolean; stored: EmailPreferences }) {
   const t = useTranslations('account');
   const tCommon = useTranslations('common');
-  const { colors } = useTheme();
+  const { colors, shadow } = useTheme();
   const save = useSaveEmailPreferences();
-  const [prefs, setPrefs] = useState(initial);
+  // The switches follow what is stored — one turned off from an email's
+  // unsubscribe link, or on another phone, while this was open — so that a
+  // flip, which sends all of them, never turns it back on.
+  const switches = useStoredFields(stored);
+  const prefs = switches.fields;
   const [saved, setSaved] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -78,18 +86,25 @@ function Switches({ employer, initial }: { employer: boolean; initial: EmailPref
       : []),
     { key: 'notify_status', label: t('notifyStatus'), hint: t('notifyStatusHint') },
     ...(employer ? [] : [{ key: 'notify_digest' as const, label: t('notifyDigest'), hint: t('notifyDigestHint') }]),
+    // The profile reminder, off unless turned on — offered only where the
+    // database has the switch (migration 337), as on the website.
+    ...(!employer && typeof stored.notify_profile_nudge === 'boolean'
+      ? [{ key: 'notify_profile_nudge' as const, label: t('notifyProfileNudge'), hint: t('notifyProfileNudgeHint') }]
+      : []),
   ];
 
   const flip = (key: keyof EmailPreferences) => {
-    const before = prefs;
     const next = { ...prefs, [key]: !prefs[key] };
-    setPrefs(next);
+    switches.set({ [key]: next[key] });
     setSaved(false);
     setFailed(false);
     save.mutate(next, {
-      onSuccess: () => setSaved(true),
+      onSuccess: () => {
+        switches.saved(next);
+        setSaved(true);
+      },
       onError: () => {
-        setPrefs(before);
+        switches.set({ [key]: prefs[key] });
         setFailed(true);
       },
     });
@@ -98,7 +113,7 @@ function Switches({ employer, initial }: { employer: boolean; initial: EmailPref
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[4] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
     >
       <Text tone="mutedForeground">{t('emailsBody')}</Text>
       {rows.map((row) => (
@@ -109,9 +124,10 @@ function Switches({ employer, initial }: { employer: boolean; initial: EmailPref
             alignItems: 'center',
             gap: space[3],
             padding: space[4],
-            borderRadius: radius.xl,
-            borderWidth: 1,
+            ...corner('xl'),
+            borderWidth: StyleSheet.hairlineWidth * 2,
             borderColor: colors.border,
+            boxShadow: shadow.card,
             backgroundColor: colors.card,
           }}
         >
@@ -122,7 +138,7 @@ function Switches({ employer, initial }: { employer: boolean; initial: EmailPref
             </Text>
           </View>
           <Switch
-            value={prefs[row.key]}
+            value={Boolean(prefs[row.key])}
             onValueChange={() => flip(row.key)}
             disabled={save.isPending}
             accessibilityLabel={row.label}

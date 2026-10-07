@@ -16,7 +16,20 @@ export function CaptchaStatus({ captcha }: { captcha: ReturnType<typeof useCaptc
   return (
     <View style={{ gap: space[2] }}>
       {captcha.view}
-      {captcha.status === 'interactive' ? (
+      {captcha.status === 'unknown' ? (
+        <View style={{ gap: space[2] }}>
+          <Text variant="small" tone="destructive" accessibilityRole="alert">
+            {t('configFailed')}
+          </Text>
+          <Button
+            label={t('configRetry')}
+            variant="outline"
+            size="sm"
+            loading={captcha.retrying}
+            onPress={captcha.retry}
+          />
+        </View>
+      ) : captcha.status === 'interactive' ? (
         <Text variant="small" tone="mutedForeground">
           {t('captchaPrompt')}
         </Text>
@@ -32,7 +45,11 @@ export function CaptchaStatus({ captcha }: { captcha: ReturnType<typeof useCaptc
   );
 }
 
-/** Whether a password form can go yet: the config has answered and, if a captcha is asked for, it has a token. */
+/**
+ * Whether a password form can go yet: the config has answered and, if a
+ * captcha is asked for, it has a token. A config that could not be read holds
+ * it too ('unknown'), with the way to read it again.
+ */
 export function captchaBlocks(captcha: ReturnType<typeof useCaptcha>): boolean {
   return captcha.loading || (captcha.status !== 'off' && captcha.status !== 'ready');
 }

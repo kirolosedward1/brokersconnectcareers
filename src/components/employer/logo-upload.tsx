@@ -144,7 +144,7 @@ export function LogoUpload({
           {/* A label, not a button that clicks a hidden input: the label is
               the control, so it works from the keyboard on its own. */}
           <label className="cursor-pointer">
-            <ImageUp />
+            <ImageUp aria-hidden />
             {logoUrl ? t('logoReplace') : t('logoUpload')}
             <input
               type="file"
@@ -158,7 +158,7 @@ export function LogoUpload({
 
         {logoUrl ? (
           <Button variant="ghost" size="icon" onClick={remove} disabled={pending}>
-            <Trash2 />
+            <Trash2 aria-hidden />
             <span className="sr-only">{tCommon('delete')}</span>
           </Button>
         ) : null}

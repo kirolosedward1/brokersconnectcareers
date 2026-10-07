@@ -34,9 +34,10 @@ import type { ApprovalStatus, TaxonomyKind } from '@/lib/supabase/database.types
  * wherever somebody remembered.
  */
 export type AdminLever =
-  | { do: 'job'; jobId: string; action: JobModerationAction }
+  /** `version`: the listing as the page showed it; an edit since is refused, not approved unseen. */
+  | { do: 'job'; jobId: string; action: JobModerationAction; version?: number }
   | { do: 'feature'; jobId: string; featured: boolean }
-  | { do: 'company'; companyId: string; decision: 'verify' | 'reject' | 'request_changes' | 'revoke' }
+  | { do: 'company'; companyId: string; decision: 'verify' | 'reject' | 'request_changes' | 'revoke'; version?: number }
   | { do: 'suspendCompany'; companyId: string; suspend: boolean }
   | { do: 'approval'; userId: string; status: ApprovalStatus }
   | { do: 'restrictAgent'; agentId: string; restrict: boolean }
@@ -61,11 +62,11 @@ export type AdminLever =
 function pull(lever: AdminLever, reason: string): Promise<ActionResult<unknown>> {
   switch (lever.do) {
     case 'job':
-      return moderateJob({ jobId: lever.jobId, action: lever.action, reason });
+      return moderateJob({ jobId: lever.jobId, action: lever.action, reason, version: lever.version });
     case 'feature':
       return setJobFeatured({ jobId: lever.jobId, featured: lever.featured });
     case 'company':
-      return reviewCompany({ companyId: lever.companyId, decision: lever.decision, note: reason });
+      return reviewCompany({ companyId: lever.companyId, decision: lever.decision, note: reason, version: lever.version });
     case 'suspendCompany':
       return setCompanySuspension({ companyId: lever.companyId, suspend: lever.suspend, reason });
     case 'approval':

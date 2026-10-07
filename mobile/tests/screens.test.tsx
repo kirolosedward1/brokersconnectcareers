@@ -1,9 +1,9 @@
 import { Stack, Tabs } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Alert, Modal, type AlertButton } from 'react-native';
+import { Alert, Modal, RefreshControl, type AlertButton } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
-import { unhideCompany } from '~/features/moderation/hidden-companies';
-import { I18nProvider } from '~/i18n/provider';
+import { hideCompany, unhideCompany } from '~/features/moderation/hidden-companies';
+import { catalogues, I18nProvider } from '~/i18n/provider';
 import { SessionProvider } from '~/lib/session';
 import { ThemeProvider } from '~/theme/provider';
 import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
@@ -12,6 +12,7 @@ import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
 import * as CompaniesScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/companies/index';
+import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as NotFoundScreen from '../src/app/+not-found';
 import { board, browse, cairo, company, companyPage, directory, jobPage, listing, newCairo } from './fixtures';
 import { fakeServer } from './server';
@@ -24,7 +25,12 @@ import { fakeServer } from './server';
   message that fails to format, a parameter read under the wrong name.
 */
 
+const ar = catalogues.ar;
+// Read from the catalogue, so that renaming a track is a change of words, not of these tests.
+const landingTitle = ar.landing.title.replace('{track}', ar.track.primary).replace('{district}', newCairo.name_ar);
 const server = fakeServer();
+
+const SPONSORED_FIRST = 'الإعلانات الممولة بتظهر في الأول، وبعدها الباقي بالترتيب اللي اخترته.';
 
 const warnings: string[] = [];
 beforeAll(() => {
@@ -52,8 +58,13 @@ afterEach(() => {
   expect(warnings.filter((warning) => warning.includes('[i18n]'))).toEqual([]);
 });
 
+/** Each test's query cache, for reading the board again as the app does on its own. */
+let client: QueryClient;
+beforeEach(() => {
+  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+});
+
 function Root() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
     <QueryClientProvider client={client}>
       <ThemeProvider>
@@ -76,17 +87,44 @@ const app = {
   '(tabs)/(home)/index': HomeScreen,
   '(tabs)/(jobs)/jobs/index': BoardScreen,
   '(tabs)/(companies)/companies/index': CompaniesScreen,
+  '(tabs)/(account)/account/hidden': HiddenScreen,
   '+not-found': NotFoundScreen,
 };
 
 describe('home', () => {
   it('leads with the search, the ways in and the newest roles', async () => {
     renderRouter(app, { initialUrl: '/' });
-    expect(await screen.findByText('أفضل منصة لوظائف العقارات في مصر')).toBeTruthy();
+    expect(await screen.findByText('منصة متخصصة لوظائف العقارات في مصر')).toBeTruthy();
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     // The browse index, with the district's name from the taxonomy.
     expect(await screen.findByLabelText('القاهرة الجديدة، وظيفة واحدة')).toBeTruthy();
     expect(screen.getByText('وظائف شركات الوساطة')).toBeTruthy();
+  });
+
+  it('says it has no connection on a first launch without one, and fills in once Retry is pressed', async () => {
+    let online = false;
+    const offline = () => {
+      throw new TypeError('Network request failed');
+    };
+    server.on('/api/mobile/v1/jobs', () => (online ? board() : offline()));
+    server.on('/api/mobile/v1/browse', () => (online ? browse : offline()));
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.app.offline.title)).toBeTruthy();
+    expect(screen.queryByText(listing.title_ar)).toBeNull();
+
+    online = true;
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    expect(screen.queryByText(ar.app.offline.title)).toBeNull();
+  });
+
+  it('keeps the search above the keyboard on a small phone, as the other homes do', async () => {
+    renderRouter(app, { initialUrl: '/' });
+    let node = (await screen.findByLabelText(ar.landingPage.hero.searchLabel)).parent;
+    while (node && node.props.keyboardShouldPersistTaps === undefined) node = node.parent;
+    expect(node?.props.automaticallyAdjustKeyboardInsets).toBe(true);
+    // Dragged down with the page, the keyboard goes with the finger rather than all at once.
+    expect(node?.props.keyboardDismissMode).toBe('interactive');
   });
 
   it('searches the board with the words typed', async () => {
@@ -97,13 +135,111 @@ describe('home', () => {
   });
 });
 
+/** A read held in flight until the test lets it go. */
+function held<T>(answer: () => T) {
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { handler: async () => (await gate, answer()), release };
+}
+
 describe('the board', () => {
+  it('spins for a pull, and not when the board is read again on its own', async () => {
+    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    const spinning = () => screen.UNSAFE_getByType(RefreshControl).props.refreshing;
+    expect(spinning()).toBe(false);
+
+    // Read again on coming back to the app: no spinner pushing the list down.
+    const reading = held(() => board());
+    server.on('/api/mobile/v1/jobs', reading.handler);
+    act(() => {
+      void client.invalidateQueries({ queryKey: ['jobs', 'board'] });
+    });
+    await waitFor(() => expect(server.asked('/api/mobile/v1/jobs').length).toBeGreaterThan(1));
+    expect(spinning()).toBe(false);
+    await act(async () => reading.release());
+
+    // A pull: the spinner, until the board is in.
+    const again = held(() => board());
+    server.on('/api/mobile/v1/jobs', again.handler);
+    act(() => {
+      screen.UNSAFE_getByType(RefreshControl).props.onRefresh();
+    });
+    expect(spinning()).toBe(true);
+    await act(async () => again.release());
+    await waitFor(() => expect(spinning()).toBe(false));
+  });
+
   it('shows the listings, how many, and the pay in the website words', async () => {
     renderRouter(app, { initialUrl: '/(jobs)/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     expect(screen.getByText('نتيجة واحدة')).toBeTruthy();
     // The salary range with each number isolated left to right.
     expect(screen.getByText('⁦10,000⁩ – ⁦15,000⁩ جنيه')).toBeTruthy();
+    // Nothing sponsored on the page, so nothing to explain about the order.
+    expect(screen.queryByText(SPONSORED_FIRST)).toBeNull();
+  });
+
+  it('labels a sponsored listing, and says sponsored listings come first whatever the sort', async () => {
+    server.on('/api/mobile/v1/jobs', board([{ ...listing, is_featured: true }]));
+    renderRouter(app, { initialUrl: '/(jobs)/jobs?sort=salary' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    expect(screen.getByText('إعلان ممول')).toBeTruthy();
+    expect(screen.getByText(SPONSORED_FIRST)).toBeTruthy();
+  });
+
+  it('says nothing about sponsored listings when the only one is from a company the reader hid', async () => {
+    const other = {
+      ...listing,
+      id: '5b0c7d1e-0000-4000-8000-000000000102',
+      slug: 'sales-manager-c3d4',
+      title_ar: 'مدير مبيعات',
+      company_id: 'c0000000-0000-4000-8000-000000000002',
+      company: { ...listing.company, id: 'c0000000-0000-4000-8000-000000000002', slug: 'other-brokers' },
+    };
+    server.on('/api/mobile/v1/jobs', board([{ ...listing, is_featured: true }, other]));
+    act(() => hideCompany(company.id));
+    try {
+      renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+      expect(await screen.findByText(other.title_ar)).toBeTruthy();
+      expect(screen.queryByText(listing.title_ar)).toBeNull();
+      expect(screen.queryByText(SPONSORED_FIRST)).toBeNull();
+    } finally {
+      act(() => unhideCompany(company.id));
+    }
+  });
+
+  it('tells VoiceOver everything a card shows: sponsored, closed, the pay and the rest, not only who and where', async () => {
+    server.on('/api/mobile/v1/jobs', board([{ ...listing, is_featured: true, expires_at: new Date(Date.now() - 86_400_000).toISOString() }]));
+    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+
+    const card = screen.getByRole('link', { name: new RegExp(`^${listing.title_ar}`) });
+    const spoken = card.props.accessibilityLabel as string;
+    for (const said of [
+      'إعلان ممول',
+      ar.jobs.closedShort,
+      ar.companies.verified,
+      '⁦10,000⁩ – ⁦15,000⁩ جنيه',
+      ar.leadsSource.company_provided_short,
+      ar.track.primary,
+      ar.experienceBand.junior_1_3,
+    ]) {
+      expect(spoken).toContain(said);
+    }
+  });
+
+  it('says "no basic salary", not "commission only", for a listing that has no commission either', async () => {
+    server.on(
+      '/api/mobile/v1/jobs',
+      board([{ ...listing, basic_salary_min: null, basic_salary_max: null, commission_type: 'none', commission_value: null }]),
+    );
+    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    expect(screen.getByText('من غير راتب أساسي')).toBeTruthy();
+    expect(screen.queryByText('عمولة فقط')).toBeNull();
   });
 
   it('asks the server for exactly the filters in the address', async () => {
@@ -118,6 +254,17 @@ describe('the board', () => {
     await screen.findByText(listing.title_ar);
     fireEvent.press(await screen.findByLabelText('شيل فلتر القاهرة الجديدة'));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
+  });
+
+  it('drops the words searched when the search is left, by Cancel on iOS or the close on Android', async () => {
+    for (const leave of ['onCancelButtonPress', 'onClose'] as const) {
+      const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?q=villa&track=primary' });
+      await screen.findByText(listing.title_ar);
+      const bar = screen.UNSAFE_root.find((node) => node.props.placeholder === 'مثال: استشاري عقاري' && Boolean(node.props[leave]));
+      act(() => bar.props[leave]({ nativeEvent: {} }));
+      await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
+      result.unmount();
+    }
   });
 
   it('offers the one filter to drop when nothing matches', async () => {
@@ -141,13 +288,16 @@ describe('the board', () => {
       expect(await screen.findByRole('header', { name: heading })).toBeTruthy();
     }
 
-    fireEvent.press(screen.getByRole('button', { name: 'بيع أول' }));
-    fireEvent.press(screen.getByRole('button', { name: 'براتب أساسي' }));
+    fireEvent.press(screen.getByRole('button', { name: ar.track.primary }));
+    // A group that takes one answer is a set of radio buttons: choosing one unchooses "any".
+    fireEvent.press(screen.getByRole('radio', { name: 'براتب أساسي' }));
+    expect(screen.getByRole('radio', { name: 'براتب أساسي' }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByLabelText('راتب أساسي').props.accessibilityRole).toBe('radiogroup');
     fireEvent.press(await screen.findByRole('button', { name: 'القاهرة الجديدة' }));
-    fireEvent.press(screen.getByRole('button', { name: 'آخر 7 أيام' }));
-    expect(await screen.findByRole('button', { name: 'شوف النتايج · ⁦7⁩' })).toBeTruthy();
+    fireEvent.press(screen.getByRole('radio', { name: 'آخر 7 أيام' }));
+    expect(await screen.findByRole('button', { name: 'شوف النتائج · ⁦7⁩' })).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('button', { name: 'شوف النتايج · ⁦7⁩' }));
+    fireEvent.press(screen.getByRole('button', { name: 'شوف النتائج · ⁦7⁩' }));
     // The words typed in the search bar are kept; the rest is the sheet's.
     await waitFor(() =>
       expect(result.getSearchParams()).toEqual({
@@ -168,13 +318,17 @@ describe('the board', () => {
     const sheet = within(screen.UNSAFE_getByType(Modal));
     fireEvent.press(sheet.getByRole('button', { name: 'امسح كل الفلاتر' }));
     // Pressable at once, whether or not the count has come back.
-    fireEvent.press(sheet.getByRole('button', { name: /شوف النتايج/ }));
+    fireEvent.press(sheet.getByRole('button', { name: /شوف النتائج/ }));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'x' }));
   });
 
   it('re-sorts', async () => {
     const result = renderRouter(app, { initialUrl: '/(jobs)/jobs' });
     await screen.findByText(listing.title_ar);
+    // One order of three: radio buttons in a group named for what they set.
+    expect(screen.getByLabelText('رتّب حسب').props.accessibilityRole).toBe('radiogroup');
+    expect(screen.getByRole('radio', { name: 'الأحدث' }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByRole('radio', { name: 'الأعلى راتباً' }).props.accessibilityState).toMatchObject({ checked: false });
     fireEvent.press(screen.getByText('الأعلى راتباً'));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ sort: 'salary' }));
   });
@@ -200,7 +354,28 @@ describe('a listing', () => {
       facts: { listings: 1, companies: 1, withBasicSalary: 1, salaryFloor: 10000, salaryCeiling: 15000 },
     });
     renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
-    expect(await screen.findByText('وظائف بيع أول في القاهرة الجديدة')).toBeTruthy();
+    expect(await screen.findByText(landingTitle)).toBeTruthy();
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+  });
+
+  it("says a track-in-district page's listings could not be read, never that there are none", async () => {
+    server.on('/api/mobile/v1/landing/primary-sales-new-cairo', {
+      track: 'primary',
+      district: newCairo,
+      facts: { listings: 3, companies: 3, withBasicSalary: 0, salaryFloor: null, salaryCeiling: null },
+    });
+    server.on('/api/mobile/v1/jobs', { status: 503, body: { error: 'unavailable' } });
+    renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+    expect(await screen.findByText(landingTitle)).toBeTruthy();
+
+    expect(await screen.findByRole('button', { name: ar.common.retry })).toBeTruthy();
+    expect(screen.queryByText(ar.jobs.empty)).toBeNull();
+    // Nor a count of none at the top (resultsCount at zero).
+    expect(screen.queryByText('مفيش نتائج')).toBeNull();
+
+    // Read again on the retry.
+    server.on('/api/mobile/v1/jobs', board());
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
   });
 
@@ -256,6 +431,12 @@ describe('reporting and hiding', () => {
     renderRouter(app, { initialUrl: '/(companies)/companies' });
     await screen.findByText(/شركات العقارات|الشركات/);
     await waitFor(() => expect(screen.queryByText('نايل بروكرز') === null).toBe(true));
+    screen.unmount();
+
+    // Listed by name under Account, out of every list as it is.
+    renderRouter(app, { initialUrl: '/account/hidden' });
+    expect(await screen.findByText('نايل بروكرز')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'رجّع نايل بروكرز' })).toBeTruthy();
     screen.unmount();
 
     renderRouter(app, { initialUrl: '/(companies)/companies/nile-brokers' });

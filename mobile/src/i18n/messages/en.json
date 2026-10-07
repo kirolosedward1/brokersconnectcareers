@@ -32,6 +32,7 @@
     "deleteAppleFailed": "We could not confirm with Apple. Try again.",
     "deleted": "Your account has been deleted.",
     "version": "Version {version}",
+    "published": "Updated {date}",
     "security": "Sign-in and security",
     "oauthOnlyApple": "This account signs in with Apple, so there is no password to change.",
     "mfaOpenApp": "Open in your authenticator app",
@@ -42,7 +43,8 @@
   },
   "jobs": {
     "loadMore": "Load more",
-    "endOfList": "That is every matching job."
+    "endOfList": "That is every matching job.",
+    "wizardStep": "Step <v>{current}</v> of <v>{total}</v>"
   },
   "auth": {
     "forCompanies": "Register your company",
@@ -52,23 +54,53 @@
     "captchaRetry": "Load the check again",
     "verifying": "Checking your link…",
     "switchTitle": "You are signed in with another account",
-    "switchBody": "You are signed in as {email}. This link signs you in with the account the email was sent to instead.",
+    "switchBody": "You are signed in as {email}. This link is for {other}: going on signs you out of yours on this phone and signs in with that one.",
     "switchContinue": "Continue with that account",
     "switchCancel": "Stay in my account",
-    "mfaSignOut": "I do not have the code — sign out"
+    "mfaSignOut": "I do not have the code — sign out",
+    "mfaLost": "Lost the phone with your authenticator app? Write to us and we will help you back into your account.",
+    "linkUsedTitle": "That link no longer works",
+    "linkUsedBody": "It has been used already or has expired. You are signed in as {email}, so there is nothing more to do.",
+    "resetLinkFailed": "That link has expired or has already been used. You are signed in as {email}, so you can set a new password for it in Sign-in and security.",
+    "emailChangeLinkFailed": "That link has expired or has already been used, and the change has not gone through: your account’s address is still {email}. You can ask for the change again in Sign-in and security.",
+    "configFailed": "We could not get signing in ready. Check your connection and try again.",
+    "configRetry": "Try again",
+    "appleRevokedTitle": "You have been signed out",
+    "appleRevokedBody": "Sign in with Apple is no longer on for this app, so we signed you out on this phone. You can sign in again at any time."
   },
   "onboarding": {
-    "terms": "I agree to the <terms>Terms of use</terms> and the <privacy>Privacy policy</privacy>.",
-    "termsRequired": "Agree to the Terms of use to continue.",
-    "choose": "Choose"
+    "choose": "Choose",
+    "roleBody": "So we can set the app up for what you need.",
+    "detailsTitle": "Tell us about you",
+    "detailsTitleEmployer": "Tell us about you and your company",
+    "detailsBody": "Your name, and the WhatsApp number companies will reach you on.",
+    "detailsBodyEmployer": "Your name and WhatsApp number, and the company details we review before your first listing.",
+    "finishTitle": "One last step",
+    "finishBody": "Choose your language and agree to the terms, and your account is ready."
   },
   "moderation": {
     "hide": "Hide this company",
     "hideTitle": "Hide {company}?",
-    "hideBody": "You will not see its listings in the app on this phone again. You can bring it back from the company's page at any time.",
+    "hideBody": "You will not see its listings in the app on this phone again. You can bring it back at any time from “Hidden on this phone” in Account.",
     "hideConfirm": "Hide it",
     "hidden": "You have hidden this company, so its listings do not appear for you in the app.",
-    "unhide": "Show this company again"
+    "unhide": "Show this company again",
+    "hideAgent": "Hide this consultant",
+    "hideAgentTitle": "Hide {name}?",
+    "hideAgentBody": "You will not see them in the consultant directory or your shortlist on this phone again. You can bring them back at any time from “Hidden on this phone” in Account.",
+    "hiddenAgent": "You have hidden this consultant, so they do not appear for you in the directory or your shortlist.",
+    "unhideAgent": "Show this consultant again",
+    "hideAgentConfirm": "Hide them",
+    "hiddenList": "Hidden on this phone",
+    "hiddenListLede": "The companies and consultants you hid stay out of the app on this phone. Bring any of them back whenever you like.",
+    "hiddenCompanies": "Companies",
+    "hiddenAgents": "Consultants",
+    "hiddenNothing": "Nothing is hidden",
+    "hiddenNothingBody": "When you hide a company or a consultant, it appears here so you can bring it back.",
+    "unnamedCompany": "A company you hid",
+    "unnamedAgent": "A consultant you hid",
+    "showAgain": "Show again",
+    "showAgainNamed": "Show {name} again"
   },
   "applications": {
     "withdrawTitle": "Withdraw your application to “{title}”?",
@@ -90,7 +122,8 @@
     "monthInvalid": "Write the year and month like this: 2024-03",
     "endedHint": "Leave it empty if you still work there",
     "endBeforeStart": "The end date must come after the start.",
-    "yearInvalid": "Enter a year between 1950 and 2100."
+    "yearInvalid": "Enter a year between 1950 and 2100.",
+    "chooseUpTo": "Choose up to <v>{count}</v>."
   },
   "applicants": {
     "cvLimit": "You have opened a lot of CVs this hour. Try again shortly."
@@ -98,7 +131,7 @@
   "push": {
     "title": "Notifications on this phone",
     "switch": "Notify me on this phone",
-    "hintCandidate": "When a company opens or answers your application — everything the bell tells you, as it happens.",
+    "hintCandidate": "When your application arrives, and when the company moves it to a new stage — everything the bell tells you, as it happens.",
     "hintEmployer": "When someone applies to one of your listings — everything the bell tells you, as it happens.",
     "denied": "Notifications for Brokers Connect are turned off in your phone’s settings.",
     "openSettings": "Open Settings",
@@ -107,6 +140,51 @@
     "promptCandidate": "Turn on notifications and we will tell you as soon as a company answers your application.",
     "promptEmployer": "Turn on notifications and we will tell you as soon as someone applies to your listings.",
     "turnOn": "Turn on notifications",
-    "notNow": "Not now"
+    "notNow": "Not now",
+    "unavailable": "Notifications on this phone aren't available in this version of the app yet. Everything new still reaches you in the bell, and by email if you have that on.",
+    "kindsTitle": "What to hear about",
+    "kindsBody": "These apply on every phone you are signed in on. Anything turned off here still shows in the bell.",
+    "jobAlerts": "New jobs",
+    "jobAlertsHint": "Once a day, when jobs appear that match a saved search or a company you follow.",
+    "applicationsCandidate": "Your applications",
+    "applicationsCandidateHint": "When your application arrives, and when the company moves it to a new stage.",
+    "applicationsEmployer": "Applicants",
+    "applicationsEmployerHint": "When someone applies to one of your listings, or withdraws.",
+    "accountCandidate": "Your account",
+    "accountCandidateHint": "Decisions about your account or profile, support replies, a password changed.",
+    "accountEmployer": "Your account and listings",
+    "accountEmployerHint": "A listing published, rejected or ending, your company’s verification, decisions about your account, support replies.",
+    "quiet": "Quiet at night",
+    "quietHint": "Anything after 11 pm waits until 8 am, Cairo time."
+  },
+  "leave": {
+    "title": "Leave without saving?",
+    "body": "What you typed here has not been saved, and will be lost.",
+    "stay": "Keep editing",
+    "discard": "Leave",
+    "sendingTitle": "Still sending",
+    "sendingBody": "Wait a moment until it is done, then you can leave."
+  },
+  "company": {
+    "docFrom": "How do you want to send it?",
+    "docCamera": "Take a photo of it",
+    "docPhotos": "A photo from your library",
+    "docFile": "A file (PDF or image)",
+    "cameraDenied": "Allow the camera for this app in Settings to photograph the paper."
+  },
+  "licenses": {
+    "intro": "This app is built on open-source software, written by many people and published for anyone to use. Here is every package in it, with its version, its licence and its copyright holders, and at the end the text of each licence."
+  },
+  "welcome": {
+    "employer": "Hiring for a company?",
+    "skip": "Skip",
+    "skipHint": "Browse the jobs without an account; you can make one any time.",
+    "lead": "Pay and commission in numbers on every listing, and applying takes under a minute.",
+    "factPay": "Pay in numbers",
+    "factApply": "Apply in a minute",
+    "factWhatsapp": "Talk on WhatsApp"
+  },
+  "companies": {
+    "searchPlaceholder": "Search by company name"
   }
 }

@@ -78,5 +78,11 @@ export const env = {
 /**
  * Billing is built now and priced at zero at launch. Everything behind this
  * flag exists and is reachable; it just does not charge.
+ *
+ * Not to be switched on until the owner has decided, and the site says, what a
+ * company is buying: the prices in POST_PACKS are a hypothesis, they say
+ * nothing about VAT, there is no refund policy beyond "billing is off", and
+ * a pack's seat tier is not enforced when a listing is published (any credit
+ * publishes any number of seats). See docs/legal.md, "Before billing opens".
  */
 export const BILLING_ENABLED = process.env.BILLING_ENABLED === 'true';

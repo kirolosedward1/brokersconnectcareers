@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
  * exactly one power: setting one flag to false.
  */
 
-const KINDS = ['notify_applications', 'notify_status', 'notify_digest'] as const;
+const KINDS = ['notify_applications', 'notify_status', 'notify_digest', 'notify_profile_nudge'] as const;
 type Kind = (typeof KINDS)[number];
 
 function isKind(value: string | null): value is Kind {
@@ -32,7 +32,7 @@ function isKind(value: string | null): value is Kind {
 /**
  * Written out per branch rather than as a computed key. A dynamic key widens
  * to `{ [x: string]: boolean }`, which the generated row types reject — and
- * spelling the three out means an update can only ever touch a column that
+ * spelling them out means an update can only ever touch a column that
  * appears literally in this file.
  */
 function patchFor(kind: Kind) {
@@ -43,6 +43,8 @@ function patchFor(kind: Kind) {
       return { notify_status: false };
     case 'notify_digest':
       return { notify_digest: false };
+    case 'notify_profile_nudge':
+      return { notify_profile_nudge: false };
   }
 }
 

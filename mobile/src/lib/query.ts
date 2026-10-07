@@ -1,8 +1,9 @@
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { focusManager, QueryClient } from '@tanstack/react-query';
+import { focusManager, QueryClient, type Query, type QueryKey } from '@tanstack/react-query';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import type { PersistQueryClientProviderProps } from '@tanstack/react-query-persist-client';
+import type { PersistedClient, PersistQueryClientProviderProps } from '@tanstack/react-query-persist-client';
+import * as Updates from 'expo-updates';
 import { ApiError } from './api';
 
 /**
@@ -35,17 +36,79 @@ focusManager.setEventListener((setFocused) => {
 const DAY = 24 * 60 * 60 * 1000;
 
 /**
+ * The reads the app opens on, the same for every reader: Home's counts, the
+ * unfiltered board and the unfiltered company directory, all three served
+ * without a token and cached at the edge for everyone.
+ */
+const OPENING_READS: QueryKey[] = [['browse'], ['jobs', 'board', ''], ['companies', 'directory', '']];
+
+export function isOpeningRead(key: QueryKey): boolean {
+  return OPENING_READS.some((read) => read.length === key.length && read.every((part, index) => part === key[index]));
+}
+
+/**
+ * What is written for the next start. A long list is kept by its first page
+ * only: a board scrolled ten pages deep is not ten pages to write on every
+ * change, and a cold start shows the top of it anyway. A read whose last
+ * attempt failed — offline, the moment the app went to the background — is
+ * kept as the answer it last had, not as a failure: the next start draws
+ * it, then reads it again.
+ */
+export function firstPagesOnly(client: PersistedClient): PersistedClient {
+  return {
+    ...client,
+    clientState: {
+      ...client.clientState,
+      queries: client.clientState.queries.map((query) => {
+        const state =
+          query.state.status === 'error'
+            ? { ...query.state, status: 'success' as const, error: null, fetchFailureCount: 0, fetchFailureReason: null }
+            : query.state;
+        const data = state.data as { pages?: unknown[]; pageParams?: unknown[] } | undefined;
+        if (!data || !Array.isArray(data.pages) || data.pages.length <= 1) return { ...query, state };
+        return { ...query, state: { ...state, data: { pages: data.pages.slice(0, 1), pageParams: (data.pageParams ?? []).slice(0, 1) } } };
+      }),
+    },
+  };
+}
+
+/**
+ * Whether a read is written for the next start: a taxonomy or an opening read
+ * with an answer. One whose last attempt failed — offline, the moment the app
+ * went to the background — is kept as the answer it had (firstPagesOnly writes
+ * it as that answer), for a day from that answer: the store's own day counts
+ * from the last write, which a read that keeps failing would renew every time
+ * the app is opened. Not when the failure was a refusal (a 4xx is an answer,
+ * and the list as it was is not one to keep drawing).
+ */
+export function keepForNextStart(query: Query): boolean {
+  if (query.state.data === undefined) return false;
+  if (query.queryKey[0] !== 'taxonomy' && !isOpeningRead(query.queryKey)) return false;
+  if (query.state.status !== 'error') return true;
+  const error = query.state.error;
+  const refused = error instanceof ApiError && error.status >= 400 && error.status < 500;
+  return !refused && Date.now() - query.state.dataUpdatedAt < DAY;
+}
+
+/**
  * What survives a restart: the taxonomies (governorates, districts, developers)
- * and nothing about the person. The website keeps the taxonomies for a day;
- * so does the app, so the filters draw instantly on a cold start. A person's
- * applications or notifications in plain app storage would outlive a sign-out
- * on a shared phone, so they are never written here.
+ * and the opening reads above, and nothing about the person. A cold start
+ * draws them at once, on a slow connection or none, and reads them again
+ * behind them; the website keeps the taxonomies for a day, and so does the
+ * app with all of these. A person's applications or notifications in plain
+ * app storage would outlive a sign-out on a shared phone, so they are never
+ * written here.
+ *
+ * Each build and each published update reads only what it wrote itself (the
+ * buster is its update's id): an older one's lists may be another shape.
  */
 export const persistOptions: PersistQueryClientProviderProps['persistOptions'] = {
-  persister: createAsyncStoragePersister({ storage: AsyncStorage, key: 'bc.query-cache.v1' }),
+  persister: createAsyncStoragePersister({
+    storage: AsyncStorage,
+    key: 'bc.query-cache.v1',
+    serialize: (client) => JSON.stringify(firstPagesOnly(client)),
+  }),
   maxAge: DAY,
-  buster: 'taxonomy-v1',
-  dehydrateOptions: {
-    shouldDehydrateQuery: (query) => query.queryKey[0] === 'taxonomy' && query.state.status === 'success',
-  },
+  buster: `opening-reads-1:${Updates.updateId ?? 'none'}`,
+  dehydrateOptions: { shouldDehydrateQuery: keepForNextStart },
 };

@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { View } from 'react-native';
+import { useRef, useState } from 'react';
+import { View, type TextInput } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { Check, KeyRound, Mail } from 'lucide-react-native';
+import { Check, KeyRound, Mail } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
@@ -10,12 +10,10 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useAuthErrorText } from '~/features/auth/errors';
 import { callAction } from '~/lib/api';
+import { EMAIL_SHAPE } from '~/lib/email-shape';
 import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
-
-/** A shape check before anything is sent; Supabase has the last word. */
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Change the email address — the website's CredentialsSettings, through
@@ -38,7 +36,7 @@ export function EmailSettings({ email }: { email: string }) {
     setError(null);
     setSent(false);
     if (!address || address === email) return;
-    if (!EMAIL.test(address)) {
+    if (!EMAIL_SHAPE.test(address)) {
       setError(t('validation.invalidEmail'));
       return;
     }
@@ -101,6 +99,8 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
+  // The return key moves on to the second password, and from there saves.
+  const confirmField = useRef<TextInput>(null);
 
   const hasPassword = provider === 'email';
 
@@ -157,10 +157,14 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
               textContentType="newPassword"
               autoComplete="new-password"
               autoCapitalize="none"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => confirmField.current?.focus()}
             />
           </Field>
           <Field label={t('auth.passwordConfirm')} error={error}>
             <TextField
+              ref={confirmField}
               value={confirm}
               onChangeText={setConfirm}
               accessibilityLabel={t('auth.passwordConfirm')}
@@ -169,6 +173,10 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
               textContentType="newPassword"
               autoComplete="new-password"
               autoCapitalize="none"
+              returnKeyType="go"
+              onSubmitEditing={() => {
+                if (!pending) void save();
+              }}
             />
           </Field>
           {done ? (

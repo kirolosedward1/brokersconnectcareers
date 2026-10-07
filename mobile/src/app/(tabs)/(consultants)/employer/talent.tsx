@@ -1,17 +1,19 @@
 import { useMemo } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { Lock } from 'lucide-react-native';
+import { Lock, UserRoundCheck } from '~/components/ui/lucide';
 import { formatDate, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
-import { canShortlistAgents } from '@/lib/permissions';
+import { canBrowseAgentDirectory, canShortlistAgents } from '@/lib/permissions';
 import type { DistrictRow, SavedAgentCardRow } from '@/lib/supabase/database.types';
 import { areaLine, CardFacts, Silhouette, TrackPills } from '~/components/directory/agent-card';
+import { DirectoryClosed } from '~/components/directory/directory-closed';
 import { ShortlistIcon, useShortlistToggle } from '~/components/directory/shortlist-controls';
 import { Avatar } from '~/components/ui/avatar';
 import { Button } from '~/components/ui/button';
+import { PageFooter } from '~/components/ui/page-footer';
 import { Card } from '~/components/ui/card';
 import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
@@ -19,7 +21,10 @@ import { flattenShortlist, useShortlist, useShortlistedIds } from '~/features/di
 import { useDistricts } from '~/features/taxonomy';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
+import { useNextPage } from '~/lib/use-next-page';
+import { useHiddenAgents, withoutHiddenAgents } from '~/features/moderation/hidden-agents';
 
 /**
  * The company's shortlist — the website's /employer/talent: people worth
@@ -33,19 +38,25 @@ import { space } from '~/theme/tokens';
  */
 export default function ShortlistScreen() {
   const t = useTranslations();
-  const { colors } = useTheme();
   const { actor } = useSession();
   const shortlist = useShortlist();
+  const nextPage = useNextPage(shortlist);
+  const pull = usePullRefresh(() => shortlist.refetch());
   const ids = useShortlistedIds().data;
   const districts = useDistricts().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
+  const hiddenAgents = useHiddenAgents();
   const rows = useMemo(() => {
-    const all = flattenShortlist(shortlist.data?.pages);
+    // Without the consultants hidden on this phone (hidden-agents.ts).
+    const all = withoutHiddenAgents(flattenShortlist(shortlist.data?.pages), hiddenAgents);
     // Until the ids are read, everything the list holds; after, only who is still kept.
     return ids ? all.filter((row) => ids.includes(row.id)) : all;
-  }, [shortlist.data, ids]);
-  // The whole list, not the pages loaded so far: the kept ids are all of it, and follow a removal at once.
-  const total = ids?.length ?? Number(shortlist.data?.pages[0]?.[0]?.total_count ?? 0);
+  }, [shortlist.data, ids, hiddenAgents]);
+  // The whole list, not the pages loaded so far: the kept ids are all of it, and follow a removal at once —
+  // without the consultants hidden on this phone, who are not in it either.
+  const total = ids
+    ? ids.filter((id) => !hiddenAgents.has(id)).length
+    : Number(shortlist.data?.pages[0]?.[0]?.total_count ?? 0);
 
   const header = <Stack.Screen options={{ title: t('employer.shortlist') }} />;
 
@@ -53,7 +64,7 @@ export default function ShortlistScreen() {
     return (
       <>
         {header}
-        <NotFoundState />
+        {canBrowseAgentDirectory(actor) ? <NotFoundState /> : <DirectoryClosed />}
       </>
     );
   }
@@ -83,7 +94,7 @@ export default function ShortlistScreen() {
         renderItem={({ item }) => <ShortlistRow row={item} districts={districtMap} />}
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
           <View style={{ gap: space[2], marginBottom: space[3] }}>
             <Text variant="small" tone="mutedForeground">
@@ -98,24 +109,17 @@ export default function ShortlistScreen() {
         }
         ListEmptyComponent={
           <EmptyState
+            icon={UserRoundCheck}
             title={t('employer.shortlistEmpty')}
             body={t('employer.shortlistEmptyHint')}
             action={<Button label={t('nav.agents')} variant="outline" onPress={() => router.dismissTo('/agents')} />}
           />
         }
-        ListFooterComponent={
-          shortlist.isFetchingNextPage ? (
-            <View style={{ paddingTop: space[4] }}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
-          ) : null
-        }
-        onEndReached={() => {
-          if (shortlist.hasNextPage && !shortlist.isFetchingNextPage) shortlist.fetchNextPage();
-        }}
+        ListFooterComponent={<PageFooter query={shortlist} />}
+        onEndReached={nextPage}
         onEndReachedThreshold={0.5}
-        refreshing={shortlist.isRefetching && !shortlist.isFetchingNextPage}
-        onRefresh={() => shortlist.refetch()}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
       />
     </>
   );

@@ -2,6 +2,43 @@
   Native modules a unit test cannot reach, replaced with their published
   in-memory stand-ins. Loaded before every test file (jest.config.js).
 */
+import { createElement, type Context, type ReactNode } from 'react';
+import { Modal, ScrollView } from 'react-native';
+import { installIntlPolyfills } from '~/lib/intl-polyfills';
+
+// Format as the phone does. Node's own Intl knows every locale; the phone runs
+// the formatjs polyfills with the few the app loads, and a formatter that
+// worked in Node threw on the phone (src/lib/format.ts, formatRelativeDay).
+// Node's own is kept aside for tests/intl.test.ts, which compares the two.
+(globalThis as { nodeIntl?: typeof Intl }).nodeIntl = {
+  ...Intl,
+  DateTimeFormat: Intl.DateTimeFormat,
+  NumberFormat: Intl.NumberFormat,
+  PluralRules: Intl.PluralRules,
+  RelativeTimeFormat: Intl.RelativeTimeFormat,
+  Locale: Intl.Locale,
+  getCanonicalLocales: Intl.getCanonicalLocales,
+};
+installIntlPolyfills({ force: true });
+
+// And without the built-ins Node has and Hermes, the phone's engine, does not
+// (checked against Hermes V1, which React Native 0.86 runs): code using one
+// would pass every test here and throw on the phone. structuredClone is
+// missing from Hermes too, but Expo installs it (expo/src/winter).
+const hermesLacks: [object, string][] = [
+  [Array.prototype, 'toSorted'],
+  [Array, 'fromAsync'],
+  [Object, 'groupBy'],
+  [Map, 'groupBy'],
+  [ArrayBuffer.prototype, 'transfer'],
+  [globalThis, 'Iterator'],
+];
+const iteratorPrototype = Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())) as object;
+for (const helper of ['map', 'filter', 'take', 'drop', 'flatMap', 'reduce', 'toArray', 'forEach', 'some', 'every', 'find']) {
+  hermesLacks.push([iteratorPrototype, helper]);
+}
+for (const [owner, name] of hermesLacks) delete (owner as Record<string, unknown>)[name];
+
 jest.mock('@react-native-async-storage/async-storage', () =>
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories cannot import.
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
@@ -12,6 +49,15 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 process.env.EXPO_PUBLIC_SUPABASE_URL ??= 'http://127.0.0.1:9';
 process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??= 'test-publishable-key';
 process.env.EXPO_PUBLIC_SITE_URL ??= 'http://127.0.0.1:9';
+
+// React Native's test window reports a font scale of 2, an accessibility
+// text size, where the segmented control becomes a menu. The suites describe
+// the phone as most people set it; tests/segmented.test.tsx covers the large
+// sizes on purpose.
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => {
+  const { Dimensions } = jest.requireActual('react-native');
+  return { __esModule: true, default: () => ({ ...Dimensions.get('window'), fontScale: 1 }) };
+});
 
 // FlashList measures its window natively; in a test there is none, and the
 // package's own jestSetup names an export 2.0 no longer has. FlatList takes
@@ -45,6 +91,9 @@ jest.mock('expo-apple-authentication', () => {
   return {
     isAvailableAsync: jest.fn(async () => false),
     signInAsync: jest.fn(),
+    // What iOS says of an Apple ID's sign-in with this app: still authorized, unless a test says otherwise.
+    getCredentialStateAsync: jest.fn(async () => 1),
+    AppleAuthenticationCredentialState: { REVOKED: 0, AUTHORIZED: 1, NOT_FOUND: 2, TRANSFERRED: 3 },
     formatFullName: jest.fn((name: { givenName?: string | null; familyName?: string | null }) =>
       [name.givenName, name.familyName].filter(Boolean).join(' '),
     ),
@@ -76,7 +125,29 @@ jest.mock('expo-notifications', () => {
     getLastNotificationResponse: jest.fn(() => null),
     clearLastNotificationResponse: jest.fn(),
     setBadgeCountAsync: jest.fn(async () => true),
+    dismissAllNotificationsAsync: jest.fn(async () => {}),
     unregisterForNotificationsAsync: jest.fn(async () => {}),
   };
 });
 jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '1' }));
+
+// React Native's ScrollView tells what it holds that it is inside one
+// (ScrollView.Context): lists read it to warn of a list nested in a page that
+// scrolls, and the app's empty and error states to know whether to scroll
+// themselves (src/components/ui/states.tsx). A Modal, a window of its own,
+// starts afresh. The test stand-ins for both draw their children without
+// either; they are made to say what the real ones say.
+{
+  type Drawn = { prototype: { render(this: { props: { horizontal?: boolean | null } }): ReactNode } };
+  const inside = (ScrollView as unknown as { Context: Context<{ horizontal: boolean } | null> }).Context;
+  const scroll = ScrollView as unknown as Drawn;
+  const drawScroll = scroll.prototype.render;
+  scroll.prototype.render = function () {
+    return createElement(inside.Provider, { value: { horizontal: this.props.horizontal === true } }, drawScroll.call(this));
+  };
+  const modal = Modal as unknown as Drawn;
+  const drawModal = modal.prototype.render;
+  modal.prototype.render = function () {
+    return createElement(inside.Provider, { value: null }, drawModal.call(this));
+  };
+}

@@ -1,0 +1,26 @@
+# Opens the app as someone who has just installed it: nothing stored, nobody
+# signed in. A first launch opens on the welcome (src/app/welcome.tsx), which
+# is captured and then skipped, the way someone looking around answers it, so
+# Home is on screen at the end.
+appId: net.brokersconnect.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "تخطي"
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: 0-welcome
+# Tapped again if the welcome is still up: on a simulator just booted, the
+# first tap of a pass was once lost (the same tap closed it in every other pass).
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn: "تخطي"
+      - extendedWaitUntil:
+          notVisible: "تخطي"
+          timeout: 10000
+- extendedWaitUntil:
+    visible: "منصة متخصصة لوظائف العقارات في مصر"
+    timeout: 90000
+- waitForAnimationToEnd

@@ -1,7 +1,7 @@
 import 'server-only';
-import { createHash } from 'node:crypto';
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { bucketHandle } from '@/lib/security/request';
 
 /**
  * A counter for user-triggered actions that leave no row of their own.
@@ -31,9 +31,15 @@ export async function allow(bucket: string, limit: number, windowSeconds: number
   }
 }
 
-/** A stable, non-reversible handle for an address or other identifier. */
-export function subject(value: string): string {
-  return createHash('sha256').update(value.trim().toLowerCase()).digest('base64url').slice(0, 22);
+/**
+ * A stable, non-reversible handle for an email address or a network address.
+ *
+ * Salted (security/request.ts). It was a bare SHA-256 of the value, which a
+ * copy of the table gave back for every IPv4 address — there are only four
+ * billion to hash — and for any address on a list somebody already had.
+ */
+export function subject(kind: 'ip' | 'email', value: string): string {
+  return bucketHandle(kind, value);
 }
 
 /**

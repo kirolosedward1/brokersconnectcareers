@@ -4,6 +4,7 @@ import { copyFor } from './copy';
 import { buildEnvelope } from './envelope';
 import type { Block } from './components';
 import type { Envelope } from './service';
+import { unsubscribeLinks } from './unsubscribe-link';
 
 /**
  * Every template, rendered from fixtures.
@@ -444,6 +445,21 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
+  company_verification_revoked: (f) => {
+    const w = words(f);
+    const t = copyFor(f.locale).companyVerificationRevoked;
+    return {
+      subject: t.subject,
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.body(w.company) },
+        { kind: 'company', name: w.company, href: `${env.siteUrl}/companies/example` },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/company` },
+      ],
+    };
+  },
+
   saved_search_digest: (f) => {
     const w = words(f);
     const t = copyFor(f.locale).digest;
@@ -549,7 +565,7 @@ export function renderPreview(
     audience: {
       locale,
       unsubscribe: OPTIONAL_TEMPLATES.has(template)
-        ? `${env.siteUrl}/unsubscribe?token=preview-token&kind=notify_status`
+        ? unsubscribeLinks(env.siteUrl, 'preview-token', 'notify_status')
         : undefined,
     },
     ...parts,

@@ -34,8 +34,8 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
     let next: number | null = null;
     if (event.key === 'ArrowDown') next = active === last ? 0 : active + 1;
     if (event.key === 'ArrowUp') next = active === 0 ? last : active - 1;
-    if (event.key === 'ArrowRight') next = rtl ? active + 1 : active - 1;
-    if (event.key === 'ArrowLeft') next = rtl ? active - 1 : active + 1;
+    if (event.key === 'ArrowRight') next = rtl ? active - 1 : active + 1;
+    if (event.key === 'ArrowLeft') next = rtl ? active + 1 : active - 1;
     if (event.key === 'Home') next = 0;
     if (event.key === 'End') next = last;
 
@@ -67,9 +67,16 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
               aria-controls={`${id}-panel-${index}`}
               tabIndex={selected ? 0 : -1}
               onClick={() => setActive(index)}
+              /*
+                The primary's own foreground, at opacities that hold 4.5:1 on
+                it in both themes. White at 55-80% measured 2.8-4.5:1 on light
+                and under 2.4:1 in dark, where the primary is a pale blue. The
+                ring is the foreground too: the default one is the primary,
+                which on this panel is no ring at all.
+              */
               className={cn(
-                'group/step rounded-xl p-4 text-start transition-colors sm:p-5',
-                selected ? 'bg-white/15 shadow-sm' : 'hover:bg-white/10',
+                'group/step rounded-xl p-4 text-start transition-colors focus-visible:outline-primary-foreground sm:p-5',
+                selected ? 'bg-primary-hover shadow-sm' : 'hover:bg-primary-hover/50',
               )}
             >
               <span className="flex items-center gap-3">
@@ -77,7 +84,9 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
                   aria-hidden
                   className={cn(
                     'numeral grid size-8 shrink-0 place-items-center rounded-lg text-sm font-bold transition-colors',
-                    selected ? 'bg-white text-primary' : 'bg-white/15 text-white/80',
+                    selected
+                      ? 'bg-primary-foreground text-primary'
+                      : 'bg-primary-foreground/10 text-primary-foreground',
                   )}
                 >
                   {index + 1}
@@ -85,7 +94,7 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
                 <span
                   className={cn(
                     'font-semibold transition-colors',
-                    selected ? 'text-white' : 'text-white/80',
+                    selected ? 'text-primary-foreground' : 'text-primary-foreground/90',
                   )}
                 >
                   {step.title}
@@ -95,7 +104,7 @@ export function StepTabs({ steps, className }: { steps: Step[]; className?: stri
               <span
                 className={cn(
                   'mt-2 block text-sm leading-relaxed transition-colors',
-                  selected ? 'text-white/80' : 'text-white/55',
+                  selected ? 'text-primary-foreground/90' : 'text-primary-foreground/85',
                 )}
               >
                 {step.body}

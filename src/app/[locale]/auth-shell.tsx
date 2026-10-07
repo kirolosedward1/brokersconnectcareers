@@ -61,10 +61,14 @@ export async function AuthShell({
         <div className="flex flex-1 flex-col justify-center py-12">{children}</div>
       </div>
 
-      {/* Fixed so it does not scroll with a long form, and hidden below lg. */}
+      {/* Fixed so it does not scroll with a long form, and hidden below lg.
+          The brand gradient, with its far end darkened in the light theme:
+          at the usual oklch(0.62 0.19 232) the light text over it fell to
+          2.9:1. Dark keeps that end, where the text is dark and 0.62 is what
+          holds it at 5:1. */}
       <aside
         aria-hidden
-        className="bg-brand-gradient relative hidden overflow-hidden lg:block"
+        className="relative hidden overflow-hidden bg-linear-135 from-brand-blue to-[oklch(0.5_0.19_232)] lg:block dark:to-[oklch(0.62_0.19_232)]"
       >
         <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] [background-size:2.5rem_2.5rem] [mask-image:radial-gradient(36rem_24rem_at_50%_30%,black,transparent)]" />
         <div className="pointer-events-none absolute -bottom-24 -start-24 size-96 rounded-full bg-white/10 blur-3xl" />
@@ -78,7 +82,7 @@ export async function AuthShell({
             {panel.points.map((key) => (
               <li key={key} className="flex items-start gap-3">
                 <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-white/20">
-                  <Check className="size-3.5" />
+                  <Check className="size-3.5" aria-hidden />
                 </span>
                 <span className="max-w-sm leading-relaxed opacity-90">{t(key)}</span>
               </li>

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { Mail } from 'lucide-react-native';
+import { Mail } from '~/components/ui/lucide';
 import { AuthHeading, AuthScroll, AuthSwitch } from '~/components/auth/auth-scroll';
 import { CaptchaStatus, captchaBlocks } from '~/components/auth/captcha-status';
 import { Button } from '~/components/ui/button';
@@ -32,7 +32,11 @@ export default function ForgotPasswordScreen() {
   const captcha = useCaptcha('reset');
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState(false);
-  const [outcome, setOutcome] = useState<'sent' | 'wait' | 'offline' | null>(null);
+  const [outcome, setOutcome] = useState<'sent' | 'wait' | 'offline' | 'invalid' | null>(null);
+  const navigation = useNavigation();
+  // Reached by replacing another screen (an expired link), this is the sheet's
+  // only screen, and going back would close the sheet instead of signing in.
+  const backToSignIn = () => ((navigation.getState()?.index ?? 0) > 0 ? router.back() : router.replace('/sign-in'));
 
   async function submit() {
     const address = email.trim();
@@ -53,7 +57,9 @@ export default function ForgotPasswordScreen() {
     // A hashed address and a hashed client, so a run of resets against one
     // inbox is visible to whoever is watching; nothing about the address is kept.
     void callAction('reportAuthOutcome', { kind: 'reset_requested', email: address }).catch(() => null);
-    setOutcome(!result.ok && result.error === 'wait' ? 'wait' : 'sent');
+    // Every other answer reads "sent", so nobody learns which addresses have accounts;
+    // an address that is not one is said to be that, not that a link is on its way.
+    setOutcome(!result.ok && result.error === 'wait' ? 'wait' : !result.ok && result.error === 'invalid' ? 'invalid' : 'sent');
   }
 
   if (outcome === 'sent') {
@@ -61,7 +67,7 @@ export default function ForgotPasswordScreen() {
       <AuthScroll>
         <AuthHeading title={t('auth.forgotTitle')} />
         <Notice tone="success">{t('auth.resetSent')}</Notice>
-        <Button label={t('auth.backToSignIn')} variant="outline" onPress={() => router.back()} />
+        <Button label={t('auth.backToSignIn')} variant="outline" onPress={backToSignIn} />
       </AuthScroll>
     );
   }
@@ -94,7 +100,9 @@ export default function ForgotPasswordScreen() {
         {outcome === 'wait' ? (
           <Notice tone="destructive">{t('auth.resendWait')}</Notice>
         ) : outcome === 'offline' ? (
-          <Notice tone="destructive">{t('common.errorBody')}</Notice>
+          <Notice tone="destructive">{t('app.offline.body')}</Notice>
+        ) : outcome === 'invalid' ? (
+          <Notice tone="destructive">{t('validation.invalidEmail')}</Notice>
         ) : null}
 
         <Button
@@ -106,7 +114,7 @@ export default function ForgotPasswordScreen() {
         />
       </View>
 
-      <AuthSwitch action={t('auth.backToSignIn')} onPress={() => router.back()} />
+      <AuthSwitch action={t('auth.backToSignIn')} onPress={backToSignIn} />
     </AuthScroll>
   );
 }

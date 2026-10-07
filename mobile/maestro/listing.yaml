@@ -1,0 +1,14 @@
+# A listing's page: its share button, then its title on its own.
+appId: net.brokersconnect.app
+---
+- openLink: brokersconnect:///jobs/${JOB_SLUG}
+- runFlow: confirm-link.yaml
+- extendedWaitUntil:
+    visible: "مشاركة"
+    timeout: 100000
+- extendedWaitUntil:
+    visible: "${JOB_TITLE}"
+    timeout: 100000
+- waitForAnimationToEnd
+- runFlow: checks.yaml
+- takeScreenshot: 3-listing

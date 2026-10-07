@@ -2,7 +2,7 @@
 
 **Never point any of these at production.** Every script refuses a `BASE_URL` whose host is `brokersconnect.net` unless `I_KNOW_THIS_IS_NOT_PRODUCTION=1` is set — and even then, do not.
 
-Target a Vercel preview deployment wired to a Supabase branch (or the staging project) seeded with `pnpm db:seed:demo`. The demo accounts (`candidate1@demo.test`, `employer1@demo.test`, `admin@demo.test`, password `password123`) are what the authenticated scenarios sign in with; they exist only where the demo seed was run.
+Target a Vercel preview deployment wired to a Supabase branch (or the staging project) seeded with `pnpm db:seed:demo`. The demo accounts (`candidate1@demo.test`, `employer1@demo.test`, `admin@demo.test`, with the password `pnpm db:seed:demo` printed or the `DEMO_PASSWORD` it was given) are what the authenticated scenarios sign in with; they exist only where the demo seed was run, which is never production.
 
 Requires [k6](https://k6.io) (`brew install k6` / the Docker image).
 

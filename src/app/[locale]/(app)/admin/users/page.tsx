@@ -6,7 +6,7 @@ import { ApprovalBadge } from '@/components/admin/badges';
 import { Badge } from '@/components/ui/badge';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { must } from '@/lib/admin/read';
+import { leaveAnEmptyPage, must } from '@/lib/admin/read';
 import { PAGE_SIZE, hrefWith, oneOf, pageOf, param, type SearchParams } from '@/lib/admin/params';
 import { formatDate } from '@/lib/utils';
 import type { AdminUserSearchRow, ApprovalStatus, UserRole } from '@/lib/supabase/database.types';
@@ -63,6 +63,12 @@ export default async function AdminUsersPage({
   const t = await getTranslations('admin');
   const tOnboarding = await getTranslations('onboarding');
   const current = { q, status: status === 'all' ? undefined : status, role: role === 'all' ? undefined : role };
+  await leaveAnEmptyPage(locale, {
+    page,
+    rows: rows?.length ?? 0,
+    total,
+    href: (n) => hrefWith('/admin/users', current, { page: n }),
+  });
 
   const roleLabel = (value: UserRole) =>
     value === 'employer' ? tOnboarding('roleEmployer') : value === 'admin' ? t('title') : tOnboarding('roleCandidate');

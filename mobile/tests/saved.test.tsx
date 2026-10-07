@@ -59,6 +59,7 @@ function search(overrides: Partial<SavedSearchRow> = {}): SavedSearchRow {
     created_at: '2026-09-20T10:00:00Z',
     last_sent_at: null,
     last_checked_at: null,
+    bell_checked_at: null,
     ...overrides,
   };
 }
@@ -188,6 +189,36 @@ describe('bookmarks', () => {
 
     await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/toggleSavedJob')).toEqual({ input: { jobId: listing.id } }));
     expect(await screen.findByRole('button', { name: ar.jobs.saved })).toBeTruthy();
+  });
+
+  it('keeps a bookmark whose answer was lost, rather than putting it back for a second press to undo', async () => {
+    let pressed = false;
+    server.on('GET /rest/v1/saved_jobs', (url) => {
+      // The one listing asked about, or every bookmark — which, after the press, cannot be read.
+      const one = url.searchParams.get('job_id')?.replace(/^eq\./, '');
+      if (pressed && !one) return { status: 503, body: { message: 'upstream unavailable' } };
+      const ids = [...savedIds].filter((id) => !one || id === one);
+      return url.searchParams.get('select') === 'job_id'
+        ? ids.map((job_id) => ({ job_id }))
+        : ids.map(() => ({ created_at: '2026-09-25T10:00:00Z', job: listing }));
+    });
+    // The website keeps it, and its answer never reaches the phone.
+    server.on('POST /api/mobile/v1/actions/toggleSavedJob', (_url, init) => {
+      pressed = true;
+      savedIds.add(JSON.parse(String(init?.body)).input.jobId);
+      throw new TypeError('Network request failed');
+    });
+    await signedIn();
+    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    await screen.findByRole('button', { name: ar.jobs.save });
+    // Pressable once the bookmarks are known: the website's action is a toggle.
+    await waitFor(() => expect(screen.getByRole('button', { name: ar.jobs.save }).props.accessibilityState?.busy).toBeFalsy());
+    fireEvent.press(screen.getByRole('button', { name: ar.jobs.save }));
+
+    expect(await screen.findByRole('button', { name: ar.jobs.saved })).toBeTruthy();
+    // Settled on what the database holds, and not sent twice.
+    await waitFor(() => expect(screen.getByRole('button', { name: ar.jobs.saved }).props.accessibilityState?.busy).toBeFalsy());
+    expect(server.asked('/api/mobile/v1/actions/toggleSavedJob')).toHaveLength(1);
   });
 
   it('sends somebody signed out to sign in, and back to the listing', async () => {

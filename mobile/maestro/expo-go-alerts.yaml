@@ -1,0 +1,15 @@
+# What Expo Go and iOS can put over the app the first time it opens
+# (scripts/expo-go-look.sh): Expo Go's tour of its developer menu, and the
+# question whether it may send notifications. Answered as a tester would.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"

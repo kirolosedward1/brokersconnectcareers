@@ -1,4 +1,5 @@
 import 'server-only';
+import { PAYMENT_ORIGIN } from '@/lib/paymob/checkout-url';
 
 /**
  * Paymob's three-step checkout.
@@ -14,7 +15,7 @@ import 'server-only';
  * tested independently of it.
  */
 
-const BASE = 'https://accept.paymob.com/api';
+const BASE = `${PAYMENT_ORIGIN}/api`;
 
 export type PaymobConfig = {
   apiKey: string;

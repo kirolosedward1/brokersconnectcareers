@@ -10,8 +10,10 @@ import { getDistricts } from '@/lib/queries/taxonomy';
 import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { optional, raise } from '@/lib/queries/error';
 import { requireEmployer } from '@/lib/auth';
+import { ApplicantsSuspended } from '@/components/employer/applicants-suspended';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
+import { UUID_RE } from '@/lib/admin/params';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -79,6 +81,9 @@ export default async function ApplicantsPage({
     row, so an error here is a real failure and belongs in the error
     boundary, where Retry means something.
   */
+  // A truncated link is a page that does not exist, not a database error:
+  // the id is compared with a uuid column, and the cast refused it.
+  if (!UUID_RE.test(id)) notFound();
   const { data: job, error: jobError } = await supabase
     .from('jobs')
     .select('id, slug, title_ar, title_en, status')
@@ -88,6 +93,23 @@ export default async function ApplicantsPage({
 
   if (jobError) raise(jobError, 'loading the listing');
   if (!job) notFound();
+
+  // A suspended company's applicants are hidden (migration 349): said, not
+  // shown as an empty pipeline, and nothing is stamped as seen.
+  if (viewer.company.suspended_at) {
+    const t = await getTranslations('employer');
+    return (
+      <div className="space-y-4">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-bold">{localized(locale, job.title_ar, job.title_en)}</h1>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/employer/jobs">{t('jobs')}</Link>
+          </Button>
+        </header>
+        <ApplicantsSuspended />
+      </div>
+    );
+  }
 
   const { data, error, count } = await supabase
     .from('applications')
@@ -237,35 +259,41 @@ export default async function ApplicantsPage({
           </div>
         </div>
       ) : (
-        <div className="space-y-6">
-          {PIPELINE.map((stage) => {
+        /*
+          One list, the stage headings among the cards, each card keyed by its
+          application. In a box per stage, a card whose stage changed on a
+          refresh — moved from it, or by a colleague — was unmounted from one
+          box and built again in the next, empty: the private note being
+          written and the reason being typed went with it.
+        */
+        <div className="space-y-3">
+          {PIPELINE.flatMap((stage) => {
             const inStage = applications.filter((application) => application.status === stage);
-            if (inStage.length === 0) return null;
+            if (inStage.length === 0) return [];
 
-            return (
-              <section key={stage} aria-labelledby={`stage-${stage}`}>
-                <h2 id={`stage-${stage}`} className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                  {tStatus(stage)}
-                  <Badge className="numeral">{inStage.length}</Badge>
-                </h2>
-                <ul className="space-y-3">
-                  {inStage.map((application) => (
-                    <li key={application.id}>
-                      <ApplicantCard
-                        application={application}
-                        jobTitle={jobTitle}
-                        companyName={companyName}
-                        locale={locale}
-                        notes={notesByApplication.get(application.id) ?? []}
-                        noteAuthors={noteAuthors}
-                        viewerId={viewer.userId}
-                        districtNames={namesFor(application.candidate?.agent_profiles?.district_ids)}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            );
+            return [
+              <h2
+                key={`stage:${stage}`}
+                id={`stage-${stage}`}
+                className="flex items-center gap-2 pt-3 text-sm font-semibold first:pt-0"
+              >
+                {tStatus(stage)}
+                <Badge className="numeral">{inStage.length}</Badge>
+              </h2>,
+              ...inStage.map((application) => (
+                <ApplicantCard
+                  key={application.id}
+                  application={application}
+                  jobTitle={jobTitle}
+                  companyName={companyName}
+                  locale={locale}
+                  notes={notesByApplication.get(application.id) ?? []}
+                  noteAuthors={noteAuthors}
+                  viewerId={viewer.userId}
+                  districtNames={namesFor(application.candidate?.agent_profiles?.district_ids)}
+                />
+              )),
+            ];
           })}
         </div>
       )}

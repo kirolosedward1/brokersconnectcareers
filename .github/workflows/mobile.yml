@@ -6,11 +6,18 @@
 # runs this as well as the web workflow.
 #
 #   pnpm check      typecheck (app and tests), ESLint, the shared-code guard
-#                   (scripts/check-shared.mjs) and the Jest suites
+#                   (scripts/check-shared.mjs), the update-publishing check
+#                   (scripts/publish-update.test.mjs) and the Jest suites
 #   export:ios      bundles the app for iOS with Metro and Hermes, which is
 #                   what an EAS build does first: an import Metro cannot
 #                   resolve, or a module Hermes cannot compile, fails here
-#   expo-doctor     Expo's own check of dependency versions and config
+#   expo install    the dependency versions the installed SDK expects
+#   expo-doctor     Expo's own check of the config and the native setup
+#   contract        every database request the app's tests make, replayed
+#                   against a real Postgres built from the migrations behind a
+#                   real PostgREST (scripts/contract/replay.mjs): a column, an
+#                   embed, an RPC's arguments or a grant the fixtures answer
+#                   but the real schema refuses fails here
 #
 # The native iOS build (prebuild + xcodebuild on macOS) is slower and runs on
 # main and by hand, not on every pull request.
@@ -25,6 +32,10 @@ on:
       - 'mobile/**'
       - 'src/lib/**'
       - 'messages/**'
+      - 'supabase/migrations/**'
+      - 'supabase/seed*.sql'
+      - 'supabase/tests/setup.mjs'
+      - 'scripts/contract/**'
       - '.github/workflows/mobile.yml'
   push:
     branches: [main]
@@ -32,6 +43,10 @@ on:
       - 'mobile/**'
       - 'src/lib/**'
       - 'messages/**'
+      - 'supabase/migrations/**'
+      - 'supabase/seed*.sql'
+      - 'supabase/tests/setup.mjs'
+      - 'scripts/contract/**'
       - '.github/workflows/mobile.yml'
   workflow_dispatch:
 
@@ -74,16 +89,76 @@ jobs:
       - name: Bundle for iOS
         run: pnpm export:ios
 
+      # Against the SDK the lockfile installs, not the newest patches: doctor's
+      # own version check asks Expo's servers, so it went red each time Expo
+      # published an SDK patch, and could not be fixed for a day because pnpm
+      # here takes nothing younger (pnpm-workspace.yaml, minimumReleaseAge).
+      # On main that also skipped the iOS build, which waits on this job.
+      # Newer patches are taken on purpose: npx expo install --fix.
+      - name: Dependency versions
+        run: npx expo install --check
+        env:
+          EXPO_OFFLINE: '1'
+
       - name: Expo doctor
         run: npx expo-doctor
+        env:
+          EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: '1'
+
+  contract:
+    # The app's tests answer Supabase from fixtures; here every distinct
+    # request they made goes to the real thing. The runner's own Postgres 16
+    # binaries hold the database; PostgREST is release 12, pinned by digest.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            mobile/pnpm-lock.yaml
+
+      - name: Install (website, for the database scripts; and app)
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --dir mobile install --frozen-lockfile
+
+      - name: Record the requests the app's tests make
+        working-directory: mobile
+        run: RECORD_REQUESTS="$RUNNER_TEMP/requests.jsonl" npx jest
+
+      - name: PostgREST
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/postgrest.tar.xz" \
+            https://github.com/PostgREST/postgrest/releases/download/v12.2.12/postgrest-v12.2.12-linux-static-x86-64.tar.xz
+          echo "5de4092f1719da3353c40bf96c8dec6913f2254a7cd0b61cc05f233153b557d5  $RUNNER_TEMP/postgrest.tar.xz" | sha256sum -c -
+          tar -xJf "$RUNNER_TEMP/postgrest.tar.xz" -C "$RUNNER_TEMP"
+
+      - name: Replay them against the migrations and PostgREST
+        run: POSTGREST_BIN="$RUNNER_TEMP/postgrest" node scripts/contract/replay.mjs "$RUNNER_TEMP/requests.jsonl"
 
   ios-build:
     # A real native build for the simulator: config plugins, CocoaPods, Swift
     # and Objective-C all compile. Not on pull requests (it takes a while and
     # needs a macOS runner); on main, and on demand.
+    #
+    # Xcode 26, as EAS builds SDK 57 with. On macos-15 (Xcode 16.4, Swift 6.1)
+    # the build failed in ExpoModulesJSI's "Build xcframework" phase: its Swift
+    # package says swift-tools-version 6.2, which only Xcode 26 reads. @expo/ui,
+    # which expo-router depends on, also calls iOS 26 SwiftUI API
+    # (ButtonRole.close) that Xcode 16's SDK does not have. macos-26 defaults to
+    # Xcode 26.
     if: github.event_name != 'pull_request'
     needs: check
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     defaults:
       run:
@@ -103,6 +178,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Xcode
+        run: |
+          xcodebuild -version
+          if ! xcodebuild -version | grep -qE '^Xcode (2[6-9]|[3-9][0-9])\.'; then
+            echo "::error::Expo SDK 57 needs Xcode 26 or later"
+            exit 1
+          fi
+
       - name: Generate the native project
         run: npx expo prebuild --platform ios --no-install
 
@@ -110,15 +193,22 @@ jobs:
         run: pod install
         working-directory: mobile/ios
 
+      # The whole log is kept and only its errors are shown when it fails: the
+      # compiler's errors come long before the end, where a tail would miss them.
       - name: Build for the simulator
         working-directory: mobile/ios
         run: |
-          set -o pipefail
-          xcodebuild \
+          if xcodebuild \
             -workspace BrokersConnect.xcworkspace \
             -scheme BrokersConnect \
             -configuration Debug \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            build | tail -n 200
+            build > "$RUNNER_TEMP/xcodebuild.log" 2>&1; then
+            tail -n 20 "$RUNNER_TEMP/xcodebuild.log"
+          else
+            grep -nE -A4 'error:|fatal error|Undefined symbol|The following build commands failed' "$RUNNER_TEMP/xcodebuild.log" | head -n 300 || true
+            tail -n 40 "$RUNNER_TEMP/xcodebuild.log"
+            exit 1
+          fi

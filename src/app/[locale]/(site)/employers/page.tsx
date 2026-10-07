@@ -46,17 +46,24 @@ export default async function EmployersPage({
     consultant rows at all unless they are an approved employer — so the
     count under RLS was "how many can *you* see", which for a visitor is
     zero. The number is a fact about the directory, not about the reader,
-    and it says nothing about anybody in it. Only listed profiles: a
-    consultant on `hidden` is not in the directory being advertised.
+    and it says nothing about anybody in it.
+
+    Counted by the directory's own rule (search_agents, migration 322): a
+    profile that is not hidden, owned by an approved candidate. Counting
+    every unhidden profile advertised people the directory does not show —
+    a suspended account, one still waiting for approval, an account moved
+    to the employer side.
   */
   let consultantCount = 0;
   try {
     const { createAdminClient } = await import('@/lib/supabase/admin');
-    const { count } = await createAdminClient()
+    const { count, error } = await createAdminClient()
       .from('agent_profiles')
-      .select('id', { count: 'exact', head: true })
-      .neq('visibility', 'hidden');
-    consultantCount = count ?? 0;
+      .select('id, profile:profiles!inner (role, approval_status)', { count: 'exact', head: true })
+      .neq('visibility', 'hidden')
+      .eq('profile.role', 'candidate')
+      .eq('profile.approval_status', 'approved');
+    if (!error) consultantCount = count ?? 0;
   } catch {
     /* zero is an honest fallback */
   }

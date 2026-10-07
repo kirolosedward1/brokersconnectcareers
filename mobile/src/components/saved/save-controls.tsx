@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { BellPlus, BellRing, Bookmark, BookmarkCheck, Check } from 'lucide-react-native';
+import { BellPlus, BellRing, Bookmark, BookmarkCheck, Check } from '~/components/ui/lucide';
 import { canSaveJobs } from '@/lib/permissions';
+import { Pop } from '~/components/motion/pop';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
@@ -15,6 +16,7 @@ import {
   useToggleFollow,
   useToggleSavedJob,
 } from '~/features/saved/queries';
+import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
@@ -35,14 +37,25 @@ function signInThenReturn(next: string) {
 export function useSaveJob(jobId: string) {
   const t = useTranslations('jobs');
   const { actor } = useSession();
-  const saved = useSavedJobIds().has(jobId);
+  const { ids, known } = useSavedJobIds();
+  const saved = ids.has(jobId);
   const toggle = useToggleSavedJob();
+  // The reader's own taps that saved: what the bookmark's pop answers (Pop).
+  const [saves, setSaves] = useState(0);
   return {
+    jobId,
     savable: canSaveJobs(actor),
     saved,
-    pending: toggle.isPending,
+    saves,
+    // Until the bookmarks are read, a press could take one off (the website toggles).
+    pending: toggle.isPending || !known,
     label: saved ? t('removeSaved') : t('save'),
-    toggle: () => toggle.mutate({ jobId, saved }),
+    toggle: () => {
+      if (!known) return;
+      haptic.selection();
+      if (!saved) setSaves((count) => count + 1);
+      toggle.mutate({ jobId, saved });
+    },
   };
 }
 
@@ -66,11 +79,13 @@ export function SaveJobIcon({ save }: { save: ReturnType<typeof useSaveJob> }) {
         justifyContent: 'center',
       }}
     >
-      {save.saved ? (
-        <BookmarkCheck size={20} color={colors.primary} />
-      ) : (
-        <Bookmark size={20} color={colors.mutedForeground} />
-      )}
+      <Pop key={save.jobId} trigger={save.saves}>
+        {save.saved ? (
+          <BookmarkCheck size={20} color={colors.primary} />
+        ) : (
+          <Bookmark size={20} color={colors.mutedForeground} />
+        )}
+      </Pop>
     </Pressable>
   );
 }
@@ -93,7 +108,9 @@ export function SaveJobButton({ jobId, slug }: { jobId: string; slug: string }) 
       accessibilityState={{ selected: save.saved, busy: save.pending, disabled: save.pending }}
       disabled={save.pending}
       icon={
-        save.saved ? <BookmarkCheck size={18} color={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />
+        <Pop key={jobId} trigger={save.saves}>
+          {save.saved ? <BookmarkCheck size={18} color={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />}
+        </Pop>
       }
       onPress={() => (signedIn ? save.toggle() : signInThenReturn(`/jobs/${slug}`))}
     />
@@ -150,7 +167,8 @@ export function SaveSearchButton({ query, defaultLabel }: { query: string; defau
 
   const submit = () => {
     const name = label.trim();
-    if (!name) return;
+    // The keyboard's Done is not the button: a second press while saving would be told "already saved".
+    if (!name || save.isPending) return;
     setError(null);
     save.mutate(
       { label: name, query },
@@ -196,6 +214,16 @@ export function SaveSearchButton({ query, defaultLabel }: { query: string; defau
 }
 
 /**
+ * Whether this reader is offered the follow: anybody signed out (asked to
+ * sign in first), and an account that saves jobs — not a company, for which
+ * a follow would be a saved search it could not undo.
+ */
+export function useOffersFollow(): boolean {
+  const { session, viewer, actor } = useSession();
+  return !(session && viewer?.profile) || canSaveJobs(actor);
+}
+
+/**
  * "Tell me when this brokerage posts." Underneath, a saved search with one
  * filter, so the reader gets the weekly email they already know, with the
  * same switch in Saved; the button says the outcome, not the mechanism.
@@ -204,13 +232,14 @@ export function FollowCompanyButton({ slug, label }: { slug: string; label: stri
   const t = useTranslations('companies');
   const tCommon = useTranslations('common');
   const { colors } = useTheme();
-  const { session, viewer, actor } = useSession();
+  const { session, viewer } = useSession();
+  const offered = useOffersFollow();
   const { following } = useFollowing(slug);
   const toggle = useToggleFollow(slug, label);
   const [error, setError] = useState<string | null>(null);
 
   const signedIn = Boolean(session && viewer?.profile);
-  if (signedIn && !canSaveJobs(actor)) return null;
+  if (!offered) return null;
 
   const onPress = () => {
     if (!signedIn) {
@@ -218,6 +247,7 @@ export function FollowCompanyButton({ slug, label }: { slug: string; label: stri
       return;
     }
     setError(null);
+    haptic.selection();
     toggle.mutate(
       { follow: !following },
       {

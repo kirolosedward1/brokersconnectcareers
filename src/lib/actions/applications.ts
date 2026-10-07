@@ -9,6 +9,7 @@ import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { CV_BUCKET } from '@/lib/buckets';
 import { CV_KINDS, MAX_BYTES, isOwnedPath, verifyStoredObject } from '@/lib/security/files';
+import { cvInUse } from '@/lib/cv-in-use';
 import { recordSecurityEvent } from '@/lib/security/events';
 import { clean } from '@/lib/security/sanitize';
 import { publish } from '@/lib/notifications/events';
@@ -75,7 +76,17 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
   if (parsed.data.cvPath) {
     if (!isOwnedPath(parsed.data.cvPath, user.id)) return { ok: false, error: 'invalid_cv_path' };
 
-    const verdict = await verifyStoredObject(CV_BUCKET, parsed.data.cvPath, CV_KINDS, MAX_BYTES.cv);
+    // Judged like any file, but a CV the caller's rows already point at is
+    // never deleted for failing the check (cv-in-use.ts).
+    const keep = await cvInUse(
+      {
+        profileCv: () => supabase.from('agent_profiles').select('cv_path').eq('user_id', user.id).maybeSingle(),
+        applicationsWith: (path) =>
+          supabase.from('applications').select('id').eq('candidate_id', user.id).eq('cv_path', path).limit(1),
+      },
+      parsed.data.cvPath,
+    );
+    const verdict = await verifyStoredObject(CV_BUCKET, parsed.data.cvPath, CV_KINDS, MAX_BYTES.cv, { keep });
     if (!verdict.ok && verdict.reason !== 'unavailable') {
       void recordSecurityEvent('upload.rejected', {
         actorId: user.id,

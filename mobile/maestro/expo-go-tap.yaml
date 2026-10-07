@@ -1,0 +1,7 @@
+# Taps a point of the screen, in percent (POINT="89%,48%"), where
+# scripts/expo-go-look.sh read Expo Go's own control: the X of its developer
+# menu, which has no words to find it by.
+appId: host.exp.Exponent
+---
+- tapOn:
+    point: ${POINT}

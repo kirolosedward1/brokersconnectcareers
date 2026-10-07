@@ -4,6 +4,7 @@ import { parseActor, rememberActor } from '~/lib/last-actor';
 import { appPathFor, inOwnTab, isPublicPath, routeFromOutside, routeInside, webPathToAppPath } from '~/lib/links';
 import { takePendingPath } from '~/lib/open-path';
 import { tabsFor } from '~/lib/tabs';
+import { awaitingOAuthReturn } from '~/features/auth/oauth-return';
 import { redirectSystemPath } from '../src/app/+native-intent';
 
 const candidate: Actor = {
@@ -57,6 +58,11 @@ describe('webPathToAppPath', () => {
     ],
     // Google, back from the authentication browser, if iOS hands it over as a link.
     ['brokersconnect://auth/callback?code=abc', '/auth/callback?code=abc'],
+    // Expo Go's own form while the app runs in it: the screen follows "/--".
+    ['exp://172.20.10.2:8081/--/jobs/abc', '/jobs/abc'],
+    ['exp://172.20.10.2:8081/--/companies/acme?x=1', '/companies/acme?x=1'],
+    ['exp://172.20.10.2:8081', '/'],
+    ['exp://172.20.10.2:8081/--/', '/'],
   ])('%s → %s', (input, expected) => {
     expect(webPathToAppPath(input)).toBe(expected);
   });
@@ -67,7 +73,7 @@ describe('webPathToAppPath', () => {
     ['a protocol-relative path', '//evil.example/jobs'],
     ['javascript', 'javascript:alert(1)'],
     ['a data URL', 'data:text/html,hi'],
-    ['the development client', 'exp+brokers-connect://expo-development-client/?url=http%3A%2F%2F10.0.0.2%3A8081'],
+    ['the development client', 'exp+brokers-connect-careers://expo-development-client/?url=http%3A%2F%2F10.0.0.2%3A8081'],
   ])('sends %s home', (_name, input) => {
     expect(webPathToAppPath(input)).toBe('/');
   });
@@ -188,9 +194,9 @@ describe('who a link is for', () => {
 });
 
 describe('the consultant directory', () => {
-  it('is a tab for an employer the directory answers, and for nobody else', () => {
+  it("is a tab for every employer and for nobody else: an approval does not change the bar (and redraw every tab)", () => {
     expect(tabsFor(employer)).toEqual(['home', 'listings', 'applicants', 'consultants', 'account']);
-    expect(tabsFor(waiting)).not.toContain('consultants');
+    expect(tabsFor(waiting)).toEqual(tabsFor(employer));
     expect(tabsFor(candidate)).not.toContain('consultants');
     expect(tabsFor(null)).not.toContain('consultants');
   });
@@ -214,9 +220,10 @@ describe('the consultant directory', () => {
   it('sends an employer still waiting for approval to their console, as the website does', () => {
     expect(routeFromOutside('/agents', waiting)).toBe('/');
     expect(routeFromOutside('/agents/mona-ali', waiting)).toBe('/');
-    // Their own console's page, in a tab they do not have yet.
-    expect(routeFromOutside('/employer/talent', waiting)).toBe('/');
-    expect(routeInside('/employer/talent', waiting)).toBe('/');
+    // Their own console's page, which the website opens for any employer: in the
+    // Consultants tab, whose screens say who the directory is for until the approval.
+    expect(routeFromOutside('/employer/talent', waiting)).toBe('/(consultants)/employer/talent');
+    expect(routeInside('/employer/talent', waiting)).toBe('/employer/talent');
   });
 
   it('asks somebody signed out to sign in first, and sends a candidate to their own profile', () => {
@@ -271,6 +278,20 @@ describe('a link that opens the app', () => {
     await rememberActor(null);
     expect(await redirectSystemPath({ path: '/notifications', initial: true })).toBeNull();
     expect(takePendingPath()).toBe('/notifications');
+  });
+
+  it('leaves Google’s return to the sign-in screen waiting for it, and opens it when none is', async () => {
+    const back = 'brokersconnect://auth/callback?code=abc';
+    let finish = () => {};
+    const signIn = awaitingOAuthReturn(() => new Promise<void>((resolve) => (finish = resolve)));
+    // Android hands the browser's return to the app as a link too: the screen waiting has it already.
+    expect(await redirectSystemPath({ path: back, initial: false })).toBeNull();
+    // Any other link still opens.
+    expect(await redirectSystemPath({ path: 'https://www.brokersconnect.net/jobs/abc', initial: false })).toBe('/(jobs)/jobs/abc');
+    finish();
+    await signIn;
+    // Nothing waiting (the app was closed meanwhile): the callback screen finishes the sign-in.
+    expect(await redirectSystemPath({ path: back, initial: true })).toBe('/auth/callback?code=abc');
   });
 
   it('knows which pages are public', () => {

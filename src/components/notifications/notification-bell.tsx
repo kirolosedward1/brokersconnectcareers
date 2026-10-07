@@ -113,7 +113,7 @@ export function NotificationBell({
       <summary
         ref={summaryRef}
         aria-label={label}
-        className="relative grid size-11 cursor-pointer list-none place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&::-webkit-details-marker]:hidden"
+        className="relative grid size-11 cursor-pointer list-none place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground group-data-[over-hero]/header:text-white group-data-[over-hero]/header:hover:bg-white/15 group-data-[over-hero]/header:hover:text-white [&::-webkit-details-marker]:hidden"
       >
         {/* The badge hangs off the icon, not off the 44px hit area, or it
             would sit adrift in the corner of an empty box. */}
@@ -143,10 +143,14 @@ export function NotificationBell({
         The header is `sticky top-0 h-14`, so `top-14` puts the panel directly
         under it whatever the page has scrolled to, and `inset-x-4` gives it
         the same gutter as everything else on the screen.
+
+        Its own text colour and focus ring, as the phone menu has: over a
+        landing page's film the header carries white type and a white ring,
+        and this light panel inherited both — white on white.
       */}
       <div
         className={[
-          'z-50 overflow-hidden rounded-xl border border-border bg-popover shadow-lg',
+          'z-50 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lg [--ring:var(--brand-blue)]',
           'fixed inset-x-4 top-14',
           'sm:absolute sm:inset-x-auto sm:end-0 sm:top-auto sm:mt-2 sm:w-[22rem]',
         ].join(' ')}

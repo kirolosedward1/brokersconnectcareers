@@ -21,7 +21,7 @@ export async function generateMetadata({
   };
 }
 
-const KINDS = ['notify_applications', 'notify_status', 'notify_digest'] as const;
+const KINDS = ['notify_applications', 'notify_status', 'notify_digest', 'notify_profile_nudge'] as const;
 type Kind = (typeof KINDS)[number];
 
 function isKind(value: string | undefined): value is Kind {

@@ -1,19 +1,20 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useTranslations } from 'use-intl';
 import { useMobileConfig } from '~/features/config';
-import { appleAvailable, signInWithApple, signInWithGoogle, type ProviderOutcome } from '~/features/auth/providers';
+import { appleAvailable, offerGoogle, signInWithApple, signInWithGoogle, type ProviderOutcome } from '~/features/auth/providers';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { space } from '~/theme/tokens';
 import { GoogleMark } from './google-mark';
 
 /**
  * "Continue with Apple" and "Continue with Google", above the form, with the
  * website's "or" under them — each shown only when the auth server will accept
- * it today (/api/mobile/v1/config asks GoTrue, as the website's pages do).
+ * it today (/api/mobile/v1/config asks GoTrue, as the website's pages do), and
+ * Google on an iPhone only beside Apple.
  *
  * Apple's is Apple's own button, drawn by iOS in the phone's language, as the
  * App Store asks; black in the light theme and white in the dark.
@@ -46,16 +47,20 @@ export function SocialSignIn({
   }, []);
 
   const apple = Boolean(config.data?.providers.apple) && appleHere;
-  const google = Boolean(config.data?.providers.google);
+  // On iPhone, Google only beside Apple (providers.ts, offerGoogle).
+  const google = offerGoogle({ google: Boolean(config.data?.providers.google), apple, ios: Platform.OS === 'ios' });
   if (!apple && !google) return null;
 
-  const run = async (provider: () => Promise<ProviderOutcome>) => {
+  // A promise chain, not try/finally, which the React Compiler does not compile.
+  const run = (provider: () => Promise<ProviderOutcome>) => {
     onBusy(true);
-    try {
-      await onOutcome(await provider());
-    } finally {
-      onBusy(false);
-    }
+    const done = () => onBusy(false);
+    return provider()
+      .then(onOutcome)
+      .then(done, (failure: unknown) => {
+        done();
+        throw failure;
+      });
   };
 
   return (
@@ -74,8 +79,9 @@ export function SocialSignIn({
                   ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
                   : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
               }
-              cornerRadius={radius.lg}
-              style={{ height: 52 }}
+              // The same capsule as the Google button under it: 56 high, round ends.
+              cornerRadius={28}
+              style={{ height: 56 }}
               onPress={() => run(signInWithApple)}
             />
           </View>

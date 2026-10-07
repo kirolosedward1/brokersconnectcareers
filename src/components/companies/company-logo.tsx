@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { trustedLogoUrl } from '@/lib/avatar-url';
 
 /**
  * A company's mark, wherever its name appears.
@@ -50,8 +51,10 @@ export function CompanyLogo({
   className?: string;
 }) {
   const s = SIZES[size];
+  // Only this deployment's own logos bucket is fetched (avatar-url.ts).
+  const logo = trustedLogoUrl(logoUrl, process.env.NEXT_PUBLIC_SUPABASE_URL);
 
-  if (logoUrl) {
+  if (logo) {
     return (
       <span
         className={cn(
@@ -64,7 +67,7 @@ export function CompanyLogo({
             its name cut off. The white ground is deliberate — most supplied
             marks are drawn for one, and they disappear on a dark card. */}
         <Image
-          src={logoUrl}
+          src={logo}
           alt=""
           width={s.px}
           height={s.px}

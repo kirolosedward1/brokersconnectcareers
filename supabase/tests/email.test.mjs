@@ -16,7 +16,7 @@
  * Run with: pnpm test:email
  */
 import { createHmac } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTestDb, reporter } from './setup.mjs';
@@ -590,6 +590,89 @@ report.section('every button in every template opens a page that exists');
     }
   }
   report.ok(seen.size >= 10, `found ${seen.size} distinct link targets to check`);
+}
+
+report.section('the two ways out of an optional email');
+{
+  const { unsubscribeLinks } = await import('../../src/lib/email/unsubscribe-link.ts');
+  const token = '9b2f3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+  const links = unsubscribeLinks('https://www.example.test', token, 'notify_digest');
+
+  const page = new URL(links.page);
+  const oneClick = new URL(links.oneClick);
+  report.is(page.pathname, '/unsubscribe', 'the footer link opens the page that asks first');
+  report.is(oneClick.pathname, '/api/unsubscribe', 'the one-click header goes to the endpoint that does it');
+  report.ok(
+    oneClick.searchParams.get('token') === token && oneClick.searchParams.get('kind') === 'notify_digest',
+    'carrying the token and the kind as the endpoint reads them',
+  );
+  report.ok(existsSync(join(ROOT, 'src/app/[locale]/(site)/unsubscribe/page.tsx')), 'the page exists');
+  report.ok(existsSync(join(ROOT, 'src/app/api/unsubscribe/route.ts')), 'and so does the endpoint');
+
+  // RFC 8058: a mail client POSTs `List-Unsubscribe=One-Click` to the header's
+  // address and expects the change made there. The page answers a POST by
+  // rendering itself, so pointing the header at it unsubscribed nobody.
+  const envelope = read('src/lib/email/envelope.ts');
+  report.ok(/unsubscribeUrl:\s*audience\.unsubscribe\?\.oneClick/.test(envelope), 'the List-Unsubscribe header carries the one-click address');
+  report.ok(/href:\s*audience\.unsubscribe\.page/.test(envelope), 'and the footer link the page');
+  const route = read('src/app/api/unsubscribe/route.ts');
+  report.ok(/List-Unsubscribe'\) === 'One-Click'/.test(route) && /searchParams\.get\('token'\)/.test(route),
+    'the endpoint reads a one-click POST and the token from its address');
+}
+
+report.section('the profile reminder is asked for, and the outbox forgets');
+{
+  const column = (await db.query(`select column_default, is_nullable from information_schema.columns
+                                   where table_name = 'profiles' and column_name = 'notify_profile_nudge'`)).rows[0];
+  report.ok(column && /false/.test(column.column_default ?? '') && column.is_nullable === 'NO',
+    'the profile reminder is off unless somebody turns it on');
+
+  const policy = (await db.query(`select days from retention_policies where key = 'email_log'`)).rows[0];
+  report.is(policy?.days, 180, 'the outbox keeps 180 days');
+
+  await db.exec(`
+    insert into email_log (template, recipient, status, created_at)
+      values ('saved_search_digest', 'old-sent@real.example', 'sent', now() - interval '181 days'),
+             ('saved_search_digest', 'old-queued@real.example', 'queued', now() - interval '181 days'),
+             ('saved_search_digest', 'recent@real.example', 'sent', now() - interval '179 days');
+  `);
+  await db.query('select public.prune_email_log(5000)');
+  const left = (await db.query(`select recipient from email_log
+                                 where recipient in ('old-sent@real.example', 'old-queued@real.example', 'recent@real.example')
+                                 order by recipient`)).rows.map((row) => row.recipient);
+  report.is(left.join(','), 'old-queued@real.example,recent@real.example',
+    'a row past the period goes; one still queued, and one inside it, stay');
+}
+
+report.section('a count in an Arabic email takes its form, as the bell words it');
+{
+  // Arabic says one, two (a form of its own), three to ten (the plural) and
+  // eleven up (the singular again). The emails used the plural for every
+  // number but one: «فاضل 2 أيام», «11 وظائف جديدة».
+  const { emailCopy } = await import('../../src/lib/email/copy.ts');
+  const ar = emailCopy.ar;
+
+  report.is(ar.digest.subject(1, 'مدينتي'), 'وظيفة جديدة في «مدينتي»', 'one new listing');
+  report.is(ar.digest.subject(2, 'مدينتي'), 'وظيفتين جداد في «مدينتي»', 'two: the dual, as the bell says it');
+  report.is(ar.digest.subject(3, 'مدينتي'), '3 وظائف جديدة في «مدينتي»', 'three to ten: the plural');
+  report.is(ar.digest.subject(11, 'مدينتي'), '11 وظيفة جديدة في «مدينتي»', 'eleven and up: the singular');
+  report.is(ar.follow.subject(2, 'نايل'), 'وظيفتين جداد في «نايل»', 'a followed company, the same');
+  report.is(ar.follow.subject(25, 'نايل'), '25 وظيفة جديدة في «نايل»', 'and its larger counts');
+
+  report.is(ar.applicantDigest.subject(1), 'عندك متقدم جديد', 'one new applicant');
+  report.is(ar.applicantDigest.subject(2), 'عندك متقدمين اتنين جداد', 'two new applicants');
+  report.is(ar.applicantDigest.subject(4), 'عندك 4 متقدمين جداد', 'four new applicants');
+  report.is(ar.applicantDigest.subject(12), 'عندك 12 متقدم جديد', 'twelve new applicants');
+  report.is(ar.applicantDigest.body(2), 'وصلك متقدمين اتنين جداد من آخر مرة بعتنالك.', 'and the body says it the same way');
+  report.is(ar.applicantDigest.body(15), 'وصلك 15 متقدم جديد من آخر مرة بعتنالك.', 'for a larger count too');
+
+  // The warning goes out within three days of the end (expire-jobs), so two
+  // days is an ordinary case.
+  report.ok(ar.jobExpiring.body('مستشار مبيعات', 2).startsWith('فاضل يومين على انتهاء «مستشار مبيعات»'), 'two days left');
+  report.ok(ar.jobExpiring.body('مستشار مبيعات', 3).startsWith('فاضل 3 أيام على انتهاء'), 'three days left');
+  report.ok(ar.jobExpiring.body('مستشار مبيعات', 1).includes('آخر يوم ليه بكرة'), 'the last day is still tomorrow');
+
+  report.is(emailCopy.en.digest.subject(2, 'Madinaty'), '2 new roles matching "Madinaty"', 'English is unchanged');
 }
 
 await db.close?.();

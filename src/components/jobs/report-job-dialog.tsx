@@ -155,7 +155,7 @@ export function ReportDialog({
     return (
       <Button asChild variant="ghost">
         <a href={`/sign-in?next=${encodeURIComponent(returnPath)}`}>
-          <Flag />
+          <Flag aria-hidden />
           {label}
         </a>
       </Button>
@@ -165,7 +165,7 @@ export function ReportDialog({
   return (
     <>
       <Button variant="ghost" onClick={() => setOpen(true)}>
-        <Flag />
+        <Flag aria-hidden />
         {label}
       </Button>
 

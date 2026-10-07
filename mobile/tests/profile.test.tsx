@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { Alert, Text, type AlertButton } from 'react-native';
+import { AccessibilityInfo, Alert, Modal, Pressable, Text, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { AgentExperienceRow, AgentProfileRow } from '@/lib/supabase/database.types';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -14,6 +14,7 @@ import { ThemeProvider } from '~/theme/provider';
 import * as ProfileScreen from '../src/app/(tabs)/(account)/account/profile';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
+import { placeViewsAt } from './measure';
 import { fakeServer } from './server';
 
 /*
@@ -102,7 +103,13 @@ beforeEach(async () => {
   server.on('/rest/v1/profiles', [profile]);
   server.on('/rest/v1/districts', [newCairo]);
   server.on('/rest/v1/developers', [{ id: 3, name_ar: 'بالم هيلز', name_en: 'Palm Hills', slug: 'palm-hills' }]);
-  server.on('GET /rest/v1/agent_profiles', () => (agent ? [agent] : []));
+  server.on('GET /rest/v1/agent_profiles', (url: URL) => {
+    // Asked whether the profile points at a file: by its path.
+    const path = url.searchParams.get('cv_path');
+    if (path) return agent && `eq.${agent.cv_path}` === path ? [agent] : [];
+    return agent ? [agent] : [];
+  });
+  server.on('GET /rest/v1/applications', []);
   server.on('GET /rest/v1/agent_developers', [{ developer_id: 3 }]);
   server.on('GET /rest/v1/agent_experience', [job]);
   server.on('GET /rest/v1/agent_education', []);
@@ -130,6 +137,18 @@ function Settled({ children }: { children: ReactNode }) {
   return useSession().settled ? children : null;
 }
 
+/** What applying in another tab does: the account read again. */
+function ReadAgain() {
+  const queryClient = useQueryClient();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="read the account again"
+      onPress={() => void queryClient.invalidateQueries({ queryKey: ['viewer'] })}
+    />
+  );
+}
+
 function Root() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
@@ -139,6 +158,7 @@ function Root() {
           <SessionProvider>
             <Settled>
               <Stack screenOptions={{ headerShown: false }} />
+              <ReadAgain />
             </Settled>
           </SessionProvider>
         </I18nProvider>
@@ -166,7 +186,7 @@ describe('the profile', () => {
   it("says what is missing, biggest gain first, over the form filled from the profile", async () => {
     open();
     expect(await screen.findByText(ar.cv.gapsTitle)).toBeTruthy();
-    expect(await screen.findByText('اكتمال الملف 45%')).toBeTruthy();
+    expect(await screen.findByText('اكتمال الملف 45٪')).toBeTruthy();
     // The objective (20), the headline (15), the record and education (10 each); the rest is done.
     expect(screen.getAllByText(/^\+\d+$/).map((badge) => badge.props.children)).toEqual(['+20', '+15', '+10', '+10']);
     expect(screen.getByText(ar.cv.gap_headline)).toBeTruthy();
@@ -202,6 +222,89 @@ describe('the profile', () => {
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
   });
 
+  it('keeps up with the name and number the account holds now, without touching what is being typed', async () => {
+    let me = { ...profile };
+    server.on('/rest/v1/profiles', () => [me]);
+    open();
+    expect((await screen.findByLabelText(ar.onboarding.fullName)).props.value).toBe(profile.full_name);
+    fireEvent.changeText(screen.getByLabelText(ar.agents.headlineAr), 'مستشارة مبيعات أولية');
+
+    // Applied from another tab with a new name and number: the account holds them now.
+    me = { ...me, full_name: 'سارة عادل محمود', whatsapp_phone: '+201009998887' };
+    fireEvent.press(screen.getByRole('button', { name: 'read the account again' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.onboarding.fullName).props.value).toBe('سارة عادل محمود'));
+    expect(screen.getByLabelText(ar.onboarding.whatsapp).props.value).toBe('+201009998887');
+    expect(screen.getByLabelText(ar.agents.headlineAr).props.value).toBe('مستشارة مبيعات أولية');
+
+    // A number being typed is kept when the account changes under it.
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '+201112223334');
+    me = { ...me, whatsapp_phone: '+201005556667' };
+    fireEvent.press(screen.getByRole('button', { name: 'read the account again' }));
+    await waitFor(() => expect(server.asked('/rest/v1/profiles').length).toBeGreaterThan(2));
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    expect(screen.getByLabelText(ar.onboarding.whatsapp).props.value).toBe('+201112223334');
+
+    fireEvent.press(saveButton());
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/saveAgentProfile')?.input).toMatchObject({
+        fullName: 'سارة عادل محمود',
+        whatsapp: '+201112223334',
+        headlineAr: 'مستشارة مبيعات أولية',
+      }),
+    );
+  });
+
+  it('keeps up with the account after a save the website stored in its own form', async () => {
+    let me = { ...profile };
+    server.on('/rest/v1/profiles', () => [me]);
+    // As the website stores them: the number in international form, the name trimmed.
+    server.on('POST /api/mobile/v1/actions/saveAgentProfile', (_url: URL, init?: RequestInit) => {
+      const { input } = JSON.parse(String(init?.body)) as { input: { fullName: string; whatsapp: string } };
+      me = { ...me, full_name: input.fullName.trim(), whatsapp_phone: input.whatsapp.replace(/^0/, '+20') };
+      return { ok: true };
+    });
+    open();
+    fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01009998887');
+    fireEvent.press(saveButton());
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+    await waitFor(() => expect(screen.getByLabelText(ar.onboarding.whatsapp).props.value).toBe('+201009998887'));
+
+    // Applied from another tab with another number since.
+    me = { ...me, whatsapp_phone: '+201005556667' };
+    fireEvent.press(screen.getByRole('button', { name: 'read the account again' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.onboarding.whatsapp).props.value).toBe('+201005556667'));
+    fireEvent.changeText(screen.getByLabelText(ar.agents.headlineAr), 'مستشارة مبيعات أولية');
+    fireEvent.press(saveButton());
+    await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/saveAgentProfile', 1)?.input).toMatchObject({ whatsapp: '+201005556667' }));
+  });
+
+  it("keeps a choice put back while the save's answer is being read again", async () => {
+    open();
+    fireEvent.press(await screen.findByRole('radio', { name: new RegExp(ar.visibility.public) }));
+    // The profile, read again after the save, held as on a slow connection.
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.on('GET /rest/v1/agent_profiles', async () => {
+      await gate;
+      return agent ? [{ ...agent, visibility: 'public' }] : [];
+    });
+    fireEvent.press(saveButton());
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+
+    // Put back before that read is in.
+    const verified = () => screen.getByRole('radio', { name: new RegExp(ar.visibility.verified_employers_only) });
+    fireEvent.press(verified());
+    await act(async () => release());
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+    expect(verified().props.accessibilityState).toMatchObject({ checked: true });
+  });
+
   it('takes the CV off when asked, and only then', async () => {
     open();
     fireEvent.press(await screen.findByRole('button', { name: ar.agents.cvRemove }));
@@ -227,12 +330,46 @@ describe('the profile', () => {
     await waitFor(() => expect(server.asked('/storage/v1/object/cvs')[0]?.body).toEqual({ prefixes: [path] }));
   });
 
-  it('catches a phone number the website would refuse, before sending anything', async () => {
+  it('keeps a new CV the profile was saved with, when a later step of the save is refused', async () => {
+    // The row goes in with the new file; the developer tags after it are refused.
+    server.on('POST /api/mobile/v1/actions/saveAgentProfile', (_url: URL, init: RequestInit | undefined) => {
+      const sent = (JSON.parse(String(init?.body)) as { input: { cvPath: string } }).input;
+      agent = agent ? { ...agent, cv_path: sent.cvPath } : agent;
+      return { ok: false, error: 'insert or update on table "agent_developers" violates foreign key constraint' };
+    });
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///cache/cv.pdf', name: 'cv.pdf', mimeType: 'application/pdf', size: 2048, lastModified: 0 }],
+    } as DocumentPicker.DocumentPickerResult);
     open();
-    fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '12');
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
+    expect(await screen.findByText('cv.pdf')).toBeTruthy();
     fireEvent.press(saveButton());
-    expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
-    expect(server.asked('/api/mobile/v1/actions/saveAgentProfile')).toHaveLength(0);
+
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/saveAgentProfile')).toHaveLength(1));
+    const path = String(bodyOf('/api/mobile/v1/actions/saveAgentProfile')?.input?.cvPath);
+    // Asked, and the saved profile points at it: not taken out from under it.
+    await waitFor(() => expect(server.asked('/rest/v1/agent_profiles').some((request) => request.url.searchParams.get('cv_path') === `eq.${path}`)).toBe(true));
+    await act(async () => {});
+    expect(server.asked('/storage/v1/object/cvs')).toHaveLength(0);
+  });
+
+  it('catches a phone number the website would refuse, before sending anything — in view and said, far above Save', async () => {
+    const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
+    announce.mockClear();
+    const layout = placeViewsAt(700);
+    try {
+      open();
+      fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '12');
+      fireEvent.press(saveButton());
+      expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
+      expect(server.asked('/api/mobile/v1/actions/saveAgentProfile')).toHaveLength(0);
+      expect(announce).toHaveBeenCalledWith(ar.validation.invalidPhone, { queue: true });
+      await waitFor(() => expect(layout.scrollTo).toHaveBeenCalledWith({ y: 700 - 16, animated: true }));
+    } finally {
+      layout.undo();
+    }
   });
 
   it('never offers an empty form over a profile it could not read', async () => {
@@ -307,6 +444,76 @@ describe('the CV sections', () => {
     );
   });
 
+  it('adds a job once when the answer is lost, and keeps the sheet when it did not go in', async () => {
+    let stored = [job];
+    // What the table holds, by the company named in the question.
+    server.on('GET /rest/v1/agent_experience', (url: URL) => {
+      const company = url.searchParams.get('company_name');
+      return company ? stored.filter((row) => `eq.${row.company_name}` === company) : stored;
+    });
+    // The website stores what was sent, cleaned, and its answer never reaches the phone.
+    server.on('POST /api/mobile/v1/actions/saveExperience', (_url: URL, init?: RequestInit) => {
+      const { input } = JSON.parse(String(init?.body)) as {
+        input: { companyName: string; title: string; track: null; started: string; ended: null; highlights: null };
+      };
+      stored = [
+        ...stored,
+        {
+          ...job,
+          id: '0e000000-0000-4000-8000-000000000002',
+          company_name: input.companyName.trim(),
+          title: input.title.trim(),
+          track: input.track,
+          started: input.started,
+          ended: input.ended,
+          highlights: input.highlights,
+        },
+      ];
+      throw new TypeError('Network request failed');
+    });
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.company), '  سيتي سكيب ');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+
+    // The database has it: the sheet closes, and nothing is sent twice.
+    await waitFor(() => expect(screen.queryByLabelText(ar.cv.company)).toBeNull());
+    expect(server.asked('/api/mobile/v1/actions/saveExperience')).toHaveLength(1);
+
+    // One that did not go in stays in the sheet, with the reason.
+    server.on('POST /api/mobile/v1/actions/saveExperience', () => {
+      throw new TypeError('Network request failed');
+    });
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'بالم هيلز');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مستشار مبيعات');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2022-01');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+    expect(screen.getByLabelText(ar.cv.company).props.value).toBe('بالم هيلز');
+  });
+
+  it('does not take an entry that was already there for the one whose answer was lost', async () => {
+    // Cairo University is on the profile already, for another field of study.
+    const law = { id: '0f000000-0000-4000-8000-000000000001', agent_id: AGENT_ID, institution: 'جامعة القاهرة', degree: null, field: 'تجارة', graduated: null, sort_order: 0, created_at: '2026-09-01T10:00:00Z' };
+    server.on('GET /rest/v1/agent_education', (url: URL) =>
+      url.searchParams.get('institution') === `eq.${law.institution}` || !url.searchParams.get('institution') ? [law] : [],
+    );
+    // The website refuses with a server error and writes nothing.
+    server.on('POST /api/mobile/v1/actions/saveEducation', { status: 500, body: { error: 'failed' } });
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addEducation }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.institution), 'جامعة القاهرة');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.field), 'حقوق');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+
+    // Not saved, and not said to be: the sheet stays with what was typed.
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    expect(screen.getByLabelText(ar.cv.field).props.value).toBe('حقوق');
+  });
+
   it('edits an entry without moving a date nobody touched', async () => {
     open();
     fireEvent.press(await screen.findByRole('button', { name: `${ar.app.profile.edit}: ${job.title} · ${job.company_name}` }));
@@ -322,16 +529,46 @@ describe('the CV sections', () => {
     );
   });
 
-  it('catches an end before the start, before sending anything', async () => {
+  it('catches an end before the start, before sending anything — in view in the sheet, and said', async () => {
     open();
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'سيتي سكيب');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
     fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
     fireEvent.changeText(screen.getByLabelText(ar.cv.ended), '2022-01');
-    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
-    expect(await screen.findByText(ar.app.profile.endBeforeStart)).toBeTruthy();
-    expect(server.asked('/api/mobile/v1/actions/saveExperience')).toHaveLength(0);
+    const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
+    announce.mockClear();
+    const layout = placeViewsAt(320);
+    try {
+      fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+      expect(await screen.findByText(ar.app.profile.endBeforeStart)).toBeTruthy();
+      expect(server.asked('/api/mobile/v1/actions/saveExperience')).toHaveLength(0);
+      expect(announce).toHaveBeenCalledWith(ar.app.profile.endBeforeStart, { queue: true });
+      await waitFor(() => expect(layout.scrollTo).toHaveBeenCalledWith({ y: 320 - 16, animated: true }));
+    } finally {
+      layout.undo();
+    }
+  });
+
+  it('asks before an entry typed into the sheet is thrown away, by its X or by pulling the sheet down', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    // Nothing typed: it simply closes.
+    fireEvent.press(await screen.findByRole('button', { name: ar.common.close }));
+    expect(alert).not.toHaveBeenCalled();
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'سيتي سكيب');
+    // The sheet pulled down: iOS asks the modal to close.
+    const sheet = screen.UNSAFE_getAllByType(Modal).find((modal) => modal.props.visible);
+    act(() => sheet?.props.onRequestClose());
+    expect(alert).toHaveBeenCalledWith(ar.app.leave.title, ar.app.leave.body, expect.any(Array));
+    // Kept: the sheet and what was typed are still there.
+    const stay = (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'cancel');
+    act(() => stay?.onPress?.());
+    expect(screen.getByLabelText(ar.cv.company).props.value).toBe('سيتي سكيب');
+    alert.mockRestore();
   });
 
   it('deletes an entry after asking', async () => {

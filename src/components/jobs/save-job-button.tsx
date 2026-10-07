@@ -53,7 +53,7 @@ export function SaveJobButton({
 
   return (
     <Button variant="outline" size="lg" onClick={onClick} disabled={pending} aria-pressed={saved}>
-      {saved ? <BookmarkCheck /> : <Bookmark />}
+      {saved ? <BookmarkCheck aria-hidden /> : <Bookmark aria-hidden />}
       {saved ? labels.saved : labels.save}
     </Button>
   );

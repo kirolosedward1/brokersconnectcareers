@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Download, FileX2, MessageCircle } from 'lucide-react-native';
-import { formatDate, formatEgp, formatList, formatNumber } from '@/lib/format';
+import { Download, FileX2, MessageCircle } from '~/components/ui/lucide';
+import { formatDate, formatEgp, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
+import { clean } from '@/lib/security/sanitize';
 import { canBrowseAgentDirectory } from '@/lib/permissions';
 import type { ApplicationNoteRow, ApplicationStatus } from '@/lib/supabase/database.types';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
@@ -55,7 +56,8 @@ export function ApplicantCard({
   jobTitle: string;
   companyName: string;
   districtNames: string[];
-  notes: ApplicationNoteRow[];
+  /** Undefined until the company's notes have been read. */
+  notes: ApplicationNoteRow[] | undefined;
   authors: Record<string, string>;
   viewerId: string | null;
 }) {
@@ -65,10 +67,34 @@ export function ApplicantCard({
   const { actor } = useSession();
   const move = useSetApplicationStatus();
 
-  const [status, setStatus] = useState<ApplicationStatus>(applicant.status);
-  const [reason, setReason] = useState(applicant.decision_note ?? '');
-  const [savedReason, setSavedReason] = useState(applicant.decision_note ?? '');
+  // The stage and reason shown are the stored ones, read afresh with every
+  // refresh, except while a move of this card's is on its way. A copy taken
+  // once went stale when the stage moved elsewhere (the pipeline, a
+  // colleague), and every move from the card was then refused as a colleague's.
+  const [pending, setPending] = useState<{ status: ApplicationStatus; reason: string } | null>(null);
+  const status = pending?.status ?? applicant.status;
+  const storedReason = applicant.decision_note ?? '';
+  const savedReason = pending?.reason ?? storedReason;
+  // The reason being typed follows the stored one for as long as nobody has typed in it.
+  const [reasonFrom, setReasonFrom] = useState(storedReason);
+  const [reason, setReason] = useState(storedReason);
+  if (storedReason !== reasonFrom) {
+    if (reason === reasonFrom) setReason(storedReason);
+    setReasonFrom(storedReason);
+  }
   const [conflict, setConflict] = useState(false);
+  // The move that did not come back, and what was said about it — until the
+  // stages, read again, show the server holding it after all (the answer was
+  // lost, not the move), as the website's card does.
+  const [failed, setFailed] = useState<{ message: string; status: ApplicationStatus; reason: string } | null>(null);
+  if (
+    failed &&
+    !pending &&
+    applicant.status === failed.status &&
+    storedReason === (clean(failed.reason.trim(), true) || '')
+  ) {
+    setFailed(null);
+  }
   const [cvError, setCvError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
 
@@ -81,48 +107,57 @@ export function ApplicantCard({
       : null;
   const headline = profile ? localized(locale, profile.headline_ar, profile.headline_en) : '';
 
-  const save = (next: ApplicationStatus, decisionNote: string) => {
-    const before = { status, reason: savedReason };
-    setStatus(next);
-    setSavedReason(decisionNote);
+  const save = (next: ApplicationStatus, decisionNote: string, restoreBox?: string) => {
+    const from = status;
+    setPending({ status: next, reason: decisionNote });
     setConflict(false);
+    setFailed(null);
     move.mutate(
-      { applicationId: applicant.id, status: next, decisionNote, from: before.status },
+      { applicationId: applicant.id, status: next, decisionNote, from },
       {
+        // Settled once the stages have been read again (the hook waits for that), so what shows next is stored.
+        onSettled: () => setPending(null),
+        // What they typed stays in the box, and the card says it was not
+        // saved. Put back to the stored words, a failed save took their
+        // sentence away and the button then read "Saved" over nothing new —
+        // the notes below keep a draft the same way.
         onError: (failure) => {
-          setStatus(before.status);
-          setSavedReason(before.reason);
-          setReason(before.reason);
+          // A move that emptied the box for its new stage puts back what it showed.
+          if (restoreBox !== undefined) setReason(restoreBox);
           if (failure instanceof MovedAlready) setConflict(true);
+          else
+            setFailed({
+              message: failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody'),
+              status: next,
+              reason: decisionNote,
+            });
         },
       },
     );
   };
 
-  const openCv = async () => {
+  const openCv = () => {
     setCvError(null);
     setOpening(true);
-    try {
-      await openApplicationCv(applicant.id);
-    } catch (failure) {
-      const code = failure instanceof ApiError ? failure.status : -1;
-      setCvError(
-        code === 429
-          ? t('app.applicants.cvLimit')
-          : code === 404
-            ? t('employer.noCv')
-            : code === 0
-              ? t('app.offline.body')
-              : t('common.errorBody'),
-      );
-    } finally {
-      setOpening(false);
-    }
+    openApplicationCv(applicant.id)
+      .catch((failure: unknown) => {
+        const code = failure instanceof ApiError ? failure.status : -1;
+        setCvError(
+          code === 429
+            ? t('app.applicants.cvLimit')
+            : code === 404
+              ? t('employer.noCv')
+              : code === 0
+                ? t('app.offline.body')
+                : t('common.errorBody'),
+        );
+      })
+      .then(() => setOpening(false));
   };
 
   const facts = [
     applicant.experience_band ? t(`experienceBand.${applicant.experience_band}`) : null,
-    t('jobs.postedOn', { date: formatDate(applicant.created_at, locale) }),
+    t('employer.applicantReceivedOn', { date: formatDate(applicant.created_at, locale) }),
   ].filter((fact): fact is string => Boolean(fact));
 
   return (
@@ -177,7 +212,7 @@ export function ApplicantCard({
               <Text variant="caption" weight="medium">
                 {[
                   profile.units_closed != null
-                    ? t('agents.unitsClosedShort', { count: formatNumber(profile.units_closed, locale) })
+                    ? t('agents.unitsClosedShort', { count: profile.units_closed })
                     : null,
                   profile.volume_egp != null ? `${formatEgp(profile.volume_egp, locale)} ${t('common.egp')}` : null,
                 ]
@@ -247,12 +282,32 @@ export function ApplicantCard({
           placeholder={t(`applicationStatus.${status}`)}
           required
           options={STAGES.map((value) => ({ value, label: t(`applicationStatus.${value}`) }))}
-          onChange={(value) => value && value !== status && save(value, reason)}
+          // A reason belongs to the decision it was written for: a move carries
+          // one only when it was typed for it — words in the box that are not
+          // the saved ones. The saved reason stays with its stage (sent along,
+          // a rejection's reason reached the candidate again under
+          // "shortlisted"), and at "new" the box is hidden, so nothing in it
+          // is on screen to send.
+          onChange={(value) => {
+            if (!value || value === status) return;
+            const typed = status !== 'new' && reason.trim() !== savedReason.trim();
+            if (typed) {
+              save(value, reason);
+            } else {
+              const shown = reason;
+              setReason('');
+              save(value, '', shown);
+            }
+          }}
         />
       </Field>
       {conflict ? (
         <Text variant="small" tone="destructive" accessibilityRole="alert">
           {t('employer.applicantMovedAlready')}
+        </Text>
+      ) : failed ? (
+        <Text variant="small" tone="destructive" accessibilityRole="alert">
+          {failed.message}
         </Text>
       ) : null}
 

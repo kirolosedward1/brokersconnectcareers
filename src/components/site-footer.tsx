@@ -11,6 +11,7 @@ import { optional } from '@/lib/queries/error';
 import { actorOf, getViewer } from '@/lib/auth';
 import { siteNavFor } from '@/lib/permissions';
 import { env } from '@/lib/env';
+import { OPERATOR } from '@/lib/business';
 
 /**
  * The footer is where somebody lands after reading a whole page and doing
@@ -31,6 +32,16 @@ import { env } from '@/lib/env';
  * applicant's name and WhatsApp number. Nothing here promises reach, speed or
  * quality, because nothing here measures them.
  */
+
+/** The legal documents (lib/legal.ts) and the licences, in the order they are listed. */
+const LEGAL_LINKS = [
+  { href: '/privacy', key: 'privacy' },
+  { href: '/terms', key: 'terms' },
+  { href: '/cookies', key: 'cookies' },
+  { href: '/refunds', key: 'refunds' },
+  { href: '/account-deletion', key: 'accountDeletion' },
+  { href: '/licenses', key: 'licenses' },
+] as const;
 
 /** The districts worth a permanent link, by slug, in the order they are shown. */
 const FEATURED_DISTRICTS = [
@@ -72,9 +83,10 @@ export async function SiteFooter({ locale }: { locale: string }) {
     (district): district is NonNullable<typeof district> => Boolean(district),
   );
 
-  // Only when somebody has actually set it. A mailto to nowhere is a dead end
-  // with a friendlier label.
-  const supportEmail = env.supportEmail;
+  // SUPPORT_EMAIL when somebody has set one, and otherwise the address the
+  // legal documents already publish for the operator — never a mailto to
+  // nowhere.
+  const contactEmail = env.supportEmail || OPERATOR.email;
 
   /**
    * min-h-11, matching the header and NavLink. The footer was the only place
@@ -194,25 +206,23 @@ export async function SiteFooter({ locale }: { locale: string }) {
             </FooterGroup>
           ) : null}
 
+          {/* Every legal document, from every page: the policies have to be
+              reachable from wherever somebody is when they want them, and the
+              account-deletion page is the one an app store links to. */}
           <FooterGroup title={t('about')}>
             <ul className="lg:mt-2">
-              <li>
-                <Link href="/privacy" className={linkClass}>
-                  {t('privacy')}
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className={linkClass}>
-                  {t('terms')}
-                </Link>
-              </li>
-              {supportEmail ? (
-                <li>
-                  <a href={`mailto:${supportEmail}`} className={linkClass}>
-                    {t('contact')}
-                  </a>
+              {LEGAL_LINKS.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className={linkClass}>
+                    {t(item.key)}
+                  </Link>
                 </li>
-              ) : null}
+              ))}
+              <li>
+                <a href={`mailto:${contactEmail}`} className={linkClass}>
+                  {t('contact')}
+                </a>
+              </li>
             </ul>
           </FooterGroup>
         </div>
@@ -230,10 +240,19 @@ export async function SiteFooter({ locale }: { locale: string }) {
           </div>
 
           <div className="flex flex-col items-center gap-3 text-xs text-muted-foreground sm:flex-row sm:gap-x-4">
-            <p>
-              <span className="numeral">{new Date().getFullYear()}</span> · {tMeta('siteName')} ·{' '}
-              {t('rights')}
-            </p>
+            <div className="space-y-1">
+              <p>
+                <span className="numeral">{new Date().getFullYear()}</span> · {tMeta('siteName')} ·{' '}
+                {t('rights')}
+              </p>
+              {/* Who is behind the site, on every page of it. */}
+              <p>
+                {t('operatedBy', { name: OPERATOR.name })} ·{' '}
+                <a href={`mailto:${OPERATOR.email}`} dir="ltr" className="underline-offset-4 hover:text-foreground hover:underline">
+                  {OPERATOR.email}
+                </a>
+              </p>
+            </div>
             {/* In the footer rather than the header: it is a preference somebody
                 sets once, not a control they reach for on every page. */}
             <ThemeToggle />

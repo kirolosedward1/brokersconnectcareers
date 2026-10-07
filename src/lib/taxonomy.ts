@@ -171,3 +171,14 @@ export const POST_PACKS = [
   { key: 'mass_hiring', seats: null, days: 30, priceEgp: 6000, credits: 1 },
   { key: 'featured_addon', seats: null, days: 14, priceEgp: 750, credits: 0 },
 ] as const;
+
+/**
+ * The packs a company can actually buy. Not the featured add-on, yet: paying
+ * for it adds no credit (settle_order adds `credits`, which is 0 for it) and
+ * features nothing, because nothing ties the purchase to a listing. It goes
+ * on sale when a purchase names the listing it pins.
+ */
+export const PACKS_ON_SALE = POST_PACKS.filter(
+  (pack): pack is Exclude<(typeof POST_PACKS)[number], { key: 'featured_addon' }> =>
+    pack.key !== 'featured_addon',
+);

@@ -30,8 +30,11 @@ export function UserMenu({
    *
    * The bell and the phone menu both did this; this one did not, so a keyboard
    * user could open the account menu and have no way to dismiss it without
-   * tabbing through every item in it. aria-haspopup promises a menu; a menu
-   * you cannot leave is not one.
+   * tabbing through every item in it.
+   *
+   * A disclosure, not an ARIA menu. `role="menu"` promises arrow keys and
+   * focus moved into the list, and this had neither; two items need none of
+   * it, so they are an ordinary link and button that Tab reaches in order.
    */
   useEffect(() => {
     if (!open) return;
@@ -52,7 +55,8 @@ export function UserMenu({
       // header on every page, and a static import put the whole Supabase client
       // (~65 KB gzipped) in every visitor's first load to serve one button.
       const { createClient } = await import('@/lib/supabase/client');
-      await createClient().auth.signOut();
+      // This browser only: the phone's session, and any other, stays signed in.
+      await createClient().auth.signOut({ scope: 'local' });
       /*
         A document navigation, not a router push. Signing out changes who the
         server thinks you are, and a client push races the refresh that was
@@ -69,10 +73,11 @@ export function UserMenu({
         ref={triggerRef}
         variant="ghost"
         size="sm"
-        className="h-11 min-w-11"
+        // Over a landing page's film the header's text is white, and the
+        // ghost hover's pale grey would put it white on white.
+        className="h-11 min-w-11 group-data-[over-hero]/header:hover:bg-white/15"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-haspopup="menu"
       >
         {/* The person, not a glyph of one. The console header already shows
             the photo; the site header showed a generic outline beside the
@@ -80,7 +85,9 @@ export function UserMenu({
             was signed in. 28px, so it sits inside the 44px button like the
             icon it replaces rather than turning the chip into a badge. */}
         <Avatar name={name} src={avatarUrl} size="xs" />
-        <span className="hidden max-w-24 truncate sm:inline">{name}</span>
+        {/* Off screen on a phone, never gone: the avatar is aria-hidden, so
+            this is the button's only name. */}
+        <span className="max-w-24 truncate max-sm:sr-only">{name}</span>
       </Button>
 
       {open ? (
@@ -90,14 +97,16 @@ export function UserMenu({
             aria-hidden
             onClick={() => setOpen(false)}
           />
+          {/* Its own colours, as the phone menu has (mobile-nav.tsx): over a
+              landing page's film the header carries white type and a white
+              focus ring, and this light panel inherited both — white on
+              white. */}
           <div
-            role="menu"
-            className="absolute end-0 z-20 mt-1 w-48 rounded-lg border border-border bg-popover p-1 shadow-lg"
+            className="absolute end-0 z-20 mt-1 w-48 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg [--ring:var(--brand-blue)]"
           >
             {/* Where the privacy policy says these rights are exercised, so it
                 has to be reachable without knowing the URL. */}
             <Link
-              role="menuitem"
               href="/dashboard/account"
               onClick={() => setOpen(false)}
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-start text-sm transition-colors hover:bg-muted"
@@ -109,7 +118,6 @@ export function UserMenu({
             <div className="my-1 h-px bg-border" />
 
             <button
-              role="menuitem"
               type="button"
               onClick={signOut}
               disabled={pending}

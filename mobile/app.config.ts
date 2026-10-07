@@ -16,18 +16,92 @@ const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? 'https://www.brokersconnect
 const SITE_HOST = new URL(SITE_URL).host;
 
 /**
- * The EAS project's id: `npx eas-cli@latest init` prints it, and it goes here
- * in place of null. It is not a secret. Push tokens are issued for it, and the
- * build server reads this file again, so an id kept only in a local shell
- * never reaches a build. EAS_PROJECT_ID overrides it, for a fork's own project.
+ * The website's pages the app has screens for, which Android opens in the app
+ * (App Links) — the list the iOS file names (src/lib/apple/app-site-association.ts,
+ * OPEN_IN_THE_APP; a test keeps the two together), under /en too for the day
+ * English is published. A section is its own page and the pages under it
+ * (`/jobs`, `/jobs/…`), never whatever begins the same: /employers is the
+ * website's page for companies, not the employer's console.
+ * Android verifies them against the site's /.well-known/assetlinks.json,
+ * which names this package and its signing certificate (ANDROID_CERT_SHA256 on
+ * the website); until then they open in the browser.
  */
-const EAS_PROJECT_ID: string | null = null;
+const APP_LINK_PATHS = [
+  '/jobs',
+  '/jobs/*',
+  '/companies',
+  '/companies/*',
+  '/agents',
+  '/agents/*',
+  '/notifications',
+  '/dashboard',
+  '/dashboard/*',
+  '/employer',
+  '/employer/*',
+  '/auth/confirm',
+];
+
+/**
+ * The EAS project's id (expo.dev: @kirolosedward1/brokers-connect-careers). It
+ * is not a secret. Push tokens are issued for it, updates are fetched from it,
+ * and the build server reads this file again, so an id kept only in a local
+ * shell never reaches a build. EAS_PROJECT_ID overrides it, for a fork's own
+ * project. The slug and owner below are that project's: EAS refuses to build
+ * or publish when they differ.
+ */
+const EAS_PROJECT_ID: string | null = '5598b160-d5fd-42e3-9cfd-14097b6677e9';
 const easProjectId = process.env.EAS_PROJECT_ID || EAS_PROJECT_ID;
+
+/**
+ * The Face ID purpose string, for the app lock (expo-local-authentication) —
+ * the base language's; the English one is in assets/locales. expo-secure-store
+ * writes the same Info.plist key, so it is handed the same words: whichever
+ * plugin runs last, the prompt says this.
+ */
+const FACE_ID_PURPOSE = 'بنستخدم Face ID عشان تقفل التطبيق وتفتحه، لو انت شغّلت القفل بنفسك.';
+
+/**
+ * Over-the-air updates (EAS Update): JavaScript and images published after a
+ * build reach the phones running it without a new review. Native code cannot
+ * change that way — a new native module still needs a build.
+ *
+ * Each build listens on its profile's channel (eas.json) and takes only
+ * updates made for its own native code: the runtime version is a fingerprint
+ * of this configuration and the native modules, so an update made against
+ * other native code is never offered to it. That fingerprint depends on the
+ * environment this file is evaluated in, which is why updates are published
+ * with scripts/publish-update.mjs and the build profile's own values.
+ *
+ * Without an EAS project there is nowhere to fetch from: updates are off, and
+ * a build runs the code it was built with.
+ */
+/**
+ * An update for Expo Go (`pnpm run ota expo-go`, scripts/publish-update.mjs)
+ * runs on Expo Go's native code, not this app's: its runtime version is Expo
+ * Go's SDK ("exposdk:57.0.0"), which no fingerprint of this app matches.
+ */
+const forExpoGo = process.env.EXPO_GO_UPDATE === '1';
+
+/**
+ * A store build opens at once on what it has and takes a new update from its
+ * next launch (fallbackToCacheTimeout 0), so nobody's screen changes under
+ * them. Expo Go is where the app is tried while it is being made: there it
+ * waits for the newest update (up to half a minute, then whatever it has), so
+ * what is opened is what was last published, not the one before it.
+ */
+const updates = easProjectId
+  ? {
+      url: `https://u.expo.dev/${easProjectId}`,
+      checkAutomatically: 'ON_LOAD' as const,
+      fallbackToCacheTimeout: forExpoGo ? 30_000 : 0,
+    }
+  : { enabled: false };
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Brokers Connect',
-  slug: 'brokers-connect',
+  slug: 'brokers-connect-careers',
+  owner: 'kirolosedward1',
   version: '1.0.0',
   orientation: 'portrait',
   // The website's mark on white, enlarged from the 450-pixel original in
@@ -35,6 +109,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: './assets/images/icon.png',
   scheme: 'brokersconnect',
   userInterfaceStyle: 'automatic',
+  // Checked at launch; a store build downloads it in the background and runs
+  // it from the next launch on (`updates`, above).
+  runtimeVersion: forExpoGo ? { policy: 'sdkVersion' } : { policy: 'fingerprint' },
+  updates,
   ios: {
     // Permanent once the app is on the App Store: confirm before the first build.
     bundleIdentifier: 'net.brokersconnect.app',
@@ -72,6 +150,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         'NSPrivacyCollectedDataTypeUserID',
         'NSPrivacyCollectedDataTypeDeviceID',
         'NSPrivacyCollectedDataTypeOtherDataTypes',
+        // A company opening a consultant's profile, or asking for their number
+        // or CV: kept to show the consultant a count and for the daily limits.
+        'NSPrivacyCollectedDataTypeProductInteraction',
       ].map((type) => ({
         NSPrivacyCollectedDataType: type,
         NSPrivacyCollectedDataTypeLinked: true,
@@ -94,19 +175,49 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        category: ['BROWSABLE', 'DEFAULT'],
+        data: ['', '/en'].flatMap((locale) =>
+          APP_LINK_PATHS.map((path) =>
+            path.endsWith('/*')
+              ? { scheme: 'https', host: SITE_HOST, pathPrefix: `${locale}${path.slice(0, -1)}` }
+              : { scheme: 'https', host: SITE_HOST, path: `${locale}${path}` },
+          ),
+        ),
+      },
+    ],
+    // Drawing over other apps, which the template asks for and the app never
+    // does; Google Play reviews it as a sensitive permission.
+    blockedPermissions: ['android.permission.SYSTEM_ALERT_WINDOW'],
+    // Firebase's google-services.json, without which Android has no push token:
+    // an EAS file variable (GOOGLE_SERVICES_JSON, a path to it on the build
+    // server) — not committed, the repository is public. Unset, the Android app
+    // does not offer pushes (pushAvailable, src/features/push/device.ts).
+    googleServicesFile: process.env.GOOGLE_SERVICES_JSON || undefined,
   },
   plugins: [
     'expo-router',
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#FDFDFF',
+        // The light page colour (src/theme/tokens.ts), so the launch screen
+        // gives way to the first screen without a change of tone. Light only:
+        // the app opens light whatever the phone's setting until the reader
+        // picks otherwise in Account (src/theme/provider.tsx), and a dark
+        // launch screen on a dark phone flashed into the light app.
+        backgroundColor: '#F6F4F0',
         image: './assets/images/splash-icon.png',
         imageWidth: 76,
-        dark: { backgroundColor: '#0B0F19', image: './assets/images/splash-icon.png' },
       },
     ],
-    'expo-secure-store',
+    // The session key sits in the keychain without a biometric gate. The Face
+    // ID purpose string is the app lock's, given to both plugins because both
+    // write it (the secure store's default is an English sentence).
+    ['expo-secure-store', { faceIDPermission: FACE_ID_PURPOSE }],
+    ['expo-local-authentication', { faceIDPermission: FACE_ID_PURPOSE }],
     ['expo-localization', { supportsRTL: true, forcesRTL: true }],
     'expo-web-browser',
     'expo-font',
@@ -127,8 +238,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         // The base language's strings; the English ones are in assets/locales.
         photosPermission:
-          'بنستخدم صورك عشان تختار صورتك الشخصية أو لوجو شركتك، ومفيش حاجة بتترفع غير اللي انت تختاره.',
-        cameraPermission: 'بنستخدم الكاميرا عشان تصوّر صورتك الشخصية أو مستندات شركتك.',
+          'بنستخدم صورك عشان تختار صورتك الشخصية أو لوجو شركتك أو مستنداتها، ومفيش حاجة بتترفع غير اللي انت تختاره.',
+        cameraPermission: 'بنستخدم الكاميرا عشان تصوّر مستندات شركتك لتوثيقها.',
         microphonePermission: false,
       },
     ],

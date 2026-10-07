@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { raise } from '@/lib/queries/error';
 import { getDistricts, getDevelopers } from '@/lib/queries/taxonomy';
 import type { JobRow } from '@/lib/supabase/database.types';
+import { UUID_RE } from '@/lib/admin/params';
 
 export async function generateMetadata({
   params,
@@ -42,6 +43,9 @@ export default async function EditJobPage({
     Unreadable is still not absent: an error goes to the boundary, a
     listing that is not this company's is a 404.
   */
+  // A truncated link is a page that does not exist, not a database error:
+  // the id is compared with a uuid column, and the cast refused it.
+  if (!UUID_RE.test(id)) notFound();
   const { data: job, error: jobError } = await supabase
     .from('jobs')
     .select('*')

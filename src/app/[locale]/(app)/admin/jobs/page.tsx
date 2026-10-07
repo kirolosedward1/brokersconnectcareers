@@ -10,7 +10,7 @@ import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { must, mustPage } from '@/lib/admin/read';
 import { PAGE_SIZE, UUID_RE, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
-import { likeNeedle } from '@/lib/search/needle';
+import { looseArabicNeedle } from '@/lib/search/needle';
 import { formatDate, formatNumber } from '@/lib/utils';
 import type { JobStatus, SafetyFlag } from '@/lib/supabase/database.types';
 
@@ -147,12 +147,15 @@ export default async function AdminJobsPage({
   if (q && UUID_RE.test(q)) {
     query = query.eq('id', q);
   } else if (q) {
-    const needle = likeNeedle(q);
+    const needle = looseArabicNeedle(q);
     if (needle) query = query.or(`title_ar.ilike.*${needle}*,title_en.ilike.*${needle}*,slug.ilike.*${needle}*`);
   }
 
   const current = { q, status: view === 'pending' ? undefined : view, company: companyId };
-  const read = await mustPage(await query, 'loading listings', locale, hrefWith('/admin/jobs', current, {}));
+  const read = await mustPage(await query, 'loading listings', locale, {
+    page,
+    href: (n) => hrefWith('/admin/jobs', current, { page: n }),
+  });
   const rows = read.data as unknown as JobListRow[];
 
   // What each waiting listing says that a moderator should look at twice.
@@ -211,7 +214,7 @@ export default async function AdminJobsPage({
       cell: (row) => (
         <span className="inline-flex flex-wrap items-center justify-end gap-1">
           <JobStatusBadge status={row.status} expiresAt={row.expires_at} />
-          {row.is_featured ? <Star className="size-3.5 text-warning" aria-label={t('featured')} /> : null}
+          {row.is_featured ? <Star className="size-3.5 text-warning" role="img" aria-label={t('featured')} /> : null}
           <FlagCount flags={flags.get(row.id) ?? []} locale={locale} />
           {row.open_reports?.length ? (
             <Badge variant="destructive">

@@ -70,6 +70,15 @@ export function VerificationPanel({
         }
 
         const result = await reach(recordCompanyDocument({ companyId, docType, storagePath: path }));
+        if (!result.ok && result.error === 'network') {
+          // No answer: the paper may well have been recorded, and removing
+          // its file would leave the review a row with nothing behind it. The
+          // page reads what the server holds instead; a file that was never
+          // recorded is cleared by storage clean-up.
+          setError(tCommon('errorBody'));
+          router.refresh();
+          return;
+        }
         if (!result.ok) {
           // The file is already in the private bucket and nothing will ever
           // point at it now — and a tax card is not a thing to leave lying

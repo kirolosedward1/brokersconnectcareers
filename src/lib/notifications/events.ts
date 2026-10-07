@@ -7,6 +7,7 @@ import {
   notifyCandidateOfApplication,
   notifyCandidateOfStatus,
   notifyCompanyVerification,
+  notifyCompanyVerificationRevoked,
   notifyEmployerOfApplication,
   notifyEmployerOfModeration,
   notifyJobExpiry,
@@ -84,6 +85,7 @@ export type BusinessEvent =
   | { type: 'JOB_EXPIRED'; jobId: string; applicantCount: number }
   | { type: 'COMPANY_VERIFIED'; companyId: string }
   | { type: 'COMPANY_VERIFICATION_REJECTED'; companyId: string; note?: string | null }
+  | { type: 'COMPANY_VERIFICATION_REVOKED'; companyId: string }
   | { type: 'ACCOUNT_APPROVED'; userId: string }
   | { type: 'ACCOUNT_SUSPENDED'; userId: string; note?: string | null }
   | { type: 'ACCOUNT_ONBOARDED'; userId: string }
@@ -159,6 +161,10 @@ export const ROUTES: Routes = {
   COMPANY_VERIFICATION_REJECTED: {
     inApp: 'trigger:on_company_verified',
     email: [(e) => notifyCompanyVerification(e.companyId, false, e.note)],
+  },
+  COMPANY_VERIFICATION_REVOKED: {
+    inApp: 'trigger:on_company_verified',
+    email: [(e) => notifyCompanyVerificationRevoked(e.companyId)],
   },
   ACCOUNT_APPROVED: {
     inApp: 'trigger:on_approval_changed',

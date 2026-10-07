@@ -34,6 +34,8 @@ import { tabsFor, type TabName } from './tabs';
 const SITE = 'https://www.brokersconnect.net';
 const SITE_HOSTS = new Set(['www.brokersconnect.net', 'brokersconnect.net']);
 const APP_SCHEME = 'brokersconnect:';
+/** Expo Go's addresses for a project it runs: exp://<host>:<port>/--/<path>. */
+const EXPO_GO_SCHEMES = new Set(['exp:', 'exps:']);
 
 /** Locale prefixes the website's `localePrefix: 'as-needed'` can put in front of a path. */
 const LOCALE_PREFIX = /^\/(en|ar)(?=\/|$)/;
@@ -54,6 +56,12 @@ export function webPathToAppPath(input: string): string {
     // brokersconnect://jobs/abc parses with "jobs" as the host; with three
     // slashes the host is empty. Either way the screen is host + path.
     const path = `/${url.host}/${url.pathname}`.replace(/\/{2,}/g, '/');
+    url = new URL(`${path}${url.search}`, SITE);
+  } else if (EXPO_GO_SCHEMES.has(url.protocol)) {
+    // Only while the app runs in Expo Go, where every link to it takes this
+    // form: the screen is what follows "/--", and the project itself is Home.
+    const at = url.pathname.indexOf('/--');
+    const path = (at === -1 ? '' : url.pathname.slice(at + 3)) || '/';
     url = new URL(`${path}${url.search}`, SITE);
   } else if (url.protocol !== 'https:' && url.protocol !== 'http:') {
     return '/';

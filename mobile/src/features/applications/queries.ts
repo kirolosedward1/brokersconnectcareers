@@ -85,11 +85,17 @@ export function useWithdrawApplication() {
       if (!result.ok) throw new Error(result.error);
       return applicationId;
     },
-    onSuccess: () => {
+    // Read again whatever the answer: a refusal usually means the company
+    // moved the application on meanwhile (no longer withdrawable), and a lost
+    // answer may hide a withdrawal that went in — either way the row on
+    // screen was wrong, and stayed so with its Withdraw button.
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       // The board's "applied" badges and the dashboard's counts.
       queryClient.invalidateQueries({ queryKey: ['jobs', 'applied'] });
       queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      // The listing's apply page: the row is gone, and so is "applied already".
+      queryClient.invalidateQueries({ queryKey: ['apply'] });
     },
   });
 }

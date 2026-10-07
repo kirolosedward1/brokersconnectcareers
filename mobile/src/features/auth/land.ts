@@ -1,9 +1,11 @@
 import { useCallback } from 'react';
 import { router, useNavigation, useSegments } from 'expo-router';
+import { StackActions } from 'expo-router/react-navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { openWhenReady } from '~/lib/open-path';
 import { fetchViewer, secondFactorDue } from '~/lib/session';
 import { intentParams, type AuthIntent } from './intent';
+import { forgetOnboardingIntent } from './kept-intent';
 
 /**
  * Where a finished sign-in goes — the website's landing, step for step
@@ -38,7 +40,9 @@ export function useLand() {
         return;
       }
 
-      close();
+      // Arrived: onboarding's kept destination has done its work.
+      void forgetOnboardingIntent();
+      close('arrived');
       if (intent.next) openWhenReady(intent.next);
     },
     [queryClient, close],
@@ -46,19 +50,43 @@ export function useLand() {
 }
 
 /**
+ * The sign-in flow's screens as the root stack names them: the sheet, the
+ * ones that stand alone, and the welcome a first launch opens on, which a
+ * sign-in started from it closes along with the sheet.
+ */
+const FLOW_SCREENS = new Set(['(auth)', 'onboarding', 'mfa', 'auth/confirm', 'auth/callback', 'welcome']);
+
+/**
  * Close the flow this screen belongs to: the whole sign-in sheet from any
  * screen inside it, or this screen itself when it stands alone (onboarding,
  * the code, an email link). What was underneath is left as it was.
+ *
+ * `'arrived'` — the account is in — closes every screen of the flow on top
+ * of the app, not only this one: an email link opened over the sign-up sheet
+ * left the sheet's "check your email" under onboarding, and finishing
+ * onboarding showed it again, for an account that had just arrived.
  */
 export function useCloseFlow() {
   const navigation = useNavigation();
   const inSheet = useSegments()[0] === '(auth)';
 
-  return useCallback(() => {
-    // Inside the sheet, this screen's parent is the sheet as the root stack
-    // holds it; popping that closes every screen in it at once.
-    const target = inSheet ? (navigation.getParent() ?? navigation) : navigation;
-    if (target.canGoBack()) target.goBack();
-    else router.replace('/');
-  }, [navigation, inSheet]);
+  return useCallback(
+    (how: 'this' | 'arrived' = 'this') => {
+      // Inside the sheet, this screen's parent is the sheet as the root stack
+      // holds it; popping that closes every screen in it at once.
+      const target = inSheet ? (navigation.getParent() ?? navigation) : navigation;
+      if (how === 'arrived') {
+        const routes = target.getState()?.routes ?? [];
+        let flow = 0;
+        while (flow < routes.length && FLOW_SCREENS.has(routes[routes.length - 1 - flow].name)) flow += 1;
+        if (flow > 0 && flow < routes.length) {
+          target.dispatch(StackActions.pop(flow));
+          return;
+        }
+      }
+      if (target.canGoBack()) target.goBack();
+      else router.replace('/');
+    },
+    [navigation, inSheet],
+  );
 }

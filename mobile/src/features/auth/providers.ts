@@ -1,7 +1,10 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '~/lib/supabase';
+import { rememberAppleSignIn } from './apple-credential';
+import { awaitingOAuthReturn, OAUTH_REDIRECT } from './oauth-return';
 
 /**
  * The one-tap sign-ins, as the phone does them.
@@ -21,7 +24,7 @@ import { supabase } from '~/lib/supabase';
  * Neither needs a captcha: Supabase asks for one only with a password.
  */
 
-export const OAUTH_REDIRECT = 'brokersconnect://auth/callback';
+export { OAUTH_REDIRECT };
 
 export type ProviderOutcome =
   | { ok: true }
@@ -39,8 +42,30 @@ function hex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+/** Running in Expo Go: a tester's phone, never App Review's, which sees the app itself. */
+export function inExpoGo(): boolean {
+  return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+}
+
+/**
+ * Sign in with Apple, where it can work: not in Expo Go, which the phone offers
+ * it to but which Apple then issues the token to, under Expo Go's own bundle
+ * id, and Supabase refuses it.
+ */
 export function appleAvailable(): Promise<boolean> {
+  if (inExpoGo()) return Promise.resolve(false);
   return AppleAuthentication.isAvailableAsync().catch(() => false);
+}
+
+/**
+ * Whether "Continue with Google" is offered: when the auth server takes it,
+ * and on an iPhone only beside Sign in with Apple — an app that offers a
+ * third-party sign-in must offer Apple's as well (App Review 4.8), and the
+ * auth server can have Google on with Apple not yet set up. Except in Expo Go,
+ * where Apple's cannot work at all (above): there Google stands alone.
+ */
+export function offerGoogle({ google, apple, ios }: { google: boolean; apple: boolean; ios: boolean }): boolean {
+  return google && (!ios || apple || inExpoGo());
 }
 
 export async function signInWithApple(): Promise<ProviderOutcome> {
@@ -61,12 +86,14 @@ export async function signInWithApple(): Promise<ProviderOutcome> {
   }
   if (!credential.identityToken) return failed('apple: no identity token');
 
-  const { error } = await supabase.auth.signInWithIdToken({
+  const { data, error } = await supabase.auth.signInWithIdToken({
     provider: 'apple',
     token: credential.identityToken,
     nonce,
   });
   if (error) return failed(error);
+  // Asked about at each launch from now on: a session made with this Apple ID ends here when Apple revokes it.
+  if (data.user) await rememberAppleSignIn(data.user.id, credential.user);
 
   /*
     Apple gives the name once — on the first sign-in with this app — and never
@@ -102,9 +129,12 @@ export async function signInWithGoogle(): Promise<ProviderOutcome> {
   if (error) return failed(error);
   if (!data.url) return failed('google: no authorization url');
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, OAUTH_REDIRECT);
-  if (result.type !== 'success') return CANCELLED;
-  return completeOAuth(result.url);
+  const authorize = data.url;
+  return awaitingOAuthReturn(async () => {
+    const result = await WebBrowser.openAuthSessionAsync(authorize, OAUTH_REDIRECT);
+    if (result.type !== 'success') return CANCELLED;
+    return completeOAuth(result.url);
+  });
 }
 
 /**

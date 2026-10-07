@@ -16,7 +16,8 @@ import { register } from 'node:module';
 
 register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 
-const { appSiteAssociation, parseAppIds } = await import('../src/lib/apple/app-site-association.ts');
+const { appSiteAssociation, parseAppIds, OPEN_IN_THE_APP } = await import('../src/lib/apple/app-site-association.ts');
+const { assetLinks, parseFingerprints, ANDROID_PACKAGE } = await import('../src/lib/android/asset-links.ts');
 
 const ROOT = join(import.meta.dirname, '..');
 let pass = 0;
@@ -94,6 +95,43 @@ is('passwords saved for the website are offered in the app', file.webcredentials
 const route = readFileSync(join(ROOT, 'src', 'app', '.well-known', 'apple-app-site-association', 'route.ts'), 'utf8');
 is('no app identifier, no file', /if \(!appIds\.length\) return new NextResponse\(null, \{ status: 404 \}\)/.test(route), true);
 is('served as JSON', /NextResponse\.json\(/.test(route), true);
+
+console.log('\n— Android: the site\'s claim for the app');
+const release = 'AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89';
+is('a fingerprint, as eas credentials prints it', parseFingerprints(release), [release]);
+is('lower case is read as the same fingerprint', parseFingerprints(release.toLowerCase()), [release]);
+is('two, with spaces', parseFingerprints(`${release}, ${release.replace('AB:CD', '12:34')}`).length, 2);
+is('none set', parseFingerprints(undefined), []);
+is('a placeholder is not a fingerprint', parseFingerprints('REPLACE_ME'), []);
+is('a SHA-1 is not the SHA-256 Android asks for', parseFingerprints('AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89:AB:CD:EF:01'), []);
+const links = assetLinks([release]);
+is('it names the package and the certificate', links[0].target, {
+  namespace: 'android_app',
+  package_name: 'net.brokersconnect.app',
+  sha256_cert_fingerprints: [release],
+});
+is('links open the app, and saved passwords are offered', links[0].relation, [
+  'delegate_permission/common.handle_all_urls',
+  'delegate_permission/common.get_login_creds',
+]);
+const androidRoute = readFileSync(join(ROOT, 'src', 'app', '.well-known', 'assetlinks.json', 'route.ts'), 'utf8');
+is('no fingerprint, no file', /if \(!fingerprints\.length\) return new NextResponse\(null, \{ status: 404 \}\)/.test(androidRoute), true);
+is('served as JSON', /NextResponse\.json\(/.test(androidRoute), true);
+
+console.log('\n— Android: the app\'s side');
+const appConfig = readFileSync(join(ROOT, 'mobile', 'app.config.ts'), 'utf8');
+const androidPaths = JSON.parse(
+  appConfig
+    .match(/const APP_LINK_PATHS = (\[[^\]]*\])/)[1]
+    .replace(/'/g, '"')
+    .replace(/,(\s*\])/, '$1'),
+);
+// iOS's '/auth/confirm*' is that one page, with whatever query it carries; Android matches the path alone.
+const iosPaths = OPEN_IN_THE_APP.map((path) => path.replace(/([^/])\*$/, '$1'));
+is('the app opens the pages the iOS file names', [...androidPaths].sort(), [...iosPaths].sort());
+is('a section never stands for whatever begins the same (/employers is the website\'s)', androidPaths.every((path) => !path.endsWith('*') || path.endsWith('/*')), true);
+is('it is the package the site names', appConfig.includes(`package: '${ANDROID_PACKAGE}'`), true);
+is('Android is asked to verify them', /autoVerify: true/.test(appConfig), true);
 
 console.log('\n— the captcha page');
 const captcha = readFileSync(join(ROOT, 'src', 'app', 'api', 'mobile', 'v1', 'captcha', 'route.ts'), 'utf8');

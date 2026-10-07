@@ -9,6 +9,7 @@ import { CompanyLogo } from '@/components/companies/company-logo';
 import { JobFilters } from '@/components/jobs/job-filters';
 import { MobileFilters } from '@/components/mobile-filters';
 import { SaveSearch } from '@/components/jobs/save-search';
+import { toCanonicalQuery } from '@/lib/saved-search';
 import { getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Pagination } from '@/components/pagination';
@@ -297,8 +298,13 @@ export default async function JobsPage({
             the bookmark on each card below already applies. An employer who
             pressed this got a row that no page of theirs lists and a weekly
             email they had no switch for. */}
+        {/* Keyed by the search it saves. Next keeps a page's client state
+            when only the query string changes, so a filter added after saving
+            still read «Saved ✓» — for a search nobody saved — and offered the
+            old search's name for the new one. Paging and sorting leave the
+            search, and the key, as they were. */}
         {activeCount > 0 && offerSavedSearch && jobs.length > 0 ? (
-          <SaveSearch signedIn={Boolean(viewer)} defaultLabel={defaultSearchLabel} />
+          <SaveSearch key={toCanonicalQuery(filters)} signedIn={Boolean(viewer)} defaultLabel={defaultSearchLabel} />
         ) : null}
 
         <div className="flex items-center gap-2">
@@ -445,6 +451,13 @@ export default async function JobsPage({
                   reader's heading list has a hole where "the results" should
                   be. Visually silent because the count above already says it. */}
               <h2 className="sr-only">{t('resultsCount', { count: total })}</h2>
+
+              {/* Paid placement pins above every sort, so a reader who chose
+                  "highest salary" is told why the first card may not be. Only
+                  when a sponsored listing is on this page. */}
+              {jobs.some((job) => job.is_featured) ? (
+                <p className="mb-2 text-xs text-muted-foreground">{t('sponsoredFirst')}</p>
+              ) : null}
 
               <ul className="space-y-2">
                 {jobs.map((job) => (

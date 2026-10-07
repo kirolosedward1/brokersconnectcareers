@@ -238,20 +238,86 @@ console.log('\n— receipts');
   const disabled = [];
   const stats = await checkReceipts({
     dueTickets: async () => [
-      { ticket_id: 't-ok', device_id: 'd1' },
-      { ticket_id: 't-gone', device_id: 'd2' },
-      { ticket_id: 't-later', device_id: 'd3' },
+      { ticket_id: 't-ok', device_id: 'd1', created_at: '2026-10-04T08:00:00Z' },
+      { ticket_id: 't-gone', device_id: 'd2', created_at: '2026-10-04T08:00:00Z' },
+      { ticket_id: 't-later', device_id: 'd3', created_at: '2026-10-04T08:00:00Z' },
+      { ticket_id: 't-gone-again', device_id: 'd2', created_at: '2026-10-04T08:05:00Z' },
     ],
     receipts: async () => ({
       't-ok': { status: 'ok' },
       't-gone': { status: 'error', details: { error: 'DeviceNotRegistered' } },
+      't-gone-again': { status: 'error', details: { error: 'DeviceNotRegistered' } },
     }),
     forget: async (ids) => forgotten.push(...ids),
-    disableDevices: async (ids) => disabled.push(...ids),
+    disableUnseenSince: async (id, since, reason) => {
+      disabled.push({ id, since, reason });
+      return true;
+    },
   });
-  ok('a phone Apple says has no app any more is switched off', disabled.join() === 'd2');
-  ok('answered tickets are forgotten; one without a receipt yet is asked about again', forgotten.join() === 't-ok,t-gone');
-  ok('and counted', stats.checked === 3 && stats.answered === 2 && stats.phonesOff === 1);
+  ok('a phone Apple says has no app any more is switched off', disabled.map((phone) => phone.id).join() === 'd2');
+  /*
+    Read fifteen minutes and more after the push. By then the token may have
+    been registered again — by the next person to sign in on that phone, whose
+    row it now is (register_push_device moves a token, keeping its row) — and
+    switching it off would leave them without pushes until the app next
+    starts. So the phone goes off only if it has not been registered since its
+    last refused push went out.
+  */
+  ok('as of its last refused push, so a phone registered since then stays on', disabled[0]?.since === '2026-10-04T08:05:00Z', JSON.stringify(disabled));
+  ok('for the reason Apple gave', disabled[0]?.reason === 'DeviceNotRegistered');
+  ok('answered tickets are forgotten; one without a receipt yet is asked about again', forgotten.join() === 't-ok,t-gone,t-gone-again');
+  ok('and counted', stats.checked === 4 && stats.answered === 3 && stats.phonesOff === 1);
+}
+
+console.log('\n— receipts: what is counted, and how many at once');
+{
+  // The rule the database applies (deliver.ts): off only if not registered
+  // again since the refused push went out.
+  const seen = { d2: '2026-10-04T08:10:00Z', d4: '2026-10-04T07:00:00Z' };
+  const off = [];
+  const stats = await checkReceipts({
+    dueTickets: async () => [
+      { ticket_id: 't-2', device_id: 'd2', created_at: '2026-10-04T08:05:00Z' },
+      { ticket_id: 't-4', device_id: 'd4', created_at: '2026-10-04T08:05:00Z' },
+    ],
+    receipts: async () => ({
+      't-2': { status: 'error', details: { error: 'DeviceNotRegistered' } },
+      't-4': { status: 'error', details: { error: 'DeviceNotRegistered' } },
+    }),
+    forget: async () => {},
+    disableUnseenSince: async (id, since) => {
+      if (Date.parse(seen[id]) > Date.parse(since)) return false;
+      off.push(id);
+      return true;
+    },
+  });
+  ok('a phone registered again since its refused push stays on', off.join() === 'd4', off.join());
+  ok('and is not counted as switched off', stats.phonesOff === 1, JSON.stringify(stats));
+
+  // A broadcast to people who have deleted the app brings hundreds of refused
+  // phones at once. One statement each (every phone has its own "since"), but
+  // not one after another, which could outlast the run: then the tickets are
+  // read and the phones patched again, minute after minute.
+  const many = Array.from({ length: 25 }, (_, n) => ({ ticket_id: `t${n}`, device_id: `d${n}`, created_at: '2026-10-04T08:00:00Z' }));
+  let inFlight = 0;
+  let most = 0;
+  const done = [];
+  const counted = await checkReceipts({
+    dueTickets: async () => many,
+    receipts: async () => Object.fromEntries(many.map((ticket) => [ticket.ticket_id, { status: 'error', details: { error: 'DeviceNotRegistered' } }])),
+    forget: async () => {},
+    disableUnseenSince: async (id) => {
+      inFlight += 1;
+      most = Math.max(most, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight -= 1;
+      done.push(id);
+      return true;
+    },
+  });
+  ok('several at once', most > 1, `at most ${most} at once`);
+  ok('but not all of them: ten at a time', most <= 10, `at most ${most} at once`);
+  ok('every one of them, and counted', done.length === 25 && counted.phonesOff === 25, JSON.stringify(counted));
 }
 
 console.log('\n— the Expo client');

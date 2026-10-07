@@ -231,6 +231,11 @@ const preferencesSchema = z.object({
   notify_status: z.boolean(),
   notify_digest: z.boolean(),
   notify_applicant_digest: z.boolean(),
+  /**
+   * The profile reminder (migration 337). Optional: a form that does not show
+   * it — an older app, a database without the column — leaves it as it is.
+   */
+  notify_profile_nudge: z.boolean().optional(),
 });
 
 /**
@@ -261,6 +266,48 @@ export async function updateNotificationPreferences(input: unknown): Promise<Act
   if (!saved?.length) return { ok: false, error: 'not_found' };
 
   revalidatePath('/dashboard/account');
+  return { ok: true };
+}
+
+const pushPreferencesSchema = z
+  .object({
+    push_job_alerts: z.boolean(),
+    push_applications: z.boolean(),
+    push_account: z.boolean(),
+    push_quiet_hours: z.boolean(),
+  })
+  .partial()
+  .refine((change) => Object.keys(change).length > 0);
+
+/**
+ * The push switches (migration 335): which kinds reach the person's phones,
+ * and whether the night is kept quiet. The app is the only place they are
+ * shown — the website sends no pushes — but they are the person's, not one
+ * phone's, so they live on the profile beside the email switches and are
+ * written the same way: through the caller's own session, RLS deciding the
+ * row, and a write that touched nothing reported as such.
+ *
+ * Any of them, not all four: the app sends the switch that was flipped, so a
+ * phone holding an older copy of the others does not write it back over what
+ * another phone saved since.
+ */
+export async function updatePushPreferences(input: unknown): Promise<ActionResult> {
+  const parsed = pushPreferencesSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const { data: saved, error } = await supabase
+    .from('profiles')
+    .update(parsed.data)
+    .eq('id', user.id)
+    .select('id');
+  if (error) return { ok: false, error: 'failed' };
+  if (!saved?.length) return { ok: false, error: 'not_found' };
   return { ok: true };
 }
 

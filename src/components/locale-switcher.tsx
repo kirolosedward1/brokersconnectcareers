@@ -42,7 +42,8 @@ export function LocaleSwitcher({ locale, label }: { locale: Locale; label: strin
       )}
     >
       <Languages className="size-4" aria-hidden />
-      <span className="hidden sm:inline">{label}</span>
+      {/* Off screen on a phone rather than gone: it is the button's name. */}
+      <span className="max-sm:sr-only">{label}</span>
     </button>
   );
 }

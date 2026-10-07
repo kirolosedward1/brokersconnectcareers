@@ -53,6 +53,8 @@ export const PUBLIC_MESSAGES = [
   'theme',
   'track',
   'validation',
+  // The directory choice on the onboarding form.
+  'visibility',
 ] as const;
 
 /** What the console's client components need on top of the above. */
@@ -63,6 +65,8 @@ export const CONSOLE_MESSAGES = [
   'appeals',
   'applicationStatus',
   'benefits',
+  // The buy button on the billing page, when billing is on.
+  'billing',
   'commissionType',
   'compensation',
   'cv',
@@ -71,7 +75,6 @@ export const CONSOLE_MESSAGES = [
   'jobForm',
   'language',
   'nav',
-  'visibility',
 ] as const;
 
 /**

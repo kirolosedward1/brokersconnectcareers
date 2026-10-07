@@ -1,0 +1,169 @@
+# The app for Expo Go, published as an EAS Update, so an iPhone opens the
+# newest pushed code from Expo's servers with no computer running
+# (docs/mobile.md, "Trying it in Expo Go"): `pnpm run ota expo-go`, which
+# publishes on the `expo-go` channel with Expo Go's runtime version and the
+# store build's settings (mobile/scripts/publish-update.mjs).
+#
+# It needs one thing from the owner's Expo account (kirolosedward1, which
+# owns the EAS project mobile/app.config.ts names): a personal access token
+# in the repository's secrets as EXPO_TOKEN. Without it, it does nothing. A
+# fork whose app.config.ts carries no project id has the publish find or
+# create one on the token's account (`eas init`, in
+# scripts/publish-update.mjs), and the summary gives its id.
+#
+# Runs by hand (Actions → Expo Go → Run workflow, on any branch), on pushes to
+# main, and on this repository's own pull requests. Each publish replaces what
+# Expo Go opens next: the newest of them wins.
+name: Expo Go
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: What changed, shown with the update
+        required: false
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - 'src/lib/**'
+      - 'messages/**'
+      - '.github/workflows/expo-go.yml'
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - 'src/lib/**'
+      - 'messages/**'
+      - '.github/workflows/expo-go.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: expo-go
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    # A fork's pull request gets no secrets; it would only fail.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      published: ${{ steps.token.outputs.present }}
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Is there an Expo token
+        id: token
+        working-directory: .
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -n "$EXPO_TOKEN" ]; then
+            echo "present=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No EXPO_TOKEN secret: nothing published. docs/mobile.md, 'Trying it in Expo Go', says how to set it up."
+          fi
+
+      - if: steps.token.outputs.present == 'yes'
+        uses: actions/checkout@v4
+
+      - if: steps.token.outputs.present == 'yes'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - if: steps.token.outputs.present == 'yes'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: mobile/pnpm-lock.yaml
+
+      - if: steps.token.outputs.present == 'yes'
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish for Expo Go
+        if: steps.token.outputs.present == 'yes'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          # Passed through the environment, never pasted into the script.
+          GIVEN: ${{ inputs.message }}
+          # Characters, not bytes, for the shell's own cut below.
+          LC_ALL: C.UTF-8
+          COMMIT: ${{ github.event.head_commit.message || github.event.pull_request.title }}
+        run: |
+          # The publish's own status, not tee's: a failed publish fails the job.
+          set -o pipefail
+          message="${GIVEN:-${COMMIT:-Expo Go update}}"
+          # Its first line, at most 200 characters, in the shell itself: cut
+          # counts bytes and can halve an Arabic letter, and under pipefail a
+          # pipe whose reader stops early (head) can fail the step.
+          message="${message%%$'\n'*}"
+          message="${message:0:200}"
+          pnpm run ota expo-go --message "$message (${GITHUB_SHA::7})" --non-interactive 2>&1 | tee "$RUNNER_TEMP/publish.log"
+          # One match each, and none is not an error here.
+          link=$(grep -m 1 -o 'https://qr.expo.dev/eas-update?[^ ]*' "$RUNNER_TEMP/publish.log" || true)
+          dashboard=$(grep -m 1 -o 'https://expo.dev/accounts/[^ ]*/updates/[^ ]*' "$RUNNER_TEMP/publish.log" || true)
+          project=$(grep -m 1 -o 'EAS project id: [0-9a-f-]*' "$RUNNER_TEMP/publish.log" | cut -d ' ' -f 4 || true)
+          {
+            echo "### Open it in Expo Go"
+            echo
+            echo "In Expo Go on the iPhone, signed in to the Expo account this token belongs to, the app is under Projects. Or scan the QR code on [this page]($link) with the iPhone's camera."
+            if [ -n "$dashboard" ]; then
+              echo
+              echo "The update on Expo's dashboard: $dashboard"
+            fi
+            if [ -n "$project" ]; then
+              echo
+              echo "The EAS project's id is \`$project\`. Builds and push notifications need it written in \`mobile/app.config.ts\` in place of \`null\` (\`EAS_PROJECT_ID\`)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  look:
+    # What was just published, opened in Expo Go on an iPhone simulator as the
+    # owner's phone opens it — from Expo's servers, in English, then again from
+    # Expo Go's own home — and read back: the run's annotations say where every
+    # line sat on each screen, and a tab bar laid out left to right fails it
+    # (mobile/scripts/expo-go-look.sh).
+    needs: publish
+    if: needs.publish.outputs.published == 'yes'
+    # Xcode 26, as for the native build in mobile.yml.
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      # Pinned as in ios-screens.yml.
+      MAESTRO_VERSION: 2.6.0
+      MAESTRO_CLI_NO_ANALYTICS: '1'
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
+    steps:
+      - uses: actions/checkout@v4
+
+      # Maestro runs on Java.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          "$HOME/.maestro/bin/maestro" --version
+
+      - name: Open it in Expo Go
+        run: scripts/expo-go-look.sh "$RUNNER_TEMP/expo-go"
+
+      - name: Keep the screens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-go-screens
+          path: ${{ runner.temp }}/expo-go
+          if-no-files-found: warn
+          retention-days: 14

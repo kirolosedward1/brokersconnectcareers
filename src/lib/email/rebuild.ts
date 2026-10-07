@@ -4,6 +4,7 @@ import {
   notifyCandidateOfApplication,
   notifyCandidateOfStatus,
   notifyCompanyVerification,
+  notifyCompanyVerificationRevoked,
   notifyEmployerOfApplication,
   notifyEmployerOfModeration,
   notifyJobSubmitted,
@@ -43,10 +44,15 @@ export const REBUILDERS: Record<string, Rebuild> = {
   application_status: (id) => notifyCandidateOfStatus(id),
   application_rejected: (id) => notifyCandidateOfStatus(id),
   job_submitted: (id, userId) => notifyJobSubmitted(id, userId),
-  job_approved: (id) => notifyEmployerOfModeration(id, true),
-  job_rejected: (id) => notifyEmployerOfModeration(id, false),
-  company_verified: (id) => notifyCompanyVerification(id, true),
-  company_verification_needed: (id) => notifyCompanyVerification(id, false),
+  // A decision's message is retried for the member whose copy failed, and only
+  // while the decision stands (notify.ts checks the listing's or company's
+  // state): rebuilt for everybody, a retry after an edit sent "your listing
+  // is live" to every member again, about a listing back in review.
+  job_approved: (id, userId) => notifyEmployerOfModeration(id, true, undefined, userId),
+  job_rejected: (id, userId) => notifyEmployerOfModeration(id, false, undefined, userId),
+  company_verified: (id, userId) => notifyCompanyVerification(id, true, undefined, userId),
+  company_verification_needed: (id, userId) => notifyCompanyVerification(id, false, undefined, userId),
+  company_verification_revoked: (id, userId) => notifyCompanyVerificationRevoked(id, userId),
   welcome_candidate: (id) => notifyWelcome(id),
   welcome_employer: (id) => notifyWelcome(id),
   profile_incomplete: (id) => notifyProfileIncomplete(id),

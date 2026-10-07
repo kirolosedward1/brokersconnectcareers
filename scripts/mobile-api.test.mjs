@@ -12,7 +12,8 @@
  */
 import { readFileSync } from 'node:fs';
 
-const { readBearer, challenge } = await import('../src/lib/mobile-api/bearer.ts');
+const { readBearer, challenge, tokenRefused } = await import('../src/lib/mobile-api/bearer.ts');
+const { AuthApiError, AuthRetryableFetchError, AuthSessionMissingError, AuthUnknownError } = await import('@supabase/supabase-js');
 
 let pass = 0;
 let fail = 0;
@@ -55,6 +56,15 @@ is('absurdly long', readBearer(`Bearer ${'a'.repeat(9000)}.b.c`), { kind: 'malfo
 console.log('\n— the 401 says which kind');
 is('no credentials', challenge('unauthenticated'), 'Bearer');
 is('a refused token', challenge('invalid_token'), 'Bearer error="invalid_token"');
+
+console.log('\n— a token check that failed: refused (the app refreshes, then signs out) or no answer (it keeps the session)');
+is('no user and no error', tokenRefused(null), true);
+is('a session ended elsewhere (403 session_not_found)', tokenRefused(new AuthSessionMissingError()), true);
+is('a user who no longer exists (403 user_not_found)', tokenRefused(new AuthApiError('User not found', 403, 'user_not_found')), true);
+is('a bad signature (401 bad_jwt)', tokenRefused(new AuthApiError('invalid JWT', 401, 'bad_jwt')), true);
+is('the auth server unreachable', tokenRefused(new AuthRetryableFetchError('fetch failed', 0)), false);
+is('the auth server failing (502)', tokenRefused(new AuthRetryableFetchError('Bad Gateway', 502)), false);
+is('an answer that is not the auth server’s', tokenRefused(new AuthUnknownError('?', new Error('?'))), false);
 
 console.log('\n— the app can reach only what the registry lists');
 {

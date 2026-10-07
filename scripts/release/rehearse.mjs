@@ -7,7 +7,9 @@
  *        [--statements <statements.json>] [--fingerprint <fingerprint.json>]
  *
  *   --ledger       the database's applied history, as Supabase's
- *                  list_migrations returns it ({ migrations: [{version, name}] })
+ *                  list_migrations returns it ({ migrations: [{version, name}] });
+ *                  without it, the ledger of TARGET_DATABASE_URL, as
+ *                  `pnpm db:apply` reads it
  *   --statements   what the database stored for each row
  *                  (select version, name, statements from
  *                  supabase_migrations.schema_migrations), as JSON rows; a row
@@ -21,8 +23,9 @@
  * What it does, all in throwaway in-process Postgres (PGlite):
  *
  *   1. Rebuilds the database the ledger describes — the Supabase stand-ins,
- *      then every file the ledger names, in the ledger's order, which is the
- *      order the database ran them in. Files applied by hand (UNRECORDED in
+ *      then every file the ledger names, in the order the database ran them
+ *      (replayOrder in migrations.mjs), each file `apply` ran with the
+ *      adjustment it ran with. Files applied by hand (UNRECORDED in
  *      migrations.mjs) go in at their place in file order.
  *   2. With --fingerprint, proves the rebuild is that database, object by
  *      object. Without it, says the rebuild is unverified.
@@ -35,7 +38,8 @@
  *   5. Loads the seed and the demo data into the result, as main's tests do.
  *
  * Exit 1 if any step fails or the two databases differ. Read-only with
- * respect to every real database: it never connects to one.
+ * respect to every real database: without --ledger it reads that database's
+ * ledger (version and name), and nothing else.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -45,7 +49,7 @@ import { unaccent } from '@electric-sql/pglite/contrib/unaccent';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { GRANTS, PRELUDE, testDbScripts } from '../../supabase/tests/setup.mjs';
 import { ROOT } from '../env.mjs';
-import { reconciliationPlan, resolveLedger, UNRECORDED } from './migrations.mjs';
+import { ADJUSTMENTS, loadLedger, reconciliationPlan, replayOrder, resolveLedger, UNRECORDED } from './migrations.mjs';
 
 const MIGRATIONS = join(ROOT, 'supabase', 'migrations');
 const FINGERPRINT = readFileSync(join(ROOT, 'scripts', 'dr', 'fingerprint.sql'), 'utf8');
@@ -67,7 +71,6 @@ function parseArgs(argv) {
     else if (arg === '--keep-going') options.keepGoing = true;
     else throw new Error(`unknown argument ${arg}`);
   }
-  if (!options.ledger) throw new Error('--ledger <file> is required');
   return options;
 }
 
@@ -148,10 +151,13 @@ export const migrationFiles = () =>
 const sqlOf = (stem) => readFileSync(join(MIGRATIONS, `${stem}.sql`), 'utf8');
 
 /**
- * The database a ledger describes: every file it names, in its order (files
- * applied by hand at their place in file order), the API grants, and the
- * ledger rows themselves — so a tool reading this database's history sees what
- * it would see on the real one.
+ * The database a ledger describes: every file it names, in the order it ran
+ * them (files applied by hand at their place in file order), the API grants,
+ * and the ledger rows themselves — so a tool reading this database's history
+ * sees what it would see on the real one.
+ *
+ * A file `apply` ran, recorded under its own version, is replayed the way
+ * `apply` ran it: with its adjustment, which its stored statements hold.
  */
 export async function buildFromLedger({ ledgerRows, statements = null }) {
   const files = migrationFiles();
@@ -172,7 +178,7 @@ export async function buildFromLedger({ ledgerRows, statements = null }) {
     }
   };
 
-  for (const { row, stem } of resolveLedger(ledgerRows, files)) {
+  for (const { row, stem } of resolveLedger(replayOrder(ledgerRows, files), files)) {
     if (stem === undefined) throw new Error(`the ledger has ${row.version} ${row.name}, which no file accounts for (drift)`);
     if (stem === null) {
       // A historical entry with no file: the API grants, applied again below.
@@ -182,7 +188,12 @@ export async function buildFromLedger({ ledgerRows, statements = null }) {
     if (applied.has(stem)) continue; // one file recorded as several rows
     await catchUpUnrecorded(stem);
     const record = stored.get(String(row.version));
-    const sql = record ? (Array.isArray(record.statements) ? record.statements.join(';\n') : String(record.statements)) : sqlOf(stem);
+    const adjustment = String(row.version) === stem.slice(0, 14) ? ADJUSTMENTS[stem] : undefined;
+    const sql = record
+      ? Array.isArray(record.statements)
+        ? record.statements.join(';\n')
+        : String(record.statements)
+      : [adjustment?.before, sqlOf(stem), adjustment?.after].filter(Boolean).join('\n');
     if (record) fromStored += 1;
     await run(db, `${row.version} ${row.name} → ${stem}`, sql);
     applied.add(stem);
@@ -291,8 +302,13 @@ const isMain = process.argv[1] && import.meta.url === new URL(`file://${process.
 
 if (isMain) {
   const options = parseArgs(process.argv.slice(2));
+  const loaded = options.ledger ? { rows: rowsOf(readJson(options.ledger)) } : await loadLedger({});
+  if (!loaded) {
+    console.error('Give the ledger: --ledger <ledger.json> (list_migrations output), or TARGET_DATABASE_URL as for pnpm db:apply.');
+    process.exit(2);
+  }
   const result = await rehearse({
-    ledgerRows: rowsOf(readJson(options.ledger)),
+    ledgerRows: loaded.rows,
     statements: options.statements ? rowsOf(readJson(options.statements)) : null,
     productionFingerprint: options.fingerprint ? rowsOf(readJson(options.fingerprint)) : null,
     keepGoing: options.keepGoing,

@@ -3,7 +3,7 @@ import { LIST_SELECT, type JobListItem } from '@/lib/job-list';
 import { canSaveJobs } from '@/lib/permissions';
 import { followQuery } from '@/lib/saved-search';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
-import { callAction } from '~/lib/api';
+import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -31,8 +31,10 @@ const searchesKey = (candidateId: string | null) => ['saved', 'searches', candid
  * Every listing this candidate has bookmarked, as ids — what a card's bookmark
  * reads. One small read for the whole app rather than one per screen, so a
  * bookmark set on the board is already set on the listing and in Saved.
+ * `known` is false until they have been read: the website's action is a
+ * toggle, so a bookmark pressed before then could take one off.
  */
-export function useSavedJobIds(): Set<string> {
+export function useSavedJobIds(): { ids: Set<string>; known: boolean } {
   const candidateId = useCandidateId();
   const { data } = useQuery({
     queryKey: idsKey(candidateId),
@@ -47,7 +49,8 @@ export function useSavedJobIds(): Set<string> {
       return (rows ?? []).map((row) => row.job_id as string);
     },
   });
-  return new Set(data ?? []);
+  // Nobody to read them for (signed out): nothing is saved, and that is known.
+  return { ids: new Set(data ?? []), known: !candidateId || data !== undefined };
 }
 
 /**
@@ -82,6 +85,17 @@ export function useSavedJobs() {
   });
 }
 
+/** Whether the listing is bookmarked now, as the database says; null when that cannot be read. */
+async function savedNow(candidateId: string, jobId: string): Promise<boolean | null> {
+  const { data, error } = await supabase
+    .from('saved_jobs')
+    .select('job_id')
+    .eq('candidate_id', candidateId)
+    .eq('job_id', jobId)
+    .limit(1);
+  return error ? null : Boolean(data?.length);
+}
+
 /** Bookmark a listing, or take the bookmark off — the website's toggleSavedJob. */
 export function useToggleSavedJob() {
   const queryClient = useQueryClient();
@@ -94,8 +108,16 @@ export function useToggleSavedJob() {
     );
 
   return useMutation({
-    mutationFn: async ({ jobId }: { jobId: string; saved: boolean }) => {
-      const result = await callAction('toggleSavedJob', { jobId });
+    mutationFn: async ({ jobId, saved }: { jobId: string; saved: boolean }) => {
+      const result = await callAction('toggleSavedJob', { jobId }).catch(async (error: unknown) => {
+        // No answer: the bookmark may have changed. The website's action is a
+        // toggle, so the same tap sent again would put it back; the database
+        // says where it stands, and a change that went in is the answer.
+        if (!refusedAtTheDoor(error) && candidateId && (await savedNow(candidateId, jobId)) === !saved) {
+          return { ok: true as const, data: { saved: !saved } };
+        }
+        throw error;
+      });
       if (!result.ok || !result.data) throw new Error(result.ok ? 'failed' : result.error);
       return result.data.saved;
     },
@@ -106,7 +128,13 @@ export function useToggleSavedJob() {
     // The server's answer is the truth: it toggles what it has, not what the screen showed.
     onSuccess: (saved, { jobId }) => set(jobId, saved),
     onError: (_error, { jobId, saved }) => set(jobId, saved),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['saved', 'jobs'] }),
+    onSettled: (_saved, error) => {
+      // Home counts what is saved (candidate_summary).
+      void queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      // Not known how it ended: the bookmarks are read again rather than guessed.
+      if (error) void queryClient.invalidateQueries({ queryKey: key });
+      return queryClient.invalidateQueries({ queryKey: ['saved', 'jobs'] });
+    },
   });
 }
 
@@ -154,6 +182,8 @@ export function useSetSearchAlerts() {
     },
     onMutate: ({ id, alerts }) => cache.edit((rows) => rows.map((row) => (row.id === id ? { ...row, alerts } : row))),
     onError: (_error, _input, restore) => restore?.(),
+    // Home counts the alerts that are on (candidate_summary).
+    onSettled: () => void cache.queryClient.invalidateQueries({ queryKey: ['candidate'] }),
   });
 }
 
@@ -167,7 +197,10 @@ export function useDeleteSavedSearch() {
     },
     onMutate: ({ id }) => cache.edit((rows) => rows.filter((row) => row.id !== id)),
     onError: (_error, _input, restore) => restore?.(),
-    onSettled: () => cache.queryClient.invalidateQueries({ queryKey: cache.key }),
+    onSettled: () => {
+      void cache.queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      return cache.queryClient.invalidateQueries({ queryKey: cache.key });
+    },
   });
 }
 
@@ -193,7 +226,10 @@ export function useSaveSearch() {
       const result = await callAction('saveSearch', input);
       if (!result.ok) throw new SaveRefused(refusal(result.error));
     },
-    onSettled: () => cache.queryClient.invalidateQueries({ queryKey: cache.key }),
+    onSettled: () => {
+      void cache.queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      return cache.queryClient.invalidateQueries({ queryKey: cache.key });
+    },
   });
 }
 
@@ -233,12 +269,16 @@ export function useToggleFollow(slug: string, label: string) {
                 created_at: new Date().toISOString(),
                 last_sent_at: null,
                 last_checked_at: null,
+                bell_checked_at: null,
               },
               ...rows,
             ]
           : rows.filter((row) => row.query !== query),
       ),
     onError: (_error, _input, restore) => restore?.(),
-    onSettled: () => cache.queryClient.invalidateQueries({ queryKey: cache.key }),
+    onSettled: () => {
+      void cache.queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      return cache.queryClient.invalidateQueries({ queryKey: cache.key });
+    },
   });
 }

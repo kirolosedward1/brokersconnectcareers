@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AgentProfileInput, MobileActions } from '@/lib/mobile-api/contract';
+import { releaseUnusedCv } from '@/lib/cv-in-use';
 import { canAccessCandidateArea } from '@/lib/permissions';
+import { clean } from '@/lib/security/sanitize';
 import type {
   AgentCertificationRow,
   AgentEducationRow,
@@ -9,7 +11,7 @@ import type {
   CandidateSummary,
 } from '@/lib/supabase/database.types';
 import { CvUploadFailed, removeCv, uploadCv, type PickedCv } from '~/features/cv/files';
-import { callAction } from '~/lib/api';
+import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -144,11 +146,27 @@ export function useSaveAgentProfile() {
       try {
         result = await callAction('saveAgentProfile', { ...input, cvPath: uploaded, removeCv: cv.kind === 'remove' });
       } catch (error) {
-        if (uploaded) await removeCv(uploaded);
+        // Only a refusal at the door proves the profile was not saved with the
+        // new file; with no answer it may have been, and taking the file out
+        // would leave the profile pointing at nothing. One that nothing points
+        // at is taken by the storage clean-up after a day.
+        if (uploaded && refusedAtTheDoor(error)) await removeCv(uploaded);
         throw error;
       }
       if (!result.ok) {
-        if (uploaded) await removeCv(uploaded);
+        // Unless the profile went in with it: the row is written before the
+        // developer tags, so a refusal from those follows a save that kept
+        // the new file, and taking it out left the profile pointing at nothing.
+        if (uploaded) {
+          await releaseUnusedCv(
+            {
+              profileCv: () => supabase.from('agent_profiles').select('cv_path').eq('cv_path', uploaded).maybeSingle(),
+              applicationsWith: (path) => supabase.from('applications').select('id').eq('cv_path', path).limit(1),
+            },
+            removeCv,
+            uploaded,
+          );
+        }
         throw new SaveRefused(result.error, result.fieldErrors);
       }
     },
@@ -158,6 +176,8 @@ export function useSaveAgentProfile() {
       // The name and number live on the account too, and the apply form offers the profile's CV.
       queryClient.invalidateQueries({ queryKey: ['viewer'] });
       queryClient.invalidateQueries({ queryKey: ['apply'] });
+      // The card as companies see it, which the preview draws.
+      queryClient.invalidateQueries({ queryKey: ['directory', 'card'] });
     },
   });
 }
@@ -173,6 +193,7 @@ export function useSaveRecord() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      queryClient.invalidateQueries({ queryKey: ['directory', 'card'] });
     },
   });
 }
@@ -184,22 +205,92 @@ export type CvEntryInput =
   | { section: 'education'; input: MobileActions['saveEducation']['input'] }
   | { section: 'certification'; input: MobileActions['saveCertification']['input'] };
 
+/**
+ * Whether the profile now holds this new entry, as the website stores it —
+ * every field the form sent, cleaned as the website cleans them — and it is
+ * not one of the entries the profile held before it was sent (`known`). Asked
+ * when the answer to adding it was lost: sent again, it went in twice. False
+ * when it cannot be read.
+ */
+async function entryStored(entry: CvEntryInput, known: ReadonlySet<string>): Promise<boolean> {
+  const text = (value: string | null | undefined, multiline = false) => clean(value, multiline) || null;
+  const [table, key, expected]: [string, string, Record<string, string | number | null>] =
+    entry.section === 'experience'
+      ? [
+          'agent_experience',
+          'company_name',
+          {
+            company_name: clean(entry.input.companyName),
+            title: clean(entry.input.title),
+            track: entry.input.track ?? null,
+            district_id: entry.input.districtId ?? null,
+            started: entry.input.started,
+            ended: entry.input.ended || null,
+            highlights: text(entry.input.highlights, true),
+          },
+        ]
+      : entry.section === 'education'
+        ? [
+            'agent_education',
+            'institution',
+            {
+              institution: clean(entry.input.institution),
+              degree: text(entry.input.degree),
+              field: text(entry.input.field),
+              graduated: entry.input.graduated ?? null,
+            },
+          ]
+        : [
+            'agent_certifications',
+            'name',
+            {
+              name: clean(entry.input.name),
+              issuer: text(entry.input.issuer),
+              issued: entry.input.issued || null,
+              expires: entry.input.expires || null,
+            },
+          ];
+  const { data, error } = await supabase
+    .from(table as 'agent_experience')
+    .select('*')
+    .eq('agent_id', entry.input.agentId)
+    .eq(key as never, expected[key] as never);
+  if (error) return false;
+  return ((data ?? []) as unknown as Record<string, unknown>[]).some(
+    (row) => !known.has(String(row.id)) && Object.entries(expected).every(([column, value]) => (row[column] ?? null) === value),
+  );
+}
+
+function sendCvEntry(entry: CvEntryInput) {
+  return entry.section === 'experience'
+    ? callAction('saveExperience', entry.input)
+    : entry.section === 'education'
+      ? callAction('saveEducation', entry.input)
+      : callAction('saveCertification', entry.input);
+}
+
 /** Add a CV entry, or change one (the website's actions take an id for that). */
 export function useSaveCvEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (entry: CvEntryInput) => {
-      const result =
-        entry.section === 'experience'
-          ? await callAction('saveExperience', entry.input)
-          : entry.section === 'education'
-            ? await callAction('saveEducation', entry.input)
-            : await callAction('saveCertification', entry.input);
+      // The section's entries as the profile showed them before this one was sent; unknown while unread.
+      const before = queryClient.getQueryData<CvSections>(['profile', 'cv', entry.input.agentId]);
+      const known = before ? new Set((before[LIST[entry.section]] as { id: string }[]).map((row) => row.id)) : null;
+      const result = await sendCvEntry(entry).catch(async (error: unknown) => {
+        // A new entry with no answer may be in, and only the answer lost: the
+        // database decides. A change sent again changes nothing twice.
+        if (!entry.input.id && known && !refusedAtTheDoor(error) && (await entryStored(entry, known))) {
+          return { ok: true as const };
+        }
+        throw error;
+      });
       if (!result.ok) throw new SaveRefused(result.error, result.fieldErrors);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      queryClient.invalidateQueries({ queryKey: ['directory', 'card'] });
     },
   });
 }
@@ -233,6 +324,7 @@ export function useDeleteCvEntry(agentId: string | null) {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['candidate'] });
+      queryClient.invalidateQueries({ queryKey: ['directory', 'card'] });
     },
   });
 }

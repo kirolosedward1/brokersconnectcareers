@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { Alert, Linking, type AlertButton } from 'react-native';
+import { Alert, Linking, Pressable, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { ProfileRow } from '@/lib/supabase/database.types';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -16,6 +17,8 @@ import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import * as EmailsScreen from '../src/app/(tabs)/(account)/account/emails';
 import * as SecurityScreen from '../src/app/(tabs)/(account)/account/security';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID, type AuthUser } from './auth-fixtures';
+import { phoneFormData, sentBody } from './multipart';
+import { watchFocus } from './focus';
 import { fakeServer } from './server';
 
 /*
@@ -55,8 +58,13 @@ jest.mock('expo-file-system', () => ({
   Paths: { cache: 'file:///cache' },
   File: jest.fn().mockImplementation((...parts: string[]) => {
     const uri = parts.join('/');
+    const name = uri.split('/').at(-1) ?? '';
     return {
       uri,
+      // As expo-file-system's File: a name, a type from the extension, and its own bytes.
+      name,
+      type: name.endsWith('.jpg') ? 'image/jpeg' : '',
+      bytes: async () => new TextEncoder().encode(`the bytes of ${name}`),
       size: 250_000,
       exists: false,
       create: jest.fn(),
@@ -69,9 +77,6 @@ jest.mock('expo-file-system', () => ({
 }));
 jest.mock('expo-sharing', () => ({ shareAsync: jest.fn(async () => {}) }));
 
-// React Native's own FormData, whose file parts are `{ uri, name, type }` as a phone sends them.
-const NativeFormData = jest.requireActual('react-native/Libraries/Network/FormData').default;
-type Part = { fieldName: string; string?: string; uri?: string; name?: string; type?: string };
 
 const ar = catalogues.ar;
 const server = fakeServer();
@@ -83,7 +88,7 @@ let me: ProfileRow;
 
 beforeAll(() => {
   globalThis.fetch = server.fetch as unknown as typeof fetch;
-  globalThis.FormData = NativeFormData;
+  globalThis.FormData = phoneFormData();
 });
 
 beforeEach(async () => {
@@ -155,6 +160,18 @@ function Settled({ children }: { children: ReactNode }) {
   return useSession().settled ? children : null;
 }
 
+/** What an unsubscribe link or another phone leaves behind: the account read again. */
+function ReadAgain() {
+  const queryClient = useQueryClient();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="read the account again"
+      onPress={() => void queryClient.invalidateQueries({ queryKey: ['viewer'] })}
+    />
+  );
+}
+
 function Root() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
@@ -164,6 +181,7 @@ function Root() {
           <SessionProvider>
             <Settled>
               <Stack screenOptions={{ headerShown: false }} />
+              <ReadAgain />
             </Settled>
           </SessionProvider>
         </I18nProvider>
@@ -210,14 +228,38 @@ describe('the photo', () => {
 
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/uploadImage')).toHaveLength(1));
     expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: true, aspect: [1, 1] }));
-    const parts = (bodyOf('/api/mobile/v1/actions/uploadImage') as { getParts: () => Part[] }).getParts();
-    expect(parts.find((part) => part.fieldName === 'kind')?.string).toBe('avatar');
-    expect(parts.find((part) => part.fieldName === 'file')).toMatchObject({
-      uri: 'file:///cache/manipulated.jpg',
-      name: 'photo.jpg',
-      type: 'image/jpeg',
-    });
+    // The request as Expo's fetch builds it on the phone: the picture's own bytes.
+    const sent = await sentBody(bodyOf('/api/mobile/v1/actions/uploadImage'));
+    expect(sent).toContain('content-disposition: form-data; name="kind"\r\n\r\navatar\r\n');
+    expect(sent).toContain(
+      'content-disposition: form-data; name="file"; filename="manipulated.jpg"\r\ncontent-type: image/jpeg\r\n\r\nthe bytes of manipulated.jpg\r\n',
+    );
     // The profile is read again, and now offers to replace the photo.
+    expect(await screen.findByRole('button', { name: ar.account.photoReplace })).toBeTruthy();
+  });
+
+  it('stays busy until the new photo can show', async () => {
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///library/IMG_0003.HEIC', width: 2000, height: 2000 }],
+    } as ImagePicker.ImagePickerResult);
+    await signIn();
+    renderRouter(app, { initialUrl: '/account' });
+    const upload = await screen.findByRole('button', { name: ar.account.photoUpload });
+
+    // The account's read after the upload, held.
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.on('/rest/v1/profiles', async () => (await gate, [me]));
+    fireEvent.press(upload);
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/uploadImage')).toHaveLength(1));
+    await act(async () => {});
+    // Answered, but the photo is not on screen yet: still busy, not offering the same upload again.
+    expect(screen.getByRole('button', { name: ar.account.photoUpload }).props.accessibilityState).toMatchObject({ busy: true });
+
+    await act(async () => release());
     expect(await screen.findByRole('button', { name: ar.account.photoReplace })).toBeTruthy();
   });
 
@@ -293,6 +335,22 @@ describe('signing in and security', () => {
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
   });
 
+  it('moves to the second password with the return key, and saves from there', async () => {
+    await signIn();
+    const focus = watchFocus();
+    try {
+      renderRouter(app, { initialUrl: '/account/security' });
+      fireEvent.changeText(await screen.findByLabelText(ar.account.newPassword), 'a-new-password');
+      fireEvent(screen.getByLabelText(ar.account.newPassword), 'submitEditing');
+      expect(focus.focused).toEqual([ar.auth.passwordConfirm]);
+      fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
+      fireEvent(screen.getByLabelText(ar.auth.passwordConfirm), 'submitEditing');
+      expect(await screen.findByText(ar.account.passwordSaved)).toBeTruthy();
+    } finally {
+      focus.undo();
+    }
+  });
+
   it.each([
     ['google', ar.account.oauthOnly],
     ['apple', ar.app.account.oauthOnlyApple],
@@ -327,6 +385,15 @@ describe('signing in and security', () => {
 
     fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
     fireEvent.press(screen.getByRole('button', { name: ar.account.mfaVerify }));
+    expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
+  });
+
+  it('takes the first code by itself once six digits are in: the number pad has no return key', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.mfaSetup }));
+    expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
     expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
   });
 
@@ -370,6 +437,69 @@ describe('the emails', () => {
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
   });
 
+  it('keeps up with a switch turned off elsewhere, and does not turn it back on with the next flip', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/emails' });
+    expect((await screen.findByLabelText(ar.account.notifyDigest)).props.value).toBe(true);
+
+    // Turned off from an email's unsubscribe link while this was open.
+    me = { ...me, notify_digest: false };
+    fireEvent.press(screen.getByRole('button', { name: 'read the account again' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.account.notifyDigest).props.value).toBe(false));
+
+    fireEvent(screen.getByLabelText(ar.account.notifyStatus), 'valueChange', false);
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/updateNotificationPreferences')).toEqual({
+        input: { notify_applications: true, notify_status: false, notify_digest: false, notify_applicant_digest: false },
+      }),
+    );
+  });
+
+  it('follows a switch flipped here once it is saved, when it is changed again elsewhere', async () => {
+    server.on('POST /api/mobile/v1/actions/updateNotificationPreferences', (_url: URL, init?: RequestInit) => {
+      me = { ...me, ...(JSON.parse(String(init?.body)) as { input: Partial<ProfileRow> }).input };
+      return { ok: true };
+    });
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/emails' });
+    fireEvent(await screen.findByLabelText(ar.account.notifyDigest), 'valueChange', false);
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+
+    // Turned back on from another phone since.
+    me = { ...me, notify_digest: true };
+    fireEvent.press(screen.getByRole('button', { name: 'read the account again' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.account.notifyDigest).props.value).toBe(true));
+  });
+
+  it('offers the profile reminder, off, where the profile has the switch, and sends it with the rest', async () => {
+    me = { ...me, notify_profile_nudge: false };
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/emails' });
+
+    const reminder = await screen.findByLabelText(ar.account.notifyProfileNudge);
+    expect(reminder.props.value).toBe(false);
+    fireEvent(reminder, 'valueChange', true);
+
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/updateNotificationPreferences')).toEqual({
+        input: {
+          notify_applications: true,
+          notify_status: true,
+          notify_digest: true,
+          notify_applicant_digest: false,
+          notify_profile_nudge: true,
+        },
+      }),
+    );
+  });
+
+  it('does not offer the reminder where the database has no such switch yet', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/emails' });
+    expect(await screen.findByLabelText(ar.account.notifyDigest)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.account.notifyProfileNudge)).toBeNull();
+  });
+
   it('puts the switch back when the website refuses', async () => {
     server.on('POST /api/mobile/v1/actions/updateNotificationPreferences', { ok: false, error: 'invalid' });
     await signIn();
@@ -378,6 +508,22 @@ describe('the emails', () => {
     fireEvent(await screen.findByLabelText(ar.account.notifyStatus), 'valueChange', false);
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     expect(screen.getByLabelText(ar.account.notifyStatus).props.value).toBe(true);
+  });
+});
+
+describe('the appearance', () => {
+  it('is one choice of three: radio buttons in a group named for what they set', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account' });
+
+    expect((await screen.findByLabelText(ar.app.account.appearance)).props.accessibilityRole).toBe('radiogroup');
+    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    fireEvent.press(screen.getByRole('radio', { name: ar.theme.dark }));
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: ar.theme.dark }).props.accessibilityState).toMatchObject({ checked: true }),
+    );
+    expect(screen.getByRole('radio', { name: ar.theme.light }).props.accessibilityState).toMatchObject({ checked: false });
+    expect(screen.getByRole('radio', { name: ar.theme.system }).props.accessibilityState).toMatchObject({ checked: false });
   });
 });
 
@@ -410,6 +556,9 @@ describe('a copy of the data', () => {
     expect(JSON.parse(mockWritten[uri])).toMatchObject({ account: { id: USER_ID } });
     // Asked as the person: the token rides along.
     expect(server.asked('/api/account/export')).toHaveLength(1);
+    // Shared, the copy leaves the phone: the person's whole account, in the cache.
+    const written = jest.mocked(File).mock.results.map((made) => made.value as { uri: string; delete: jest.Mock });
+    await waitFor(() => expect(written.find((made) => made.uri === uri)?.delete).toHaveBeenCalled());
   });
 
   it('says when the day’s copies are used up', async () => {

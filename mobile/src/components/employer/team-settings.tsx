@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { ShieldCheck, UserPlus, UserRound, X } from 'lucide-react-native';
+import { ShieldCheck, UserPlus, UserRound, X } from '~/components/ui/lucide';
 import type { CompanyMemberRole } from '@/lib/supabase/database.types';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
@@ -12,13 +12,13 @@ import { Select } from '~/components/ui/select';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { MemberRefused, useAddMember, useRemoveMember, type TeamMember } from '~/features/employer/company';
+import { EMAIL_SHAPE } from '~/lib/email-shape';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 
 const REFUSAL_COPY = {
   no_account: 'teamNoAccount',
   already_member: 'teamAlreadyMember',
-  not_employer: 'teamNotEmployer',
   rate_limited: 'teamRateLimited',
 } as const;
 
@@ -42,6 +42,12 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
     const address = email.trim();
     if (!address) return;
     setError(null);
+    // Not an address: said here, in those words. Sent, the website refused it
+    // as "invalid", which read as "try again" — with the same address.
+    if (!EMAIL_SHAPE.test(address)) {
+      setError(t('validation.invalidEmail'));
+      return;
+    }
     add.mutate(
       { email: address, role },
       {
@@ -51,7 +57,13 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
         },
         onError: (failure) => {
           const reason = failure instanceof MemberRefused ? failure.reason : 'failed';
-          setError(reason === 'failed' ? t('common.errorBody') : t(`employer.${REFUSAL_COPY[reason]}`));
+          setError(
+            reason === 'failed'
+              ? t('common.errorBody')
+              : reason === 'invalid_email'
+                ? t('validation.invalidEmail')
+                : t(`employer.${REFUSAL_COPY[reason]}`),
+          );
         },
       },
     );
@@ -94,8 +106,8 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
               alignItems: 'center',
               gap: space[3],
               padding: space[3],
-              borderRadius: radius.xl,
-              borderWidth: 1,
+              ...corner('xl'),
+              borderWidth: StyleSheet.hairlineWidth * 2,
               borderColor: colors.border,
             }}
           >

@@ -1,19 +1,21 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { Archive, BriefcaseBusiness, Eye, MapPin, Pencil, Plus, RotateCcw, SendHorizontal, Users } from 'lucide-react-native';
+import { Archive, BriefcaseBusiness, Building2, Eye, MapPin, Pencil, Plus, RotateCcw, ShieldAlert, Users } from '~/components/ui/lucide';
 import { formatDate, formatNumber } from '@/lib/format';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import { isSuspended } from '@/lib/permissions';
 import type { JobStatus } from '@/lib/supabase/database.types';
 import { AppealPanel } from '~/components/moderation/appeal-panel';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
+import { PageFooter } from '~/components/ui/page-footer';
+import { SendForward } from '~/components/ui/icons';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
@@ -27,8 +29,10 @@ import {
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
+import { useNextPage } from '~/lib/use-next-page';
 
 const STATUS_VARIANT: Record<JobStatus, 'default' | 'success' | 'warning' | 'destructive'> = {
   draft: 'default',
@@ -49,12 +53,16 @@ const STATUS_VARIANT: Record<JobStatus, 'default' | 'success' | 'warning' | 'des
  */
 export default function ListingsScreen() {
   const t = useTranslations();
+  const bell = useHeaderBell();
   const { colors } = useTheme();
   const { session, viewer, actor } = useSession();
   const listings = useMyListings();
+  const nextPage = useNextPage(listings);
+  // A push about a new applicant reads the counts again; the spinner is the pull's alone.
+  const pull = usePullRefresh(() => listings.refetch());
 
   const header = (
-    <Stack.Screen options={{ title: t('employer.jobs'), headerLargeTitle: true, headerRight: () => <HeaderBell /> }} />
+    <Stack.Screen options={{ title: t('employer.jobs'), headerRight: bell }} />
   );
   const newJob = () => router.push('/employer/jobs/new' as never);
 
@@ -63,10 +71,11 @@ export default function ListingsScreen() {
     body = <ViewerPending />;
   } else if (isSuspended(actor)) {
     // The website's console for a suspended account: nothing to act on, said once.
-    body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+    body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
   } else if (!viewer.company) {
     body = (
       <EmptyState
+        icon={Building2}
         title={t('employer.createCompanyFirst')}
         body={t('employer.createCompanyFirstBody')}
         action={<Button label={t('employer.company')} onPress={() => router.navigate('/employer/company' as never)} />}
@@ -74,7 +83,7 @@ export default function ListingsScreen() {
     );
   } else if (listings.isPending) {
     body = <LoadingState />;
-  } else if (listings.isError) {
+  } else if (listings.isError && !listings.data) {
     // Never "post your first listing" to a company whose listings could not be read.
     body = <ErrorState error={listings.error} onRetry={() => listings.refetch()} />;
   } else {
@@ -84,10 +93,16 @@ export default function ListingsScreen() {
       <FlashList
         data={rows}
         keyExtractor={(row) => row.id}
-        renderItem={({ item }) => <ListingRow listing={item} />}
+        // Keyed on the listing: the list reuses a row's component for another
+        // listing as it scrolls, and a half-typed appeal or an error must not go with it.
+        renderItem={({ item }) => <ListingRow key={item.id} listing={item} />}
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        // The appeal is typed in a row: the first tap on Send must send, not only close the keyboard.
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
           <View style={{ gap: space[3], marginBottom: space[4] }}>
             <Text tone="mutedForeground">{t('employer.jobsLede')}</Text>
@@ -106,8 +121,8 @@ export default function ListingsScreen() {
               gap: space[3],
               paddingVertical: space[8],
               paddingHorizontal: space[6],
-              borderRadius: radius.xl,
-              borderWidth: 1,
+              ...corner('xl'),
+              borderWidth: StyleSheet.hairlineWidth * 2,
               borderStyle: 'dashed',
               borderColor: colors.border,
             }}
@@ -118,12 +133,10 @@ export default function ListingsScreen() {
             <Button label={t('employer.newJob')} onPress={newJob} />
           </View>
         }
-        onEndReached={() => {
-          if (listings.hasNextPage && !listings.isFetchingNextPage) listings.fetchNextPage();
-        }}
+        ListFooterComponent={<PageFooter query={listings} />}
+        onEndReached={nextPage}
         onEndReachedThreshold={0.5}
-        refreshing={listings.isRefetching && !listings.isFetchingNextPage}
-        onRefresh={() => listings.refetch()}
+        {...pull}
       />
     );
   }
@@ -188,7 +201,7 @@ function ListingRow({ listing }: { listing: ConsoleListing }) {
       </View>
 
       {listing.rejection_note ? (
-        <View style={{ padding: space[2], borderRadius: radius.md, backgroundColor: colors.destructiveMuted }}>
+        <View style={{ padding: space[2], ...corner('md'), backgroundColor: colors.destructiveMuted }}>
           <Text variant="caption" tone="destructive">
             {listing.rejection_note}
           </Text>
@@ -283,7 +296,7 @@ function StatusActions({ jobId, status, title }: { jobId: string; status: JobSta
         accessibilityLabel={`${t('employer.submitForReview')}: ${title}`}
         variant="secondary"
         size="sm"
-        icon={<SendHorizontal size={16} color={colors.primary} />}
+        icon={<SendForward size={16} color={colors.primary} />}
         loading={move.isPending}
         onPress={() => go('pending_review')}
       />

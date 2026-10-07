@@ -6,6 +6,7 @@ import { ENGLISH_ENABLED } from '@/i18n/routing';
 import { buildLandingSlug, JOB_TRACKS } from '@/lib/taxonomy';
 import type { JobTrack } from '@/lib/supabase/database.types';
 import { getAllPosts } from '@/lib/blog';
+import { getLegalDoc, LEGAL_SLUGS } from '@/lib/legal';
 
 export const revalidate = 3600;
 
@@ -184,6 +185,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry('/blog', { changeFrequency: 'weekly', priority: 0.6 }),
   ];
 
+  // The policies, dated by their own `updated` line (the Arabic text, which
+  // prevails), so a revision is what tells a crawler to read one again.
+  const legalPages: MetadataRoute.Sitemap = LEGAL_SLUGS.map((slug) =>
+    entry(`/${slug}`, {
+      lastModified: getLegalDoc(slug, 'ar')?.updated || undefined,
+      changeFrequency: 'yearly',
+      priority: 0.2,
+    }),
+  );
+
   const blogPages: MetadataRoute.Sitemap = getAllPosts('ar').map((post) =>
     entry(`/blog/${post.slug}`, {
       lastModified: post.date,
@@ -219,5 +230,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   );
 
-  return [...staticPages, ...blogPages, ...landingPages, ...jobPages, ...companyPages];
+  return [...staticPages, ...legalPages, ...blogPages, ...landingPages, ...jobPages, ...companyPages];
 }

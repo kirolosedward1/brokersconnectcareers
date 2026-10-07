@@ -25,7 +25,7 @@ export function setup() {
 }
 
 export function candidate() {
-  if (!signIn('candidate1@demo.test', 'password123')) return;
+  if (!signIn('candidate1@demo.test', __ENV.DEMO_PASSWORD)) return;
   page('/dashboard', 'dashboard');
   page('/jobs', 'board');
   page('/dashboard/applications', 'applications');
@@ -34,7 +34,7 @@ export function candidate() {
 }
 
 export function employer() {
-  if (!signIn('employer1@demo.test', 'password123')) return;
+  if (!signIn('employer1@demo.test', __ENV.DEMO_PASSWORD)) return;
   page('/employer', 'employer');
   page('/employer/applicants', 'applicants');
   const list = page('/agents', 'directory').body;
@@ -47,7 +47,7 @@ export function employer() {
 }
 
 export function admin() {
-  if (!signIn('admin@demo.test', 'password123')) return;
+  if (!signIn('admin@demo.test', __ENV.DEMO_PASSWORD)) return;
   // Without a TOTP factor enrolled and ADMIN_MFA_REQUIRED unset on a preview,
   // the console opens; with it required, this lands on the account page,
   // which is also a 200 and also fine to measure.

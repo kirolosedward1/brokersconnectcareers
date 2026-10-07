@@ -2,6 +2,7 @@ import createIntlMiddleware from 'next-intl/middleware';
 import { NextResponse, type NextRequest } from 'next/server';
 import { routing, locales, ENGLISH_ENABLED } from '@/i18n/routing';
 import { updateSession } from '@/lib/supabase/middleware';
+import { secondFactorChallenge } from '@/lib/auth/second-factor';
 import { safeNext } from '@/lib/safe-next';
 import { recordState } from '@/lib/seo/record-exists';
 import { parseLandingSlug } from '@/lib/taxonomy';
@@ -133,8 +134,9 @@ async function handle(request: NextRequest): Promise<NextResponse> {
 
   let user = null;
   let isAdmin: boolean | null | undefined;
+  let secondFactorDue = false;
   try {
-    ({ user, isAdmin } = await updateSession(request, response, { checkAdmin: inConsole }));
+    ({ user, isAdmin, secondFactorDue = false } = await updateSession(request, response, { checkAdmin: inConsole }));
   } catch (error) {
     console.warn(
       '[middleware] session refresh failed, treating the request as anonymous:',
@@ -152,6 +154,19 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     // day it is turned on.
     signIn.searchParams.set('next', path + request.nextUrl.search);
     return NextResponse.redirect(signIn);
+  }
+
+  /*
+    An account with an authenticator, signed in with the password alone: the
+    code first, on the account page, before any page of the account — for
+    every account, as the page itself says ("asked for alongside your
+    password"), not only on the admin console, and as the app does on the
+    phone. The account page draws nothing but the challenge until it is
+    answered, then goes on to where the person was going.
+  */
+  const challenge = needsAuth && user && secondFactorDue ? secondFactorChallenge(path, request.nextUrl.search) : null;
+  if (challenge) {
+    return NextResponse.redirect(new URL(localized(locale, challenge), request.url));
   }
 
   // Signed in, and definitely not an admin: refused here, with a real 307,

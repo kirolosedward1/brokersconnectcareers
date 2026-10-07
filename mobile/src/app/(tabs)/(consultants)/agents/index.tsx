@@ -1,21 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import type { SearchBarCommands } from 'react-native-screens';
-import { ShieldCheck, SlidersHorizontal, UserRoundCheck } from 'lucide-react-native';
+import { SearchX, ShieldCheck, SlidersHorizontal, UserRoundCheck } from '~/components/ui/lucide';
 import { EMPTY_AGENT_FILTERS, parseAgentFilters, type AgentFilters } from '@/lib/agent-filters';
 import { formatNumber } from '@/lib/format';
 import { canBrowseAgentDirectory, canShortlistAgents, hasVerifiedCompany, isAdmin } from '@/lib/permissions';
 import { AgentCard } from '~/components/directory/agent-card';
+import { DirectoryClosed } from '~/components/directory/directory-closed';
 import { DirectoryFilterSheet } from '~/components/directory/directory-filter-sheet';
-import { HeaderBell } from '~/components/notifications/header-bell';
+import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
+import { PageFooter } from '~/components/ui/page-footer';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
 import { ForwardChevron } from '~/components/ui/icons';
-import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
+import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
   activeAgentFilters,
@@ -29,8 +31,13 @@ import { useCompanyPage } from '~/features/employer/company';
 import { useDistricts } from '~/features/taxonomy';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
+import { useVisited } from '~/lib/use-visited';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
+import { useNextPage } from '~/lib/use-next-page';
+import { useHiddenAgents, withoutHiddenAgents } from '~/features/moderation/hidden-agents';
+import { totalShown } from '~/features/moderation/hidden-store';
 
 /**
  * The consultant directory — the website's /agents, for the companies that
@@ -45,13 +52,21 @@ import { radius, space } from '~/theme/tokens';
  */
 export default function DirectoryScreen() {
   const t = useTranslations();
+  const bell = useHeaderBell();
   const { colors } = useTheme();
   const { actor } = useSession();
   const raw = useLocalSearchParams();
   const filters = useMemo(() => parseAgentFilters(raw as Record<string, string | string[] | undefined>), [raw]);
 
-  const directory = useAgentDirectory(filters);
-  const agents = useMemo(() => flattenAgents(directory.data?.pages), [directory.data]);
+  // Drawn at launch behind Home by the tab bar: searched once the tab is opened.
+  const visited = useVisited();
+  const directory = useAgentDirectory(filters, { enabled: visited });
+  const nextPage = useNextPage(directory);
+  const pull = usePullRefresh(() => directory.refetch());
+  // Without the consultants hidden on this phone (hidden-agents.ts).
+  const hiddenAgents = useHiddenAgents();
+  const read = useMemo(() => flattenAgents(directory.data?.pages), [directory.data]);
+  const agents = useMemo(() => withoutHiddenAgents(read, hiddenAgents), [read, hiddenAgents]);
   const districts = useDistricts().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
   const canShortlist = canShortlistAgents(actor);
@@ -69,8 +84,7 @@ export default function DirectoryScreen() {
     <Stack.Screen
       options={{
         title: t('nav.agents'),
-        headerLargeTitle: true,
-        headerRight: () => <HeaderBell />,
+        headerRight: bell,
         headerSearchBarOptions: {
           ref: searchBar,
           placeholder: t('agents.searchPlaceholder'),
@@ -98,12 +112,12 @@ export default function DirectoryScreen() {
     />
   );
 
-  // Not a reader of the directory (the tab is not theirs; a link was routed elsewhere).
+  // Not a reader of the directory (yet): who it is for.
   if (!canBrowseAgentDirectory(actor)) {
     return (
       <>
         {header}
-        <NotFoundState />
+        <DirectoryClosed />
       </>
     );
   }
@@ -140,39 +154,33 @@ export default function DirectoryScreen() {
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10] }}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
           <DirectoryHeader
             filters={filters}
-            total={directory.data?.pages[0]?.total ?? 0}
+            total={totalShown(directory.data?.pages[0]?.total ?? 0, read.length, agents.length)}
             apply={apply}
             onFilters={() => setSheetOpen(true)}
           />
         }
         ListEmptyComponent={
-          <EmptyState
-            title={t('agents.empty')}
-            body={t('agents.emptyHint')}
-            action={
-              activeFilterCount(filters) > 0 ? (
-                <Button label={t('jobs.clearFilters')} variant="outline" onPress={() => apply(EMPTY_AGENT_FILTERS)} />
-              ) : undefined
-            }
-          />
+          activeFilterCount(filters) > 0 ? (
+            <EmptyState
+              icon={SearchX}
+              title={t('agents.empty')}
+              body={t('agents.emptyHint')}
+              action={<Button label={t('jobs.clearFilters')} variant="outline" onPress={() => apply(EMPTY_AGENT_FILTERS)} />}
+            />
+          ) : (
+            // Nothing narrows it: the directory itself has nobody to show yet.
+            <EmptyState icon={SearchX} title={t('agents.emptyDirectory')} body={t('agents.emptyDirectoryHint')} />
+          )
         }
-        ListFooterComponent={
-          directory.isFetchingNextPage ? (
-            <View style={{ paddingTop: space[4] }}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
-          ) : null
-        }
-        onEndReached={() => {
-          if (directory.hasNextPage && !directory.isFetchingNextPage) directory.fetchNextPage();
-        }}
+        ListFooterComponent={<PageFooter query={directory} />}
+        onEndReached={nextPage}
         onEndReachedThreshold={0.5}
-        refreshing={directory.isRefetching && !directory.isFetchingNextPage}
-        onRefresh={() => directory.refetch()}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
       />
     </>
   );
@@ -205,7 +213,9 @@ function DirectoryHeader({
   const labelFor = useAgentFilterLabel();
   const active = activeAgentFilters(filters);
   const inSheet = sheetFilterCount(filters);
-  const shortlisted = useShortlistedIds().data?.length ?? 0;
+  // Who is kept and still shown: a consultant hidden on this phone is in neither list.
+  const hiddenAgents = useHiddenAgents();
+  const shortlisted = (useShortlistedIds().data ?? []).filter((id) => !hiddenAgents.has(id)).length;
 
   // The gate, explained once. An admin reads everything and needs no explanation.
   const gated = !isAdmin(actor) && !hasVerifiedCompany(actor);
@@ -220,16 +230,8 @@ function DirectoryHeader({
       </Text>
 
       {gated ? (
-        <View
-          style={{
-            gap: space[2],
-            padding: space[4],
-            borderRadius: radius.xl,
-            borderWidth: 1,
-            borderColor: colors.primary,
-            backgroundColor: colors.secondary,
-          }}
-        >
+        // The card's own surface; the shield carries the meaning, not an outline.
+        <Card style={{ gap: space[2] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
             <ShieldCheck size={18} color={colors.primary} />
             <Text weight="medium" style={{ flexShrink: 1 }}>
@@ -248,7 +250,7 @@ function DirectoryHeader({
               />
             </View>
           ) : null}
-        </View>
+        </Card>
       ) : null}
 
       {canShortlistAgents(actor) ? (
@@ -272,8 +274,9 @@ function DirectoryHeader({
         <Chip
           label={inSheet ? `${t('jobs.filters')} · ${formatNumber(inSheet, locale)}` : t('jobs.filters')}
           selected={inSheet > 0}
-          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primary : colors.foreground} />}
+          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primaryForeground : colors.foreground} />}
           onPress={onFilters}
+          feedback={false}
         />
         <Text variant="small" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
           {t('jobs.resultsCount', { count: total })}

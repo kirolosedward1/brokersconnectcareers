@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { useState, type RefObject } from 'react';
+import { Pressable, View, type ScrollView } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { CheckCircle2, Eye, EyeOff, FileText, Paperclip, ShieldCheck, Trash2, X } from 'lucide-react-native';
+import { CheckCircle2, Eye, EyeOff, FileText, Paperclip, ShieldCheck, Trash2, X } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
 import { isValidPhone, normalisePhone } from '@/lib/phone';
 import type {
@@ -22,8 +22,11 @@ import { pickCv } from '~/features/cv/files';
 import { toggled } from '~/features/jobs/filters';
 import { SaveRefused, useSaveAgentProfile, type CvChange } from '~/features/profile/queries';
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
+import { useErrorsInView } from '~/lib/use-errors-in-view';
+import { useLeaveGuard } from '~/lib/use-leave-guard';
+import { useStoredFields } from '~/lib/use-stored-fields';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 import { ChipGroup, wholeNumber } from './fields';
 
 const VISIBILITIES: AgentVisibility[] = ['public', 'verified_employers_only', 'hidden'];
@@ -45,10 +48,13 @@ export function ProfileForm({
   profile,
   agent,
   developerIds,
+  scroll,
 }: {
   profile: ProfileRow;
   agent: AgentProfileRow | null;
   developerIds: number[];
+  /** The page's scroll view: Save is far below the fields, and an error is brought into view. */
+  scroll: RefObject<ScrollView | null>;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -57,19 +63,31 @@ export function ProfileForm({
   const districts = useDistricts().data ?? [];
   const developers = useDevelopers().data ?? [];
 
-  const [fullName, setFullName] = useState(profile.full_name);
-  const [whatsapp, setWhatsapp] = useState(profile.whatsapp_phone);
-  const [visibility, setVisibility] = useState<AgentVisibility>(agent?.visibility ?? 'verified_employers_only');
-  const [availability, setAvailability] = useState<AgentAvailability>(agent?.availability ?? 'open_to_offers');
-  const [years, setYears] = useState(String(agent?.years_experience ?? 0));
-  const [headlineAr, setHeadlineAr] = useState(agent?.headline_ar ?? '');
-  const [headlineEn, setHeadlineEn] = useState(agent?.headline_en ?? '');
-  const [tracks, setTracks] = useState<JobTrack[]>(agent?.tracks ?? []);
-  const [districtIds, setDistrictIds] = useState<number[]>(agent?.district_ids ?? []);
-  const [developerChoice, setDeveloperChoice] = useState<number[]>(developerIds);
-  const [languages, setLanguages] = useState<string[]>(agent?.languages ?? ['ar']);
+  const form = useStoredFields({
+    fullName: profile.full_name,
+    whatsapp: profile.whatsapp_phone,
+    visibility: (agent?.visibility ?? 'verified_employers_only') as AgentVisibility,
+    availability: (agent?.availability ?? 'open_to_offers') as AgentAvailability,
+    years: String(agent?.years_experience ?? 0),
+    headlineAr: agent?.headline_ar ?? '',
+    headlineEn: agent?.headline_en ?? '',
+    tracks: (agent?.tracks ?? []) as JobTrack[],
+    districtIds: agent?.district_ids ?? [],
+    developerIds,
+    languages: agent?.languages ?? ['ar'],
+  });
+  const { fullName, whatsapp, visibility, availability, years, headlineAr, headlineEn, tracks, districtIds, languages } = form.fields;
+  const developerChoice = form.fields.developerIds;
   const [cv, setCv] = useState<CvChange>({ kind: 'keep' });
   const [errors, setErrors] = useState<Errors>({});
+  const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'yearsExperience', 'cv']);
+  const refuse = (next: Errors) => {
+    setErrors(next);
+    inView.show(next);
+  };
+
+  // Leaving with anything changed since it was filled or last saved asks first.
+  useLeaveGuard(form.dirty || cv.kind !== 'keep', save.isPending);
 
   const hasCv = Boolean(agent?.cv_path);
 
@@ -91,11 +109,13 @@ export function ProfileForm({
     if (!isValidPhone(normalisePhone(whatsapp))) local.whatsapp = t('validation.invalidPhone');
     if (!Number.isInteger(yearsExperience) || yearsExperience > 60) local.yearsExperience = t('app.profile.yearsInvalid');
     if (Object.keys(local).length) {
-      setErrors(local);
+      refuse(local);
       return;
     }
 
     setErrors({});
+    // What the form holds once this is saved (a picked file is then the one on file).
+    const sending = form.fields;
     save.mutate(
       {
         input: {
@@ -115,19 +135,22 @@ export function ProfileForm({
       },
       {
         // The picked file has been saved: a second save must not upload it again.
-        onSuccess: () => setCv({ kind: 'keep' }),
+        onSuccess: () => {
+          setCv({ kind: 'keep' });
+          form.saved(sending);
+        },
         onError: (failure) => {
           const reason = failure instanceof SaveRefused ? failure.reason : 'failed';
           const fields = failure instanceof SaveRefused ? failure.fieldErrors : undefined;
-          if (reason === 'fileTooLarge') return setErrors({ cv: t('validation.fileTooLarge') });
-          if (reason === 'upload' || reason === 'invalid_cv_path') return setErrors({ cv: t('common.errorBody') });
+          if (reason === 'fileTooLarge') return refuse({ cv: t('validation.fileTooLarge') });
+          if (reason === 'upload' || reason === 'invalid_cv_path') return refuse({ cv: t('common.errorBody') });
           if (fields?.whatsapp || fields?.cv) {
-            return setErrors({
+            return refuse({
               ...(fields.whatsapp ? { whatsapp: t('validation.invalidPhone') } : {}),
               ...(fields.cv ? { cv: t('validation.fileType') } : {}),
             });
           }
-          setErrors({ form: t('common.errorBody') });
+          refuse({ form: t('common.errorBody') });
         },
       },
     );
@@ -135,10 +158,10 @@ export function ProfileForm({
 
   return (
     <View style={{ gap: space[5] }}>
-      <Field label={t('onboarding.fullName')} error={errors.fullName}>
+      <Field ref={inView.place('fullName')} label={t('onboarding.fullName')} error={errors.fullName}>
         <TextField
           value={fullName}
-          onChangeText={setFullName}
+          onChangeText={(value) => form.set({ fullName: value })}
           accessibilityLabel={t('onboarding.fullName')}
           autoComplete="name"
           textContentType="name"
@@ -146,10 +169,10 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field label={t('onboarding.whatsapp')} error={errors.whatsapp}>
+      <Field ref={inView.place('whatsapp')} label={t('onboarding.whatsapp')} error={errors.whatsapp}>
         <TextField
           value={whatsapp}
-          onChangeText={setWhatsapp}
+          onChangeText={(value) => form.set({ whatsapp: value })}
           accessibilityLabel={t('onboarding.whatsapp')}
           ltr
           keyboardType="phone-pad"
@@ -180,12 +203,12 @@ export function ProfileForm({
               key={value}
               accessibilityRole="radio"
               accessibilityState={{ checked: chosen }}
-              onPress={() => setVisibility(value)}
+              onPress={() => form.set({ visibility: value })}
               style={{
                 flexDirection: 'row',
                 gap: space[3],
                 padding: space[3],
-                borderRadius: radius.lg,
+                ...corner('lg'),
                 borderWidth: 1,
                 borderColor: chosen ? colors.primary : colors.border,
                 backgroundColor: chosen ? colors.secondary : colors.card,
@@ -212,15 +235,15 @@ export function ProfileForm({
           placeholder={t('agents.availability')}
           options={AVAILABILITIES.map((value) => ({ value, label: t(`availability.${value}`) }))}
           onChange={(value) => {
-            if (value) setAvailability(value);
+            if (value) form.set({ availability: value });
           }}
         />
       </Field>
 
-      <Field label={t('filters.experienceBand')} error={errors.yearsExperience}>
+      <Field ref={inView.place('yearsExperience')} label={t('filters.experienceBand')} error={errors.yearsExperience}>
         <TextField
           value={years}
-          onChangeText={setYears}
+          onChangeText={(value) => form.set({ years: value })}
           accessibilityLabel={t('filters.experienceBand')}
           ltr
           keyboardType="number-pad"
@@ -231,7 +254,7 @@ export function ProfileForm({
       <Field label={t('agents.headlineAr')}>
         <TextField
           value={headlineAr}
-          onChangeText={setHeadlineAr}
+          onChangeText={(value) => form.set({ headlineAr: value })}
           accessibilityLabel={t('agents.headlineAr')}
           multiline
           maxLength={160}
@@ -242,7 +265,7 @@ export function ProfileForm({
       <Field label={t('agents.headlineEn')}>
         <TextField
           value={headlineEn}
-          onChangeText={setHeadlineEn}
+          onChangeText={(value) => form.set({ headlineEn: value })}
           accessibilityLabel={t('agents.headlineEn')}
           ltr
           multiline
@@ -255,7 +278,7 @@ export function ProfileForm({
         legend={t('agents.tracks')}
         options={JOB_TRACKS.map((track) => ({ value: track, label: t(`track.${track}`) }))}
         selected={tracks}
-        onToggle={(value) => setTracks((current) => toggled(current, value))}
+        onToggle={(value) => form.set((current) => ({ tracks: toggled(current.tracks, value) }))}
       />
 
       <ChipGroup
@@ -263,7 +286,8 @@ export function ProfileForm({
         scroll
         options={districts.map((district) => ({ value: district.id, label: localized(locale, district.name_ar, district.name_en) }))}
         selected={districtIds}
-        onToggle={(value) => setDistrictIds((current) => toggled(current, value))}
+        onToggle={(value) => form.set((current) => ({ districtIds: toggled(current.districtIds, value) }))}
+        max={20}
       />
 
       <ChipGroup
@@ -274,18 +298,20 @@ export function ProfileForm({
           label: localized(locale, developer.name_ar, developer.name_en),
         }))}
         selected={developerChoice}
-        onToggle={(value) => setDeveloperChoice((current) => toggled(current, value))}
+        onToggle={(value) => form.set((current) => ({ developerIds: toggled(current.developerIds, value) }))}
+        max={30}
       />
 
       <ChipGroup
         legend={t('agents.languages')}
         options={LANGUAGES.map((language) => ({ value: language, label: t(`language.${language}`) }))}
         selected={languages}
-        onToggle={(value) => setLanguages((current) => toggled(current, value))}
+        onToggle={(value) => form.set((current) => ({ languages: toggled(current.languages, value) }))}
       />
 
       <Field
-        label={hasCv && cv.kind !== 'remove' ? t('agents.cvReplace') : t('agents.downloadCv')}
+        ref={inView.place('cv')}
+        label={hasCv && cv.kind !== 'remove' ? t('agents.cvReplace') : t('agents.cvUpload')}
         hint={t('agents.cvHint')}
         error={errors.cv}
       >
@@ -296,7 +322,7 @@ export function ProfileForm({
               alignItems: 'center',
               gap: space[2],
               paddingStart: space[3],
-              borderRadius: radius.lg,
+              ...corner('lg'),
               borderWidth: 1,
               borderColor: colors.border,
             }}

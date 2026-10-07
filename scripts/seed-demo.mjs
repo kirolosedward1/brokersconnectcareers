@@ -8,8 +8,10 @@
  * between versions, and a hand-rolled insert yields an account that cannot sign
  * in. The API does it correctly whatever version the project runs.
  *
- * Safe to re-run — existing users are reused and the SQL half is idempotent.
+ * Safe to re-run — existing users are reused, given this run's password, and
+ * the SQL half is idempotent.
  */
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
@@ -24,7 +26,23 @@ const databaseUrl = require_(
   'Project Settings → Database → Connection string → URI (direct, not the pooler)',
 );
 
-const PASSWORD = 'password123';
+/*
+  Never production. These are shared accounts with one password — one of them
+  an admin — and a live database is where real people's applications are. The
+  project ref is production's own (docs/disaster-recovery.md).
+*/
+const PRODUCTION_REF = 'hiwdhicwsohbipxzazmb';
+if (supabaseUrl.includes(PRODUCTION_REF) || databaseUrl.includes(PRODUCTION_REF)) {
+  console.error('Refusing to seed demo accounts into production. Point the env at a local or staging project.');
+  process.exit(1);
+}
+
+/*
+  A password made for this run, unless DEMO_PASSWORD names one (the local demo
+  login reads NEXT_PUBLIC_DEMO_PASSWORD). It was "password123", published in the
+  README, and the same accounts were seeded into production once.
+*/
+const PASSWORD = process.env.DEMO_PASSWORD || randomBytes(12).toString('base64url');
 
 const DEMO = [
   { key: 'employer1', email: 'employer1@demo.test', name: 'محمد عبد الرحمن' },
@@ -59,6 +77,22 @@ async function findUser(email) {
   return (body.users ?? []).find((user) => user.email === email) ?? null;
 }
 
+/**
+ * The password printed at the end is the one every demo account has: one
+ * found from an earlier run is given it too. Reused as they were, a second
+ * run printed a new password that signed in to none of them.
+ */
+async function setPassword(id, email) {
+  const response = await fetch(new URL(`/auth/v1/admin/users/${id}`, supabaseUrl), {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ password: PASSWORD }),
+  });
+  if (response.ok) return;
+  console.error(`Could not set the password of ${email}: ${response.status} ${await response.text()}`);
+  process.exit(1);
+}
+
 async function createUser({ email, name }) {
   const response = await fetch(new URL('/auth/v1/admin/users', supabaseUrl), {
     method: 'POST',
@@ -75,7 +109,10 @@ async function createUser({ email, name }) {
 
   // Already registered — fall back to looking it up.
   const existing = await findUser(email);
-  if (existing) return existing;
+  if (existing) {
+    await setPassword(existing.id, email);
+    return existing;
+  }
 
   console.error(`Could not create ${email}: ${response.status} ${await response.text()}`);
   process.exit(1);
@@ -85,6 +122,7 @@ console.log('demo accounts');
 const ids = {};
 for (const user of DEMO) {
   const existing = await findUser(user.email);
+  if (existing) await setPassword(existing.id, user.email);
   const record = existing ?? (await createUser(user));
   ids[user.key] = record.id;
   console.log(`  ${existing ? 'found  ' : 'created'} ${user.email}`);

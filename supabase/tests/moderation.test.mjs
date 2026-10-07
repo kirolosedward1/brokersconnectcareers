@@ -463,7 +463,7 @@ report.section('listing actions follow the lifecycle, and two moderators converg
     let second = null;
     second = await q.probe(`select admin_moderate_job('${job}', 'unpublish', 'مرة ثانية')`);
     steps.second = second;
-    steps.note = (await q(`select rejection_note from jobs where id = '${job}'`))[0].rejection_note;
+    steps.note = (await q(`select rejection_note from job_moderation where job_id = '${job}'`))[0]?.rejection_note;
     steps.bell = (await q(`select kind from notifications n join company_members m on m.user_id = n.user_id
                             where m.company_id = '${rowad}' and n.payload ->> 'job_id' = '${job}' order by n.created_at desc limit 1`))[0];
     steps.restore = (await q(`select admin_moderate_job('${job}', 'restore', 'راجعنا القرار') as s`))[0].s;
@@ -553,7 +553,7 @@ report.section('a restricted or suspended employer keeps what is live and adds n
 
   const suspended = await session(admin, async (q) => {
     await q(`select set_account_approval('${employer3}', 'rejected', 'احتيال مؤكد')`);
-    const liveNow = (await q(`select status, rejection_note from jobs where id = '${live}'`))[0];
+    const liveNow = (await q(`select status from jobs where id = '${live}'`))[0];
     await q(`set local role authenticated`);
     await q(`set local request.jwt.claim.sub = '${employer3}'`);
     await q(`set local request.jwt.claims = '{"role":"authenticated","sub":"${employer3}"}'`);
@@ -779,7 +779,9 @@ report.section('employer signals are for review, and change nothing');
 report.section('appeals: one message about one decision, and one answer');
 {
   const job = await makeJob(rowad, 'active', { title_ar: 'إعلان للاعتراض' });
-  await db.exec(`update jobs set status = 'rejected', rejection_note = 'إعلان مكرر' where id = '${job}'`);
+  // As the review lever leaves it: the note beside the listing (347), then the status.
+  await db.exec(`insert into job_moderation (job_id, rejection_note) values ('${job}', 'إعلان مكرر');
+                update jobs set status = 'rejected' where id = '${job}'`);
 
   const short = await as(employerVerified, `select submit_appeal('job', '${job}', 'غلط')`);
   report.check('an appeal says why, in at least a sentence', !short.ok && /appeal_message_required/.test(short.error ?? ''), short.error);
@@ -845,6 +847,19 @@ report.section('appeals: one message about one decision, and one answer');
 
   // Upheld, then a second appeal too soon.
   await db.exec(`update moderation_appeals set status = 'upheld', decided_at = now() - interval '2 days', decision_note = 'مازال مكرراً' where id = '${appealId}'`);
+
+  // The answer, to the company it is about and to nobody else (migration 331):
+  // the function is SECURITY DEFINER, so the table's read policy does not
+  // stand behind it.
+  const ownAnswer = await as(employerVerified, `select my_appeal_state('job', '${job}') as s`);
+  report.check('the company reads the answer to its appeal, with the note',
+    ownAnswer.rows?.[0]?.s?.last?.note === 'مازال مكرراً', JSON.stringify(ownAnswer.rows?.[0] ?? ownAnswer.error));
+  for (const [who, id] of [['another company', employerUnverified], ['a candidate', candidate3]]) {
+    const other = await as(id, `select my_appeal_state('job', '${job}') as s`);
+    report.check(`${who} reads neither the answer nor its note`,
+      other.ok && other.rows[0]?.s?.last === null && other.rows[0]?.s?.open === null && other.rows[0]?.s?.appealable === false,
+      JSON.stringify(other.rows?.[0] ?? other.error));
+  }
   const soon = await as(employerVerified, `select submit_appeal('job', '${job}', 'نطلب مراجعة جديدة لنفس الإعلان')`);
   report.check('a week passes before the same decision is appealed again', !soon.ok && /appeal_too_soon|not_appealable/.test(soon.error ?? ''), soon.error);
 

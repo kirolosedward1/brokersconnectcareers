@@ -224,20 +224,37 @@ export async function sweepPushes(deps: PushSweepDeps, options: { batch?: number
 // ---------------------------------------------------------------------------
 
 export type ReceiptDeps = {
-  /** Tickets old enough to have a receipt (fifteen minutes and more), oldest first. */
-  dueTickets(limit: number): Promise<Pick<PushTicketRow, 'ticket_id' | 'device_id'>[]>;
+  /** Tickets old enough to have a receipt (fifteen minutes and more), oldest first; `created_at` is when the push went out. */
+  dueTickets(limit: number): Promise<Pick<PushTicketRow, 'ticket_id' | 'device_id' | 'created_at'>[]>;
   receipts(ids: string[]): Promise<Record<string, ExpoReceipt>>;
   forget(ids: string[]): Promise<void>;
-  disableDevices(ids: string[], reason: string): Promise<void>;
+  /**
+   * Switches the phone off unless it was registered again after `since` (its
+   * row's last_seen_at). True if it was switched off.
+   */
+  disableUnseenSince(id: string, since: string, reason: string): Promise<boolean>;
 };
+
+/**
+ * Phones switched off at once. Each has its own "since", so it is a statement
+ * apiece; one after another, the hundreds a broadcast to people who deleted
+ * the app brings back could outlast the run, and then the same tickets are
+ * read and the same phones patched again next minute.
+ */
+const PHONES_AT_ONCE = 10;
 
 export type ReceiptStats = { checked: number; answered: number; phonesOff: number };
 
 /**
  * Receipts, read once they exist: a phone Apple says no longer has the app is
- * switched off, so nothing is sent to it again. A ticket whose receipt came
- * back is forgotten; one without a receipt yet is asked about next time, until
- * the prune takes it after two days.
+ * switched off, so nothing is sent to it again — unless it has been registered
+ * since the refused push went out. A receipt is read fifteen minutes and more
+ * later, and by then the token may be the next person's on that phone
+ * (register_push_device moves a token and keeps its row, and a phone signed
+ * out locally answers "not registered" until it registers again); switching
+ * it off would leave them without pushes until the app next starts. A ticket
+ * whose receipt came back is forgotten; one without a receipt yet is asked
+ * about next time, until the prune takes it after two days.
  */
 export async function checkReceipts(deps: ReceiptDeps, options: { limit?: number } = {}): Promise<ReceiptStats> {
   const tickets = await deps.dueTickets(Math.max(1, Math.min(options.limit ?? 300, 1000)));
@@ -245,15 +262,28 @@ export async function checkReceipts(deps: ReceiptDeps, options: { limit?: number
 
   const receipts = await deps.receipts(tickets.map((ticket) => ticket.ticket_id));
   const answered: string[] = [];
-  const off = new Set<string>();
+  // Each phone with its last refused push: registered again after that, it stays on.
+  const off = new Map<string, string>();
   for (const ticket of tickets) {
     const receipt = receipts[ticket.ticket_id];
     if (!receipt) continue;
     answered.push(ticket.ticket_id);
-    if (receipt.status === 'error' && GONE.has(receipt.details?.error ?? '')) off.add(ticket.device_id);
+    if (receipt.status !== 'error' || !GONE.has(receipt.details?.error ?? '')) continue;
+    const since = off.get(ticket.device_id);
+    if (!since || Date.parse(ticket.created_at) > Date.parse(since)) off.set(ticket.device_id, ticket.created_at);
   }
 
-  if (off.size) await deps.disableDevices([...off], 'DeviceNotRegistered');
+  // Counted as the database answers: a phone registered again since is not switched off.
+  let phonesOff = 0;
+  const phones = [...off];
+  for (let start = 0; start < phones.length; start += PHONES_AT_ONCE) {
+    const switched = await Promise.all(
+      phones
+        .slice(start, start + PHONES_AT_ONCE)
+        .map(([id, since]) => deps.disableUnseenSince(id, since, 'DeviceNotRegistered')),
+    );
+    phonesOff += switched.filter(Boolean).length;
+  }
   if (answered.length) await deps.forget(answered);
-  return { checked: tickets.length, answered: answered.length, phonesOff: off.size };
+  return { checked: tickets.length, answered: answered.length, phonesOff };
 }

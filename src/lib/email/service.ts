@@ -133,7 +133,7 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
     else retry.claimedOther = true;
   }
 
-  const result = await sendEmail({ to: spec.to, ...spec.envelope });
+  const result = await sendEmail({ to: spec.to, ...spec.envelope, idempotencyKey: logId });
 
   // No provider key. The row stays `queued` with its attempt count untouched,
   // so the sweeper picks it up once the key is configured — recording this as

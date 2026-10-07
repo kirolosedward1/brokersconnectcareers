@@ -1,21 +1,24 @@
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
-import { Gift } from 'lucide-react-native';
+import { Building2, Compass, Gift, ShieldAlert } from '~/components/ui/lucide';
 import { formatDate, formatEgp, formatNumber } from '@/lib/format';
 import { canAccessEmployerArea, isSuspended } from '@/lib/permissions';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Notice } from '~/components/ui/notice';
+import { SignedOut } from '~/components/navigation/signed-out';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useMobileConfig } from '~/features/config';
 import { useBilling, useClaimFreePost } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { gutter, space } from '~/theme/tokens';
 
 /**
  * The company's balance — the website's /employer/billing, read-only: the
@@ -33,21 +36,27 @@ export default function BillingScreen() {
   const billingEnabled = useMobileConfig().data?.billingEnabled ?? false;
   const company = viewer?.company ?? null;
   const header = <Stack.Screen options={{ title: t('billing.title') }} />;
+  // The credits and the verified badge are the account's (viewer.company), not
+  // the orders' read: a pull reads both, or a balance spent or bought on the
+  // website stayed as it was.
+  const queryClient = useQueryClient();
+  const pull = usePullRefresh(() => Promise.all([billing.refetch(), queryClient.invalidateQueries({ queryKey: ['viewer'] })]));
 
   let body: React.ReactNode;
-  if (!session || !viewer?.profile) body = <ViewerPending />;
-  else if (!canAccessEmployerArea(actor)) body = <EmptyState title={t('common.notFound')} body={t('common.notFoundBody')} />;
-  else if (isSuspended(actor)) body = <EmptyState title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
-  else if (!company) body = <EmptyState title={t('employer.createCompanyFirst')} body={t('employer.createCompanyFirstBody')} />;
+  if (!session) body = <SignedOut next="/employer/billing" />;
+  else if (!viewer?.profile) body = <ViewerPending />;
+  else if (!canAccessEmployerArea(actor)) body = <EmptyState icon={Compass} title={t('common.notFound')} body={t('common.notFoundBody')} />;
+  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (!company) body = <EmptyState icon={Building2} title={t('employer.createCompanyFirst')} body={t('employer.createCompanyFirstBody')} />;
   else if (billing.isPending) body = <LoadingState />;
-  else if (billing.isError) body = <ErrorState error={billing.error} onRetry={() => billing.refetch()} />;
+  else if (billing.isError && !billing.data) body = <ErrorState error={billing.error} onRetry={() => billing.refetch()} />;
   else {
     const claimed = billing.data.claimedThisMonth || claim.data === true;
     body = (
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        refreshControl={<RefreshControl refreshing={billing.isRefetching} onRefresh={() => billing.refetch()} tintColor={colors.primary} />}
-        contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+        refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >
         <Text tone="mutedForeground">{t('billing.lede')}</Text>
         {billingEnabled ? null : (
@@ -93,7 +102,8 @@ export default function BillingScreen() {
             <Text weight="semibold" accessibilityRole="header">
               {t('billing.orders')}
             </Text>
-            <View style={{ borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+            {/* One card, the orders its rows: the same surface as the credits above it. */}
+            <Card style={{ padding: 0 }}>
               {billing.data.orders.map((order, index) => (
                 <View
                   key={order.id}
@@ -102,7 +112,7 @@ export default function BillingScreen() {
                     alignItems: 'center',
                     gap: space[3],
                     padding: space[4],
-                    borderTopWidth: index ? 1 : 0,
+                    borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
                     borderTopColor: colors.border,
                   }}
                 >
@@ -120,7 +130,7 @@ export default function BillingScreen() {
                   />
                 </View>
               ))}
-            </View>
+            </Card>
           </View>
         ) : null}
       </ScrollView>

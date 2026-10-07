@@ -3,7 +3,8 @@ import { ActivityIndicator, Alert, Linking, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
-import { Check, ExternalLink, ShieldCheck, ShieldOff } from 'lucide-react-native';
+import { Check, ExternalLink, ShieldCheck, ShieldOff } from '~/components/ui/lucide';
+import { westernDigits } from '@/lib/search/arabic';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
@@ -17,7 +18,7 @@ import {
   type Enrolment,
 } from '~/features/account/settings';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 /**
  * Two-step verification with an authenticator app — the website's
@@ -52,12 +53,14 @@ export function TwoFactorSettings() {
     else setEnrolment(started);
   };
 
-  const verify = async () => {
-    const digits = code.replace(/\s+/g, '');
+  const verify = async (typed = code) => {
+    // Typed on an Arabic keyboard, the number pad gives Arabic-Indic digits.
+    const digits = westernDigits(typed).replace(/\s+/g, '');
     if (!/^\d{6}$/.test(digits)) {
       setError(t('account.mfaCodeInvalid'));
       return;
     }
+    if (pending) return;
     setError(null);
     setPending(true);
     const accepted = await verifyCode(enrolment?.factorId ?? null, digits).catch(() => false);
@@ -101,18 +104,22 @@ export function TwoFactorSettings() {
       <Field label={t('account.mfaCode')} error={error}>
         <TextField
           value={code}
-          onChangeText={setCode}
+          onChangeText={(typed) => {
+            setCode(typed);
+            // The number pad has no return key: the sixth digit is the answer.
+            if (/^\d{6}$/.test(westernDigits(typed).replace(/\s+/g, ''))) void verify(typed);
+          }}
           accessibilityLabel={t('account.mfaCode')}
           ltr
           keyboardType="number-pad"
           textContentType="oneTimeCode"
           autoComplete="one-time-code"
           maxLength={6}
-          onSubmitEditing={verify}
+          onSubmitEditing={() => void verify()}
         />
       </Field>
       <View style={{ alignItems: 'flex-start' }}>
-        <Button label={t('account.mfaVerify')} loading={pending} onPress={verify} />
+        <Button label={t('account.mfaVerify')} loading={pending} onPress={() => void verify()} />
       </View>
     </>
   );
@@ -173,7 +180,7 @@ export function TwoFactorSettings() {
         {/* For an authenticator on another device. Supabase draws the code as an SVG. */}
         <View
           accessible={false}
-          style={{ alignSelf: 'flex-start', padding: space[2], borderRadius: radius.lg, backgroundColor: '#FFFFFF' }}
+          style={{ alignSelf: 'flex-start', padding: space[2], ...corner('lg'), backgroundColor: '#FFFFFF' }}
         >
           <SvgXml xml={enrolment.qr.replace(/^data:image\/svg\+xml;utf-8,/, '')} width={176} height={176} />
         </View>
@@ -185,7 +192,7 @@ export function TwoFactorSettings() {
             selectable
             variant="small"
             weight="medium"
-            style={{ writingDirection: 'ltr', textAlign: 'left', padding: space[2], borderRadius: radius.md, backgroundColor: colors.muted }}
+            style={{ writingDirection: 'ltr', textAlign: 'left', padding: space[2], ...corner('md'), backgroundColor: colors.muted }}
           >
             {enrolment.secret}
           </Text>

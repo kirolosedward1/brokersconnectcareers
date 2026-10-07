@@ -11,6 +11,7 @@ import type { ActionResult } from '@/lib/actions/jobs';
 import { after } from 'next/server';
 import { CV_BUCKET } from '@/lib/buckets';
 import { CV_KINDS, MAX_BYTES, isOwnedPath, verifyStoredObject } from '@/lib/security/files';
+import { cvInUse } from '@/lib/cv-in-use';
 import { recordSecurityEvent } from '@/lib/security/events';
 import { clean } from '@/lib/security/sanitize';
 import { publish } from '@/lib/notifications/events';
@@ -58,7 +59,17 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
   if (parsed.data.cvPath) {
     if (!isOwnedPath(parsed.data.cvPath, user.id)) return { ok: false, error: 'invalid_cv_path' };
 
-    const verdict = await verifyStoredObject(CV_BUCKET, parsed.data.cvPath, CV_KINDS, MAX_BYTES.cv);
+    // Judged like any file, but a CV the caller's rows already point at is
+    // never deleted for failing the check (cv-in-use.ts).
+    const keep = await cvInUse(
+      {
+        profileCv: () => supabase.from('agent_profiles').select('cv_path').eq('user_id', user.id).maybeSingle(),
+        applicationsWith: (path) =>
+          supabase.from('applications').select('id').eq('candidate_id', user.id).eq('cv_path', path).limit(1),
+      },
+      parsed.data.cvPath,
+    );
+    const verdict = await verifyStoredObject(CV_BUCKET, parsed.data.cvPath, CV_KINDS, MAX_BYTES.cv, { keep });
     if (!verdict.ok && verdict.reason !== 'unavailable') {
       void recordSecurityEvent('upload.rejected', {
         actorId: user.id,
@@ -91,6 +102,9 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
     languages: parsed.data.languages,
     availability: parsed.data.availability,
     visibility: parsed.data.visibility,
+    // The form always asks who sees the card, so every save is the owner
+    // choosing; the database dates it (migration 336, stamp_visibility_choice).
+    visibility_chosen_at: new Date().toISOString(),
     /*
       An empty cvPath means "unchanged" — unless removing was asked for, which
       the form offered and this used to ignore, so a CV "removed" stayed on
@@ -104,12 +118,33 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
   let agentId = existing?.id;
   let createdSlug: string | null = null;
 
+  /*
+    The same write without the choice's date, when the database has never
+    heard of the column — code deployed ahead of migration 336 (PGRST204 from
+    the API, 42703 from Postgres). The profile is what the person came to
+    save; refusing all of it over the stamp would be the wrong failure.
+  */
+  const { visibility_chosen_at: _stamp, ...withoutStamp } = payload;
+  const stampUnknown = (error: { code?: string | null; message?: string } | null) =>
+    Boolean(
+      error &&
+        (error.code === 'PGRST204' || error.code === '42703') &&
+        /visibility_chosen_at/.test(error.message ?? ''),
+    );
+
   if (existing) {
-    const { data: updated, error } = await supabase
+    let { data: updated, error } = await supabase
       .from('agent_profiles')
       .update(payload)
       .eq('id', existing.id)
       .select('id');
+    if (stampUnknown(error)) {
+      ({ data: updated, error } = await supabase
+        .from('agent_profiles')
+        .update(withoutStamp)
+        .eq('id', existing.id)
+        .select('id'));
+    }
     if (error) return { ok: false, error: error.message };
     // An update RLS filters to zero rows carries no error, and this form is
     // the one place a consultant sets their own visibility — reporting a save
@@ -118,8 +153,16 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
   } else {
     const { data, error } = await withUniqueSlug<{ id: string }>(
       () => buildAgentSlug(),
-      (slug) =>
-        supabase.from('agent_profiles').insert({ user_id: user.id, slug, ...payload }).select('id').single(),
+      async (slug) => {
+        const first = await supabase
+          .from('agent_profiles')
+          .insert({ user_id: user.id, slug, ...payload })
+          .select('id')
+          .single();
+        return stampUnknown(first.error)
+          ? supabase.from('agent_profiles').insert({ user_id: user.id, slug, ...withoutStamp }).select('id').single()
+          : first;
+      },
     );
     if (error || !data) return { ok: false, error: error?.message ?? 'insert_failed' };
     agentId = data.id;

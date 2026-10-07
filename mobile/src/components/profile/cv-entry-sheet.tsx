@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { X } from 'lucide-react-native';
+import { X } from '~/components/ui/lucide';
 import type {
   AgentCertificationRow,
   AgentEducationRow,
@@ -11,13 +11,17 @@ import type {
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
+import { KeyboardRoom } from '~/components/ui/keyboard-room';
 import { Notice } from '~/components/ui/notice';
 import { Select } from '~/components/ui/select';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { SaveRefused, useSaveCvEntry, type CvSection } from '~/features/profile/queries';
+import { ApiError } from '~/lib/api';
+import { useErrorsInView } from '~/lib/use-errors-in-view';
+import { useConfirmDiscard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, space } from '~/theme/tokens';
+import { gutter, hitTarget, space } from '~/theme/tokens';
 import { dateOf, monthOf, wholeNumber } from './fields';
 
 export type CvEntry =
@@ -31,10 +35,28 @@ export type CvEntry =
  * typed hostage. Dates are a year and a month, as the entries show them.
  */
 export function CvEntrySheet({ agentId, entry, onClose }: { agentId: string; entry: CvEntry | null; onClose: () => void }) {
+  // Whether the form has been typed in: the sheet pulled down asks first then.
+  const dirty = useRef(false);
+  const onDirty = useCallback((value: boolean) => {
+    dirty.current = value;
+  }, []);
+  const confirm = useConfirmDiscard();
+  const close = () => (dirty.current ? confirm(onClose) : onClose());
   return (
-    <Modal visible={entry !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      {/* A fresh form for every entry opened. */}
-      {entry ? <EntryForm key={`${entry.section}:${entry.row?.id ?? 'new'}`} agentId={agentId} entry={entry} onClose={onClose} /> : null}
+    <Modal visible={entry !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
+      <KeyboardRoom>
+        {/* A fresh form for every entry opened. */}
+        {entry ? (
+          <EntryForm
+            key={`${entry.section}:${entry.row?.id ?? 'new'}`}
+            agentId={agentId}
+            entry={entry}
+            onClose={onClose}
+            onRequestClose={close}
+            onDirty={onDirty}
+          />
+        ) : null}
+      </KeyboardRoom>
     </Modal>
   );
 }
@@ -45,7 +67,21 @@ const TITLE: Record<CvSection, { add: string; section: string }> = {
   certification: { add: 'addCertification', section: 'certifications' },
 };
 
-function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntry; onClose: () => void }) {
+function EntryForm({
+  agentId,
+  entry,
+  onClose,
+  onRequestClose,
+  onDirty,
+}: {
+  agentId: string;
+  entry: CvEntry;
+  /** Closes the sheet: after a save. */
+  onClose: () => void;
+  /** Asks first when something was typed: the X, the sheet pulled down. */
+  onRequestClose: () => void;
+  onDirty: (dirty: boolean) => void;
+}) {
   const t = useTranslations();
   const { colors } = useTheme();
   const save = useSaveCvEntry();
@@ -70,6 +106,30 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
   const [issued, setIssued] = useState(monthOf(certification?.issued));
   const [expires, setExpires] = useState(monthOf(certification?.expires));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Save is below every field: an error above it is brought into view and said.
+  const scroll = useRef<ScrollView>(null);
+  const inView = useErrorsInView(scroll, [
+    'companyName',
+    'title',
+    'started',
+    'ended',
+    'highlights',
+    'institution',
+    'graduated',
+    'name',
+    'issued',
+    'expires',
+  ]);
+  const refuse = (next: Record<string, string>) => {
+    setErrors(next);
+    inView.show(next);
+  };
+
+  const typed = JSON.stringify([companyName, title, track, started, ended, highlights, institution, degree, field, graduated, name, issuer, issued, expires]);
+  const [opened] = useState(typed);
+  useEffect(() => {
+    onDirty(typed !== opened);
+  }, [onDirty, typed, opened]);
 
   const required = t('validation.required');
   const badMonth = t('app.profile.monthInvalid');
@@ -77,11 +137,11 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
   const onError = (failure: unknown) => {
     const reason = failure instanceof SaveRefused ? failure.reason : 'failed';
     const fields = failure instanceof SaveRefused ? failure.fieldErrors : undefined;
-    if (reason === 'cap') return setErrors({ form: t('cv.capReached') });
-    if (fields?.ended || fields?.expires) {
-      return setErrors({ [fields.ended ? 'ended' : 'expires']: t('app.profile.endBeforeStart') });
-    }
-    setErrors({ form: t('common.errorBody') });
+    if (reason === 'cap') return refuse({ form: t('cv.capReached') });
+    // Named, not a computed key, which the React Compiler does not compile.
+    if (fields?.ended) return refuse({ ended: t('app.profile.endBeforeStart') });
+    if (fields?.expires) return refuse({ expires: t('app.profile.endBeforeStart') });
+    refuse({ form: failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody') });
   };
   const done = { onSuccess: onClose, onError };
 
@@ -97,7 +157,7 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
       else if (startedOn === undefined) local.started = badMonth;
       if (endedOn === undefined) local.ended = badMonth;
       else if (endedOn && startedOn && endedOn < startedOn) local.ended = t('app.profile.endBeforeStart');
-      if (Object.keys(local).length) return setErrors(local);
+      if (Object.keys(local).length) return refuse(local);
       setErrors({});
       return save.mutate(
         {
@@ -121,7 +181,7 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
       const year = wholeNumber(graduated);
       if (!institution.trim()) local.institution = required;
       if (year !== null && (!Number.isInteger(year) || year < 1950 || year > 2100)) local.graduated = t('app.profile.yearInvalid');
-      if (Object.keys(local).length) return setErrors(local);
+      if (Object.keys(local).length) return refuse(local);
       setErrors({});
       return save.mutate(
         {
@@ -145,7 +205,7 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
     if (issuedOn === undefined) local.issued = badMonth;
     if (expiresOn === undefined) local.expires = badMonth;
     else if (expiresOn && issuedOn && expiresOn < issuedOn) local.expires = t('app.profile.endBeforeStart');
-    if (Object.keys(local).length) return setErrors(local);
+    if (Object.keys(local).length) return refuse(local);
     setErrors({});
     save.mutate(
       {
@@ -164,12 +224,12 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
   };
 
   const month = (label: string, value: string, set: (text: string) => void, key: string, hint?: string) => (
-    <Field label={label} hint={hint ?? t('app.profile.monthHint')} error={errors[key]}>
+    <Field ref={inView.place(key)} label={label} hint={hint ?? t('app.profile.monthHint')} error={errors[key]}>
       <TextField value={value} onChangeText={set} accessibilityLabel={label} ltr keyboardType="numbers-and-punctuation" placeholder="2024-03" maxLength={7} />
     </Field>
   );
   const text = (label: string, value: string, set: (text: string) => void, key: string, max: number, optional = false) => (
-    <Field label={label} hint={optional ? t('common.optional') : undefined} error={errors[key]}>
+    <Field ref={inView.place(key)} label={label} hint={optional ? t('common.optional') : undefined} error={errors[key]}>
       <TextField value={value} onChangeText={set} accessibilityLabel={label} maxLength={max} />
     </Field>
   );
@@ -178,24 +238,26 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: space[4], gap: space[3] }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: gutter, paddingVertical: space[4], gap: space[3] }}>
         <Text variant="title" weight="bold" accessibilityRole="header" style={{ flex: 1 }}>
           {heading}
         </Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('common.close')}
-          onPress={onClose}
-          style={{ width: hitTarget, height: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+          onPress={onRequestClose}
+          // The glyph, not its 44-point box, on the page's margin.
+          style={{ width: hitTarget, height: hitTarget, marginEnd: -(hitTarget - 20) / 2, alignItems: 'center', justifyContent: 'center' }}
         >
           <X size={20} color={colors.foreground} />
         </Pressable>
       </View>
 
       <ScrollView
+        ref={scroll}
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: space[4], paddingTop: 0, paddingBottom: space[10], gap: space[4] }}
+        contentContainerStyle={{ padding: gutter, paddingTop: 0, paddingBottom: space[10], gap: space[4] }}
       >
         {entry.section === 'experience' ? (
           <>
@@ -212,7 +274,7 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
             </Field>
             {month(t('cv.started'), started, setStarted, 'started')}
             {month(t('cv.ended'), ended, setEnded, 'ended', t('app.profile.endedHint'))}
-            <Field label={t('cv.highlights')} error={errors.highlights}>
+            <Field ref={inView.place('highlights')} label={t('cv.highlights')} error={errors.highlights}>
               <TextField
                 value={highlights}
                 onChangeText={setHighlights}
@@ -228,7 +290,7 @@ function EntryForm({ agentId, entry, onClose }: { agentId: string; entry: CvEntr
             {text(t('cv.institution'), institution, setInstitution, 'institution', 160)}
             {text(t('cv.degree'), degree, setDegree, 'degree', 120, true)}
             {text(t('cv.field'), field, setField, 'field', 120, true)}
-            <Field label={t('cv.graduated')} hint={t('common.optional')} error={errors.graduated}>
+            <Field ref={inView.place('graduated')} label={t('cv.graduated')} hint={t('common.optional')} error={errors.graduated}>
               <TextField
                 value={graduated}
                 onChangeText={setGraduated}

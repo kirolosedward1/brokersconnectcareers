@@ -13,6 +13,7 @@ export const ADMIN_ERROR_CODES = [
   'no_change',
   'invalid_action',
   'invalid_transition',
+  'stale_version',
   'reason_required',
   'reason_too_long',
   'post_cap',

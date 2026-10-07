@@ -7,10 +7,14 @@
  * These are the rules the server actions lean on before anything reaches the
  * database, and every one of them is the kind that silently stops being true
  * under a refactor — a regex loosened, a scheme added, a magic number typo'd.
+ * One more is read from the source: which client the upload action writes
+ * pictures with, which the buckets' policies decide.
  */
+import { readFileSync } from 'node:fs';
 import { cleanText, clean, safeHttpUrl } from '../src/lib/security/sanitize.ts';
 import { sniffKind, isOwnedPath } from '../src/lib/security/magic.ts';
 import { secretsMatch, bearerToken } from '../src/lib/security/secrets.ts';
+import { isPaymentPage } from '../src/lib/paymob/checkout-url.ts';
 
 let pass = 0;
 let fail = 0;
@@ -71,6 +75,107 @@ console.log('\n— an href');
     check(`refuses ${JSON.stringify(bad)}`, safeHttpUrl(bad) === null, String(safeHttpUrl(bad)));
   }
   check('length is bounded', safeHttpUrl(`https://example.com/${'a'.repeat(300)}`) === null);
+
+  // An Arabic page name, as people paste it: kept readable, and short enough
+  // for the column (190 after the scheme), where its escaped form was 233.
+  const page = 'https://www.facebook.com/شركة-الرواد-للتسويق-والاستثمار-العقاري';
+  check('an Arabic address is kept as it reads', safeHttpUrl(page) === page, String(safeHttpUrl(page)));
+  check(
+    'and fits the column, which its escaped form did not',
+    /^https?:\/\/[^\s]{1,190}$/i.test(safeHttpUrl(page) ?? '') && new URL(page).toString().length > 198,
+  );
+  check(
+    'an invisible direction mark stays escaped',
+    safeHttpUrl('https://example.com/a\u202Eb') === 'https://example.com/a%E2%80%AEb',
+    String(safeHttpUrl('https://example.com/a\u202Eb')),
+  );
+  check(
+    'so does a space',
+    safeHttpUrl('https://example.com/a b') === 'https://example.com/a%20b',
+    String(safeHttpUrl('https://example.com/a b')),
+  );
+  check(
+    'an address too long for the column even read is refused',
+    safeHttpUrl(`https://example.com/${'م'.repeat(185)}`) === null,
+  );
+
+  // A look-alike host: refused, here and on the phone, whose URL does not turn
+  // it to punycode and would show it as it reads.
+  for (const lookalike of [
+    'https://www.br\u043ekersconnect.net/sign-in', // a Cyrillic о among Latin letters
+    'https://\u0430\u0440\u0440\u04cf\u0435.com', // all Cyrillic, reading "apple"
+    'https://www.g\u03bf\u03bfgle.com', // Greek omicrons
+    'https://brokers\u0645\u0635\u0631.com', // Latin and Arabic in one label
+  ]) {
+    check(`refuses the look-alike ${JSON.stringify(lookalike)}`, safeHttpUrl(lookalike) === null, String(safeHttpUrl(lookalike)));
+  }
+  check('an Arabic domain name is a website', safeHttpUrl('https://\u0645\u062b\u0627\u0644.\u0645\u0635\u0631/') !== null);
+  check('as is an Arabic name under a Latin ending', safeHttpUrl('https://\u0645\u062b\u0627\u0644.com') !== null);
+  check('and a port, and capitals', safeHttpUrl('https://EXAMPLE.com:8080/x') === 'https://example.com:8080/x');
+  // Hosts as they are, which the look-alike rule must not take for one:
+  // accented Latin (stored as punycode), an underscore, an IPv6 address.
+  for (const [real, kept] of [
+    ['https://café.com/', 'https://xn--caf-dma.com/'],
+    ['https://münchen.de/', 'https://xn--mnchen-3ya.de/'],
+    ['https://my_shop.example.com/', 'https://my_shop.example.com/'],
+    ['https://[::1]/', 'https://[::1]/'],
+    ['https://[2001:db8::1]:8443/x', 'https://[2001:db8::1]:8443/x'],
+  ]) {
+    check(`keeps ${JSON.stringify(real)}`, safeHttpUrl(real) === kept, String(safeHttpUrl(real)));
+  }
+  // A backslash ends the host, as the parser reads it: what comes after is
+  // the path, not the host to check.
+  const slanted = 'https://www.br\u043ekersconnect.net\\@example.com';
+  check(`refuses ${JSON.stringify(slanted)}`, safeHttpUrl(slanted) === null, String(safeHttpUrl(slanted)));
+  // The parser takes any run of slashes and backslashes after the scheme, and
+  // drops tabs and new lines anywhere: the host checked is the one it reads.
+  for (const lead of ['https:\\', 'https:\\\\', 'https:///', 'https:/\\', 'https:/\t/', 'https://\n']) {
+    const typed = `${lead}www.br\u043ekersconnect.net/`;
+    check(`refuses the look-alike behind ${JSON.stringify(lead)}`, safeHttpUrl(typed) === null, String(safeHttpUrl(typed)));
+  }
+  // Latin letters that pass for plain ones without an accent to give them
+  // away: small capitals, phonetic and IPA letters, a dotless i, a long s, the
+  // Kelvin sign.
+  for (const lookalike of [
+    'https://www.broker\ua731\u1d04onnect.net/', // ꜱᴄ
+    'https://\u0261oogle.com/', // ɡ
+    'https://\u0131nstagram.com/', // ı
+    'https://examp\u029fe.com/', // ʟ
+    'https://\u212aitchen.com/', // K, the Kelvin sign
+    'https://pa\u017f\u017f.com/', // ſſ
+    // A capital I with a dot, which both parsers write as i and a combining dot,
+    // and the medieval letters past Vietnamese's: the Welsh ll and v, a looped y.
+    'https://\u0130nstagram.com/', // İ
+    'https://www.\u1effoutube.com/', // ỿ
+    'https://ma\u1efbs.com/', // ỻ
+    'https://\u1efdimeo.com/', // ỽ
+  ]) {
+    check(`refuses the look-alike ${JSON.stringify(lookalike)}`, safeHttpUrl(lookalike) === null, String(safeHttpUrl(lookalike)));
+  }
+  // Letters a European or Vietnamese name is written with stay welcome.
+  for (const real of [
+    'https://stra\u00dfe.de/',
+    'https://bl\u00e5b\u00e6r.no/',
+    'https://\u0142\u00f3d\u017a.pl/',
+    'https://vi\u1ec7t.vn/',
+    'https://\u0219tefan.ro/',
+    'https://c\u00e1i-\u0111\u1eb9p-\u1ef9.vn/', // the last Vietnamese letter, ỹ
+    'https://\u012fstorija.lt/', // į, the last before the dotted capital I
+  ]) {
+    check(`keeps ${JSON.stringify(real)}`, safeHttpUrl(real) !== null, String(safeHttpUrl(real)));
+  }
+}
+
+console.log('\n— the one page off the site a button may send somebody to');
+{
+  check('Paymob\'s payment page', isPaymentPage('https://accept.paymob.com/api/acceptance/iframes/812345?payment_token=abc'));
+  check('not over plain http', !isPaymentPage('http://accept.paymob.com/api/acceptance/iframes/812345?payment_token=abc'));
+  check('not another host', !isPaymentPage('https://accept.paymob.com.evil.example/api/acceptance/iframes/812345'));
+  check('not a user@host trick', !isPaymentPage('https://accept.paymob.com@evil.example/api/acceptance/iframes/1'));
+  check('not another path on the host', !isPaymentPage('https://accept.paymob.com/api/auth/tokens'));
+  check('not a script', !isPaymentPage('javascript:alert(1)'));
+  check('not protocol-relative', !isPaymentPage('//evil.example/api/acceptance/iframes/1'));
+  check('nor nothing', !isPaymentPage(''));
 }
 
 console.log('\n— what a file is');
@@ -107,6 +212,30 @@ console.log('\n— the shape of a storage path');
   check('percent-encoding refused', !isOwnedPath(`${me}/%2e%2e/cv.pdf`, me));
   check('a bare folder refused', !isOwnedPath(`${me}/`, me));
   check('spaces refused', !isOwnedPath(`${me}/my cv.pdf`, me));
+}
+
+console.log('\n— who writes a photo or a logo');
+{
+  // Since migration 346 nobody may write into the public picture buckets with
+  // their own session (supabase/tests/decisions.test.mjs, "a person cannot
+  // write a photo straight into the public bucket"), so that what they serve
+  // is only what the server decoded and wrote again. So the upload action
+  // writes with the service role whenever the server has its key. Production
+  // had no key, and written with the service role alone nobody could put a
+  // logo on their company (PR #32): without the key it writes with the
+  // caller's session, which the buckets take until 346 is applied.
+  const source = readFileSync(new URL('../src/lib/actions/uploads.ts', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  const chooser = /function pictureStorage\([^)]*\)[^{]*\{([\s\S]*?)\n\}/.exec(source)?.[1] ?? '';
+  const action = source.replace(/function pictureStorage[\s\S]*$/, '');
+  check('the upload action writes the picture', /\.upload\(/.test(action));
+  check('through one choice of writer, every write and every removal', /const storage = pictureStorage\(supabase\)/.test(action) && !/\b(supabase|admin)\s*\.storage\b/.test(action));
+  check('the service role whenever the server has its key', /createAdminClient\(\)\.storage/.test(chooser) && /configuredValue\(process\.env\.SUPABASE_SERVICE_ROLE_KEY\)/.test(chooser));
+  check(
+    "the caller's own session only without it",
+    /if \(!configuredValue\(process\.env\.SUPABASE_SERVICE_ROLE_KEY\)\) return session\.storage;/.test(chooser),
+  );
 }
 
 console.log('\n— secrets');

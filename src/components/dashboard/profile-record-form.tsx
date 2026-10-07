@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Building2, TrendingUp } from 'lucide-react';
 import { SubmitButton } from '@/components/ui/submit-button';
-import { Field } from '@/components/ui/field';
+import { Field, fieldMessageId } from '@/components/ui/field';
 import { NumberInput } from '@/components/ui/number-input';
 import { saveProfileRecord } from '@/lib/actions/cv';
 import { reach } from '@/lib/reach';
@@ -65,7 +65,7 @@ export function ProfileRecordForm({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3">
           <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
-            <TrendingUp className="size-5" />
+            <TrendingUp className="size-5" aria-hidden />
           </span>
           <div>
             <h2 className="font-semibold">{t('record')}</h2>
@@ -99,9 +99,11 @@ export function ProfileRecordForm({
 
       <form onSubmit={onSubmit} className="mt-5 space-y-4">
         <Field label={t('objective')} htmlFor="summaryAr" hint={t('objectiveHint')}>
+          {/* A native textarea, so it names the hint Field renders itself. */}
           <textarea
             id="summaryAr"
             name="summaryAr"
+            aria-describedby={fieldMessageId('summaryAr', { hint: t('objectiveHint') })}
             rows={4}
             maxLength={1200}
             defaultValue={agent.summary_ar ?? ''}

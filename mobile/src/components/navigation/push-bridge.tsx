@@ -5,7 +5,9 @@ import { useLocale } from 'use-intl';
 import {
   destinationOf,
   forgetThisPhone,
+  holdsPushToken,
   notificationIdOf,
+  pushAvailable,
   registerThisPhone,
   stopListeningHere,
   usePushState,
@@ -13,7 +15,8 @@ import {
 import { useUnreadCount } from '~/features/notifications/queries';
 import { pushTapped, takePushTap, usePushTap } from '~/features/push/taps';
 import { openWhenReady } from '~/lib/open-path';
-import { useSession } from '~/lib/session';
+import { clearPersonalCache } from '~/lib/personal-cache';
+import { storedSession, useSession } from '~/lib/session';
 
 /**
  * Pushes, beside the root stack (mounted once the tab bar can be drawn):
@@ -29,8 +32,9 @@ import { useSession } from '~/lib/session';
  * - The app icon's badge is the bell's unread count, as the website's pushes
  *   set it.
  * - When the session ends by any road — a sign-out elsewhere, an expired
- *   refresh — the phone stops listening for pushes, so a lock screen no longer
- *   shows the last person's news. The next sign-in registers it again.
+ *   refresh, another account's email link — the phone stops listening for
+ *   pushes, so a lock screen no longer shows the last person's news. The next
+ *   sign-in registers it again.
  */
 export function PushBridge() {
   const { ready, session, viewer, viewerLoading } = useSession();
@@ -39,7 +43,45 @@ export function PushBridge() {
   const userId = session?.user.id ?? null;
   const hasProfile = Boolean(viewer?.profile);
   const state = usePushState().data;
-  const wanted = Boolean(userId && hasProfile && state?.permission === 'granted' && !state.off);
+  const wanted = Boolean(pushAvailable() && userId && hasProfile && state?.permission === 'granted' && !state.off);
+
+  // The session ended, by whichever road — or another person's began without
+  // a sign-out (an email link opened for another account): stop listening on
+  // this phone. The last person's row is theirs to remove, and their session
+  // is gone; left registered, their news kept reaching the lock screen while
+  // somebody else used the app. The new person's registration, below, waits
+  // for this (registerThisPhone), so runs after it — declared first, this
+  // runs first.
+  const previous = useRef(userId);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = userId;
+    if (!before || before === userId) return;
+    stopListeningHere();
+    // And the files they picked or exported, left in the cache.
+    clearPersonalCache();
+  }, [userId]);
+
+  // Ended before anything here was listening: a cold start whose refresh the
+  // auth server refused (signed out on the website, a password changed
+  // elsewhere) clears the session before any screen mounts, so the change
+  // from somebody to nobody above is never seen. A push token still held here
+  // is what that person left; it goes the same way. Only once the stored
+  // session is gone too: a refresh that could not be answered keeps it, and
+  // the person is still signed in.
+  useEffect(() => {
+    if (!ready || userId) return;
+    let live = true;
+    (async () => {
+      if (!(await holdsPushToken()) || (await storedSession())) return;
+      if (!live) return;
+      stopListeningHere();
+      clearPersonalCache();
+    })().catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [ready, userId]);
 
   // Register, and again when the token changes.
   useEffect(() => {
@@ -57,10 +99,25 @@ export function PushBridge() {
     if (off) forgetThisPhone().catch(() => {});
   }, [off, userId]);
 
-  // Arriving while the app is open: the bell's count and feed are stale now.
+  // Arriving while the app is open: the bell's count and feed are stale now,
+  // and so may the account be — an approval or a suspension is told this way,
+  // and the screens that depend on it (the directory, the standing notice)
+  // follow without waiting for the app to come back from the background. So
+  // are the lists a push is most often about: a new applicant in a company's
+  // inbox and pipelines, its overview and its listings' counts; a move in a
+  // candidate's applications and the summary on their Home. Whatever is
+  // mounted is read again (a tab left open behind another included), the
+  // rest when it is next opened.
   useEffect(() => {
     const subscription = Notifications.addNotificationReceivedListener(() => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['viewer'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'applicants'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'summary'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'trend'] });
+      queryClient.invalidateQueries({ queryKey: ['employer', 'listings'] });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      queryClient.invalidateQueries({ queryKey: ['candidate'] });
     });
     return () => subscription.remove();
   }, [queryClient]);
@@ -94,6 +151,7 @@ export function PushBridge() {
     destinationOf(id).then((href) => {
       openWhenReady(href);
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['viewer'] });
     });
   }, [tapped, known, userId, queryClient]);
 
@@ -103,15 +161,6 @@ export function PushBridge() {
     if (!userId || unread === undefined) return;
     Notifications.setBadgeCountAsync(unread).catch(() => {});
   }, [userId, unread]);
-
-  // The session ended, by whichever road: stop listening on this phone.
-  const previous = useRef(userId);
-  useEffect(() => {
-    const before = previous.current;
-    previous.current = userId;
-    if (!before || userId) return;
-    stopListeningHere();
-  }, [userId]);
 
   return null;
 }

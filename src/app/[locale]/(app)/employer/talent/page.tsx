@@ -6,7 +6,8 @@ import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/pagination';
 import { ShortlistList, type ShortlistRow } from '@/components/employer/shortlist-list';
-import { requireEmployer } from '@/lib/auth';
+import { actorOf, requireEmployer } from '@/lib/auth';
+import { canBrowseAgentDirectory } from '@/lib/permissions';
 import { querySavedAgents } from '@/lib/queries/agents';
 import { getDistrictMap } from '@/lib/queries/taxonomy';
 import { formatDate, formatList, formatNumber } from '@/lib/utils';
@@ -51,7 +52,10 @@ export default async function TalentPoolPage({
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
-  await requireEmployer(locale);
+  const viewer = await requireEmployer(locale);
+  // The directory takes approved employers only; one still waiting was
+  // offered it here, on an empty shortlist, and bounced back to /employer.
+  const mayBrowse = canBrowseAgentDirectory(actorOf(viewer));
 
   const asked = Number.parseInt((await searchParams).page ?? '1', 10);
   const requested = Number.isFinite(asked) && asked > 0 ? Math.min(asked, 50) : 1;
@@ -113,9 +117,11 @@ export default async function TalentPoolPage({
           <EmptyIllustration name="choose" />
           <p className="font-medium">{t('shortlistEmpty')}</p>
           <p className="mt-1 text-sm text-muted-foreground">{t('shortlistEmptyHint')}</p>
-          <Button asChild className="mt-5">
-            <Link href="/agents">{tAgents('title')}</Link>
-          </Button>
+          {mayBrowse ? (
+            <Button asChild className="mt-5">
+              <Link href="/agents">{tAgents('title')}</Link>
+            </Button>
+          ) : null}
         </div>
       ) : (
         <>

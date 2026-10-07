@@ -2,9 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { configuredValue } from '@/lib/env';
 import { AVATAR_BUCKET, COMPANY_LOGOS_BUCKET } from '@/lib/buckets';
 import { IMAGE_KINDS, MAX_BYTES, reencodeImage, sniffKind } from '@/lib/security/files';
 import { recordSecurityEvent } from '@/lib/security/events';
+import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 import { uuid } from '@/lib/utils';
 import type { ActionResult } from '@/lib/actions/jobs';
 
@@ -24,18 +27,18 @@ import type { ActionResult } from '@/lib/actions/jobs';
  * Ownership is decided the way it was before: the photo is written into the
  * caller's own folder and recorded through the caller's own session, and the
  * logo is recorded through companies_update_own, which only a company admin
- * satisfies. The object is written with that same session, not with the
- * service role.
+ * satisfies. The object is removed again if the record is refused.
  *
- * It used to be written with the service role, on the reasoning that the
- * re-encoded bytes are the server's. That reasoning cost the feature: the key
- * is not set on production, so createAdminClient() threw on every upload and
- * the employer got "try again" forever — nobody could put a logo on their
- * company, and no candidate could set a photo. The bucket policies already
- * say who may write where ("owners manage their company logo" checks
- * owns_company on the folder; avatars check auth.uid()), so the caller's own
- * session satisfies them, and doing it this way also means a bug here cannot
- * write outside what the caller is allowed to touch.
+ * Who writes the object is pictureStorage's question: the service role when
+ * the server has its key, the caller's own session when it does not. Since
+ * migration 346 nobody may write into these buckets with their own session,
+ * so that they serve only what this action decoded and wrote again; once 346
+ * is applied, the key is what keeps uploads working (docs/app-store.md,
+ * "Before the first submission", step 1). Before it, production has no key
+ * and the buckets still take the caller's session (PR #32): written with the
+ * service role alone, nobody could put a logo on their company, and the
+ * employer was told "try again" forever. scripts/security-libs.test.mjs holds
+ * the action to both.
  */
 
 const MAX_UPLOAD_FIELD = MAX_BYTES.image;
@@ -59,6 +62,16 @@ export async function uploadImage(form: FormData): Promise<UploadOutcome> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
+
+  // Each call stores a new public object, kept a week after it is replaced,
+  // and the service role writes it — past the bucket's own cap of twenty a
+  // folder — after a full decode and re-encode. Thirty a day is anybody
+  // choosing a picture; more is a loop filling a public bucket.
+  const limit = await rateLimit(
+    `upload:image:${user.id}`,
+    await policyFor('upload:image:day', { windowSeconds: 86_400, max: 30 }),
+  );
+  if (!limit.allowed) return { ok: false, error: 'rate_limited' };
 
   // Whose folder. For a logo the company must be one the caller administers;
   // asked of the database rather than of the form.
@@ -101,12 +114,13 @@ export async function uploadImage(form: FormData): Promise<UploadOutcome> {
   // place would leave the old picture showing.
   const path = `${folder}/${kind === 'logo' ? 'logo-' : ''}${uuid()}.webp`;
 
-  const { error: uploadError } = await supabase.storage
+  const storage = pictureStorage(supabase);
+  const { error: uploadError } = await storage
     .from(bucket)
     .upload(path, image.bytes, { contentType: 'image/webp', upsert: false, cacheControl: '31536000' });
   if (uploadError) return { ok: false, error: 'unavailable' };
 
-  const url = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  const url = storage.from(bucket).getPublicUrl(path).data.publicUrl;
 
   const recorded =
     kind === 'avatar'
@@ -114,7 +128,7 @@ export async function uploadImage(form: FormData): Promise<UploadOutcome> {
       : await supabase.from('companies').update({ logo_url: url }).eq('id', folder).select('id');
 
   if (recorded.error || !recorded.data?.length) {
-    await supabase.storage.from(bucket).remove([path]);
+    await storage.from(bucket).remove([path]);
     return { ok: false, error: recorded.error ? 'failed' : 'forbidden' };
   }
 
@@ -128,4 +142,18 @@ export async function uploadImage(form: FormData): Promise<UploadOutcome> {
   }
 
   return { ok: true, data: { url } };
+}
+
+/**
+ * Who writes a picture: the service role, when the server has its key, so the
+ * buckets need take nobody's own session (migration 346); without the key,
+ * the caller's session, which the buckets accept until 346 is applied.
+ */
+function pictureStorage(session: Awaited<ReturnType<typeof createClient>>) {
+  if (!configuredValue(process.env.SUPABASE_SERVICE_ROLE_KEY)) return session.storage;
+  try {
+    return createAdminClient().storage;
+  } catch {
+    return session.storage;
+  }
 }

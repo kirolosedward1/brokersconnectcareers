@@ -117,12 +117,24 @@ export async function GET(request: NextRequest) {
           stats.considered += 1;
 
           let sent = false;
+          // When the board was read: what this digest covers runs up to here,
+          // so it is where the next one starts. Stamped after the send, as it
+          // was, a listing published while this one was being put together
+          // fell between the two — not in this digest, and before the next
+          // one's start — and was never sent to this search at all.
+          let lookedAt: string | null = null;
           try {
             const since = search.last_sent_at ?? firstRunCutoff;
             const filters = parseJobFilters(queryParams(search.query));
 
-            // Newest first, so everything published since the cutoff is at the top.
-            const { jobs } = await queryJobs({ ...filters, sort: 'newest', page: 1 }, publicClient);
+            lookedAt = new Date().toISOString();
+            // Newest first, so everything published since the cutoff is at the top
+            // — and only newest first: no sponsored listing pinned above them,
+            // which would take a place on the page and lead an email that has
+            // no "sponsored" label to give it.
+            const { jobs } = await queryJobs({ ...filters, sort: 'newest', page: 1 }, publicClient, {
+              pinSponsored: false,
+            });
 
             const matches = jobs
               .filter((job) => job.published_at && job.published_at > since)
@@ -198,7 +210,7 @@ export async function GET(request: NextRequest) {
           const at = new Date().toISOString();
           const { error: markError } = await admin
             .from('saved_searches')
-            .update(sent ? { last_checked_at: at, last_sent_at: at } : { last_checked_at: at })
+            .update(sent ? { last_checked_at: at, last_sent_at: lookedAt ?? at } : { last_checked_at: at })
             .eq('id', search.id);
 
           if (markError) {

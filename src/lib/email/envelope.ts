@@ -20,9 +20,11 @@ export type Audience = {
   /**
    * Present on optional mail only. Transactional messages pass nothing, and
    * that absence is the difference between the two categories — not a flag
-   * somewhere that a template has to remember to check.
+   * somewhere that a template has to remember to check. The page is the
+   * footer's link; one-click is the List-Unsubscribe header's address
+   * (unsubscribeLinks).
    */
-  unsubscribe?: string;
+  unsubscribe?: { page: string; oneClick: string };
 };
 
 export function buildEnvelope({
@@ -66,7 +68,7 @@ export function buildEnvelope({
       { label: c.footer.terms, href: `${env.siteUrl}/terms` },
     ],
     unsubscribe: audience.unsubscribe
-      ? { label: c.unsubscribe, href: audience.unsubscribe }
+      ? { label: c.unsubscribe, href: audience.unsubscribe.page }
       : undefined,
   };
 
@@ -89,6 +91,6 @@ export function buildEnvelope({
       footer,
     }),
     text: renderText({ heading, blocks: withHelp, footer, siteName: c.siteName }),
-    unsubscribeUrl: audience.unsubscribe,
+    unsubscribeUrl: audience.unsubscribe?.oneClick,
   };
 }

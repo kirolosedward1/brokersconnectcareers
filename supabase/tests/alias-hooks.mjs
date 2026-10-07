@@ -12,5 +12,8 @@ export async function resolve(specifier, context, next) {
     const target = new URL(`../../src/${specifier.slice(2)}.ts`, import.meta.url);
     return next(target.href, context);
   }
+  // A server module's guard against reaching a browser bundle. Next supplies
+  // the package; under Node a test is the server, so it is nothing.
+  if (specifier === 'server-only') return { url: 'data:text/javascript,export {};', shortCircuit: true };
   return next(specifier, context);
 }

@@ -70,7 +70,11 @@ export default async function AdminAuditPage({
   if (target) query = query.eq('target_id', target);
 
   const current = { type: type === 'all' ? undefined : type, actor, target };
-  const read = await mustPage(await query, 'loading the audit log', locale, hrefWith('/admin/audit', current, {}));
+  const read = await mustPage(await query, 'loading the audit log', locale, {
+    page,
+    size: AUDIT_PAGE,
+    href: (n) => hrefWith('/admin/audit', current, { page: n }),
+  });
   const rows = read.data as AdminAuditRow[];
 
   const t = await getTranslations('admin');

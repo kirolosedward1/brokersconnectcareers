@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, View } from 'react-native';
-import { Check, ChevronDown, X } from 'lucide-react-native';
+import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Check, ChevronDown, X } from '~/components/ui/lucide';
 import { useTranslations } from 'use-intl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { Text } from './text';
 
 export type SelectOption<T extends string | number> = { value: T; label: string };
@@ -23,6 +23,7 @@ export function Select<T extends string | number>({
   placeholder,
   onChange,
   required = false,
+  inlineLabel = false,
 }: {
   label: string;
   value: T | null;
@@ -31,6 +32,8 @@ export function Select<T extends string | number>({
   placeholder: string;
   onChange: (value: T | null) => void;
   required?: boolean;
+  /** The label inside the field, before the choice ("sort by: newest"), where nothing above it names the field. */
+  inlineLabel?: boolean;
 }) {
   const t = useTranslations('common');
   const { colors } = useTheme();
@@ -52,19 +55,21 @@ export function Select<T extends string | number>({
         accessibilityLabel={`${label}: ${current?.label ?? placeholder}`}
         onPress={() => setOpen(true)}
         style={({ pressed }) => ({
-          minHeight: hitTarget,
+          minHeight: hitTarget + 6,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: space[2],
-          paddingHorizontal: space[3],
-          borderRadius: radius.lg,
+          paddingHorizontal: space[4] - 2,
+          ...corner('lg'),
           borderWidth: 1,
           borderColor: colors.input,
           backgroundColor: pressed ? colors.muted : colors.card,
         })}
       >
-        <Text tone={current ? 'foreground' : 'mutedForeground'} numberOfLines={1} style={{ flexShrink: 1 }}>
+        {/* Inline, the words wrap rather than cut: it is how the largest text sizes show a choice. */}
+        <Text tone={current ? 'foreground' : 'mutedForeground'} numberOfLines={inlineLabel ? undefined : 1} style={{ flexShrink: 1 }}>
+          {inlineLabel ? <Text tone="mutedForeground">{`${label}: `}</Text> : null}
           {current?.label ?? placeholder}
         </Text>
         <ChevronDown size={18} color={colors.mutedForeground} />
@@ -77,13 +82,14 @@ export function Select<T extends string | number>({
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
-              paddingHorizontal: space[4],
+              paddingHorizontal: gutter,
               paddingVertical: space[3],
-              borderBottomWidth: 1,
+              borderBottomWidth: StyleSheet.hairlineWidth,
               borderBottomColor: colors.border,
             }}
           >
-            <Text weight="semibold" accessibilityRole="header">
+            {/* Wraps at the largest text sizes, rather than pushing Close off the sheet. */}
+            <Text variant="headline" weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
               {label}
             </Text>
             <Pressable
@@ -91,7 +97,8 @@ export function Select<T extends string | number>({
               accessibilityLabel={t('close')}
               onPress={() => setOpen(false)}
               hitSlop={10}
-              style={{ minWidth: hitTarget, minHeight: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+              // The glyph, not its 44-point box, on the page's margin.
+              style={{ minWidth: hitTarget, minHeight: hitTarget, marginEnd: -(hitTarget - 20) / 2, alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={20} color={colors.foreground} />
             </Pressable>
@@ -113,16 +120,16 @@ export function Select<T extends string | number>({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: space[2],
-                    paddingHorizontal: space[4],
+                    paddingHorizontal: gutter,
                     backgroundColor: pressed ? colors.muted : 'transparent',
-                    borderBottomWidth: 1,
+                    borderBottomWidth: StyleSheet.hairlineWidth,
                     borderBottomColor: colors.border,
                   })}
                 >
                   <Text tone={item.value === null ? 'mutedForeground' : 'foreground'} style={{ flexShrink: 1 }}>
                     {item.label}
                   </Text>
-                  {selected ? <Check size={18} color={colors.primary} /> : null}
+                  {selected ? <Check size={20} color={colors.primary} strokeWidth={2.5} /> : null}
                 </Pressable>
               );
             }}

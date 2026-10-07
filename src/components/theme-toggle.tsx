@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
@@ -55,6 +55,30 @@ const OPTIONS: { value: Theme; icon: typeof Sun; key: 'light' | 'dark' | 'system
 export function ThemeToggle() {
   const t = useTranslations('theme');
   const [theme, setTheme] = useState<Theme | null>(null);
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  function choose(value: Theme) {
+    setTheme(value);
+    applyTheme(value);
+  }
+
+  /*
+    A radio group is one stop in the tab order, and the arrows move the choice
+    — three stops and no arrows was a radio group in name only. Direction
+    follows the screen, as in ui/tabs.tsx: under RTL the left arrow is the next
+    option, because that is where it sits.
+  */
+  function onKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
+    const rtl = document.documentElement.dir === 'rtl';
+    const forward = event.key === 'ArrowDown' || event.key === (rtl ? 'ArrowLeft' : 'ArrowRight');
+    const backward = event.key === 'ArrowUp' || event.key === (rtl ? 'ArrowRight' : 'ArrowLeft');
+    if (!forward && !backward) return;
+
+    event.preventDefault();
+    const next = (index + (forward ? 1 : -1) + OPTIONS.length) % OPTIONS.length;
+    choose(OPTIONS[next].value);
+    refs.current[next]?.focus();
+  }
 
   useEffect(() => {
     let stored: string | null = null;
@@ -87,18 +111,20 @@ export function ThemeToggle() {
       aria-label={t('label')}
       className="flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5"
     >
-      {OPTIONS.map(({ value, icon: Icon, key }) => (
+      {OPTIONS.map(({ value, icon: Icon, key }, index) => (
         <button
           key={value}
+          ref={(node) => {
+            refs.current[index] = node;
+          }}
           type="button"
           role="radio"
           aria-checked={theme === value}
           aria-label={t(key)}
           title={t(key)}
-          onClick={() => {
-            setTheme(value);
-            applyTheme(value);
-          }}
+          tabIndex={theme === value ? 0 : -1}
+          onClick={() => choose(value)}
+          onKeyDown={(event) => onKeyDown(event, index)}
           className={cn(
             'grid size-11 place-items-center rounded-md transition-colors',
             theme === value

@@ -1,7 +1,8 @@
 {
   "ios": {
     "CFBundleDisplayName": "Brokers Connect",
-    "NSPhotoLibraryUsageDescription": "Your photos are used to choose your profile photo or your company's logo; nothing is uploaded except what you pick.",
-    "NSCameraUsageDescription": "The camera is used to take your profile photo or photograph your company's documents."
+    "NSPhotoLibraryUsageDescription": "Your photos are used to choose your profile photo, your company's logo or its documents; nothing is uploaded except what you pick.",
+    "NSCameraUsageDescription": "The camera is used to photograph your company's documents for its verification.",
+    "NSFaceIDUsageDescription": "Face ID is used to lock and unlock the app, only if you turn the lock on yourself."
   }
 }

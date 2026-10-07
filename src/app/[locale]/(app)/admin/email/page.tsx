@@ -7,6 +7,7 @@ import { asLocale } from '@/i18n/routing';
 import { requireAdmin } from '@/lib/auth';
 import { isPlaceholder } from '@/lib/env';
 import { createClient } from '@/lib/supabase/server';
+import { must } from '@/lib/admin/read';
 import { formatDate, formatNumber } from '@/lib/utils';
 import type { EmailActivityRow, EmailStatus } from '@/lib/supabase/database.types';
 
@@ -88,10 +89,14 @@ export default async function AdminEmailPage({
     .map(([name]) => name as string);
 
   const supabase = await createClient();
-  const [{ data: rows }, { data: summary }] = await Promise.all([
+  const [activityRead, summaryRead] = await Promise.all([
     supabase.rpc('email_activity', { p_limit: 200, p_status: active }),
     supabase.rpc('email_activity_summary'),
   ]);
+  // Raised, as on /admin/operations: an outbox that could not be read showed
+  // "no messages yet" — the one answer that sends nobody looking.
+  const rows = must(activityRead, 'loading email activity').data;
+  const summary = must(summaryRead, 'loading the email summary').data;
 
   const activity = (rows ?? []) as EmailActivityRow[];
   const counts = new Map(

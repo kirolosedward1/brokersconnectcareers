@@ -1,4 +1,4 @@
-import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
@@ -9,17 +9,22 @@ import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
 import { ConversionBars } from '~/components/dashboard/conversion-bars';
 import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
+import { PolicyNotice } from '~/components/legal/policy-notice';
 import { PushPrompt } from '~/components/push/push-prompt';
 import { StatStrip } from '~/components/dashboard/stat-strip';
 import { TrendBars } from '~/components/dashboard/trend-bars';
 import { SetupChecklist } from '~/components/employer/setup-checklist';
+import { Hero } from '~/components/home/hero';
 import { Button } from '~/components/ui/button';
+import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { useEmployerSummary, useEmployerTrend } from '~/features/employer/overview';
+import { noAnswer } from '~/lib/api';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
+import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { radius, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /**
  * An employer's Home — the website's /employer overview, in the order of what
@@ -46,28 +51,33 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
   const n = (value: number) => formatNumber(value, locale);
   const go = (href: string) => router.navigate(routeInside(href, actor) as never);
 
-  const refresh = () => {
-    summary.refetch();
-    trend.refetch();
-    queryClient.invalidateQueries({ queryKey: ['viewer'] });
-    queryClient.invalidateQueries({ queryKey: ['account', 'note'] });
-    queryClient.invalidateQueries({ queryKey: ['employer', 'suspension'] });
-    queryClient.invalidateQueries({ queryKey: ['appeal'] });
-  };
-
-  const header = (
-    <View>
-      <Text variant="title" weight="bold" accessibilityRole="header">
-        {t('dashboard.overview')}
-      </Text>
-      <Text tone="mutedForeground">{t('dashboard.employerLede')}</Text>
-    </View>
+  // The spinner is the pull's alone: a push about a new applicant reads the
+  // overview again too, and a spinner that starts by itself pushes the page
+  // down under the reader's finger.
+  const pull = usePullRefresh(() =>
+    Promise.all([
+      summary.refetch(),
+      trend.refetch(),
+      queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+      queryClient.invalidateQueries({ queryKey: ['account', 'note'] }),
+      queryClient.invalidateQueries({ queryKey: ['employer', 'suspension'] }),
+      queryClient.invalidateQueries({ queryKey: ['appeal'] }),
+    ]),
   );
+
+  const header = <Hero compact title={t('dashboard.overview')} subtitle={t('dashboard.employerLede')} />;
   const standing = profile ? <StandingNotice profile={profile} company={company} /> : null;
 
   let body: React.ReactNode;
   if (summary.isPending) {
     body = <ActivityIndicator color={colors.primary} accessibilityLabel={t('common.loading')} />;
+  } else if (summary.isError && !summary.data) {
+    body = (
+      <View style={{ gap: space[3], alignItems: 'flex-start' }}>
+        <Notice tone="destructive">{noAnswer(summary.error) ? t('app.offline.body') : t('common.errorBody')}</Notice>
+        <Button label={t('common.retry')} variant="outline" size="sm" onPress={() => summary.refetch()} />
+      </View>
+    );
   } else if (!s || !s.has_company) {
     body = isSuspended(actor) ? null : (
       <View
@@ -76,8 +86,8 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
           gap: space[2],
           paddingVertical: space[8],
           paddingHorizontal: space[6],
-          borderRadius: radius.xl,
-          borderWidth: 1,
+          ...corner('xl'),
+          borderWidth: StyleSheet.hairlineWidth * 2,
           borderStyle: 'dashed',
           borderColor: colors.border,
         }}
@@ -199,14 +209,20 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
+      // An appeal is typed on Home: its Send takes the first tap, and the field is lifted above the keyboard.
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
       refreshControl={
-        <RefreshControl refreshing={summary.isRefetching || trend.isRefetching} onRefresh={refresh} tintColor={colors.primary} />
+        <RefreshControl {...pull} tintColor={colors.primary} />
       }
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[6] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
     >
       {header}
       {/* Without a company (and so without figures) the standing still comes first. */}
       {s?.has_company ? null : standing}
+      {/* The Terms and the Privacy policy as they are now, until agreed to. */}
+      {profile ? <PolicyNotice /> : null}
       {profile ? <PushPrompt audience="employer" /> : null}
       {body}
     </ScrollView>

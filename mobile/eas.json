@@ -5,6 +5,8 @@
   },
   "build": {
     "base": {
+      "node": "22.22.2",
+      "pnpm": "10.33.0",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://hiwdhicwsohbipxzazmb.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_ghKaq9WMTXgn01IEJuh-EA_LEa9Nlry",
@@ -13,6 +15,7 @@
     },
     "development": {
       "extends": "base",
+      "channel": "development",
       "developmentClient": true,
       "distribution": "internal"
     },
@@ -22,14 +25,21 @@
     },
     "preview": {
       "extends": "base",
+      "channel": "preview",
       "distribution": "internal"
     },
     "production": {
       "extends": "base",
+      "channel": "production",
       "autoIncrement": true
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "language": "ar-SA",
+        "metadataPath": "./store.config.js"
+      }
+    }
   }
 }

@@ -1,25 +1,28 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { View } from 'react-native';
 import { space } from '~/theme/tokens';
 import { Text } from './text';
 
 /**
  * The website's Field: a label over its control, and under it either what
- * went wrong or a hint. The error is announced as it appears.
+ * went wrong or a hint. A form brings its errors into view and says them
+ * (src/lib/use-errors-in-view.ts), its `ref` being where the field is.
  */
 export function Field({
+  ref,
   label,
   hint,
   error,
   children,
 }: {
+  ref?: Ref<View>;
   label: string;
   hint?: string;
   error?: string | null;
   children: ReactNode;
 }) {
   return (
-    <View style={{ gap: space[1] }}>
+    <View ref={ref} style={{ gap: space[1] }}>
       <Text variant="small" weight="medium">
         {label}
         {hint ? (

@@ -1,0 +1,9 @@
+# What a screen must not be showing: the app's error, offline, unavailable,
+# not-found and update-required states (components/ui/states.tsx, UpdateGate).
+appId: net.brokersconnect.app
+---
+- assertNotVisible: "في حاجة غلط"
+- assertNotVisible: "مفيش اتصال بالإنترنت"
+- assertNotVisible: "الخدمة مش متاحة دلوقتي"
+- assertNotVisible: "الصفحة مش موجودة"
+- assertNotVisible: "في نسخة أحدث من التطبيق"

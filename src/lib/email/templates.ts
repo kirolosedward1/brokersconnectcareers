@@ -32,6 +32,7 @@ export const TEMPLATES = {
   job_submitted: 'transactional',
   company_verified: 'transactional',
   company_verification_needed: 'transactional',
+  company_verification_revoked: 'transactional',
 
   new_application: 'preference',
   applicant_digest: 'preference',

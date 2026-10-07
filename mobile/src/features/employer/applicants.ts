@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsFocused } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { canAccessEmployerArea } from '@/lib/permissions';
+import { clean } from '@/lib/security/sanitize';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -10,7 +12,7 @@ import type {
   JobTrack,
 } from '@/lib/supabase/database.types';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
-import { callAction, getJson } from '~/lib/api';
+import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -154,11 +156,11 @@ export type Inbox = { rows: Applicant[]; counts: Record<ApplicationStatus, numbe
  * the filters — and, beside it, how many each stage holds under the same
  * filters but any stage, which is what the stage chips count.
  */
-export function useInbox(filters: InboxFilters) {
+export function useInbox(filters: InboxFilters, { enabled = true }: { enabled?: boolean } = {}) {
   const companyId = useCompanyId();
   return useQuery({
     queryKey: ['employer', 'applicants', 'inbox', companyId, filters],
-    enabled: Boolean(companyId),
+    enabled: enabled && Boolean(companyId),
     queryFn: async (): Promise<Inbox> => {
       const narrow = <Q extends { eq: (c: string, v: string) => Q; ilike: (c: string, v: string) => Q }>(query: Q) => {
         let next = query.eq('job.company_id', companyId as string);
@@ -190,7 +192,66 @@ export function useInbox(filters: InboxFilters) {
   });
 }
 
-export type Notes = { byApplication: Record<string, ApplicationNoteRow[]>; authors: Record<string, string> };
+export type ListingTitle = { id: string; title_ar: string; title_en: string | null };
+
+/**
+ * What the inbox can be narrowed to — the website's choices: the company's
+ * newest two hundred listings, drafts and closed ones among them (their
+ * applicants are still here), whether or not anyone on screen applied to
+ * them, and the one it is narrowed to whatever its age. Built from the rows
+ * on screen, the picker lost every other listing as soon as it narrowed, and
+ * read "all listings" over a narrowed list. Kept under the listings' key, so a
+ * listing posted or edited is read again here and a status move is not.
+ */
+export function useInboxListings(chosen: string | null, { enabled = true }: { enabled?: boolean } = {}) {
+  const companyId = useCompanyId();
+  const newest = useQuery({
+    queryKey: ['employer', 'listings', 'titles', companyId],
+    enabled: enabled && Boolean(companyId),
+    queryFn: async (): Promise<ListingTitle[]> => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('id, title_ar, title_en')
+        .eq('company_id', companyId as string)
+        .order('created_at', { ascending: false })
+        .limit(APPLICANTS_CAP);
+      if (error) throw error;
+      return (data ?? []) as ListingTitle[];
+    },
+  });
+  const missing = Boolean(chosen && newest.data && !newest.data.some((job) => job.id === chosen));
+  const older = useQuery({
+    queryKey: ['employer', 'listings', 'title', companyId, chosen],
+    enabled: enabled && missing,
+    queryFn: async (): Promise<ListingTitle | null> => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('id, title_ar, title_en')
+        .eq('company_id', companyId as string)
+        .eq('id', chosen as string)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as ListingTitle | null) ?? null;
+    },
+  });
+  const listings = newest.data ?? [];
+  return { data: missing && older.data ? [older.data, ...listings] : listings, refetch: () => newest.refetch() };
+}
+
+export type Notes = {
+  byApplication: Record<string, ApplicationNoteRow[]>;
+  authors: Record<string, string>;
+  /** The applicants these were read for. Any other card's notes are unread, not none. */
+  read: string[];
+};
+
+/**
+ * One card's notes, or undefined while they are unread — which a card treats
+ * differently from none (its note box, and how a lost answer is checked).
+ */
+export function notesOf(notes: Notes | undefined, applicationId: string): ApplicationNoteRow[] | undefined {
+  return notes?.read.includes(applicationId) ? (notes.byApplication[applicationId] ?? []) : undefined;
+}
 
 /**
  * The company's own notes on these applicants, oldest first, and who wrote
@@ -202,6 +263,11 @@ export function useApplicantNotes(applicationIds: string[]) {
   return useQuery({
     queryKey: ['employer', 'notes', key],
     enabled: applicationIds.length > 0,
+    // A new applicant changes the set, and so the key. The cards already on
+    // screen keep their notes while it is read — an open note box with a
+    // sentence half typed in it stays open — and only the new card's are
+    // unread (notesOf).
+    placeholderData: keepPreviousData,
     queryFn: async (): Promise<Notes> => {
       const { data, error } = await supabase
         .from('application_notes')
@@ -225,7 +291,7 @@ export function useApplicantNotes(applicationIds: string[]) {
           if (member.profile?.full_name) authors[member.user_id] = member.profile.full_name;
         }
       }
-      return { byApplication, authors };
+      return { byApplication, authors, read: applicationIds };
     },
   });
 }
@@ -235,10 +301,17 @@ export function useApplicantNotes(applicationIds: string[]) {
  * as it renders them — which is where the candidate's "the company opened it"
  * comes from. Once per applicant per screen, and never in the way: the answer
  * is always ok.
+ *
+ * Only while the screen is the one in front. The native tab bar draws every
+ * tab's first screen at launch, hidden, and a screen left under another keeps
+ * reading: stamped from there, applicants nobody had looked at were told the
+ * company opened their application, at every launch.
  */
 export function useMarkSeen(applicants: Applicant[] | undefined) {
+  const onScreen = useIsFocused();
   const sent = useRef(new Set<string>());
   useEffect(() => {
+    if (!onScreen) return;
     const ids = (applicants ?? [])
       .filter((row) => !row.employer_viewed_at && !sent.current.has(row.id))
       .map((row) => row.id)
@@ -246,7 +319,7 @@ export function useMarkSeen(applicants: Applicant[] | undefined) {
     if (!ids.length) return;
     for (const id of ids) sent.current.add(id);
     void callAction('markApplicantsSeen', { ids }).catch(() => {});
-  }, [applicants]);
+  }, [applicants, onScreen]);
 }
 
 /** A colleague moved this applicant first; their move stands. */
@@ -263,6 +336,22 @@ export class MovedAlready extends Error {
  * rather than overwritten, and always with the decision note (the action
  * writes it on every move).
  */
+/**
+ * Whether a move whose answer never came is in: the stage it was sent to and
+ * the reason as the website stores it (clean, or nothing). A read that fails
+ * is "not known to be".
+ */
+async function moveLanded(input: { applicationId: string; status: ApplicationStatus; decisionNote: string }) {
+  const { data, error } = await supabase
+    .from('applications')
+    .select('status, decision_note')
+    .eq('id', input.applicationId)
+    .maybeSingle();
+  if (error || !data) return false;
+  const row = data as { status: ApplicationStatus; decision_note: string | null };
+  return row.status === input.status && (row.decision_note ?? null) === (clean(input.decisionNote.trim(), true) || null);
+}
+
 export function useSetApplicationStatus() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -272,18 +361,64 @@ export function useSetApplicationStatus() {
         status: input.status,
         decisionNote: input.decisionNote.trim() || null,
         from: input.from,
+      }).catch(async (error: unknown) => {
+        // No answer: the move may be in, and only the answer lost. Said to be
+        // offline over a card the re-read then showed moved, the employer
+        // was told it had not happened when it had.
+        if (!refusedAtTheDoor(error) && (await moveLanded(input))) return { ok: true as const };
+        throw error;
       });
       if (!result.ok) throw result.error === 'moved_already' ? new MovedAlready() : new Error(result.error);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['employer'] }),
+    // The stages are read again before the move counts as settled, so the card
+    // then shows what is stored (a colleague's move included). The overview's
+    // and the listings' counts follow without holding the button.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['employer', 'summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['employer', 'trend'] });
+      void queryClient.invalidateQueries({ queryKey: ['employer', 'listings'] });
+      return queryClient.invalidateQueries({ queryKey: ['employer', 'applicants'] });
+    },
   });
+}
+
+/**
+ * The note this person just sent, if the database has it: their words, as the
+ * website stores them, written after every note the card had shown (`after`,
+ * the newest id it knew). Null when it is not there, or cannot be read.
+ */
+async function noteWritten(input: { applicationId: string; body: string; after: number }, authorId: string) {
+  const { data, error } = await supabase
+    .from('application_notes')
+    .select('*')
+    .eq('application_id', input.applicationId)
+    .eq('author_id', authorId)
+    .gt('id', input.after)
+    .order('id', { ascending: false })
+    .limit(10);
+  if (error) return null;
+  const words = clean(input.body, true);
+  return ((data ?? []) as ApplicationNoteRow[]).find((note) => note.body === words) ?? null;
 }
 
 export function useAddNote() {
   const queryClient = useQueryClient();
+  const authorId = useSession().session?.user.id ?? null;
   return useMutation({
-    mutationFn: async (input: { applicationId: string; body: string }) => {
-      const result = await callAction('addApplicationNote', input);
+    // `after`: the newest note the card showed, or null while its notes were unread — then an
+    // older note in the same words could not be told from this one, and nothing is looked for.
+    mutationFn: async (input: { applicationId: string; body: string; after: number | null }) => {
+      const { after } = input;
+      const result = await callAction('addApplicationNote', { applicationId: input.applicationId, body: input.body }).catch(
+        async (error: unknown) => {
+          // No answer: the note may be in, and only the answer lost — sent again,
+          // it was written twice. What the database holds decides.
+          const written =
+            !refusedAtTheDoor(error) && authorId && after !== null ? await noteWritten({ ...input, after }, authorId) : null;
+          if (written) return { ok: true as const, data: { note: written } };
+          throw error;
+        },
+      );
       if (!result.ok) throw new Error(result.error);
       return result.data?.note ?? null;
     },

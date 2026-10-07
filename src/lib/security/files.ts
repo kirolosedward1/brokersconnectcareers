@@ -32,6 +32,12 @@ export async function verifyStoredObject(
   path: string,
   allowed: readonly FileKind[],
   maxBytes: number,
+  /**
+   * `keep`: a file rows already point at (cv-in-use.ts) is judged the same,
+   * but never taken out — removing a refused file is right for one just
+   * uploaded, and took a profile's CV out from under it.
+   */
+  { keep = false }: { keep?: boolean } = {},
 ): Promise<StoredObjectVerdict> {
   let admin;
   try {
@@ -55,7 +61,7 @@ export async function verifyStoredObject(
 
   const size = Number((object.metadata as { size?: number } | null)?.size ?? 0);
   if (size > maxBytes) {
-    await admin.storage.from(bucket).remove([path]);
+    if (!keep) await admin.storage.from(bucket).remove([path]);
     return { ok: false, reason: 'too_large' };
   }
 
@@ -78,7 +84,7 @@ export async function verifyStoredObject(
 
   const kind = sniffKind(head);
   if (!kind || !allowed.includes(kind)) {
-    await admin.storage.from(bucket).remove([path]);
+    if (!keep) await admin.storage.from(bucket).remove([path]);
     return { ok: false, reason: 'wrong_kind', kind };
   }
 

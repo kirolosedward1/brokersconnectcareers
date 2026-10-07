@@ -8,7 +8,7 @@ import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { mustPage } from '@/lib/admin/read';
 import { PAGE_SIZE, UUID_RE, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
-import { likeNeedle } from '@/lib/search/needle';
+import { looseArabicNeedle } from '@/lib/search/needle';
 import { formatDate } from '@/lib/utils';
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
 
@@ -86,7 +86,7 @@ export default async function AdminApplicationsPage({
   if (q && UUID_RE.test(q)) {
     query = query.eq('id', q);
   } else if (q) {
-    const needle = likeNeedle(q);
+    const needle = looseArabicNeedle(q);
     if (needle) query = query.ilike('candidate.full_name', `%${needle}%`);
   }
 
@@ -96,7 +96,10 @@ export default async function AdminApplicationsPage({
     job: jobId,
     candidate: candidateId,
   };
-  const read = await mustPage(await query, 'loading applications', locale, hrefWith('/admin/applications', current, {}));
+  const read = await mustPage(await query, 'loading applications', locale, {
+    page,
+    href: (n) => hrefWith('/admin/applications', current, { page: n }),
+  });
   const rows = read.data as unknown as ApplicationListRow[];
 
   const t = await getTranslations('admin');

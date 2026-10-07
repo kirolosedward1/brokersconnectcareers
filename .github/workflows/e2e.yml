@@ -1,0 +1,136 @@
+# The app's journeys end to end (scripts/e2e/journeys.mjs), against the real
+# thing rather than fixtures: a local Supabase stack built from the
+# migrations and the seed (database, Auth, PostgREST, Storage), the demo
+# accounts made through the Auth admin API, and a production build of the
+# website serving /api/mobile/v1. A candidate signs in, saves, follows,
+# uploads a CV and applies; the employer opens, notes, moves and is refused
+# where a team member should be; the move arrives in the candidate's bell;
+# a listing is posted for review; somebody new signs up, onboards and deletes
+# the account. Then the mobile API's doors (scripts/mobile-api.smoke.mjs).
+#
+# Everything runs on the runner: the keys are the local stack's own, made by
+# `supabase start`; no secret is used (the repository is public). Never
+# pointed at production — the journeys script refuses to.
+name: End to end
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'supabase/**'
+      - 'scripts/e2e/**'
+      - 'scripts/seed-demo.mjs'
+      - 'scripts/mobile-api.smoke.mjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'next.config.*'
+      - '.github/workflows/e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'supabase/**'
+      - 'scripts/e2e/**'
+      - 'scripts/seed-demo.mjs'
+      - 'scripts/mobile-api.smoke.mjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'next.config.*'
+      - '.github/workflows/e2e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  journeys:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      # config.toml reads these; the local stack needs a value, not a real one.
+      SUPABASE_AUTH_GOOGLE_CLIENT_ID: e2e
+      SUPABASE_AUTH_GOOGLE_SECRET: e2e
+      RESEND_API_KEY: e2e
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Pinned: "latest" is looked up through GitHub's API, whose limit for
+      # the runners' shared addresses failed a run before any journey began.
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.119.0
+
+      # The migrations and seed.sql, applied by the CLI as it starts. Only
+      # what the journeys use: no dashboard, image proxy, functions runtime,
+      # analytics or realtime.
+      - name: Start Supabase
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime
+
+      - name: The local stack's keys
+        run: |
+          supabase status -o env 2> /dev/null > "$RUNNER_TEMP/supabase.env"
+          # Older CLIs call them ANON_KEY / SERVICE_ROLE_KEY, newer ones add the
+          # publishable / secret names; either serves.
+          . "$RUNNER_TEMP/supabase.env"
+          anon="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          service="${SERVICE_ROLE_KEY:-$SECRET_KEY}"
+          test -n "$anon" && test -n "$service" && test -n "$API_URL" && test -n "$DB_URL" ||
+            { echo "::error::supabase status did not give the keys"; sed 's/=.*/=…/' "$RUNNER_TEMP/supabase.env"; exit 1; }
+          password=$(openssl rand -base64 18 | tr -d '/+=')
+          echo "::add-mask::$password"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$service"
+            echo "DATABASE_URL=$DB_URL"
+            echo "NEXT_PUBLIC_SITE_URL=http://localhost:3000"
+            echo "DEMO_PASSWORD=$password"
+          } >> "$GITHUB_ENV"
+
+      - name: Demo accounts
+        run: node scripts/seed-demo.mjs
+
+      - name: Build the website
+        run: pnpm build
+
+      - name: Start the website
+        run: |
+          nohup pnpm start > "$RUNNER_TEMP/next.log" 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -sf http://localhost:3000/api/mobile/v1/config > /dev/null; then echo "up"; exit 0; fi
+            sleep 2
+          done
+          tail -n 80 "$RUNNER_TEMP/next.log"
+          echo "::error::the website did not start"
+          exit 1
+
+      - name: Journeys
+        run: node scripts/e2e/journeys.mjs
+        env:
+          SITE_URL: http://localhost:3000
+          SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: The mobile API's doors
+        run: node scripts/mobile-api.smoke.mjs
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: What the website logged
+        if: failure()
+        run: tail -n 200 "$RUNNER_TEMP/next.log" || true

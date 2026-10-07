@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Check, Scale, TriangleAlert } from 'lucide-react-native';
+import { Scale, TriangleAlert } from '~/components/ui/lucide';
 import { formatEgp, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { JobRow, SalaryReferenceRow } from '@/lib/supabase/database.types';
@@ -30,6 +30,7 @@ import {
   findSimilar,
   initialValues,
   JobSaveRefused,
+  MAX_DEVELOPERS,
   problemsOn,
   salaryReference,
   stepOf,
@@ -43,8 +44,26 @@ import {
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
+import { useSession } from '~/lib/session';
+import { useErrorsInView } from '~/lib/use-errors-in-view';
+import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, radius, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+
+/** The fields that can be refused, as each step shows them, top first. */
+const FIELD_ORDER = [
+  'titleAr',
+  'titleEn',
+  'districtId',
+  'seats',
+  'basicSalaryMin',
+  'basicSalaryMax',
+  'commissionValue',
+  'commissionNoteAr',
+  'descriptionAr',
+  'descriptionEn',
+  'requirementsAr',
+] as const;
 
 /**
  * Posting a listing, or changing one — the website's four-step JobForm:
@@ -66,11 +85,31 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   const districts = useDistricts().data ?? [];
   const developers = useDevelopers().data ?? [];
   const save = useSaveJob();
+  const { actor } = useSession();
   const scroll = useRef<ScrollView>(null);
+  const inView = useErrorsInView(scroll, FIELD_ORDER);
 
   const [idempotencyKey] = useState(() => uuid());
+  // The version the fields were filled from. The listing is read again when the
+  // app comes back to the front; sent with its new version, these fields would
+  // pass the website's check and put back what a colleague changed meanwhile.
+  const [version] = useState(() => job?.version);
   const [step, setStep] = useState(0);
   const [draft, setValues] = useState<JobValues>(() => initialValues(job, developerIds, null));
+  // Leaving with something typed asks first; once saved, the wizard closes itself.
+  const [opened] = useState(() => JSON.stringify(initialValues(job, developerIds, null)));
+  const [saved, setSaved] = useState(false);
+  useLeaveGuard(!saved && JSON.stringify(draft) !== opened, !saved && save.isPending);
+  // Closed by its own navigation, not the app's: answered after the employer
+  // switched tabs, the app's Back took whatever screen was in front there, and
+  // the wizard stayed open, saved, never to close.
+  const navigation = useNavigation();
+  useEffect(() => {
+    if (saved) {
+      if (navigation.canGoBack()) navigation.goBack();
+      else router.replace('/employer/jobs' as never);
+    }
+  }, [saved, navigation]);
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [similar, setSimilar] = useState<{ id: string; title: string; seats: number } | null>(null);
   const [reference, setReference] = useState<SalaryReferenceRow | null>(null);
@@ -89,13 +128,27 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
         ? t(`validation.${problem as Exclude<Problem, 'numberInvalid'>}`)
         : t('validation.required');
 
-  const show = (problems: Partial<Record<FieldKey, Problem>>) =>
-    setErrors(Object.fromEntries(Object.entries(problems).map(([key, problem]) => [key, say(problem as string)])));
+  /** Errors under their fields, the first brought into view and said: Next and Submit are far below them. */
+  const show = (problems: Partial<Record<FieldKey, Problem>>) => {
+    const messages = Object.fromEntries(Object.entries(problems).map(([key, problem]) => [key, say(problem as string)]));
+    setErrors(messages);
+    inView.show(messages);
+  };
 
   const goTo = (next: number) => {
     setStep(next);
     scroll.current?.scrollTo({ y: 0, animated: false });
   };
+
+  /** A refusal of the whole form: said at the top, where the screen is taken, on the step it is about. */
+  const refuse = (message: string, where = step) => {
+    setErrors({ form: message });
+    goTo(where);
+    inView.show({ form: message });
+  };
+
+  // Only the latest lookup's answer is shown: a slower one for an earlier district must not replace it.
+  const lookup = useRef(0);
 
   const next = () => {
     const problems = problemsOn(step, values);
@@ -103,8 +156,13 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     setErrors({});
     if (step === 0 && values.districtId != null) {
       // Answered on the next step, so nobody waits on a round trip to move on.
-      void findSimilar({ titleAr: values.titleAr.trim(), districtId: values.districtId, excludeId: job?.id ?? null }).then(setSimilar);
-      void salaryReference({ track: values.track, districtId: values.districtId }).then(setReference);
+      const asked = ++lookup.current;
+      void findSimilar({ titleAr: values.titleAr.trim(), districtId: values.districtId, excludeId: job?.id ?? null }).then(
+        (found) => asked === lookup.current && setSimilar(found),
+      );
+      void salaryReference({ track: values.track, districtId: values.districtId }).then(
+        (found) => asked === lookup.current && setReference(found),
+      );
     }
     goTo(step + 1);
   };
@@ -120,30 +178,34 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
       }
     }
     setErrors({});
-    save.mutate(toJobInput(values, { id: job?.id, version: job?.version, idempotencyKey, submit: publish }), {
-      onSuccess: () => (router.canGoBack() ? router.back() : router.replace('/employer/jobs' as never)),
+    save.mutate(toJobInput(values, { id: job?.id, version, idempotencyKey, submit: publish }), {
+      // Closed once the guard has stood down (the effect above), not from here.
+      onSuccess: () => setSaved(true),
       onError: (failure) => {
-        if (failure instanceof ApiError && failure.status === 0) return setErrors({ form: t('app.offline.body') });
+        if (failure instanceof ApiError && failure.status === 0) return refuse(t('app.offline.body'));
         const reason = failure instanceof JobSaveRefused ? failure.reason : 'failed';
         const fields = failure instanceof JobSaveRefused ? failure.fieldErrors : undefined;
-        if (reason === 'stale' || reason === 'invalid_transition') return setErrors({ form: t('employer.listingMoved') });
-        if (reason === 'standing') return setErrors({ form: t('employer.standingBlocked') });
-        if (reason === 'company_suspended') return setErrors({ form: t('employer.companySuspendedBlocked') });
+        if (reason === 'stale' || reason === 'invalid_transition') return refuse(t('employer.listingMoved'));
+        // Under review is not restricted: an account still pending is told it is being looked at.
+        if (reason === 'standing') {
+          return refuse(t(actor?.profile?.approval_status === 'pending' ? 'employer.pendingBody' : 'employer.standingBlocked'));
+        }
+        if (reason === 'company_suspended') return refuse(t('employer.companySuspendedBlocked'));
         if (reason === 'post_cap' || reason === 'post_rate_limit') {
-          goTo(3);
-          return setErrors({ form: t(reason === 'post_cap' ? 'employer.postCapBlocked' : 'employer.postRateLimited') });
+          return refuse(t(reason === 'post_cap' ? 'employer.postCapBlocked' : 'employer.postRateLimited'), 3);
         }
-        if (reason === 'duplicate_listing') {
-          goTo(0);
-          return setErrors({ form: t('employer.duplicateListingBlocked') });
-        }
+        if (reason === 'duplicate_listing') return refuse(t('employer.duplicateListingBlocked'), 0);
         if (fields && Object.keys(fields).length) {
-          setErrors(Object.fromEntries(Object.entries(fields).map(([key, message]) => [key, say(message)])));
           const where = stepOf(Object.keys(fields));
-          if (where != null) goTo(where);
+          // A field with no place on any step (the developers past their limit) is not refused in silence.
+          if (where == null) return refuse(t('common.errorBody'));
+          const messages = Object.fromEntries(Object.entries(fields).map(([key, message]) => [key, say(message)]));
+          setErrors(messages);
+          goTo(where);
+          inView.show(messages);
           return;
         }
-        setErrors({ form: t('common.errorBody') });
+        refuse(t('common.errorBody'));
       },
     });
   };
@@ -154,7 +216,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     max: number,
     options: { hint?: string; ltr?: boolean; lines?: number } = {},
   ) => (
-    <Field label={label} hint={options.hint} error={errors[key]}>
+    <Field ref={inView.place(key)} label={label} hint={options.hint} error={errors[key]}>
       <TextField
         value={values[key]}
         onChangeText={set(key)}
@@ -182,47 +244,43 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
       automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
-      contentContainerStyle={{ padding: space[4], paddingBottom: space[10], gap: space[5] }}
+      contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
     >
-      {/* Where the form is, and a way back to any step. */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-        {STEPS.map((name, index) => {
-          const current = index === step;
-          return (
+      {/*
+        Where the form is, and a way back to any step: a segment each, filled
+        up to this one — one row at any width, where four labelled pills
+        wrapped — with the step's name under it.
+      */}
+      <View style={{ gap: space[2] }}>
+        <View style={{ flexDirection: 'row', gap: space[1] + 2 }}>
+          {STEPS.map((name, index) => (
             <Pressable
               key={name}
               accessibilityRole="button"
               accessibilityLabel={t(`jobForm.${name}`)}
-              accessibilityState={{ selected: current }}
+              accessibilityState={{ selected: index === step }}
               onPress={() => goTo(index)}
-              style={{
-                minHeight: 36,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: space[1],
-                paddingHorizontal: space[3],
-                borderRadius: radius.md,
-                backgroundColor: current ? colors.primary : 'transparent',
-              }}
+              hitSlop={{ top: 10, bottom: 10 }}
+              style={{ flex: 1, minHeight: 24, justifyContent: 'center' }}
             >
-              {index < step ? (
-                <Check size={14} color={colors.primary} />
-              ) : (
-                <Text variant="small" weight="semibold" style={{ color: current ? colors.primaryForeground : colors.mutedForeground }}>
-                  {formatNumber(index + 1, locale)}
-                </Text>
-              )}
-              <Text
-                variant="small"
-                weight={current ? 'semibold' : 'regular'}
-                style={{ color: current ? colors.primaryForeground : index < step ? colors.primary : colors.mutedForeground }}
-              >
-                {t(`jobForm.${name}`)}
-              </Text>
+              <View style={{ height: 4, ...corner('full'), backgroundColor: index <= step ? colors.primary : colors.input }} />
             </Pressable>
-          );
-        })}
+          ))}
+        </View>
+        <Text variant="caption" weight="medium" tone="mutedForeground">
+          {t.markup('app.jobs.wizardStep', {
+            current: formatNumber(step + 1, locale),
+            total: formatNumber(STEPS.length, locale),
+            ...markupTags,
+          })}
+        </Text>
+        <Text variant="title" weight="semibold" accessibilityRole="header">
+          {t(`jobForm.${STEPS[step]}`)}
+        </Text>
       </View>
+
+      {/* A refusal, where a refused save leaves the screen: at the top. */}
+      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
 
       {similar && step > 0 ? (
         <Notice tone="warning" title={t('employer.duplicateTitle')} icon={<TriangleAlert size={16} color={colors.warning} />}>
@@ -275,7 +333,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               onChange={(value) => value && set('experienceBand')(value)}
             />
           </Field>
-          <Field label={t('jobForm.district')} error={errors.districtId}>
+          <Field ref={inView.place('districtId')} label={t('jobForm.district')} error={errors.districtId}>
             <Select
               label={t('jobForm.district')}
               value={values.districtId}
@@ -285,7 +343,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               onChange={(value) => value != null && set('districtId')(value)}
             />
           </Field>
-          <Field label={t('jobForm.seats')} hint={t('jobForm.seatsHint')} error={errors.seats}>
+          <Field ref={inView.place('seats')} label={t('jobForm.seats')} hint={t('jobForm.seatsHint')} error={errors.seats}>
             <TextField
               value={values.seats}
               onChangeText={set('seats')}
@@ -300,7 +358,12 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
 
       {step === 1 ? (
         <View style={{ gap: space[4] }}>
-          <Field label={t('jobForm.basicSalaryMin')} hint={t('jobForm.salaryHint')} error={errors.basicSalaryMin}>
+          <Field
+            ref={inView.place('basicSalaryMin')}
+            label={t('jobForm.basicSalaryMin')}
+            hint={t('jobForm.salaryHint')}
+            error={errors.basicSalaryMin}
+          >
             <TextField
               value={values.basicSalaryMin}
               onChangeText={set('basicSalaryMin')}
@@ -310,7 +373,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               maxLength={11}
             />
           </Field>
-          <Field label={t('jobForm.basicSalaryMax')} error={errors.basicSalaryMax}>
+          <Field ref={inView.place('basicSalaryMax')} label={t('jobForm.basicSalaryMax')} error={errors.basicSalaryMax}>
             <TextField
               value={values.basicSalaryMax}
               onChangeText={set('basicSalaryMax')}
@@ -345,7 +408,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
             />
           </Field>
           {values.commissionType === 'percentage' ? (
-            <Field label={t('jobForm.commissionValue')} error={errors.commissionValue}>
+            <Field ref={inView.place('commissionValue')} label={t('jobForm.commissionValue')} error={errors.commissionValue}>
               <TextField
                 value={values.commissionValue}
                 onChangeText={set('commissionValue')}
@@ -388,6 +451,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               selected={values.developerIds}
               onToggle={(value) => setValues((current) => ({ ...current, developerIds: flip(current.developerIds, value) }))}
               scroll
+              max={MAX_DEVELOPERS}
             />
             <Text variant="caption" tone="mutedForeground">
               {t('jobForm.developersHint')}
@@ -433,15 +497,13 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
             ) : null}
           </Card>
 
-          <View style={{ padding: space[4], borderRadius: radius.lg, backgroundColor: colors.muted }}>
+          <View style={{ padding: space[4], ...corner('lg'), backgroundColor: colors.muted }}>
             <Text variant="small" tone="mutedForeground">
               {live ? t('jobForm.liveEditNote') : t('jobForm.reviewNote')}
             </Text>
           </View>
         </View>
       ) : null}
-
-      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
 
       {step === STEPS.length - 1 ? (
         <View style={{ gap: space[2] }}>

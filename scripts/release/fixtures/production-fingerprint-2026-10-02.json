@@ -1,0 +1,50 @@
+{
+ "source": "scripts/dr/fingerprint.sql on project hiwdhicwsohbipxzazmb, read 2026-10-02 (read-only), per kind: the count, and md5 of name=hash joined with commas in name order (C collation)",
+ "kinds": [
+  {
+   "kind": "bucket",
+   "n": 4,
+   "h": "f44c41b41a7aa3afba0f389a5a086dae"
+  },
+  {
+   "kind": "column",
+   "n": 423,
+   "h": "447b576bd2e901a4e05cd9ef6b44b212"
+  },
+  {
+   "kind": "constraint",
+   "n": 295,
+   "h": "1cab68c207394fad6dc0b8c314087cee"
+  },
+  {
+   "kind": "enum",
+   "n": 15,
+   "h": "107601dd15c7bffc13eccd209b9d89c6"
+  },
+  {
+   "kind": "function",
+   "n": 226,
+   "h": "2aee46e26967f699097f753b7a5c7737"
+  },
+  {
+   "kind": "index",
+   "n": 207,
+   "h": "fca85a984829f25685ffe59798d3bbe5"
+  },
+  {
+   "kind": "policy",
+   "n": 109,
+   "h": "e5e2a008c59746b7e8379fd77913848b"
+  },
+  {
+   "kind": "rls",
+   "n": 52,
+   "h": "e325baf6c72f4b9d8ad3851c8a762550"
+  },
+  {
+   "kind": "trigger",
+   "n": 104,
+   "h": "68a2f3b1bcffb5a332a518f68cfa08af"
+  }
+ ]
+}

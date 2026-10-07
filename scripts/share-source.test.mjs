@@ -51,6 +51,10 @@ const { rememberShareArrival, shareSource, withShareSource } = await import(
   '../src/lib/share-source.ts'
 );
 
+// Analytics on, as the sections below assume; the last section turns it off.
+process.env.NEXT_PUBLIC_ANALYTICS_PROVIDER = 'plausible';
+process.env.NEXT_PUBLIC_ANALYTICS_SITE = 'x.test';
+
 console.log('— the tag is added without eating the query that was there');
 is('a bare listing', withShareSource('https://x.test/jobs/a-1'), 'https://x.test/jobs/a-1?src=share');
 is(
@@ -105,6 +109,16 @@ console.log('\n— storage that refuses is not an error');
   assert.doesNotThrow(() => rememberShareArrival());
   assert.doesNotThrow(() => shareSource());
   is('a private window measures nothing and breaks nothing', shareSource(), null);
+}
+
+console.log('\n— with nothing counting visits, nothing is kept on the device');
+{
+  delete process.env.NEXT_PUBLIC_ANALYTICS_PROVIDER;
+  delete process.env.NEXT_PUBLIC_ANALYTICS_SITE;
+  const page = browser('https://x.test/jobs/a-1?src=share');
+  rememberShareArrival();
+  is('nothing is stored', page.store.size, 0);
+  is('and the tag still leaves the address bar', page.href(), 'https://x.test/jobs/a-1');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

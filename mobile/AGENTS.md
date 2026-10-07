@@ -21,7 +21,7 @@ npx expo install <package>  # ALWAYS use instead of pnpm add for runtime package
                             # (EXPO_OFFLINE=1 when expo.dev is unreachable)
 pnpm start                  # the dev server, for a development build
 pnpm start:go               # the same, for the Expo Go app (docs/mobile.md, "Trying it in Expo Go")
-pnpm check                  # typecheck + lint + shared-code guard + Jest — run before declaring anything done
+pnpm check                  # typecheck + lint + shared-code guard + update-publishing check + Jest — run before declaring anything done
 pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept everything
 ```
 
@@ -59,7 +59,7 @@ pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept eve
 
 ## Building with EAS
 
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode required. Run EAS CLI as `npx eas-cli@latest <command>`. Profiles are in `eas.json` (`development`, `development-simulator`, `preview`, `production`).
+Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) — no local Xcode required. Ship over-the-air updates only with `pnpm run ota <profile> --message "…"` (scripts/publish-update.mjs), never a plain `eas update`: it publishes with the build profile's own environment, without which the update's fingerprint matches no build and its bundle takes whatever `.env` holds (`../docs/mobile.md`, "Over-the-air updates"). Run EAS CLI as `npx eas-cli@latest <command>`. Profiles are in `eas.json` (`development`, `development-simulator`, `preview`, `production`).
 Docs: https://docs.expo.dev/eas/index.md
 
 - `ios/` and `android/` are generated (Continuous Native Generation). Never create or edit them by hand — configure native behaviour in `app.config.ts` and config plugins.

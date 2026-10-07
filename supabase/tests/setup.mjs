@@ -157,14 +157,9 @@ select set_config('demo.users', '${JSON.stringify(
  * reason migration 323 exists: Postgres will not let a transaction use an enum
  * value it has just added.
  */
-export function testDbScripts({ seed = true } = {}) {
+export function testDbScripts({ seed = true, before } = {}) {
   const scripts = [{ name: 'prelude', sql: PRELUDE }];
-
-  const migrations = join(SUPABASE_DIR, 'migrations');
-  for (const file of readdirSync(migrations).sort()) {
-    if (!file.endsWith('.sql')) continue;
-    scripts.push({ name: file, sql: readFileSync(join(migrations, file), 'utf8') });
-  }
+  scripts.push(...migrationScripts({ before }));
 
   if (seed) {
     scripts.push({ name: 'seed.sql', sql: readFileSync(join(SUPABASE_DIR, 'seed.sql'), 'utf8') });
@@ -178,10 +173,24 @@ export function testDbScripts({ seed = true } = {}) {
   return scripts;
 }
 
-export async function createTestDb({ seed = true } = {}) {
+/**
+ * The migration files in order: those named before `before`, or from `from`
+ * on. A database built with `createTestDb({ before })` is one a later file has
+ * not reached yet — what production holds when it arrives — and the rest bring
+ * it up to date.
+ */
+export function migrationScripts({ before, from } = {}) {
+  const migrations = join(SUPABASE_DIR, 'migrations');
+  return readdirSync(migrations)
+    .sort()
+    .filter((file) => file.endsWith('.sql') && !(before && file >= before) && !(from && file < from))
+    .map((file) => ({ name: file, sql: readFileSync(join(migrations, file), 'utf8') }));
+}
+
+export async function createTestDb({ seed = true, before } = {}) {
   // pg_trgm: the console's search indexes (migration 317) need it.
   const db = new PGlite({ extensions: { pgcrypto, unaccent, pg_trgm } });
-  for (const script of testDbScripts({ seed })) {
+  for (const script of testDbScripts({ seed, before })) {
     await db.exec(script.sql);
   }
   return db;

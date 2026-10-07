@@ -1,14 +1,16 @@
 import type { ReactNode } from 'react';
-import { Alert, type AlertButton } from 'react-native';
+import { AccessibilityInfo, ActionSheetIOS, Alert, RefreshControl, type AlertButton } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
+import { ImageManipulator } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { CompanyDocumentRow, CompanyRow, OrderRow, ProfileRow } from '@/lib/supabase/database.types';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
+import { useEmployerSummary } from '~/features/employer/overview';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
@@ -16,6 +18,8 @@ import * as BillingScreen from '../src/app/(tabs)/(account)/employer/billing';
 import * as CompanyScreen from '../src/app/(tabs)/(account)/employer/company';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
+import { phoneFormData, sentBody } from './multipart';
+import { placeViewsAt } from './measure';
 import { fakeServer } from './server';
 
 /*
@@ -39,7 +43,11 @@ jest.mock('~/lib/session-storage', () => {
     },
   };
 });
-jest.mock('expo-image-picker', () => ({ launchImageLibraryAsync: jest.fn() }));
+jest.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: jest.fn(),
+  launchCameraAsync: jest.fn(),
+  requestCameraPermissionsAsync: jest.fn(async () => ({ granted: true })),
+}));
 jest.mock('expo-image-manipulator', () => {
   type MockContext = { resize: () => MockContext; renderAsync: () => Promise<{ saveAsync: () => Promise<{ uri: string }> }> };
   const context: MockContext = {
@@ -50,11 +58,19 @@ jest.mock('expo-image-manipulator', () => {
 });
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
 jest.mock('expo-file-system', () => ({
-  File: jest.fn().mockImplementation(() => ({ size: 120_000, arrayBuffer: async () => new ArrayBuffer(4096) })),
+  // As expo-file-system's File: a name, a type from the extension, and its own bytes.
+  File: jest.fn().mockImplementation((...parts: string[]) => {
+    const name = parts.join('/').split('/').at(-1) ?? '';
+    return {
+      name,
+      type: name.endsWith('.png') ? 'image/png' : '',
+      size: 120_000,
+      arrayBuffer: async () => new ArrayBuffer(4096),
+      bytes: async () => new TextEncoder().encode(`the bytes of ${name}`),
+    };
+  }),
 }));
 
-const NativeFormData = jest.requireActual('react-native/Libraries/Network/FormData').default;
-type Part = { fieldName: string; string?: string; uri?: string; name?: string; type?: string };
 
 const ar = catalogues.ar;
 const server = fakeServer();
@@ -65,12 +81,14 @@ const employer: ProfileRow = { ...profile, role: 'employer', full_name: 'أحم�
 const baseCompany: CompanyRow = { ...ownedCompany, verification_status: 'unverified', version: 3 };
 
 let company: CompanyRow | null;
+/** The chooser's answer for a paper: 0 camera, 1 photo library, 2 a file, 3 cancel. */
+let paperFrom = 2;
 let role: 'admin' | 'recruiter';
 let documents: CompanyDocumentRow[];
 
 beforeAll(() => {
   globalThis.fetch = server.fetch as unknown as typeof fetch;
-  globalThis.FormData = NativeFormData;
+  globalThis.FormData = phoneFormData();
 });
 
 beforeEach(async () => {
@@ -92,6 +110,9 @@ beforeEach(async () => {
   ];
   jest.mocked(ImagePicker.launchImageLibraryAsync).mockReset();
   jest.mocked(DocumentPicker.getDocumentAsync).mockReset();
+  // Where a paper comes from, as the phone's own chooser answers: a file, unless a case says otherwise.
+  paperFrom = 2;
+  jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation((_options, choose) => choose(paperFrom));
 
   server.on('GET /api/mobile/v1/config', mobileConfig());
   server.on('POST /auth/v1/token', () => authSession(user));
@@ -115,6 +136,7 @@ beforeEach(async () => {
   server.on('POST /api/mobile/v1/actions/removeCompanyMember', { ok: true });
   server.on('GET /rest/v1/orders', [] as OrderRow[]);
   server.on('GET /rest/v1/monthly_free_post_grants', []);
+  server.on('POST /rest/v1/rpc/employer_summary', { jobs_live: 0 });
   server.on('POST /api/mobile/v1/actions/claimMonthlyFreePost', { ok: true, data: { claimed: true } });
 
   await supabase.auth.signOut({ scope: 'local' });
@@ -129,6 +151,12 @@ function Settled({ children }: { children: ReactNode }) {
   return useSession().settled ? children : null;
 }
 
+/** Home's figures, read as Home reads them while the company page is open in another tab. */
+function HomeFigures() {
+  useEmployerSummary();
+  return null;
+}
+
 function Root() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
@@ -137,6 +165,7 @@ function Root() {
         <I18nProvider>
           <SessionProvider>
             <Settled>
+              <HomeFigures />
               <Stack screenOptions={{ headerShown: false }} />
             </Settled>
           </SessionProvider>
@@ -188,12 +217,126 @@ describe("the company's page, for a company admin", () => {
     expect(await screen.findByText(ar.employer.companyMoved)).toBeTruthy();
   });
 
-  it('refuses an address that is not http(s) before sending anything', async () => {
+  it('keeps what is typed when a logo or a paper moves the version, and saves it on the new one', async () => {
+    // What the database does on each: the row changes, and bump_version() moves the version.
+    server.on('POST /api/mobile/v1/actions/uploadImage', () => {
+      company = { ...(company as CompanyRow), logo_url: 'https://example/logo.webp', version: 4 };
+      return { ok: true, data: { url: 'https://example/logo.webp' } };
+    });
+    server.on('POST /api/mobile/v1/actions/recordCompanyDocument', () => {
+      // company_review_state(): a paper in moves an unverified company to pending (migration 44).
+      company = { ...(company as CompanyRow), verification_status: 'pending', version: 5 };
+      return { ok: true };
+    });
+    server.on('POST /api/mobile/v1/actions/saveCompany', () => {
+      company = { ...(company as CompanyRow), about_ar: typed, version: 6 };
+      return { ok: true, data: { id: baseCompany.id } };
+    });
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///library/logo.png', width: 600, height: 300 }],
+    } as ImagePicker.ImagePickerResult);
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///cache/card.pdf', name: 'card.pdf', mimeType: 'application/pdf', size: 4096, lastModified: 0 }],
+    } as DocumentPicker.DocumentPickerResult);
     renderRouter(app, { initialUrl: '/employer/company' });
-    fireEvent.changeText(await screen.findByLabelText(ar.companies.website), 'javascript:alert(1)');
+
+    const typed = 'نبذة جديدة لسه ما اتحفظتش';
+    fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), typed);
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.logoUpload }));
+    // The viewer is read again, with the logo, at version 4.
+    expect(await screen.findByRole('button', { name: `${ar.common.delete}: ${ar.employer.logo}` })).toBeTruthy();
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
+
+    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.taxCard}` }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/recordCompanyDocument')).toHaveLength(1));
+    // Read again at version 5; the form is the one it was.
+    await waitFor(() => expect(server.asked('/rest/v1/companies')).toHaveLength(3));
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
+
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
-    expect(await screen.findByText(ar.validation.invalidUrl)).toBeTruthy();
-    expect(server.asked('/api/mobile/v1/actions/saveCompany')).toHaveLength(0);
+    await waitFor(() => expect(input('/api/mobile/v1/actions/saveCompany')).toMatchObject({ aboutAr: typed }));
+    expect([4, 5]).toContain(input('/api/mobile/v1/actions/saveCompany')?.version);
+    // Its own save coming back at version 6 leaves the form, and the word that it saved, where they are.
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+    await waitFor(() => expect(server.asked('/rest/v1/companies')).toHaveLength(4));
+    await waitFor(() => expect(screen.getByText(ar.common.saveSuccess)).toBeTruthy());
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
+  });
+
+  it("shows a colleague's version once the save it overtook is refused", async () => {
+    server.on('POST /api/mobile/v1/actions/saveCompany', () => ({ ok: false, error: 'stale' }));
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), 'ما كتبته أنا');
+    // A colleague saves in between.
+    company = { ...(company as CompanyRow), about_ar: 'ما كتبه الزميل', version: 4 };
+    fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
+
+    expect(await screen.findByText(ar.employer.companyMoved)).toBeTruthy();
+    expect(input('/api/mobile/v1/actions/saveCompany')).toMatchObject({ version: 3 });
+    await waitFor(() => expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe('ما كتبه الزميل'));
+  });
+
+  it('keeps a correction typed while its save is read back, and saves it on the new version', async () => {
+    // The database: matched on the version, then moved on; the read back after the save is slow.
+    let release: () => void = () => {};
+    let hold = false;
+    server.on('GET /rest/v1/companies', () =>
+      hold ? new Promise((resolve) => (release = () => resolve([company]))) : company ? [company] : [],
+    );
+    server.on('POST /api/mobile/v1/actions/saveCompany', (_url: URL, init?: RequestInit) => {
+      const { input: sent } = JSON.parse(String(init?.body)) as { input: { version?: number; aboutAr: string | null } };
+      const current = company as CompanyRow;
+      if (sent.version !== current.version) return { ok: false, error: 'stale' };
+      company = { ...current, about_ar: sent.aboutAr, version: current.version + 1 };
+      hold = true;
+      return { ok: true, data: { id: baseCompany.id } };
+    });
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    const first = 'وساطة عقارية في القاهرة الجديدة.';
+    const corrected = 'وساطة عقارية في التجمع الخامس.';
+    fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), first);
+    fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/saveCompany')).toHaveLength(1));
+    // The save is not done until its version is here: no second save on the old one meanwhile.
+    expect(screen.getByRole('button', { name: ar.common.save }).props.accessibilityState).toMatchObject({ busy: true });
+
+    // A word corrected while the company is read back.
+    fireEvent.changeText(screen.getByLabelText(ar.companies.aboutAr), corrected);
+    await act(async () => {
+      hold = false;
+      release();
+    });
+    expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
+    // The read back does not put the first save's words over the correction.
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(corrected);
+
+    // Saved again: on the version the first save made, and taken, not refused as a colleague's.
+    fireEvent.press(await screen.findByRole('button', { name: ar.common.save, disabled: false }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/saveCompany')).toHaveLength(2));
+    expect(input('/api/mobile/v1/actions/saveCompany', 1)).toMatchObject({ aboutAr: corrected, version: 4 });
+    await waitFor(() => expect((company as CompanyRow).about_ar).toBe(corrected));
+    expect(screen.queryByText(ar.employer.companyMoved)).toBeNull();
+  });
+
+  it('refuses an address that is not http(s) before sending anything — in view and said, far above Save', async () => {
+    const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
+    announce.mockClear();
+    const layout = placeViewsAt(520);
+    try {
+      renderRouter(app, { initialUrl: '/employer/company' });
+      fireEvent.changeText(await screen.findByLabelText(ar.companies.website), 'javascript:alert(1)');
+      fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
+      expect(await screen.findByText(ar.validation.invalidUrl)).toBeTruthy();
+      expect(server.asked('/api/mobile/v1/actions/saveCompany')).toHaveLength(0);
+      expect(announce).toHaveBeenCalledWith(ar.validation.invalidUrl, { queue: true });
+      await waitFor(() => expect(layout.scrollTo).toHaveBeenCalledWith({ y: 520 - 16, animated: true }));
+    } finally {
+      layout.undo();
+    }
   });
 
   it('sends the logo to the website as drawn, a PNG for the company', async () => {
@@ -207,10 +350,13 @@ describe("the company's page, for a company admin", () => {
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/uploadImage')).toHaveLength(1));
     // Not cropped: a logo keeps its shape.
     expect(ImagePicker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: false }));
-    const parts = (server.asked('/api/mobile/v1/actions/uploadImage')[0].body as { getParts: () => Part[] }).getParts();
-    expect(parts.find((part) => part.fieldName === 'kind')?.string).toBe('logo');
-    expect(parts.find((part) => part.fieldName === 'companyId')?.string).toBe(baseCompany.id);
-    expect(parts.find((part) => part.fieldName === 'file')).toMatchObject({ name: 'logo.png', type: 'image/png' });
+    // The request as Expo's fetch builds it on the phone: the logo's own bytes.
+    const sent = await sentBody(server.asked('/api/mobile/v1/actions/uploadImage')[0].body);
+    expect(sent).toContain('content-disposition: form-data; name="kind"\r\n\r\nlogo\r\n');
+    expect(sent).toContain(`content-disposition: form-data; name="companyId"\r\n\r\n${baseCompany.id}\r\n`);
+    expect(sent).toContain(
+      'content-disposition: form-data; name="file"; filename="logo.png"\r\ncontent-type: image/png\r\n\r\nthe bytes of logo.png\r\n',
+    );
   });
 
   it("uploads a paper to the company's folder, and takes it back out when the website refuses it", async () => {
@@ -232,6 +378,46 @@ describe("the company's page, for a company admin", () => {
     await waitFor(() => expect(server.asked('/storage/v1/object/company-documents')).toHaveLength(1));
   });
 
+  it("reads Home's next step again once a paper is in, so 'upload them again' does not stay up", async () => {
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///cache/card.pdf', name: 'card.pdf', mimeType: 'application/pdf', size: 4096, lastModified: 0 }],
+    } as DocumentPicker.DocumentPickerResult);
+    renderRouter(app, { initialUrl: '/employer/company' });
+    await waitFor(() => expect(server.asked('/rest/v1/rpc/employer_summary').length).toBeGreaterThan(0));
+    const before = server.asked('/rest/v1/rpc/employer_summary').length;
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.commercialRegister}` }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/recordCompanyDocument')).toBeTruthy());
+    await waitFor(() => expect(server.asked('/rest/v1/rpc/employer_summary').length).toBeGreaterThan(before));
+  });
+
+  it('takes a paper photographed, or from the library, as a JPEG — not only a file from Files', async () => {
+    paperFrom = 1;
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///library/IMG_0042.HEIC', width: 4032, height: 3024 }],
+    } as ImagePicker.ImagePickerResult);
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.commercialRegister}` }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/recordCompanyDocument')).toBeTruthy());
+    expect(String(input('/api/mobile/v1/actions/recordCompanyDocument')?.storagePath)).toMatch(
+      new RegExp(`^${baseCompany.id}/commercial_register-[0-9a-f-]{36}\\.jpg$`),
+    );
+    expect(DocumentPicker.getDocumentAsync).not.toHaveBeenCalled();
+    expect(ImageManipulator.manipulate).toHaveBeenCalledWith('file:///library/IMG_0042.HEIC');
+  });
+
+  it('says how to allow the camera when the phone refuses it', async () => {
+    paperFrom = 0;
+    jest.mocked(ImagePicker.requestCameraPermissionsAsync).mockResolvedValueOnce({ granted: false } as ImagePicker.CameraPermissionResponse);
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.taxCard}` }));
+    expect(await screen.findByText(ar.app.company.cameraDenied)).toBeTruthy();
+    expect(ImagePicker.launchCameraAsync).not.toHaveBeenCalled();
+  });
+
   it("adds a colleague, says the website's word when it cannot, and takes one off after asking", async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     renderRouter(app, { initialUrl: '/employer/company' });
@@ -251,6 +437,36 @@ describe("the company's page, for a company admin", () => {
     await waitFor(() => expect(input('/api/mobile/v1/actions/removeCompanyMember')).toEqual({ userId: RECRUITER }));
     alert.mockRestore();
   });
+
+  it('reads who this is again when an admin takes themselves off the team, which leaves the company', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    // Someone else owns the company: this admin may take themselves off.
+    company = { ...baseCompany, owner_id: RECRUITER };
+    renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.teamRemove}: أحمد سمير` }));
+    const reads = server.asked('/rest/v1/profiles').length;
+    answerAlert(alert, ar.employer.teamRemove);
+    await waitFor(() => expect(input('/api/mobile/v1/actions/removeCompanyMember')).toEqual({ userId: USER_ID }));
+    await waitFor(() => expect(server.asked('/rest/v1/profiles').length).toBeGreaterThan(reads));
+    alert.mockRestore();
+  });
+
+  it('says an address is not one before sending it, and when the website says so', async () => {
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.employer.teamEmail), 'mona@example');
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.teamAdd }));
+    expect(await screen.findByText(ar.validation.invalidEmail)).toBeTruthy();
+    expect(server.asked('/api/mobile/v1/actions/addCompanyMember')).toHaveLength(0);
+
+    // A shape the phone takes and the website's check does not: its word, not "try again".
+    server.on('POST /api/mobile/v1/actions/addCompanyMember', { ok: false, error: 'invalid' });
+    fireEvent.changeText(screen.getByLabelText(ar.employer.teamEmail), 'mona@example.c');
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.teamAdd }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/addCompanyMember')).toHaveLength(1));
+    expect(await screen.findByText(ar.validation.invalidEmail)).toBeTruthy();
+    expect(screen.queryByText(ar.common.errorBody)).toBeNull();
+  });
 });
 
 describe("the company's page, for a recruiter", () => {
@@ -263,6 +479,56 @@ describe("the company's page, for a recruiter", () => {
     expect(screen.queryByLabelText(ar.companies.nameAr) === null).toBe(true);
     expect(screen.queryByText(ar.employer.verification) === null).toBe(true);
     expect(screen.queryByLabelText(ar.employer.teamEmail) === null).toBe(true);
+  });
+});
+
+describe('a company that could not be read', () => {
+  it('is never offered the form that makes one, which would overwrite it', async () => {
+    // The membership call drops; it is a POST, so nothing retries it underneath.
+    server.on('POST /rest/v1/rpc/my_company_id', () => {
+      throw new TypeError('Network request failed');
+    });
+    renderRouter(app, { initialUrl: '/employer/company' });
+
+    expect(await screen.findByText(ar.app.offline.title)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.companies.nameAr)).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.employer.createCompanyFirst })).toBeNull();
+
+    server.on('POST /rest/v1/rpc/my_company_id', () => baseCompany.id);
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
+    await waitFor(() => expect(screen.getByLabelText(ar.companies.nameAr).props.value).toBe(baseCompany.name_ar));
+    expect(server.asked('/api/mobile/v1/actions/saveCompany')).toHaveLength(0);
+  });
+
+  it('keeps the page, and what is typed on it, when a read in the background fails', async () => {
+    renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), 'نص بكتبه');
+
+    let failed = 0;
+    server.on('/rest/v1/profiles', () => {
+      failed += 1;
+      throw new TypeError('Network request failed');
+    });
+    await act(async () => {
+      await screen.UNSAFE_getByType(RefreshControl).props.onRefresh();
+    });
+    await waitFor(() => expect(failed).toBe(1));
+    // Let the failed read land: TanStack tells the screens on a timer (fake, under renderRouter).
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(100);
+    });
+
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe('نص بكتبه');
+    expect(screen.queryByText(ar.app.offline.title)).toBeNull();
+  });
+});
+
+describe('nobody signed in', () => {
+  it('asks to sign in on the company and billing pages, rather than waiting for an account that is not coming', async () => {
+    await supabase.auth.signOut({ scope: 'local' });
+    renderRouter(app, { initialUrl: '/employer/company' });
+    expect(await screen.findByRole('button', { name: ar.nav.signIn })).toBeTruthy();
+    expect(screen.queryByLabelText(ar.common.loading)).toBeNull();
   });
 });
 
@@ -304,5 +570,19 @@ describe('billing', () => {
     renderRouter(app, { initialUrl: '/employer/billing' });
     expect(await screen.findByText(ar.billing.credits)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.employer.freePostClaim }) === null).toBe(true);
+  });
+
+  it('reads the balance and the badge again on a pull, not only the orders', async () => {
+    company = { ...baseCompany, post_credits: 2 };
+    renderRouter(app, { initialUrl: '/employer/billing' });
+    expect(await screen.findByText('2')).toBeTruthy();
+
+    // Spent on the website, and the company verified meanwhile.
+    company = { ...baseCompany, verification_status: 'verified', post_credits: 1 };
+    await act(async () => {
+      screen.UNSAFE_getByType(RefreshControl).props.onRefresh();
+    });
+    expect(await screen.findByText('1')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.employer.freePostClaim })).toBeTruthy();
   });
 });

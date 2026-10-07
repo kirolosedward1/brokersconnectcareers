@@ -1,5 +1,6 @@
 import { localized } from '@/i18n/routing';
 import { env } from '@/lib/env';
+import { trustedLogoUrl } from '@/lib/avatar-url';
 import type { JobDetail } from '@/lib/queries/jobs';
 import { buildJobPosting } from './job-posting-core';
 
@@ -43,7 +44,7 @@ export function jobPostingJsonLd(
       company: {
         name: localized(locale, job.company.name_ar, job.company.name_en),
         website: job.company.website,
-        logoUrl: job.company.logo_url,
+        logoUrl: trustedLogoUrl(job.company.logo_url, process.env.NEXT_PUBLIC_SUPABASE_URL),
       },
       location: {
         locality: localized(locale, job.district.name_ar, job.district.name_en),
