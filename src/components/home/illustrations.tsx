@@ -24,7 +24,7 @@ import { BLUE, Bloom, Card, Defs, LINE, MUTED, OK, SOFT, SURFACE, svgProps } fro
 
 const COPY = {
   ar: {
-    track: 'بيع أول',
+    track: 'قيد الإنشاء',
     district: 'التجمع الخامس',
     years: '7 سنين خبرة',
     everyone: 'ظاهر للجميع',
@@ -32,7 +32,7 @@ const COPY = {
     hidden: 'مخفي',
   },
   en: {
-    track: 'Primary',
+    track: 'Off-plan',
     district: 'Fifth Settlement',
     years: '7 yrs experience',
     everyone: 'Everyone',
