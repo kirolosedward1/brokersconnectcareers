@@ -39,8 +39,6 @@ export function AgentCv({
   const hasRecord = unitsClosed != null || volumeEgp != null;
   if (!summary && !hasRecord && !experience.length && !education.length && !certifications.length) return null;
 
-  const month = (value: string) => value.slice(0, 7);
-
   return (
     <View style={{ gap: space[8] }}>
       {summary ? (
@@ -96,62 +94,84 @@ export function AgentCv({
 
       {experience.length ? (
         <Section title={t('cv.experience')} icon={<Briefcase size={16} color={colors.mutedForeground} />}>
-          <View>
+          {/* One card, a row per role: the role on its tile, where, when — the
+              role still held marked "now" — and what they did, set apart. */}
+          <Card style={{ padding: 0, overflow: 'hidden' }}>
             {experience.map((job, index) => {
               const district = job.district_id ? districts.get(job.district_id) : null;
-              const last = index === experience.length - 1;
+              const current = !job.ended;
               return (
-                <View key={job.id} style={{ flexDirection: 'row', gap: space[3] }}>
-                  {/* The timeline: a filled mark for the role still held. */}
-                  <View style={{ alignItems: 'center', width: 10 }}>
-                    <View
-                      style={{
-                        marginTop: 8,
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        backgroundColor: job.ended ? colors.border : colors.primary,
-                      }}
-                    />
-                    {last ? null : <View style={{ flex: 1, width: 1, backgroundColor: colors.border }} />}
-                  </View>
-                  <View style={{ flex: 1, gap: 2, paddingBottom: last ? 0 : space[5] }}>
+                <View
+                  key={job.id}
+                  style={{
+                    flexDirection: 'row',
+                    gap: space[3],
+                    padding: space[4],
+                    borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
+                    borderTopColor: colors.border,
+                  }}
+                >
+                  <Tile>
+                    <Briefcase size={18} color={current ? colors.primary : colors.mutedForeground} />
+                  </Tile>
+                  <View style={{ flex: 1, gap: space[1] }}>
                     <Text weight="semibold">{job.title}</Text>
                     <Text variant="small" tone="mutedForeground">
-                      {`${job.company_name}${district ? ` · ${localized(locale, district.name_ar, district.name_en)}` : ''}`}
+                      {[job.company_name, district ? localized(locale, district.name_ar, district.name_en) : null].filter(Boolean).join(' · ')}
                     </Text>
-                    <Text variant="caption" tone="mutedForeground">
-                      {`${month(job.started)} — ${job.ended ? month(job.ended) : t('cv.present')}${
-                        job.track ? ` · ${t(`track.${job.track}`)}` : ''
-                      }`}
-                    </Text>
-                    {job.highlights ? (
-                      <Text variant="small" tone="mutedForeground" style={{ marginTop: space[1] }}>
-                        {job.highlights}
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2], marginTop: 2 }}>
+                      <Text variant="caption" weight="medium" tone="mutedForeground">
+                        {job.ended ? `${monthYear(job.started, locale)} — ${monthYear(job.ended, locale)}` : monthYear(job.started, locale)}
                       </Text>
+                      {current ? <Tag label={t('app.cv.current')} tone="success" /> : null}
+                      {job.track ? <Tag label={t(`track.${job.track}`)} /> : null}
+                    </View>
+                    {job.highlights ? (
+                      <View style={{ marginTop: space[2], padding: space[3], ...corner('lg'), backgroundColor: colors.muted }}>
+                        <Text variant="small">{job.highlights}</Text>
+                      </View>
                     ) : null}
                   </View>
                 </View>
               );
             })}
-          </View>
+          </Card>
         </Section>
       ) : null}
 
       {education.length ? (
         <Section title={t('cv.education')} icon={<GraduationCap size={16} color={colors.mutedForeground} />}>
-          <View style={{ gap: space[3] }}>
-            {education.map((row) => (
-              <View key={row.id} style={{ gap: 2 }}>
-                <Text weight="medium">{row.institution}</Text>
-                {row.degree || row.field || row.graduated ? (
-                  <Text variant="small" tone="mutedForeground">
-                    {[row.degree, row.field, row.graduated ? String(row.graduated) : null].filter(Boolean).join(' · ')}
-                  </Text>
-                ) : null}
+          <Card style={{ padding: 0, overflow: 'hidden' }}>
+            {education.map((row, index) => (
+              <View
+                key={row.id}
+                style={{
+                  flexDirection: 'row',
+                  gap: space[3],
+                  padding: space[4],
+                  borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
+                  borderTopColor: colors.border,
+                }}
+              >
+                <Tile>
+                  <GraduationCap size={18} color={colors.primary} />
+                </Tile>
+                <View style={{ flex: 1, gap: space[1] }}>
+                  <Text weight="semibold">{row.institution}</Text>
+                  {row.degree || row.field ? (
+                    <Text variant="small" tone="mutedForeground">
+                      {[row.degree, row.field].filter(Boolean).join(' · ')}
+                    </Text>
+                  ) : null}
+                  {row.graduated ? (
+                    <View style={{ flexDirection: 'row', marginTop: 2 }}>
+                      <Tag label={String(row.graduated)} />
+                    </View>
+                  ) : null}
+                </View>
               </View>
             ))}
-          </View>
+          </Card>
         </Section>
       ) : null}
 
@@ -171,6 +191,35 @@ export function AgentCv({
           </View>
         </Section>
       ) : null}
+    </View>
+  );
+}
+
+/** A month and its year, in the reader's language: "مارس 2024". */
+function monthYear(value: string, locale: string): string {
+  const date = new Date(`${value.slice(0, 7)}-01T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 7);
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date);
+}
+
+/** A row's icon on its tile, as on the card's facts above. */
+function Tile({ children }: { children: ReactNode }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ width: 40, height: 40, ...corner('md'), alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondary }}>
+      {children}
+    </View>
+  );
+}
+
+/** A small soft tag: a track, a year — "now" in green. */
+function Tag({ label, tone }: { label: string; tone?: 'success' }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ paddingVertical: 2, paddingHorizontal: space[2], ...corner('full'), backgroundColor: tone === 'success' ? colors.successMuted : colors.muted }}>
+      <Text variant="caption" weight="semibold" style={{ color: tone === 'success' ? colors.success : colors.foreground }}>
+        {label}
+      </Text>
     </View>
   );
 }

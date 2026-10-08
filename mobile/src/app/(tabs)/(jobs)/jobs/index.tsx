@@ -34,7 +34,7 @@ import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useBrowseCounts } from '~/features/browse/queries';
 import { boardQuery, filtersToParams, sheetFilterCount, useFilterLabel } from '~/features/jobs/filters';
-import { useAppliedJobIds } from '~/features/jobs/marks';
+import { useAppliedLast } from '~/features/jobs/marks';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { totalShown } from '~/features/moderation/hidden-store';
@@ -76,10 +76,12 @@ export default function BoardScreen() {
   const list = useTabList<FlashListRef<JobListItem>>();
   const hidden = useHiddenCompanies();
   const read = useMemo(() => flattenBoard(board.data?.pages), [board.data]);
-  const jobs = useMemo(() => withoutHidden(read, hidden), [read, hidden]);
+  const shown = useMemo(() => withoutHidden(read, hidden), [read, hidden]);
   const first = board.data?.pages[0];
-  const total = totalShown(first?.total ?? 0, read.length, jobs.length);
-  const applied = useAppliedJobIds(useMemo(() => jobs.map((job) => job.id), [jobs]));
+  const total = totalShown(first?.total ?? 0, read.length, shown.length);
+  // What the reader has applied to goes to the foot of what is loaded, under its own heading.
+  const { jobs, applied } = useAppliedLast(shown);
+  const firstApplied = jobs.find((job) => applied.has(job.id))?.id;
 
   const apply = (next: JobFilters) => router.setParams(filtersToParams(next));
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -164,7 +166,12 @@ export default function BoardScreen() {
         {...list}
         data={jobs}
         keyExtractor={(job) => job.id}
-        renderItem={({ item }) => <JobCard job={item} applied={applied.has(item.id)} />}
+        renderItem={({ item }) => (
+          <>
+            {item.id === firstApplied ? <AppliedHeading /> : null}
+            <JobCard job={item} applied={applied.has(item.id)} />
+          </>
+        )}
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
@@ -197,6 +204,16 @@ export default function BoardScreen() {
         onRefresh={pull.onRefresh}
       />
     </>
+  );
+}
+
+/** Over the listings already applied to, at the foot of the board. */
+function AppliedHeading() {
+  const t = useTranslations('app.jobs');
+  return (
+    <Text variant="small" weight="semibold" tone="mutedForeground" accessibilityRole="header" style={{ paddingTop: space[3], paddingBottom: space[3] }}>
+      {t('appliedHeading')}
+    </Text>
   );
 }
 

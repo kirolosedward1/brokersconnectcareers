@@ -6,7 +6,7 @@ import { BadgeCheck, Globe, MapPin, Users } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
 import { safeHttpUrl } from '@/lib/security/sanitize';
 import { CompanyLogo } from '~/components/companies/company-logo';
-import { JobCard } from '~/components/jobs/job-card';
+import { JobCardList } from '~/components/jobs/job-card-list';
 import { HiddenNotice, HideCompany } from '~/components/moderation/hide-company';
 import { ReportButton } from '~/components/moderation/report';
 import { FollowCompanyButton, useOffersFollow } from '~/components/saved/save-controls';
@@ -147,11 +147,7 @@ export default function CompanyScreen() {
             {t('openRoles', { count: total })}
           </Text>
           {jobs.length ? (
-            <View style={{ gap: space[2] }}>
-              {jobs.map((job) => (
-                <JobCard key={job.id} job={job} />
-              ))}
-            </View>
+            <JobCardList jobs={jobs} />
           ) : (
             <View
               style={{

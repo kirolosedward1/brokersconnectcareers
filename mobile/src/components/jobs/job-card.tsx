@@ -38,7 +38,9 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
   const large = useLargeText();
 
   // How well it fits the candidate's own profile, when it fits at all (features/jobs/match.ts).
-  const match = useJobMatch()(job);
+  // Not on a listing already applied to: the fit was weighed when applying.
+  const fit = useJobMatch()(job);
+  const match = applied ? null : fit;
   const closed = !jobIsLive(job);
   const title = localized(locale, job.title_ar, job.title_en);
   const company = localized(locale, job.company.name_ar, job.company.name_en);

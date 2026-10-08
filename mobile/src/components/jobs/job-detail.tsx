@@ -77,7 +77,9 @@ export function JobDetail({
   const canApply = !role || role === 'candidate';
   const applied = useAppliedJobIds([job.id]).has(job.id);
   const hasBoard = useHasBoard();
-  const similarShown = withoutHidden(similar, useHiddenCompanies());
+  // Like it, and not already applied to: those are done with, as Home's suggestions leave them out.
+  const similarApplied = useAppliedJobIds(similar.map((item) => item.id));
+  const similarShown = withoutHidden(similar, useHiddenCompanies()).filter((item) => !similarApplied.has(item.id));
 
   // A view is a reader opening an open listing, once per visit — the website
   // counts the page render the same way (recordJobView, after the response).

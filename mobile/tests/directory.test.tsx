@@ -455,7 +455,7 @@ describe("a consultant's page", () => {
     for (const row of [ar.agents.tracks, ar.agents.districts, ar.agents.languages]) {
       expect(screen.getByRole('header', { name: row })).toBeTruthy();
     }
-    expect(screen.getByText(ar.track.resale)).toBeTruthy();
+    expect(screen.getAllByText(ar.track.resale).length).toBeGreaterThan(0);
     expect(screen.getByText(newCairo.name_ar)).toBeTruthy();
     expect(screen.getByText('بالم هيلز')).toBeTruthy();
     expect(screen.getByText(ar.language.en)).toBeTruthy();

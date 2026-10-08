@@ -48,7 +48,8 @@
     "endOfList": "That is every matching job.",
     "wizardStep": "Step <v>{current}</v> of <v>{total}</v>",
     "quickFilters": "Quick filters",
-    "match": "<v>{percent}%</v> match"
+    "match": "<v>{percent}%</v> match",
+    "appliedHeading": "Jobs you applied to"
   },
   "auth": {
     "forCompanies": "Register your company",
@@ -112,7 +113,9 @@
     "timeline": "Where it stands",
     "stepSent": "Sent",
     "stepSeen": "Seen",
-    "stepDecision": "Decision"
+    "stepDecision": "Decision",
+    "activeHeading": "Still in progress",
+    "decidedHeading": "Decided"
   },
   "apply": {
     "pickCv": "Choose a file",
@@ -246,5 +249,8 @@
     "fresh": "{count, plural, one {# new consultant} other {# new consultants}}",
     "stop": "Stop alerts",
     "notifyTitle": "{count, plural, one {A new consultant matches your search} other {# new consultants match your search}}"
+  },
+  "cv": {
+    "current": "Current"
   }
 }

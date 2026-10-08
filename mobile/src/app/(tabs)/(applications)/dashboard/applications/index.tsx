@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
+import type { ApplicationStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import { useHeaderBell } from '~/components/notifications/header-bell';
@@ -58,6 +59,8 @@ export default function ApplicationsScreen() {
     body = <ErrorState error={applications.error} onRetry={() => applications.refetch()} />;
   } else {
     const rows = applications.data.filter((application) => application.job);
+    const active = rows.filter((application) => !DECIDED.has(application.status));
+    const decided = rows.filter((application) => DECIDED.has(application.status));
     body = (
       <ScrollView
         {...list}
@@ -89,20 +92,35 @@ export default function ApplicationsScreen() {
             <Button label={t('dashboard.emptyApplicationsCta')} onPress={() => router.navigate('/jobs')} />
           </View>
         ) : (
-          // One surface, ruled rows — the website's layout, not a card per application.
-          <View
-            style={{
-              ...corner('xl'),
-              borderWidth: StyleSheet.hairlineWidth * 2,
-              borderColor: colors.border,
-              boxShadow: shadow.card,
-              backgroundColor: colors.card,
-              overflow: 'hidden',
-            }}
-          >
-            {rows.map((application, index) => (
-              <ApplicationRow key={application.id} application={application} first={index === 0} />
-            ))}
+          // Still open first, decided after: what may yet move is what is
+          // looked for. Each group one surface of ruled rows — the website's
+          // layout, not a card per application — and named only when both are there.
+          <View style={{ gap: space[5] }}>
+            {[active, decided].map((group, index) =>
+              group.length ? (
+                <View key={index} style={{ gap: space[2] }}>
+                  {active.length && decided.length ? (
+                    <Text variant="small" weight="semibold" tone="mutedForeground" accessibilityRole="header">
+                      {t(index === 0 ? 'app.applications.activeHeading' : 'app.applications.decidedHeading')}
+                    </Text>
+                  ) : null}
+                  <View
+                    style={{
+                      ...corner('xl'),
+                      borderWidth: StyleSheet.hairlineWidth * 2,
+                      borderColor: colors.border,
+                      boxShadow: shadow.card,
+                      backgroundColor: colors.card,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {group.map((application, row) => (
+                      <ApplicationRow key={application.id} application={application} first={row === 0} />
+                    ))}
+                  </View>
+                </View>
+              ) : null,
+            )}
           </View>
         )}
       </ScrollView>
@@ -118,6 +136,9 @@ export default function ApplicationsScreen() {
     </>
   );
 }
+
+/** Where an application has come to its end: the company has answered. */
+const DECIDED = new Set<ApplicationStatus>(['hired', 'rejected']);
 
 function ApplicationRow({ application, first }: { application: CandidateApplication; first: boolean }) {
   const t = useTranslations();

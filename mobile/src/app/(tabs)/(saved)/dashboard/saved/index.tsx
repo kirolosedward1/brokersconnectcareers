@@ -10,7 +10,7 @@ import { Button } from '~/components/ui/button';
 import { Illustration } from '~/components/ui/illustration';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
-import { useAppliedJobIds } from '~/features/jobs/marks';
+import { useAppliedLast } from '~/features/jobs/marks';
 import { useSavedJobs, useSavedSearches } from '~/features/saved/queries';
 import { useTabList } from '~/features/tab-bar';
 import { useSession } from '~/lib/session';
@@ -40,9 +40,10 @@ export default function SavedScreen() {
   const list = useTabList();
 
   const saved = useMemo(() => jobs.data ?? [], [jobs.data]);
-  const applied = useAppliedJobIds(useMemo(() => saved.map((job) => job.id), [saved]));
-  const open = saved.filter((job) => jobIsLive(job));
-  const closed = saved.filter((job) => !jobIsLive(job));
+  // Still open ones first, and among them what is not yet applied to.
+  const { jobs: ordered, applied } = useAppliedLast(saved);
+  const open = ordered.filter((job) => jobIsLive(job));
+  const closed = ordered.filter((job) => !jobIsLive(job));
 
   let body: React.ReactNode;
   if (!session) {

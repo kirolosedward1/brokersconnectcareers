@@ -7,6 +7,7 @@ import { fillReply } from '~/components/employer/saved-replies';
 import { ringShare } from '~/components/profile/completeness-ring';
 import { SwipeRow } from '~/components/ui/swipe-row';
 import { checkAgentSearches, saveAgentSearch, savedAgentSearches } from '~/features/directory/alerts';
+import { appliedLast } from '~/features/jobs/marks';
 import { matchFor, matchPercent } from '~/features/jobs/match';
 import { recentJobs, type ViewedJob } from '~/features/jobs/recent';
 import { getJson } from '~/lib/api';
@@ -43,6 +44,12 @@ describe('a match on a job card', () => {
     expect(matchFor(job, { tracks: [], district_ids: [], years_experience: 4 })).toBeNull();
     expect(matchFor(job, { tracks: ['primary'], district_ids: [1], years_experience: 0 })).toBeNull();
   });
+});
+
+it('moves what was applied to to the foot of a list, each part in its own order', () => {
+  const list = ['a', 'b', 'c', 'd'].map((id) => ({ id }));
+  expect(appliedLast(list, new Set(['a', 'c'])).map((job) => job.id)).toEqual(['b', 'd', 'a', 'c']);
+  expect(appliedLast(list, new Set())).toBe(list);
 });
 
 describe("an application's steps", () => {

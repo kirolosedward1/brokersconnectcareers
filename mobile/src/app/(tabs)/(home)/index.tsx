@@ -13,6 +13,7 @@ import { JobBrowse } from '~/components/home/job-browse';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { RecentlyViewed } from '~/components/home/recently-viewed';
 import { JobCard } from '~/components/jobs/job-card';
+import { JobCardList } from '~/components/jobs/job-card-list';
 import { Button } from '~/components/ui/button';
 import { SectionHeader } from '~/components/ui/section-header';
 import { ErrorState } from '~/components/ui/states';
@@ -199,11 +200,7 @@ function MarketHome() {
             </View>
           ) : null}
 
-          <View style={{ gap: space[3] }}>
-            {latest.map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))}
-          </View>
+          <JobCardList jobs={latest} gap={space[3]} />
 
           <Button label={t('home.browseAll')} variant="outline" onPress={() => router.navigate('/jobs')} />
         </View>

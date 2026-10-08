@@ -67,6 +67,8 @@ udid=$(xcrun simctl create expo-go "$type" "$runtime")
 xcrun simctl boot "$udid"
 xcrun simctl bootstatus "$udid" -b > "$work/boot.log"
 xcrun simctl install "$udid" "$work/ExpoGo.app"
+# From here on, whatever Expo Go logs is the app's run (read back at the end).
+started=$(date -u +%Y-%m-%dT%H:%M:%S)
 echo "runtime $runtime, $type, simulator $udid"
 
 swiftc -O "$here/screen-text.swift" -o "$work/screen-text" > "$work/swiftc.log" 2>&1 ||
@@ -249,6 +251,18 @@ if [ "$(bar_names 3c-jobs-scrolled-up)" != 4 ]; then
   failed+=("3c-jobs-scrolled-up: the tab bar's names did not come back")
   echo "::error title=Expo Go: 3c-jobs-scrolled-up::not all four of the tab bar's names are read after scrolling back up"
 fi
+# A tour of what was added lately, then the board again: Expo Go must still be
+# standing, on the app.
+maestro --device "$udid" test "$flows/expo-go-tour.yaml" >> "$out/maestro.log" 2>&1 ||
+  { echo "Maestro's tour stopped:"; tail -n 20 "$out/maestro.log" | sed 's/^/    /'; }
+glance 3e-after-tour 'after the tour: sort, filters, a listing, Share, a company'
+if ! xcrun simctl spawn "$udid" launchctl list 2> /dev/null | grep -q 'host.exp.Exponent'; then
+  failed+=("3e-after-tour: Expo Go is no longer running")
+  echo "::error title=Expo Go: tour::Expo Go stopped during the tour"
+fi
+open_app jobs
+see 3f-jobs-after-tour 'الفلاتر'
+
 open_app companies
 see 3d-companies 'الموثّقة بس'
 in_header 3d-companies 'شركات العقارات'
@@ -272,6 +286,34 @@ for verdict in "$out"/*.verdict; do
   if grep -q 'LEFT TO RIGHT' "$verdict"; then
     failed+=("$(basename "$verdict" .verdict): tab bar left to right")
   fi
+done
+
+# What Expo Go said went wrong while it ran: the app's own JavaScript errors
+# (React Native logs them as errors, and a fatal one as RCTFatal), and any
+# crash report iOS wrote for it.
+xcrun simctl spawn "$udid" log show --style compact --start "$started" \
+  --predicate 'process == "Expo Go" AND (messageType == error OR messageType == fault) AND (eventMessage CONTAINS[c] "exception" OR eventMessage CONTAINS "RCTFatal" OR eventMessage CONTAINS[c] "error:" OR subsystem == "com.facebook.react.log")' \
+  > "$out/expo-go-errors.log" 2> /dev/null || true
+if [ -s "$out/expo-go-errors.log" ]; then
+  echo "::group::Expo Go's errors"
+  cat "$out/expo-go-errors.log"
+  echo "::endgroup::"
+  python3 -c '
+import sys
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()[-3800:]
+print("::warning title=Expo Go: errors logged::" + text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
+' "$out/expo-go-errors.log"
+fi
+for report in "$HOME"/Library/Logs/DiagnosticReports/*Expo*; do
+  [ -f "$report" ] || continue
+  [ "$report" -nt "$work/boot.log" ] || continue
+  cp "$report" "$out/"
+  failed+=("Expo Go crashed: $(basename "$report")")
+  python3 -c '
+import sys
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()[:3800]
+print("::error title=Expo Go crashed::" + text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
+' "$report"
 done
 
 xcrun simctl shutdown "$udid" > /dev/null 2>&1 || true

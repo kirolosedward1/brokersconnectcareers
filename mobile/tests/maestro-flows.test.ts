@@ -45,6 +45,12 @@ const KEYS: Record<string, string> = {
   'الفلاتر.*': 'jobs.filters',
   'مفيش وظائف مطابقة لبحثك.': 'jobs.empty',
   'مشاركة': 'jobs.share',
+  // expo-go-tour.yaml: the board's order, its sheet, iOS's Share sheet, the Companies tab.
+  'الأحدث': 'jobs.sortNewest',
+  'الأعلى راتباً': 'jobs.sortSalary',
+  'إغلاق': 'common.close',
+  'إلغاء|Cancel': 'common.cancel',
+  'الشركات': 'app.tabs.companies',
   'الشركات اللي بتوظّف على بروكرز كونكت، والموثّق منها.': 'companies.lede',
   'مفيش شركات مطابقة.': 'companies.empty',
   // signed-out.yaml: Account's card, its sign-in button, the sheet, the forgotten password, sign-up.
@@ -85,10 +91,10 @@ const TEXT_KEYS = new Set([
 /**
  * Strings that are no text on screen: a command with no argument (under no
  * key), the app, a flow's name, a file run, a link opened, a screenshot's
- * name, a condition, a point tapped or swiped between. Any other key holding a string fails the test below, so
+ * name, a condition, a point tapped or swiped between, a test id. Any other key holding a string fails the test below, so
  * a new way of naming text is sorted into one list or the other.
  */
-const OTHER_KEYS = new Set(['', 'appId', 'name', 'file', 'runFlow', 'openLink', 'takeScreenshot', 'true', 'point', 'start', 'end']);
+const OTHER_KEYS = new Set(['', 'appId', 'name', 'file', 'runFlow', 'openLink', 'takeScreenshot', 'true', 'point', 'start', 'end', 'id']);
 
 /** The strings in a flow by the key they sit under; an item of a list sits under the list's key. */
 function stringsIn(node: unknown, key: string, into: { key: string; value: string }[]): { key: string; value: string }[] {

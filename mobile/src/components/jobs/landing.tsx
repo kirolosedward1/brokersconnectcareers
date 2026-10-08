@@ -6,7 +6,7 @@ import { formatEgp, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { JobTrack } from '@/lib/supabase/database.types';
 import { buildLandingSlug, JOB_TRACKS } from '@/lib/taxonomy';
-import { JobCard } from '~/components/jobs/job-card';
+import { JobCardList } from '~/components/jobs/job-card-list';
 import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
@@ -138,11 +138,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
           // Never "no jobs here" for a read that failed.
           <ErrorState error={board.error} onRetry={() => board.refetch()} />
         ) : jobs.length ? (
-          <View style={{ gap: space[2] }}>
-            {jobs.slice(0, 20).map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))}
-          </View>
+          <JobCardList jobs={jobs.slice(0, 20)} />
         ) : (
           <EmptyState
             icon={SearchX}

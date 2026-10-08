@@ -48,7 +48,8 @@
     "endOfList": "دي كل الوظائف المطابقة.",
     "wizardStep": "الخطوة <v>{current}</v> من <v>{total}</v>",
     "quickFilters": "اختيارات سريعة",
-    "match": "مناسب لك <v>{percent}%</v>"
+    "match": "مناسب لك <v>{percent}%</v>",
+    "appliedHeading": "وظائف قدّمت عليها"
   },
   "auth": {
     "forCompanies": "سجّل شركتك",
@@ -112,7 +113,9 @@
     "timeline": "حالة طلبك",
     "stepSent": "اتبعت",
     "stepSeen": "الشركة شافته",
-    "stepDecision": "القرار"
+    "stepDecision": "القرار",
+    "activeHeading": "طلبات لسه شغّالة",
+    "decidedHeading": "طلبات اتحسمت"
   },
   "apply": {
     "pickCv": "اختار ملف",
@@ -246,5 +249,8 @@
     "fresh": "{count, plural, one {استشاري جديد} two {استشاريين جداد} few {# استشاريين جداد} many {# استشاري جديد} other {# استشاري جديد}}",
     "stop": "وقّف التنبيه",
     "notifyTitle": "{count, plural, one {استشاري جديد مطابق لبحثك} two {استشاريين جداد مطابقين لبحثك} few {# استشاريين جداد مطابقين لبحثك} many {# استشاري جديد مطابق لبحثك} other {# استشاري جديد مطابق لبحثك}}"
+  },
+  "cv": {
+    "current": "حالياً"
   }
 }
