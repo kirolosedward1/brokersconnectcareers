@@ -230,6 +230,49 @@ print(len(read))
 PY
 }
 
+# Each step's Maestro run is kept apart and shown with the step's reading:
+# whether it found what it was to tap, and what it saw of the screen.
+step_run() {
+  local name="$1"
+  shift
+  if maestro --device "$udid" test "$@" > "$out/$name.maestro.log" 2>&1; then
+    echo "maestro: ok" > "$out/$name.maestro.verdict"
+  else
+    echo "maestro: FAILED" > "$out/$name.maestro.verdict"
+  fi
+  # What the test driver can see of the screen: whether the app's controls
+  # are there to be tapped at all.
+  maestro --device "$udid" hierarchy > "$out/$name.hierarchy.json" 2> /dev/null || true
+}
+tour() {
+  local name="$1" what="$2"
+  shift 2
+  step_run "$name" "$@"
+  glance "$name" "$what"
+  echo "::group::$name — $(cat "$out/$name.maestro.verdict"); what the driver saw"
+  tail -n 12 "$out/$name.maestro.log"
+  python3 - "$out/$name.hierarchy.json" <<'PY' || true
+import json, sys
+try:
+    tree = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception as error:
+    print(f"hierarchy: not read ({error})")
+    sys.exit(0)
+seen = []
+def walk(node):
+    attrs = node.get("attributes", {}) if isinstance(node, dict) else {}
+    for key in ("accessibilityText", "text", "resource-id"):
+        value = (attrs.get(key) or "").strip()
+        if value and value not in seen:
+            seen.append(value)
+    for child in (node.get("children") or []) if isinstance(node, dict) else []:
+        walk(child)
+walk(tree)
+print(f"hierarchy: {len(seen)} labels — " + " | ".join(seen[:40]))
+PY
+  echo "::endgroup::"
+}
+
 # The first open, from the network: the case that came up left to right. A
 # launch with nobody signed in opens on the welcome; skipping it goes on to Home.
 open_app
@@ -239,14 +282,12 @@ see 2-home 'منصة متخصصة لوظائف العقارات في مصر' 'ا
 open_app jobs
 see 3-jobs 'الفلاتر'
 in_header 3-jobs 'الوظائف'
-maestro --device "$udid" test "$flows/expo-go-scroll-down.yaml" >> "$out/maestro.log" 2>&1 || true
-glance 3b-jobs-scrolled-down 'scrolled down: the bar smaller, its names gone'
+tour 3b-jobs-scrolled-down 'scrolled down: the bar smaller, its names gone' "$flows/expo-go-scroll-down.yaml"
 if [ "$(bar_names 3b-jobs-scrolled-down)" != 0 ]; then
   failed+=("3b-jobs-scrolled-down: the tab bar kept its names")
   echo "::error title=Expo Go: 3b-jobs-scrolled-down::the tab bar's names are still read after scrolling down"
 fi
-maestro --device "$udid" test "$flows/expo-go-scroll-up.yaml" >> "$out/maestro.log" 2>&1 || true
-glance 3c-jobs-scrolled-up 'scrolled back up: the bar whole again, names and all'
+tour 3c-jobs-scrolled-up 'scrolled back up: the bar whole again, names and all' "$flows/expo-go-scroll-up.yaml"
 if [ "$(bar_names 3c-jobs-scrolled-up)" != 4 ]; then
   failed+=("3c-jobs-scrolled-up: the tab bar's names did not come back")
   echo "::error title=Expo Go: 3c-jobs-scrolled-up::not all four of the tab bar's names are read after scrolling back up"
@@ -254,20 +295,17 @@ fi
 # A tour of what was added lately, one step at a time and each read back:
 # the order's menu, the filter sheet, a listing and its Share, back, a
 # company. Expo Go must still be on the app at the end of it.
-tap_text() { maestro --device "$udid" test -e "TEXT=$1" "$flows/expo-go-tap-text.yaml" >> "$out/maestro.log" 2>&1 || true; }
-tap_id() { maestro --device "$udid" test -e "ID=$1" "$flows/expo-go-tap-id.yaml" >> "$out/maestro.log" 2>&1 || true; }
-tap_point() { maestro --device "$udid" test -e "POINT=$1" "$flows/expo-go-tap.yaml" >> "$out/maestro.log" 2>&1 || true; }
-tap_text 'الأحدث';             glance t1-sort-menu 'tour: the order opened'
-tap_text 'الأعلى راتباً';      glance t2-sorted 'tour: by salary'
-tap_text 'الفلاتر.*';          glance t3-filters 'tour: the filter sheet'
-tap_text 'إغلاق';              glance t4-filters-closed 'tour: the sheet closed'
-tap_point '50%,45%';           glance t5-listing 'tour: the first listing'
-tap_text 'مشاركة';             glance t6-share 'tour: Share'
-tap_text 'إلغاء|Cancel';       glance t7-share-cancelled 'tour: Share cancelled'
-tap_id 'header-back';          glance t8-back 'tour: back to the board'
-tap_text 'الشركات';            glance t9-companies 'tour: the Companies tab'
-tap_point '50%,45%';           glance t10-company 'tour: a company'
-tap_id 'header-back';          glance t11-company-back 'tour: back to the companies'
+tour t1-sort-menu 'tour: the order opened' -e 'TEXT=الأحدث' "$flows/expo-go-tap-text.yaml"
+tour t2-sorted 'tour: by salary' -e 'TEXT=الأعلى راتباً' "$flows/expo-go-tap-text.yaml"
+tour t3-filters 'tour: the filter sheet' -e 'TEXT=الفلاتر.*' "$flows/expo-go-tap-text.yaml"
+tour t4-filters-closed 'tour: the sheet closed' -e 'TEXT=إغلاق' "$flows/expo-go-tap-text.yaml"
+tour t5-listing 'tour: the first listing' -e 'POINT=50%,45%' "$flows/expo-go-tap.yaml"
+tour t6-share 'tour: Share' -e 'TEXT=مشاركة' "$flows/expo-go-tap-text.yaml"
+tour t7-share-cancelled 'tour: Share cancelled' -e 'TEXT=إلغاء|Cancel' "$flows/expo-go-tap-text.yaml"
+tour t8-back 'tour: back to the board' -e 'ID=header-back' "$flows/expo-go-tap-id.yaml"
+tour t9-companies 'tour: the Companies tab' -e 'TEXT=الشركات' "$flows/expo-go-tap-text.yaml"
+tour t10-company 'tour: a company' -e 'POINT=50%,45%' "$flows/expo-go-tap.yaml"
+tour t11-company-back 'tour: back to the companies' -e 'ID=header-back' "$flows/expo-go-tap-id.yaml"
 if grep -qE '^y[0-9]+ x[0-9-]+  (Playground|Welcome to your playground\.|Projects|Recently opened)$' "$out/t11-company-back.boxes"; then
   failed+=("tour: the app was left for Expo Go's own screens")
   echo "::error title=Expo Go: tour::the app was left during the tour (Expo Go's own screen showed): see the t1–t11 readings in the log"
