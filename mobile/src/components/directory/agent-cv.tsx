@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { Award, Briefcase, GraduationCap, Quote } from '~/components/ui/lucide';
 import { formatEgp, formatNumber } from '@/lib/format';
@@ -9,7 +9,7 @@ import { Card } from '~/components/ui/card';
 import { Text } from '~/components/ui/text';
 import type { CvSections } from '~/features/profile/queries';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { corner, space } from '~/theme/tokens';
 
 /**
  * The CV half of a consultant's page — the website's AgentCv. Nothing here
@@ -45,7 +45,21 @@ export function AgentCv({
     <View style={{ gap: space[8] }}>
       {summary ? (
         <Section title={t('cv.objective')} icon={<Quote size={16} color={colors.mutedForeground} />}>
-          <Text tone="mutedForeground">{summary}</Text>
+          {/* Their own words, as a quote: set on a soft card, a gold rule at the start. */}
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: space[3],
+              padding: space[4],
+              ...corner('xl'),
+              backgroundColor: colors.card,
+              borderWidth: StyleSheet.hairlineWidth * 2,
+              borderColor: colors.border,
+            }}
+          >
+            <View style={{ width: 3, borderRadius: 2, backgroundColor: colors.gold }} />
+            <Text style={{ flex: 1, lineHeight: 28 }}>{summary}</Text>
+          </View>
         </Section>
       ) : null}
 

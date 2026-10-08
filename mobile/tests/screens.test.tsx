@@ -345,7 +345,9 @@ describe('the board', () => {
   it('re-sorts', async () => {
     const result = renderRouter(app, { initialUrl: '/(jobs)/jobs' });
     await screen.findByText(listing.title_ar);
-    // One order of three: radio buttons in a group named for what they set.
+    // A small button naming the order; the three in a card it opens, radio
+    // buttons in a group named for what they set.
+    fireEvent.press(screen.getByRole('button', { name: 'رتّب حسب: الأحدث' }));
     expect(screen.getByLabelText('رتّب حسب').props.accessibilityRole).toBe('radiogroup');
     expect(screen.getByRole('radio', { name: 'الأحدث' }).props.accessibilityState).toMatchObject({ checked: true });
     expect(screen.getByRole('radio', { name: 'الأعلى راتباً' }).props.accessibilityState).toMatchObject({ checked: false });

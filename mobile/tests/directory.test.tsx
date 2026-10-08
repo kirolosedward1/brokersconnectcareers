@@ -450,6 +450,11 @@ describe("a consultant's page", () => {
 
     expect(await screen.findByText('منى علي')).toBeTruthy();
     expect(screen.getByText(ar.availability.actively_searching)).toBeTruthy();
+    // Where they stand, read as one status; each row of the card named for VoiceOver.
+    expect(screen.getByLabelText(`${ar.agents.availability}: ${ar.availability.actively_searching}`)).toBeTruthy();
+    for (const row of [ar.agents.tracks, ar.agents.districts, ar.agents.languages]) {
+      expect(screen.getByRole('header', { name: row })).toBeTruthy();
+    }
     expect(screen.getByText(ar.track.resale)).toBeTruthy();
     expect(screen.getByText(newCairo.name_ar)).toBeTruthy();
     expect(screen.getByText('بالم هيلز')).toBeTruthy();

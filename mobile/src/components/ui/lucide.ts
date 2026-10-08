@@ -3,12 +3,13 @@
  *
  * `lucide-react-native`'s index requires every one of its 1,854 icons as it
  * loads — about 2 MB of the bundle and 20 to 30 ms before the first frame on
- * a phone — for the 101 used here. One module per icon loads only those. Add
+ * a phone — for the 103 used here. One module per icon loads only those. Add
  * an icon here, from `lucide-react-native/icons/<its-file-name>`, and import
  * it from this file.
  */
 export { default as AlertTriangle } from 'lucide-react-native/icons/triangle-alert';
 export { default as Archive } from 'lucide-react-native/icons/archive';
+export { default as ArrowUpDown } from 'lucide-react-native/icons/arrow-up-down';
 export { default as Award } from 'lucide-react-native/icons/award';
 export { default as BadgeCheck } from 'lucide-react-native/icons/badge-check';
 export { default as BadgeX } from 'lucide-react-native/icons/badge-x';
@@ -63,6 +64,7 @@ export { default as ImageUp } from 'lucide-react-native/icons/image-up';
 export { default as Inbox } from 'lucide-react-native/icons/inbox';
 export { default as Info } from 'lucide-react-native/icons/info';
 export { default as KeyRound } from 'lucide-react-native/icons/key-round';
+export { default as Languages } from 'lucide-react-native/icons/languages';
 export { default as LifeBuoy } from 'lucide-react-native/icons/life-buoy';
 export { default as Lock } from 'lucide-react-native/icons/lock';
 export { default as LogIn } from 'lucide-react-native/icons/log-in';

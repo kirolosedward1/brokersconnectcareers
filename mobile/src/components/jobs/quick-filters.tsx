@@ -3,9 +3,11 @@ import { useLocale, useTranslations } from 'use-intl';
 import type { JobFilters } from '@/lib/job-filters';
 import { localized } from '@/lib/locale';
 import { Chip } from '~/components/ui/chip';
+import { Banknote, MapPin } from '~/components/ui/lucide';
 import { useBrowseCounts } from '~/features/browse/queries';
 import { toggled } from '~/features/jobs/filters';
 import { useDistricts } from '~/features/taxonomy';
+import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 
 /** How many of the busiest areas get a chip of their own. */
@@ -33,13 +35,17 @@ export function QuickFilters({ filters, apply }: { filters: JobFilters; apply: (
     .filter((district): district is NonNullable<typeof district> => Boolean(district))
     .slice(0, AREAS);
 
+  const { colors } = useTheme();
   const withSalary = filters.hasBasicSalary === true;
+  // On a chosen chip the icon takes the chip's own white; otherwise it is quieter than the word.
+  const tint = (on: boolean) => (on ? colors.primaryForeground : colors.mutedForeground);
 
   return (
     <View accessibilityLabel={t('app.jobs.quickFilters')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
       <Chip
         label={t('filters.hasBasicSalaryYes')}
         selected={withSalary}
+        icon={<Banknote size={15} color={tint(withSalary)} />}
         onPress={() => apply({ ...filters, hasBasicSalary: withSalary ? null : true })}
       />
       {(['primary', 'resale'] as const).map((track) => (
@@ -50,14 +56,18 @@ export function QuickFilters({ filters, apply }: { filters: JobFilters; apply: (
           onPress={() => apply({ ...filters, tracks: toggled(filters.tracks, track) })}
         />
       ))}
-      {busiest.map((district) => (
-        <Chip
-          key={district.slug}
-          label={localized(locale, district.name_ar, district.name_en)}
-          selected={filters.districtSlugs.includes(district.slug)}
-          onPress={() => apply({ ...filters, districtSlugs: toggled(filters.districtSlugs, district.slug) })}
-        />
-      ))}
+      {busiest.map((district) => {
+        const on = filters.districtSlugs.includes(district.slug);
+        return (
+          <Chip
+            key={district.slug}
+            label={localized(locale, district.name_ar, district.name_en)}
+            selected={on}
+            icon={<MapPin size={15} color={tint(on)} />}
+            onPress={() => apply({ ...filters, districtSlugs: toggled(filters.districtSlugs, district.slug) })}
+          />
+        );
+      })}
     </View>
   );
 }

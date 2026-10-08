@@ -1,18 +1,17 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { useEffect, useMemo, useRef } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Lock, MapPin, ShieldCheck, UserRound } from '~/components/ui/lucide';
+import { Briefcase, Building2, Languages, Lock, MapPin, ShieldCheck, UserRound } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
 import { canShortlistAgents, canViewAgentProfile } from '@/lib/permissions';
-import type { DistrictRow } from '@/lib/supabase/database.types';
+import type { AgentAvailability, DistrictRow } from '@/lib/supabase/database.types';
 import { AgentCv } from '~/components/directory/agent-cv';
 import { ContactReveal, CvButton } from '~/components/directory/contact-reveal';
 import { ShortlistButton } from '~/components/directory/shortlist-controls';
 import { HiddenAgentNotice, HideAgent } from '~/components/moderation/hide-company';
 import { ReportButton } from '~/components/moderation/report';
 import { Avatar } from '~/components/ui/avatar';
-import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
@@ -23,7 +22,7 @@ import { useShrinkingTabBar } from '~/features/tab-bar';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { gutter, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
@@ -205,44 +204,29 @@ export function AgentProfile({ handle }: { handle: string }) {
           </Card>
         )}
 
-        <View style={{ gap: space[5] }}>
-          <Fact title={t('agents.availability')}>
-            <Badge variant="primary" label={t(`availability.${card.availability}`)} />
-          </Fact>
+        {/* The card at a glance: where they stand, then one row each for what
+            they sell, where, for whom, and in which languages. */}
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          <View style={{ padding: space[4], paddingBottom: space[3] }}>
+            <Availability value={card.availability} />
+          </View>
           {card.tracks.length ? (
-            <Fact title={t('agents.tracks')}>
-              {card.tracks.map((track) => (
-                <Badge key={track} variant="outline" label={t(`track.${track}`)} />
-              ))}
-            </Fact>
+            <Fact icon={Briefcase} title={t('agents.tracks')} values={card.tracks.map((track) => t(`track.${track}`))} />
           ) : null}
           {areas.length ? (
-            <Fact title={t('agents.districts')}>
-              {areas.map((district) => (
-                <Badge
-                  key={district.id}
-                  variant="outline"
-                  icon={<MapPin size={12} color={colors.mutedForeground} />}
-                  label={localized(locale, district.name_ar, district.name_en)}
-                />
-              ))}
-            </Fact>
+            <Fact icon={MapPin} title={t('agents.districts')} values={areas.map((district) => localized(locale, district.name_ar, district.name_en))} />
           ) : null}
           {soldFor.length ? (
-            <Fact title={t('agents.soldFor')}>
-              {soldFor.map((developer) => (
-                <Badge key={developer.id} variant="outline" label={localized(locale, developer.name_ar, developer.name_en)} />
-              ))}
-            </Fact>
+            <Fact
+              icon={Building2}
+              title={t('agents.soldFor')}
+              values={soldFor.map((developer) => localized(locale, developer.name_ar, developer.name_en))}
+            />
           ) : null}
           {card.languages.length ? (
-            <Fact title={t('agents.languages')}>
-              {card.languages.map((language) => (
-                <Badge key={language} variant="outline" label={t(`language.${language}` as never)} />
-              ))}
-            </Fact>
+            <Fact icon={Languages} title={t('agents.languages')} values={card.languages.map((language) => t(`language.${language}` as never))} />
           ) : null}
-        </View>
+        </Card>
 
         <AgentCv
           summary={summary || null}
@@ -265,13 +249,65 @@ export function AgentProfile({ handle }: { handle: string }) {
   );
 }
 
-function Fact({ title, children }: { title: string; children: ReactNode }) {
+/**
+ * Where the consultant stands, as a status: a dot in its colour and the words
+ * on a tint of it — green for looking now, the brand's for open to offers,
+ * quiet grey for employed and not looking.
+ */
+function Availability({ value }: { value: AgentAvailability }) {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  const tone =
+    value === 'actively_searching'
+      ? { dot: colors.success, fill: colors.successMuted, text: colors.success }
+      : value === 'open_to_offers'
+        ? { dot: colors.primary, fill: colors.secondary, text: colors.primary }
+        : { dot: colors.mutedForeground, fill: colors.muted, text: colors.mutedForeground };
   return (
-    <View style={{ gap: space[2] }}>
-      <Text variant="small" weight="semibold" accessibilityRole="header">
-        {title}
+    <View
+      accessible
+      accessibilityLabel={`${t('agents.availability')}: ${t(`availability.${value}`)}`}
+      style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: space[2], paddingVertical: space[1] + 2, paddingHorizontal: space[3], ...corner('full'), backgroundColor: tone.fill }}
+    >
+      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tone.dot }} />
+      <Text variant="small" weight="semibold" style={{ color: tone.text }}>
+        {t(`availability.${value}`)}
       </Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>{children}</View>
+    </View>
+  );
+}
+
+/** One row of the card: an icon on its tile, what the row is, and its values as soft tags. */
+function Fact({ icon: Icon, title, values }: { icon: typeof MapPin; title: string; values: string[] }) {
+  const { colors } = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: space[3],
+        padding: space[4],
+        borderTopWidth: StyleSheet.hairlineWidth * 2,
+        borderTopColor: colors.border,
+      }}
+    >
+      <View style={{ width: 36, height: 36, ...corner('md'), alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondary }}>
+        <Icon size={18} color={colors.primary} />
+      </View>
+      <View style={{ flex: 1, gap: space[2] }}>
+        <Text variant="caption" weight="semibold" tone="mutedForeground" accessibilityRole="header">
+          {title}
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+          {values.map((value) => (
+            <View key={value} style={{ paddingVertical: space[1], paddingHorizontal: space[3], ...corner('full'), backgroundColor: colors.muted }}>
+              <Text variant="small" weight="medium">
+                {value}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ComponentProps } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
@@ -24,11 +24,12 @@ import { FilterSheet } from '~/components/jobs/filter-sheet';
 import { JobCard } from '~/components/jobs/job-card';
 import { PopularLandings } from '~/components/jobs/popular-landings';
 import { QuickFilters } from '~/components/jobs/quick-filters';
+import { SortMenu } from '~/components/jobs/sort-menu';
 import { SaveSearchButton } from '~/components/saved/save-controls';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
-import { Segmented } from '~/components/ui/segmented';
+import { PressableScale } from '~/components/ui/pressable-scale';
 import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useBrowseCounts } from '~/features/browse/queries';
@@ -40,7 +41,7 @@ import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
 import { useTabList } from '~/features/tab-bar';
 import { useTheme } from '~/theme/provider';
-import { gutter, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useNextPage } from '~/lib/use-next-page';
 
@@ -207,6 +208,50 @@ function Separator() {
  * One block above the listings: how many, in what order, the pinned company
  * if the board is narrowed to one, and what else it is narrowed by.
  */
+/**
+ * Filters, as a button beside the order: the sliders and the word, and how
+ * many of the sheet's filters are on in a small solid badge — filled in the
+ * brand colour while any is.
+ */
+function FiltersButton({ count, onPress }: { count: number; onPress: () => void }) {
+  const t = useTranslations('jobs');
+  const locale = useLocale();
+  const { colors } = useTheme();
+  const on = count > 0;
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={on ? `${t('filters')} · ${formatNumber(count, locale)}` : t('filters')}
+      onPress={onPress}
+      hitSlop={4}
+      style={({ pressed }) => ({
+        minHeight: 40,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space[1] + 2,
+        paddingStart: space[3],
+        paddingEnd: on ? space[1] + 2 : space[3],
+        ...corner('full'),
+        borderWidth: StyleSheet.hairlineWidth * 2,
+        borderColor: on ? colors.primary : colors.border,
+        backgroundColor: on ? colors.primary : pressed ? colors.muted : colors.card,
+      })}
+    >
+      <SlidersHorizontal size={15} color={on ? colors.primaryForeground : colors.foreground} />
+      <Text variant="small" weight="semibold" maxFontSizeMultiplier={1.4} style={{ color: on ? colors.primaryForeground : colors.foreground }}>
+        {t('filters')}
+      </Text>
+      {on ? (
+        <View style={{ minWidth: 24, height: 24, paddingHorizontal: 6, ...corner('full'), alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryForeground }}>
+          <Text variant="caption" weight="bold" maxFontSizeMultiplier={1.2} style={{ color: colors.primary }}>
+            {formatNumber(count, locale)}
+          </Text>
+        </View>
+      ) : null}
+    </PressableScale>
+  );
+}
+
 function BoardHeader({
   filters,
   first,
@@ -231,7 +276,6 @@ function BoardHeader({
 }) {
   const locale = useLocale();
   const t = useTranslations('jobs');
-  const { colors } = useTheme();
   const labelFor = useFilterLabel(filters);
   const active = activeFilterList(filters);
   const company = first?.company;
@@ -240,33 +284,28 @@ function BoardHeader({
 
   return (
     <View style={{ gap: space[3], marginBottom: space[4] }}>
-      <QuickFilters filters={filters} apply={apply} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
+      {/* One line: how many there are, then the order and the filters, small, at its end. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
         {loading ? (
-          <View style={{ flexGrow: 1 }} />
+          <View style={{ flex: 1 }} />
         ) : (
-          <Text variant="small" weight="medium" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
+          <Text variant="headline" weight="bold" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
             {t('resultsCount', { count: total })}
           </Text>
         )}
-        <Chip
-          label={inSheet ? `${t('filters')} · ${formatNumber(inSheet, locale)}` : t('filters')}
-          selected={inSheet > 0}
-          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primaryForeground : colors.foreground} />}
-          onPress={onFilters}
-          feedback={false}
+        <SortMenu
+          label={t('sortBy')}
+          value={filters.sort}
+          onChange={(sort) => apply({ ...filters, sort })}
+          options={SORTS.map((sort) => ({
+            value: sort,
+            label: t(sort === 'newest' ? 'sortNewest' : sort === 'salary' ? 'sortSalary' : 'sortSeats'),
+          }))}
         />
+        <FiltersButton count={inSheet} onPress={onFilters} />
       </View>
 
-      <Segmented
-        label={t('sortBy')}
-        value={filters.sort}
-        onChange={(sort) => apply({ ...filters, sort })}
-        options={SORTS.map((sort) => ({
-          value: sort,
-          label: t(sort === 'newest' ? 'sortNewest' : sort === 'salary' ? 'sortSalary' : 'sortSeats'),
-        }))}
-      />
+      <QuickFilters filters={filters} apply={apply} />
 
       {company ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3] }}>
