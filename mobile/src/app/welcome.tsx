@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useNavigation } from 'expo-router';
@@ -10,7 +10,7 @@ import { LOGO_MARK, Wordmark } from '~/components/brand/brand-logo';
 import { Appear } from '~/components/motion/appear';
 import { Button, GLASS } from '~/components/ui/button';
 import { ForwardChevron, SignInMark } from '~/components/ui/icons';
-import { Banknote, Clock, MessageCircle, UserRoundPlus, type LucideProps } from '~/components/ui/lucide';
+import { UserRoundPlus } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
 import { welcomeDrawn } from '~/features/welcome';
@@ -26,7 +26,7 @@ const PHOTO = require('../../assets/images/welcome-photo.jpg');
  * never seen. Skip first — it opens at every launch with nobody signed in, and
  * someone who has seen it before is not kept waiting for the way past it
  * (iOS takes no taps on what has not begun to show) — with the photograph
- * settling behind it; then the logo, the words, the promises and the ways on.
+ * settling behind it; then the logo, the words and the ways on.
  */
 const BEAT = 160;
 const AT = {
@@ -34,7 +34,6 @@ const AT = {
   photo: 0,
   brand: BEAT + 80,
   words: BEAT + 180,
-  facts: BEAT + 340,
   ways: BEAT + 460,
 };
 
@@ -42,8 +41,8 @@ const AT = {
  * The first screen of every launch with nobody signed in, and where signing
  * out leads (src/components/navigation/welcome-gate.tsx): the website's hero
  * photograph across the whole screen under a deep sapphire veil, darkening to
- * midnight where the words are — the logo, what the board is in one line, its
- * three promises — and the ways on: create an account, sign in, or skip and
+ * midnight where the words are — the logo and what the board is in one line —
+ * and the ways on: create an account, sign in, or skip and
  * look around without one, which the App Store asks an app to allow wherever
  * an account is not needed. A company has its own way in, to the employer's
  * sign-up.
@@ -156,20 +155,6 @@ export default function WelcomeScreen() {
           </Appear>
         </View>
 
-        {/* The three promises on one pane of glass, a third each, whatever the phone's width. */}
-        <View
-          style={{
-            flexDirection: 'row',
-            ...corner('xl'),
-            borderWidth: StyleSheet.hairlineWidth * 2,
-            borderColor: GLASS.edge,
-            backgroundColor: GLASS.fill,
-          }}
-        >
-          <Fact play={shown} delay={AT.facts} icon={Banknote} label={t('app.welcome.factPay')} />
-          <Fact play={shown} delay={AT.facts + motion.stagger} icon={Clock} label={t('app.welcome.factApply')} divided />
-          <Fact play={shown} delay={AT.facts + motion.stagger * 2} icon={MessageCircle} label={t('app.welcome.factWhatsapp')} divided />
-        </View>
       </ScrollView>
 
       {/* The ways on stay at the foot of the screen, whatever the phone's size or text size. */}
@@ -285,49 +270,5 @@ function Brand({ compact, locale }: { compact: boolean; locale: string }) {
         </Text>
       )}
     </View>
-  );
-}
-
-/** One of the board's promises: its mark over its words, a hairline from the one before. */
-function Fact({
-  icon: Icon,
-  label,
-  delay,
-  play,
-  divided = false,
-}: {
-  icon: ComponentType<LucideProps>;
-  label: string;
-  delay: number;
-  play: boolean;
-  divided?: boolean;
-}) {
-  const { colors } = useTheme();
-  return (
-    <Appear
-      play={play}
-      delay={delay}
-      distance={8}
-      style={{
-        flex: 1,
-        alignItems: 'center',
-        gap: space[1],
-        paddingVertical: space[3],
-        paddingHorizontal: space[1],
-        borderStartWidth: divided ? StyleSheet.hairlineWidth * 2 : 0,
-        borderColor: GLASS.edge,
-      }}
-    >
-      <Icon size={18} color={colors.champagne} />
-      <Text
-        variant="caption"
-        weight="semibold"
-        numberOfLines={2}
-        maxFontSizeMultiplier={1.3}
-        style={{ color: colors.onHero, textAlign: 'center' }}
-      >
-        {label}
-      </Text>
-    </Appear>
   );
 }

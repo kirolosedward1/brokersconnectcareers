@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Alert, Linking, Pressable, type AlertButton } from 'react-native';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
@@ -288,6 +288,24 @@ describe('the photo', () => {
 });
 
 describe('signing in and security', () => {
+  it('keeps deleting the account at its foot, off the Account tab itself', async () => {
+    await signIn();
+    const result = renderRouter(app, { initialUrl: '/account' });
+    expect(await screen.findByText(ar.app.account.security)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.account.deleteTitle })).toBeNull();
+
+    result.unmount();
+
+    renderRouter(app, { initialUrl: '/account/security' });
+    const push = jest.spyOn(router, 'push').mockImplementation(() => {});
+    try {
+      fireEvent.press(await screen.findByRole('button', { name: ar.account.deleteTitle }));
+      expect(push).toHaveBeenCalledWith('/account/delete');
+    } finally {
+      push.mockRestore();
+    }
+  });
+
   it('changes the email address through Supabase, and says a confirmation is on its way', async () => {
     await signIn();
     renderRouter(app, { initialUrl: '/account/security' });

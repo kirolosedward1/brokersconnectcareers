@@ -129,7 +129,7 @@ in the app, and nothing is used to track people across apps or websites.
 
 ## Guidelines that apply, and how the app meets them
 
-- **5.1.1(v) account deletion.** Account → Delete account, with the word typed
+- **5.1.1(v) account deletion.** Account → Sign-in and security → Delete account (at the foot), with the word typed
   out (`deleteMyAccount`). An account made with Sign in with Apple is asked for
   a fresh Apple authorization code first, and the website revokes the grant
   (`src/lib/apple/revoke.ts`). A company owner, whose account cannot be

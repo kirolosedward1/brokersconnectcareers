@@ -28,5 +28,13 @@ export function useStackOptions(): Exclude<StackOptions, (...args: never[]) => u
     headerShadowVisible: false,
     headerStyle: { backgroundColor: colors.background },
     contentStyle: { backgroundColor: colors.background },
+    // A page opened slides in whole, its bar with it, from the side the
+    // reading starts on. iOS's own push slid the bar's titles one way and the
+    // page the other under the app's right to left (src/lib/direction.ts), as
+    // Expo Go creates its screen left to right; this one takes the direction
+    // from the navigation controller the app turns (react-native-screens'
+    // RNSScreenStackAnimator), with no slide of the bar's own.
+    animation: 'simple_push',
+    animationDuration: 350,
   };
 }

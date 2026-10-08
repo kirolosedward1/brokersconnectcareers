@@ -18,7 +18,6 @@ import {
   Scale,
   ShieldAlert,
   ShieldCheck,
-  Trash2,
   UserRound,
   UserRoundPlus,
 } from '~/components/ui/lucide';
@@ -267,14 +266,7 @@ export default function AccountScreen() {
               }}
             />
           ) : null}
-          {session ? (
-            <Row
-              icon={<Trash2 size={18} color={colors.destructive} />}
-              label={t('account.deleteTitle')}
-              destructive
-              onPress={() => router.push('/account/delete')}
-            />
-          ) : null}
+          {/* Deleting the account is at the foot of "Sign-in and security" (security.tsx). */}
         </Group>
 
         {hiddenCount ? (

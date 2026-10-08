@@ -367,7 +367,7 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   (`mobile/assets/images/welcome-photo.jpg`, the same file as
   `public/media/hero-poster.jpg`, which `tests/brand.test.ts` holds equal)
   across the screen under a sapphire veil darkening to midnight, and over it in
-  white the logo, the headline, the board's three promises, and the ways on —
+  white the logo, the headline, and the ways on —
   create an account, sign in, or Skip at the top,
   which the App Store asks an app to allow wherever an account is not needed.
   Skip closes it until the app is next started; signing in closes it with the

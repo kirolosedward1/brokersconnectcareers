@@ -45,3 +45,17 @@ describe("a tab's header", () => {
     expect(sources.filter(({ text }) => /headerRight:\s*\(\)\s*=>\s*<HeaderBell/.test(text)).map(({ file }) => file)).toEqual([]);
   });
 });
+
+/*
+  iOS's own push slid a page's bar one way and the page the other under the
+  app's right to left (the owner's iPhone, in Expo Go): every stack slides a
+  page in whole, the bar with it, from the side the reading starts on.
+*/
+describe('a page opened in a stack', () => {
+  it('slides in whole, the way react-native-screens turns with the app', () => {
+    const options = sources.find(({ file }) => file === join('components', 'navigation', 'stack-options.ts'));
+    expect(options?.text).toMatch(/animation:\s*'simple_push'/);
+    // No screen puts iOS's own push back.
+    expect(sources.filter(({ text }) => /animation:\s*'(default|ios_from_right|slide_from_right)'/.test(text)).map(({ file }) => file)).toEqual([]);
+  });
+});

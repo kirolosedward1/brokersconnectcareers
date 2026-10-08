@@ -185,10 +185,7 @@
     "employer": "Hiring for a company?",
     "skip": "Skip",
     "skipHint": "Browse the jobs without an account; you can make one any time.",
-    "lead": "Pay and commission in numbers on every listing, and applying takes under a minute.",
-    "factPay": "Pay in numbers",
-    "factApply": "Apply in a minute",
-    "factWhatsapp": "Talk on WhatsApp"
+    "lead": "Pay and commission in numbers on every listing, and applying takes under a minute."
   },
   "companies": {
     "searchPlaceholder": "Search by company name"
