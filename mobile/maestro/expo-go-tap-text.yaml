@@ -1,8 +1,0 @@
-# Taps the words TEXT on the screen, if they are there (scripts/expo-go-look.sh,
-# one step of its tour at a time, each read back after it).
-appId: host.exp.Exponent
----
-- tapOn:
-    text: ${TEXT}
-    optional: true
-- waitForAnimationToEnd

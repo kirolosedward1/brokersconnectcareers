@@ -241,11 +241,43 @@ step_run() {
     echo "maestro: FAILED" > "$out/$name.maestro.verdict"
   fi
 }
+# word_point <shot> <word>: the middle of where the text recognition read
+# <word> on <shot>, in percent ("62%,17%"); nothing if it is not there.
+# Maestro's own text and id selectors place an element of a screen laid out
+# right to left at its mirror image: its tap on the filter sheet's X landed on
+# Expo Go's floating button at the other edge and opened Expo Go's menu.
+word_point() {
+  python3 - "$out/$1.boxes" "$2" <<'PY'
+import re, sys
+want = sys.argv[2]
+for raw in open(sys.argv[1], encoding="utf-8"):
+    m = re.match(r"y(-?\d+) x(-?\d+)-(-?\d+)  (.*)", raw.rstrip("\n"))
+    if m and want in m[4]:
+        print(f"{(int(m[2]) + int(m[3])) // 2}%,{int(m[1]) + 1}%")
+        break
+PY
+}
+last_shot=""
+# tap_word <step> <what> <word> [point if not read]: taps the word where it was read on the last screen.
+tap_word() {
+  local name="$1" what="$2" word="$3" fallback="${4:-}" point
+  point=$(word_point "$last_shot" "$word")
+  point="${point:-$fallback}"
+  if [ -z "$point" ]; then
+    echo "::group::$name — «$word» not read on the screen; nothing tapped"
+    echo "::endgroup::"
+    glance "$name" "$what (not tapped)"
+    last_shot="$name"
+    return
+  fi
+  tour "$name" "$what (at $point)" -e "POINT=$point" "$flows/expo-go-tap.yaml"
+}
 tour() {
   local name="$1" what="$2"
   shift 2
   step_run "$name" "$@"
   glance "$name" "$what"
+  last_shot="$name"
   echo "::group::$name — $(cat "$out/$name.maestro.verdict")"
   tail -n 12 "$out/$name.maestro.log"
   echo "::endgroup::"
@@ -273,17 +305,20 @@ fi
 # A tour of what was added lately, one step at a time and each read back:
 # the order's menu, the filter sheet, a listing and its Share, back, a
 # company. Expo Go must still be on the app at the end of it.
-tour t1-sort-menu 'tour: the order opened' -e 'TEXT=الأحدث' "$flows/expo-go-tap-text.yaml"
-tour t2-sorted 'tour: by salary' -e 'TEXT=الأعلى راتباً' "$flows/expo-go-tap-text.yaml"
-tour t3-filters 'tour: the filter sheet' -e 'TEXT=الفلاتر.*' "$flows/expo-go-tap-text.yaml"
-tour t4-filters-closed 'tour: the sheet closed' -e 'TEXT=إغلاق' "$flows/expo-go-tap-text.yaml"
-tour t5-listing 'tour: the first listing' -e 'POINT=50%,45%' "$flows/expo-go-tap.yaml"
-tour t6-share 'tour: Share' -e 'TEXT=مشاركة' "$flows/expo-go-tap-text.yaml"
-tour t7-share-cancelled 'tour: Share cancelled' -e 'TEXT=إلغاء|Cancel' "$flows/expo-go-tap-text.yaml"
-tour t8-back 'tour: back to the board' -e 'ID=header-back' "$flows/expo-go-tap-id.yaml"
-tour t9-companies 'tour: the Companies tab' -e 'TEXT=الشركات' "$flows/expo-go-tap-text.yaml"
-tour t10-company 'tour: a company' -e 'POINT=50%,45%' "$flows/expo-go-tap.yaml"
-tour t11-company-back 'tour: back to the companies' -e 'ID=header-back' "$flows/expo-go-tap-id.yaml"
+glance t0-board 'tour: the board, before'
+last_shot=t0-board
+tap_word t1-sort-menu 'tour: the order' 'الأحدث'
+tap_word t2-sorted 'tour: by salary' 'الأعلى راتباً'
+tap_word t3-filters 'tour: the filter sheet' 'الفلاتر'
+tap_word t4-filters-closed 'tour: the sheet closed' 'X' '92%,11%'
+tap_word t5-listing 'tour: the first listing' 'عمولة فقط' '50%,45%'
+tap_word t6-share 'tour: Share' 'مشاركة'
+tap_word t7-share-cancelled 'tour: Share cancelled' 'إلغاء'
+# Back, at the start of the line: the right in Arabic, under the status bar.
+tour t8-back 'tour: back to the board' -e 'POINT=91%,9%' "$flows/expo-go-tap.yaml"
+tap_word t9-companies 'tour: the Companies tab' 'الشركات'
+tap_word t10-company 'tour: a company' 'الصفوة' '50%,40%'
+tour t11-company-back 'tour: back to the companies' -e 'POINT=91%,9%' "$flows/expo-go-tap.yaml"
 if grep -qE '^y[0-9]+ x[0-9-]+  (Playground|Welcome to your playground\.|Projects|Recently opened)$' "$out/t11-company-back.boxes"; then
   failed+=("tour: the app was left for Expo Go's own screens")
   echo "::error title=Expo Go: tour::the app was left during the tour (Expo Go's own screen showed): see the t1–t11 readings in the log"
