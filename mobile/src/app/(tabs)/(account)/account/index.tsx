@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocale, useTranslations } from 'use-intl';
@@ -46,6 +46,7 @@ import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { useTheme, type ThemePreference } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * The Account tab. Signed out, it is the door: sign in, create an account, or
@@ -96,7 +97,7 @@ export default function AccountScreen() {
     shareMyData(session.user.id, t('account.exportTitle'))
       .catch((failure: unknown) => {
         const status = failure instanceof ApiError ? failure.status : -1;
-        Alert.alert(
+        dialog.alert(
           t('account.exportTitle'),
           status === 429 ? t('app.account.exportLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'),
         );
@@ -263,7 +264,7 @@ export default function AccountScreen() {
               label={t('app.account.contact')}
               // A phone with no mail app to write it opens nothing: it is told the address instead.
               onPress={() =>
-                Linking.openURL(`mailto:${supportEmail}`).catch(() => Alert.alert(t('app.account.contact'), supportEmail))
+                Linking.openURL(`mailto:${supportEmail}`).catch(() => dialog.alert(t('app.account.contact'), supportEmail))
               }
             />
           ) : null}

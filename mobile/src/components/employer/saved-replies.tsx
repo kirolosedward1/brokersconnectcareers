@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
 import { whatsappLink } from '@/lib/whatsapp';
@@ -11,6 +11,7 @@ import { useListOwner } from '~/features/jobs/recent';
 import { createLocalList } from '~/lib/local-list';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 export type SavedReply = { id: string; text: string };
 
@@ -75,7 +76,7 @@ export function SavedRepliesSheet({
     setDraft('');
   };
   const remove = (reply: SavedReply) =>
-    Alert.alert(t('removeTitle'), reply.text.slice(0, 120), [
+    dialog.alert(t('removeTitle'), reply.text.slice(0, 120), [
       { text: tCommon('cancel'), style: 'cancel' },
       { text: t('remove'), style: 'destructive', onPress: () => savedReplies.remove(owner, reply.id) },
     ]);

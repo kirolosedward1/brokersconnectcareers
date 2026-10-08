@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { ShieldCheck, UserPlus, UserRound, X } from '~/components/ui/lucide';
 import type { CompanyMemberRole } from '@/lib/supabase/database.types';
@@ -15,6 +15,7 @@ import { MemberRefused, useAddMember, useRemoveMember, type TeamMember } from '~
 import { EMAIL_SHAPE } from '~/lib/email-shape';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 const REFUSAL_COPY = {
   no_account: 'teamNoAccount',
@@ -70,7 +71,7 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
   };
 
   const confirmRemove = (member: TeamMember) =>
-    Alert.alert(t('employer.teamRemove'), member.name ?? undefined, [
+    dialog.alert(t('employer.teamRemove'), member.name ?? undefined, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('employer.teamRemove'),

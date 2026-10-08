@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Linking, Pressable, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Download, FileX2, MessageCircle, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
@@ -33,6 +33,7 @@ import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * One applicant, as a company reads them — the website's ApplicantCard: who
@@ -169,7 +170,7 @@ export function ApplicantCard({
           icon: <UserRoundX size={20} color="#FFFFFF" />,
           color: colors.destructive,
           onPress: () =>
-            Alert.alert(t('app.applicants.rejectConfirm'), name, [
+            dialog.alert(t('app.applicants.rejectConfirm'), name, [
               { text: t('common.cancel'), style: 'cancel' },
               { text: t('applicationStatus.rejected'), style: 'destructive', onPress: () => moveTo('rejected') },
             ]),

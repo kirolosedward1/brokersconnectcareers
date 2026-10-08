@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { Alert } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useTranslations } from 'use-intl';
+import { dialog } from '~/lib/dialog';
 
 /**
  * Asks before throwing away what was typed. What a form holds lives in the
@@ -13,7 +13,7 @@ export function useConfirmDiscard() {
   const t = useTranslations();
   return useCallback(
     (discard: () => void) =>
-      Alert.alert(t('app.leave.title'), t('app.leave.body'), [
+      dialog.alert(t('app.leave.title'), t('app.leave.body'), [
         { text: t('app.leave.stay'), style: 'cancel' },
         { text: t('app.leave.discard'), style: 'destructive', onPress: discard },
       ]),
@@ -64,7 +64,7 @@ export function useLeaveGuard(dirty: boolean, sending = false) {
   useHoldsWork(dirty || sending);
   usePreventRemove(dirty || sending, ({ data }) => {
     if (sending) {
-      Alert.alert(t('app.leave.sendingTitle'), t('app.leave.sendingBody'), [{ text: t('app.leave.stay'), style: 'cancel' }]);
+      dialog.alert(t('app.leave.sendingTitle'), t('app.leave.sendingBody'), [{ text: t('app.leave.stay'), style: 'cancel' }]);
       return;
     }
     confirm(() => navigation.dispatch(data.action));

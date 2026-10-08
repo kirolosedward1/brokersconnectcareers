@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { Alert, Keyboard, Pressable, StyleSheet, View, type ScrollView, type TextInput } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, View, type ScrollView, type TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Session } from '@supabase/supabase-js';
 import { Stack, useLocalSearchParams } from 'expo-router';
@@ -44,6 +44,7 @@ import { webAddress } from '~/lib/web-address';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * The step that makes an account a profile — the website's onboarding
@@ -137,7 +138,7 @@ export default function OnboardingScreen() {
               return refusal;
             }
             close();
-            Alert.alert(t('app.account.deleted'));
+            dialog.alert(t('app.account.deleted'));
             return null;
           }}
         />
@@ -278,7 +279,7 @@ function OnboardingForm({
   }
 
   function confirmDelete() {
-    Alert.alert(t('onboarding.leaveDelete'), t('onboarding.leaveConfirm'), [
+    dialog.alert(t('onboarding.leaveDelete'), t('onboarding.leaveConfirm'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('onboarding.leaveConfirmCta'), style: 'destructive', onPress: () => void remove() },
     ]);

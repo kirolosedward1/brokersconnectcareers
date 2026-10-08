@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
@@ -25,6 +25,7 @@ import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * The candidate's applications — the website's /dashboard/applications: every
@@ -132,7 +133,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const shown = displayJobStatus(job);
 
   const confirmWithdraw = () => {
-    Alert.alert(t('app.applications.withdrawTitle', { title }), t('app.applications.withdrawBody'), [
+    dialog.alert(t('app.applications.withdrawTitle', { title }), t('app.applications.withdrawBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('dashboard.withdraw'),

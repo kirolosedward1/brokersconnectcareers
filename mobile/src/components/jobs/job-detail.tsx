@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActionSheetIOS, Alert, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { VerifiedMark } from '~/components/companies/verified-mark';
@@ -35,6 +35,7 @@ import { useSession } from '~/lib/session';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * One listing — the website's JobDetailView, in the order a phone reads it:
@@ -112,7 +113,7 @@ export function JobDetail({
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions({ options, cancelButtonIndex: 2 }, pick);
     } else {
-      Alert.alert(t('share'), undefined, [
+      dialog.alert(t('share'), undefined, [
         { text: options[0], onPress: () => pick(0) },
         { text: options[1], onPress: () => pick(1) },
         { text: options[2], style: 'cancel' },

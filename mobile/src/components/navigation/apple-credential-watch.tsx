@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { Alert, AppState, Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { appleSignInRevoked, forgetAppleSignIn } from '~/features/auth/apple-credential';
 import { signOutHere } from '~/features/push/device';
 import { useSession } from '~/lib/session';
+import { dialog } from '~/lib/dialog';
 
 /**
  * Ends a session made with Sign in with Apple once Apple no longer lets this
@@ -34,7 +35,7 @@ export function AppleCredentialWatch() {
         gone = true;
         await forgetAppleSignIn();
         await signOutHere();
-        Alert.alert(t('appleRevokedTitle'), t('appleRevokedBody'));
+        dialog.alert(t('appleRevokedTitle'), t('appleRevokedBody'));
       } finally {
         asking = false;
       }

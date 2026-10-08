@@ -11,6 +11,7 @@ import { AuthScroll } from '~/components/auth/auth-scroll';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { SetupChecklist } from '~/components/employer/setup-checklist';
 import { BarOnly } from '~/components/navigation/page-header';
+import { DialogHost } from '~/components/ui/dialog-host';
 import { FilterSheetFrame } from '~/components/jobs/filter-sheet';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
@@ -22,6 +23,7 @@ import { Select } from '~/components/ui/select';
 import { EmptyState, ErrorState, InSheet } from '~/components/ui/states';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { ApiError } from '~/lib/api';
+import { dialog } from '~/lib/dialog';
 import { env } from '~/lib/env';
 import { ThemeProvider } from '~/theme/provider';
 import { company } from './fixtures';
@@ -408,6 +410,57 @@ describe('the keyboard', () => {
     } finally {
       os.restore();
     }
+  });
+});
+
+describe("the app's own alert", () => {
+  function host() {
+    render(
+      <ThemeProvider>
+        <I18nProvider>
+          <DialogHost />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+  }
+
+  afterEach(() => jest.useRealTimers());
+
+  it('puts Cancel first in the reading order, and does the action once the dialog has gone', async () => {
+    jest.useFakeTimers();
+    host();
+    const withdraw = jest.fn();
+    act(() =>
+      dialog.alert('تسحب طلبك؟', 'مفيش رجوع.', [
+        { text: 'اسحب الطلب', style: 'destructive', onPress: withdraw },
+        { text: 'إلغاء', style: 'cancel' },
+      ]),
+    );
+    const labels = within(screen.getByTestId('dialog'))
+      .getAllByText(/^(إلغاء|اسحب الطلب)$/)
+      .map((label) => label.props.children);
+    expect(labels).toEqual(['إلغاء', 'اسحب الطلب']);
+    expect(screen.getByRole('header', { name: 'تسحب طلبك؟' })).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: 'اسحب الطلب' }));
+    expect(withdraw).not.toHaveBeenCalled();
+    act(() => jest.advanceTimersByTime(500));
+    expect(withdraw).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('dialog')).toBeNull();
+  });
+
+  it('closes a notice with no buttons with one of its own, and shows the next one after it', () => {
+    jest.useFakeTimers();
+    host();
+    act(() => {
+      dialog.alert('أولى');
+      dialog.alert('تانية');
+    });
+    expect(screen.getByText('أولى')).toBeTruthy();
+    expect(screen.queryByText('تانية')).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: catalogues.ar.common.close }));
+    act(() => jest.advanceTimersByTime(500));
+    expect(screen.getByText('تانية')).toBeTruthy();
   });
 });
 

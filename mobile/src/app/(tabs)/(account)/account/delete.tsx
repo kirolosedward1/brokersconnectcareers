@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Linking, ScrollView, View } from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
 import { Stack, useNavigation } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { confirmsDeletion } from '@/lib/delete-confirmation';
@@ -16,6 +16,7 @@ import { useMobileConfig } from '~/features/config';
 import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { gutter, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * Delete the account — the website's section, through its action
@@ -87,7 +88,7 @@ export default function DeleteAccountScreen() {
     // This screen's own Back: the app's would take whatever is in front if the
     // person moved on while the account was being deleted.
     if (navigation.canGoBack()) navigation.goBack();
-    Alert.alert(t('app.account.deleted'));
+    dialog.alert(t('app.account.deleted'));
   }
 
   // Reached from a link with nobody signed in: there is no account here to delete.

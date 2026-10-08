@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { Award, Briefcase, GraduationCap, Pencil, Plus, Trash2, type LucideProps } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
@@ -12,6 +12,7 @@ import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 import { CvEntrySheet, type CvEntry } from './cv-entry-sheet';
 import { monthOf } from './fields';
+import { dialog } from '~/lib/dialog';
 
 /**
  * The CV sections — work history, education, certifications — the website's
@@ -24,7 +25,7 @@ export function CvSections({ agentId, sections }: { agentId: string; sections: S
   const remove = useDeleteCvEntry(agentId);
 
   const confirmDelete = (section: CvSection, id: string, label: string) =>
-    Alert.alert(label, undefined, [
+    dialog.alert(label, undefined, [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.delete'), style: 'destructive', onPress: () => remove.mutate({ section, id }) },
     ]);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActionSheetIOS, Alert, Platform, View } from 'react-native';
+import { ActionSheetIOS, Platform, View } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { CheckCircle2, FileCheck2, Upload } from '~/components/ui/lucide';
 import type { CompanyDocumentRow, VerificationStatus } from '@/lib/supabase/database.types';
@@ -18,6 +18,7 @@ import {
 } from '~/features/employer/company';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 const DOC_TYPES: readonly DocType[] = ['commercial_register', 'tax_card'];
 
@@ -63,7 +64,7 @@ export function VerificationPanel({
           (index) => resolve(choices[index]?.[0] ?? null),
         );
       } else {
-        Alert.alert(
+        dialog.alert(
           t('app.company.docFrom'),
           undefined,
           choices.map(([source, label]) => ({ text: label, onPress: () => resolve(source) })),

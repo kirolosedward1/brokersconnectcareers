@@ -93,10 +93,13 @@ it("draws nothing before the phone has said which companies are hidden, and then
     // well inside this, the hidden company's listing on it.)
     await expect(waitFor(() => expect(screen.getByText(other.title_ar)).toBeTruthy(), { timeout: 2000 })).rejects.toThrow();
     expect(screen.queryByText(listing.title_ar)).toBeNull();
+    // Meanwhile the logo mark alone, where the launch screen draws it, not an empty page.
+    expect(screen.getByTestId('launch-screen')).toBeTruthy();
 
     await act(async () => release());
     expect(await screen.findByText(other.title_ar)).toBeTruthy();
     expect(screen.queryByText(listing.title_ar)).toBeNull();
+    expect(screen.queryByTestId('launch-screen')).toBeNull();
   } finally {
     if (stored) getItem.mockImplementation(stored);
     else getItem.mockRestore();

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Linking, View } from 'react-native';
+import { ActivityIndicator, Linking, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
@@ -19,6 +19,7 @@ import {
 } from '~/features/account/settings';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * Two-step verification with an authenticator app — the website's
@@ -77,7 +78,7 @@ export function TwoFactorSettings() {
   };
 
   const turnOff = () =>
-    Alert.alert(t('app.account.mfaDisableConfirm'), t('app.account.mfaDisableBody'), [
+    dialog.alert(t('app.account.mfaDisableConfirm'), t('app.account.mfaDisableBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('account.mfaDisable'),

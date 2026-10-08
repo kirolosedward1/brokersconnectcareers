@@ -13,6 +13,7 @@ import { IBMPlexSansArabic_400Regular } from '@expo-google-fonts/ibm-plex-sans-a
 import { IBMPlexSansArabic_500Medium } from '@expo-google-fonts/ibm-plex-sans-arabic/500Medium';
 import { IBMPlexSansArabic_600SemiBold } from '@expo-google-fonts/ibm-plex-sans-arabic/600SemiBold';
 import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic/700Bold';
+import { LaunchScreen } from '~/components/brand/launch-screen';
 import { AppError, ScreenError } from '~/components/navigation/error-boundaries';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
@@ -20,6 +21,7 @@ import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
 import { WelcomeGate } from '~/components/navigation/welcome-gate';
+import { DialogHost } from '~/components/ui/dialog-host';
 import { roomForScreen } from '~/components/ui/keyboard-room';
 import { InSheet } from '~/components/ui/states';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
@@ -52,7 +54,8 @@ export { AppError as ErrorBoundary };
  * the theme, the website's catalogue, and who is signed in. The splash screen
  * stays up until the font is ready and the phone has said who was signed in
  * last, so no screen is ever drawn in the system font first, nor with a tab
- * bar that changes a moment later.
+ * bar that changes a moment later; under it, and wherever it comes down
+ * sooner, the same logo mark (LaunchScreen).
  *
  * All of it in the app's direction (src/lib/direction.ts): every view laid
  * out in it, and every navigator's header and back gesture told it, whatever
@@ -79,11 +82,14 @@ export default function RootLayout() {
                       <AppStack />
                     </Navigation>
                   </SessionProvider>
+                  <DialogHost />
                 </I18nProvider>
               </ThemeProvider>
             </PersistQueryClientProvider>
           </SafeAreaProvider>
-        ) : null}
+        ) : (
+          <LaunchScreen />
+        )}
       </LocaleDirContext.Provider>
     </View>
   );
@@ -121,7 +127,7 @@ function AppStack() {
     if (ready && firstScreen) SplashScreen.hideAsync().catch(() => {});
   }, [ready, firstScreen]);
 
-  if (!ready) return null;
+  if (!ready) return <LaunchScreen />;
 
   return (
     <UpdateGate>
