@@ -1,5 +1,6 @@
-import type { ComponentProps } from 'react';
+import { createElement, type ComponentProps } from 'react';
 import type { Stack } from 'expo-router';
+import { PageHeader } from '~/components/navigation/page-header';
 import { useTheme } from '~/theme/provider';
 import { font } from '~/theme/tokens';
 
@@ -28,12 +29,14 @@ export function useStackOptions(): Exclude<StackOptions, (...args: never[]) => u
     headerShadowVisible: false,
     headerStyle: { backgroundColor: colors.background },
     contentStyle: { backgroundColor: colors.background },
-    // A page opened slides in whole, its bar with it, from the side the
-    // reading starts on. iOS's own push slid the bar's titles one way and the
-    // page the other under the app's right to left (src/lib/direction.ts), as
-    // Expo Go creates its screen left to right; this one takes the direction
-    // from the navigation controller the app turns (react-native-screens'
-    // RNSScreenStackAnimator), with no slide of the bar's own.
+    // The bar is drawn inside the page it heads (page-header.tsx), so a page
+    // opened slides in whole, its bar with it, from the side the reading
+    // starts on: this push takes its direction from the navigation
+    // controller the app turns (react-native-screens' RNSScreenStackAnimator).
+    // iOS's own bar, outside the page, slid its titles one way and the page
+    // the other under the app's right to left, as Expo Go creates its screen
+    // left to right, and with this push changed at once mid-slide.
+    header: (props) => createElement(PageHeader, props),
     animation: 'simple_push',
     animationDuration: 350,
   };

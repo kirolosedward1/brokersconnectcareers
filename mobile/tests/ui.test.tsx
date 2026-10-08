@@ -2,14 +2,15 @@ import type { ReactNode } from 'react';
 import { Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaInsetsContext, SafeAreaProvider } from 'react-native-safe-area-context';
-import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { Stack } from 'expo-router';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
+import { router, Stack } from 'expo-router';
 import { HeaderHeightContext } from 'expo-router/react-navigation';
 import { renderRouter } from 'expo-router/testing-library';
 import TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
 import { AuthScroll } from '~/components/auth/auth-scroll';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { SetupChecklist } from '~/components/employer/setup-checklist';
+import { BarOnly } from '~/components/navigation/page-header';
 import { FilterSheetFrame } from '~/components/jobs/filter-sheet';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
@@ -410,12 +411,61 @@ describe('the keyboard', () => {
   });
 });
 
+describe("a stack page's bar", () => {
+  const app = {
+    _layout: () => (
+      <ThemeProvider>
+        <I18nProvider>
+          <Stack screenOptions={{ headerShown: false }} />
+        </I18nProvider>
+      </ThemeProvider>
+    ),
+    '(tabs)/_layout': () => <Stack screenOptions={{ headerShown: false }} />,
+    '(tabs)/(jobs)/_layout': TabStack,
+    '(tabs)/(jobs)/jobs/index': function Board() {
+      return (
+        <>
+          <Stack.Screen
+            options={{
+              title: 'الوظائف',
+              headerRight: () => (
+                <BarOnly>
+                  <Text>bell</Text>
+                </BarOnly>
+              ),
+            }}
+          />
+          <Text onPress={() => router.push('/jobs/one')}>open</Text>
+        </>
+      );
+    },
+    '(tabs)/(jobs)/jobs/[slug]': () => <Text>the listing</Text>,
+  };
+
+  it('is drawn inside the page, so it slides with it, its items once, and Back goes back', async () => {
+    renderRouter(app, { initialUrl: '/jobs' });
+    expect(await screen.findByText('الوظائف')).toBeTruthy();
+    // Once: not again in iOS's own bar, hidden under it.
+    expect(screen.getAllByText('bell')).toHaveLength(1);
+    // A tab's first page has nowhere to go back to.
+    expect(screen.queryByTestId('header-back')).toBeNull();
+
+    fireEvent.press(screen.getByText('open'));
+    expect(await screen.findByText('the listing')).toBeTruthy();
+    const back = screen.getByRole('button', { name: catalogues.ar.common.back });
+    fireEvent.press(back);
+    await waitFor(() => expect(screen.queryByText('the listing')).toBeNull());
+  });
+});
+
 describe('where the keyboard is given room', () => {
   // The root stack as the app has it, and the tabs' own stack; a plain stack stands in for the tab bar.
   const app = {
     _layout: () => (
       <ThemeProvider>
-        <Stack screenOptions={{ headerShown: false }} screenLayout={roomForScreen} />
+        <I18nProvider>
+          <Stack screenOptions={{ headerShown: false }} screenLayout={roomForScreen} />
+        </I18nProvider>
       </ThemeProvider>
     ),
     '(tabs)/_layout': () => <Stack screenOptions={{ headerShown: false }} />,

@@ -477,7 +477,7 @@ describe('reporting and hiding', () => {
     screen.unmount();
 
     renderRouter(app, { initialUrl: '/(companies)/companies' });
-    await screen.findByText(/شركات العقارات|الشركات/);
+    await screen.findAllByText(/شركات العقارات|الشركات/);
     await waitFor(() => expect(screen.queryByText('نايل بروكرز') === null).toBe(true));
     screen.unmount();
 

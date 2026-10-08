@@ -18,6 +18,7 @@ import { SaveJobButton } from '~/components/saved/save-controls';
 import { CompensationCard } from '~/components/jobs/compensation-card';
 import { JobCard } from '~/components/jobs/job-card';
 import { Badge } from '~/components/ui/badge';
+import { BarOnly } from '~/components/navigation/page-header';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { ForwardChevron } from '~/components/ui/icons';
@@ -125,15 +126,17 @@ export function JobDetail({
         options={{
           title: '',
           headerRight: () => (
-            <Button
-              label={t('share')}
-              variant="ghost"
-              size="sm"
-              icon={<Share2 size={16} color={colors.foreground} />}
-              // The bar does not grow with the text: capped as the bell's count is.
-              maxFontSizeMultiplier={1.4}
-              onPress={share}
-            />
+            <BarOnly>
+              <Button
+                label={t('share')}
+                variant="ghost"
+                size="sm"
+                icon={<Share2 size={16} color={colors.foreground} />}
+                // The bar does not grow with the text: capped as the bell's count is.
+                maxFontSizeMultiplier={1.4}
+                onPress={share}
+              />
+            </BarOnly>
           ),
         }}
       />
