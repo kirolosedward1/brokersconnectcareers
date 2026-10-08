@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocale, useTranslations } from 'use-intl';
@@ -42,6 +42,7 @@ import { signOutHere } from '~/features/push/device';
 import { useTabList } from '~/features/tab-bar';
 import { publishedAt, shownVersion } from '~/features/update';
 import { ApiError } from '~/lib/api';
+import { useScreenRefresh } from '~/lib/use-pull-refresh';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { useTheme, type ThemePreference } from '~/theme/provider';
@@ -75,6 +76,7 @@ export default function AccountScreen() {
   const supportEmail = config.data?.supportEmail || OPERATOR.email;
   const [exporting, setExporting] = useState(false);
   const list = useTabList();
+  const pull = useScreenRefresh();
   const [signingOut, setSigningOut] = useState(false);
   const version = shownVersion() ?? '';
   const published = publishedAt();
@@ -111,6 +113,7 @@ export default function AccountScreen() {
       <ScrollView
         {...list}
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
       >
         {session ? (
