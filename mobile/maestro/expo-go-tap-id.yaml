@@ -1,0 +1,7 @@
+# Taps the control with the test id ID, if it is there (scripts/expo-go-look.sh).
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: ${ID}
+    optional: true
+- waitForAnimationToEnd

@@ -45,12 +45,6 @@ const KEYS: Record<string, string> = {
   'الفلاتر.*': 'jobs.filters',
   'مفيش وظائف مطابقة لبحثك.': 'jobs.empty',
   'مشاركة': 'jobs.share',
-  // expo-go-tour.yaml: the board's order, its sheet, iOS's Share sheet, the Companies tab.
-  'الأحدث': 'jobs.sortNewest',
-  'الأعلى راتباً': 'jobs.sortSalary',
-  'إغلاق': 'common.close',
-  'إلغاء|Cancel': 'common.cancel',
-  'الشركات': 'app.tabs.companies',
   'الشركات اللي بتوظّف على بروكرز كونكت، والموثّق منها.': 'companies.lede',
   'مفيش شركات مطابقة.': 'companies.empty',
   // signed-out.yaml: Account's card, its sign-in button, the sheet, the forgotten password, sign-up.

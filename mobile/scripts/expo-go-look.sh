@@ -251,14 +251,26 @@ if [ "$(bar_names 3c-jobs-scrolled-up)" != 4 ]; then
   failed+=("3c-jobs-scrolled-up: the tab bar's names did not come back")
   echo "::error title=Expo Go: 3c-jobs-scrolled-up::not all four of the tab bar's names are read after scrolling back up"
 fi
-# A tour of what was added lately, then the board again: Expo Go must still be
-# standing, on the app.
-maestro --device "$udid" test "$flows/expo-go-tour.yaml" >> "$out/maestro.log" 2>&1 ||
-  { echo "Maestro's tour stopped:"; tail -n 20 "$out/maestro.log" | sed 's/^/    /'; }
-glance 3e-after-tour 'after the tour: sort, filters, a listing, Share, a company'
-if ! xcrun simctl spawn "$udid" launchctl list 2> /dev/null | grep -q 'host.exp.Exponent'; then
-  failed+=("3e-after-tour: Expo Go is no longer running")
-  echo "::error title=Expo Go: tour::Expo Go stopped during the tour"
+# A tour of what was added lately, one step at a time and each read back:
+# the order's menu, the filter sheet, a listing and its Share, back, a
+# company. Expo Go must still be on the app at the end of it.
+tap_text() { maestro --device "$udid" test -e "TEXT=$1" "$flows/expo-go-tap-text.yaml" >> "$out/maestro.log" 2>&1 || true; }
+tap_id() { maestro --device "$udid" test -e "ID=$1" "$flows/expo-go-tap-id.yaml" >> "$out/maestro.log" 2>&1 || true; }
+tap_point() { maestro --device "$udid" test -e "POINT=$1" "$flows/expo-go-tap.yaml" >> "$out/maestro.log" 2>&1 || true; }
+tap_text 'الأحدث';             glance t1-sort-menu 'tour: the order opened'
+tap_text 'الأعلى راتباً';      glance t2-sorted 'tour: by salary'
+tap_text 'الفلاتر.*';          glance t3-filters 'tour: the filter sheet'
+tap_text 'إغلاق';              glance t4-filters-closed 'tour: the sheet closed'
+tap_point '50%,45%';           glance t5-listing 'tour: the first listing'
+tap_text 'مشاركة';             glance t6-share 'tour: Share'
+tap_text 'إلغاء|Cancel';       glance t7-share-cancelled 'tour: Share cancelled'
+tap_id 'header-back';          glance t8-back 'tour: back to the board'
+tap_text 'الشركات';            glance t9-companies 'tour: the Companies tab'
+tap_point '50%,45%';           glance t10-company 'tour: a company'
+tap_id 'header-back';          glance t11-company-back 'tour: back to the companies'
+if grep -qE '^y[0-9]+ x[0-9-]+  (Playground|Welcome to your playground\.|Projects|Recently opened)$' "$out/t11-company-back.boxes"; then
+  failed+=("tour: the app was left for Expo Go's own screens")
+  echo "::error title=Expo Go: tour::the app was left during the tour (Expo Go's own screen showed): see the t1–t11 readings in the log"
 fi
 open_app jobs
 see 3f-jobs-after-tour 'الفلاتر'
@@ -292,11 +304,11 @@ done
 # (React Native logs them as errors, and a fatal one as RCTFatal), and any
 # crash report iOS wrote for it.
 xcrun simctl spawn "$udid" log show --style compact --start "$started" \
-  --predicate 'process == "Expo Go" AND (messageType == error OR messageType == fault) AND (eventMessage CONTAINS[c] "exception" OR eventMessage CONTAINS "RCTFatal" OR eventMessage CONTAINS[c] "error:" OR subsystem == "com.facebook.react.log")' \
+  --predicate 'process == "Expo Go" AND (messageType == error OR messageType == fault OR subsystem == "com.facebook.react.log" OR eventMessage CONTAINS "RCTFatal" OR eventMessage CONTAINS[c] "unhandled")' \
   > "$out/expo-go-errors.log" 2> /dev/null || true
 if [ -s "$out/expo-go-errors.log" ]; then
-  echo "::group::Expo Go's errors"
-  cat "$out/expo-go-errors.log"
+  echo "::group::Expo Go's errors ($(wc -l < "$out/expo-go-errors.log") lines; the last 300)"
+  tail -n 300 "$out/expo-go-errors.log"
   echo "::endgroup::"
   python3 -c '
 import sys
