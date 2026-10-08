@@ -17,6 +17,7 @@ import { Card } from '~/components/ui/card';
 import { PageFooter } from '~/components/ui/page-footer';
 import { SendForward } from '~/components/ui/icons';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
+import { Illustration } from '~/components/ui/illustration';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
@@ -78,6 +79,7 @@ export default function ListingsScreen() {
     body = (
       <EmptyState
         icon={Building2}
+        illustration="write"
         title={t('employer.createCompanyFirst')}
         body={t('employer.createCompanyFirstBody')}
         action={<Button label={t('employer.company')} onPress={() => router.navigate('/employer/company' as never)} />}
@@ -130,6 +132,7 @@ export default function ListingsScreen() {
               borderColor: colors.border,
             }}
           >
+            <Illustration name="write" width={160} />
             <Text weight="medium" style={{ textAlign: 'center' }}>
               {t('employer.noJobs')}
             </Text>

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
+import { VerifiedMark } from '~/components/companies/verified-mark';
 import { BadgeCheck, Briefcase, Building2, MapPin } from '~/components/ui/lucide';
 import type { CompanyListItem } from '@/lib/read-types';
 import { formatList, formatNumber } from '@/lib/format';
@@ -157,6 +158,7 @@ export default function CompaniesScreen() {
             <EmptyState
               title={t('companies.empty')}
               icon={Building2}
+              illustration="browse"
               action={
                 narrowed ? (
                   <Button
@@ -213,7 +215,7 @@ function CompanyRow({ company }: { company: CompanyListItem }) {
           <Text variant="headline" weight="semibold" numberOfLines={1} style={{ flexShrink: 1 }}>
             {name}
           </Text>
-          {company.verification_status === 'verified' ? <BadgeCheck size={16} color={colors.gold} /> : null}
+          {company.verification_status === 'verified' ? <VerifiedMark /> : null}
         </View>
         {district ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

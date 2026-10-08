@@ -20,6 +20,15 @@ it("is the website's own mark, byte for byte", () => {
   expect(app('logo-mark.png').equals(site('logo-mark.png'))).toBe(true);
 });
 
+/* The empty screens' drawings are the website's own, the same files. */
+it("draws the website's own illustrations, byte for byte", () => {
+  for (const name of ['apply', 'browse', 'updates', 'search', 'choose', 'verify', 'write', 'review']) {
+    const mine = readFileSync(join(__dirname, '..', 'assets', 'illustrations', `${name}.png`));
+    const theirs = readFileSync(join(__dirname, '..', '..', 'public', 'illustrations', `${name}.png`));
+    expect([name, mine.equals(theirs)]).toEqual([name, true]);
+  }
+});
+
 /* The welcome's photograph is the website's hero, the same file: a new one on the website fails this until the app has it too. */
 it("opens on the website's own hero photograph, byte for byte", () => {
   const welcome = readFileSync(join(__dirname, '..', 'assets', 'images', 'welcome-photo.jpg'));

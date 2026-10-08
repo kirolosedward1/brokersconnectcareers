@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
-import { Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActionSheetIOS, Alert, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
+import { VerifiedMark } from '~/components/companies/verified-mark';
 import { BadgeCheck, Building2, CalendarClock, CalendarX2, Eye, MapPin, Share2, Users } from '~/components/ui/lucide';
 import type { JobDetailResponse } from '@/lib/mobile-api/reads';
 import { formatDate, formatNumber } from '@/lib/format';
@@ -22,6 +23,8 @@ import { Card } from '~/components/ui/card';
 import { ForwardChevron } from '~/components/ui/icons';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
+import { recentJobs, useListOwner, viewedFrom } from '~/features/jobs/recent';
+import { ShareCardSheet } from './share-card';
 import { useAppliedJobIds } from '~/features/jobs/marks';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { useShrinkingTabBar } from '~/features/tab-bar';
@@ -77,16 +80,43 @@ export function JobDetail({
   // A view is a reader opening an open listing, once per visit — the website
   // counts the page render the same way (recordJobView, after the response).
   const counted = useRef<string | null>(null);
+  // Kept on this phone for Home's "recently viewed" (features/jobs/recent.ts).
+  const owner = useListOwner();
+  useEffect(() => {
+    recentJobs.add(owner, viewedFrom(job));
+    // Once per listing opened; a refresh of the same page changes nothing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner, job.id]);
   useEffect(() => {
     if (!open || counted.current === job.slug) return;
     counted.current = job.slug;
     callAction('recordJobView', { slug: job.slug }).catch(() => {});
   }, [open, job.slug]);
 
-  const share = () => {
+  const shareLink = () => {
     const url = withShareSource(`${env.siteUrl}/jobs/${job.slug}`);
     // `url` is iOS's alone: Android shares the message, so there the link goes inside it.
     Share.share(Platform.OS === 'ios' ? { message: title, url } : { message: `${title}\n${url}` }).catch(() => {});
+  };
+  // The link, or the listing as a picture for a status or a story (share-card.tsx).
+  const [cardOpen, setCardOpen] = useState(false);
+  const tApp = useTranslations('app.share');
+  const tCommon = useTranslations('common');
+  const share = () => {
+    const options = [tApp('asLink'), tApp('asImage'), tCommon('cancel')];
+    const pick = (index: number) => {
+      if (index === 0) shareLink();
+      if (index === 1) setCardOpen(true);
+    };
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions({ options, cancelButtonIndex: 2 }, pick);
+    } else {
+      Alert.alert(t('share'), undefined, [
+        { text: options[0], onPress: () => pick(0) },
+        { text: options[1], onPress: () => pick(1) },
+        { text: options[2], style: 'cancel' },
+      ]);
+    }
   };
 
   return (
@@ -107,6 +137,7 @@ export function JobDetail({
           ),
         }}
       />
+      {cardOpen ? <ShareCardSheet job={job} visible onClose={() => setCardOpen(false)} /> : null}
       <ScrollView
         {...shrink}
         contentInsetAdjustmentBehavior="automatic"
@@ -136,7 +167,9 @@ export function JobDetail({
                   {companyName}
                 </Text>
                 {job.company.verification_status === 'verified' ? (
-                  <Badge variant="accent" label={tCompanies('verified')} icon={<BadgeCheck size={12} color={colors.accentForeground} />} />
+                  <VerifiedMark>
+                    <Badge variant="accent" label={tCompanies('verified')} icon={<BadgeCheck size={12} color={colors.accentForeground} />} />
+                  </VerifiedMark>
                 ) : null}
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

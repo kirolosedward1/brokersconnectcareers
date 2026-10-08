@@ -405,7 +405,8 @@ describe('the applications', () => {
     renderRouter(app, { initialUrl: '/dashboard/applications' });
 
     expect(await screen.findByText(ar.dashboard.applicationOpened)).toBeTruthy();
-    expect(screen.getByText(ar.applicationStatus.rejected)).toBeTruthy();
+    // The badge, and the timeline's last step.
+    expect(screen.getAllByText(ar.applicationStatus.rejected)).toHaveLength(2);
     expect(screen.getByText(ar.dashboard.decisionFromCompany)).toBeTruthy();
     expect(screen.getByText('نبحث عن خبرة أطول في السوق الأولي.')).toBeTruthy();
     expect(screen.getByText(ar.dashboard.applicationListingClosed)).toBeTruthy();
@@ -448,7 +449,7 @@ describe('the applications', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
     act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
 
-    expect(await screen.findByText(ar.applicationStatus.hired)).toBeTruthy();
+    expect((await screen.findAllByText(ar.applicationStatus.hired)).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: ar.dashboard.withdraw })).toBeNull();
     alert.mockRestore();
   });

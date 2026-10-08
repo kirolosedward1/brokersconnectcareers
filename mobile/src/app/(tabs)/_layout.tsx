@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router/js-tabs';
 import { useTranslations } from 'use-intl';
 import { accountTabIcon, TabBar, tabIcon } from '~/components/navigation/tab-bar';
 import { Bookmark, Briefcase, Building2, CircleUserRound, ClipboardList, FileText, House, Inbox, Users } from '~/components/ui/lucide';
+import { useConsultantAlerts } from '~/features/directory/alerts';
 import { useSession } from '~/lib/session';
 import { tabsFor, type TabName } from '~/lib/tabs';
 
@@ -34,6 +35,11 @@ import { tabsFor, type TabName } from '~/lib/tabs';
 export default function TabsLayout() {
   const t = useTranslations();
   const tabs = tabsFor(useSession().actor);
+  // A company's kept consultant searches, asked again as the app opens (features/directory/alerts.ts).
+  useConsultantAlerts((label, count) => ({
+    title: t('app.agentAlerts.notifyTitle', { count }),
+    body: label,
+  }));
   const has = (tab: TabName) => tabs.includes(tab);
 
   return (

@@ -113,6 +113,7 @@ export default function ShortlistScreen() {
         ListEmptyComponent={
           <EmptyState
             icon={UserRoundCheck}
+            illustration="review"
             title={t('employer.shortlistEmpty')}
             body={t('employer.shortlistEmptyHint')}
             action={<Button label={t('nav.agents')} variant="outline" onPress={() => router.dismissTo('/agents')} />}

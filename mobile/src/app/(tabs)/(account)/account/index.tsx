@@ -25,6 +25,8 @@ import { OPERATOR } from '@/lib/business';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { PhotoControls } from '~/components/account/photo-controls';
 import { useHeaderBell } from '~/components/notifications/header-bell';
+import { CompletenessRing } from '~/components/profile/completeness-ring';
+import { useCandidateSummary } from '~/features/profile/queries';
 import { Avatar } from '~/components/ui/avatar';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
@@ -63,6 +65,8 @@ export default function AccountScreen() {
   const { colors, preference, setPreference } = useTheme();
   const { ready, session, viewer, actor } = useSession();
   const config = useMobileConfig();
+  // Read for a candidate only (useCandidateSummary): nobody else has a profile score.
+  const completeness = useCandidateSummary().data?.profile_completeness ?? null;
   // What this phone hides, signed in or not: the way back to it, once there is any.
   const hiddenCount = useHiddenCompanyEntries().length + useHiddenAgentEntries().length;
   // The website's own fallback (its footer and the config route): the
@@ -112,7 +116,15 @@ export default function AccountScreen() {
           <Card style={{ gap: space[1] }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
               {viewer?.profile ? (
-                <Avatar name={viewer.profile.full_name} src={viewer.profile.avatar_url} seed={viewer.profile.id} size="lg" />
+                // A candidate's profile completeness round the photo (CompletenessRing); a tap opens the profile.
+                <CompletenessRing
+                  percent={completeness}
+                  size={64}
+                  radius={32}
+                  onPress={() => router.push('/account/profile')}
+                >
+                  <Avatar name={viewer.profile.full_name} src={viewer.profile.avatar_url} seed={viewer.profile.id} size="lg" />
+                </CompletenessRing>
               ) : null}
               <View style={{ flex: 1, gap: space[1] }}>
                 {viewer?.profile?.full_name ? (

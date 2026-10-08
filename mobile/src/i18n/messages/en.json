@@ -46,7 +46,9 @@
   "jobs": {
     "loadMore": "Load more",
     "endOfList": "That is every matching job.",
-    "wizardStep": "Step <v>{current}</v> of <v>{total}</v>"
+    "wizardStep": "Step <v>{current}</v> of <v>{total}</v>",
+    "quickFilters": "Quick filters",
+    "match": "<v>{percent}%</v> match"
   },
   "auth": {
     "forCompanies": "Register your company",
@@ -106,7 +108,11 @@
   },
   "applications": {
     "withdrawTitle": "Withdraw your application to “{title}”?",
-    "withdrawBody": "The company will no longer see it. This cannot be undone."
+    "withdrawBody": "The company will no longer see it. This cannot be undone.",
+    "timeline": "Where it stands",
+    "stepSent": "Sent",
+    "stepSeen": "Seen",
+    "stepDecision": "Decision"
   },
   "apply": {
     "pickCv": "Choose a file",
@@ -129,10 +135,13 @@
     "monthClear": "Clear the date",
     "stillThere": "I still work there",
     "yearInvalid": "Enter a year between 1950 and 2100.",
-    "chooseUpTo": "Choose up to <v>{count}</v>."
+    "chooseUpTo": "Choose up to <v>{count}</v>.",
+    "ringLabel": "Your profile is <v>{percent}%</v> complete",
+    "ringHint": "Opens your profile at what is missing"
   },
   "applicants": {
-    "cvLimit": "You have opened a lot of CVs this hour. Try again shortly."
+    "cvLimit": "You have opened a lot of CVs this hour. Try again shortly.",
+    "rejectConfirm": "Turn this applicant down?"
   },
   "push": {
     "title": "Notifications on this phone",
@@ -197,5 +206,45 @@
     "verifyTitle": "Verify your company to see the consultants",
     "verifyBody": "You can't view the consultant directory until your company is verified with its official papers.",
     "reviewing": "The directory opens for you as soon as we finish reviewing your account."
+  },
+  "home": {
+    "recentlyViewed": "Recently viewed",
+    "recentlyViewedClear": "Clear"
+  },
+  "share": {
+    "hiring": "Now hiring",
+    "applyOn": "Apply in the Brokers Connect app or on the website",
+    "asImage": "Share as an image",
+    "asLink": "Share the link",
+    "send": "Share the image"
+  },
+  "verified": {
+    "title": "What does verified mean?",
+    "papers": "The company uploaded its commercial register and tax card.",
+    "reviewed": "The Brokers Connect team checked those papers before giving the mark.",
+    "notAPromise": "Verification confirms the company is real, not that every detail of a listing is guaranteed. If something is wrong, report it from the listing.",
+    "close": "Got it",
+    "hint": "Explains what verified means"
+  },
+  "replies": {
+    "open": "Saved replies",
+    "title": "Saved WhatsApp replies",
+    "opener": "First message",
+    "send": "Send on WhatsApp",
+    "new": "New reply",
+    "placeholder": "e.g. Hi {name}, we'd like to meet you about {job}…",
+    "tokens": "{name} becomes the applicant's name and {job} the job title. Replies are kept on this phone only.",
+    "keep": "Save reply",
+    "remove": "Delete reply",
+    "removeTitle": "Delete this reply?"
+  },
+  "agentAlerts": {
+    "keep": "Tell me about new consultants",
+    "kept": "You'll be told about new consultants for this search",
+    "failed": "The search couldn't be saved. Try again.",
+    "title": "Your saved searches",
+    "fresh": "{count, plural, one {# new consultant} other {# new consultants}}",
+    "stop": "Stop alerts",
+    "notifyTitle": "{count, plural, one {A new consultant matches your search} other {# new consultants match your search}}"
   }
 }

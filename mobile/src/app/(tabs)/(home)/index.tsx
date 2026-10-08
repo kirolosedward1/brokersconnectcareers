@@ -11,6 +11,7 @@ import { HomeFrame } from '~/components/home/home-frame';
 import { Hero } from '~/components/home/hero';
 import { JobBrowse } from '~/components/home/job-browse';
 import { PolicyNotice } from '~/components/legal/policy-notice';
+import { RecentlyViewed } from '~/components/home/recently-viewed';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
 import { SectionHeader } from '~/components/ui/section-header';
@@ -148,6 +149,9 @@ function MarketHome() {
         {/* The Terms and the Privacy policy as they are now, until agreed to. */}
         {name ? <PolicyNotice /> : null}
       </View>
+
+      {/* The listings opened lately on this phone, a tap from opening again. */}
+      <RecentlyViewed />
 
       {name ? null : <JobBrowse counts={counts.data} districts={districts.data} />}
 

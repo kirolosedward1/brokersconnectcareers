@@ -3,7 +3,7 @@
  *
  * `lucide-react-native`'s index requires every one of its 1,854 icons as it
  * loads — about 2 MB of the bundle and 20 to 30 ms before the first frame on
- * a phone — for the 97 used here. One module per icon loads only those. Add
+ * a phone — for the 101 used here. One module per icon loads only those. Add
  * an icon here, from `lucide-react-native/icons/<its-file-name>`, and import
  * it from this file.
  */
@@ -47,6 +47,7 @@ export { default as Download } from 'lucide-react-native/icons/download';
 export { default as ExternalLink } from 'lucide-react-native/icons/external-link';
 export { default as Eye } from 'lucide-react-native/icons/eye';
 export { default as EyeOff } from 'lucide-react-native/icons/eye-off';
+export { default as FileCheck } from 'lucide-react-native/icons/file-check';
 export { default as FileCheck2 } from 'lucide-react-native/icons/file-check-corner';
 export { default as FileText } from 'lucide-react-native/icons/file-text';
 export { default as FileWarning } from 'lucide-react-native/icons/file-exclamation-point';
@@ -56,6 +57,7 @@ export { default as Gift } from 'lucide-react-native/icons/gift';
 export { default as Globe } from 'lucide-react-native/icons/globe';
 export { default as GraduationCap } from 'lucide-react-native/icons/graduation-cap';
 export { default as HandCoins } from 'lucide-react-native/icons/hand-coins';
+export { default as History } from 'lucide-react-native/icons/rotate-ccw-clock';
 export { default as House } from 'lucide-react-native/icons/house';
 export { default as ImageUp } from 'lucide-react-native/icons/image-up';
 export { default as Inbox } from 'lucide-react-native/icons/inbox';
@@ -70,6 +72,7 @@ export { default as MailCheck } from 'lucide-react-native/icons/mail-check';
 export { default as MapPin } from 'lucide-react-native/icons/map-pin';
 export { default as MessageCircle } from 'lucide-react-native/icons/message-circle';
 export { default as MessageSquareReply } from 'lucide-react-native/icons/message-square-reply';
+export { default as MessageSquareText } from 'lucide-react-native/icons/message-square-text';
 export { default as Paperclip } from 'lucide-react-native/icons/paperclip';
 export { default as Pencil } from 'lucide-react-native/icons/pencil';
 export { default as Plus } from 'lucide-react-native/icons/plus';
@@ -101,6 +104,7 @@ export { default as UserPlus } from 'lucide-react-native/icons/user-plus';
 export { default as UserRound } from 'lucide-react-native/icons/user-round';
 export { default as UserRoundCheck } from 'lucide-react-native/icons/user-round-check';
 export { default as UserRoundPlus } from 'lucide-react-native/icons/user-round-plus';
+export { default as UserRoundX } from 'lucide-react-native/icons/user-round-x';
 export { default as Users } from 'lucide-react-native/icons/users';
 export { default as WifiOff } from 'lucide-react-native/icons/wifi-off';
 export { default as X } from 'lucide-react-native/icons/x';

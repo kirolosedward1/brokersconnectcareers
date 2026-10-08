@@ -156,6 +156,7 @@ export default function NotificationsScreen() {
     body = (
       <EmptyState
         icon={Bell}
+        illustration="updates"
         title={t('notifications.empty')}
         body={t('notifications.emptyHint')}
         action={

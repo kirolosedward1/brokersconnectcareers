@@ -24,6 +24,7 @@ import { Notice } from '~/components/ui/notice';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Select } from '~/components/ui/select';
 import { LoadingState } from '~/components/ui/states';
+import { Illustration } from '~/components/ui/illustration';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { deleteAccountHere, type DeleteRefusal } from '~/features/account/delete';
@@ -40,6 +41,7 @@ import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useHoldBack } from '~/lib/use-hold-back';
 import { webAddress } from '~/lib/web-address';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
 
@@ -175,6 +177,7 @@ function OnboardingForm({
   onDelete: () => Promise<DeleteRefusal | null>;
 }) {
   const t = useTranslations();
+  const large = useLargeText();
   const locale = useLocale();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -393,6 +396,12 @@ function OnboardingForm({
 
           {step === 'role' ? (
             <>
+              {/* The website's drawing of a person choosing: the one step with nobody in it yet. */}
+              {large ? null : (
+                <View style={{ alignItems: 'center' }}>
+                  <Illustration name="choose" width={150} />
+                </View>
+              )}
               <StepHeading title={t('onboarding.roleQuestion')} body={t('app.onboarding.roleBody')} />
               <View style={{ gap: space[3] }} accessibilityRole="radiogroup" accessibilityLabel={t('onboarding.roleQuestion')}>
                 <ChoiceCard

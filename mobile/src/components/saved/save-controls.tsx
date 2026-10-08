@@ -52,7 +52,7 @@ export function useSaveJob(jobId: string) {
     label: saved ? t('removeSaved') : t('save'),
     toggle: () => {
       if (!known) return;
-      haptic.selection();
+      haptic.tap();
       if (!saved) setSaves((count) => count + 1);
       toggle.mutate({ jobId, saved });
     },

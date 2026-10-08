@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
-import { AccessibilityInfo, Alert, Platform, Pressable, Share, Text, type AlertButton } from 'react-native';
+import { AccessibilityInfo, ActionSheetIOS, Alert, Platform, Pressable, Share, Text, type AlertButton } from 'react-native';
+import * as Sharing from 'expo-sharing';
+import { captureRef } from 'react-native-view-shot';
 import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -483,11 +485,25 @@ describe('sharing a listing', () => {
   const url = `${env.siteUrl}/jobs/${listing.slug}?src=share`;
   afterEach(() => jest.restoreAllMocks());
 
-  it('hands iOS the link as a link', async () => {
+  it('asks link or picture, and hands iOS the link as a link', async () => {
     const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+    const sheet = jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation((_, pick) => pick(0));
     renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.share }));
+    expect(sheet.mock.calls[0][0].options).toEqual([ar.app.share.asLink, ar.app.share.asImage, ar.common.cancel]);
     expect(share).toHaveBeenCalledWith({ message: listing.title_ar, url });
+  });
+
+  it('shows the listing as a picture first, then hands the picture to the share sheet', async () => {
+    jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation((_, pick) => pick(1));
+    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.share }));
+    expect(await screen.findByText(ar.app.share.hiring)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.share.send }));
+    await waitFor(() =>
+      expect(Sharing.shareAsync).toHaveBeenCalledWith('file:///tmp/listing-card.png', expect.objectContaining({ mimeType: 'image/png' })),
+    );
+    expect(captureRef).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ width: 1080, height: 1920 }));
   });
 
   it("keeps its word in the bar to the bar's size at the largest text sizes, as the bell does", async () => {
@@ -499,8 +515,10 @@ describe('sharing a listing', () => {
   it('puts the link inside the message on Android, which shares the message alone', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
     const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.share }));
+    act(() => (alert.mock.calls[0][2] as AlertButton[])[0].onPress?.());
     expect(share).toHaveBeenCalledWith({ message: `${listing.title_ar}\n${url}` });
   });
 });

@@ -75,6 +75,7 @@ export default function ListingApplicantsScreen() {
       >
         <EmptyState
           icon={Inbox}
+          illustration="review"
           title={t('employer.noApplicants')}
           body={t('employer.noApplicantsHint')}
           action={

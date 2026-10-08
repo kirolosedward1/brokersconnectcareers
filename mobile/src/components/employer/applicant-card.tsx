@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { Alert, Linking, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Download, FileX2, MessageCircle } from '~/components/ui/lucide';
+import { Download, FileX2, MessageCircle, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
 import { formatDate, formatEgp, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { clean } from '@/lib/security/sanitize';
@@ -10,6 +10,7 @@ import { canBrowseAgentDirectory } from '@/lib/permissions';
 import type { ApplicationNoteRow, ApplicationStatus } from '@/lib/supabase/database.types';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
 import { ApplicantNotes } from '~/components/employer/applicant-notes';
+import { SavedRepliesSheet } from '~/components/employer/saved-replies';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
@@ -17,6 +18,7 @@ import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
 import { ForwardChevron } from '~/components/ui/icons';
 import { Select } from '~/components/ui/select';
+import { SwipeRow, type SwipeAction } from '~/components/ui/swipe-row';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { STATUS_VARIANT } from '~/features/applications/queries';
@@ -136,6 +138,45 @@ export function ApplicantCard({
     );
   };
 
+  // A move from the picker or a swipe: the reason goes with it only when it was typed for it.
+  const moveTo = (value: ApplicationStatus) => {
+    if (value === status) return;
+    const typed = status !== 'new' && reason.trim() !== savedReason.trim();
+    if (typed) {
+      save(value, reason);
+    } else {
+      const shown = reason;
+      setReason('');
+      save(value, '', shown);
+    }
+  };
+
+  // Swiped aside: shortlist a new applicant (dragged left), or turn one down
+  // (dragged right, asked first) — the stage picker's own moves.
+  const shortlist: SwipeAction | undefined =
+    status === 'new'
+      ? {
+          label: t('applicationStatus.shortlisted'),
+          icon: <UserRoundCheck size={20} color="#FFFFFF" />,
+          color: colors.success,
+          onPress: () => moveTo('shortlisted'),
+        }
+      : undefined;
+  const turnDown: SwipeAction | undefined =
+    status !== 'rejected' && status !== 'hired'
+      ? {
+          label: t('applicationStatus.rejected'),
+          icon: <UserRoundX size={20} color="#FFFFFF" />,
+          color: colors.destructive,
+          onPress: () =>
+            Alert.alert(t('app.applicants.rejectConfirm'), name, [
+              { text: t('common.cancel'), style: 'cancel' },
+              { text: t('applicationStatus.rejected'), style: 'destructive', onPress: () => moveTo('rejected') },
+            ]),
+        }
+      : undefined;
+  const [repliesOpen, setRepliesOpen] = useState(false);
+
   const openCv = () => {
     setCvError(null);
     setOpening(true);
@@ -161,6 +202,7 @@ export function ApplicantCard({
   ].filter((fact): fact is string => Boolean(fact));
 
   return (
+    <SwipeRow left={turnDown} right={shortlist}>
     <Card style={{ gap: space[3] }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
         <Avatar name={name} src={candidate?.avatar_url} seed={profile?.slug ?? name} size="md" />
@@ -250,6 +292,26 @@ export function ApplicantCard({
             }
           />
         ) : null}
+        {/* The company's own replies, kept on this phone (saved-replies.tsx). */}
+        {candidate ? (
+          <Button
+            label={t('app.replies.open')}
+            accessibilityLabel={`${t('app.replies.open')}: ${name}`}
+            variant="outline"
+            size="sm"
+            icon={<MessageSquareText size={16} color={colors.foreground} />}
+            onPress={() => setRepliesOpen(true)}
+          />
+        ) : null}
+        {candidate && repliesOpen ? (
+          <SavedRepliesSheet
+            visible
+            onClose={() => setRepliesOpen(false)}
+            phone={candidate.whatsapp_phone}
+            opener={employerOpener({ candidateName: name, jobTitle, companyName, locale: locale as 'ar' | 'en' })}
+            values={{ name, job: jobTitle }}
+          />
+        ) : null}
         {applicant.cv_path ? (
           <Button
             label={t('employer.downloadCv')}
@@ -289,15 +351,7 @@ export function ApplicantCard({
           // "shortlisted"), and at "new" the box is hidden, so nothing in it
           // is on screen to send.
           onChange={(value) => {
-            if (!value || value === status) return;
-            const typed = status !== 'new' && reason.trim() !== savedReason.trim();
-            if (typed) {
-              save(value, reason);
-            } else {
-              const shown = reason;
-              setReason('');
-              save(value, '', shown);
-            }
+            if (value) moveTo(value);
           }}
         />
       </Field>
@@ -341,5 +395,6 @@ export function ApplicantCard({
 
       <ApplicantNotes applicationId={applicant.id} notes={notes} authors={authors} viewerId={viewerId} />
     </Card>
+    </SwipeRow>
   );
 }

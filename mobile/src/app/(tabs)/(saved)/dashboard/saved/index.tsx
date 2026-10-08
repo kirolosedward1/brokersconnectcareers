@@ -7,6 +7,7 @@ import { JobCard } from '~/components/jobs/job-card';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { SavedSearchList } from '~/components/saved/saved-search-list';
 import { Button } from '~/components/ui/button';
+import { Illustration } from '~/components/ui/illustration';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAppliedJobIds } from '~/features/jobs/marks';
@@ -89,6 +90,7 @@ export default function SavedScreen() {
               borderColor: colors.border,
             }}
           >
+            <Illustration name="browse" width={160} />
             <Text weight="medium" style={{ textAlign: 'center' }}>
               {t('dashboard.emptySaved')}
             </Text>

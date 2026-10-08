@@ -80,6 +80,7 @@ export default function InboxScreen() {
     body = (
       <EmptyState
         icon={Building2}
+        illustration="write"
         title={t('employer.createCompanyFirst')}
         body={t('employer.createCompanyFirstBody')}
         action={<Button label={t('employer.company')} onPress={() => router.navigate('/employer/company' as never)} />}

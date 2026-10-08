@@ -23,6 +23,7 @@ import { CompanyLogo } from '~/components/companies/company-logo';
 import { FilterSheet } from '~/components/jobs/filter-sheet';
 import { JobCard } from '~/components/jobs/job-card';
 import { PopularLandings } from '~/components/jobs/popular-landings';
+import { QuickFilters } from '~/components/jobs/quick-filters';
 import { SaveSearchButton } from '~/components/saved/save-controls';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
@@ -239,6 +240,7 @@ function BoardHeader({
 
   return (
     <View style={{ gap: space[3], marginBottom: space[4] }}>
+      <QuickFilters filters={filters} apply={apply} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
         {loading ? (
           <View style={{ flexGrow: 1 }} />
@@ -368,6 +370,7 @@ function EmptyBoard({
       title={t('empty')}
       body={t('emptyHint')}
       icon={SearchX}
+      illustration="search"
       action={
         <View style={{ alignItems: 'center', gap: space[3] }}>
           {relaxations.length ? (

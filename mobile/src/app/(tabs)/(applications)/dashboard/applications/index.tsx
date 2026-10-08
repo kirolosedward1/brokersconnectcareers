@@ -7,8 +7,10 @@ import { formatDate } from '@/lib/format';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import { useHeaderBell } from '~/components/notifications/header-bell';
+import { ApplicationTimeline } from '~/components/applications/timeline';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
+import { Illustration } from '~/components/ui/illustration';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
@@ -79,6 +81,7 @@ export default function ApplicationsScreen() {
               borderColor: colors.border,
             }}
           >
+            <Illustration name="apply" width={140} />
             <Text weight="medium" style={{ textAlign: 'center' }}>
               {t('dashboard.emptyApplications')}
             </Text>
@@ -177,6 +180,9 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
         </View>
         <Badge variant={STATUS_VARIANT[application.status]} label={t(`applicationStatus.${application.status}`)} />
       </View>
+
+      {/* Where it stands: sent, seen by the company, shortlisted, the decision. */}
+      <ApplicationTimeline application={application} />
 
       {/* That a person at the company has had it on screen — only while the
           outcome is open; once the status moves, the status is the news. */}

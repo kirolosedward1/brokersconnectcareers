@@ -25,6 +25,7 @@ import { boardQuery, clearSheetFilters, sheetFilterCount, toggled } from '~/feat
 import { useBoardTotal } from '~/features/jobs/queries';
 import { useDistricts, useGovernorates } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
+import { haptic } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { gutter, hitTarget, space } from '~/theme/tokens';
 
@@ -303,7 +304,14 @@ export function FilterSheetFrame({
             borderTopColor: colors.border,
           }}
         >
-          <Button label={applyLabel} size="lg" onPress={onApply} />
+          <Button
+            label={applyLabel}
+            size="lg"
+            onPress={() => {
+              haptic.tap();
+              onApply();
+            }}
+          />
         </View>
       </View>
     </Modal>

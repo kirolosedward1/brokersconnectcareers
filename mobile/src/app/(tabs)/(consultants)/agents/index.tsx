@@ -11,6 +11,7 @@ import type { AgentCardRow } from '@/lib/supabase/database.types';
 import { AgentCard } from '~/components/directory/agent-card';
 import { DirectoryClosed } from '~/components/directory/directory-closed';
 import { DirectoryFilterSheet } from '~/components/directory/directory-filter-sheet';
+import { SaveAgentSearch, SavedAgentSearches } from '~/components/directory/saved-searches';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
 import { PageFooter } from '~/components/ui/page-footer';
@@ -27,7 +28,7 @@ import {
   sheetFilterCount,
   useAgentFilterLabel,
 } from '~/features/directory/filters';
-import { flattenAgents, useAgentDirectory, useShortlistedIds } from '~/features/directory/queries';
+import { directorySearch, flattenAgents, useAgentDirectory, useShortlistedIds } from '~/features/directory/queries';
 import { useCompanyPage } from '~/features/employer/company';
 import { useDistricts } from '~/features/taxonomy';
 import { useTabList } from '~/features/tab-bar';
@@ -162,6 +163,7 @@ export default function DirectoryScreen() {
             activeFilterCount(filters) > 0 ? (
               <EmptyState
                 icon={SearchX}
+                illustration="search"
                 title={t('agents.empty')}
                 body={t('agents.emptyHint')}
                 action={<Button label={t('jobs.clearFilters')} variant="outline" onPress={() => apply(EMPTY_AGENT_FILTERS)} />}
@@ -266,6 +268,9 @@ function DirectoryHeader({
         </Card>
       ) : null}
 
+      {/* Searches kept to be told about new consultants (features/directory/alerts.ts). */}
+      <SavedAgentSearches current={directorySearch(filters)} />
+
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
         <Chip
           label={inSheet ? `${t('jobs.filters')} · ${formatNumber(inSheet, locale)}` : t('jobs.filters')}
@@ -298,6 +303,7 @@ function DirectoryHeader({
           ) : null}
         </View>
       ) : null}
+      {active.length ? <SaveAgentSearch filters={filters} label={active.map((filter) => labelFor(filter)).join(' · ')} /> : null}
     </View>
   );
 }

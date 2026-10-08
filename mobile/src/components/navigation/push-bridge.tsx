@@ -131,6 +131,13 @@ export function PushBridge() {
     }
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const id = notificationIdOf(response);
+      // One of the app's own, from this phone (a consultant search's news, features/directory/alerts.ts).
+      const local = localHrefOf(response);
+      if (!id && local) {
+        Notifications.clearLastNotificationResponse();
+        openWhenReady(local);
+        return;
+      }
       if (!id) return;
       Notifications.clearLastNotificationResponse();
       pushTapped(id);
@@ -163,4 +170,10 @@ export function PushBridge() {
   }, [userId, unread]);
 
   return null;
+}
+
+/** Where a notification the app posted itself leads: the directory only, never an address from elsewhere. */
+function localHrefOf(response: Notifications.NotificationResponse | null): string | null {
+  const href = (response?.notification.request.content.data as { localHref?: unknown } | undefined)?.localHref;
+  return typeof href === 'string' && href.startsWith('/agents') ? href : null;
 }

@@ -1,7 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { BadgeCheck, CircleSlash, Star, Target } from '~/components/ui/lucide';
+import { VerifiedMark } from '~/components/companies/verified-mark';
+import { BadgeCheck, CircleSlash, Sparkles, Star, Target } from '~/components/ui/lucide';
 import type { JobListItem } from '@/lib/job-list';
 import { formatList, formatNumber, formatRelativeDay } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
@@ -12,6 +13,8 @@ import { Text } from '~/components/ui/text';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { SaveJobIcon, useSaveJob } from '~/components/saved/save-controls';
 import { useCompensationText } from '~/features/jobs/compensation';
+import { useJobMatch } from '~/features/jobs/match';
+import { markupTags } from '~/i18n/rich';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
@@ -34,6 +37,8 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
   // full, and the footer's facts above the date rather than squeezed by it.
   const large = useLargeText();
 
+  // How well it fits the candidate's own profile, when it fits at all (features/jobs/match.ts).
+  const match = useJobMatch()(job);
   const closed = !jobIsLive(job);
   const title = localized(locale, job.title_ar, job.title_en);
   const company = localized(locale, job.company.name_ar, job.company.name_en);
@@ -41,7 +46,7 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
   const salary = pay.salary(job, locale);
   const companyLeads = job.leads_source === 'company_provided';
   const leadsTone = companyLeads ? colors.primary : colors.mutedForeground;
-  const flags = job.is_featured || closed || applied;
+  const flags = job.is_featured || closed || applied || match;
   const commission = job.commission_type === 'percentage' && job.commission_value != null ? pay.commission(job, locale) : null;
   const facts = [
     t(`track.${job.track}`),
@@ -58,6 +63,7 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
     job.is_featured ? t('jobs.featured') : null,
     closed ? t('jobs.closedShort') : null,
     applied ? t('jobs.applied') : null,
+    match ? t.markup('app.jobs.match', { percent: match.percent, ...markupTags }) : null,
     salary.perMonth ? `${salary.amount} ${salary.perMonth}` : salary.amount,
     commission,
     t(`leadsSource.${job.leads_source}_short`),
@@ -98,7 +104,7 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
               {company}
             </Text>
             {job.company.verification_status === 'verified' ? (
-              <BadgeCheck size={15} color={colors.gold} accessibilityLabel={t('companies.verified')} />
+              <VerifiedMark size={15} />
             ) : null}
             <Text variant="small" tone="mutedForeground">
               {` · ${district}`}
@@ -116,6 +122,13 @@ export function JobCard({ job, applied = false }: { job: JobListItem; applied?: 
             <Badge label={t('jobs.closedShort')} icon={<CircleSlash size={11} color={colors.mutedForeground} />} />
           ) : null}
           {applied ? <Badge variant="success" label={t('jobs.applied')} /> : null}
+          {match ? (
+            <Badge
+              variant="accent"
+              label={t.markup('app.jobs.match', { percent: match.percent, ...markupTags })}
+              icon={<Sparkles size={11} color={colors.accentForeground} />}
+            />
+          ) : null}
         </View>
       ) : null}
 

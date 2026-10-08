@@ -20,6 +20,7 @@ import { Pulse } from '~/components/motion/pulse';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
+import { Illustration, type IllustrationName } from './illustration';
 import { corner, gutter, space } from '~/theme/tokens';
 import { Button } from './button';
 import { Text } from './text';
@@ -256,12 +257,15 @@ export function EmptyState({
   body,
   action,
   icon: Icon,
+  illustration,
 }: {
   title: string;
   body?: string;
   action?: ReactNode;
   /** A mark for the state, drawn in a soft disc above the title. */
   icon?: LucideIcon;
+  /** One of the website's drawings instead of the mark, where the screen would otherwise be bare. */
+  illustration?: IllustrationName;
 }) {
   const { colors } = useTheme();
   // At the accessibility sizes the disc gives its room to the words: on the
@@ -269,7 +273,11 @@ export function EmptyState({
   const large = useLargeText();
   return (
     <Centered>
-      {Icon && !large ? (
+      {illustration && !large ? (
+        <View style={{ marginBottom: space[1] }}>
+          <Illustration name={illustration} width={180} />
+        </View>
+      ) : Icon && !large ? (
         <View
           accessible={false}
           style={{

@@ -1,6 +1,7 @@
 import { Linking, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
+import { VerifiedMark } from '~/components/companies/verified-mark';
 import { BadgeCheck, Globe, MapPin, Users } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
 import { safeHttpUrl } from '@/lib/security/sanitize';
@@ -87,7 +88,9 @@ export default function CompanyScreen() {
                 {name}
               </Text>
               {company.verification_status === 'verified' ? (
-                <Badge variant="accent" label={t('verified')} icon={<BadgeCheck size={12} color={colors.accentForeground} />} />
+                <VerifiedMark>
+                  <Badge variant="accent" label={t('verified')} icon={<BadgeCheck size={12} color={colors.accentForeground} />} />
+                </VerifiedMark>
               ) : null}
             </View>
           </View>

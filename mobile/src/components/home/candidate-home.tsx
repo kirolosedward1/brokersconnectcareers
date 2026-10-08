@@ -13,6 +13,8 @@ import { PolicyNotice } from '~/components/legal/policy-notice';
 import { PushPrompt } from '~/components/push/push-prompt';
 import { StatStrip } from '~/components/dashboard/stat-strip';
 import { JobBrowse } from '~/components/home/job-browse';
+import { RecentlyViewed } from './recently-viewed';
+import { CompletenessRing } from '~/components/profile/completeness-ring';
 import { JobCard } from '~/components/jobs/job-card';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
@@ -108,7 +110,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
         compact
         title={profile ? t('dashboard.candidateGreeting', { name: profile.full_name }) : t('dashboard.overview')}
         subtitle={t('dashboard.candidateLede')}
-        aside={profile ? <HeroPhoto profile={profile} /> : undefined}
+        aside={profile ? <HeroPhoto profile={profile} completeness={s?.profile_completeness ?? null} /> : undefined}
       />
 
       {profile ? <StandingNotice profile={profile} /> : null}
@@ -231,6 +233,8 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
         </>
       )}
 
+      <RecentlyViewed />
+
       {suggestions.length ? (
         <View style={{ gap: space[3] }}>
           <SectionHeader
@@ -297,12 +301,17 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
  * The reader's photo beside the greeting, in a rounded frame of light on the
  * panel — their first letter on its colour until they add one (on Account).
  */
-function HeroPhoto({ profile }: { profile: ProfileRow }) {
-  return (
-    <View style={styles.photoFrame}>
-      <Avatar name={profile.full_name} src={profile.avatar_url} seed={profile.id} size="lg" shape="rounded" />
-    </View>
-  );
+function HeroPhoto({ profile, completeness }: { profile: ProfileRow; completeness: number | null }) {
+  const photo = <Avatar name={profile.full_name} src={profile.avatar_url} seed={profile.id} size="lg" shape="rounded" />;
+  // How complete the profile is, round the photo; a tap opens it at what is missing.
+  if (completeness !== null) {
+    return (
+      <CompletenessRing percent={completeness} size={64} radius={18} onPress={() => router.navigate('/account/profile')}>
+        {photo}
+      </CompletenessRing>
+    );
+  }
+  return <View style={styles.photoFrame}>{photo}</View>;
 }
 
 function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll: () => void }) {

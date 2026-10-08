@@ -39,6 +39,7 @@ export function DirectoryClosed() {
   return (
     <EmptyState
       icon={ShieldCheck}
+      illustration="verify"
       title={t('app.directory.verifyTitle')}
       body={t('app.directory.verifyBody')}
       action={

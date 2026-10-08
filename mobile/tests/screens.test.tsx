@@ -289,21 +289,23 @@ describe('the board', () => {
     await screen.findByText(listing.title_ar);
 
     fireEvent.press(screen.getByRole('button', { name: 'الفلاتر · 1' }));
+    // The sheet's own choices, not the quick ones over the board behind it.
+    const sheet = within(screen.UNSAFE_getByType(Modal));
     // The words, then the groups, in the website's order and words.
     for (const heading of ['بحث بالكلمات', 'مصدر العملاء', 'راتب أساسي', 'راتب أساسي من', 'نوع العمولة', 'تاريخ النشر', 'التخصص', 'نوع الشركة', 'سنوات الخبرة', 'نوع التعاقد', 'المنطقة']) {
-      expect(await screen.findByRole('header', { name: heading })).toBeTruthy();
+      expect(await sheet.findByRole('header', { name: heading })).toBeTruthy();
     }
 
-    fireEvent.press(screen.getByRole('button', { name: ar.track.primary }));
+    fireEvent.press(sheet.getByRole('button', { name: ar.track.primary }));
     // A group that takes one answer is a set of radio buttons: choosing one unchooses "any".
-    fireEvent.press(screen.getByRole('radio', { name: 'براتب أساسي' }));
-    expect(screen.getByRole('radio', { name: 'براتب أساسي' }).props.accessibilityState).toMatchObject({ checked: true });
-    expect(screen.getByLabelText('راتب أساسي').props.accessibilityRole).toBe('radiogroup');
-    fireEvent.press(await screen.findByRole('button', { name: 'القاهرة الجديدة' }));
-    fireEvent.press(screen.getByRole('radio', { name: 'آخر 7 أيام' }));
-    expect(await screen.findByRole('button', { name: 'شوف النتائج · ⁦7⁩' })).toBeTruthy();
+    fireEvent.press(sheet.getByRole('radio', { name: 'براتب أساسي' }));
+    expect(sheet.getByRole('radio', { name: 'براتب أساسي' }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(sheet.getByLabelText('راتب أساسي').props.accessibilityRole).toBe('radiogroup');
+    fireEvent.press(await sheet.findByRole('button', { name: 'القاهرة الجديدة' }));
+    fireEvent.press(sheet.getByRole('radio', { name: 'آخر 7 أيام' }));
+    expect(await sheet.findByRole('button', { name: 'شوف النتائج · ⁦7⁩' })).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('button', { name: 'شوف النتائج · ⁦7⁩' }));
+    fireEvent.press(sheet.getByRole('button', { name: 'شوف النتائج · ⁦7⁩' }));
     // The words the board was searched by are in the sheet's first field, and kept.
     await waitFor(() =>
       expect(result.getSearchParams()).toEqual({
@@ -327,6 +329,17 @@ describe('the board', () => {
     // Pressable at once, whether or not the count has come back.
     fireEvent.press(sheet.getByRole('button', { name: /شوف النتائج/ }));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ sort: 'salary' }));
+  });
+
+  it('narrows by the filters people reach for most, one tap each, and lets go of them the same way', async () => {
+    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    await screen.findByText(listing.title_ar);
+    fireEvent.press(screen.getByRole('button', { name: 'براتب أساسي' }));
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ salary: 'yes' }));
+    fireEvent.press(screen.getByRole('button', { name: ar.track.resale }));
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ salary: 'yes', track: 'resale' }));
+    fireEvent.press(screen.getAllByRole('button', { name: 'براتب أساسي' })[0]);
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'resale' }));
   });
 
   it('re-sorts', async () => {
@@ -415,6 +428,16 @@ describe('companies', () => {
     renderRouter(app, { initialUrl: '/(companies)/companies?q=%D9%86%D8%A7%D9%8A%D9%84' });
     await screen.findByText('نايل بروكرز');
     expect(screen.getByLabelText(ar.filters.search).props.value).toBe('نايل');
+  });
+
+  it('says what verified means when its mark is tapped', async () => {
+    renderRouter(app, { initialUrl: '/(companies)/companies' });
+    await screen.findByText('نايل بروكرز');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.companies.verified })[0]);
+    expect(await screen.findByText(ar.app.verified.title)).toBeTruthy();
+    expect(screen.getByText(ar.app.verified.papers)).toBeTruthy();
+    fireEvent.press(screen.getAllByRole('button', { name: ar.app.verified.close })[1]);
+    await waitFor(() => expect(screen.queryByText(ar.app.verified.title)).toBeNull());
   });
 
   it("shows a company's page", async () => {

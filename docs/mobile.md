@@ -331,6 +331,48 @@ compare with (a new branch), it compares with the previous commit.
   `openNotification`, which answers with the page to open or why not.
   Returning to the app re-reads whatever has gone stale meanwhile.
 
+### Kept on the phone, and small conveniences
+
+Nothing below reaches the website; each is the app's own, per person on the
+phone (`mobile/src/lib/local-list.ts`, keyed by user id or `anon`):
+
+- **Quick filters** under the board's title (`components/jobs/quick-filters.tsx`):
+  a basic salary, primary and resale, and the two areas with the most live
+  listings by the website's browse counts — the sheet's own filters, on or off.
+- **Match** on a job card for a candidate (`features/jobs/match.ts`): the
+  website's `scoreJob` as a share of `MAX_MATCH_SCORE` (`src/lib/match.ts`),
+  shown only when the profile names a track or district and the listing
+  matches on something.
+- **An application's steps** (`components/applications/timeline.tsx`): sent,
+  seen by the company (a status past "new" counts), shortlisted or interview,
+  the decision — a rejection ends the line where it happened.
+- **The completeness ring** round the photo on Home and Account
+  (`components/profile/completeness-ring.tsx`), from `candidate_summary`; a tap
+  opens the profile.
+- **Recently viewed** on Home (`features/jobs/recent.ts`): the last ten
+  listings opened, three shown, never one from a hidden company.
+- **Sharing a listing** offers the link or a picture
+  (`components/jobs/share-card.tsx`): a 1080 × 1920 card captured with
+  `react-native-view-shot` and handed to the share sheet.
+- **Illustrations** (`components/ui/illustration.tsx`): the website's own
+  files on empty screens and onboarding's first step, on a pane of paper in
+  dark mode where the website inverts them.
+- **Verified** marks open what verification means and does not promise
+  (`components/companies/verified-mark.tsx`).
+- **Applicants** swipe aside (`components/ui/swipe-row.tsx`): left to
+  shortlist a new one, right to turn one down (asked first) — the stage
+  picker's own moves; VoiceOver gets both as actions. **Saved WhatsApp
+  replies** (`components/employer/saved-replies.tsx`) beside the opener, with
+  `{name}` and `{job}` filled in.
+- **Consultant search alerts** (`features/directory/alerts.ts`): a narrowed
+  directory kept as a search; the app asks each again when it opens or comes
+  back (at most every half hour), counts consultants not seen before, and
+  posts a notification of its own where the person has let it notify. They
+  live on the phone and run while the app is used — a server-side alert would
+  need a table and a sweep like saved job searches have.
+- **A light tap** (`lib/haptics.ts`) when a job is saved or filters are
+  applied; an application sent keeps its success.
+
 ## Signing in
 
 The sign-in sheet (`mobile/src/app/(auth)/`) is the website's auth form, rule
