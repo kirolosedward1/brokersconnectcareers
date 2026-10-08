@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { VerifiedMark } from '~/components/companies/verified-mark';
-import { BadgeCheck, CircleSlash, Sparkles, Star, Target } from '~/components/ui/lucide';
+import { CircleSlash, Sparkles, Star, Target } from '~/components/ui/lucide';
 import type { JobListItem } from '@/lib/job-list';
 import { formatList, formatNumber, formatRelativeDay } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';

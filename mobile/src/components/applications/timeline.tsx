@@ -5,7 +5,6 @@ import type { ApplicationStatus } from '@/lib/supabase/database.types';
 import { Check, X } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
 
 export type StepState = 'done' | 'current' | 'ahead' | 'stopped';
 export type TimelineStep = { key: 'sent' | 'seen' | 'shortlisted' | 'decision'; state: StepState; date: string | null };

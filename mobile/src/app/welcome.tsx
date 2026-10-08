@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useNavigation } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -122,40 +122,8 @@ export default function WelcomeScreen() {
         </Appear>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: 'flex-end',
-          gap: compact ? space[3] : space[4],
-          paddingHorizontal: gutter,
-          paddingTop: space[4],
-          paddingBottom: space[2],
-        }}
-      >
-        <Appear play={shown} delay={AT.brand}>
-          <Brand compact={compact} locale={locale} />
-        </Appear>
-
-        <View style={{ gap: space[2] }}>
-          <Appear play={shown} delay={AT.words}>
-            <Text
-              variant={compact ? 'title' : 'display'}
-              weight="bold"
-              accessibilityRole="header"
-              style={{ color: colors.onHero }}
-            >
-              {t('landingPage.hero.title')}
-            </Text>
-          </Appear>
-          <Appear play={shown} delay={AT.words + motion.stagger}>
-            <Text variant={compact ? 'small' : 'body'} style={{ color: colors.onHeroMuted }}>
-              {t('app.welcome.lead')}
-            </Text>
-          </Appear>
-        </View>
-
-      </ScrollView>
+      {/* The words stand still: when they do not fit (a short phone, a large text size), they are set smaller. */}
+      <Words compact={compact} play={shown} locale={locale} />
 
       {/* The ways on stay at the foot of the screen, whatever the phone's size or text size. */}
       <Appear
@@ -196,6 +164,80 @@ export default function WelcomeScreen() {
           </Text>
         </Text>
       </Appear>
+    </View>
+  );
+}
+
+/**
+ * Steps the words take down when they do not fit, from the largest: the
+ * headline and the line under it, and how far the phone's text size may
+ * enlarge them. The last step always fits on a phone.
+ */
+const STEPS = [
+  { title: 'display', lead: 'body', grow: undefined },
+  { title: 'title', lead: 'small', grow: undefined },
+  { title: 'headline', lead: 'caption', grow: 1.3 },
+  { title: 'headline', lead: 'caption', grow: 1 },
+] as const;
+
+/**
+ * The logo, what the board is and the line under it, at the foot of the
+ * space above the buttons. Never scrolled: measured as drawn, and set a step
+ * smaller each time they are taller than the space they have.
+ */
+function Words({ compact, play, locale }: { compact: boolean; play: boolean; locale: string }) {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  const [step, setStep] = useState(compact ? 1 : 0);
+  const [room, setRoom] = useState(0);
+  const [needed, setNeeded] = useState(0);
+  const last = STEPS.length - 1;
+
+  // One step at a time, each judged on the words as that step draws them.
+  const judge = (height: number, words: number) => {
+    if (height > 0 && words > height + 1 && step < last) {
+      setNeeded(0);
+      setStep(step + 1);
+    }
+  };
+
+  const { title, lead, grow } = STEPS[step];
+  return (
+    <View
+      testID="welcome-words"
+      onLayout={(event) => {
+        const height = event.nativeEvent.layout.height;
+        setRoom(height);
+        judge(height, needed);
+      }}
+      style={{ flex: 1, justifyContent: 'flex-end', overflow: 'hidden', paddingHorizontal: gutter, paddingTop: space[4], paddingBottom: space[2] }}
+    >
+      <View
+        testID="welcome-words-content"
+        onLayout={(event) => {
+          const height = event.nativeEvent.layout.height;
+          setNeeded(height);
+          judge(room, height);
+        }}
+        style={{ gap: compact || step > 0 ? space[3] : space[4] }}
+      >
+        <Appear play={play} delay={AT.brand}>
+          <Brand compact={compact || step > 1} locale={locale} />
+        </Appear>
+
+        <View style={{ gap: space[2] }}>
+          <Appear play={play} delay={AT.words}>
+            <Text variant={title} weight="bold" accessibilityRole="header" maxFontSizeMultiplier={grow} style={{ color: colors.onHero }}>
+              {t('landingPage.hero.title')}
+            </Text>
+          </Appear>
+          <Appear play={play} delay={AT.words + motion.stagger}>
+            <Text variant={lead} maxFontSizeMultiplier={grow} style={{ color: colors.onHeroMuted }}>
+              {t('app.welcome.lead')}
+            </Text>
+          </Appear>
+        </View>
+      </View>
     </View>
   );
 }

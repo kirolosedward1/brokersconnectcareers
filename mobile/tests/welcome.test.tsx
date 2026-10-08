@@ -1,4 +1,4 @@
-import { Pressable, Text } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { router } from 'expo-router';
@@ -125,6 +125,33 @@ it('opens a signed-out launch on the welcome, under the splash screen until it i
 
   await drawn();
   expect(hide).toHaveBeenCalled();
+});
+
+it('never scrolls, and sets the words smaller when they do not fit', async () => {
+  launch();
+  await drawn();
+  expect(screen.UNSAFE_queryAllByType(ScrollView)).toHaveLength(0);
+  const headline = () => screen.getByText(ar.landingPage.hero.title);
+  const size = () => StyleSheet.flatten(headline().props.style).fontSize;
+  const layout = (testID: string, height: number) =>
+    fireEvent(screen.getByTestId(testID), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 390, height } } });
+
+  layout('welcome-words', 400);
+  layout('welcome-words-content', 300);
+  await act(async () => {});
+  expect(size()).toBe(32);
+
+  // Taller than its space (the largest text sizes): a step smaller, and again until it fits.
+  layout('welcome-words-content', 520);
+  await act(async () => {});
+  expect(size()).toBe(22);
+  layout('welcome-words-content', 450);
+  await act(async () => {});
+  expect(size()).toBe(18);
+  layout('welcome-words-content', 380);
+  await act(async () => {});
+  expect(size()).toBe(18);
+  expect(headline().props.maxFontSizeMultiplier).toBe(1.3);
 });
 
 it('closes onto Home when the reader skips it, until the app is next started', async () => {
