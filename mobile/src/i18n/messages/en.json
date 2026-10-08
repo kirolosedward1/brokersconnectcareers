@@ -252,5 +252,11 @@
   },
   "cv": {
     "current": "Current"
+  },
+  "crash": {
+    "title": "The app closed unexpectedly last time",
+    "body": "Something closed the app. Send us the details so we can fix it.",
+    "send": "Send the details",
+    "dismiss": "OK"
   }
 }

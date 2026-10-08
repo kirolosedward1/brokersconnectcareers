@@ -132,7 +132,7 @@ jobs:
     if: needs.publish.outputs.published == 'yes'
     # Xcode 26, as for the native build in mobile.yml.
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: mobile

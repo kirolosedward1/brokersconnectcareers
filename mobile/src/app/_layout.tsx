@@ -17,6 +17,7 @@ import { LaunchScreen } from '~/components/brand/launch-screen';
 import { AppError, ScreenError } from '~/components/navigation/error-boundaries';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
+import { CrashNotice } from '~/components/navigation/crash-notice';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
@@ -27,6 +28,7 @@ import { InSheet } from '~/components/ui/states';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
 import { useWelcomeDrawn } from '~/features/welcome';
 import { I18nProvider } from '~/i18n/provider';
+import { installCrashLog } from '~/lib/crash-log';
 import { appDirection } from '~/lib/direction';
 import { persistOptions, queryClient } from '~/lib/query';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -34,6 +36,8 @@ import { ThemeProvider, useTheme } from '~/theme/provider';
 import { font } from '~/theme/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+// An error that would close the app is written down first, for the next launch to tell.
+installCrashLog();
 
 /**
  * The tabs are always underneath: a link that opens straight onto a sheet (an
@@ -154,6 +158,7 @@ function AppStack() {
       <PendingPath />
       <PushBridge />
       <AppleCredentialWatch />
+      <CrashNotice />
     </UpdateGate>
   );
 }

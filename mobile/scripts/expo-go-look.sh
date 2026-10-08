@@ -240,36 +240,14 @@ step_run() {
   else
     echo "maestro: FAILED" > "$out/$name.maestro.verdict"
   fi
-  # What the test driver can see of the screen: whether the app's controls
-  # are there to be tapped at all.
-  maestro --device "$udid" hierarchy > "$out/$name.hierarchy.json" 2> /dev/null || true
 }
 tour() {
   local name="$1" what="$2"
   shift 2
   step_run "$name" "$@"
   glance "$name" "$what"
-  echo "::group::$name — $(cat "$out/$name.maestro.verdict"); what the driver saw"
+  echo "::group::$name — $(cat "$out/$name.maestro.verdict")"
   tail -n 12 "$out/$name.maestro.log"
-  python3 - "$out/$name.hierarchy.json" <<'PY' || true
-import json, sys
-try:
-    tree = json.load(open(sys.argv[1], encoding="utf-8"))
-except Exception as error:
-    print(f"hierarchy: not read ({error})")
-    sys.exit(0)
-seen = []
-def walk(node):
-    attrs = node.get("attributes", {}) if isinstance(node, dict) else {}
-    for key in ("accessibilityText", "text", "resource-id"):
-        value = (attrs.get(key) or "").strip()
-        if value and value not in seen:
-            seen.append(value)
-    for child in (node.get("children") or []) if isinstance(node, dict) else []:
-        walk(child)
-walk(tree)
-print(f"hierarchy: {len(seen)} labels — " + " | ".join(seen[:40]))
-PY
   echo "::endgroup::"
 }
 
