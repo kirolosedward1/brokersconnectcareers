@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { ActionSheetIOS, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
@@ -36,6 +36,7 @@ import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { useSheet } from '~/lib/use-sheet';
 
 /**
  * One listing — the website's JobDetailView, in the order a phone reads it:
@@ -103,14 +104,14 @@ export function JobDetail({
     Share.share(Platform.OS === 'ios' ? { message: title, url } : { message: `${title}\n${url}` }).catch(() => {});
   };
   // The link, or the listing as a picture for a status or a story (share-card.tsx).
-  const [cardOpen, setCardOpen] = useState(false);
+  const card = useSheet();
   const tApp = useTranslations('app.share');
   const tCommon = useTranslations('common');
   const share = () => {
     const options = [tApp('asLink'), tApp('asImage'), tCommon('cancel')];
     const pick = (index: number) => {
       if (index === 0) shareLink();
-      if (index === 1) setCardOpen(true);
+      if (index === 1) card.show();
     };
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions({ options, cancelButtonIndex: 2 }, pick);
@@ -143,7 +144,7 @@ export function JobDetail({
           ),
         }}
       />
-      {cardOpen ? <ShareCardSheet job={job} visible onClose={() => setCardOpen(false)} /> : null}
+      {card.mounted ? <ShareCardSheet job={job} visible={card.open} onClose={card.hide} onDismiss={card.onDismiss} /> : null}
       <ScrollView
         {...shrink}
         contentInsetAdjustmentBehavior="automatic"

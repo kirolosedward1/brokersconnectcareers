@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
 import { BadgeCheck, FileCheck, Flag } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
+import { useSheet } from '~/lib/use-sheet';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 
@@ -18,7 +19,7 @@ import { corner, gutter, space } from '~/theme/tokens';
 export function VerifiedMark({ size = 16, children }: { size?: number; children?: ReactNode }) {
   const t = useTranslations();
   const { colors } = useTheme();
-  const [open, setOpen] = useState(false);
+  const sheet = useSheet();
   return (
     <>
       <Pressable
@@ -26,23 +27,23 @@ export function VerifiedMark({ size = 16, children }: { size?: number; children?
         accessibilityLabel={t('companies.verified')}
         accessibilityHint={t('app.verified.hint')}
         hitSlop={10}
-        onPress={() => setOpen(true)}
+        onPress={sheet.show}
         testID="verified-mark"
       >
         {children ?? <BadgeCheck size={size} color={colors.gold} />}
       </Pressable>
-      {/* Drawn only while open: a mark on every card of a list must not carry a sheet each. */}
-      {open ? <VerifiedSheet visible onClose={() => setOpen(false)} /> : null}
+      {/* Drawn only while open (and closing): a mark on every card of a list must not carry a sheet each. */}
+      {sheet.mounted ? <VerifiedSheet visible={sheet.open} onClose={sheet.hide} onDismiss={sheet.onDismiss} /> : null}
     </>
   );
 }
 
-export function VerifiedSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function VerifiedSheet({ visible, onClose, onDismiss }: { visible: boolean; onClose: () => void; onDismiss?: () => void }) {
   const t = useTranslations('app.verified');
   const { colors, shadow } = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} onDismiss={onDismiss}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('close')}

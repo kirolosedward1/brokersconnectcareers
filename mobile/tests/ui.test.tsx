@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaInsetsContext, SafeAreaProvider } from 'react-native-safe-area-context';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
@@ -11,7 +11,6 @@ import { AuthScroll } from '~/components/auth/auth-scroll';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { SetupChecklist } from '~/components/employer/setup-checklist';
 import { BarOnly } from '~/components/navigation/page-header';
-import { DialogHost } from '~/components/ui/dialog-host';
 import { FilterSheetFrame } from '~/components/jobs/filter-sheet';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
@@ -23,7 +22,7 @@ import { Select } from '~/components/ui/select';
 import { EmptyState, ErrorState, InSheet } from '~/components/ui/states';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { ApiError } from '~/lib/api';
-import { dialog } from '~/lib/dialog';
+import { dialog, readingOrder } from '~/lib/dialog';
 import { env } from '~/lib/env';
 import { ThemeProvider } from '~/theme/provider';
 import { company } from './fixtures';
@@ -413,54 +412,28 @@ describe('the keyboard', () => {
   });
 });
 
-describe("the app's own alert", () => {
-  function host() {
-    render(
-      <ThemeProvider>
-        <I18nProvider>
-          <DialogHost />
-        </I18nProvider>
-      </ThemeProvider>,
-    );
-  }
-
-  afterEach(() => jest.useRealTimers());
-
-  it('puts Cancel first in the reading order, and does the action once the dialog has gone', async () => {
-    jest.useFakeTimers();
-    host();
+describe("the app's alerts", () => {
+  it('stand Cancel on the right where iOS lays an Arabic question out left to right', () => {
     const withdraw = jest.fn();
-    act(() =>
-      dialog.alert('تسحب طلبك؟', 'مفيش رجوع.', [
-        { text: 'اسحب الطلب', style: 'destructive', onPress: withdraw },
-        { text: 'إلغاء', style: 'cancel' },
-      ]),
-    );
-    const labels = within(screen.getByTestId('dialog'))
-      .getAllByText(/^(إلغاء|اسحب الطلب)$/)
-      .map((label) => label.props.children);
-    expect(labels).toEqual(['إلغاء', 'اسحب الطلب']);
-    expect(screen.getByRole('header', { name: 'تسحب طلبك؟' })).toBeTruthy();
-
-    fireEvent.press(screen.getByRole('button', { name: 'اسحب الطلب' }));
-    expect(withdraw).not.toHaveBeenCalled();
-    act(() => jest.advanceTimersByTime(500));
+    const arranged = readingOrder([
+      { text: 'إلغاء', style: 'cancel' },
+      { text: 'اسحب الطلب', style: 'destructive', onPress: withdraw },
+    ]);
+    // iOS keeps the order given unless a button is marked cancel, which it puts first (left).
+    expect(arranged.map((button) => [button.text, button.style])).toEqual([
+      ['اسحب الطلب', 'destructive'],
+      ['إلغاء', 'default'],
+    ]);
+    arranged[0].onPress?.();
     expect(withdraw).toHaveBeenCalledTimes(1);
-    expect(screen.queryByTestId('dialog')).toBeNull();
   });
 
-  it('closes a notice with no buttons with one of its own, and shows the next one after it', () => {
-    jest.useFakeTimers();
-    host();
-    act(() => {
-      dialog.alert('أولى');
-      dialog.alert('تانية');
-    });
-    expect(screen.getByText('أولى')).toBeTruthy();
-    expect(screen.queryByText('تانية')).toBeNull();
-    fireEvent.press(screen.getByRole('button', { name: catalogues.ar.common.close }));
-    act(() => jest.advanceTimersByTime(500));
-    expect(screen.getByText('تانية')).toBeTruthy();
+  it("are iOS's own, which shows over any sheet, asked as given where nothing needs turning", () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const buttons = [{ text: 'إلغاء', style: 'cancel' as const }, { text: 'تمام' }];
+    dialog.alert('سؤال', 'تفاصيل', buttons);
+    expect(alert).toHaveBeenCalledWith('سؤال', 'تفاصيل', buttons);
+    alert.mockRestore();
   });
 });
 

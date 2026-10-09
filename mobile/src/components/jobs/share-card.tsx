@@ -138,7 +138,17 @@ export function JobShareCard({ job }: { job: ShareableJob }) {
  * The card on a sheet, as it will be sent, with one button that hands the
  * picture to the share sheet (WhatsApp, Instagram, the photo library…).
  */
-export function ShareCardSheet({ job, visible, onClose }: { job: ShareableJob; visible: boolean; onClose: () => void }) {
+export function ShareCardSheet({
+  job,
+  visible,
+  onClose,
+  onDismiss,
+}: {
+  job: ShareableJob;
+  visible: boolean;
+  onClose: () => void;
+  onDismiss?: () => void;
+}) {
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -162,7 +172,7 @@ export function ShareCardSheet({ job, visible, onClose }: { job: ShareableJob; v
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={styles.header}>
           <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>

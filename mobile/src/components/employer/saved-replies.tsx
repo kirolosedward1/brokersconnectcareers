@@ -47,12 +47,14 @@ export function fillReply(text: string, values: { name: string; job: string }): 
 export function SavedRepliesSheet({
   visible,
   onClose,
+  onDismiss,
   phone,
   opener,
   values,
 }: {
   visible: boolean;
   onClose: () => void;
+  onDismiss?: () => void;
   phone: string;
   opener: string;
   values: { name: string; job: string };
@@ -82,7 +84,7 @@ export function SavedRepliesSheet({
     ]);
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={styles.header}>
           <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>

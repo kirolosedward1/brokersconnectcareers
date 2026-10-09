@@ -22,7 +22,6 @@ import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
 import { WelcomeGate } from '~/components/navigation/welcome-gate';
-import { DialogHost } from '~/components/ui/dialog-host';
 import { roomForScreen } from '~/components/ui/keyboard-room';
 import { InSheet } from '~/components/ui/states';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
@@ -86,7 +85,6 @@ export default function RootLayout() {
                       <AppStack />
                     </Navigation>
                   </SessionProvider>
-                  <DialogHost />
                 </I18nProvider>
               </ThemeProvider>
             </PersistQueryClientProvider>

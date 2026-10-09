@@ -30,6 +30,7 @@ import {
   type Applicant,
 } from '~/features/employer/applicants';
 import { ApiError } from '~/lib/api';
+import { useSheet } from '~/lib/use-sheet';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
@@ -176,7 +177,7 @@ export function ApplicantCard({
             ]),
         }
       : undefined;
-  const [repliesOpen, setRepliesOpen] = useState(false);
+  const replies = useSheet();
 
   const openCv = () => {
     setCvError(null);
@@ -301,13 +302,14 @@ export function ApplicantCard({
             variant="outline"
             size="sm"
             icon={<MessageSquareText size={16} color={colors.foreground} />}
-            onPress={() => setRepliesOpen(true)}
+            onPress={replies.show}
           />
         ) : null}
-        {candidate && repliesOpen ? (
+        {candidate && replies.mounted ? (
           <SavedRepliesSheet
-            visible
-            onClose={() => setRepliesOpen(false)}
+            visible={replies.open}
+            onClose={replies.hide}
+            onDismiss={replies.onDismiss}
             phone={candidate.whatsapp_phone}
             opener={employerOpener({ candidateName: name, jobTitle, companyName, locale: locale as 'ar' | 'en' })}
             values={{ name, job: jobTitle }}

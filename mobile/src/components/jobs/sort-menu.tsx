@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
@@ -7,6 +6,7 @@ import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
 import { appDirection } from '~/lib/direction';
 import { haptic } from '~/lib/haptics';
+import { useSheet } from '~/lib/use-sheet';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
@@ -30,11 +30,11 @@ export function SortMenu<T extends string>({
   const t = useTranslations('common');
   const { colors, shadow } = useTheme();
   const insets = useSafeAreaInsets();
-  const [open, setOpen] = useState(false);
+  const sheet = useSheet();
   const current = options.find((option) => option.value === value) ?? options[0];
 
   const choose = (next: T) => {
-    setOpen(false);
+    sheet.hide();
     if (next === value) return;
     haptic.selection();
     onChange(next);
@@ -45,7 +45,7 @@ export function SortMenu<T extends string>({
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${current.label}`}
-        onPress={() => setOpen(true)}
+        onPress={sheet.show}
         hitSlop={4}
         style={({ pressed }) => ({
           minHeight: 40,
@@ -66,12 +66,12 @@ export function SortMenu<T extends string>({
         <ChevronDown size={15} color={colors.mutedForeground} />
       </PressableScale>
 
-      {open ? (
-        <Modal visible transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      {sheet.mounted ? (
+        <Modal visible={sheet.open} transparent animationType="fade" onRequestClose={sheet.hide} onDismiss={sheet.onDismiss}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('close')}
-            onPress={() => setOpen(false)}
+            onPress={sheet.hide}
             style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.45)' }}
           >
             {/* The card takes its own taps: only the shade around it closes it. */}

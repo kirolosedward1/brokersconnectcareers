@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { act, renderHook } from '@testing-library/react-native';
 import { crashReport, forgetLastCrash, installCrashLog, readLastCrash } from '~/lib/crash-log';
+import { useSheet } from '~/lib/use-sheet';
 
 /*
   An error that closes the app is written down before React Native's own
@@ -47,5 +49,28 @@ describe('the crash log', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(await readLastCrash()).toBeNull();
     expect(previous).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('a sheet drawn only while it is wanted', () => {
+  it('waits out its closing before it opens again, and goes once iOS says it has gone', () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() => useSheet());
+    act(() => result.current.show());
+    expect(result.current).toMatchObject({ open: true, mounted: true });
+    act(() => result.current.hide());
+    expect(result.current).toMatchObject({ open: false, mounted: true });
+    // Pressed again while it is still sliding away: nothing, rather than a sheet that never shows.
+    act(() => result.current.show());
+    expect(result.current.open).toBe(false);
+    act(() => result.current.onDismiss());
+    expect(result.current.mounted).toBe(false);
+    act(() => result.current.show());
+    expect(result.current.open).toBe(true);
+    // Whatever iOS says, it is gone a moment after it closed.
+    act(() => result.current.hide());
+    act(() => jest.advanceTimersByTime(800));
+    expect(result.current.mounted).toBe(false);
+    jest.useRealTimers();
   });
 });
