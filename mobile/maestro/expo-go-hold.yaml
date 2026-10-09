@@ -1,0 +1,7 @@
+# Holds a point of the screen, in percent (POINT="50%,45%"), as a reader holds
+# a job card for its menu (scripts/expo-go-look.sh), then waits for the menu.
+appId: host.exp.Exponent
+---
+- longPressOn:
+    point: ${POINT}
+- waitForAnimationToEnd

@@ -303,19 +303,28 @@ if [ "$(bar_names 3c-jobs-scrolled-up)" != 4 ]; then
   echo "::error title=Expo Go: 3c-jobs-scrolled-up::not all four of the tab bar's names are read after scrolling back up"
 fi
 # A tour of what was added lately, one step at a time and each read back:
-# the order's menu, the filter sheet, a listing and its Share, back, a
-# company. Expo Go must still be on the app at the end of it.
+# the order's menu, the filter sheet, a listing and its Share, back, a card
+# held for its menu, a company. Expo Go must still be on the app at the end of it.
 glance t0-board 'tour: the board, before'
 last_shot=t0-board
 tap_word t1-sort-menu 'tour: the order' 'الأحدث'
 tap_word t2-sorted 'tour: by salary' 'الأعلى راتباً'
 tap_word t3-filters 'tour: the filter sheet' 'الفلاتر'
-tap_word t4-filters-closed 'tour: the sheet closed' 'X' '92%,11%'
+# Closed with its own button, not its X: Expo Go's floating tools button sits
+# over the sheet's top corner, and a tap there opened Expo Go's menu instead.
+tap_word t4-filters-closed 'tour: the sheet closed' 'شوف النتائج' '50%,92%'
 tap_word t5-listing 'tour: the first listing' 'عمولة فقط' '50%,45%'
 tap_word t6-share 'tour: Share' 'مشاركة'
 tap_word t7-share-cancelled 'tour: Share cancelled' 'إلغاء'
 # Back, at the start of the line: the right in Arabic, under the status bar.
 tour t8-back 'tour: back to the board' -e 'POINT=91%,9%' "$flows/expo-go-tap.yaml"
+# A card held: its menu at the foot of the screen, then closed from the shade above it.
+tour t8b-card-held 'tour: a card held' -e 'POINT=50%,45%' "$flows/expo-go-hold.yaml"
+if ! grep -q 'افتح الإعلان' "$out/t8b-card-held.boxes"; then
+  failed+=("t8b-card-held: no menu on a held card")
+  echo "::error title=Expo Go: t8b-card-held::holding a job card did not show its menu (افتح الإعلان not read)"
+fi
+tour t8c-menu-closed 'tour: the menu closed' -e 'POINT=50%,12%' "$flows/expo-go-tap.yaml"
 tap_word t9-companies 'tour: the Companies tab' 'الشركات'
 tap_word t10-company 'tour: a company' 'الصفوة' '50%,40%'
 tour t11-company-back 'tour: back to the companies' -e 'POINT=91%,9%' "$flows/expo-go-tap.yaml"
