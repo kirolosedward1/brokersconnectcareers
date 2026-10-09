@@ -83,6 +83,11 @@ export function useTabList<T extends Scrollable = ScrollView>({ onPressAtTop }: 
   const shrinking = useShrinkingTabBar();
   // Where the list is, read when the tab is pressed: null until it first moves (at its top).
   const y = useRef<number | null>(null);
+  // A new list put in its place (the board read afresh) starts at its top, without a scroll to say so.
+  const attach = useCallback((node: T | null) => {
+    ref.current = node;
+    y.current = null;
+  }, []);
   const navigation = useNavigation();
   const latest = useRef(onPressAtTop);
   useEffect(() => {
@@ -109,7 +114,7 @@ export function useTabList<T extends Scrollable = ScrollView>({ onPressAtTop }: 
     [shrinking],
   );
 
-  return { ref, onScroll, scrollEventThrottle: shrinking.scrollEventThrottle };
+  return { ref: attach, onScroll, scrollEventThrottle: shrinking.scrollEventThrottle };
 }
 
 /** For tests: the bar whole, as at launch. */

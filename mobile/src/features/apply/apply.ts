@@ -5,6 +5,7 @@ import type { ApplyInput } from '@/lib/mobile-api/contract';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
 import { CvUploadFailed, removeCv, uploadCv, type PickedCv } from '~/features/cv/files';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -136,6 +137,7 @@ export function useApplyToJob() {
 export function useNextRoles(jobId: string, enabled: boolean) {
   const candidateId = useSession().session?.user.id ?? null;
   const hidden = useHiddenCompanies();
+  const hiddenJobs = useHiddenJobs();
   const query = useQuery({
     queryKey: ['apply', 'next', jobId, candidateId],
     enabled: enabled && Boolean(candidateId),
@@ -162,9 +164,12 @@ export function useNextRoles(jobId: string, enabled: boolean) {
   });
 
   const ranked = query.data?.ranked ?? [];
-  const roles: JobListItem[] = withoutHidden(
-    ranked.map((entry) => entry.job),
-    hidden,
+  const roles: JobListItem[] = withoutHiddenJobs(
+    withoutHidden(
+      ranked.map((entry) => entry.job),
+      hidden,
+    ),
+    hiddenJobs,
   ).slice(0, 2);
   return { roles, personalised: query.data?.personalised ?? false };
 }

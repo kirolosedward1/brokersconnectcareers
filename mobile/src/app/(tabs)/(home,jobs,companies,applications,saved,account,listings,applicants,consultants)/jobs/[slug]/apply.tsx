@@ -240,10 +240,13 @@ function ApplyForm({
 
   const [fullName, setFullName] = useState(defaultName);
   const [whatsapp, setWhatsapp] = useState(defaultPhone);
-  // The band the profile's years put them in, until they pick another.
-  const years = useAgentProfile().data?.agent?.years_experience;
+  // The band the profile's years put them in, until they pick another. Years
+  // are stored as 0 until given (the column's default): then the website's
+  // own default, not "under a year".
+  const agentProfile = useAgentProfile();
+  const years = agentProfile.data?.agent?.years_experience;
   const [picked, setBand] = useState<ExperienceBand | null>(null);
-  const band = picked ?? (years != null ? bandFor(years) : 'junior_1_3');
+  const band = picked ?? (years ? bandFor(years) : 'junior_1_3');
   const [note, setNote] = useState('');
   // The CV on the profile goes with it unless the candidate says otherwise —
   // the one on the profile as it is now: replaced or taken off in another tab
@@ -348,7 +351,8 @@ function ApplyForm({
             { icon: Briefcase, value: t(`experienceBand.${band}`) },
             { icon: FileText, value: attachment ? t('app.apply.profileCv') : t('app.apply.quickNoCv') },
           ]}
-          sending={apply.isPending}
+          // Not sent before the profile's years are read: the band shown is the one sent.
+          sending={apply.isPending || agentProfile.isPending}
           onSend={submit}
           onEdit={() => setEditing(true)}
         />

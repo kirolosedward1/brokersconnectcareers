@@ -69,7 +69,16 @@ export function ToastHost() {
   const shown = useSyncExternalStore(subscribe, () => current);
   if (!shown) return null;
   const card = <ToastCard key={shown.id} toast={shown} />;
-  return Platform.OS === 'ios' ? <FullWindowOverlay>{card}</FullWindowOverlay> : card;
+  // A window of its own per toast, so a newer one is put over whatever was
+  // presented since the last; not modal to VoiceOver, which reads the toast
+  // once (announced) and keeps its place in the screen under it.
+  return Platform.OS === 'ios' ? (
+    <FullWindowOverlay key={shown.id} unstable_accessibilityContainerViewIsModal={false}>
+      {card}
+    </FullWindowOverlay>
+  ) : (
+    card
+  );
 }
 
 function ToastCard({ toast: shown }: { toast: Shown }) {

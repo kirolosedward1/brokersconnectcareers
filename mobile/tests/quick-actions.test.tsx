@@ -1,5 +1,6 @@
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react-native';
 import { AccessibilityInfo, LayoutAnimation, Text } from 'react-native';
+import { FullWindowOverlay } from 'react-native-screens';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { shownToast, toast, ToastHost } from '~/components/feedback/toast';
 import { useListMotion } from '~/components/motion/list-motion';
@@ -31,6 +32,15 @@ function Providers({ children }: { children: React.ReactNode }) {
 
 describe('a toast', () => {
   afterEach(() => act(() => toast.hide()));
+
+  it('is drawn over everything on iOS without holding VoiceOver in it, in a window of its own each time', () => {
+    render(<ToastHost />, { wrapper: Providers });
+    act(() => toast.show({ message: 'واحد' }));
+    const overlay = screen.UNSAFE_getByType(FullWindowOverlay);
+    expect(overlay.props.unstable_accessibilityContainerViewIsModal).toBe(false);
+    act(() => toast.show({ message: 'اتنين' }));
+    expect(screen.UNSAFE_getByType(FullWindowOverlay)).not.toBe(overlay);
+  });
 
   it('says what happened, to VoiceOver too, and offers one thing to do about it', () => {
     const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});

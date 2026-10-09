@@ -214,6 +214,17 @@ describe('the form', () => {
     expect(await screen.findByText(ar.apply.success)).toBeTruthy();
   });
 
+  it('sends the website\'s own default experience when the profile never gave its years (stored as 0)', async () => {
+    server.on('GET /rest/v1/agent_profiles', [{ cv_path: PROFILE_CV, tracks: ['primary'], district_ids: [newCairo.id], years_experience: 0 }]);
+    await signedIn();
+    renderRouter(app, { initialUrl: APPLY });
+    expect(await screen.findByText(ar.experienceBand.junior_1_3)).toBeTruthy();
+    // Held until the profile's years are read, so what is shown is what goes.
+    await waitFor(() => expect(screen.getByRole('button', { name: ar.app.apply.quickSend }).props.accessibilityState.busy).toBe(false));
+    fireEvent.press(screen.getByRole('button', { name: ar.app.apply.quickSend }));
+    await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/applyToJob')).toMatchObject({ input: { experienceBand: 'junior_1_3' } }));
+  });
+
   it('asks who sees the application above the button, the answer a tap away', async () => {
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });

@@ -12,6 +12,7 @@ import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAppliedLast } from '~/features/jobs/marks';
 import { useListMotion } from '~/components/motion/list-motion';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { useSavedJobs, useSavedSearches } from '~/features/saved/queries';
 import { useTabList } from '~/features/tab-bar';
 import { useSession } from '~/lib/session';
@@ -40,7 +41,9 @@ export default function SavedScreen() {
   const pull = usePullRefresh(() => Promise.all([jobs.refetch(), searches.refetch()]));
   const list = useTabList();
 
-  const saved = useMemo(() => jobs.data ?? [], [jobs.data]);
+  const hiddenJobs = useHiddenJobs();
+  // A listing set aside from its card's menu leaves this list too, as the toast says.
+  const saved = useMemo(() => withoutHiddenJobs(jobs.data ?? [], hiddenJobs), [jobs.data, hiddenJobs]);
   // Still open ones first, and among them what is not yet applied to.
   const { jobs: ordered, applied } = useAppliedLast(saved);
   // A bookmark taken off: the cards close up rather than jump.
