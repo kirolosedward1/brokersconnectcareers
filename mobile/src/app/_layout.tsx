@@ -27,6 +27,7 @@ import { InSheet } from '~/components/ui/states';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
 import { useHiddenJobsLoaded } from '~/features/moderation/hidden-jobs';
 import { ToastHost } from '~/components/feedback/toast';
+import { HomeShortcuts } from '~/components/navigation/home-shortcuts';
 import { useWelcomeDrawn } from '~/features/welcome';
 import { I18nProvider } from '~/i18n/provider';
 import { installCrashLog } from '~/lib/crash-log';
@@ -161,6 +162,7 @@ function AppStack() {
       <PushBridge />
       <AppleCredentialWatch />
       <CrashNotice />
+      <HomeShortcuts />
       <ToastHost />
     </UpdateGate>
   );

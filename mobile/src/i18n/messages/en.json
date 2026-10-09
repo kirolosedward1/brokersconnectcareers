@@ -296,5 +296,35 @@
     "swipeSave": "Save",
     "swipeUnsave": "Remove",
     "swipeHide": "Hide"
+  },
+  "shortcuts": {
+    "searchJobs": "Search jobs",
+    "applications": "My applications",
+    "saved": "Saved jobs",
+    "postJob": "Post a job",
+    "newApplicants": "New applicants",
+    "listings": "My listings",
+    "companies": "Companies"
+  },
+  "review": {
+    "start": "Review applicants one by one",
+    "title": "Review applicants",
+    "progress": "<v>{current}</v> of <v>{total}</v>",
+    "shortlist": "Shortlist",
+    "reject": "Turn down",
+    "next": "Next",
+    "previous": "Previous",
+    "done": "All reviewed",
+    "shortlisted": "{name} shortlisted",
+    "rejected": "{name} turned down",
+    "moved": "A colleague moved them first"
+  },
+  "week": {
+    "title": "Your week",
+    "lede": "The last 7 days",
+    "newJobsAreas": "New jobs in your areas",
+    "newJobs": "New jobs on the board",
+    "opened": "Applications companies opened",
+    "views": "Profile views, last 30 days"
   }
 }

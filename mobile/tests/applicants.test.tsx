@@ -584,6 +584,28 @@ describe('the inbox', () => {
     expect(screen.queryByText(ar.employer.applicantMovedAlready)).toBeNull();
   });
 
+  it('reviews the inbox one applicant at a time: shortlisted, the next one comes in, and the review ends after the last', async () => {
+    const moves: { applicationId: string; status: string; from: string }[] = [];
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', (_url: URL, init: RequestInit | undefined) => {
+      const move = (JSON.parse(String(init?.body)) as { input: { applicationId: string; status: Applicant['status']; from: string } }).input;
+      moves.push(move);
+      rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status } : row));
+      return { ok: true };
+    });
+    renderRouter(app, { initialUrl: '/employer/applicants' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
+
+    expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
+    const first = rows[0];
+    fireEvent.press(screen.getByRole('button', { name: ar.app.review.shortlist }));
+    await waitFor(() => expect(moves).toEqual([{ applicationId: first.id, status: 'shortlisted', decisionNote: null, from: 'new' }]));
+
+    // The second comes in; passed over, the review is done.
+    expect((await screen.findAllByText(rows[1].candidate?.full_name ?? '')).length).toBeGreaterThan(1);
+    fireEvent.press(screen.getAllByRole('button', { name: ar.app.review.done }).pop()!);
+    await waitFor(() => expect(screen.queryByRole('header', { name: ar.app.review.title })).toBeNull(), { timeout: 2000 });
+  });
+
   it('takes in a new applicant with a pull', async () => {
     renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByText('سارة عادل')).toBeTruthy();

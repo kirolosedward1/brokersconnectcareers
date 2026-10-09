@@ -27,6 +27,7 @@ import { dialog } from '~/lib/dialog';
 import { haptic } from '~/lib/haptics';
 import { useSheet } from '~/lib/use-sheet';
 import { SwipeCard } from './swipe-card';
+import { ZoomLink } from './zoom-link';
 
 /**
  * A listing in a list — the website's JobCard, the same facts set as a card
@@ -124,9 +125,10 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
     { label: t('app.jobMenu.hideCompany'), icon: Ban, onPress: hideTheCompany, destructive: true },
   ];
 
-  const card = (
+  // The card, pressed to open the listing — by itself, or (zoomed) by the link around it.
+  const drawn = (onPress?: () => void) => (
     <Card
-      onPress={open}
+      onPress={onPress}
       onLongPress={() => {
         haptic.tap();
         menu.show();
@@ -237,6 +239,9 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
         ) : null}
       </View>
     </Card>
+  );
+  const card = (
+    <ZoomLink href={{ pathname: '/jobs/[slug]', params: { slug: job.slug } }} card={drawn()} fallback={drawn(open)} />
   );
 
   return (

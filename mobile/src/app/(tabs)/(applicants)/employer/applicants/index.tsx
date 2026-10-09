@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2, Search, ShieldAlert, ShieldCheck } from '~/components/ui/lucide';
+import { Building2, Layers, Search, ShieldAlert, ShieldCheck } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { isSuspended } from '@/lib/permissions';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
 import { ApplicantCard } from '~/components/employer/applicant-card';
+import { ApplicantReview } from '~/components/employer/applicant-review';
 import { useApplicantContext } from '~/components/employer/applicant-context';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
@@ -32,6 +33,7 @@ import { markupTags } from '~/i18n/rich';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useSession } from '~/lib/session';
 import { useVisited } from '~/lib/use-visited';
+import { useSheet } from '~/lib/use-sheet';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
@@ -66,6 +68,8 @@ export default function InboxScreen() {
   // A new applicant, a colleague's move or their new listing reaches the inbox with a pull.
   const pull = usePullRefresh(() => Promise.all([inbox.refetch(), rows?.length ? notes.refetch() : null, listings.refetch()]));
   const list = useTabList();
+  const review = useSheet();
+  const [queue, setQueue] = useState<string[]>([]);
 
   const header = (
     <Stack.Screen options={{ title: t('employer.allApplicants'), headerRight: bell }} />
@@ -220,6 +224,16 @@ export default function InboxScreen() {
           </View>
         ) : (
           <>
+            {/* One at a time, the moves at the foot of the screen (applicant-review.tsx). */}
+            <Button
+              label={t('app.review.start')}
+              variant="secondary"
+              icon={<Layers size={16} color={colors.secondaryForeground} />}
+              onPress={() => {
+                setQueue(rows.map((row) => row.id));
+                review.show();
+              }}
+            />
             {rows.map((row) => {
               const jobTitle = row.job ? localized(locale, row.job.title_ar, row.job.title_en) : '';
               return (
@@ -259,9 +273,27 @@ export default function InboxScreen() {
     );
   }
 
+  const reviewSheet =
+    review.mounted && rows ? (
+      <ApplicantReview
+        visible={review.open}
+        onClose={() => review.hide()}
+        onDismiss={review.onDismiss}
+        queue={queue}
+        rows={rows}
+        jobTitleOf={(row) => (row.job ? localized(locale, row.job.title_ar, row.job.title_en) : '')}
+        companyName={context.companyName}
+        districtNamesOf={(row) => context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
+        notesOf={(row) => notesOf(notes.data, row.id)}
+        authors={notes.data?.authors ?? {}}
+        viewerId={context.viewerId}
+      />
+    ) : null;
+
   return (
     <>
       {header}
+      {reviewSheet}
       {body}
     </>
   );

@@ -12,6 +12,7 @@ import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { PushPrompt } from '~/components/push/push-prompt';
 import { StatRow } from '~/components/dashboard/stat-row';
+import { WeeklySummary } from '~/components/home/weekly-summary';
 import { JobBrowse } from '~/components/home/job-browse';
 import { RecentlyViewed } from './recently-viewed';
 import { CompletenessRing } from '~/components/profile/completeness-ring';
@@ -226,6 +227,14 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
                   onPress: () => router.navigate('/dashboard/saved'),
                 },
               ]}
+            />
+          ) : null}
+
+          {s ? (
+            <WeeklySummary
+              districtIds={agent.data?.agent?.district_ids ?? []}
+              applications={applications.data ?? []}
+              profileViews={s.profile_views_30d ?? 0}
             />
           ) : null}
 

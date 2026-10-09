@@ -251,6 +251,25 @@ describe("a candidate's home", () => {
     await waitFor(() => expect(result.getPathname()).toBe(path));
   });
 
+  it("sums up the candidate's week: new listings in their areas, applications opened, profile views", async () => {
+    server.on('POST /rest/v1/rpc/candidate_summary', summary({ profile_views_30d: 4 }));
+    await signIn();
+    const result = open();
+
+    expect(await screen.findByRole('header', { name: ar.app.week.title })).toBeTruthy();
+    // The listings of the last seven days in the profile's areas, counted on the server.
+    await waitFor(() =>
+      expect(
+        server.asked('/api/mobile/v1/jobs').some((request) => request.url.searchParams.get('posted') === '7' && request.url.searchParams.has('district')),
+      ).toBe(true),
+    );
+    expect(await screen.findByRole('link', { name: `4 ${ar.app.week.views}` })).toBeTruthy();
+    // Opened more than a week ago: not this week's.
+    expect(screen.getByRole('link', { name: `0 ${ar.app.week.opened}` })).toBeTruthy();
+    fireEvent.press(screen.getByRole('link', { name: `4 ${ar.app.week.views}` }));
+    await waitFor(() => expect(result.getPathname()).toBe('/account/profile'));
+  });
+
   it('asks for the profile when it is under 60%, and does not call newest-first a match without a track or district', async () => {
     server.on('POST /rest/v1/rpc/candidate_summary', summary({ replies: 0, profile_completeness: 40 }));
     // A profile that has said nothing to match on.

@@ -222,6 +222,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-web-browser',
     'expo-font',
     'expo-apple-authentication',
+    // The shortcuts held from the app's icon (src/components/navigation/home-shortcuts.tsx).
+    'expo-quick-actions',
     [
       'expo-notifications',
       {

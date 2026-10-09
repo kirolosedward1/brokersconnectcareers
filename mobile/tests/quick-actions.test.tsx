@@ -6,7 +6,8 @@ import { useListMotion } from '~/components/motion/list-motion';
 import { useCountUp, useRollingNumber } from '~/components/motion/rolling-number';
 import { SwipeCard, SWIPE_COMMIT } from '~/components/jobs/swipe-card';
 import { Bookmark, EyeOff } from '~/components/ui/lucide';
-import { I18nProvider } from '~/i18n/provider';
+import { catalogues, I18nProvider } from '~/i18n/provider';
+import { shortcutsFor } from '~/components/navigation/home-shortcuts';
 import { useSheet } from '~/lib/use-sheet';
 import { ThemeProvider } from '~/theme/provider';
 
@@ -217,4 +218,23 @@ it('moves the rows of a short list to their new places when what it holds change
   rerender({ ids: ['b'] });
   expect(configure).toHaveBeenCalledTimes(1);
   configure.mockRestore();
+});
+
+describe('the shortcuts held from the app icon', () => {
+  const t = (key: keyof typeof catalogues.ar.app.shortcuts) => catalogues.ar.app.shortcuts[key];
+  const hrefs = (actor: Parameters<typeof shortcutsFor>[0]) => shortcutsFor(actor, t).map((action) => action.params?.href);
+
+  it("are each person's own: a candidate's, an employer's, and the board for somebody signed out", () => {
+    expect(hrefs({ userId: 'u', profile: { role: 'candidate', approval_status: 'approved' }, company: null })).toEqual([
+      '/jobs',
+      '/dashboard/applications',
+      '/dashboard/saved',
+    ]);
+    expect(hrefs({ userId: 'u', profile: { role: 'employer', approval_status: 'approved' }, company: null })).toEqual([
+      '/employer/jobs/new',
+      '/employer/applicants?stage=new',
+      '/employer/jobs',
+    ]);
+    expect(hrefs(null)).toEqual(['/jobs', '/companies']);
+  });
 });

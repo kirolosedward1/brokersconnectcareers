@@ -296,5 +296,35 @@
     "swipeSave": "احفظ",
     "swipeUnsave": "شيل",
     "swipeHide": "خبّي"
+  },
+  "shortcuts": {
+    "searchJobs": "دوّر على وظيفة",
+    "applications": "طلباتي",
+    "saved": "الوظائف المحفوظة",
+    "postJob": "انشر وظيفة",
+    "newApplicants": "المتقدمين الجداد",
+    "listings": "إعلاناتي",
+    "companies": "الشركات"
+  },
+  "review": {
+    "start": "راجع المتقدمين واحد واحد",
+    "title": "مراجعة المتقدمين",
+    "progress": "<v>{current}</v> من <v>{total}</v>",
+    "shortlist": "رشّحه",
+    "reject": "اعتذر له",
+    "next": "التالي",
+    "previous": "السابق",
+    "done": "خلّصت مراجعة الكل",
+    "shortlisted": "اترشّح {name}",
+    "rejected": "اتبعت اعتذار لـ{name}",
+    "moved": "حد من زمايلك نقله قبلك"
+  },
+  "week": {
+    "title": "أسبوعك",
+    "lede": "آخر 7 أيام",
+    "newJobsAreas": "وظائف جديدة في مناطقك",
+    "newJobs": "وظائف جديدة على الموقع",
+    "opened": "طلبات فتحتها الشركات",
+    "views": "زيارات لملفك آخر 30 يوم"
   }
 }
