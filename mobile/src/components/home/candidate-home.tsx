@@ -2,7 +2,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, V
 import { router, type Href } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2 } from '~/components/ui/lucide';
+import { BellRing, Bookmark, Building2, MessageSquareReply, Send, UserRoundCheck } from '~/components/ui/lucide';
 import { formatDate, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { ProfileRow } from '@/lib/supabase/database.types';
@@ -11,7 +11,7 @@ import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { PushPrompt } from '~/components/push/push-prompt';
-import { StatStrip } from '~/components/dashboard/stat-strip';
+import { StatRow } from '~/components/dashboard/stat-row';
 import { JobBrowse } from '~/components/home/job-browse';
 import { RecentlyViewed } from './recently-viewed';
 import { CompletenessRing } from '~/components/profile/completeness-ring';
@@ -185,28 +185,46 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
           ) : null}
 
           {s ? (
-            <StatStrip
+            <StatRow
               label={t('dashboard.overview')}
               cells={[
                 {
                   label: t('dashboard.statApplications'),
+                  short: t('app.home.statApplications'),
                   value: n(s.applications_total),
+                  icon: Send,
                   onPress: () => router.navigate('/dashboard/applications'),
                 },
                 {
                   label: t('dashboard.statReplies'),
+                  short: t('app.home.statReplies'),
                   value: n(s.replies),
+                  icon: MessageSquareReply,
                   tone: s.replies > 0 ? 'good' : 'default',
                   onPress: () => router.navigate('/dashboard/applications'),
                 },
                 {
                   label: t('dashboard.statCompleteness'),
+                  short: t('app.home.statProfile'),
                   value: `${n(s.profile_completeness)}%`,
+                  icon: UserRoundCheck,
                   tone: s.profile_completeness < COMPLETENESS_WARN ? 'warn' : 'default',
                   onPress: () => router.navigate('/account/profile'),
                 },
-                { label: t('dashboard.statSaved'), value: n(s.saved_jobs), onPress: () => router.navigate('/dashboard/saved') },
-                { label: t('dashboard.statAlerts'), value: n(s.alerts_on), onPress: () => router.navigate('/dashboard/saved') },
+                {
+                  label: t('dashboard.statSaved'),
+                  short: t('app.home.statSaved'),
+                  value: n(s.saved_jobs),
+                  icon: Bookmark,
+                  onPress: () => router.navigate('/dashboard/saved'),
+                },
+                {
+                  label: t('dashboard.statAlerts'),
+                  short: t('app.home.statAlerts'),
+                  value: n(s.alerts_on),
+                  icon: BellRing,
+                  onPress: () => router.navigate('/dashboard/saved'),
+                },
               ]}
             />
           ) : null}

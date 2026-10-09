@@ -213,7 +213,12 @@
   },
   "home": {
     "recentlyViewed": "Recently viewed",
-    "recentlyViewedClear": "Clear"
+    "recentlyViewedClear": "Clear",
+    "statApplications": "Applied",
+    "statReplies": "Replies",
+    "statProfile": "Profile",
+    "statSaved": "Saved",
+    "statAlerts": "Alerts"
   },
   "share": {
     "hiring": "Now hiring",

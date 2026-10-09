@@ -213,7 +213,12 @@
   },
   "home": {
     "recentlyViewed": "شفتها مؤخراً",
-    "recentlyViewedClear": "امسحها"
+    "recentlyViewedClear": "امسحها",
+    "statApplications": "طلباتي",
+    "statReplies": "ردود",
+    "statProfile": "ملفي",
+    "statSaved": "محفوظة",
+    "statAlerts": "تنبيهات"
   },
   "share": {
     "hiring": "وظيفة متاحة",
