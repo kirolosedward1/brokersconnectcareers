@@ -150,6 +150,11 @@ const app = {
   '(auth)/sign-in/index': SignInScreen,
 };
 
+/** The application is one card first, sent in one tap (quick apply): its fields a tap further. */
+async function openForm() {
+  fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.quickEdit }));
+}
+
 const bodyOf = (path: string, index = 0) => server.asked(path)[index]?.body as Record<string, unknown> | undefined;
 const uploads = () => server.requests.filter((request) => request.method === 'POST' && request.url.pathname.startsWith('/storage/v1/object/cvs/'));
 
@@ -157,6 +162,7 @@ describe('the form', () => {
   it("sends the CV already on the profile, and says what was sent where", async () => {
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });
+    await openForm();
 
     expect(await screen.findByText(ar.app.apply.profileCv)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
@@ -179,6 +185,33 @@ describe('the form', () => {
     // Two more roles while the candidate is here, ranked against their profile.
     expect(await screen.findByText(ar.apply.nextRolesMatched)).toBeTruthy();
     expect(screen.getByText('مدير مبيعات')).toBeTruthy();
+  });
+
+  it('is one card and one tap when the profile already says it all: the experience from its years', async () => {
+    server.on('GET /rest/v1/agent_profiles', [{ cv_path: PROFILE_CV, tracks: ['primary'], district_ids: [newCairo.id], years_experience: 7 }]);
+    await signedIn();
+    renderRouter(app, { initialUrl: APPLY });
+
+    // Who, where to write, the experience and the CV, as they would go.
+    expect(await screen.findByText(ar.app.apply.quickTitle)).toBeTruthy();
+    expect(screen.getByText(profile.full_name)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(ar.experienceBand.senior_5_plus)).toBeTruthy());
+    expect(screen.queryByLabelText(ar.apply.note)).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.apply.quickSend }));
+
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/applyToJob')).toEqual({
+        input: {
+          jobId: listing.id,
+          fullName: profile.full_name,
+          whatsapp: profile.whatsapp_phone,
+          experienceBand: 'senior_5_plus',
+          note: null,
+          cvPath: PROFILE_CV,
+        },
+      }),
+    );
+    expect(await screen.findByText(ar.apply.success)).toBeTruthy();
   });
 
   it('asks who sees the application above the button, the answer a tap away', async () => {
@@ -205,6 +238,7 @@ describe('the form', () => {
   it("follows the profile's CV as it is now: one replaced in another tab while the form was open is sent in its place", async () => {
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });
+    await openForm();
     expect(await screen.findByText(ar.app.apply.profileCv)).toBeTruthy();
 
     // Replaced on the profile, in another tab, while the form was open.
@@ -226,6 +260,7 @@ describe('the form', () => {
   it('sends no CV when the one on the profile was taken off while the form was open', async () => {
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });
+    await openForm();
     expect(await screen.findByText(ar.app.apply.profileCv)).toBeTruthy();
 
     server.on('GET /rest/v1/agent_profiles', [{ cv_path: null, tracks: ['primary'], district_ids: [newCairo.id], years_experience: 2 }]);
@@ -244,6 +279,7 @@ describe('the form', () => {
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });
+    await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
     expect(await screen.findByText('cv.pdf')).toBeTruthy();
@@ -270,6 +306,7 @@ describe('the form', () => {
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });
+    await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
     expect(await screen.findByText('cv.pdf')).toBeTruthy();
@@ -285,6 +322,7 @@ describe('the form', () => {
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });
+    await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
     expect(await screen.findByText('cv.pdf')).toBeTruthy();
@@ -308,6 +346,7 @@ describe('the form', () => {
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });
+    await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
     expect(await screen.findByText('cv.pdf')).toBeTruthy();
@@ -327,6 +366,7 @@ describe('the form', () => {
       const result = renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
       fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
       await waitFor(() => expect(result.getPathname()).toBe(APPLY));
+      await openForm();
       expect(await screen.findByText(ar.app.apply.profileCv)).toBeTruthy();
       fireEvent.changeText(screen.getByLabelText(ar.apply.note), 'متاحة من أول الشهر.');
       fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
@@ -354,6 +394,7 @@ describe('the form', () => {
     server.on('GET /rest/v1/agent_profiles', []);
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });
+    await openForm();
 
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValueOnce(picked({ size: 11 * 1024 * 1024 }));
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
@@ -370,6 +411,7 @@ describe('the form', () => {
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked({ name: 'سيرة.docx', mimeType: 'application/octet-stream' }));
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });
+    await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
     fireEvent.press(await screen.findByRole('button', { name: ar.apply.submit }));
@@ -384,6 +426,7 @@ describe('the form', () => {
     const layout = placeViewsAt(260);
     try {
       renderRouter(app, { initialUrl: APPLY });
+      await openForm();
       fireEvent.changeText(await screen.findByLabelText(ar.apply.whatsapp), '123');
       fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
       expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
@@ -399,6 +442,7 @@ describe('the form', () => {
     server.on('POST /api/mobile/v1/actions/applyToJob', { ok: false, error: 'rate_limit' });
     await signedIn();
     renderRouter(app, { initialUrl: APPLY });
+    await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.apply.submit }));
     expect(await screen.findByText(ar.apply.rateLimit)).toBeTruthy();
@@ -430,7 +474,7 @@ describe('who gets the form', () => {
       fireEvent.press(screen.getByRole('button', { name: 'withdraw elsewhere' }));
       await waitFor(() => expect(server.asked('/api/mobile/v1/actions/withdrawApplication')).toHaveLength(1));
       // Not "you have applied already" for the half-minute the answer was kept.
-      expect(await screen.findByRole('button', { name: ar.apply.submit })).toBeTruthy();
+      expect(await screen.findByRole('button', { name: ar.app.apply.quickSend })).toBeTruthy();
       expect(screen.queryByText(ar.apply.alreadyApplied)).toBeNull();
     } finally {
       withWithdrawal = false;

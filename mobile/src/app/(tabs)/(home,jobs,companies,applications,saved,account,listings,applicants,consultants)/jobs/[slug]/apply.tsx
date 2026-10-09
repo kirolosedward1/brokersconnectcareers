@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentType } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
@@ -8,8 +8,11 @@ import {
   ChevronDown,
   ChevronUp,
   CircleSlash,
+  Briefcase,
   FileText,
   Paperclip,
+  Phone,
+  type LucideProps,
   ShieldAlert,
   ShieldCheck,
   UserRound,
@@ -21,11 +24,13 @@ import { jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import { isApproved, isCandidate } from '@/lib/permissions';
 import { isValidPhone, normalisePhone } from '@/lib/phone';
+import { bandFor } from '@/lib/match';
 import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
 import { Appear } from '~/components/motion/appear';
+import { Confetti, DrawnCheck } from '~/components/motion/celebration';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
@@ -43,6 +48,7 @@ import {
 } from '~/features/apply/apply';
 import { pickCv, type PickedCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
+import { useAgentProfile } from '~/features/profile/queries';
 import { ApiError } from '~/lib/api';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
@@ -234,7 +240,10 @@ function ApplyForm({
 
   const [fullName, setFullName] = useState(defaultName);
   const [whatsapp, setWhatsapp] = useState(defaultPhone);
-  const [band, setBand] = useState<ExperienceBand | null>('junior_1_3');
+  // The band the profile's years put them in, until they pick another.
+  const years = useAgentProfile().data?.agent?.years_experience;
+  const [picked, setBand] = useState<ExperienceBand | null>(null);
+  const band = picked ?? (years != null ? bandFor(years) : 'junior_1_3');
   const [note, setNote] = useState('');
   // The CV on the profile goes with it unless the candidate says otherwise —
   // the one on the profile as it is now: replaced or taken off in another tab
@@ -244,6 +253,9 @@ function ApplyForm({
   const attachment: Attachment =
     choice.kind === 'file' ? choice : choice.kind === 'profile' && profileCv ? { kind: 'profile', path: profileCv } : null;
   const [errors, setErrors] = useState<Errors>({});
+  // Everything the form needs is already known (the profile's name, WhatsApp
+  // and CV): it is one look and one tap, the fields a tap further for changes.
+  const [editing, setEditing] = useState(() => !defaultName.trim() || !isValidPhone(normalisePhone(defaultPhone)));
   // Leaving with a note written or a file picked asks first (the form goes once
   // it is sent); while it is being sent, the screen waits for the answer.
   useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file', apply.isPending);
@@ -253,6 +265,8 @@ function ApplyForm({
 
   const showErrors = (next: Errors) => {
     setErrors(next);
+    // A field to put right is shown, not summed up.
+    if (next.fullName || next.whatsapp || next.experienceBand || next.cv) setEditing(true);
     // The fields are above the button: the first wrong one is brought back into view, and said.
     inView.show(next);
   };
@@ -326,107 +340,168 @@ function ApplyForm({
         </Text>
       </View>
 
-      <Field ref={inView.place('fullName')} label={t('apply.fullName')} error={errors.fullName}>
-        <TextField
-          value={fullName}
-          onChangeText={setFullName}
-          accessibilityLabel={t('apply.fullName')}
-          autoComplete="name"
-          textContentType="name"
-          maxLength={120}
+      {editing ? null : (
+        <QuickApply
+          rows={[
+            { icon: UserRound, value: fullName.trim() },
+            { icon: Phone, value: normalisePhone(whatsapp), ltr: true },
+            { icon: Briefcase, value: t(`experienceBand.${band}`) },
+            { icon: FileText, value: attachment ? t('app.apply.profileCv') : t('app.apply.quickNoCv') },
+          ]}
+          sending={apply.isPending}
+          onSend={submit}
+          onEdit={() => setEditing(true)}
         />
-      </Field>
+      )}
 
-      <Field ref={inView.place('whatsapp')} label={t('apply.whatsapp')} error={errors.whatsapp}>
-        <TextField
-          value={whatsapp}
-          onChangeText={setWhatsapp}
-          accessibilityLabel={t('apply.whatsapp')}
-          ltr
-          keyboardType="phone-pad"
-          autoComplete="tel"
-          textContentType="telephoneNumber"
-        />
-      </Field>
-
-      <Field ref={inView.place('experienceBand')} label={t('apply.experienceBand')} error={errors.experienceBand}>
-        <Select
-          label={t('apply.experienceBand')}
-          value={band}
-          placeholder={t('app.onboarding.choose')}
-          options={EXPERIENCE_BANDS.map((value) => ({ value, label: t(`experienceBand.${value}`) }))}
-          onChange={setBand}
-        />
-      </Field>
-
-      <Field ref={inView.place('cv')} label={t('apply.cv')} hint={t('apply.cvOptional')} error={errors.cv}>
-        {attachment ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: space[2],
-              paddingStart: space[3],
-              ...corner('lg'),
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-            }}
-          >
-            {attachment.kind === 'profile' ? (
-              <FileText size={16} color={colors.mutedForeground} />
-            ) : (
-              <Paperclip size={16} color={colors.mutedForeground} />
-            )}
-            <Text variant="small" numberOfLines={1} style={{ flex: 1 }}>
-              {attachment.kind === 'profile' ? t('app.apply.profileCv') : attachment.file.name}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('app.apply.removeCv')}
-              onPress={() => setChoice({ kind: 'none' })}
-              style={{ width: hitTarget, height: hitTarget, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <X size={16} color={colors.mutedForeground} />
-            </Pressable>
-          </View>
-        ) : null}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-          <Button
-            label={attachment?.kind === 'file' ? t('app.apply.pickAnother') : t('app.apply.pickCv')}
-            variant="outline"
-            size="sm"
-            icon={<Paperclip size={14} color={colors.foreground} />}
-            onPress={choose}
-          />
-          {profileCv && attachment?.kind !== 'profile' ? (
-            <Button
-              label={t('app.apply.useProfileCv')}
-              variant="ghost"
-              size="sm"
-              onPress={() => setChoice({ kind: 'profile' })}
+      {editing ? (
+        <>
+          <Field ref={inView.place('fullName')} label={t('apply.fullName')} error={errors.fullName}>
+            <TextField
+              value={fullName}
+              onChangeText={setFullName}
+              accessibilityLabel={t('apply.fullName')}
+              autoComplete="name"
+              textContentType="name"
+              maxLength={120}
             />
-          ) : null}
-        </View>
-      </Field>
+          </Field>
 
-      <Field label={t('apply.note')} hint={t('apply.noteOptional')}>
-        <TextField
-          value={note}
-          onChangeText={setNote}
-          accessibilityLabel={t('apply.note')}
-          multiline
-          maxLength={500}
-          style={{ minHeight: 88, paddingVertical: space[2], textAlignVertical: 'top' }}
-        />
-      </Field>
+          <Field ref={inView.place('whatsapp')} label={t('apply.whatsapp')} error={errors.whatsapp}>
+            <TextField
+              value={whatsapp}
+              onChangeText={setWhatsapp}
+              accessibilityLabel={t('apply.whatsapp')}
+              ltr
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              textContentType="telephoneNumber"
+            />
+          </Field>
+
+          <Field ref={inView.place('experienceBand')} label={t('apply.experienceBand')} error={errors.experienceBand}>
+            <Select
+              label={t('apply.experienceBand')}
+              value={band}
+              placeholder={t('app.onboarding.choose')}
+              options={EXPERIENCE_BANDS.map((value) => ({ value, label: t(`experienceBand.${value}`) }))}
+              onChange={setBand}
+            />
+          </Field>
+
+          <Field ref={inView.place('cv')} label={t('apply.cv')} hint={t('apply.cvOptional')} error={errors.cv}>
+            {attachment ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space[2],
+                  paddingStart: space[3],
+                  ...corner('lg'),
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.card,
+                }}
+              >
+                {attachment.kind === 'profile' ? (
+                  <FileText size={16} color={colors.mutedForeground} />
+                ) : (
+                  <Paperclip size={16} color={colors.mutedForeground} />
+                )}
+                <Text variant="small" numberOfLines={1} style={{ flex: 1 }}>
+                  {attachment.kind === 'profile' ? t('app.apply.profileCv') : attachment.file.name}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('app.apply.removeCv')}
+                  onPress={() => setChoice({ kind: 'none' })}
+                  style={{ width: hitTarget, height: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <X size={16} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
+            ) : null}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+              <Button
+                label={attachment?.kind === 'file' ? t('app.apply.pickAnother') : t('app.apply.pickCv')}
+                variant="outline"
+                size="sm"
+                icon={<Paperclip size={14} color={colors.foreground} />}
+                onPress={choose}
+              />
+              {profileCv && attachment?.kind !== 'profile' ? (
+                <Button
+                  label={t('app.apply.useProfileCv')}
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => setChoice({ kind: 'profile' })}
+                />
+              ) : null}
+            </View>
+          </Field>
+
+          <Field label={t('apply.note')} hint={t('apply.noteOptional')}>
+            <TextField
+              value={note}
+              onChangeText={setNote}
+              accessibilityLabel={t('apply.note')}
+              multiline
+              maxLength={500}
+              style={{ minHeight: 88, paddingVertical: space[2], textAlignVertical: 'top' }}
+            />
+          </Field>
+        </>
+      ) : null}
 
       <WhoSees />
 
       {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
 
-      <Button label={t('apply.submit')} size="lg" loading={apply.isPending} onPress={submit} />
+      {editing ? <Button label={t('apply.submit')} size="lg" loading={apply.isPending} onPress={submit} /> : null}
     </ScrollView>
+  );
+}
+
+/**
+ * The application as it would go, in one card — who, the WhatsApp the
+ * company will write to, the experience, the CV — with one button to send it
+ * and one to change it first.
+ */
+function QuickApply({
+  rows,
+  sending,
+  onSend,
+  onEdit,
+}: {
+  rows: { icon: ComponentType<LucideProps>; value: string; ltr?: boolean }[];
+  sending: boolean;
+  onSend: () => void;
+  onEdit: () => void;
+}) {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  return (
+    <Card style={{ gap: space[4] }}>
+      <Text weight="semibold" accessibilityRole="header">
+        {t('app.apply.quickTitle')}
+      </Text>
+      <View style={{ gap: space[3] }}>
+        {rows.map(({ icon: Icon, value, ltr }) => (
+          <View key={value} style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
+            <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', ...corner('full'), backgroundColor: colors.secondary }}>
+              <Icon size={16} color={colors.primary} />
+            </View>
+            <Text weight="medium" numberOfLines={1} style={{ flex: 1, ...(ltr ? { writingDirection: 'ltr' as const } : null) }}>
+              {ltr ? `\u2066${value}\u2069` : value}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <View style={{ gap: space[2] }}>
+        <Button label={t('app.apply.quickSend')} size="lg" loading={sending} onPress={onSend} />
+        <Button label={t('app.apply.quickEdit')} variant="ghost" onPress={onEdit} />
+      </View>
+    </Card>
   );
 }
 
@@ -509,9 +584,10 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
           backgroundColor: colors.successMuted,
         }}
       >
-        <Appear from="none" scale={0.5} delay={motion.stagger * 2}>
-          <CheckCircle2 size={36} color={colors.success} />
+        <Appear from="none" scale={0.6} delay={motion.stagger}>
+          <DrawnCheck size={72} />
         </Appear>
+        <Confetti />
         <Text variant="title" weight="bold" accessibilityRole="header" style={{ textAlign: 'center' }}>
           {t('apply.success')}
         </Text>

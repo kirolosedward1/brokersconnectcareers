@@ -127,7 +127,11 @@
     "pickAnother": "Choose another file",
     "profileCv": "The CV on your profile",
     "useProfileCv": "Use the CV on your profile",
-    "removeCv": "Remove the file"
+    "removeCv": "Remove the file",
+    "quickTitle": "Ready to apply with these details",
+    "quickSend": "Apply with your saved details",
+    "quickEdit": "Edit the details or add a note",
+    "quickNoCv": "Without a CV"
   },
   "profile": {
     "edit": "Edit",
