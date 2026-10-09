@@ -8,12 +8,14 @@ import { EmptyState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { unhideAgent, useHiddenAgentEntries } from '~/features/moderation/hidden-agents';
 import { unhideCompany, useHiddenCompanyEntries } from '~/features/moderation/hidden-companies';
+import { unhideJob, useHiddenJobEntries } from '~/features/moderation/hidden-jobs';
 import type { HiddenEntry } from '~/features/moderation/hidden-store';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 
 /**
- * Everything hidden on this phone, and the way back: the companies whose
+ * Everything hidden on this phone, and the way back: single listings set
+ * aside (hidden-jobs.ts), the companies whose
  * listings the reader hid (hidden-companies.ts) and the consultants hidden
  * from the directory (hidden-agents.ts). Hiding takes them out of every list,
  * so their own pages — where "show again" also is — are no longer a tap
@@ -23,9 +25,10 @@ export default function HiddenScreen() {
   const t = useTranslations('app.moderation');
   const companies = useHiddenCompanyEntries();
   const agents = useHiddenAgentEntries();
+  const jobs = useHiddenJobEntries();
   const header = <Stack.Screen options={{ title: t('hiddenList') }} />;
 
-  if (!companies.length && !agents.length) {
+  if (!companies.length && !agents.length && !jobs.length) {
     return (
       <>
         {header}
@@ -39,6 +42,9 @@ export default function HiddenScreen() {
       {header}
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: gutter, gap: space[5] }}>
         <Text tone="mutedForeground">{t('hiddenListLede')}</Text>
+        {jobs.length ? (
+          <Section title={t('hiddenJobs')} entries={jobs} unnamed={t('unnamedJob')} onShow={(entry) => unhideJob(entry.id)} />
+        ) : null}
         {companies.length ? (
           <Section
             title={t('hiddenCompanies')}

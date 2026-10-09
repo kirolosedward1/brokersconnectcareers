@@ -18,10 +18,17 @@ export function useSheet() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // What to do once it has gone: an alert or another sheet, which iOS would not present over one still closing.
+  const then = useRef<(() => void) | null>(null);
 
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current);
+      // Chosen, and then taken away with its row (a list drawn again) before it
+      // had gone: still done, once iOS has had the time to take the sheet down.
+      const next = then.current;
+      then.current = null;
+      if (next) setTimeout(next, CLOSING_MS);
     },
     [],
   );
@@ -30,6 +37,9 @@ export function useSheet() {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
     setMounted(false);
+    const next = then.current;
+    then.current = null;
+    next?.();
   };
 
   return {
@@ -41,12 +51,16 @@ export function useSheet() {
       setMounted(true);
       setOpen(true);
     },
-    hide() {
+    /** Closes it; `after` runs once it has gone. (Handed to onPress, it is given an event: only a function is kept.) */
+    hide(after?: unknown) {
+      const next = typeof after === 'function' ? (after as () => void) : null;
       setOpen(false);
       if (Platform.OS !== 'ios') {
         setMounted(false);
+        next?.();
         return;
       }
+      if (next) then.current = next;
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(gone, CLOSING_MS);
     },

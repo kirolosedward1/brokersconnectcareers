@@ -24,6 +24,7 @@ import { useConfirmDiscard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
 import { gutter, hitTarget, space } from '~/theme/tokens';
 import { dateOf, monthOf, wholeNumber } from './fields';
+import { toast } from '~/components/feedback/toast';
 
 /** This month's first day, as the form's dates are kept ("2026-10-01"): no later month has come yet. */
 function thisMonthStart(): string {
@@ -151,7 +152,13 @@ function EntryForm({
     if (fields?.expires) return refuse({ expires: t('app.profile.endBeforeStart') });
     refuse({ form: failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody') });
   };
-  const done = { onSuccess: onClose, onError };
+  const done = {
+    onSuccess: () => {
+      onClose();
+      toast.show({ message: t('app.toast.entrySaved'), tone: 'success' as const });
+    },
+    onError,
+  };
 
   const submit = () => {
     const local: Record<string, string> = {};

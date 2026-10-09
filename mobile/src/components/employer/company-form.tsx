@@ -21,6 +21,7 @@ import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { webAddress } from '~/lib/web-address';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { toast } from '~/components/feedback/toast';
 
 type Key = 'nameAr' | 'website' | 'aboutAr' | 'aboutEn' | 'form';
 
@@ -156,6 +157,7 @@ export function CompanyForm({
       {
         onSuccess: () => {
           setSaved(true);
+          toast.show({ message: t('app.toast.changesSaved'), tone: 'success' });
           // What comes back is what was just sent, on its new version — read
           // back already (useSaveCompany waits for it), and reaching this form
           // a render later, Save held till then. Not read back (no

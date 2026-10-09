@@ -97,15 +97,17 @@
     "unhideAgent": "Show this consultant again",
     "hideAgentConfirm": "Hide them",
     "hiddenList": "Hidden on this phone",
-    "hiddenListLede": "The companies and consultants you hid stay out of the app on this phone. Bring any of them back whenever you like.",
+    "hiddenListLede": "The listings, companies and consultants you hid stay out of the app on this phone. Bring any of them back whenever you like.",
     "hiddenCompanies": "Companies",
     "hiddenAgents": "Consultants",
     "hiddenNothing": "Nothing is hidden",
-    "hiddenNothingBody": "When you hide a company or a consultant, it appears here so you can bring it back.",
+    "hiddenNothingBody": "When you hide a listing, a company or a consultant, it appears here so you can bring it back.",
     "unnamedCompany": "A company you hid",
     "unnamedAgent": "A consultant you hid",
     "showAgain": "Show again",
-    "showAgainNamed": "Show {name} again"
+    "showAgainNamed": "Show {name} again",
+    "hiddenJobs": "Listings",
+    "unnamedJob": "A listing you hid"
   },
   "applications": {
     "withdrawTitle": "Withdraw your application to “{title}”?",
@@ -264,5 +266,28 @@
     "body": "Something closed the app. Send us the details so we can fix it.",
     "send": "Send the details",
     "dismiss": "OK"
+  },
+  "toast": {
+    "saved": "Saved",
+    "viewSaved": "View",
+    "unsaved": "Removed from saved",
+    "undo": "Undo",
+    "saveFailed": "Could not save it. Try again.",
+    "jobHidden": "You won't see this listing again",
+    "companyHidden": "You won't see {company}'s listings again",
+    "changesSaved": "Changes saved",
+    "withdrawn": "Application withdrawn",
+    "following": "You'll hear about every new job at {company}",
+    "unfollowed": "You stopped following {company}",
+    "entrySaved": "Saved to your CV"
+  },
+  "jobMenu": {
+    "open": "Open listing",
+    "share": "Share link",
+    "hideJob": "Hide this listing",
+    "hideCompany": "Hide everything from this company",
+    "swipeSave": "Save",
+    "swipeUnsave": "Remove",
+    "swipeHide": "Hide"
   }
 }

@@ -12,6 +12,7 @@ import { useStoredFields } from '~/lib/use-stored-fields';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { UserRound } from '~/components/ui/lucide';
+import { toast } from '~/components/feedback/toast';
 
 /**
  * What we email — the website's switches on /dashboard/account: each kind of
@@ -66,6 +67,7 @@ export default function EmailsScreen() {
 function Switches({ employer, stored }: { employer: boolean; stored: EmailPreferences }) {
   const t = useTranslations('account');
   const tCommon = useTranslations('common');
+  const tApp = useTranslations('app.toast');
   const { colors, shadow } = useTheme();
   const save = useSaveEmailPreferences();
   // The switches follow what is stored — one turned off from an email's
@@ -102,6 +104,7 @@ function Switches({ employer, stored }: { employer: boolean; stored: EmailPrefer
       onSuccess: () => {
         switches.saved(next);
         setSaved(true);
+        toast.show({ message: tApp('changesSaved'), tone: 'success' });
       },
       onError: () => {
         switches.set({ [key]: prefs[key] });

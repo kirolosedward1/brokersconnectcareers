@@ -27,6 +27,7 @@ import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { toast } from '~/components/feedback/toast';
 
 /**
  * The candidate's applications — the website's /dashboard/applications: every
@@ -161,7 +162,10 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
         style: 'destructive',
         onPress: () => {
           setFailed(false);
-          withdraw.mutate(application.id, { onError: () => setFailed(true) });
+          withdraw.mutate(application.id, {
+            onSuccess: () => toast.show({ message: t('app.toast.withdrawn'), tone: 'success' }),
+            onError: () => setFailed(true),
+          });
         },
       },
     ]);

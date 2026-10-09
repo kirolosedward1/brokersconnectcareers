@@ -7,13 +7,15 @@ import { PressableScale } from './pressable-scale';
 /**
  * A surface raised off the page: white on the ivory in light, a lighter
  * charcoal in dark, with a hairline, a soft shadow and continuous 20-point
- * corners. Pressable when given onPress, settling a touch when held. A
+ * corners. Pressable when given onPress, settling a touch when held; held
+ * longer, `onLongPress` (a listing's menu). A
  * pressable card is one element to VoiceOver, so a second control inside it
  * (a listing's bookmark) is offered as an action on the card.
  */
 export function Card({
   children,
   onPress,
+  onLongPress,
   accessibilityLabel,
   accessibilityActions,
   onAccessibilityAction,
@@ -21,6 +23,7 @@ export function Card({
 }: {
   children: ReactNode;
   onPress?: () => void;
+  onLongPress?: () => void;
   accessibilityLabel?: string;
   accessibilityActions?: AccessibilityActionInfo[];
   onAccessibilityAction?: (event: AccessibilityActionEvent) => void;
@@ -46,6 +49,8 @@ export function Card({
       accessibilityActions={accessibilityActions}
       onAccessibilityAction={onAccessibilityAction}
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={320}
       scaleTo={0.985}
       style={({ pressed }) => [base, pressed && { backgroundColor: colors.muted }, style]}
     >

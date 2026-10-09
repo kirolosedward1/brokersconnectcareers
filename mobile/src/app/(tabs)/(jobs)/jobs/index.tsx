@@ -37,6 +37,7 @@ import { boardQuery, filtersToParams, sheetFilterCount, useFilterLabel } from '~
 import { useAppliedLast } from '~/features/jobs/marks';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
 import { useTabList } from '~/features/tab-bar';
@@ -76,7 +77,8 @@ export default function BoardScreen() {
   const list = useTabList<FlashListRef<JobListItem>>();
   const hidden = useHiddenCompanies();
   const read = useMemo(() => flattenBoard(board.data?.pages), [board.data]);
-  const shown = useMemo(() => withoutHidden(read, hidden), [read, hidden]);
+  const hiddenJobs = useHiddenJobs();
+  const shown = useMemo(() => withoutHiddenJobs(withoutHidden(read, hidden), hiddenJobs), [read, hidden, hiddenJobs]);
   const first = board.data?.pages[0];
   const total = totalShown(first?.total ?? 0, read.length, shown.length);
   // What the reader has applied to goes to the foot of what is loaded, under its own heading.
@@ -169,7 +171,7 @@ export default function BoardScreen() {
         renderItem={({ item }) => (
           <>
             {item.id === firstApplied ? <AppliedHeading /> : null}
-            <JobCard job={item} applied={applied.has(item.id)} />
+            <JobCard job={item} applied={applied.has(item.id)} swipeable />
           </>
         )}
         ItemSeparatorComponent={Separator}

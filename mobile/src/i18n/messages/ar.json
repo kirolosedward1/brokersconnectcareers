@@ -97,15 +97,17 @@
     "unhideAgent": "رجّع الاستشاري",
     "hideAgentConfirm": "اخفيه",
     "hiddenList": "مخفي على الموبايل ده",
-    "hiddenListLede": "الشركات والاستشاريين اللي خبيتهم مش بيظهروا لك في التطبيق على الموبايل ده. رجّع أي حد منهم وقت ما تحب.",
+    "hiddenListLede": "الإعلانات والشركات والاستشاريين اللي خبيتهم مش بيظهروا لك في التطبيق على الموبايل ده. رجّع أي حاجة منهم وقت ما تحب.",
     "hiddenCompanies": "شركات",
     "hiddenAgents": "استشاريين",
     "hiddenNothing": "مفيش حاجة مخفية",
-    "hiddenNothingBody": "لما تخفي شركة أو استشاري، هيظهر هنا عشان تقدر ترجّعه.",
+    "hiddenNothingBody": "لما تخفي إعلان أو شركة أو استشاري، هيظهر هنا عشان تقدر ترجّعه.",
     "unnamedCompany": "شركة خبيتها",
     "unnamedAgent": "استشاري خبيته",
     "showAgain": "رجّع",
-    "showAgainNamed": "رجّع {name}"
+    "showAgainNamed": "رجّع {name}",
+    "hiddenJobs": "وظائف",
+    "unnamedJob": "إعلان خبّيته"
   },
   "applications": {
     "withdrawTitle": "تسحب طلبك على «{title}»؟",
@@ -264,5 +266,28 @@
     "body": "حصلت مشكلة قفلت التطبيق. ابعتلنا التفاصيل عشان نصلّحها.",
     "send": "ابعت التفاصيل",
     "dismiss": "تمام"
+  },
+  "toast": {
+    "saved": "اتحفظت في المحفوظة",
+    "viewSaved": "عرض",
+    "unsaved": "اتشالت من المحفوظة",
+    "undo": "تراجع",
+    "saveFailed": "معرفناش نحفظها. جرّب تاني.",
+    "jobHidden": "مش هتشوف الإعلان ده تاني",
+    "companyHidden": "مش هتشوف إعلانات {company} تاني",
+    "changesSaved": "اتحفظت التغييرات",
+    "withdrawn": "اتسحب الطلب",
+    "following": "هيوصلك كل إعلان جديد من {company}",
+    "unfollowed": "مش هتتابع {company} تاني",
+    "entrySaved": "اتحفظت في سيرتك الذاتية"
+  },
+  "jobMenu": {
+    "open": "افتح الإعلان",
+    "share": "شارك الرابط",
+    "hideJob": "خبّي الإعلان ده",
+    "hideCompany": "خبّي كل إعلانات الشركة",
+    "swipeSave": "احفظ",
+    "swipeUnsave": "شيل",
+    "swipeHide": "خبّي"
   }
 }

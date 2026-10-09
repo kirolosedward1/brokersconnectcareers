@@ -15,6 +15,7 @@ import { useScreenRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { UserRound } from '~/components/ui/lucide';
+import { toast } from '~/components/feedback/toast';
 
 /**
  * Pushes on this phone: on or off for the person signed in, without going to
@@ -156,6 +157,7 @@ const KINDS = ['push_job_alerts', 'push_applications', 'push_account', 'push_qui
 function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferences }) {
   const t = useTranslations('app.push');
   const tCommon = useTranslations('common');
+  const tApp = useTranslations('app.toast');
   const { colors, shadow } = useTheme();
   const save = useSavePushPreferences();
   const [saved, setSaved] = useState(false);
@@ -211,6 +213,7 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
         onSuccess: () => {
           settle(key, true);
           setSaved(true);
+          toast.show({ message: tApp('changesSaved'), tone: 'success' });
         },
         onError: () => {
           settle(key, false);

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ActionSheetIOS, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { VerifiedMark } from '~/components/companies/verified-mark';
@@ -9,7 +9,6 @@ import { formatDate, formatNumber } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import { isApproved, isCandidate } from '@/lib/permissions';
-import { withShareSource } from '@/lib/share-source';
 import { buildLandingSlug } from '@/lib/taxonomy';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { HiddenNotice } from '~/components/moderation/hide-company';
@@ -28,9 +27,10 @@ import { recentJobs, useListOwner, viewedFrom } from '~/features/jobs/recent';
 import { ShareCardSheet } from './share-card';
 import { useAppliedJobIds } from '~/features/jobs/marks';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
+import { shareJobLink } from '~/features/jobs/share';
 import { useShrinkingTabBar } from '~/features/tab-bar';
 import { callAction } from '~/lib/api';
-import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
@@ -80,7 +80,7 @@ export function JobDetail({
   const hasBoard = useHasBoard();
   // Like it, and not already applied to: those are done with, as Home's suggestions leave them out.
   const similarApplied = useAppliedJobIds(similar.map((item) => item.id));
-  const similarShown = withoutHidden(similar, useHiddenCompanies()).filter((item) => !similarApplied.has(item.id));
+  const similarShown = withoutHiddenJobs(withoutHidden(similar, useHiddenCompanies()), useHiddenJobs()).filter((item) => !similarApplied.has(item.id));
 
   // A view is a reader opening an open listing, once per visit — the website
   // counts the page render the same way (recordJobView, after the response).
@@ -98,11 +98,7 @@ export function JobDetail({
     callAction('recordJobView', { slug: job.slug }).catch(() => {});
   }, [open, job.slug]);
 
-  const shareLink = () => {
-    const url = withShareSource(`${env.siteUrl}/jobs/${job.slug}`);
-    // `url` is iOS's alone: Android shares the message, so there the link goes inside it.
-    Share.share(Platform.OS === 'ios' ? { message: title, url } : { message: `${title}\n${url}` }).catch(() => {});
-  };
+  const shareLink = () => shareJobLink({ slug: job.slug, title });
   // The link, or the listing as a picture for a status or a story (share-card.tsx).
   const card = useSheet();
   const tApp = useTranslations('app.share');

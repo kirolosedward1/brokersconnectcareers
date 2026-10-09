@@ -22,6 +22,7 @@ import { TextField } from '~/components/ui/text-field';
 import { useBrowseCounts } from '~/features/browse/queries';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { useDistricts } from '~/features/taxonomy';
 import { useTabList } from '~/features/tab-bar';
 import { inOwnTab } from '~/lib/links';
@@ -82,7 +83,7 @@ function MarketHome() {
   const list = useTabList();
   const districts = useDistricts();
 
-  const jobs = withoutHidden(flattenBoard(board.data?.pages), useHiddenCompanies()).slice(0, 20);
+  const jobs = withoutHiddenJobs(withoutHidden(flattenBoard(board.data?.pages), useHiddenCompanies()), useHiddenJobs()).slice(0, 20);
   const total = board.data?.pages[0]?.total ?? 0;
   const name = viewer?.profile?.full_name;
 

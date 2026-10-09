@@ -2,6 +2,7 @@ import { View } from 'react-native';
 import type { JobListItem } from '@/lib/job-list';
 import { JobCard } from '~/components/jobs/job-card';
 import { useAppliedLast } from '~/features/jobs/marks';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { space } from '~/theme/tokens';
 
 /**
@@ -10,7 +11,7 @@ import { space } from '~/theme/tokens';
  * foot of the run, as on the board.
  */
 export function JobCardList({ jobs, gap = space[2] }: { jobs: JobListItem[]; gap?: number }) {
-  const { jobs: ordered, applied } = useAppliedLast(jobs);
+  const { jobs: ordered, applied } = useAppliedLast(withoutHiddenJobs(jobs, useHiddenJobs()));
   return (
     <View style={{ gap }}>
       {ordered.map((job) => (

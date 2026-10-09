@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { BellPlus, BellRing, Bookmark, BookmarkCheck, Check } from '~/components/ui/lucide';
+import { BellOff, BellPlus, BellRing, Bookmark, BookmarkCheck, Check, CircleAlert } from '~/components/ui/lucide';
 import { canSaveJobs } from '@/lib/permissions';
 import { Pop } from '~/components/motion/pop';
 import { Button } from '~/components/ui/button';
@@ -16,6 +16,7 @@ import {
   useToggleFollow,
   useToggleSavedJob,
 } from '~/features/saved/queries';
+import { toast } from '~/components/feedback/toast';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
@@ -36,6 +37,7 @@ function signInThenReturn(next: string) {
 /** The bookmark on a listing's card: whether it is saved, and the tap that changes it. */
 export function useSaveJob(jobId: string) {
   const t = useTranslations('jobs');
+  const tToast = useTranslations('app.toast');
   const { actor } = useSession();
   const { ids, known } = useSavedJobIds();
   const saved = ids.has(jobId);
@@ -54,7 +56,23 @@ export function useSaveJob(jobId: string) {
       if (!known) return;
       haptic.tap();
       if (!saved) setSaves((count) => count + 1);
-      toggle.mutate({ jobId, saved });
+      // Said at once, as the bookmark changes; a refusal says so after (and the bookmark goes back).
+      const failed = () => toast.show({ message: tToast('saveFailed'), icon: CircleAlert });
+      toggle.mutate({ jobId, saved }, { onError: failed });
+      toast.show(
+        saved
+          ? {
+              message: tToast('unsaved'),
+              icon: Bookmark,
+              action: { label: tToast('undo'), onPress: () => toggle.mutate({ jobId, saved: false }, { onError: failed }) },
+            }
+          : {
+              message: tToast('saved'),
+              icon: BookmarkCheck,
+              tone: 'success',
+              action: { label: tToast('viewSaved'), onPress: () => router.navigate('/dashboard/saved') },
+            },
+      );
     },
   };
 }
@@ -79,9 +97,9 @@ export function SaveJobIcon({ save }: { save: ReturnType<typeof useSaveJob> }) {
         justifyContent: 'center',
       }}
     >
-      <Pop key={save.jobId} trigger={save.saves}>
+      <Pop key={save.jobId} trigger={save.saves} burst={colors.gold}>
         {save.saved ? (
-          <BookmarkCheck size={20} color={colors.primary} />
+          <Bookmark size={20} color={colors.primary} fill={colors.primary} />
         ) : (
           <Bookmark size={20} color={colors.mutedForeground} />
         )}
@@ -108,8 +126,8 @@ export function SaveJobButton({ jobId, slug }: { jobId: string; slug: string }) 
       accessibilityState={{ selected: save.saved, busy: save.pending, disabled: save.pending }}
       disabled={save.pending}
       icon={
-        <Pop key={jobId} trigger={save.saves}>
-          {save.saved ? <BookmarkCheck size={18} color={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />}
+        <Pop key={jobId} trigger={save.saves} burst={colors.gold}>
+          {save.saved ? <Bookmark size={18} color={colors.primary} fill={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />}
         </Pop>
       }
       onPress={() => (signedIn ? save.toggle() : signInThenReturn(`/jobs/${slug}`))}
@@ -236,6 +254,7 @@ export function FollowCompanyButton({ slug, label }: { slug: string; label: stri
   const offered = useOffersFollow();
   const { following } = useFollowing(slug);
   const toggle = useToggleFollow(slug, label);
+  const tApp = useTranslations('app.toast');
   const [error, setError] = useState<string | null>(null);
 
   const signedIn = Boolean(session && viewer?.profile);
@@ -251,6 +270,12 @@ export function FollowCompanyButton({ slug, label }: { slug: string; label: stri
     toggle.mutate(
       { follow: !following },
       {
+        onSuccess: () =>
+          toast.show(
+            following
+              ? { message: tApp('unfollowed', { company: label }), icon: BellOff }
+              : { message: tApp('following', { company: label }), icon: BellRing, tone: 'success' },
+          ),
         // The ten-row limit is shared with saved searches, so the message names both.
         onError: (failure) => setError(failure instanceof SaveRefused && failure.reason === 'cap' ? t('followCap') : tCommon('errorBody')),
       },

@@ -9,6 +9,7 @@ import { History } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { recentJobs, useListOwner, type ViewedJob } from '~/features/jobs/recent';
 import { useHiddenCompanies } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 
@@ -26,7 +27,8 @@ export function RecentlyViewed() {
   const { colors, shadow } = useTheme();
   const owner = useListOwner();
   const hidden = useHiddenCompanies();
-  const jobs = recentJobs.useItems(owner).filter((job) => !hidden.has(job.company.id)).slice(0, SHOWN);
+  const hiddenJobs = useHiddenJobs();
+  const jobs = recentJobs.useItems(owner).filter((job) => !hidden.has(job.company.id) && !hiddenJobs.has(job.id)).slice(0, SHOWN);
   if (!jobs.length) return null;
 
   return (

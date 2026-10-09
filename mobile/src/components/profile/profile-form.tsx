@@ -28,6 +28,7 @@ import { useStoredFields } from '~/lib/use-stored-fields';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 import { ChipGroup, wholeNumber } from './fields';
+import { toast } from '~/components/feedback/toast';
 
 const VISIBILITIES: AgentVisibility[] = ['public', 'verified_employers_only', 'hidden'];
 const LANGUAGES = ['ar', 'en', 'fr'] as const;
@@ -138,6 +139,7 @@ export function ProfileForm({
         onSuccess: () => {
           setCv({ kind: 'keep' });
           form.saved(sending);
+          toast.show({ message: t('app.toast.changesSaved'), tone: 'success' });
         },
         onError: (failure) => {
           const reason = failure instanceof SaveRefused ? failure.reason : 'failed';
