@@ -49,7 +49,10 @@
     "wizardStep": "Step <v>{current}</v> of <v>{total}</v>",
     "quickFilters": "Quick filters",
     "match": "<v>{percent}%</v> match",
-    "appliedHeading": "Jobs you applied to"
+    "appliedHeading": "Jobs you applied to",
+    "recentSearches": "Searched lately",
+    "recentSearchesClear": "Clear",
+    "recentSearch": "Search again for {words}"
   },
   "auth": {
     "forCompanies": "Register your company",

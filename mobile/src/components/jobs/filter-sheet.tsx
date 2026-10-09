@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale, useTranslations } from 'use-intl';
-import { Search, X } from '~/components/ui/lucide';
+import { History, Search, X } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import type { JobFilters } from '@/lib/job-filters';
 import { localized } from '@/lib/locale';
@@ -23,6 +23,8 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { boardQuery, clearSheetFilters, sheetFilterCount, toggled } from '~/features/jobs/filters';
 import { useBoardTotal } from '~/features/jobs/queries';
+import { useListOwner } from '~/features/jobs/recent';
+import { recentSearches } from '~/features/jobs/recent-searches';
 import { useDistricts, useGovernorates } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
 import { haptic } from '~/lib/haptics';
@@ -46,11 +48,14 @@ export function FilterSheet({
   filters,
   onClose,
   onApply,
+  focusSearch = false,
 }: {
   visible: boolean;
   filters: JobFilters;
   onClose: () => void;
   onApply: (next: JobFilters) => void;
+  /** Opened to search (the Jobs tab pressed again at the top): the keyboard comes up in the words. */
+  focusSearch?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -100,6 +105,7 @@ export function FilterSheet({
         </Text>
         <TextField
           value={words}
+          autoFocus={focusSearch}
           onChangeText={setWords}
           onEndEditing={() => setDraft(typed)}
           placeholder={t('filters.searchPlaceholder')}
@@ -110,6 +116,8 @@ export function FilterSheet({
           autoCorrect={false}
           leading={<Search size={18} color={colors.mutedForeground} />}
         />
+        {/* What was searched lately, a tap from searching it again — while nothing is typed. */}
+        {words.trim() ? null : <RecentSearches onPick={(picked) => onApply({ ...typed, q: picked })} />}
       </View>
 
       <FilterGroup title={t('filters.leadsSource')}>
@@ -219,6 +227,37 @@ export function FilterSheet({
         onToggle={(slug) => setDraft({ ...draft, districtSlugs: toggled(draft.districtSlugs, slug) })}
       />
     </FilterSheetFrame>
+  );
+}
+
+/** The last few searches on this phone, newest first, each a tap from the board searched for it again. */
+function RecentSearches({ onPick }: { onPick: (words: string) => void }) {
+  const t = useTranslations('app.jobs');
+  const { colors } = useTheme();
+  const owner = useListOwner();
+  const kept = recentSearches.useItems(owner);
+  if (!kept.length) return null;
+  return (
+    <View style={{ gap: space[2], paddingTop: space[1] }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
+          <History size={14} color={colors.mutedForeground} />
+          <Text variant="caption" tone="mutedForeground" accessibilityRole="header">
+            {t('recentSearches')}
+          </Text>
+        </View>
+        <Pressable accessibilityRole="button" onPress={() => recentSearches.clear(owner)} hitSlop={10}>
+          <Text variant="caption" weight="semibold" tone="primary">
+            {t('recentSearchesClear')}
+          </Text>
+        </Pressable>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+        {kept.map((words) => (
+          <Chip key={words} label={words} accessibilityLabel={t('recentSearch', { words })} onPress={() => onPick(words)} />
+        ))}
+      </View>
+    </View>
   );
 }
 

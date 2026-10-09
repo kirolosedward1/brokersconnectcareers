@@ -49,7 +49,10 @@
     "wizardStep": "الخطوة <v>{current}</v> من <v>{total}</v>",
     "quickFilters": "اختيارات سريعة",
     "match": "مناسب لك <v>{percent}%</v>",
-    "appliedHeading": "وظائف قدّمت عليها"
+    "appliedHeading": "وظائف قدّمت عليها",
+    "recentSearches": "دوّرت قبل كده على",
+    "recentSearchesClear": "امسح",
+    "recentSearch": "دوّر تاني على {words}"
   },
   "auth": {
     "forCompanies": "سجّل شركتك",

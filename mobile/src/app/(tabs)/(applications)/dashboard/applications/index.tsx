@@ -28,6 +28,7 @@ import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
 import { toast } from '~/components/feedback/toast';
+import { useListMotion } from '~/components/motion/list-motion';
 
 /**
  * The candidate's applications — the website's /dashboard/applications: every
@@ -43,6 +44,8 @@ export default function ApplicationsScreen() {
   // A push about a move reads the list again; the spinner is the pull's alone.
   const pull = usePullRefresh(() => applications.refetch());
   const list = useTabList();
+  // Withdrawn, or decided and moved under its heading: the rows close up rather than jump.
+  useListMotion((applications.data ?? []).map((application) => `${application.id}:${application.status}`));
 
   let body: React.ReactNode;
   if (!session) {

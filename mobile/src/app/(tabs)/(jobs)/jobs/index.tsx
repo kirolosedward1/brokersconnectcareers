@@ -41,6 +41,9 @@ import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-j
 import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
 import { useTabList } from '~/features/tab-bar';
+import { useRollingNumber } from '~/components/motion/rolling-number';
+import { useListOwner } from '~/features/jobs/recent';
+import { rememberSearch } from '~/features/jobs/recent-searches';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
@@ -74,20 +77,37 @@ export default function BoardScreen() {
   const nextPage = useNextPage(board);
   // The spinner is the reader's pull, not a re-read on coming back to the app.
   const pull = usePullRefresh(() => board.refetch());
-  const list = useTabList<FlashListRef<JobListItem>>();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Opened from the Jobs tab pressed again at the top: straight into the words.
+  const [searchFirst, setSearchFirst] = useState(false);
+  const list = useTabList<FlashListRef<JobListItem>>({
+    onPressAtTop: () => {
+      setSearchFirst(true);
+      setSheetOpen(true);
+    },
+  });
   const hidden = useHiddenCompanies();
   const read = useMemo(() => flattenBoard(board.data?.pages), [board.data]);
   const hiddenJobs = useHiddenJobs();
   const shown = useMemo(() => withoutHiddenJobs(withoutHidden(read, hidden), hiddenJobs), [read, hidden, hiddenJobs]);
   const first = board.data?.pages[0];
   const total = totalShown(first?.total ?? 0, read.length, shown.length);
+  // Rolls from the last count to the new one as the filters change.
+  const rolled = useRollingNumber(first ? total : null) ?? total;
   // What the reader has applied to goes to the foot of what is loaded, under its own heading.
   const { jobs, applied } = useAppliedLast(shown);
   const firstApplied = jobs.find((job) => applied.has(job.id))?.id;
 
-  const apply = (next: JobFilters) => router.setParams(filtersToParams(next));
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const openFilters = () => setSheetOpen(true);
+  const owner = useListOwner();
+  const apply = (next: JobFilters) => {
+    // Searched for words: kept for the filter sheet to offer again.
+    if (next.q !== filters.q) rememberSearch(owner, next.q);
+    router.setParams(filtersToParams(next));
+  };
+  const openFilters = () => {
+    setSearchFirst(false);
+    setSheetOpen(true);
+  };
 
   // No search bar over the board: the words are searched from the filter
   // sheet, as on the website's panel, and shown as a chip like any filter.
@@ -96,6 +116,7 @@ export default function BoardScreen() {
   const sheet = (
     <FilterSheet
       visible={sheetOpen}
+      focusSearch={searchFirst}
       filters={filters}
       onClose={() => setSheetOpen(false)}
       onApply={(next) => {
@@ -185,7 +206,7 @@ export default function BoardScreen() {
           <BoardHeader
             filters={filters}
             first={first}
-            total={total}
+            total={rolled}
             apply={apply}
             onFilters={openFilters}
             hasResults={jobs.length > 0}

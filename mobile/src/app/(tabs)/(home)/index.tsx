@@ -23,6 +23,8 @@ import { useBrowseCounts } from '~/features/browse/queries';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
+import { rememberSearch } from '~/features/jobs/recent-searches';
+import { useListOwner } from '~/features/jobs/recent';
 import { useDistricts } from '~/features/taxonomy';
 import { useTabList } from '~/features/tab-bar';
 import { inOwnTab } from '~/lib/links';
@@ -75,6 +77,7 @@ function MarketHome() {
   const { colors } = useTheme();
   const { viewer, actor } = useSession();
   const [q, setQ] = useState('');
+  const owner = useListOwner();
 
   const board = useJobBoard('');
   const counts = useBrowseCounts();
@@ -92,6 +95,7 @@ function MarketHome() {
 
   const search = () => {
     const words = q.trim();
+    rememberSearch(owner, words);
     router.navigate(words ? { pathname: '/jobs', params: { q: words } } : '/jobs');
   };
 

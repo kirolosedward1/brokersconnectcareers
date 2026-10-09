@@ -11,6 +11,7 @@ import { Illustration } from '~/components/ui/illustration';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAppliedLast } from '~/features/jobs/marks';
+import { useListMotion } from '~/components/motion/list-motion';
 import { useSavedJobs, useSavedSearches } from '~/features/saved/queries';
 import { useTabList } from '~/features/tab-bar';
 import { useSession } from '~/lib/session';
@@ -42,6 +43,8 @@ export default function SavedScreen() {
   const saved = useMemo(() => jobs.data ?? [], [jobs.data]);
   // Still open ones first, and among them what is not yet applied to.
   const { jobs: ordered, applied } = useAppliedLast(saved);
+  // A bookmark taken off: the cards close up rather than jump.
+  useListMotion(ordered.map((job) => job.id));
   const open = ordered.filter((job) => jobIsLive(job));
   const closed = ordered.filter((job) => !jobIsLive(job));
 

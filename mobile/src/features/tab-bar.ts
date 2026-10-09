@@ -1,6 +1,6 @@
-import { useCallback, useRef, useSyncExternalStore, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useSyncExternalStore, type RefObject } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-native';
-import { useScrollToTop } from 'expo-router';
+import { useNavigation, useScrollToTop } from 'expo-router';
 
 /**
  * Whether the tab bar is drawn small (src/components/navigation/tab-bar.tsx):
@@ -74,12 +74,42 @@ type Scrollable = Parameters<typeof useScrollToTop>[0] extends RefObject<infer T
  * For the list a tab opens on, spread onto it: the shrinking bar, and — the
  * open tab pressed again with this list in view — the list back at its top,
  * as iOS's own tab bar does. (Pressed again further in, the tab's stack goes
- * back to this screen first.)
+ * back to this screen first.) Pressed again with the list already at its
+ * top, `onPressAtTop` — the board opens its search.
  */
-export function useTabList<T extends Scrollable = ScrollView>() {
+export function useTabList<T extends Scrollable = ScrollView>({ onPressAtTop }: { onPressAtTop?: () => void } = {}) {
   const ref = useRef<T>(null);
   useScrollToTop(ref);
-  return { ref, ...useShrinkingTabBar() };
+  const shrinking = useShrinkingTabBar();
+  // Where the list is, read when the tab is pressed: null until it first moves (at its top).
+  const y = useRef<number | null>(null);
+  const navigation = useNavigation();
+  const latest = useRef(onPressAtTop);
+  useEffect(() => {
+    latest.current = onPressAtTop;
+  });
+
+  // Pressed again with the list already at its top (useScrollToTop has nothing left to do): `onPressAtTop`.
+  useEffect(() => {
+    let tabs: typeof navigation | undefined = navigation;
+    while (tabs && tabs.getState()?.type !== 'tab') tabs = tabs.getParent();
+    if (!tabs) return;
+    return tabs.addListener('tabPress' as never, () => {
+      if (!latest.current || !navigation.isFocused() || (y.current ?? 0) > NEAR_TOP) return;
+      // After the press has done its own work (the stack and the list are where they go).
+      requestAnimationFrame(() => latest.current?.());
+    });
+  }, [navigation]);
+
+  const onScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      y.current = event.nativeEvent.contentOffset.y;
+      shrinking.onScroll(event);
+    },
+    [shrinking],
+  );
+
+  return { ref, onScroll, scrollEventThrottle: shrinking.scrollEventThrottle };
 }
 
 /** For tests: the bar whole, as at launch. */

@@ -399,3 +399,30 @@ describe('a card on the board, held', () => {
     await waitFor(() => expect(screen.queryByText(listing.title_ar)).toBeNull());
   });
 });
+
+describe('searches kept on the phone', () => {
+  it('offers the words searched lately in the filter sheet, a tap from the board searched again', async () => {
+    renderRouter(app, { initialUrl: '/jobs' });
+    const openSheet = async () => fireEvent.press(await screen.findByRole('button', { name: ar.jobs.filters }));
+
+    await openSheet();
+    fireEvent.changeText(await screen.findByLabelText(ar.filters.search), 'مبيعات التجمع');
+    fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${ar.filters.showResults}`) }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/jobs').some((request) => request.url.searchParams.get('q') === 'مبيعات التجمع')).toBe(true));
+
+    // The words taken off the board again…
+    await openSheet();
+    fireEvent.changeText(await screen.findByLabelText(ar.filters.search), '');
+    fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${ar.filters.showResults}`) }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: new RegExp(`^${ar.filters.showResults}`) })).toBeNull());
+
+    // …are kept, and offered while nothing is typed; tapped, the board searches them again.
+    await openSheet();
+    const kept = await screen.findByRole('button', { name: ar.app.jobs.recentSearch.replace('{words}', 'مبيعات التجمع') });
+    server.requests.length = 0;
+    fireEvent.press(kept);
+    await waitFor(() =>
+      expect(server.asked('/api/mobile/v1/jobs').some((request) => request.url.searchParams.get('q') === 'مبيعات التجمع')).toBe(true),
+    );
+  });
+});

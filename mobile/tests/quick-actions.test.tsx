@@ -1,7 +1,9 @@
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react-native';
-import { AccessibilityInfo, Text } from 'react-native';
+import { AccessibilityInfo, LayoutAnimation, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { shownToast, toast, ToastHost } from '~/components/feedback/toast';
+import { useListMotion } from '~/components/motion/list-motion';
+import { useCountUp, useRollingNumber } from '~/components/motion/rolling-number';
 import { SwipeCard, SWIPE_COMMIT } from '~/components/jobs/swipe-card';
 import { Bookmark, EyeOff } from '~/components/ui/lucide';
 import { I18nProvider } from '~/i18n/provider';
@@ -167,4 +169,52 @@ describe('a sheet', () => {
       jest.useRealTimers();
     }
   });
+});
+
+describe('a figure that rolls', () => {
+  it('shows its first figure as it is, then rolls to the next', () => {
+    jest.useFakeTimers();
+    try {
+      const { result, rerender } = renderHook(({ target }: { target: number | null }) => useRollingNumber(target), {
+        initialProps: { target: null as number | null },
+      });
+      expect(result.current).toBeNull();
+      rerender({ target: 120 });
+      expect(result.current).toBe(120);
+      // A board asked again: the last figure stays until the new one comes.
+      rerender({ target: null });
+      expect(result.current).toBe(120);
+      rerender({ target: 30 });
+      act(() => jest.advanceTimersByTime(100));
+      expect(result.current).toBeGreaterThan(30);
+      expect(result.current).toBeLessThan(120);
+      act(() => jest.advanceTimersByTime(1000));
+      expect(result.current).toBe(30);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('counts up from nothing as it arrives', () => {
+    jest.useFakeTimers();
+    try {
+      const { result } = renderHook(() => useCountUp(12));
+      expect(result.current).toBe(0);
+      act(() => jest.advanceTimersByTime(2000));
+      expect(result.current).toBe(12);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+it('moves the rows of a short list to their new places when what it holds changes, not when it is first drawn', () => {
+  const configure = jest.spyOn(LayoutAnimation, 'configureNext').mockImplementation(() => {});
+  const { rerender } = renderHook(({ ids }: { ids: string[] }) => useListMotion(ids), { initialProps: { ids: ['a', 'b'] } });
+  expect(configure).not.toHaveBeenCalled();
+  rerender({ ids: ['a', 'b'] });
+  expect(configure).not.toHaveBeenCalled();
+  rerender({ ids: ['b'] });
+  expect(configure).toHaveBeenCalledTimes(1);
+  configure.mockRestore();
 });

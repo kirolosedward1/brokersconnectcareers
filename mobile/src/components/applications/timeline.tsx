@@ -1,7 +1,10 @@
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDayMonth } from '@/lib/format';
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
+import { Appear } from '~/components/motion/appear';
+import { Pulse } from '~/components/motion/pulse';
 import { Check, X } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
@@ -85,21 +88,26 @@ export function ApplicationTimeline({
           <View key={step.key} style={{ flex: 1, alignItems: 'center', gap: 4 }} testID={`step-${step.key}-${step.state}`}>
             <View style={{ alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center' }}>
               <View style={[styles.line, { backgroundColor: index === 0 ? 'transparent' : step.state === 'ahead' ? colors.border : tint }]} />
-              <View
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 10,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: reached ? tint : colors.card,
-                  borderWidth: reached ? 0 : 2,
-                  borderColor: tint,
-                }}
-              >
-                {step.state === 'done' ? <Check size={12} color="#FFFFFF" strokeWidth={3} /> : null}
-                {step.state === 'stopped' ? <X size={12} color="#FFFFFF" strokeWidth={3} /> : null}
-              </View>
+              {/* Reached steps fill in one after another; the one it waits at breathes. */}
+              <Appear from="none" scale={reached ? 0.4 : 1} delay={index * 140} duration={360}>
+                <Breathing on={step.state === 'current'}>
+                  <View
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: reached ? tint : colors.card,
+                      borderWidth: reached ? 0 : 2,
+                      borderColor: tint,
+                    }}
+                  >
+                    {step.state === 'done' ? <Check size={12} color="#FFFFFF" strokeWidth={3} /> : null}
+                    {step.state === 'stopped' ? <X size={12} color="#FFFFFF" strokeWidth={3} /> : null}
+                  </View>
+                </Breathing>
+              </Appear>
               <View
                 style={[
                   styles.line,
@@ -126,6 +134,11 @@ export function ApplicationTimeline({
       })}
     </View>
   );
+}
+
+/** The step an application waits at, softly pulsing; any other, as it is. */
+function Breathing({ on, children }: { on: boolean; children: ReactNode }) {
+  return on ? <Pulse>{children}</Pulse> : children;
 }
 
 const styles = StyleSheet.create({
