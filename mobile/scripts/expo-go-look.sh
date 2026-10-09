@@ -264,7 +264,7 @@ tap_word() {
   point=$(word_point "$last_shot" "$word")
   point="${point:-$fallback}"
   if [ -z "$point" ]; then
-    echo "::group::$name — «$word» not read on the screen; nothing tapped"
+    echo "::group::$name — «${word}» not read on the screen; nothing tapped"
     echo "::endgroup::"
     glance "$name" "$what (not tapped)"
     last_shot="$name"
