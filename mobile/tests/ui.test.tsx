@@ -18,6 +18,7 @@ import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
 import { KeyboardRoom, roomForScreen } from '~/components/ui/keyboard-room';
 import { PageFooter } from '~/components/ui/page-footer';
+import { MonthField } from '~/components/ui/month-field';
 import { Select } from '~/components/ui/select';
 import { EmptyState, ErrorState, InSheet } from '~/components/ui/states';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -408,6 +409,36 @@ describe('the keyboard', () => {
       expect(screen.getByText('a form')).toBeTruthy();
     } finally {
       os.restore();
+    }
+  });
+});
+
+describe('a month picked up to today', () => {
+  it('offers no year after this one, and no month of this year still to come', () => {
+    jest.useFakeTimers({ now: new Date('2026-10-09T12:00:00Z') });
+    const onChange = jest.fn();
+    try {
+      render(
+        <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, bottom: 34, left: 0, right: 0 } }}>
+          <ThemeProvider>
+            <I18nProvider>
+              <MonthField label="بدأت" value="" onChange={onChange} untilNow />
+            </I18nProvider>
+          </ThemeProvider>
+        </SafeAreaProvider>,
+      );
+      fireEvent.press(screen.getByRole('button', { name: /بدأت/ }));
+      expect(screen.queryByRole('radio', { name: '2027' })).toBeNull();
+      expect(screen.getByRole('radio', { name: '2026' }).props.accessibilityState).toMatchObject({ checked: true });
+      const months = screen.getAllByRole('radio', { name: / 2026$/ });
+      // January to October can be picked; November and December are still to come.
+      expect(months.map((month) => Boolean(month.props.accessibilityState.disabled))).toEqual([...Array(10).fill(false), true, true]);
+      fireEvent.press(months[10]);
+      expect(onChange).not.toHaveBeenCalled();
+      fireEvent.press(months[9]);
+      expect(onChange).toHaveBeenCalledWith('2026-10');
+    } finally {
+      jest.useRealTimers();
     }
   });
 });

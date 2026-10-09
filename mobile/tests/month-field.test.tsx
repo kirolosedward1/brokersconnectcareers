@@ -66,7 +66,7 @@ it('is two taps: a year, then a month, which fills the field and closes the shee
   draw({ start: '2024-03' });
   fireEvent.press(screen.getByRole('button', { name: 'بداية: مارس 2024' }));
   // The field's own month is the one ticked.
-  expect(screen.getByRole('radio', { name: 'مارس 2024' }).props.accessibilityState).toEqual({ checked: true });
+  expect(screen.getByRole('radio', { name: 'مارس 2024' }).props.accessibilityState).toEqual({ checked: true, disabled: false });
 
   fireEvent.press(screen.getByRole('radio', { name: '2021' }));
   fireEvent.press(screen.getByRole('radio', { name: 'مايو 2021' }));

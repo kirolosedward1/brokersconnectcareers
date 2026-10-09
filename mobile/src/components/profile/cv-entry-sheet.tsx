@@ -25,6 +25,12 @@ import { useTheme } from '~/theme/provider';
 import { gutter, hitTarget, space } from '~/theme/tokens';
 import { dateOf, monthOf, wholeNumber } from './fields';
 
+/** This month's first day, as the form's dates are kept ("2026-10-01"): no later month has come yet. */
+function thisMonthStart(): string {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
 export type CvEntry =
   | { section: 'experience'; row: AgentExperienceRow | null }
   | { section: 'education'; row: AgentEducationRow | null }
@@ -157,7 +163,9 @@ function EntryForm({
       if (!title.trim()) local.title = required;
       if (startedOn === null) local.started = required;
       else if (startedOn === undefined) local.started = badMonth;
+      else if (startedOn > thisMonthStart()) local.started = t('app.profile.notFuture');
       if (endedOn === undefined) local.ended = badMonth;
+      else if (endedOn && endedOn > thisMonthStart()) local.ended = t('app.profile.notFuture');
       else if (endedOn && startedOn && endedOn < startedOn) local.ended = t('app.profile.endBeforeStart');
       if (Object.keys(local).length) return refuse(local);
       setErrors({});
@@ -205,6 +213,7 @@ function EntryForm({
     const expiresOn = dateOf(expires, certification?.expires);
     if (!name.trim()) local.name = required;
     if (issuedOn === undefined) local.issued = badMonth;
+    else if (issuedOn && issuedOn > thisMonthStart()) local.issued = t('app.profile.notFuture');
     if (expiresOn === undefined) local.expires = badMonth;
     else if (expiresOn && issuedOn && expiresOn < issuedOn) local.expires = t('app.profile.endBeforeStart');
     if (Object.keys(local).length) return refuse(local);
@@ -226,9 +235,15 @@ function EntryForm({
   };
 
   // Picked from a sheet, not typed (MonthField); `clearLabel` for a date that may be left empty.
-  const month = (label: string, value: string, set: (text: string) => void, key: string, hint?: string, clearLabel?: string) => (
+  const month = (
+    label: string,
+    value: string,
+    set: (text: string) => void,
+    key: string,
+    { hint, clearLabel, untilNow = false }: { hint?: string; clearLabel?: string; untilNow?: boolean } = {},
+  ) => (
     <Field ref={inView.place(key)} label={label} hint={hint} error={errors[key]}>
-      <MonthField label={label} value={value} onChange={set} clearLabel={clearLabel} />
+      <MonthField label={label} value={value} onChange={set} clearLabel={clearLabel} untilNow={untilNow} />
     </Field>
   );
   const text = (label: string, value: string, set: (text: string) => void, key: string, max: number, optional = false) => (
@@ -275,8 +290,8 @@ function EntryForm({
                 onChange={setTrack}
               />
             </Field>
-            {month(t('cv.started'), started, setStarted, 'started')}
-            {month(t('cv.ended'), ended, setEnded, 'ended', t('app.profile.endedHint'), t('app.profile.stillThere'))}
+            {month(t('cv.started'), started, setStarted, 'started', { untilNow: true })}
+            {month(t('cv.ended'), ended, setEnded, 'ended', { hint: t('app.profile.endedHint'), clearLabel: t('app.profile.stillThere'), untilNow: true })}
             <Field ref={inView.place('highlights')} label={t('cv.highlights')} error={errors.highlights}>
               <TextField
                 value={highlights}
@@ -308,8 +323,8 @@ function EntryForm({
           <>
             {text(t('cv.certName'), name, setName, 'name', 160)}
             {text(t('cv.issuer'), issuer, setIssuer, 'issuer', 160, true)}
-            {month(t('cv.issued'), issued, setIssued, 'issued', t('common.optional'), t('app.profile.monthClear'))}
-            {month(t('cv.expires'), expires, setExpires, 'expires', t('common.optional'), t('app.profile.monthClear'))}
+            {month(t('cv.issued'), issued, setIssued, 'issued', { hint: t('common.optional'), clearLabel: t('app.profile.monthClear'), untilNow: true })}
+            {month(t('cv.expires'), expires, setExpires, 'expires', { hint: t('common.optional'), clearLabel: t('app.profile.monthClear') })}
           </>
         )}
 

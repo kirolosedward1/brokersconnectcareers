@@ -45,17 +45,23 @@ const ROW = hitTarget + 4;
  *
  * The value is the form's own "2024-03", so what was saved before, and the
  * form's checks (dateOf in src/components/profile/fields.tsx), stay as they were.
+ *
+ * `untilNow`: a month that has already come — when a job began or ended, when
+ * a certificate was issued. No year after this one is offered, and this
+ * year's months still to come are shown but cannot be picked.
  */
 export function MonthField({
   label,
   value,
   onChange,
   clearLabel,
+  untilNow = false,
 }: {
   label: string;
   value: string;
   onChange: (next: string) => void;
   clearLabel?: string;
+  untilNow?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -63,10 +69,15 @@ export function MonthField({
   const insets = useSafeAreaInsets();
   const months = monthNames(locale);
   const chosen = readMonth(value);
-  const thisYear = new Date().getFullYear();
-  const years = Array.from({ length: thisYear + YEARS_AHEAD - FIRST_YEAR + 1 }, (_, index) => thisYear + YEARS_AHEAD - index);
+  const today = new Date();
+  const thisYear = today.getFullYear();
+  const thisMonth = today.getMonth() + 1;
+  const lastYear = untilNow ? thisYear : thisYear + YEARS_AHEAD;
+  const years = Array.from({ length: lastYear - FIRST_YEAR + 1 }, (_, index) => lastYear - index);
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(chosen?.year ?? thisYear);
+  /** A month not yet come, where only months that have come may be picked. */
+  const ahead = (month: number) => untilNow && (year > thisYear || (year === thisYear && month > thisMonth));
 
   const shown = chosen ? `${months[chosen.month - 1]} ${chosen.year}` : value.trim() || null;
 
@@ -168,18 +179,21 @@ export function MonthField({
               <View accessibilityRole="radiogroup" accessibilityLabel={t('app.profile.monthMonth')} style={styles.months}>
                 {months.map((name, index) => {
                   const on = chosen?.year === year && chosen.month === index + 1;
+                  const off = ahead(index + 1);
                   return (
                     <Pressable
                       key={name}
                       accessibilityRole="radio"
-                      accessibilityState={{ checked: on }}
+                      accessibilityState={{ checked: on, disabled: off }}
                       accessibilityLabel={`${name} ${year}`}
+                      disabled={off}
                       onPress={() => choose(index + 1)}
                       style={({ pressed }) => [
                         styles.month,
                         {
                           borderColor: on ? colors.primary : colors.border,
                           backgroundColor: on ? colors.primary : pressed ? colors.muted : colors.card,
+                          opacity: off ? 0.35 : 1,
                         },
                       ]}
                     >
