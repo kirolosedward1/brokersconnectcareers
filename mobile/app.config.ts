@@ -236,6 +236,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     [
+      // An interview added to the phone's calendar from an application, when the candidate asks.
+      'expo-calendar',
+      {
+        calendarPermission: 'بنستخدم التقويم عشان نضيف ميعاد مقابلتك فيه، لما انت تطلب ده.',
+        writeOnlyCalendarPermission: 'بنستخدم التقويم عشان نضيف ميعاد مقابلتك فيه، لما انت تطلب ده.',
+        remindersPermission: false,
+      },
+    ],
+    [
       'expo-image-picker',
       {
         // The base language's strings; the English ones are in assets/locales.
