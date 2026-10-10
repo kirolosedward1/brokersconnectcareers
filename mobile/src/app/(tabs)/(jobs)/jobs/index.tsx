@@ -1,6 +1,6 @@
 import { useMemo, useState, type ComponentProps } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import { SearchX, SlidersHorizontal } from '~/components/ui/lucide';
@@ -35,6 +35,7 @@ import { Text } from '~/components/ui/text';
 import { useBrowseCounts } from '~/features/browse/queries';
 import { boardQuery, filtersToParams, sheetFilterCount, useFilterLabel } from '~/features/jobs/filters';
 import { useAppliedLast } from '~/features/jobs/marks';
+import { seenDividerBefore, useBoardVisit, useMarkBoardSeen } from '~/features/jobs/new-since';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
@@ -99,6 +100,20 @@ export default function BoardScreen() {
   const firstApplied = jobs.find((job) => applied.has(job.id))?.id;
 
   const owner = useListOwner();
+  // New since the last visit (features/jobs/new-since.ts): when this person
+  // last looked, as it was when this visit began; and, on the whole board,
+  // the newest listing in front of them now, kept for the next one.
+  const since = useBoardVisit(owner, board.data !== undefined);
+  const inView = useIsFocused();
+  useMarkBoardSeen(owner, {
+    since,
+    whole: countActiveFilters(filters) === 0 && filters.sort === 'newest',
+    inView,
+    jobs: shown,
+  });
+  // Only in the order the words are true of: newest first.
+  const seenBefore = filters.sort === 'newest' ? seenDividerBefore(jobs, since, applied) : null;
+
   const apply = (next: JobFilters) => {
     // Searched for words: kept for the filter sheet to offer again.
     if (next.q !== filters.q) rememberSearch(owner, next.q);
@@ -191,10 +206,13 @@ export default function BoardScreen() {
         keyExtractor={(job) => job.id}
         renderItem={({ item }) => (
           <>
+            {item.id === seenBefore ? <SeenDivider /> : null}
             {item.id === firstApplied ? <AppliedHeading /> : null}
             <JobCard job={item} applied={applied.has(item.id)} swipeable />
           </>
         )}
+        // The divider can move without the listings changing (this visit's start read from the phone).
+        extraData={seenBefore}
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
@@ -237,6 +255,31 @@ function AppliedHeading() {
     <Text variant="small" weight="semibold" tone="mutedForeground" accessibilityRole="header" style={{ paddingTop: space[3], paddingBottom: space[3] }}>
       {t('appliedHeading')}
     </Text>
+  );
+}
+
+/**
+ * Above the first listing published before this person last looked at the
+ * board: a hairline either side of a few words. Said as a heading, so
+ * VoiceOver can go straight to where the new ones end.
+ */
+function SeenDivider() {
+  const t = useTranslations('app.jobs');
+  const { colors } = useTheme();
+  const line = { flex: 1, height: StyleSheet.hairlineWidth * 2, backgroundColor: colors.border };
+  return (
+    <View
+      accessible
+      accessibilityRole="header"
+      accessibilityLabel={t('seenDivider')}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingTop: space[1], paddingBottom: space[4] }}
+    >
+      <View style={line} />
+      <Text variant="caption" weight="medium" tone="mutedForeground" style={{ flexShrink: 1, textAlign: 'center' }}>
+        {t('seenDivider')}
+      </Text>
+      <View style={line} />
+    </View>
   );
 }
 

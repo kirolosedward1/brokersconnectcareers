@@ -26,6 +26,7 @@ import { hideJob, unhideJob } from '~/features/moderation/hidden-jobs';
 import { dialog } from '~/lib/dialog';
 import { haptic } from '~/lib/haptics';
 import { useSheet } from '~/lib/use-sheet';
+import { useFewerLikeThis } from './fewer-like-this';
 import { SwipeCard } from './swipe-card';
 import { ZoomLink } from './zoom-link';
 
@@ -116,11 +117,13 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
       },
     ]);
   const share = () => shareJobLink({ slug: job.slug, title });
+  const fewer = useFewerLikeThis(job);
 
   const items: MenuItem[] = [
     { label: t('app.jobMenu.open'), icon: FileText, onPress: open },
     ...(save.savable && !save.pending ? [{ label: save.label, icon: save.saved ? BookmarkCheck : Bookmark, onPress: save.toggle }] : []),
     { label: t('app.jobMenu.share'), icon: Share2, onPress: share },
+    ...(fewer ? [fewer] : []),
     { label: t('app.jobMenu.hideJob'), icon: EyeOff, onPress: hideThis },
     { label: t('app.jobMenu.hideCompany'), icon: Ban, onPress: hideTheCompany, destructive: true },
   ];

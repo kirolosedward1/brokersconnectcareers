@@ -1,11 +1,14 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
-import { useTranslations } from 'use-intl';
+import { useLocale, useTranslations } from 'use-intl';
+import { localized } from '@/lib/locale';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { EyeOff } from '~/components/ui/lucide';
 import { EmptyState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
+import { fewerKey, showAsUsual, useFewerKinds } from '~/features/jobs/fewer';
+import { useListOwner } from '~/features/jobs/recent';
 import { unhideAgent, useHiddenAgentEntries } from '~/features/moderation/hidden-agents';
 import { unhideCompany, useHiddenCompanyEntries } from '~/features/moderation/hidden-companies';
 import { unhideJob, useHiddenJobEntries } from '~/features/moderation/hidden-jobs';
@@ -20,15 +23,21 @@ import { gutter, space } from '~/theme/tokens';
  * from the directory (hidden-agents.ts). Hiding takes them out of every list,
  * so their own pages — where "show again" also is — are no longer a tap
  * away; this list is. Kept on the phone, so it is here signed in or not.
+ *
+ * And the kinds of listing this person asked to see fewer of (fewer.ts),
+ * which are not hidden — they come last among Home's suggestions — but are
+ * set aside on this phone the same way, and taken back here the same way.
  */
 export default function HiddenScreen() {
   const t = useTranslations('app.moderation');
   const companies = useHiddenCompanyEntries();
   const agents = useHiddenAgentEntries();
   const jobs = useHiddenJobEntries();
+  const owner = useListOwner();
+  const fewer = useFewerEntries(owner);
   const header = <Stack.Screen options={{ title: t('hiddenList') }} />;
 
-  if (!companies.length && !agents.length && !jobs.length) {
+  if (!companies.length && !agents.length && !jobs.length && !fewer.length) {
     return (
       <>
         {header}
@@ -61,18 +70,41 @@ export default function HiddenScreen() {
             onShow={(entry) => unhideAgent(entry.id)}
           />
         ) : null}
+        {fewer.length ? (
+          <Section
+            title={t('fewerHeading')}
+            note={t('fewerNote')}
+            entries={fewer}
+            unnamed={t('unnamedJob')}
+            onShow={(entry) => showAsUsual(owner, entry.id)}
+          />
+        ) : null}
       </ScrollView>
     </>
   );
 }
 
+/** The kinds seen fewer of, each named as the menu found it: «بيع أول · التجمع الخامس». */
+function useFewerEntries(owner: string): HiddenEntry[] {
+  const t = useTranslations();
+  const locale = useLocale();
+  return useFewerKinds(owner).map((kind) => ({
+    id: fewerKey(kind),
+    name: `${t(`track.${kind.track}`)} · ${localized(locale, kind.district.name_ar, kind.district.name_en)}`,
+    slug: null,
+  }));
+}
+
 function Section({
   title,
+  note,
   entries,
   unnamed,
   onShow,
 }: {
   title: string;
+  /** What being in this list does, when it is not "hidden". */
+  note?: string;
   entries: readonly HiddenEntry[];
   unnamed: string;
   onShow: (entry: HiddenEntry) => void;
@@ -84,6 +116,11 @@ function Section({
       <Text variant="label" weight="semibold" tone="mutedForeground" accessibilityRole="header" style={{ paddingHorizontal: space[1] }}>
         {title}
       </Text>
+      {note ? (
+        <Text variant="caption" tone="mutedForeground" style={{ paddingHorizontal: space[1] }}>
+          {note}
+        </Text>
+      ) : null}
       <Card style={{ paddingVertical: space[1] }}>
         {entries.map((entry, index) => {
           const name = entry.name ?? unnamed;

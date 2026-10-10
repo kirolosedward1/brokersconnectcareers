@@ -36,6 +36,8 @@ import { LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { shareMyData } from '~/features/account/settings';
 import { useMobileConfig } from '~/features/config';
+import { useFewerKinds } from '~/features/jobs/fewer';
+import { useListOwner } from '~/features/jobs/recent';
 import { useHiddenAgentEntries } from '~/features/moderation/hidden-agents';
 import { useHiddenCompanyEntries } from '~/features/moderation/hidden-companies';
 import { useHiddenJobEntries } from '~/features/moderation/hidden-jobs';
@@ -70,8 +72,9 @@ export default function AccountScreen() {
   const config = useMobileConfig();
   // Read for a candidate only (useCandidateSummary): nobody else has a profile score.
   const completeness = useCandidateSummary().data?.profile_completeness ?? null;
-  // What this phone hides, signed in or not: the way back to it, once there is any.
-  const hiddenCount = useHiddenCompanyEntries().length + useHiddenAgentEntries().length + useHiddenJobEntries().length;
+  // What this phone hides, signed in or not — and the kinds this person sees fewer of: the way back to it, once there is any.
+  const hiddenCount =
+    useHiddenCompanyEntries().length + useHiddenAgentEntries().length + useHiddenJobEntries().length + useFewerKinds(useListOwner()).length;
   // The website's own fallback (its footer and the config route): the
   // operator's published address when no support inbox is set.
   const supportEmail = config.data?.supportEmail || OPERATOR.email;

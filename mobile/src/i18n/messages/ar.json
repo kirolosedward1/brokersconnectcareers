@@ -5,7 +5,8 @@
     "saved": "المحفوظات",
     "account": "حسابي",
     "applicants": "المتقدمين",
-    "consultants": "الاستشاريين"
+    "consultants": "الاستشاريين",
+    "jobsNew": "{name}، {count, plural, one {وظيفة جديدة} two {وظيفتين جداد} few {<v>#</v> وظائف جديدة} many {<v>#</v> وظيفة جديدة} other {<v>#</v> وظيفة جديدة}} من آخر مرة بصّيت"
   },
   "offline": {
     "title": "مفيش اتصال بالإنترنت",
@@ -52,7 +53,16 @@
     "appliedHeading": "وظائف قدّمت عليها",
     "recentSearches": "دوّرت قبل كده على",
     "recentSearchesClear": "امسح",
-    "recentSearch": "دوّر تاني على {words}"
+    "recentSearch": "دوّر تاني على {words}",
+    "suggestions": "اقتراحات",
+    "suggestArea": "منطقة: {name}",
+    "suggestTrack": "تخصص: {name}",
+    "suggestWords": "دوّر على {words}",
+    "suggestKindArea": "منطقة",
+    "suggestKindTrack": "تخصص",
+    "suggestKindTitle": "وظيفة",
+    "suggestKindCompany": "شركة",
+    "seenDivider": "اتنشرت قبل آخر مرة بصّيت"
   },
   "auth": {
     "forCompanies": "سجّل شركتك",
@@ -110,7 +120,9 @@
     "showAgain": "رجّع",
     "showAgainNamed": "رجّع {name}",
     "hiddenJobs": "وظائف",
-    "unnamedJob": "إعلان خبّيته"
+    "unnamedJob": "إعلان خبّيته",
+    "fewerHeading": "وظائف بتشوف أقل منها",
+    "fewerNote": "بتيجي في آخر الوظائف المقترحة عليك في الرئيسية، وبتفضل تظهر عادي في الوظائف."
   },
   "applications": {
     "withdrawTitle": "تسحب طلبك على «{title}»؟",
@@ -286,7 +298,9 @@
     "withdrawn": "اتسحب الطلب",
     "following": "هيوصلك كل إعلان جديد من {company}",
     "unfollowed": "مش هتتابع {company} تاني",
-    "entrySaved": "اتحفظت في سيرتك الذاتية"
+    "entrySaved": "اتحفظت في سيرتك الذاتية",
+    "fewer": "هنقلّل الوظائف اللي زي دي",
+    "fewerOff": "هترجع الوظائف اللي زي دي عادي"
   },
   "jobMenu": {
     "open": "افتح الإعلان",
@@ -295,7 +309,9 @@
     "hideCompany": "خبّي كل إعلانات الشركة",
     "swipeSave": "احفظ",
     "swipeUnsave": "شيل",
-    "swipeHide": "خبّي"
+    "swipeHide": "خبّي",
+    "fewer": "اعرضلي أقل من كده",
+    "fewerOff": "رجّع اللي زي دي عادي"
   },
   "shortcuts": {
     "searchJobs": "دوّر على وظيفة",

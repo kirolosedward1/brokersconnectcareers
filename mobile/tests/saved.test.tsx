@@ -366,6 +366,7 @@ describe('a card on the board, held', () => {
       ar.app.jobMenu.open,
       ar.jobs.save,
       ar.app.jobMenu.share,
+      ar.app.jobMenu.fewer,
       ar.app.jobMenu.hideJob,
       ar.app.jobMenu.hideCompany,
     ]);

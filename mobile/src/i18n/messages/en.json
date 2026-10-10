@@ -5,7 +5,8 @@
     "saved": "Saved",
     "account": "Account",
     "applicants": "Applicants",
-    "consultants": "Consultants"
+    "consultants": "Consultants",
+    "jobsNew": "{name}, {count, plural, one {# new job} other {# new jobs}} since you last looked"
   },
   "offline": {
     "title": "No internet connection",
@@ -52,7 +53,16 @@
     "appliedHeading": "Jobs you applied to",
     "recentSearches": "Searched lately",
     "recentSearchesClear": "Clear",
-    "recentSearch": "Search again for {words}"
+    "recentSearch": "Search again for {words}",
+    "suggestions": "Suggestions",
+    "suggestArea": "Area: {name}",
+    "suggestTrack": "Track: {name}",
+    "suggestWords": "Search for {words}",
+    "suggestKindArea": "Area",
+    "suggestKindTrack": "Track",
+    "suggestKindTitle": "Job",
+    "suggestKindCompany": "Company",
+    "seenDivider": "Posted before you last looked"
   },
   "auth": {
     "forCompanies": "Register your company",
@@ -110,7 +120,9 @@
     "showAgain": "Show again",
     "showAgainNamed": "Show {name} again",
     "hiddenJobs": "Listings",
-    "unnamedJob": "A listing you hid"
+    "unnamedJob": "A listing you hid",
+    "fewerHeading": "Fewer like these",
+    "fewerNote": "They come last among the roles suggested to you on Home, and still show on the board."
   },
   "applications": {
     "withdrawTitle": "Withdraw your application to “{title}”?",
@@ -286,7 +298,9 @@
     "withdrawn": "Application withdrawn",
     "following": "You'll hear about every new job at {company}",
     "unfollowed": "You stopped following {company}",
-    "entrySaved": "Saved to your CV"
+    "entrySaved": "Saved to your CV",
+    "fewer": "We'll show fewer jobs like this",
+    "fewerOff": "Jobs like this will show as usual again"
   },
   "jobMenu": {
     "open": "Open listing",
@@ -295,7 +309,9 @@
     "hideCompany": "Hide everything from this company",
     "swipeSave": "Save",
     "swipeUnsave": "Remove",
-    "swipeHide": "Hide"
+    "swipeHide": "Hide",
+    "fewer": "Show fewer like this",
+    "fewerOff": "Show jobs like this as usual"
   },
   "shortcuts": {
     "searchJobs": "Search jobs",
