@@ -6,6 +6,7 @@ import type { SavedSearchRow } from '@/lib/supabase/database.types';
 import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
+import { cancelReminder } from './reminders';
 
 /**
  * What a candidate keeps: bookmarked listings, saved searches, and followed
@@ -126,7 +127,11 @@ export function useToggleSavedJob() {
       set(jobId, !saved);
     },
     // The server's answer is the truth: it toggles what it has, not what the screen showed.
-    onSuccess: (saved, { jobId }) => set(jobId, saved),
+    onSuccess: (saved, { jobId }) => {
+      set(jobId, saved);
+      // A reminder before it closes is for a listing kept: the bookmark gone, so is the reminder.
+      if (!saved && candidateId) void cancelReminder(candidateId, jobId);
+    },
     onError: (_error, { jobId, saved }) => set(jobId, saved),
     onSettled: (_saved, error) => {
       // Home counts what is saved (candidate_summary).

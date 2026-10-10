@@ -14,6 +14,7 @@ import {
 } from '~/features/push/device';
 import { useUnreadCount } from '~/features/notifications/queries';
 import { pushTapped, takePushTap, usePushTap } from '~/features/push/taps';
+import { syncReminders } from '~/features/saved/reminders';
 import { openWhenReady } from '~/lib/open-path';
 import { clearPersonalCache } from '~/lib/personal-cache';
 import { storedSession, useSession } from '~/lib/session';
@@ -122,16 +123,29 @@ export function PushBridge() {
     return () => subscription.remove();
   }, [queryClient]);
 
+  // A person's reminders before a saved listing closes are theirs alone: off
+  // the phone when they leave, back when they return (features/saved/reminders.ts).
+  useEffect(() => {
+    void syncReminders(userId ?? 'anon');
+  }, [userId]);
+
   // Taps: the one that launched the app, then each one after.
   useEffect(() => {
-    const launched = notificationIdOf(Notifications.getLastNotificationResponse());
+    const response = Notifications.getLastNotificationResponse();
+    const launched = notificationIdOf(response);
+    // One of the app's own that launched it (a reminder before a listing closes) opens where it says.
+    const launchedLocal = localHrefOf(response);
     if (launched) {
       Notifications.clearLastNotificationResponse();
       pushTapped(launched);
+    } else if (launchedLocal) {
+      Notifications.clearLastNotificationResponse();
+      openWhenReady(launchedLocal);
     }
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const id = notificationIdOf(response);
-      // One of the app's own, from this phone (a consultant search's news, features/directory/alerts.ts).
+      // One of the app's own, from this phone (a consultant search's news, features/directory/alerts.ts;
+      // a reminder before a saved listing closes, features/saved/reminders.ts).
       const local = localHrefOf(response);
       if (!id && local) {
         Notifications.clearLastNotificationResponse();
@@ -172,8 +186,14 @@ export function PushBridge() {
   return null;
 }
 
-/** Where a notification the app posted itself leads: the directory only, never an address from elsewhere. */
-function localHrefOf(response: Notifications.NotificationResponse | null): string | null {
+/**
+ * Where a notification the app posted itself leads: the directory, or one
+ * listing — never an address from elsewhere. Opened as a pushed link is
+ * (openWhenReady), so it waits for the session and lands in a tab the reader has.
+ */
+export function localHrefOf(response: Notifications.NotificationResponse | null): string | null {
+  if (response && response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return null;
   const href = (response?.notification.request.content.data as { localHref?: unknown } | undefined)?.localHref;
-  return typeof href === 'string' && href.startsWith('/agents') ? href : null;
+  if (typeof href !== 'string') return null;
+  return href.startsWith('/agents') || /^\/jobs\/[a-z0-9-]+$/i.test(href) ? href : null;
 }

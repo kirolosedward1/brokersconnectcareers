@@ -3,7 +3,7 @@
  *
  * `lucide-react-native`'s index requires every one of its 1,854 icons as it
  * loads — about 2 MB of the bundle and 20 to 30 ms before the first frame on
- * a phone — for the 105 used here. One module per icon loads only those. Add
+ * a phone — for the 109 used here. One module per icon loads only those. Add
  * an icon here, from `lucide-react-native/icons/<its-file-name>`, and import
  * it from this file.
  */
@@ -16,6 +16,7 @@ export { default as BadgeX } from 'lucide-react-native/icons/badge-x';
 export { default as Ban } from 'lucide-react-native/icons/ban';
 export { default as Banknote } from 'lucide-react-native/icons/banknote';
 export { default as Bell } from 'lucide-react-native/icons/bell';
+export { default as BellCheck } from 'lucide-react-native/icons/bell-check';
 export { default as BellOff } from 'lucide-react-native/icons/bell-off';
 export { default as BellPlus } from 'lucide-react-native/icons/bell-plus';
 export { default as BellRing } from 'lucide-react-native/icons/bell-ring';
@@ -59,6 +60,7 @@ export { default as Globe } from 'lucide-react-native/icons/globe';
 export { default as GraduationCap } from 'lucide-react-native/icons/graduation-cap';
 export { default as HandCoins } from 'lucide-react-native/icons/hand-coins';
 export { default as History } from 'lucide-react-native/icons/rotate-ccw-clock';
+export { default as Hourglass } from 'lucide-react-native/icons/hourglass';
 export { default as House } from 'lucide-react-native/icons/house';
 export { default as ImageUp } from 'lucide-react-native/icons/image-up';
 export { default as Inbox } from 'lucide-react-native/icons/inbox';
@@ -76,6 +78,8 @@ export { default as MapPin } from 'lucide-react-native/icons/map-pin';
 export { default as MessageCircle } from 'lucide-react-native/icons/message-circle';
 export { default as MessageSquareReply } from 'lucide-react-native/icons/message-square-reply';
 export { default as MessageSquareText } from 'lucide-react-native/icons/message-square-text';
+export { default as MoveHorizontal } from 'lucide-react-native/icons/move-horizontal';
+export { default as NotebookPen } from 'lucide-react-native/icons/notebook-pen';
 export { default as Paperclip } from 'lucide-react-native/icons/paperclip';
 export { default as Pencil } from 'lucide-react-native/icons/pencil';
 export { default as Phone } from 'lucide-react-native/icons/phone';
