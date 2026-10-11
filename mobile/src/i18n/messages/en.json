@@ -326,5 +326,52 @@
     "newJobs": "New jobs on the board",
     "opened": "Applications companies opened",
     "views": "Profile views, last 30 days"
+  },
+  "saved": {
+    "closing": "{days, plural, =0 {Closes today} =1 {Closes tomorrow} other {Closes in # days}}",
+    "compare": {
+      "start": "Compare",
+      "startHint": "Choose two or {max} open jobs and see them side by side",
+      "choose": "Choose two or {max} jobs to compare",
+      "pickHint": "Chooses it to compare",
+      "limit": "You can compare up to {max} jobs",
+      "picked": "{count, plural, =0 {No jobs chosen yet} one {1 job chosen} other {# jobs chosen}}",
+      "go": "Compare ({count})",
+      "title": "Compare jobs",
+      "lede": "Side by side, with the best in each row marked.",
+      "scrollHint": "Swipe sideways to see the rest",
+      "best": "Best",
+      "salary": "Basic salary a month",
+      "tooFew": "Comparing needs at least two jobs",
+      "tooFewBody": "A job you chose was taken out of Saved or has closed. Go back and choose again.",
+      "back": "Back to Saved"
+    },
+    "notes": {
+      "title": "Your note",
+      "prefix": "Your note:",
+      "add": "Add a note",
+      "edit": "Edits the note",
+      "forListing": "Add a note to yourself about this listing",
+      "private": "Kept on this phone only. Nobody else sees it.",
+      "placeholder": "e.g. Spoke to them; interview on Sunday morning",
+      "count": "{count}/{max}",
+      "countSpoken": "{count} of {max} characters",
+      "saved": "Note saved",
+      "deleted": "Note deleted",
+      "delete": "Delete"
+    },
+    "remind": {
+      "set": "Remind me",
+      "setSpoken": "Remind me the day before it closes",
+      "on": "Reminder on",
+      "when": "We'll remind you on {when}",
+      "cancelHint": "Cancels the reminder",
+      "cancelled": "Reminder cancelled",
+      "denied": "Notifications are off for the app, so we can't remind you. Turn them on in Settings.",
+      "tooLate": "This listing closes within the hour: too late for a reminder",
+      "failed": "We couldn't set the reminder. Try again.",
+      "notifyTitle": "{day, select, today {This listing closes today} other {This listing closes tomorrow}}",
+      "notifyBody": "{job} at {company}. Apply before it closes."
+    }
   }
 }
