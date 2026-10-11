@@ -230,6 +230,22 @@ print(len(read))
 PY
 }
 
+# same_screen <shot> <shot>: whether two readings are the same screen, the
+# clock aside — a swipe that left the list where it was.
+same_screen() {
+  python3 - "$out/$1.boxes" "$out/$2.boxes" <<'PY'
+import re, sys
+def lines(path):
+    try:
+        rows = [raw.rstrip("\n") for raw in open(path, encoding="utf-8")]
+    except OSError:
+        return None
+    return [row for row in rows if not re.match(r"y[0-4] ", row)]
+a, b = lines(sys.argv[1]), lines(sys.argv[2])
+print("yes" if a is not None and a == b else "no")
+PY
+}
+
 # Each step's Maestro run is kept apart and shown with the step's reading:
 # whether it found what it was to tap, and what it saw of the screen.
 step_run() {
@@ -293,7 +309,10 @@ open_app jobs
 see 3-jobs 'الفلاتر'
 in_header 3-jobs 'الوظائف'
 tour 3b-jobs-scrolled-down 'scrolled down: the bar smaller, its names gone' "$flows/expo-go-scroll-down.yaml"
-if [ "$(bar_names 3b-jobs-scrolled-down)" != 0 ]; then
+if [ "$(same_screen 3-jobs 3b-jobs-scrolled-down)" = yes ]; then
+  failed+=("3b-jobs-scrolled-down: the swipe did not move the list")
+  echo "::error title=Expo Go: 3b-jobs-scrolled-down::the board reads the same before and after the swipe: the list did not move, so the bar had nothing to shrink for"
+elif [ "$(bar_names 3b-jobs-scrolled-down)" != 0 ]; then
   failed+=("3b-jobs-scrolled-down: the tab bar kept its names")
   echo "::error title=Expo Go: 3b-jobs-scrolled-down::the tab bar's names are still read after scrolling down"
 fi

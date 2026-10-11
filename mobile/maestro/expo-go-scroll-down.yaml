@@ -1,5 +1,10 @@
-# Goes down the screen, the way a reader goes down a list (scripts/expo-go-look.sh).
+# Goes down the screen, the way a reader goes down a list: a finger drawn up
+# it (scripts/expo-go-look.sh). Drawn as a swipe from one point to another
+# rather than Maestro's own `scroll`, whose quick flick now and then left the
+# list where it was — the step then read a bar that had nothing to shrink for.
 appId: host.exp.Exponent
 ---
-- scroll
+- swipe:
+    start: 50%, 75%
+    end: 50%, 30%
 - waitForAnimationToEnd
