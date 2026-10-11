@@ -3,7 +3,7 @@
  *
  * `lucide-react-native`'s index requires every one of its 1,854 icons as it
  * loads — about 2 MB of the bundle and 20 to 30 ms before the first frame on
- * a phone — for the 109 used here. One module per icon loads only those. Add
+ * a phone — for the 110 used here. One module per icon loads only those. Add
  * an icon here, from `lucide-react-native/icons/<its-file-name>`, and import
  * it from this file.
  */
@@ -101,6 +101,7 @@ export { default as SlidersHorizontal } from 'lucide-react-native/icons/sliders-
 export { default as Sparkles } from 'lucide-react-native/icons/sparkles';
 export { default as Star } from 'lucide-react-native/icons/star';
 export { default as Target } from 'lucide-react-native/icons/target';
+export { default as ThumbsDown } from 'lucide-react-native/icons/thumbs-down';
 export { default as Trash2 } from 'lucide-react-native/icons/trash';
 export { default as TrendingDown } from 'lucide-react-native/icons/trending-down';
 export { default as TrendingUp } from 'lucide-react-native/icons/trending-up';

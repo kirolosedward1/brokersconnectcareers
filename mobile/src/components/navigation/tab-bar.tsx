@@ -5,7 +5,10 @@ import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'ex
 import { CommonActions } from 'expo-router/react-navigation';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { useLocale } from 'use-intl';
 import { trustedAvatarUrl } from '@/lib/avatar-url';
+import { formatList, formatNumber } from '@/lib/format';
+import { Appear } from '~/components/motion/appear';
 import type { LucideProps } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
@@ -88,9 +91,17 @@ type Frame = { x: number; width: number };
  * page fading into it rather than cut off at its edge, and the bar sits in it
  * as the website's floating cards do. Laid out in the app's direction: in
  * Arabic, Home is at the right.
+ *
+ * A tab can wear a count (`tabBarBadge`, as React Navigation's own bar takes
+ * it): a small pill in the brand colour at the icon's top corner on the
+ * reading side's end, "9+" past nine, gone at nought and while that tab is
+ * the one open. VoiceOver hears it in the tab's name — the screen's own words
+ * for the count when it gives them (`tabBarAccessibilityLabel`), the name and
+ * the number otherwise.
  */
 export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
   const { colors, scheme, shadow } = useTheme();
+  const locale = useLocale();
   const small = useTabBarSmall();
   const reduceMotion = useReduceMotion();
   const reduceTransparency = useReduceTransparency();
@@ -222,10 +233,15 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const focused = index === state.index;
+          const name = options.title ?? route.name;
+          // A count says there is something to see over there: not on the tab already open.
+          const badge = focused ? null : badgeText(options.tabBarBadge, locale);
           return (
             <TabButton
               key={route.key}
-              name={options.title ?? route.name}
+              name={name}
+              label={badge ? (options.tabBarAccessibilityLabel ?? formatList([name, badge], locale)) : name}
+              badge={badge}
               testID={`tab-${route.name}`}
               focused={focused}
               lensed={lensed === route.key}
@@ -413,6 +429,9 @@ type IconMoves = [{ translateY: Animated.AnimatedInterpolation<number> }, { scal
 
 type TabButtonProps = {
   name: string;
+  /** What VoiceOver reads: the name, with the count when there is one. */
+  label: string;
+  badge: string | null;
   testID: string;
   focused: boolean;
   lensed: boolean;
@@ -431,7 +450,7 @@ type TabButtonProps = {
  * iOS's own tab icons do; under the lens a finger draws along the bar it grows
  * a little, as if seen through it. Neither with Reduce Motion on.
  */
-function TabButton({ name, testID, focused, lensed, tint, icon, iconMoves, nameShows, onLayout, onPress, onLongPress }: TabButtonProps) {
+function TabButton({ name, label, badge, testID, focused, lensed, tint, icon, iconMoves, nameShows, onLayout, onPress, onLongPress }: TabButtonProps) {
   const reduceMotion = useReduceMotion();
   const [bump] = useState(() => new Animated.Value(0));
   const [magnify] = useState(() => new Animated.Value(0));
@@ -469,7 +488,7 @@ function TabButton({ name, testID, focused, lensed, tint, icon, iconMoves, nameS
     <PressableScale
       accessibilityRole="tab"
       accessibilityState={{ selected: focused }}
-      accessibilityLabel={name}
+      accessibilityLabel={label}
       // Names keep their size, as iOS's own tab bar's do; held, a
       // reader with large text sees the tab's name large instead.
       accessibilityShowsLargeContentViewer
@@ -480,7 +499,10 @@ function TabButton({ name, testID, focused, lensed, tint, icon, iconMoves, nameS
       onLongPress={onLongPress}
       style={styles.tab}
     >
-      <Animated.View style={{ transform: [...(iconMoves ?? []), ...own] }}>{icon?.({ focused, color: tint, size: ICON })}</Animated.View>
+      <Animated.View style={{ transform: [...(iconMoves ?? []), ...own] }}>
+        {icon?.({ focused, color: tint, size: ICON })}
+        {badge ? <TabBadge text={badge} /> : null}
+      </Animated.View>
       <Animated.View style={{ opacity: nameShows, transform: iconMoves ? [iconMoves[0]] : undefined }}>
         <Text
           variant="label"
@@ -495,6 +517,33 @@ function TabButton({ name, testID, focused, lensed, tint, icon, iconMoves, nameS
         </Text>
       </Animated.View>
     </PressableScale>
+  );
+}
+
+/** What a badge says: a count up to nine, "9+" past it; nothing at nought or for nothing. */
+export function badgeText(badge: number | string | undefined, locale: string): string | null {
+  if (badge === undefined || badge === '') return null;
+  if (typeof badge === 'string') return badge;
+  if (!(badge > 0)) return null;
+  return badge > 9 ? `${formatNumber(9, locale)}+` : formatNumber(badge, locale);
+}
+
+/**
+ * The count on a tab: a pill in the brand colour, ringed in the bar's own so
+ * it stands off the icon, settling into place as it first shows (only fading,
+ * with Reduce Motion on). Its size stays put at every text size, as the
+ * tabs' names do; the number is in the tab's name for VoiceOver.
+ */
+function TabBadge({ text }: { text: string }) {
+  const { colors } = useTheme();
+  return (
+    <Appear from="none" scale={0.5} duration={240} pointerEvents="none" style={styles.badge}>
+      <View testID="tab-badge" style={[styles.badgePill, { backgroundColor: colors.primary, borderColor: colors.card }]}>
+        <Text weight="bold" allowFontScaling={false} style={{ color: colors.primaryForeground, fontSize: 11, lineHeight: 14, textAlign: 'center' }}>
+          {text}
+        </Text>
+      </View>
+    </Appear>
   );
 }
 
@@ -619,5 +668,20 @@ const styles = StyleSheet.create({
     height: BAR - INSET * 2,
     borderRadius: (BAR - INSET * 2) / 2,
     borderCurve: 'continuous',
+  },
+  // Over the icon's top corner at the end of the reading: the left in Arabic, as iOS puts its own in a right-to-left bar.
+  badge: {
+    position: 'absolute',
+    top: -6,
+    end: -12,
+  },
+  badgePill: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    ...corner('full'),
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -1,8 +1,9 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale, useTranslations } from 'use-intl';
-import { History, Search, X } from '~/components/ui/lucide';
+import { Appear } from '~/components/motion/appear';
+import { BriefcaseBusiness, Building2, History, Layers, MapPin, Search, X, type LucideProps } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import type { JobFilters } from '@/lib/job-filters';
 import { localized } from '@/lib/locale';
@@ -25,11 +26,12 @@ import { boardQuery, clearSheetFilters, sheetFilterCount, toggled } from '~/feat
 import { useBoardTotal } from '~/features/jobs/queries';
 import { useListOwner } from '~/features/jobs/recent';
 import { recentSearches } from '~/features/jobs/recent-searches';
+import { useSearchSuggestions, withSuggestion, type SearchSuggestion, type Span } from '~/features/jobs/suggestions';
 import { useDistricts, useGovernorates } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
 import { haptic } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
-import { gutter, hitTarget, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * Every filter the website's /jobs panel has (src/components/jobs/job-filters.tsx),
@@ -116,8 +118,13 @@ export function FilterSheet({
           autoCorrect={false}
           leading={<Search size={18} color={colors.mutedForeground} />}
         />
-        {/* What was searched lately, a tap from searching it again — while nothing is typed. */}
-        {words.trim() ? null : <RecentSearches onPick={(picked) => onApply({ ...typed, q: picked })} />}
+        {/* What was searched lately, a tap from searching it again — while nothing is typed; once
+            something is, the areas, tracks and listings it names, a tap from the board narrowed to one. */}
+        {words.trim() ? (
+          <SearchSuggestions typed={words} onPick={(suggestion) => onApply(withSuggestion(typed, suggestion))} />
+        ) : (
+          <RecentSearches onPick={(picked) => onApply({ ...typed, q: picked })} />
+        )}
       </View>
 
       <FilterGroup title={t('filters.leadsSource')}>
@@ -258,6 +265,145 @@ function RecentSearches({ onPick }: { onPick: (words: string) => void }) {
         ))}
       </View>
     </View>
+  );
+}
+
+const SUGGESTION_ICONS: Record<SearchSuggestion['kind'], ComponentType<LucideProps>> = {
+  district: MapPin,
+  track: Layers,
+  title: BriefcaseBusiness,
+  company: Building2,
+};
+
+/**
+ * What the words typed so far name (features/jobs/suggestions.ts), under the
+ * field: each a row with its kind's icon, the name with the letters typed
+ * marked in it, and what kind of thing it is. Tapped, the board is shown for
+ * it at once, as a recent search is. A tap while the keyboard is up is taken
+ * (the sheet's scroll view keeps taps that are handled).
+ */
+function SearchSuggestions({ typed, onPick }: { typed: string; onPick: (suggestion: SearchSuggestion) => void }) {
+  const t = useTranslations('app.jobs');
+  const { colors } = useTheme();
+  const suggestions = useSearchSuggestions(typed);
+  if (!suggestions.length) return null;
+
+  const kindLabel: Record<SearchSuggestion['kind'], string> = {
+    district: t('suggestKindArea'),
+    track: t('suggestKindTrack'),
+    title: t('suggestKindTitle'),
+    company: t('suggestKindCompany'),
+  };
+  const spoken = (suggestion: SearchSuggestion) =>
+    suggestion.kind === 'district'
+      ? t('suggestArea', { name: suggestion.label })
+      : suggestion.kind === 'track'
+        ? t('suggestTrack', { name: suggestion.label })
+        : t('suggestWords', { words: suggestion.words });
+
+  return (
+    <Appear from="none" duration={200}>
+      <View
+        accessibilityLabel={t('suggestions')}
+        style={{
+          marginTop: space[1],
+          ...corner('lg'),
+          borderWidth: StyleSheet.hairlineWidth * 2,
+          borderColor: colors.border,
+          backgroundColor: colors.card,
+          overflow: 'hidden',
+        }}
+      >
+        {suggestions.map((suggestion, index) => {
+          const Icon = SUGGESTION_ICONS[suggestion.kind];
+          const elsewhere = suggestion.matched !== suggestion.label;
+          return (
+            <Pressable
+              key={suggestion.key}
+              accessibilityRole="button"
+              accessibilityLabel={spoken(suggestion)}
+              onPress={() => {
+                haptic.selection();
+                onPick(suggestion);
+              }}
+              style={({ pressed }) => ({
+                minHeight: hitTarget + 4,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space[3],
+                paddingHorizontal: space[3],
+                paddingVertical: space[2],
+                borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
+                borderTopColor: colors.border,
+                backgroundColor: pressed ? colors.muted : 'transparent',
+              })}
+            >
+              <View style={{ width: 30, height: 30, ...corner('md'), alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondary }}>
+                <Icon size={16} color={colors.secondaryForeground} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                {elsewhere ? (
+                  <Text weight="medium" numberOfLines={2}>
+                    {suggestion.label}
+                  </Text>
+                ) : (
+                  <Marked text={suggestion.label} span={suggestion.span} weight="medium" ink={colors.foreground} mark={colors.primary} ground={colors.secondary} />
+                )}
+                {/* Found by another of its names — "New Cairo", «التجمع»: that name, marked, beneath. */}
+                {elsewhere ? (
+                  <Marked
+                    text={suggestion.matched}
+                    span={suggestion.span}
+                    variant="caption"
+                    ink={colors.mutedForeground}
+                    mark={colors.primary}
+                    ground={colors.secondary}
+                  />
+                ) : null}
+              </View>
+              <Text variant="caption" tone="mutedForeground">
+                {kindLabel[suggestion.kind]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </Appear>
+  );
+}
+
+/**
+ * A name with the letters typed marked in it: in the brand colour on a soft
+ * ground, in the same font as the rest. The marked letters are a run nested
+ * inside the one Text, so Arabic letters either side of its edge stay joined;
+ * a weight of their own would be another font, whose join across the edge
+ * iOS does not promise.
+ */
+function Marked({
+  text,
+  span,
+  variant = 'body',
+  weight = 'regular',
+  ink,
+  mark,
+  ground,
+}: {
+  text: string;
+  span: Span;
+  variant?: 'body' | 'caption';
+  weight?: 'regular' | 'medium';
+  ink: ColorValue;
+  mark: ColorValue;
+  ground: ColorValue;
+}) {
+  return (
+    <Text variant={variant} weight={weight} numberOfLines={2} style={{ color: ink }}>
+      {text.slice(0, span.start)}
+      <Text variant={variant} weight={weight} style={{ color: mark, backgroundColor: ground }}>
+        {text.slice(span.start, span.end)}
+      </Text>
+      {text.slice(span.end)}
+    </Text>
   );
 }
 

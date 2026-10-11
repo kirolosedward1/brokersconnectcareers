@@ -3,6 +3,8 @@ import { useTranslations } from 'use-intl';
 import { accountTabIcon, TabBar, tabIcon } from '~/components/navigation/tab-bar';
 import { Bookmark, Briefcase, Building2, CircleUserRound, ClipboardList, FileText, House, Inbox, Users } from '~/components/ui/lucide';
 import { useConsultantAlerts } from '~/features/directory/alerts';
+import { useNewJobsBadge } from '~/features/jobs/new-since';
+import { markupTags } from '~/i18n/rich';
 import { useSession } from '~/lib/session';
 import { tabsFor, type TabName } from '~/lib/tabs';
 
@@ -41,6 +43,8 @@ export default function TabsLayout() {
     body: label,
   }));
   const has = (tab: TabName) => tabs.includes(tab);
+  // Listings published since the board was last looked at (features/jobs/new-since.ts).
+  const newJobs = useNewJobsBadge();
 
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
@@ -52,7 +56,12 @@ export default function TabsLayout() {
       <Tabs.Protected guard={has('jobs')}>
         <Tabs.Screen
           name="(jobs)"
-          options={{ title: t('nav.jobs'), tabBarIcon: tabIcon({ default: 'briefcase', selected: 'briefcase.fill' }, Briefcase) }}
+          options={{
+            title: t('nav.jobs'),
+            tabBarIcon: tabIcon({ default: 'briefcase', selected: 'briefcase.fill' }, Briefcase),
+            tabBarBadge: newJobs || undefined,
+            tabBarAccessibilityLabel: newJobs ? t.markup('app.tabs.jobsNew', { name: t('nav.jobs'), count: newJobs, ...markupTags }) : undefined,
+          }}
         />
       </Tabs.Protected>
 
