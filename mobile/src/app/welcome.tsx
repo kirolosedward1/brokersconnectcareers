@@ -21,9 +21,9 @@ import { corner, gutter, motion, space } from '~/theme/tokens';
 const PHOTO = require('../../assets/images/welcome-photo.jpg');
 
 /**
- * When the screen's parts arrive, after the first frame: the splash screen
- * comes down onto that frame (the root layout), and what moves under it is
- * never seen. Skip first — it opens at every launch with nobody signed in, and
+ * When the screen's parts arrive, after the first frame: the screen fades in
+ * over the launch curtain or the tabs (the root layout), and its parts follow
+ * it in. Skip first — it opens at every launch with nobody signed in, and
  * someone who has seen it before is not kept waiting for the way past it
  * (iOS takes no taps on what has not begun to show) — with the photograph
  * settling behind it; then the logo, the words and the ways on.

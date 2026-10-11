@@ -13,7 +13,7 @@ import { IBMPlexSansArabic_400Regular } from '@expo-google-fonts/ibm-plex-sans-a
 import { IBMPlexSansArabic_500Medium } from '@expo-google-fonts/ibm-plex-sans-arabic/500Medium';
 import { IBMPlexSansArabic_600SemiBold } from '@expo-google-fonts/ibm-plex-sans-arabic/600SemiBold';
 import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic/700Bold';
-import { LaunchScreen } from '~/components/brand/launch-screen';
+import { LaunchCurtain } from '~/components/brand/launch-screen';
 import { AppError, ScreenError } from '~/components/navigation/error-boundaries';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
@@ -28,6 +28,7 @@ import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies
 import { useHiddenJobsLoaded } from '~/features/moderation/hidden-jobs';
 import { ToastHost } from '~/components/feedback/toast';
 import { HomeShortcuts } from '~/components/navigation/home-shortcuts';
+import { launchReady } from '~/features/launch';
 import { useWelcomeDrawn } from '~/features/welcome';
 import { I18nProvider } from '~/i18n/provider';
 import { installCrashLog } from '~/lib/crash-log';
@@ -57,11 +58,11 @@ export { AppError as ErrorBoundary };
 
 /**
  * Everything the screens stand on: the website's font, cached server state,
- * the theme, the website's catalogue, and who is signed in. The splash screen
- * stays up until the font is ready and the phone has said who was signed in
- * last, so no screen is ever drawn in the system font first, nor with a tab
- * bar that changes a moment later; under it, and wherever it comes down
- * sooner, the same logo mark (LaunchScreen).
+ * the theme, the website's catalogue, and who is signed in. The launch
+ * curtain (LaunchCurtain) — the logo mark, as the phone's launch screen draws
+ * it — stays over them until the font is ready and the phone has said who was
+ * signed in last, so no screen is ever seen in the system font first, nor
+ * with a tab bar that changes a moment later.
  *
  * All of it in the app's direction (src/lib/direction.ts): every view laid
  * out in it, and every navigator's header and back gesture told it, whatever
@@ -92,21 +93,20 @@ export default function RootLayout() {
               </ThemeProvider>
             </PersistQueryClientProvider>
           </SafeAreaProvider>
-        ) : (
-          <LaunchScreen />
-        )}
+        ) : null}
+        <LaunchCurtain />
       </LocaleDirContext.Provider>
     </View>
   );
 }
 
-/** Longest the splash screen waits for the welcome to be drawn, once the app is ready. */
+/** Longest the launch curtain waits for the welcome to be drawn, once the app is ready. */
 const WELCOME_WAIT_MS = 1500;
 
 /**
  * The screens, once the tab bar can be drawn for the person using the app —
  * the same person a link that opened the app was routed for (+native-intent).
- * The splash screen comes down onto the first screen the launch is for: the
+ * The launch curtain lifts onto the first screen the launch is for: the
  * welcome, on a launch with nobody signed in (WelcomeGate), or Home.
  */
 function AppStack() {
@@ -131,10 +131,13 @@ function AppStack() {
 
   const firstScreen = welcome === 'not' || (welcome === 'opened' && welcomeDrawn) || waitedEnough;
   useEffect(() => {
-    if (ready && firstScreen) SplashScreen.hideAsync().catch(() => {});
+    if (!(ready && firstScreen)) return;
+    launchReady();
+    // Down already under the curtain, as a rule; never left up should the curtain not have been laid out.
+    SplashScreen.hideAsync().catch(() => {});
   }, [ready, firstScreen]);
 
-  if (!ready) return <LaunchScreen />;
+  if (!ready) return null;
 
   return (
     <UpdateGate>
@@ -145,16 +148,9 @@ function AppStack() {
         <Stack.Screen name="mfa" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         <Stack.Screen name="auth/confirm" options={{ presentation: 'modal' }} />
         <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
-        {/* Answered rather than swiped away. At a launch it is under the splash
-            screen at once; after a sign-out it fades in over the tabs. */}
-        <Stack.Screen
-          name="welcome"
-          options={({ route }) => ({
-            presentation: 'fullScreenModal',
-            animation: (route.params as { after?: string } | undefined)?.after === 'sign-out' ? 'fade' : 'none',
-            gestureEnabled: false,
-          })}
-        />
+        {/* Answered rather than swiped away. It fades in: at a launch over
+            the launch curtain, after a sign-out over the tabs. */}
+        <Stack.Screen name="welcome" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
       </Stack>
       <WelcomeGate onDecided={decided} />
       <SessionGate />

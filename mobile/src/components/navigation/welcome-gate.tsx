@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { router, usePathname, useRootNavigationState, useSegments } from 'expo-router';
+import { useLaunchHeld } from '~/features/launch';
 import { welcomeOpens } from '~/features/welcome';
 import { useSession } from '~/lib/session';
 
@@ -7,9 +8,11 @@ import { useSession } from '~/lib/session';
  * Opens the welcome (src/app/welcome.tsx) whenever nobody is signed in: over
  * Home at every launch of the app as itself — not by a link, which goes where
  * it leads — and again when the reader signs out. The launch is decided once
- * the session and the navigation have both answered; `onDecided` says whether
- * it opened, so the splash screen stays up until the first screen is the
- * right one. Skipping it closes it until the app is next started.
+ * the session and the navigation have both answered, and the launch curtain
+ * has been up its moment (src/features/launch.ts) — the welcome fades in over
+ * it; `onDecided` says whether it opened, so the curtain stays until the
+ * first screen is the right one. Skipping it closes it until the app is next
+ * started.
  */
 export function WelcomeGate({ onDecided }: { onDecided: (opened: boolean) => void }) {
   const { ready, session } = useSession();
@@ -17,14 +20,15 @@ export function WelcomeGate({ onDecided }: { onDecided: (opened: boolean) => voi
   const pathname = usePathname();
   const overTabs = useSegments()[0] === '(tabs)';
   const decided = useRef(false);
+  const curtainHeld = useLaunchHeld();
 
   useEffect(() => {
-    if (decided.current || !navigationReady || !ready) return;
+    if (decided.current || !navigationReady || !ready || !curtainHeld) return;
     decided.current = true;
     const open = welcomeOpens() && !session && pathname === '/';
     if (open) router.push('/welcome');
     onDecided(open);
-  }, [navigationReady, ready, session, pathname, onDecided]);
+  }, [navigationReady, ready, curtainHeld, session, pathname, onDecided]);
 
   // Somebody signed in who signs out — on Account, from the code or
   // onboarding, or a session that ended — is welcomed again: once whatever
@@ -41,7 +45,7 @@ export function WelcomeGate({ onDecided }: { onDecided: (opened: boolean) => voi
     signedIn.current = now;
     if (!due.current || !overTabs || !decided.current) return;
     due.current = false;
-    if (welcomeOpens()) router.push({ pathname: '/welcome', params: { after: 'sign-out' } });
+    if (welcomeOpens()) router.push('/welcome');
   }, [ready, session, overTabs]);
 
   return null;

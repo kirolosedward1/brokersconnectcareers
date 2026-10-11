@@ -2,8 +2,9 @@ import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { router } from 'expo-router';
-import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { catalogues } from '~/i18n/provider';
+import { resetLaunchForTests } from '~/features/launch';
 import { resetWelcomeForTests } from '~/features/welcome';
 import { SESSION_KEY, supabase } from '~/lib/supabase';
 import * as RootLayout from '../src/app/_layout';
@@ -13,6 +14,9 @@ import * as WelcomeScreen from '../src/app/welcome';
 import { authSession, authUser, mobileConfig, profile } from './auth-fixtures';
 import { board, browse, cairo, newCairo } from './fixtures';
 import { fakeServer } from './server';
+
+/** The curtain is hidden from VoiceOver, so queries have to be told to look at it. */
+const HIDDEN = { includeHiddenElements: true };
 
 /*
   Every launch with nobody signed in opens on the welcome: the website's logo,
@@ -57,6 +61,7 @@ beforeEach(async () => {
   mockStored.clear();
   await AsyncStorage.clear();
   resetWelcomeForTests();
+  resetLaunchForTests();
   hide.mockClear();
   server.on('GET /api/mobile/v1/config', mobileConfig());
   server.on('/rest/v1/districts', [newCairo]);
@@ -111,7 +116,7 @@ async function drawn() {
   await act(async () => {});
 }
 
-it('opens a signed-out launch on the welcome, under the splash screen until it is drawn', async () => {
+it('opens a signed-out launch on the welcome, over the launch curtain, which lifts once it is drawn', async () => {
   launch();
   const skip = await screen.findByRole('button', { name: ar.app.welcome.skip });
   // Skip says where it leads.
@@ -121,10 +126,12 @@ it('opens a signed-out launch on the welcome, under the splash screen until it i
   // The website's logo, read as its name.
   expect(screen.getByRole('image', { name: ar.meta.siteName })).toBeTruthy();
   expect(screen.getByText(ar.landingPage.hero.title)).toBeTruthy();
-  expect(hide).not.toHaveBeenCalled();
+  // The curtain stays until the welcome is on screen over it.
+  expect(screen.getByTestId('launch-screen', HIDDEN)).toBeTruthy();
 
   await drawn();
   expect(hide).toHaveBeenCalled();
+  await waitFor(() => expect(screen.queryByTestId('launch-screen', HIDDEN)).toBeNull());
 });
 
 it('never scrolls, and sets the words smaller when they do not fit', async () => {

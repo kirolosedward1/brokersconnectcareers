@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { render } from '@testing-library/react-native';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { InSheet } from '~/components/ui/states';
+import { resetLaunchForTests } from '~/features/launch';
 import { resetWelcomeForTests } from '~/features/welcome';
 import { catalogues } from '~/i18n/provider';
 import * as RootLayout from '../src/app/_layout';
@@ -34,6 +35,8 @@ jest.mock('~/lib/session-storage', () => ({
 
 const server = fakeServer();
 const HIDDEN_KEY = 'bc.hidden-companies.v1';
+/** The launch curtain is hidden from VoiceOver, so queries have to be told to look at it. */
+const HIDDEN = { includeHiddenElements: true };
 const other = {
   ...listing,
   id: '5b0c7d1e-0000-4000-8000-000000000301',
@@ -51,6 +54,7 @@ beforeEach(async () => {
   await AsyncStorage.clear();
   // Without the welcome a signed-out launch opens on (tests/welcome.test.tsx has it): these open on Home.
   resetWelcomeForTests(false);
+  resetLaunchForTests();
   server.on('GET /api/mobile/v1/config', mobileConfig());
   server.on('/rest/v1/districts', [newCairo]);
   server.on('/rest/v1/governorates', [cairo]);
@@ -93,13 +97,14 @@ it("draws nothing before the phone has said which companies are hidden, and then
     // well inside this, the hidden company's listing on it.)
     await expect(waitFor(() => expect(screen.getByText(other.title_ar)).toBeTruthy(), { timeout: 2000 })).rejects.toThrow();
     expect(screen.queryByText(listing.title_ar)).toBeNull();
-    // Meanwhile the logo mark alone, where the launch screen draws it, not an empty page.
-    expect(screen.getByTestId('launch-screen')).toBeTruthy();
+    // Meanwhile the launch curtain: the logo mark, where the launch screen draws it, not an empty page.
+    expect(screen.getByTestId('launch-screen', HIDDEN)).toBeTruthy();
 
     await act(async () => release());
     expect(await screen.findByText(other.title_ar)).toBeTruthy();
     expect(screen.queryByText(listing.title_ar)).toBeNull();
-    expect(screen.queryByTestId('launch-screen')).toBeNull();
+    // And the curtain lifts off the board.
+    await waitFor(() => expect(screen.queryByTestId('launch-screen', HIDDEN)).toBeNull());
   } finally {
     if (stored) getItem.mockImplementation(stored);
     else getItem.mockRestore();
