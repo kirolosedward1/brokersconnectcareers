@@ -317,7 +317,10 @@ elif [ "$(bar_names 3b-jobs-scrolled-down)" != 0 ]; then
   echo "::error title=Expo Go: 3b-jobs-scrolled-down::the tab bar's names are still read after scrolling down"
 fi
 tour 3c-jobs-scrolled-up 'scrolled back up: the bar whole again, names and all' "$flows/expo-go-scroll-up.yaml"
-if [ "$(bar_names 3c-jobs-scrolled-up)" != 4 ]; then
+if [ "$(same_screen 3b-jobs-scrolled-down 3c-jobs-scrolled-up)" = yes ]; then
+  failed+=("3c-jobs-scrolled-up: the swipe did not move the list")
+  echo "::error title=Expo Go: 3c-jobs-scrolled-up::the board reads the same before and after the swipe back up: the list did not move"
+elif [ "$(bar_names 3c-jobs-scrolled-up)" != 4 ]; then
   failed+=("3c-jobs-scrolled-up: the tab bar's names did not come back")
   echo "::error title=Expo Go: 3c-jobs-scrolled-up::not all four of the tab bar's names are read after scrolling back up"
 fi
