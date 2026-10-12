@@ -3,7 +3,7 @@ import { Animated, ScrollView, StyleSheet, Text } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { resetTabBarForTests, useTabList } from '~/features/tab-bar';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { haptic } from '~/lib/haptics';
@@ -192,6 +192,9 @@ function drawThrough(path: number[], end: 'release' | 'terminate' = 'release') {
   toBar(end === 'release' ? 'onResponderRelease' : 'onResponderTerminate', touchAt(from, path.at(-1) ?? from, time + 10));
 }
 
+/** The pill's swell into the lens, told from the icons' by its spring. */
+const LENS_DAMPING = 26;
+
 /** The middle of a tab, as a point on the screen. */
 const middleOf = (tab: string) => BAR.x + PLACES[tab] + TAB_WIDTH / 2;
 
@@ -236,9 +239,10 @@ it('follows a finger drawn along the bar, ticking at each tab it crosses, and op
   expect(tick).toHaveBeenCalledTimes(2);
   expect(await screen.findByText('companies')).toBeTruthy();
   expect(screen.getByRole('tab', { name: ar.app.tabs.companies }).props.accessibilityState).toEqual({ selected: true });
-  // The lens swelled under the finger and went back to a pill.
-  const swells = spring.mock.calls.map(([, config]) => config.toValue).filter((to) => to === 0 || to === 1);
-  expect(swells).toContain(1);
+  // The pill swelled into the lens under the finger and went back to a pill
+  // (its own spring: the icons' swell under it is softer, damping 24).
+  const swells = spring.mock.calls.filter(([, config]) => config.damping === LENS_DAMPING).map(([, config]) => config.toValue);
+  expect(swells[0]).toBe(1);
   expect(swells.at(-1)).toBe(0);
 });
 
@@ -261,9 +265,43 @@ it('keeps the pill inside the bar when the finger runs past its ends', async () 
   await launch();
   const from = middleOf('home');
   toBar('onResponderGrant', touchAt(from, from, 1));
-  toBar('onResponderMove', touchAt(from, BAR.x + BAR.width + 60, 20));
-  expect(pillAt()).toBe(BAR.width - 3 - TAB_WIDTH);
-  toBar('onResponderMove', touchAt(from, 0, 40));
+  // Past the left end first: away from where the pill started.
+  toBar('onResponderMove', touchAt(from, 0, 20));
   expect(pillAt()).toBe(3);
+  toBar('onResponderMove', touchAt(from, BAR.x + BAR.width + 60, 40));
+  expect(pillAt()).toBe(BAR.width - 3 - TAB_WIDTH);
   toBar('onResponderTerminate', touchAt(from, 0, 50));
+});
+
+it('with Reduce Motion on, goes straight back over the open tab when the finger is taken off the bar', async () => {
+  jest.mocked(useReduceMotion).mockReturnValue(true);
+  await launch();
+  drawThrough([middleOf('home'), middleOf('account')], 'terminate');
+  await act(async () => {});
+  expect(lastGlide()).toBeUndefined();
+  expect(pillAt()).toBe(PLACES.home);
+  // And no lens swelled.
+  expect(spring.mock.calls.filter(([, config]) => config.damping === LENS_DAMPING)).toEqual([]);
+});
+
+it('counts a press on the open tab that slipped sideways as a press: its list goes back to the top', async () => {
+  const scrolled = jest.spyOn(ScrollView.prototype as unknown as { scrollTo: (options: object) => void }, 'scrollTo');
+  try {
+    await launch();
+    // Down on Home, the open tab, and 12 points sideways within it before letting go.
+    drawThrough([middleOf('home'), middleOf('home') + 12]);
+    await waitFor(() => expect(scrolled).toHaveBeenCalledWith({ y: 0, animated: true }));
+    expect(tick).not.toHaveBeenCalled();
+
+    // A drag away and back is a choice of the open tab, not a press: the list stays where it is.
+    scrolled.mockClear();
+    drawThrough([middleOf('home'), middleOf('jobs'), middleOf('home')]);
+    // (The clock is the test's: the frame the list would have scrolled in is let pass.)
+    await act(async () => {
+      jest.advanceTimersByTime(200);
+    });
+    expect(scrolled).not.toHaveBeenCalled();
+  } finally {
+    scrolled.mockRestore();
+  }
 });

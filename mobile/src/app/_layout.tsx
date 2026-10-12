@@ -28,7 +28,7 @@ import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies
 import { useHiddenJobsLoaded } from '~/features/moderation/hidden-jobs';
 import { ToastHost } from '~/components/feedback/toast';
 import { HomeShortcuts } from '~/components/navigation/home-shortcuts';
-import { launchReady } from '~/features/launch';
+import { launchReady, useLaunchHeld, useLaunchReady } from '~/features/launch';
 import { useWelcomeDrawn } from '~/features/welcome';
 import { I18nProvider } from '~/i18n/provider';
 import { installCrashLog } from '~/lib/crash-log';
@@ -100,7 +100,7 @@ export default function RootLayout() {
   );
 }
 
-/** Longest the launch curtain waits for the welcome to be drawn, once the app is ready. */
+/** Longest the launch curtain waits for the welcome to be drawn, once the app is ready and the curtain has been up its moment. */
 const WELCOME_WAIT_MS = 1500;
 
 /**
@@ -117,6 +117,8 @@ function AppStack() {
   const hiddenJobsKnown = useHiddenJobsLoaded();
   const hiddenKnown = hiddenCompaniesKnown && hiddenJobsKnown;
   const ready = settled && hiddenKnown;
+  // The welcome opens only once the curtain has been up its moment (WelcomeGate): the wait for it starts then too.
+  const curtainHeld = useLaunchHeld();
   const [welcome, setWelcome] = useState<'deciding' | 'opened' | 'not'>('deciding');
   const welcomeDrawn = useWelcomeDrawn();
   const [waitedEnough, setWaitedEnough] = useState(false);
@@ -124,10 +126,10 @@ function AppStack() {
 
   // Never held for good, whatever the welcome does.
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !curtainHeld) return;
     const timer = setTimeout(() => setWaitedEnough(true), WELCOME_WAIT_MS);
     return () => clearTimeout(timer);
-  }, [ready]);
+  }, [ready, curtainHeld]);
 
   const firstScreen = welcome === 'not' || (welcome === 'opened' && welcomeDrawn) || waitedEnough;
   useEffect(() => {
@@ -185,6 +187,10 @@ function rootScreenLayout(props: {
 /** The navigators' colours and title font, from the theme. */
 function Navigation({ children }: { children: ReactNode }) {
   const { scheme, colors } = useTheme();
+  // The launch curtain is light whatever the theme: dark letters over it until it lifts.
+  const firstScreenReady = useLaunchReady();
+  const curtainHeld = useLaunchHeld();
+  const curtainUp = !(firstScreenReady && curtainHeld);
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
 
   return (
@@ -207,7 +213,7 @@ function Navigation({ children }: { children: ReactNode }) {
         },
       }}
     >
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={scheme === 'dark' && !curtainUp ? 'light' : 'dark'} />
       {children}
     </NavigationTheme>
   );

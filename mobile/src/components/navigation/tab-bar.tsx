@@ -1,5 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactElement } from 'react';
-import { Animated, Easing, PanResponder, Platform, StyleSheet, View, type ColorValue, type LayoutChangeEvent } from 'react-native';
+import {
+  Animated,
+  Easing,
+  PanResponder,
+  Platform,
+  StyleSheet,
+  View,
+  type ColorValue,
+  type GestureResponderEvent,
+  type LayoutChangeEvent,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { CommonActions } from 'expo-router/react-navigation';
@@ -199,9 +209,9 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
         {...scrub.panHandlers}
         style={[
           styles.bar,
-          glass
-            ? styles.glassBar
-            : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth, boxShadow: shadow.raised },
+          glass ? styles.glassBar : { backgroundColor: colors.card },
+          // Its edge and its shadow either way: on glass too, the capsule stands off the page.
+          { borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth, boxShadow: shadow.raised },
           { transform: barMoves },
         ]}
       >
@@ -264,10 +274,10 @@ type PillMotion = {
   x: Animated.Value;
   scaleX: Animated.AnimatedInterpolation<number> | Animated.AnimatedAddition<number>;
   scaleY: Animated.AnimatedInterpolation<number> | Animated.AnimatedAddition<number>;
-  /** Swells it into the lens a finger draws along the bar, and back. */
-  lens: (on: boolean) => void;
-  /** Back over the open tab, after a finger let go of it elsewhere or was taken off the bar. */
-  settle: () => void;
+  /** Swells it into the lens a finger draws along the bar, and back: at once with Reduce Motion on. */
+  lens: (on: boolean, instant: boolean) => void;
+  /** Back over the open tab, after a finger let go of it elsewhere or was taken off the bar: at once with Reduce Motion on. */
+  settle: (instant: boolean) => void;
 };
 
 /**
@@ -293,13 +303,17 @@ function usePill(open: Slot | undefined, reduceMotion: boolean): PillMotion {
       return;
     }
     stretch.setValue(0);
-    const glide = Animated.parallel([
-      Animated.spring(x, { toValue: target, stiffness: 320, damping: 28, mass: 1, useNativeDriver: true }),
-      Animated.sequence([
-        Animated.timing(stretch, { toValue: 1, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.spring(stretch, { toValue: 0, stiffness: 260, damping: 15, mass: 1, useNativeDriver: true }),
-      ]),
-    ]);
+    // Apart: a finger taking the pill mid-glide stops its travel, and its stretch still settles round.
+    const glide = Animated.parallel(
+      [
+        Animated.spring(x, { toValue: target, stiffness: 320, damping: 28, mass: 1, useNativeDriver: true }),
+        Animated.sequence([
+          Animated.timing(stretch, { toValue: 1, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.spring(stretch, { toValue: 0, stiffness: 260, damping: 15, mass: 1, useNativeDriver: true }),
+        ]),
+      ],
+      { stopTogether: false },
+    );
     glide.start();
     return () => {
       glide.stop();
@@ -317,11 +331,19 @@ function usePill(open: Slot | undefined, reduceMotion: boolean): PillMotion {
       stretch.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] }),
       swell.interpolate({ inputRange: [0, 1], outputRange: [0, 0.14] }),
     ),
-    lens: (on: boolean) => {
+    lens: (on: boolean, instant: boolean) => {
+      if (instant) {
+        swell.setValue(on ? 1 : 0);
+        return;
+      }
       Animated.spring(swell, { toValue: on ? 1 : 0, stiffness: 380, damping: 26, mass: 1, useNativeDriver: true }).start();
     },
-    settle: () => {
+    settle: (instant: boolean) => {
       if (at.current === null) return;
+      if (instant) {
+        x.setValue(at.current);
+        return;
+      }
       Animated.spring(x, { toValue: at.current, stiffness: 320, damping: 28, mass: 1, useNativeDriver: true }).start();
     },
   }));
@@ -346,7 +368,9 @@ type ScrubOptions = {
  * tab under it shown so (`onLens`) with a tick at each new one, and letting go
  * chooses that tab (`onChoose`); taken off the bar, or let go over the tab
  * already open, the pill settles back. A finger that only presses a tab is
- * the tab's: the bar takes over once it has moved sideways, not before.
+ * the tab's: the bar takes over once it has moved sideways, not before — and
+ * a finger that slipped sideways without leaving the tab it came down on
+ * still pressed that tab, the open one too (its list back to the top).
  *
  * Made once — its handlers run on touches, never while drawing, and read the
  * latest layout then — so a drawing during the drag does not start it over.
@@ -360,6 +384,9 @@ function useScrub(options: ScrubOptions) {
   // eslint-disable-next-line react-hooks/refs
   const [responder] = useState(() => {
     let under: string | null = null;
+    // The tab the finger came down on, and whether it has been over another since.
+    let start: string | null = null;
+    let strayed = false;
 
     /** Where a finger at `pageX` on the screen is along the bar, in the bar's own points. */
     const along = (pageX: number): number | null => {
@@ -388,6 +415,7 @@ function useScrub(options: ScrubOptions) {
       if (x === null) return;
       const found = tabAt(x);
       if (!found) return;
+      if (start !== null && found.key !== start) strayed = true;
       const { bar } = latest.current;
       const half = found.slot.width / 2;
       const max = (bar?.width ?? found.slot.x + found.slot.width + INSET) - INSET - found.slot.width;
@@ -400,20 +428,27 @@ function useScrub(options: ScrubOptions) {
     };
 
     const end = (choose: boolean) => {
-      const { pill, openKey, onLens, onChoose } = latest.current;
+      const { pill, openKey, onLens, onChoose, reduceMotion } = latest.current;
       const chosen = choose ? under : null;
+      const pressed = chosen !== null && chosen === start && !strayed;
       under = null;
+      start = null;
+      strayed = false;
       onLens(null);
-      pill.lens(false);
-      if (chosen && chosen !== openKey) onChoose(chosen);
-      else pill.settle();
+      pill.lens(false, reduceMotion);
+      if (chosen && (chosen !== openKey || pressed)) onChoose(chosen);
+      if (!chosen || chosen === openKey) pill.settle(reduceMotion);
     };
 
     return PanResponder.create({
       onMoveShouldSetPanResponderCapture: (_, gesture) => Math.abs(gesture.dx) > DRAG && Math.abs(gesture.dx) > Math.abs(gesture.dy),
-      onPanResponderGrant: (_, gesture) => {
+      onPanResponderGrant: (event, gesture) => {
         under = null;
-        if (!latest.current.reduceMotion) latest.current.pill.lens(true);
+        strayed = false;
+        const down = along(startOf(event) ?? gesture.x0);
+        start = down === null ? null : (tabAt(down)?.key ?? null);
+        // With Reduce Motion on the pill follows the finger as it is, without swelling.
+        if (!latest.current.reduceMotion) latest.current.pill.lens(true, false);
         follow(gesture.moveX || gesture.x0);
       },
       onPanResponderMove: (_, gesture) => follow(gesture.moveX),
@@ -426,6 +461,15 @@ function useScrub(options: ScrubOptions) {
 }
 
 type IconMoves = [{ translateY: Animated.AnimatedInterpolation<number> }, { scale: Animated.AnimatedInterpolation<number> }];
+
+/** Where the finger now on the bar first came down, on the screen. */
+function startOf(event: GestureResponderEvent): number | null {
+  // The responder system's record of the touches, which PanResponder reads too.
+  const history = (event as GestureResponderEvent & { touchHistory?: { indexOfSingleActiveTouch: number; touchBank?: unknown[] } }).touchHistory;
+  if (!history) return null;
+  const touch = history.touchBank?.[history.indexOfSingleActiveTouch] as { startPageX?: number } | undefined;
+  return typeof touch?.startPageX === 'number' ? touch.startPageX : null;
+}
 
 type TabButtonProps = {
   name: string;
@@ -646,7 +690,7 @@ const styles = StyleSheet.create({
     ...corner('full'),
     transformOrigin: 'bottom',
   },
-  // The glass is the surface: no colour, edge or shadow of the bar's own over it.
+  // The glass is the surface: no colour of the bar's own over it.
   glassBar: {
     backgroundColor: 'transparent',
   },

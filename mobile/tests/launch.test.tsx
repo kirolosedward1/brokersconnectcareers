@@ -1,7 +1,7 @@
 import { Animated, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { LaunchCurtain } from '~/components/brand/launch-screen';
+import { BREATHE_AFTER_MS, LaunchCurtain } from '~/components/brand/launch-screen';
 import { LAUNCH_HOLD_MS, launchReady, resetLaunchForTests } from '~/features/launch';
 import { useReduceMotion } from '~/theme/reduce-motion';
 
@@ -78,21 +78,26 @@ it('waits for the first screen, however long that takes', async () => {
 it('stays up its moment even when the app is ready at once', async () => {
   render(<LaunchCurtain />);
   await act(async () => launchReady());
+  // Not before its moment is up…
+  await wait(LAUNCH_HOLD_MS - 100);
   expect(screen.getByTestId('launch-screen', HIDDEN).props.pointerEvents).toBe('auto');
-
-  await wait(LAUNCH_HOLD_MS);
+  // …and lifting just after.
+  await wait(150);
   expect(screen.getByTestId('launch-screen', HIDDEN).props.pointerEvents).toBe('none');
   await wait(1000);
   expect(screen.queryByTestId('launch-screen', HIDDEN)).toBeNull();
 });
 
-it('grows the mark a little as it lifts, and with Reduce Motion only fades', async () => {
+it('breathes on a slow start, and with Reduce Motion on neither breathes nor grows: it only fades', async () => {
   const timing = jest.spyOn(Animated, 'timing');
+  const durations = () => timing.mock.calls.map(([, config]) => (config as { duration?: number }).duration);
   try {
     render(<LaunchCurtain />);
-    expect(styleOf('launch-screen').opacity).toBeDefined();
     const mark = () => styleOf('launch-mark');
     expect(mark().transform).toHaveLength(2);
+    // Still getting ready well past its moment: the mark breathes.
+    await wait(BREATHE_AFTER_MS + 100);
+    expect(durations()).toContain(900);
     screen.unmount();
 
     resetLaunchForTests();
@@ -100,12 +105,12 @@ it('grows the mark a little as it lifts, and with Reduce Motion only fades', asy
     timing.mockClear();
     render(<LaunchCurtain />);
     expect(mark().transform).toBeUndefined();
+    await wait(BREATHE_AFTER_MS + 100);
+    expect(durations()).not.toContain(900);
     await act(async () => launchReady());
-    await wait(LAUNCH_HOLD_MS);
-    // The lift is the short fade, and nothing breathes while waiting.
-    const durations = timing.mock.calls.map(([, config]) => (config as { duration?: number }).duration);
-    expect(durations).toContain(200);
-    expect(durations).not.toContain(900);
+    await wait(100);
+    // The lift is the short fade.
+    expect(durations()).toContain(200);
   } finally {
     timing.mockRestore();
   }

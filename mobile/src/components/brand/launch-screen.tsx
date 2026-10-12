@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Animated, Easing, Image, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
-import { useLaunchHeld, useLaunchReady } from '~/features/launch';
+import { launchElapsed, useLaunchHeld, useLaunchReady } from '~/features/launch';
 import { useReduceMotion } from '~/theme/reduce-motion';
 import { motion, palette, space } from '~/theme/tokens';
 
@@ -14,12 +15,10 @@ const WORDMARK = require('../../../assets/brand/logo-wordmark-ar.png');
 const WORDMARK_HEIGHT = 20;
 const WORDMARK_WIDTH = (1375 / 286) * WORDMARK_HEIGHT;
 
-/** When the app's code started: the mark breathes if the app is still getting ready long after. */
-const STARTED_AT = Date.now();
 /** How long the curtain takes to lift. */
 const LIFT_MS = 420;
-/** Past this with the app still getting ready, the mark breathes, so the page does not look stuck. */
-const BREATHE_AFTER_MS = 1800;
+/** Past this since the app started, still getting ready, the mark breathes, so the page does not look stuck. */
+export const BREATHE_AFTER_MS = 1800;
 /** How long Expo Go or the phone's own launch screen is given to come down, should the curtain never be laid out. */
 const SPLASH_FALLBACK_MS = 1500;
 
@@ -90,7 +89,7 @@ export function LaunchCurtain() {
         );
         loop.start();
       },
-      Math.max(0, BREATHE_AFTER_MS - (Date.now() - STARTED_AT)),
+      Math.max(0, BREATHE_AFTER_MS - launchElapsed()),
     );
     return () => {
       clearTimeout(timer);
@@ -136,6 +135,8 @@ export function LaunchCurtain() {
       onLayout={hideSplash}
       style={[styles.page, { opacity: pageShows }]}
     >
+      {/* Dark letters on the light page, before the app's own bar is drawn (a phone in dark mode would make them light). */}
+      <StatusBar style="dark" />
       <Animated.View testID="launch-mark" style={{ opacity: markShows, transform: markMoves }}>
         <Image source={MARK} style={{ width: MARK_SIZE, height: MARK_SIZE }} resizeMode="contain" />
       </Animated.View>

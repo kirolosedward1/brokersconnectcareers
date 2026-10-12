@@ -109,11 +109,16 @@ function signedIn() {
   server.on('/rest/v1/rpc/my_company_id', () => null);
 }
 
-/** The welcome, as iOS lays it out: drawn. */
+/**
+ * The welcome, as iOS lays it out and fades it in: on screen once the fade
+ * has had its time (iOS says so as the screen appears, which a test cannot).
+ */
 async function drawn() {
   const welcome = await screen.findByTestId('welcome');
   fireEvent(welcome, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 844 } } });
-  await act(async () => {});
+  await act(async () => {
+    jest.advanceTimersByTime(600);
+  });
 }
 
 it('opens a signed-out launch on the welcome, over the launch curtain, which lifts once it is drawn', async () => {
@@ -126,8 +131,14 @@ it('opens a signed-out launch on the welcome, over the launch curtain, which lif
   // The website's logo, read as its name.
   expect(screen.getByRole('image', { name: ar.meta.siteName })).toBeTruthy();
   expect(screen.getByText(ar.landingPage.hero.title)).toBeTruthy();
-  // The curtain stays until the welcome is on screen over it.
+  // The curtain stays until the welcome is on screen over it, laid out or not.
   expect(screen.getByTestId('launch-screen', HIDDEN)).toBeTruthy();
+  fireEvent(screen.getByTestId('welcome'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 844 } } });
+  await act(async () => {
+    jest.advanceTimersByTime(300);
+  });
+  expect(screen.getByTestId('launch-screen', HIDDEN)).toBeTruthy();
+  expect(hide).not.toHaveBeenCalled();
 
   await drawn();
   expect(hide).toHaveBeenCalled();

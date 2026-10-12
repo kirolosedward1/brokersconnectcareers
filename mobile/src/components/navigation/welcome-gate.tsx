@@ -21,11 +21,15 @@ export function WelcomeGate({ onDecided }: { onDecided: (opened: boolean) => voi
   const overTabs = useSegments()[0] === '(tabs)';
   const decided = useRef(false);
   const curtainHeld = useLaunchHeld();
+  // A sign-out still to be answered with the welcome (below).
+  const due = useRef(false);
 
   useEffect(() => {
     if (decided.current || !navigationReady || !ready || !curtainHeld) return;
     decided.current = true;
     const open = welcomeOpens() && !session && pathname === '/';
+    // Opened now, it also answers a sign-out made while the launch was still deciding: not opened twice.
+    if (open) due.current = false;
     if (open) router.push('/welcome');
     onDecided(open);
   }, [navigationReady, ready, curtainHeld, session, pathname, onDecided]);
@@ -36,7 +40,6 @@ export function WelcomeGate({ onDecided }: { onDecided: (opened: boolean) => voi
   // the welcome for that screen's own Back to close instead. Signing in again
   // first leaves it unopened.
   const signedIn = useRef<boolean | null>(null);
-  const due = useRef(false);
   useEffect(() => {
     if (!ready) return;
     const now = Boolean(session);

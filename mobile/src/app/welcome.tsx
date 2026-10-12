@@ -29,6 +29,8 @@ const PHOTO = require('../../assets/images/welcome-photo.jpg');
  * settling behind it; then the logo, the words and the ways on.
  */
 const BEAT = 160;
+/** Longer than iOS takes to fade a full-screen sheet in. */
+const FADE_IN_MS = 500;
 const AT = {
   skip: 0,
   photo: 0,
@@ -63,11 +65,28 @@ export default function WelcomeScreen() {
   const window = useWindowDimensions();
   const [shown, setShown] = useState(false);
 
-  // Shown at once under the splash screen (the root layout opens it without
-  // animation); closed by fading away onto Home.
+  // Closed by fading away onto Home, as it opened.
   useEffect(() => {
     navigation.setOptions({ animation: 'fade' });
   }, [navigation]);
+
+  // On screen once it has finished fading in, not when it is first laid out:
+  // at a launch the curtain under it lifts then, unseen behind it, rather than
+  // fading out while the welcome is still half in and Home showing through
+  // both. iOS says so when the screen has appeared (transitionEnd); should it
+  // not, the fade's own length later the welcome counts as drawn anyway.
+  useEffect(
+    () =>
+      navigation.addListener('transitionEnd' as never, ((event: { data?: { closing?: boolean } }) => {
+        if (!event.data?.closing) welcomeDrawn();
+      }) as never),
+    [navigation],
+  );
+  useEffect(() => {
+    if (!shown) return;
+    const fallback = setTimeout(welcomeDrawn, FADE_IN_MS);
+    return () => clearTimeout(fallback);
+  }, [shown]);
 
   // This screen's own Back, whatever has been opened since.
   const skip = () => {
@@ -83,10 +102,7 @@ export default function WelcomeScreen() {
   return (
     <View
       testID="welcome"
-      onLayout={() => {
-        welcomeDrawn();
-        setShown(true);
-      }}
+      onLayout={() => setShown(true)}
       style={{ flex: 1, backgroundColor: colors.heroDeep }}
     >
       <StatusBar style="light" />

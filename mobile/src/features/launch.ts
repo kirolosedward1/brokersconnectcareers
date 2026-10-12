@@ -13,8 +13,8 @@ import { useSyncExternalStore } from 'react';
  * welcome, drawn): the root layout says so. The curtain lifts once both are.
  */
 
-/** When the app's code started. */
-const STARTED_AT = Date.now();
+/** When the app's code started (a test's fresh launch starts it again). */
+let startedAt = Date.now();
 /** How long the curtain is up at least, from then. */
 export const LAUNCH_HOLD_MS = 900;
 
@@ -35,12 +35,17 @@ function subscribe(listener: () => void) {
         held = true;
         emit();
       },
-      Math.max(0, LAUNCH_HOLD_MS - (Date.now() - STARTED_AT)),
+      Math.max(0, LAUNCH_HOLD_MS - launchElapsed()),
     );
   }
   return () => {
     listeners.delete(listener);
   };
+}
+
+/** How long the app has been starting, in milliseconds. */
+export function launchElapsed(): number {
+  return Date.now() - startedAt;
 }
 
 export function useLaunchHeld(): boolean {
@@ -63,4 +68,5 @@ export function resetLaunchForTests() {
   holding = null;
   held = false;
   ready = false;
+  startedAt = Date.now();
 }
