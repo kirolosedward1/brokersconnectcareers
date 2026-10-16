@@ -20,10 +20,13 @@ function set(next: boolean) {
 function subscribe(listener: () => void) {
   if (!started) {
     started = true;
-    AccessibilityInfo.isReduceTransparencyEnabled()
-      .then(set)
-      .catch(() => {});
-    AccessibilityInfo.addEventListener('reduceTransparencyChanged', set);
+    // Asked only where the system can say: the web has no such setting (and no such function).
+    if (typeof AccessibilityInfo.isReduceTransparencyEnabled === 'function') {
+      AccessibilityInfo.isReduceTransparencyEnabled()
+        .then(set)
+        .catch(() => {});
+      AccessibilityInfo.addEventListener('reduceTransparencyChanged', set);
+    }
   }
   listeners.add(listener);
   return () => {

@@ -6,13 +6,19 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useLocale, useTranslations } from 'use-intl';
+import { SocialCircles } from '~/components/auth/social-sign-in';
 import { LOGO_MARK, Wordmark } from '~/components/brand/brand-logo';
+import { toast } from '~/components/feedback/toast';
 import { Appear } from '~/components/motion/appear';
 import { Button, GLASS } from '~/components/ui/button';
 import { ForwardChevron, SignInMark } from '~/components/ui/icons';
-import { UserRoundPlus } from '~/components/ui/lucide';
+import { CircleAlert, UserRoundPlus } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
+import { useAuthErrorText } from '~/features/auth/errors';
+import { intentFromParams } from '~/features/auth/intent';
+import { useLand } from '~/features/auth/land';
+import type { ProviderOutcome } from '~/features/auth/providers';
 import { welcomeDrawn } from '~/features/welcome';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, motion, space } from '~/theme/tokens';
@@ -44,7 +50,8 @@ const AT = {
  * out leads (src/components/navigation/welcome-gate.tsx): the website's hero
  * photograph across the whole screen under a deep sapphire veil, darkening to
  * midnight where the words are — the logo and what the board is in one line —
- * and the ways on: create an account, sign in, or skip and
+ * and the ways on: create an account, sign in — with Google's or Apple's
+ * round button beside it, one tap, where they are offered — or skip and
  * look around without one, which the App Store asks an app to allow wherever
  * an account is not needed. A company has its own way in, to the employer's
  * sign-up.
@@ -64,6 +71,18 @@ export default function WelcomeScreen() {
   const navigation = useNavigation();
   const window = useWindowDimensions();
   const [shown, setShown] = useState(false);
+  const land = useLand();
+  const errorText = useAuthErrorText();
+  const [busy, setBusy] = useState(false);
+
+  // Signed in with one tap: on as the sign-in sheet goes on (onboarding, the code, or the app), the welcome closed.
+  async function afterProvider(outcome: ProviderOutcome) {
+    if (outcome.ok) {
+      await land(intentFromParams({}));
+      return;
+    }
+    if (!outcome.cancelled) toast.show({ message: errorText(outcome.error), icon: CircleAlert, tone: 'destructive' });
+  }
 
   // Closed by fading away onto Home, as it opened.
   useEffect(() => {
@@ -157,15 +176,22 @@ export default function WelcomeScreen() {
           variant="champagne"
           size={compact ? 'default' : 'lg'}
           icon={<UserRoundPlus size={20} color={colors.champagneForeground} />}
+          disabled={busy}
           onPress={() => router.push('/sign-up')}
         />
-        <Button
-          label={t('nav.signIn')}
-          variant="glass"
-          size={compact ? 'default' : 'lg'}
-          icon={<SignInMark size={20} color={colors.onHero} />}
-          onPress={() => router.push('/sign-in')}
-        />
+        {/* Sign in, and beside it at its end the one-tap ways, round: Google's mark, Apple's. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
+          <Button
+            label={t('nav.signIn')}
+            variant="glass"
+            size={compact ? 'default' : 'lg'}
+            icon={<SignInMark size={20} color={colors.onHero} />}
+            disabled={busy}
+            onPress={() => router.push('/sign-in')}
+            style={{ flex: 1 }}
+          />
+          <SocialCircles size={compact ? 48 : 56} disabled={busy} onBusy={setBusy} onOutcome={afterProvider} />
+        </View>
         <Text variant="small" style={{ color: colors.onHeroMuted, textAlign: 'center', paddingTop: space[1] }}>
           {`${t('app.welcome.employer')} `}
           <Text

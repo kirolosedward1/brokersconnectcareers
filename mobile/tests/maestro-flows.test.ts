@@ -47,10 +47,11 @@ const KEYS: Record<string, string> = {
   'مشاركة': 'jobs.share',
   'الشركات اللي بتوظّف على بروكرز كونكت، والموثّق منها.': 'companies.lede',
   'مفيش شركات مطابقة.': 'companies.empty',
-  // signed-out.yaml: Account's card, its sign-in button, the sheet, the forgotten password, sign-up.
+  // signed-out.yaml: Account's card, its sign-in button, the sheet and its email button, the forgotten password, sign-up.
   'ادخل على حسابك': 'app.account.signedOutTitle',
   'تسجيل الدخول': 'nav.signIn',
   'أهلاً بيك تاني': 'auth.signInTitle',
+  'المتابعة بالإيميل': 'app.auth.continueWithEmail',
   'نسيت كلمة المرور؟': 'auth.forgotPassword',
   'اكتب إيميلك وهنبعتلك لينك تعمل بيه كلمة مرور جديدة.': 'auth.forgotBody',
   'اعمل حسابك': 'auth.signUpTitle',

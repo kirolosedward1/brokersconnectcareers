@@ -10,7 +10,7 @@ import { useReduceMotion } from '~/theme/reduce-motion';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, motion, space } from '~/theme/tokens';
 
-export type ToastTone = 'default' | 'success';
+export type ToastTone = 'default' | 'success' | 'destructive';
 
 export type Toast = {
   message: string;
@@ -88,7 +88,7 @@ function ToastCard({ toast: shown }: { toast: Shown }) {
   const [progress] = useState(() => new Animated.Value(0));
   const [drag] = useState(() => new Animated.Value(0));
   const Icon = shown.icon ?? CheckCircle2;
-  const tint = shown.tone === 'success' || !shown.icon ? colors.success : colors.primary;
+  const tint = shown.tone === 'destructive' ? colors.destructive : shown.tone === 'success' || !shown.icon ? colors.success : colors.primary;
 
   const leave = () => {
     Animated.timing(progress, { toValue: 0, duration: reduceMotion ? 0 : motion.fade, useNativeDriver: true }).start(() =>

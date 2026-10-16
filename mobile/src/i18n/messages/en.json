@@ -84,7 +84,9 @@
     "configFailed": "We could not get signing in ready. Check your connection and try again.",
     "configRetry": "Try again",
     "appleRevokedTitle": "You have been signed out",
-    "appleRevokedBody": "Sign in with Apple is no longer on for this app, so we signed you out on this phone. You can sign in again at any time."
+    "appleRevokedBody": "Sign in with Apple is no longer on for this app, so we signed you out on this phone. You can sign in again at any time.",
+    "continueWithEmail": "Continue with email",
+    "otherWays": "Other ways to sign in"
   },
   "onboarding": {
     "choose": "Choose",
@@ -219,7 +221,9 @@
     "employer": "Hiring for a company?",
     "skip": "Skip",
     "skipHint": "Browse the jobs without an account; you can make one any time.",
-    "lead": "Pay and commission in numbers on every listing, and applying takes under a minute."
+    "lead": "Pay and commission in numbers on every listing, and applying takes under a minute.",
+    "signInGoogleHint": "Signs you in with your Google account",
+    "signInAppleHint": "Signs you in with your Apple account"
   },
   "companies": {
     "searchPlaceholder": "Search by company name"

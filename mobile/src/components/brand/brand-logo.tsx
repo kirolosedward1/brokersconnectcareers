@@ -25,8 +25,8 @@ export const LOCKUP = { wordmark: 1375, gap: 106, mark: 439, height: 286 } as co
 const HEIGHTS = {
   /** Home's own header (HomeFrame): slimmer than a navigation bar, the logo at its start. */
   header: 22,
-  /** Above a sign-in form. */
-  form: 36,
+  /** Above a sign-in form, centred over it. */
+  form: 30,
   /** A page of its own. */
   hero: 46,
 } as const;
