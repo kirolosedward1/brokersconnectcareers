@@ -3,6 +3,7 @@ import { View, type TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { isAuthRetryableFetchError, type AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
+import { passwordRefusal } from '@/lib/auth/errors';
 import { Check } from '~/components/ui/lucide';
 import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
 import { Button } from '~/components/ui/button';
@@ -55,10 +56,16 @@ export default function NewPasswordScreen() {
       .catch((failure: unknown) => ({ error: failure as AuthError }));
     if (updateError) {
       setPending(false);
+      const refusal = isAuthRetryableFetchError(updateError) ? null : passwordRefusal(updateError);
+      // An authenticator on the account: its code, then back to this form.
+      if (refusal === 'second_factor') {
+        router.replace({ pathname: '/mfa', params: { then: 'new-password' } });
+        return;
+      }
       setError(
-        isAuthRetryableFetchError(updateError)
+        refusal === null
           ? t('app.offline.body')
-          : /session|jwt|expired/i.test(updateError.message)
+          : refusal === 'session'
             ? t('auth.linkExpired')
             : t('common.errorBody'),
       );

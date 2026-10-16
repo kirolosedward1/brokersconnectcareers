@@ -1081,6 +1081,39 @@ describe('an email link opened in the app', () => {
     expect(server.asked('/auth/v1/logout')[0]?.url.searchParams.get('scope')).toBe('others');
   });
 
+  it('asks for the authenticator first on an account that has one, then sets the password', async () => {
+    user = authUser({ factors: [totpFactor] });
+    // GoTrue's rule: a new password at aal1, on an account that could prove aal2, is refused.
+    server.on('PUT /auth/v1/user', (_url, init) => {
+      const token = new Headers(init?.headers).get('authorization') ?? '';
+      if (!token.includes(authSession(user, 'aal2').access_token.split('.')[1])) {
+        return {
+          status: 401,
+          body: { code: 401, error_code: 'insufficient_aal', msg: 'AAL2 session is required to update email or password when MFA is enabled.' },
+        };
+      }
+      return user;
+    });
+    renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
+
+    // The code, not a form that could only be refused as "that link has expired".
+    expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
+    expect(screen.queryByText(ar.auth.newPasswordTitle)).toBeNull();
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+
+    // Then the form, on a session GoTrue lets change the password.
+    expect(await screen.findByText(ar.auth.newPasswordTitle)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.auth.password), 'a-new-password');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
+    await press(ar.auth.resetPassword);
+
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
+    expect(screen.queryByText(ar.auth.linkExpired)).toBeNull();
+    expect(server.asked('/auth/v1/user').find((request) => request.method === 'PUT')?.body).toMatchObject({
+      password: 'a-new-password',
+    });
+  });
+
   describe('with an account signed in here', () => {
     const OTHER_ID = '8b7c7f1e-0000-4000-8000-0000000000ee';
     const other = authUser({
