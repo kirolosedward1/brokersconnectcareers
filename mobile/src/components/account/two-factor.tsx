@@ -17,6 +17,7 @@ import {
   verifyCode,
   type Enrolment,
 } from '~/features/account/settings';
+import { useErrorFeedback } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 
@@ -38,6 +39,7 @@ export function TwoFactorSettings() {
   const [enrolment, setEnrolment] = useState<Enrolment | null>(null);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  useErrorFeedback(error);
   const [noApp, setNoApp] = useState(false);
   const [pending, setPending] = useState(false);
 

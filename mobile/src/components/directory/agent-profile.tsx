@@ -17,6 +17,7 @@ import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
+import { TextLink } from '~/components/ui/text-link';
 import { recordAgentView, useAgentPage } from '~/features/directory/queries';
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { routeInside } from '~/lib/links';
@@ -122,16 +123,7 @@ export function AgentProfile({ handle }: { handle: string }) {
                   ? t('agents.ownerHidden')
                   : t('agents.ownerVerified')}
             </Text>
-            <Text
-              variant="small"
-              weight="medium"
-              tone="primary"
-              accessibilityRole="link"
-              onPress={() => router.dismissTo('/account/profile')}
-              style={{ marginTop: space[1] }}
-            >
-              {t('agents.ownerEdit')}
-            </Text>
+            <TextLink label={t('agents.ownerEdit')} onPress={() => router.dismissTo('/account/profile')} />
           </Card>
         ) : null}
 

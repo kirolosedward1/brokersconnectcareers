@@ -8,10 +8,11 @@ import { AuthHeading, AuthScroll } from '~/components/auth/auth-scroll';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
-import { TextField } from '~/components/ui/text-field';
+import { PasswordField } from '~/components/ui/password-field';
 import { NO_INTENT } from '~/features/auth/intent';
 import { useLand } from '~/features/auth/land';
 import { callAction } from '~/lib/api';
+import { useErrorFeedback } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
@@ -32,6 +33,7 @@ export default function NewPasswordScreen() {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  useErrorFeedback(error);
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
   // The return key moves on to the second password, and from there sets it.
@@ -90,14 +92,10 @@ export default function NewPasswordScreen() {
       ) : (
         <View style={{ gap: space[4] }}>
           <Field label={t('auth.password')}>
-            <TextField
+            <PasswordField
               value={password}
               onChangeText={setPassword}
               accessibilityLabel={t('auth.password')}
-              ltr
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
               autoComplete="new-password"
               textContentType="newPassword"
               passwordRules="minlength: 8;"
@@ -107,15 +105,11 @@ export default function NewPasswordScreen() {
             />
           </Field>
           <Field label={t('auth.passwordConfirm')}>
-            <TextField
+            <PasswordField
               ref={confirmField}
               value={passwordConfirm}
               onChangeText={setPasswordConfirm}
               accessibilityLabel={t('auth.passwordConfirm')}
-              ltr
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
               autoComplete="new-password"
               textContentType="newPassword"
               passwordRules="minlength: 8;"

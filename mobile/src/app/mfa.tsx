@@ -15,6 +15,7 @@ import { intentFromParams } from '~/features/auth/intent';
 import { useCloseFlow, useLand } from '~/features/auth/land';
 import { useMobileConfig } from '~/features/config';
 import { signOutHere } from '~/features/push/device';
+import { useErrorFeedback } from '~/lib/haptics';
 import { supabase } from '~/lib/supabase';
 import { useHoldBack } from '~/lib/use-hold-back';
 import { space } from '~/theme/tokens';
@@ -40,6 +41,7 @@ export default function SecondFactorScreen() {
   useHoldBack();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  useErrorFeedback(error);
   const [pending, setPending] = useState(false);
 
   /** What went wrong, in words, or null once through. */

@@ -226,8 +226,10 @@ function OnboardingForm({
     setErrors(next);
     inView.show(next);
   };
-  // The return key moves from the name to the number (the phone pad has none of its own).
+  // The return key moves from the name to the number (the phone pad has none
+  // of its own), and from a company's name to its website.
   const whatsappField = useRef<TextInput>(null);
+  const websiteField = useRef<TextInput>(null);
 
   function goTo(next: number) {
     Keyboard.dismiss();
@@ -495,6 +497,9 @@ function OnboardingForm({
                         autoComplete="organization"
                         textContentType="organizationName"
                         maxLength={160}
+                        returnKeyType="next"
+                        submitBehavior="submit"
+                        onSubmitEditing={() => websiteField.current?.focus()}
                       />
                     </Field>
                     <Field
@@ -504,6 +509,7 @@ function OnboardingForm({
                       error={errors.companyWebsite}
                     >
                       <TextField
+                        ref={websiteField}
                         value={companyWebsite}
                         onChangeText={setCompanyWebsite}
                         accessibilityLabel={t('onboarding.companyWebsite')}
