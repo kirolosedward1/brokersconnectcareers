@@ -34,10 +34,16 @@ export function SortMenu<T extends string>({
   const current = options.find((option) => option.value === value) ?? options[0];
 
   const choose = (next: T) => {
-    sheet.hide();
-    if (next === value) return;
+    if (next === value) {
+      sheet.hide();
+      return;
+    }
     haptic.selection();
-    onChange(next);
+    // Applied once the card has gone: a new order reloads the board, which
+    // draws this button afresh. Taken away while iOS was still fading the card
+    // out, the next sheet asked for (the filters) was never shown, and its
+    // button did nothing.
+    sheet.hide(() => onChange(next));
   };
 
   return (
