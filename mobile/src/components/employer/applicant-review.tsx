@@ -46,7 +46,8 @@ export function ApplicantReview({
   ...card
 }: CardProps & {
   visible: boolean;
-  onClose: () => void;
+  /** Closes the review, then does `after` once it has gone. */
+  onClose: (after?: () => void) => void;
   onDismiss: () => void;
   /** The applicants' ids, in the order the review began with. */
   queue: string[];
@@ -60,11 +61,23 @@ export function ApplicantReview({
   const [index, setIndex] = useState(0);
   // Which way the last step went, for the side the next card comes in from.
   const [forward, setForward] = useState(true);
-  // The latest read of each, and the one held from the start for anybody the inbox no longer lists.
-  const [kept] = useState(() => new Map(rows.map((row) => [row.id, row])));
+  // The latest read of each, and the last one seen of anybody the inbox no
+  // longer lists — moved out of the stage being reviewed.
+  const [kept, setKept] = useState(() => new Map(rows.map((row) => [row.id, row])));
+  const [seenRows, setSeenRows] = useState(rows);
+  if (seenRows !== rows) {
+    setSeenRows(rows);
+    setKept((current) => new Map([...current, ...rows.map((row) => [row.id, row] as const)]));
+  }
+  // The moves made here, until a read shows them: one shortlisted in a review
+  // of the new leaves the inbox's list as it moves, and stepped back to was
+  // still "new", offered Shortlist again and told it had moved already.
+  const [moved, setMoved] = useState<ReadonlyMap<string, { from: ApplicationStatus; to: ApplicationStatus }>>(new Map());
   const latest = new Map(rows.map((row) => [row.id, row]));
   const id = queue[Math.min(index, queue.length - 1)];
-  const applicant = (id && (latest.get(id) ?? kept.get(id))) || null;
+  const read = (id && (latest.get(id) ?? kept.get(id))) || null;
+  const change = read ? moved.get(read.id) : undefined;
+  const applicant = read && change && read.status === change.from ? { ...read, status: change.to } : read;
   const total = queue.length;
   const last = index >= total - 1;
 
@@ -89,6 +102,7 @@ export function ApplicantReview({
     move
       .mutateAsync({ applicationId: applicant.id, status, decisionNote: '', from })
       .then(() => {
+        setMoved((current) => new Map([...current, [applicant.id, { from, to: status }]]));
         haptic.success();
         toast.show({
           message: t(status === 'shortlisted' ? 'app.review.shortlisted' : 'app.review.rejected', { name }),
@@ -116,13 +130,13 @@ export function ApplicantReview({
   const canTurnDown = status !== undefined && status !== 'rejected' && status !== 'hired';
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => onClose()} onDismiss={onDismiss}>
       <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('common.close')}
-            onPress={onClose}
+            onPress={() => onClose()}
             hitSlop={10}
             style={{ width: hitTarget, height: hitTarget, alignItems: 'center', justifyContent: 'center' }}
           >
@@ -153,6 +167,7 @@ export function ApplicantReview({
                 notes={card.notesOf(applicant)}
                 authors={card.authors}
                 viewerId={card.viewerId}
+                leaveTo={(go) => onClose(go)}
               />
             </Appear>
           ) : null}

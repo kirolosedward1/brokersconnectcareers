@@ -9,6 +9,7 @@ import { fewerLast, useFewerKeys } from '~/features/jobs/fewer';
 import { useJobBoard } from '~/features/jobs/queries';
 import { useListOwner } from '~/features/jobs/recent';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { useAgentProfile } from '~/features/profile/queries';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -79,6 +80,8 @@ export function useSuggestions() {
   const applications = useMyApplications();
   const profile = useAgentProfile();
   const hidden = useHiddenCompanies();
+  // A listing set aside with "Hide this listing" is not suggested either, as everywhere else.
+  const hiddenJobs = useHiddenJobs();
   const fewer = useFewerKeys(useListOwner());
 
   const firstPage = board.data?.pages[0]?.jobs;
@@ -90,7 +93,7 @@ export function useSuggestions() {
     // A failed read of the applications suggests from the whole page, as the website does.
     const appliedTo = new Set((applications.data ?? []).map((application) => application.job_id));
     const { ranked, personalised } = rankJobs(
-      withoutHidden(firstPage, hidden).filter((job) => !appliedTo.has(job.id)),
+      withoutHiddenJobs(withoutHidden(firstPage, hidden), hiddenJobs).filter((job) => !appliedTo.has(job.id)),
       {
         tracks: agent?.tracks ?? null,
         districtIds: agent?.district_ids ?? null,
@@ -98,7 +101,7 @@ export function useSuggestions() {
       },
     );
     return { ranked: fewerLast(ranked, fewer), personalised };
-  }, [settled, firstPage, applications.data, hidden, agent, fewer]);
+  }, [settled, firstPage, applications.data, hidden, hiddenJobs, agent, fewer]);
 
   return {
     suggestions: (ranking?.ranked.slice(0, 3) ?? []) as Suggestion[],

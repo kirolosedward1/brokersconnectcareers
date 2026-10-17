@@ -5,6 +5,7 @@ import { useTranslations } from 'use-intl';
 import { whatsappLink } from '@/lib/whatsapp';
 import { Button } from '~/components/ui/button';
 import { MessageCircle, Trash2, X } from '~/components/ui/lucide';
+import { KeyboardRoom } from '~/components/ui/keyboard-room';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useListOwner } from '~/features/jobs/recent';
@@ -85,52 +86,57 @@ export function SavedRepliesSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={styles.header}>
-          <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
-            {t('title')}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tCommon('close')}
-            onPress={onClose}
-            hitSlop={8}
-            style={{ minWidth: hitTarget, minHeight: hitTarget, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <X size={22} color={colors.foreground} />
-          </Pressable>
-        </View>
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: gutter, gap: space[3], paddingBottom: insets.bottom + space[6] }}
-        >
-          <Reply text={opener} label={t('opener')} onSend={() => send(opener)} />
-          {replies.map((reply) => (
-            <Reply key={reply.id} text={fillReply(reply.text, values)} onSend={() => send(fillReply(reply.text, values))} onRemove={() => remove(reply)} />
-          ))}
-
-          <View style={{ gap: space[2], marginTop: space[3] }}>
-            <Text variant="small" weight="semibold" accessibilityRole="header">
-              {t('new')}
+      <KeyboardRoom>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={styles.header}>
+            <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
+              {t('title')}
             </Text>
-            <TextField
-              value={draft}
-              onChangeText={setDraft}
-              placeholder={t('placeholder', TOKENS)}
-              accessibilityLabel={t('new')}
-              multiline
-              maxLength={MAX_LENGTH}
-              style={{ minHeight: 72, paddingVertical: space[2], textAlignVertical: 'top' }}
-            />
-            <Text variant="caption" tone="mutedForeground">
-              {t('tokens', TOKENS)}
-            </Text>
-            <View style={{ alignItems: 'flex-start' }}>
-              <Button label={t('keep')} variant="outline" size="sm" disabled={!draft.trim()} onPress={keep} />
-            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={tCommon('close')}
+              onPress={onClose}
+              hitSlop={8}
+              style={{ minWidth: hitTarget, minHeight: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={22} color={colors.foreground} />
+            </Pressable>
           </View>
-        </ScrollView>
-      </View>
+          {/* The new reply's box is at the foot: the sheet makes room for the keyboard under it. */}
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
+            keyboardDismissMode="interactive"
+            contentContainerStyle={{ padding: gutter, gap: space[3], paddingBottom: insets.bottom + space[6] }}
+          >
+            <Reply text={opener} label={t('opener')} onSend={() => send(opener)} />
+            {replies.map((reply) => (
+              <Reply key={reply.id} text={fillReply(reply.text, values)} onSend={() => send(fillReply(reply.text, values))} onRemove={() => remove(reply)} />
+            ))}
+
+            <View style={{ gap: space[2], marginTop: space[3] }}>
+              <Text variant="small" weight="semibold" accessibilityRole="header">
+                {t('new')}
+              </Text>
+              <TextField
+                value={draft}
+                onChangeText={setDraft}
+                placeholder={t('placeholder', TOKENS)}
+                accessibilityLabel={t('new')}
+                multiline
+                maxLength={MAX_LENGTH}
+                style={{ minHeight: 72, paddingVertical: space[2], textAlignVertical: 'top' }}
+              />
+              <Text variant="caption" tone="mutedForeground">
+                {t('tokens', TOKENS)}
+              </Text>
+              <View style={{ alignItems: 'flex-start' }}>
+                <Button label={t('keep')} variant="outline" size="sm" disabled={!draft.trim()} onPress={keep} />
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </KeyboardRoom>
     </Modal>
   );
 }

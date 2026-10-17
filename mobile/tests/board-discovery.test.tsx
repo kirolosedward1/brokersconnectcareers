@@ -14,6 +14,7 @@ import { fewerLast, resetFewerForTests } from '~/features/jobs/fewer';
 import { countNewSince, instant, resetBoardSeenForTests, seenDividerBefore } from '~/features/jobs/new-since';
 import { useJobBoard } from '~/features/jobs/queries';
 import { suggestionsFor, withSuggestion, type SearchSuggestion } from '~/features/jobs/suggestions';
+import { unhideJob } from '~/features/moderation/hidden-jobs';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { markupTags } from '~/i18n/rich';
 import { rememberActor } from '~/lib/last-actor';
@@ -529,6 +530,26 @@ describe('show fewer like this', () => {
 
   /** The suggested roles, in order — once the held card's menu, which names it too, has gone. */
   const suggested = () => screen.queryAllByText(new RegExp(`^(${fitting.title_ar}|${elsewhere.title_ar})$`)).map((node) => node.props.children);
+
+  it("takes a listing hidden from its card's menu off Home's suggestions", async () => {
+    server.on('/api/mobile/v1/jobs', board([fitting, elsewhere]));
+    server.on('POST /rest/v1/rpc/candidate_summary', { applications_total: 0, applications_new: 0, applications_moved: 0, applications_hired: 0, replies: 0, saved_jobs: 0, saved_searches: 0, alerts_on: 0, profile_completeness: 80, has_profile: true, profile_views_30d: 0, open_jobs: 2 });
+    server.on('GET /rest/v1/agent_profiles', [agent]);
+    server.on('GET /rest/v1/agent_developers', []);
+    await signedIn();
+    renderRouter(homeApp, { initialUrl: '/' });
+    expect(await screen.findByText(ar.dashboard.matchedRoles)).toBeTruthy();
+    expect(suggested()).toEqual([fitting.title_ar, elsewhere.title_ar]);
+
+    fireEvent(await screen.findByRole('link', { name: new RegExp(`^${fitting.title_ar}`) }), 'longPress');
+    fireEvent.press(await screen.findByRole('menuitem', { name: ar.app.jobMenu.hideJob }));
+    try {
+      await waitFor(() => expect(suggested()).toEqual([elsewhere.title_ar]));
+    } finally {
+      // Hidden on the phone, kept past this test: brought back for the next.
+      act(() => unhideJob(fitting.id));
+    }
+  });
 
   it("moves a kind to the end of Home's suggestions, with Undo, and keeps it for this person", async () => {
     server.on('/api/mobile/v1/jobs', board([fitting, elsewhere]));

@@ -234,6 +234,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
             <WeeklySummary
               districtIds={agent.data?.agent?.district_ids ?? []}
               applications={applications.data ?? []}
+              readAt={applications.dataUpdatedAt}
               profileViews={s.profile_views_30d ?? 0}
             />
           ) : null}

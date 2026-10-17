@@ -27,10 +27,19 @@ import { dateOf, monthOf, wholeNumber } from './fields';
 import { toast } from '~/components/feedback/toast';
 import { useGatedModal } from '~/lib/sheet-gate';
 
-/** This month's first day, as the form's dates are kept ("2026-10-01"): no later month has come yet. */
-function thisMonthStart(): string {
+/** This month, as the form shows a date ("2026-10"): no later month has come yet. */
+function thisMonth(): string {
   const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Whether date `a`'s month comes after `b`'s. Months, not days: a date kept
+ * from the website keeps its day ("2026-10-15"), which is still this month,
+ * and an end in the month an entry started is not before it.
+ */
+function laterMonth(a: string, b: string): boolean {
+  return monthOf(a) > monthOf(b);
 }
 
 export type CvEntry =
@@ -173,10 +182,10 @@ function EntryForm({
       if (!title.trim()) local.title = required;
       if (startedOn === null) local.started = required;
       else if (startedOn === undefined) local.started = badMonth;
-      else if (startedOn > thisMonthStart()) local.started = t('app.profile.notFuture');
+      else if (laterMonth(startedOn, thisMonth())) local.started = t('app.profile.notFuture');
       if (endedOn === undefined) local.ended = badMonth;
-      else if (endedOn && endedOn > thisMonthStart()) local.ended = t('app.profile.notFuture');
-      else if (endedOn && startedOn && endedOn < startedOn) local.ended = t('app.profile.endBeforeStart');
+      else if (endedOn && laterMonth(endedOn, thisMonth())) local.ended = t('app.profile.notFuture');
+      else if (endedOn && startedOn && laterMonth(startedOn, endedOn)) local.ended = t('app.profile.endBeforeStart');
       if (Object.keys(local).length) return refuse(local);
       setErrors({});
       return save.mutate(
@@ -223,9 +232,9 @@ function EntryForm({
     const expiresOn = dateOf(expires, certification?.expires);
     if (!name.trim()) local.name = required;
     if (issuedOn === undefined) local.issued = badMonth;
-    else if (issuedOn && issuedOn > thisMonthStart()) local.issued = t('app.profile.notFuture');
+    else if (issuedOn && laterMonth(issuedOn, thisMonth())) local.issued = t('app.profile.notFuture');
     if (expiresOn === undefined) local.expires = badMonth;
-    else if (expiresOn && issuedOn && expiresOn < issuedOn) local.expires = t('app.profile.endBeforeStart');
+    else if (expiresOn && issuedOn && laterMonth(issuedOn, expiresOn)) local.expires = t('app.profile.endBeforeStart');
     if (Object.keys(local).length) return refuse(local);
     setErrors({});
     save.mutate(

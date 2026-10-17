@@ -3,12 +3,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatNumber } from '@/lib/format';
-import { parseAgentFilters, type AgentFilters } from '@/lib/agent-filters';
+import type { AgentFilters } from '@/lib/agent-filters';
 import { Button } from '~/components/ui/button';
 import { BellPlus, BellRing, X } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { markSearchSeen, saveAgentSearch, savedAgentSearches, type SavedAgentSearch } from '~/features/directory/alerts';
-import { agentFiltersToParams } from '~/features/directory/filters';
+import { savedSearchParams } from '~/features/directory/filters';
 import { directorySearch } from '~/features/directory/queries';
 import { useListOwner } from '~/features/jobs/recent';
 import { useTheme } from '~/theme/provider';
@@ -78,7 +78,7 @@ export function SavedAgentSearches({ current }: { current: string }) {
   if (!searches.length) return null;
 
   const open = (saved: SavedAgentSearch) => {
-    router.setParams(agentFiltersToParams(parseAgentFilters(Object.fromEntries(new URLSearchParams(saved.search)))));
+    router.setParams(savedSearchParams(saved.search));
     markSearchSeen(owner, saved).catch(() => {});
   };
 

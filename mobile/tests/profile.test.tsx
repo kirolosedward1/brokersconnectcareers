@@ -380,6 +380,13 @@ describe('the profile', () => {
     expect(screen.queryByLabelText(ar.onboarding.fullName)).toBeNull();
   });
 
+  it('never offers the form over developers it could not read, which a save would wipe', async () => {
+    server.on('GET /rest/v1/agent_developers', { status: 500, body: { message: 'boom' } });
+    open();
+    expect(await screen.findByText(ar.common.error)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.onboarding.fullName)).toBeNull();
+  });
+
   it('offers the form to somebody with no profile yet, and says what comes after', async () => {
     agent = null;
     open();
@@ -408,6 +415,25 @@ describe('the profile', () => {
 });
 
 describe('the sales record', () => {
+  it('keeps up with the figures stored since it was filled, and sends them, not the old ones', async () => {
+    open();
+    expect((await screen.findByLabelText(ar.cv.unitsClosed)).props.value).toBe('');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.objective), 'بيع الوحدات الجاهزة في التجمع');
+
+    // Changed on the website meanwhile; read again after the profile's own save.
+    agent = { ...(agent as AgentProfileRow), units_closed: 40, volume_egp: 9000000 };
+    fireEvent.press(saveButton());
+    await waitFor(() => expect(screen.getByLabelText(ar.cv.unitsClosed).props.value).toBe('40'));
+    expect(screen.getByLabelText(ar.cv.objective).props.value).toBe('بيع الوحدات الجاهزة في التجمع');
+
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/saveProfileRecord')).toEqual({
+        input: { summaryAr: 'بيع الوحدات الجاهزة في التجمع', unitsClosed: 40, volumeEgp: 9000000 },
+      }),
+    );
+  });
+
   it('saves the objective and the figures, in either set of digits', async () => {
     open();
     fireEvent.changeText(await screen.findByLabelText(ar.cv.unitsClosed), '12');
@@ -539,6 +565,23 @@ describe('the CV sections', () => {
         started: '2021-03-15',
       }),
     );
+  });
+
+  it('takes an end in the month the job started, and a start kept from the website this month — months, not days', async () => {
+    const today = new Date();
+    const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    // Started on the 28th of this month, as the website keeps it.
+    server.on('GET /rest/v1/agent_experience', [{ ...job, started: `${thisMonth}-28` }]);
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.profile.edit}: ${job.title} · ${job.company_name}` }));
+    pickMonth(ar.cv.ended, today.getFullYear(), today.getMonth() + 1);
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/saveExperience')?.input).toMatchObject({ started: `${thisMonth}-28`, ended: `${thisMonth}-01` }),
+    );
+    expect(screen.queryByText(ar.app.profile.notFuture)).toBeNull();
+    expect(screen.queryByText(ar.app.profile.endBeforeStart)).toBeNull();
   });
 
   it('catches an end before the start, before sending anything — in view in the sheet, and said', async () => {

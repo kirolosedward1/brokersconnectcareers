@@ -53,10 +53,11 @@ export async function saveAgentSearch(owner: string, search: string, label: stri
   });
 }
 
-/** Looked at: what it shows now is seen. */
+/** Looked at: what it shows now is seen — where it stands in the list, and only while it is still kept. */
 export async function markSearchSeen(owner: string, saved: SavedAgentSearch): Promise<void> {
   const page = await firstPage(saved.search);
-  savedAgentSearches.add(owner, { ...saved, seen: page.agents.map((agent) => agent.id).slice(0, SEEN), fresh: 0, checkedAt: Date.now() });
+  const seen = page.agents.map((agent) => agent.id).slice(0, SEEN);
+  savedAgentSearches.update(owner, saved.id, (current) => ({ ...current, seen, fresh: 0, checkedAt: Date.now() }));
 }
 
 /**
@@ -76,11 +77,16 @@ export async function checkAgentSearches(owner: string, words: (label: string, c
       total += saved.fresh;
       continue;
     }
-    const seen = new Set(saved.seen);
+    // Counted against the search as it is now, not as it was before asking:
+    // removed meanwhile it stays removed, and looked at meanwhile its
+    // consultants are seen. Written where it stands, not moved to the top.
+    const current = (await savedAgentSearches.read(owner)).find((item) => item.id === saved.id);
+    if (!current) continue;
+    const seen = new Set(current.seen);
     const fresh = page.agents.filter((agent) => !seen.has(agent.id)).length;
     total += fresh;
-    if (fresh > saved.fresh) await tell(words(saved.label, fresh - saved.fresh), saved.search);
-    if (fresh !== saved.fresh) savedAgentSearches.add(owner, { ...saved, fresh, checkedAt: Date.now() });
+    if (fresh > current.fresh) await tell(words(current.label, fresh - current.fresh), current.search);
+    if (fresh !== current.fresh) savedAgentSearches.update(owner, current.id, (now) => ({ ...now, fresh, checkedAt: Date.now() }));
   }
   return total;
 }

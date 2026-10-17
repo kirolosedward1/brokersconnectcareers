@@ -65,11 +65,20 @@ export default function InboxScreen() {
   // applicants are hidden from it (migration 349), whatever a read returns.
   useMarkSeen(viewer?.company?.suspended_at ? undefined : rows);
   const [q, setQ] = useState(filters.q);
+  // The words in the address changed (a link, the overview, Clear): the box shows them.
+  const [seenQ, setSeenQ] = useState(filters.q);
+  if (seenQ !== filters.q) {
+    setSeenQ(filters.q);
+    setQ(filters.q);
+  }
   // A new applicant, a colleague's move or their new listing reaches the inbox with a pull.
   const pull = usePullRefresh(() => Promise.all([inbox.refetch(), rows?.length ? notes.refetch() : null, listings.refetch()]));
   const list = useTabList();
   const review = useSheet();
   const [queue, setQueue] = useState<string[]>([]);
+  // Each review begins afresh, at its first applicant: one started again as
+  // the last was still sliding away was the same sheet, at the step it ended on.
+  const [reviews, setReviews] = useState(0);
 
   const header = (
     <Stack.Screen options={{ title: t('employer.allApplicants'), headerRight: bell }} />
@@ -231,6 +240,7 @@ export default function InboxScreen() {
               icon={<Layers size={16} color={colors.secondaryForeground} />}
               onPress={() => {
                 setQueue(rows.map((row) => row.id));
+                setReviews((count) => count + 1);
                 review.show();
               }}
             />
@@ -276,8 +286,9 @@ export default function InboxScreen() {
   const reviewSheet =
     review.mounted && rows ? (
       <ApplicantReview
+        key={reviews}
         visible={review.open}
-        onClose={() => review.hide()}
+        onClose={(after) => review.hide(after)}
         onDismiss={review.onDismiss}
         queue={queue}
         rows={rows}

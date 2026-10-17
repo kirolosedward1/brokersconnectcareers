@@ -70,6 +70,10 @@ export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: 
     add(owner: string, item: T) {
       change(owner, (items) => [item, ...items.filter((existing) => idOf(existing) !== idOf(item))]);
     },
+    /** Changes one where it stands, from what it holds now; nothing when it is no longer kept. */
+    update(owner: string, id: string, next: (current: T) => T) {
+      change(owner, (items) => items.map((item) => (idOf(item) === id ? next(item) : item)));
+    },
     remove(owner: string, id: string) {
       change(owner, (items) => items.filter((item) => idOf(item) !== id));
     },

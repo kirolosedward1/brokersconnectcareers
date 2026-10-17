@@ -11,6 +11,7 @@ import { formatDateTime, formatList } from '@/lib/format';
 import { shownToast, toast } from '~/components/feedback/toast';
 import { localHrefOf, PushBridge } from '~/components/navigation/push-bridge';
 import { PendingPath } from '~/components/navigation/pending-path';
+import { hideJob, unhideJob } from '~/features/moderation/hidden-jobs';
 import { bestOf, parseCompareIds, togglePick } from '~/features/saved/compare';
 import { jobNotes, keepNote, NOTE_MAX } from '~/features/saved/notes';
 import {
@@ -396,6 +397,39 @@ describe('a reminder before a saved listing closes', () => {
 
     await waitFor(() => expect(phone.__scheduled.size).toBe(0));
     expect(await jobReminders.read(USER_ID)).toEqual([]);
+  });
+
+  it('takes back the reminder of a listing applied to since, wherever the application was sent from', async () => {
+    const soon = job('1', {}, 5 * DAY);
+    await setReminder(USER_ID, soon, words);
+    savedJobs = [soon];
+    // Applied on the website: the list still holds it, and it is still open.
+    server.on('GET /rest/v1/applications', [
+      { id: 'application-1', job_id: soon.id, status: 'submitted', created_at: '2026-10-01T10:00:00Z', job: { ...soon } },
+    ]);
+    await signedIn();
+    renderRouter(app, { initialUrl: '/jobs' });
+
+    await waitFor(() => expect(phone.__scheduled.size).toBe(0));
+    expect(await jobReminders.read(USER_ID)).toEqual([]);
+  });
+
+  it('takes back the reminder of a listing hidden, and puts it back when the listing is', async () => {
+    const soon = job('1', {}, 5 * DAY);
+    await setReminder(USER_ID, soon, words);
+    savedJobs = [soon];
+    await signedIn();
+    renderRouter(app, { initialUrl: '/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    expect(phone.__scheduled.size).toBe(1);
+
+    act(() => hideJob(soon.id, { name: soon.title_ar, slug: soon.slug }));
+    await waitFor(() => expect(phone.__scheduled.size).toBe(0));
+    expect(await jobReminders.read(USER_ID)).toEqual([]);
+
+    act(() => unhideJob(soon.id));
+    await waitFor(() => expect(phone.__scheduled.size).toBe(1));
+    expect(await jobReminders.read(USER_ID)).toEqual([expect.objectContaining({ id: soon.id, fireAt: reminderAt(soon.expires_at)?.getTime() })]);
   });
 
   it('reads nothing for the reminders when there are none to keep in step', async () => {

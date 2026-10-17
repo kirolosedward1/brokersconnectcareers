@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react';
+import type { ComponentType } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
@@ -24,28 +24,31 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
  * (the website counts that over thirty days, and the line says so). Each is a
  * way to where it is: the board narrowed to those listings, the applications,
  * the profile.
+ *
+ * The week is counted back from when the applications were read (`readAt`),
+ * not from when Home was first drawn: the tab stays mounted for days, and a
+ * company that opened one ten days ago still counted as this week's.
  */
 export function WeeklySummary({
   districtIds,
   applications,
+  readAt,
   profileViews,
 }: {
   districtIds: number[];
   applications: { employer_viewed_at: string | null }[];
+  readAt: number;
   profileViews: number;
 }) {
   const t = useTranslations('app.week');
   const { colors, shadow } = useTheme();
   const districts = useDistricts().data ?? [];
-  // When the week is counted back from: the moment Home was drawn.
-  const [now] = useState(() => Date.now());
-
   const slugs = districts.filter((district) => districtIds.includes(district.id)).map((district) => district.slug);
   const filters: JobFilters = { ...EMPTY_FILTERS, districtSlugs: slugs, postedWithin: 7 };
   const fresh = useBoardTotal(boardQuery(filters), true).data;
   const opened = applications.filter((application) => {
     const at = application.employer_viewed_at ? Date.parse(application.employer_viewed_at) : NaN;
-    return Number.isFinite(at) && now - at <= WEEK_MS;
+    return Number.isFinite(at) && readAt - at <= WEEK_MS;
   }).length;
 
   return (

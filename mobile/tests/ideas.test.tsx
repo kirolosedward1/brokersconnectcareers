@@ -7,6 +7,7 @@ import { fillReply } from '~/components/employer/saved-replies';
 import { ringShare } from '~/components/profile/completeness-ring';
 import { SwipeRow } from '~/components/ui/swipe-row';
 import { checkAgentSearches, saveAgentSearch, savedAgentSearches } from '~/features/directory/alerts';
+import { savedSearchParams } from '~/features/directory/filters';
 import { appliedLast } from '~/features/jobs/marks';
 import { matchFor, matchPercent } from '~/features/jobs/match';
 import { recentJobs, type ViewedJob } from '~/features/jobs/recent';
@@ -166,6 +167,40 @@ describe("a company's consultant searches", () => {
     // The same news is not told twice.
     expect(await checkAgentSearches('company-admin', words)).toBe(1);
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not bring back a search removed while it was being asked again, nor move one to the top', async () => {
+    jest.mocked(getJson).mockResolvedValue(page(['a1']) as never);
+    await saveAgentSearch('company-admin', 'track=resale', 'ريسيل');
+    await saveAgentSearch('company-admin', 'district=new-cairo', 'التجمع');
+    await saveAgentSearch('company-admin', 'track=primary', 'أولي');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const before = (await savedAgentSearches.read('company-admin')).map((item) => item.id);
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue({ granted: false } as never);
+
+    // Each now has someone new; one is removed while the phone is asking.
+    let answer: (value: unknown) => void = () => {};
+    jest.mocked(getJson).mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)) as never);
+    jest.mocked(getJson).mockResolvedValue(page(['a2', 'a1']) as never);
+    const checking = checkAgentSearches('company-admin', words);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    savedAgentSearches.remove('company-admin', 'track=primary');
+    answer(page(['a2', 'a1']));
+    expect(await checking).toBe(2);
+
+    const left = await savedAgentSearches.read('company-admin');
+    expect(left.map((item) => item.id)).toEqual(before.filter((id) => id !== 'track=primary'));
+    expect(left.map((item) => item.fresh)).toEqual([1, 1]);
+  });
+
+  it('opens a kept search with every value it was kept with', () => {
+    expect(savedSearchParams('track=primary&track=resale&district=new-cairo&years=3')).toMatchObject({
+      track: 'primary,resale',
+      district: 'new-cairo',
+      years: '3',
+      q: undefined,
+      availability: undefined,
+    });
   });
 
   it('asks nothing of the phone it has not been let to notify', async () => {

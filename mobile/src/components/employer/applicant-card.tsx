@@ -55,6 +55,7 @@ export function ApplicantCard({
   notes,
   authors,
   viewerId,
+  leaveTo = (go) => go(),
 }: {
   applicant: Applicant;
   jobTitle: string;
@@ -64,6 +65,12 @@ export function ApplicantCard({
   notes: ApplicationNoteRow[] | undefined;
   authors: Record<string, string>;
   viewerId: string | null;
+  /**
+   * How to go from the card to another screen: at once, or — the card inside a
+   * sheet (the review) — once the sheet has gone, since a screen opened under
+   * a sheet still showing is never seen.
+   */
+  leaveTo?: (go: () => void) => void;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -107,7 +114,7 @@ export function ApplicantCard({
   const name = candidate?.full_name ?? '—';
   const openProfile =
     profile && canBrowseAgentDirectory(actor)
-      ? () => router.push({ pathname: '/agents/[slug]', params: { slug: profile.slug } })
+      ? () => leaveTo(() => router.push({ pathname: '/agents/[slug]', params: { slug: profile.slug } }))
       : null;
   const headline = profile ? localized(locale, profile.headline_ar, profile.headline_en) : '';
 
