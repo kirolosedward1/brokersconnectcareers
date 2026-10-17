@@ -24,7 +24,7 @@ import { FilterSheet } from '~/components/jobs/filter-sheet';
 import { JobCard } from '~/components/jobs/job-card';
 import { PopularLandings } from '~/components/jobs/popular-landings';
 import { QuickFilters } from '~/components/jobs/quick-filters';
-import { SortMenu } from '~/components/jobs/sort-menu';
+import { SortButton, SortSheet } from '~/components/jobs/sort-menu';
 import { SaveSearchButton } from '~/components/saved/save-controls';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
@@ -42,6 +42,7 @@ import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-j
 import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
 import { useTabList } from '~/features/tab-bar';
+import { useSheet } from '~/lib/use-sheet';
 import { useRollingNumber } from '~/components/motion/rolling-number';
 import { useListOwner } from '~/features/jobs/recent';
 import { rememberSearch } from '~/features/jobs/recent-searches';
@@ -51,6 +52,15 @@ import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useNextPage } from '~/lib/use-next-page';
 
 const SORTS: JobSort[] = ['newest', 'salary', 'seats'];
+
+/** The board's orders, in the reader's words. */
+function useSortOptions(): { value: JobSort; label: string }[] {
+  const t = useTranslations('jobs');
+  return SORTS.map((sort) => ({
+    value: sort,
+    label: t(sort === 'newest' ? 'sortNewest' : sort === 'salary' ? 'sortSalary' : 'sortSeats'),
+  }));
+}
 
 /**
  * The job board — the website's /jobs.
@@ -79,6 +89,9 @@ export default function BoardScreen() {
   // The spinner is the reader's pull, not a re-read on coming back to the app.
   const pull = usePullRefresh(() => board.refetch());
   const [sheetOpen, setSheetOpen] = useState(false);
+  // The order's card, kept here rather than in the header, which is drawn afresh as the first listings arrive.
+  const sortSheet = useSheet();
+  const sortOptions = useSortOptions();
   // Opened from the Jobs tab pressed again at the top: straight into the words.
   const [searchFirst, setSearchFirst] = useState(false);
   const list = useTabList<FlashListRef<JobListItem>>({
@@ -140,6 +153,9 @@ export default function BoardScreen() {
       }}
     />
   );
+  const sort = (
+    <SortSheet sheet={sortSheet} label={t('jobs.sortBy')} value={filters.sort} options={sortOptions} onChange={(order) => apply({ ...filters, sort: order })} />
+  );
 
   if (board.isPending) {
     // The filters and the order work before the first listings are in: on a
@@ -148,6 +164,7 @@ export default function BoardScreen() {
       <>
         {header}
         {sheet}
+        {sort}
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           keyboardDismissMode="on-drag"
@@ -158,6 +175,7 @@ export default function BoardScreen() {
             first={undefined}
             apply={apply}
             onFilters={openFilters}
+            onSort={sortSheet.show}
             hasResults={false}
             sponsoredShown={false}
             loading
@@ -176,6 +194,7 @@ export default function BoardScreen() {
       <>
         {header}
         {sheet}
+        {sort}
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           keyboardDismissMode="on-drag"
@@ -186,6 +205,7 @@ export default function BoardScreen() {
             first={undefined}
             apply={apply}
             onFilters={openFilters}
+            onSort={sortSheet.show}
             hasResults={false}
             sponsoredShown={false}
             loading
@@ -200,6 +220,7 @@ export default function BoardScreen() {
     <>
       {header}
       {sheet}
+      {sort}
       <FlashList
         {...list}
         data={jobs}
@@ -227,6 +248,7 @@ export default function BoardScreen() {
             total={rolled}
             apply={apply}
             onFilters={openFilters}
+            onSort={sortSheet.show}
             hasResults={jobs.length > 0}
             sponsoredShown={jobs.some((job) => job.is_featured)}
           />
@@ -341,6 +363,7 @@ function BoardHeader({
   total = 0,
   apply,
   onFilters,
+  onSort,
   hasResults,
   sponsoredShown,
   loading = false,
@@ -351,6 +374,8 @@ function BoardHeader({
   total?: number;
   apply: (next: JobFilters) => void;
   onFilters: () => void;
+  /** Opens the order's card, which the screen keeps (BoardScreen). */
+  onSort: () => void;
   hasResults: boolean;
   /** A sponsored listing is among the cards drawn — not merely in the answer, which still holds a company the reader hid. */
   sponsoredShown: boolean;
@@ -376,15 +401,7 @@ function BoardHeader({
             {t('resultsCount', { count: total })}
           </Text>
         )}
-        <SortMenu
-          label={t('sortBy')}
-          value={filters.sort}
-          onChange={(sort) => apply({ ...filters, sort })}
-          options={SORTS.map((sort) => ({
-            value: sort,
-            label: t(sort === 'newest' ? 'sortNewest' : sort === 'salary' ? 'sortSalary' : 'sortSeats'),
-          }))}
-        />
+        <SortButton label={t('sortBy')} value={filters.sort} options={useSortOptions()} onPress={onSort} />
         <FiltersButton count={inSheet} onPress={onFilters} />
       </View>
 

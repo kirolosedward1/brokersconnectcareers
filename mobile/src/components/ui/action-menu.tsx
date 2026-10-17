@@ -43,17 +43,11 @@ export function ActionMenu({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={() => onClose()} onDismiss={onDismiss}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('close')}
-        onPress={() => onClose()}
-        style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.5)' }}
-      >
+      <View style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.5)' }}>
+        {/* The shade beside the card, not around it: wrapped round the card, it was one element to VoiceOver, which found only "Close". */}
+        <Pressable accessibilityRole="button" accessibilityLabel={t('close')} onPress={() => onClose()} style={StyleSheet.absoluteFill} />
         <Appear from="below" distance={40} duration={320}>
-          {/* The card takes its own taps: only the shade around it closes it. */}
-          <Pressable
-            accessible={false}
-            onPress={() => {}}
+          <View
             style={{
               margin: space[3],
               marginBottom: Math.max(insets.bottom, space[3]),
@@ -97,9 +91,9 @@ export function ActionMenu({
                 );
               })}
             </View>
-          </Pressable>
+          </View>
         </Appear>
-      </Pressable>
+      </View>
     </Modal>
   );
 }

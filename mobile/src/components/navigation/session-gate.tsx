@@ -9,9 +9,12 @@ import { useSession, type Viewer } from '~/lib/session';
  * code, and an account with no profile goes to onboarding — whether it came
  * from a sign-in just now, a session restored at launch, or a link. Not while
  * one of those flows is already on screen: they hand over to each other
- * themselves (useLand), and a second push would stack a copy on top.
+ * themselves (useLand), and a second push would stack a copy on top. The
+ * welcome is one of them: its round Google and Apple buttons sign in there
+ * and hand over the same way, once the sign-in has finished (Apple's name
+ * saved, say) — pushed over it before then, onboarding opened twice.
  */
-const FLOWS = new Set(['(auth)', 'onboarding', 'mfa', 'auth']);
+const FLOWS = new Set(['(auth)', 'onboarding', 'mfa', 'auth', 'welcome']);
 
 export function SessionGate() {
   const { ready, session, viewer, secondFactorDue } = useSession();

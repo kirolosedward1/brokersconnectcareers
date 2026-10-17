@@ -25,6 +25,7 @@ import { useTheme } from '~/theme/provider';
 import { gutter, hitTarget, space } from '~/theme/tokens';
 import { dateOf, monthOf, wholeNumber } from './fields';
 import { toast } from '~/components/feedback/toast';
+import { useGatedModal } from '~/lib/sheet-gate';
 
 /** This month's first day, as the form's dates are kept ("2026-10-01"): no later month has come yet. */
 function thisMonthStart(): string {
@@ -51,8 +52,10 @@ export function CvEntrySheet({ agentId, entry, onClose }: { agentId: string; ent
   }, []);
   const confirm = useConfirmDiscard();
   const close = () => (dirty.current ? confirm(onClose) : onClose());
+  // Shown once no other sheet is still closing.
+  const gate = useGatedModal(entry !== null);
   return (
-    <Modal visible={entry !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
+    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
       <KeyboardRoom>
         {/* A fresh form for every entry opened. */}
         {entry ? (

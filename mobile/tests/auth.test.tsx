@@ -1026,6 +1026,45 @@ describe('one-tap sign-in, as App Review asks', () => {
     expect(bodyOf('/auth/v1/token')).toMatchObject({ email: 'sara@example.com', password: PASSWORD });
   });
 
+  it('keeps the form someone is typing in when the config answers late with a one-tap way', async () => {
+    let online = false;
+    server.on('GET /api/mobile/v1/config', () =>
+      online ? mobileConfig({ providers: { google: true, apple: true } }) : { status: 503, body: { error: 'unavailable' } },
+    );
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
+    renderRouter(app, { initialUrl: '/sign-in' });
+    // No one-tap way known: the form is the page.
+    fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'sara@example.com');
+
+    online = true;
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.auth.configRetry }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: ar.app.auth.configRetry })).toBeNull());
+    // Still the form, with what was typed; the one-tap ways a link away.
+    expect(screen.getByLabelText(ar.auth.email).props.value).toBe('sara@example.com');
+    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+    await press(ar.app.auth.otherWays);
+    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+  });
+
+  it('lets the welcome finish its own sign-in before anything else opens over it', async () => {
+    // An account with no profile yet, signed in while the welcome is on screen (its round buttons do this).
+    profileRow = null;
+    renderRouter(app, { initialUrl: '/welcome' });
+    expect(await screen.findByTestId('welcome')).toBeTruthy();
+    await act(async () => {
+      const { error } = await supabase.auth.signInWithPassword({ email: 'sara@example.com', password: PASSWORD });
+      expect(error).toBeNull();
+    });
+    await act(() => jest.advanceTimersByTimeAsync(500));
+    // Not pushed over it by the session gate: the welcome hands over itself once its sign-in has finished (useLand).
+    expect(screen.queryByText(ar.onboarding.title)).toBeNull();
+    expect(screen.getByTestId('welcome')).toBeTruthy();
+
+    // Left without finishing: the gate takes over from the tabs.
+    fireEvent.press(screen.getByRole('button', { name: ar.app.welcome.skip }));
+    expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
+  });
+
   it('signs in from the welcome with the round buttons beside Sign in, and closes it', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
@@ -1355,6 +1394,23 @@ describe('onboarding cut short', () => {
     } finally {
       await AsyncStorage.removeItem('bc.onboarding-intent.v1');
     }
+  });
+
+  it('holds onboarding while it signs out, so nothing else can be pressed meanwhile', async () => {
+    profileRow = null;
+    await signedIn();
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.on('POST /auth/v1/logout', async () => (await gate, {}));
+    renderRouter(app, { initialUrl: '/onboarding' });
+    await press(ar.nav.signOut);
+    // Said on the button, and the other ways on held, until the screen closes.
+    await waitFor(() => expect(screen.getByRole('button', { name: ar.nav.signOut }).props.accessibilityState).toMatchObject({ busy: true }));
+    expect(screen.getByRole('button', { name: ar.onboarding.leaveDelete }).props.accessibilityState).toMatchObject({ disabled: true });
+    await act(async () => release());
+    await waitFor(async () => expect((await supabase.auth.getSession()).data.session).toBeNull());
   });
 
   it('forgets the door it came in by once the person signs out of onboarding', async () => {

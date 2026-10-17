@@ -426,6 +426,10 @@ function pickMonth(field: string, year: number, month: number) {
   fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${field}: `) }));
   fireEvent.press(screen.getByRole('radio', { name: String(year) }));
   fireEvent.press(screen.getByRole('radio', { name: `${monthNames('ar')[month - 1]} ${year}` }));
+  // iOS says the sheet has slid away: until it does, no other sheet may open (src/lib/sheet-gate.ts).
+  for (const modal of screen.UNSAFE_getAllByType(Modal)) {
+    if (!modal.props.visible) act(() => modal.props.onDismiss?.());
+  }
 }
 
 describe('the CV sections', () => {

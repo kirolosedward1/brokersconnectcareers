@@ -59,7 +59,11 @@ export default function SignInScreen() {
   const oneTap = providers.apple || providers.google;
   const [withEmail, setWithEmail] = useState(false);
   // The form at once when there is no other way in; otherwise behind "Continue with email".
-  const showForm = withEmail || (providers.settled && !oneTap);
+  // Once shown, it stays: the config answering late (a retry, the phone back online) does
+  // not swap it for buttons under the reader's typing.
+  const [formKept, setFormKept] = useState(false);
+  const showForm = withEmail || formKept || (providers.settled && !oneTap);
+  if (showForm && !formKept) setFormKept(true);
 
   const busy = pending;
 
@@ -234,6 +238,7 @@ export default function SignInScreen() {
               onPress={() => {
                 setError(null);
                 setWithEmail(false);
+                setFormKept(false);
               }}
               suppressHighlighting
               // A finger's height, though the words are small.

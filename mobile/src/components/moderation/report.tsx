@@ -16,6 +16,7 @@ import { appDirection } from '~/lib/direction';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { corner, font, gutter, hitTarget, space, type as scale } from '~/theme/tokens';
+import { useGatedModal } from '~/lib/sheet-gate';
 
 type Target = ReportInput['target'];
 
@@ -126,6 +127,8 @@ function ReportSheet({
   const t = useTranslations();
   const { colors, scheme } = useTheme();
   const insets = useSafeAreaInsets();
+  // Shown once no other sheet is still closing (a card's held menu that offered Report, say).
+  const gate = useGatedModal(visible);
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [detail, setDetail] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -174,7 +177,7 @@ function ReportSheet({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <KeyboardRoom>
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <View

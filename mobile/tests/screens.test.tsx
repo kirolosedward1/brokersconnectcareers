@@ -380,6 +380,32 @@ describe('a listing', () => {
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
   });
 
+  it('leaves out the listings of a company this phone hides on a track-in-district page, as the board does', async () => {
+    server.on('/api/mobile/v1/landing/primary-sales-new-cairo', {
+      track: 'primary',
+      district: newCairo,
+      facts: { listings: 2, companies: 2, withBasicSalary: 1, salaryFloor: 10000, salaryCeiling: 15000 },
+    });
+    const other = {
+      ...listing,
+      id: '5b0c7d1e-0000-4000-8000-000000000102',
+      slug: 'sales-manager-c3d4',
+      title_ar: 'مدير مبيعات',
+      company_id: 'c0000000-0000-4000-8000-000000000002',
+      company: { ...listing.company, id: 'c0000000-0000-4000-8000-000000000002', slug: 'other-brokers' },
+    };
+    server.on('/api/mobile/v1/jobs', board([listing, other]));
+    act(() => hideCompany(company.id));
+    try {
+      renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+      expect(await screen.findByText(landingTitle)).toBeTruthy();
+      expect(await screen.findByText(other.title_ar)).toBeTruthy();
+      expect(screen.queryByText(listing.title_ar)).toBeNull();
+    } finally {
+      act(() => unhideCompany(company.id));
+    }
+  });
+
   it("says a track-in-district page's listings could not be read, never that there are none", async () => {
     server.on('/api/mobile/v1/landing/primary-sales-new-cairo', {
       track: 'primary',

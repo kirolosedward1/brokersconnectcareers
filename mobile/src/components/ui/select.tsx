@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { Text } from './text';
+import { useGatedModal } from '~/lib/sheet-gate';
 
 export type SelectOption<T extends string | number> = { value: T; label: string };
 
@@ -40,6 +41,8 @@ export function Select<T extends string | number>({
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const current = options.find((option) => option.value === value) ?? null;
+  // Shown once no other sheet is still closing: a second picker tapped as the first slid away never showed.
+  const gate = useGatedModal(open);
 
   const choose = (next: T | null) => {
     onChange(next);
@@ -75,7 +78,7 @@ export function Select<T extends string | number>({
         <ChevronDown size={18} color={colors.mutedForeground} />
       </Pressable>
 
-      <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
+      <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <View
             style={{

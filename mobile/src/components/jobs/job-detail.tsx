@@ -34,6 +34,7 @@ import { useShrinkingTabBar } from '~/features/tab-bar';
 import { callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { useHasBoard } from '~/lib/use-tabs';
+import { useToBoard } from '~/features/jobs/to-board';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
@@ -79,6 +80,7 @@ export function JobDetail({
   const canApply = !role || role === 'candidate';
   const applied = useAppliedJobIds([job.id]).has(job.id);
   const hasBoard = useHasBoard();
+  const toBoard = useToBoard();
   // Like it, and not already applied to: those are done with, as Home's suggestions leave them out.
   const similarApplied = useAppliedJobIds(similar.map((item) => item.id));
   const similarShown = withoutHiddenJobs(withoutHidden(similar, useHiddenCompanies()), useHiddenJobs()).filter((item) => !similarApplied.has(item.id));
@@ -220,7 +222,7 @@ export function JobDetail({
             <Text variant="small" tone="mutedForeground">
               {job.expires_at ? t('closedOn', { date: formatDate(job.expires_at, locale) }) : t('closedCtaBody')}
             </Text>
-            {hasBoard ? <Button label={t('browseOpen')} onPress={() => router.navigate('/jobs')} /> : null}
+            {hasBoard ? <Button label={t('browseOpen')} onPress={toBoard} /> : null}
           </Card>
         ) : !canApply ? (
           <Card>

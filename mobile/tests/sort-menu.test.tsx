@@ -3,6 +3,8 @@ import { Modal } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { SortMenu } from '~/components/jobs/sort-menu';
+import { ActionMenu } from '~/components/ui/action-menu';
+import { Share2 } from '~/components/ui/lucide';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { ThemeProvider } from '~/theme/provider';
 
@@ -78,4 +80,31 @@ it('closes without a word to the board when the order chosen is the one already 
   });
   expect(onChange).not.toHaveBeenCalled();
   expect(screen.UNSAFE_queryByType(Modal)).toBeNull();
+});
+
+type Node = { parent: Node | null; props: Record<string, unknown> };
+
+/** Whether VoiceOver can reach an element: nothing around it — besides its own views — is a single element of its own (an accessible Pressable). */
+function reachable(element: Node): boolean {
+  const own = (node: Node) =>
+    node.props.accessibilityRole === element.props.accessibilityRole && node.props.accessibilityLabel === element.props.accessibilityLabel;
+  for (let node = element.parent; node; node = node.parent) {
+    if (node.props.accessible === true && !own(node)) return false;
+  }
+  return true;
+}
+
+it('lets VoiceOver reach each order in the card, not only Close', () => {
+  open(jest.fn());
+  for (const option of options) expect(reachable(screen.getByRole('radio', { name: option.label }) as never)).toBe(true);
+  expect(reachable(screen.getByRole('button', { name: ar.common.close }) as never)).toBe(true);
+});
+
+it("lets VoiceOver reach each thing a held card's menu offers", () => {
+  const items = [
+    { label: ar.app.jobMenu.open, icon: Share2, onPress: jest.fn() },
+    { label: ar.app.jobMenu.fewer, icon: Share2, onPress: jest.fn() },
+  ];
+  render(<ActionMenu visible onClose={jest.fn()} onDismiss={jest.fn()} items={items} />, { wrapper: Providers });
+  for (const item of items) expect(reachable(screen.getByRole('menuitem', { name: item.label }) as never)).toBe(true);
 });

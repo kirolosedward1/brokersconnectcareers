@@ -244,7 +244,8 @@ describe("a listing's applicants", () => {
 
     server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: false, error: 'moved_already' });
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` }));
-    fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.rejected }));
+    // The first move's sheet still sliding away: this one opens once it has gone.
+    fireEvent.press(await screen.findByRole('radio', { name: ar.applicationStatus.rejected }));
     expect(await screen.findByText(ar.employer.applicantMovedAlready)).toBeTruthy();
     // Put back: the card says where it stood.
     expect(screen.getByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` })).toBeTruthy();
@@ -322,7 +323,8 @@ describe("a listing's applicants", () => {
 
     // The next move carries the reason the card holds, not the hidden sentence.
     fireEvent.press(screen.getByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` }));
-    fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.rejected }));
+    // The first move's sheet still sliding away: this one opens once it has gone.
+    fireEvent.press(await screen.findByRole('radio', { name: ar.applicationStatus.rejected }));
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/setApplicationStatus')).toHaveLength(2));
     expect(input('/api/mobile/v1/actions/setApplicationStatus', 1)).toEqual({
       applicationId: sara.id,

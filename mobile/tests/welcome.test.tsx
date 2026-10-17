@@ -250,3 +250,32 @@ it('is not opened by signing out when signing in again came first', async () => 
   expect(screen.queryByTestId('welcome')).toBeNull();
   expect(screen.getByText('home-screen')).toBeTruthy();
 });
+
+it('is not opened a second time after signing out of a screen that sat over it', async () => {
+  const user = authUser();
+  server.on('POST /auth/v1/token', () => authSession(user));
+  server.on('GET /auth/v1/user', user);
+  server.on('/rest/v1/profiles', [profile]);
+  server.on('/rest/v1/rpc/my_company_id', () => null);
+  launch();
+  await drawn();
+  expect(await screen.findByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
+
+  // Signed in from the welcome, which hands over to the code screen on top of it…
+  await act(async () => {
+    const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: 'correct-horse' });
+    expect(error).toBeNull();
+  });
+  await act(async () => {
+    router.push('/mfa');
+  });
+  expect(await screen.findByText('close-here')).toBeTruthy();
+  // …signed out there, and back on the welcome that was under it.
+  await signOut();
+  fireEvent.press(screen.getByText('close-here'));
+  fireEvent.press(await screen.findByRole('button', { name: ar.app.welcome.skip }));
+  await act(async () => {});
+  // Skipped once, gone: not opened again over the tabs.
+  expect(screen.queryByTestId('welcome')).toBeNull();
+  expect(screen.getByText('home-screen')).toBeTruthy();
+});

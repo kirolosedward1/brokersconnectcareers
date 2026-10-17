@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Modal, Pressable, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
@@ -44,16 +44,10 @@ export function VerifiedSheet({ visible, onClose, onDismiss }: { visible: boolea
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} onDismiss={onDismiss}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('close')}
-        onPress={onClose}
-        style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.45)' }}
-      >
-        {/* The card itself takes its own taps: only the shade around it closes it. */}
-        <Pressable
-          accessible={false}
-          onPress={() => {}}
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.45)' }}>
+        {/* The shade beside the card, not around it: wrapped round the card, it was one element to VoiceOver. */}
+        <Pressable accessibilityRole="button" accessibilityLabel={t('close')} onPress={onClose} style={StyleSheet.absoluteFill} />
+        <View
           style={{
             margin: space[3],
             marginBottom: Math.max(insets.bottom, space[3]),
@@ -76,8 +70,8 @@ export function VerifiedSheet({ visible, onClose, onDismiss }: { visible: boolea
           <Point icon={<BadgeCheck size={18} color={colors.primary} />} text={t('reviewed')} />
           <Point icon={<Flag size={18} color={colors.primary} />} text={t('notAPromise')} />
           <Button label={t('close')} onPress={onClose} />
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

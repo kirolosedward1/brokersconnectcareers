@@ -18,7 +18,10 @@ export function WelcomeGate({ onDecided }: { onDecided: (opened: boolean) => voi
   const { ready, session } = useSession();
   const navigationReady = Boolean(useRootNavigationState()?.key);
   const pathname = usePathname();
-  const overTabs = useSegments()[0] === '(tabs)';
+  const first = useSegments()[0];
+  const overTabs = first === '(tabs)';
+  // The welcome on screen already: it is the answer to a sign-out, not a reason for another.
+  const onWelcome = first === 'welcome';
   const decided = useRef(false);
   const curtainHeld = useLaunchHeld();
   // A sign-out still to be answered with the welcome (below).
@@ -38,18 +41,20 @@ export function WelcomeGate({ onDecided }: { onDecided: (opened: boolean) => voi
   // onboarding, or a session that ended — is welcomed again: once whatever
   // they signed out from has closed, so nothing is left between the tabs and
   // the welcome for that screen's own Back to close instead. Signing in again
-  // first leaves it unopened.
+  // first leaves it unopened, and so does closing back onto a welcome that was
+  // under it (signed in from the welcome, then out from the code or onboarding).
   const signedIn = useRef<boolean | null>(null);
   useEffect(() => {
     if (!ready) return;
     const now = Boolean(session);
     if (signedIn.current === true && !now) due.current = true;
-    if (now) due.current = false;
+    // Signed in again, or back on a welcome that was under the screen signed out from.
+    if (now || onWelcome) due.current = false;
     signedIn.current = now;
     if (!due.current || !overTabs || !decided.current) return;
     due.current = false;
     if (welcomeOpens()) router.push('/welcome');
-  }, [ready, session, overTabs]);
+  }, [ready, session, overTabs, onWelcome]);
 
   return null;
 }

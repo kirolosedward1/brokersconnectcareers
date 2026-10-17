@@ -291,6 +291,40 @@ describe('suggestions as the reader types', () => {
       expect(await screen.findByRole('button', { name })).toBeTruthy();
     });
 
+    it('keeps the order\'s card open, and its choice working, when the first listings arrive under it', async () => {
+      let release = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      server.on('/api/mobile/v1/jobs', async () => (await gate, board()));
+      renderRouter(boardApp, { initialUrl: '/jobs' });
+      // Opened while the board is still loading.
+      fireEvent.press(await screen.findByRole('button', { name: `${ar.jobs.sortBy}: ${ar.jobs.sortNewest}` }));
+      expect(await screen.findByRole('radio', { name: ar.jobs.sortSalary })).toBeTruthy();
+
+      await act(async () => release());
+      expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+      // Still there: not taken away with the header drawn afresh.
+      const salary = screen.getByRole('radio', { name: ar.jobs.sortSalary });
+      server.requests.length = 0;
+      fireEvent.press(salary);
+      await act(() => jest.advanceTimersByTimeAsync(800));
+      await waitFor(() => expect(boardReads().some((params) => params.get('sort') === 'salary')).toBe(true));
+    });
+
+    it("searches with the keyboard's Search key, and counts the words typed on the sheet's button", async () => {
+      await typeInSheet('مدير');
+      // The button's figure asks for the words too once the typing pauses.
+      server.requests.length = 0;
+      await act(() => jest.advanceTimersByTimeAsync(500));
+      await waitFor(() => expect(boardReads().some((params) => params.get('q') === 'مدير')).toBe(true));
+
+      server.requests.length = 0;
+      fireEvent(screen.getByLabelText(ar.filters.search), 'submitEditing');
+      await waitFor(() => expect(screen.queryByLabelText(ar.filters.search)).toBeNull());
+      await waitFor(() => expect(boardReads().some((params) => params.get('q') === 'مدير')).toBe(true));
+    });
+
     it('offers the recent searches again once the words are cleared', async () => {
       await typeInSheet('القاهره');
       expect(await screen.findByRole('button', { name: t('app.jobs.suggestArea', { name: newCairo.name_ar }) })).toBeTruthy();

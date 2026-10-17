@@ -55,6 +55,7 @@ import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useHasBoard } from '~/lib/use-tabs';
+import { useToBoard } from '~/features/jobs/to-board';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
 
@@ -115,6 +116,7 @@ function Apply({ job }: { job: JobDetail }) {
   const { session, viewer, actor } = useSession();
   const context = useApplyContext(isCandidate(actor) ? job.id : null);
   const hasBoard = useHasBoard();
+  const toBoard = useToBoard();
   const navigation = useNavigation();
   const [sentAt, setSentAt] = useState<Date | null>(null);
 
@@ -139,7 +141,7 @@ function Apply({ job }: { job: JobDetail }) {
         icon={CalendarX2}
         title={t('jobs.expired')}
         body={t('jobs.expiredBody')}
-        action={hasBoard ? <Button label={t('jobs.title')} onPress={() => router.navigate('/jobs')} /> : null}
+        action={hasBoard ? <Button label={t('jobs.title')} onPress={toBoard} /> : null}
       />
     );
   }
@@ -561,6 +563,7 @@ function WhoSees() {
 
 /** The confirmation: what, where and when, where to follow it, and what to look at next. */
 function Sent({ job, at }: { job: JobDetail; at: Date }) {
+  const toBoard = useToBoard();
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -628,7 +631,7 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
 
       <View style={{ gap: space[2] }}>
         <Button label={t('apply.viewApplications')} onPress={() => router.navigate('/dashboard/applications')} />
-        <Button label={t('jobs.title')} variant="outline" onPress={() => router.navigate('/jobs')} />
+        <Button label={t('jobs.title')} variant="outline" onPress={toBoard} />
       </View>
 
       {next.roles.length ? (

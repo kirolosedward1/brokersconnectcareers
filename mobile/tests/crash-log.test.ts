@@ -60,13 +60,12 @@ describe('a sheet drawn only while it is wanted', () => {
     expect(result.current).toMatchObject({ open: true, mounted: true });
     act(() => result.current.hide());
     expect(result.current).toMatchObject({ open: false, mounted: true });
-    // Pressed again while it is still sliding away: nothing, rather than a sheet that never shows.
+    // Pressed again while it is still sliding away: it waits, rather than a sheet that never shows…
     act(() => result.current.show());
     expect(result.current.open).toBe(false);
+    // …and opens once iOS says the last one has gone.
     act(() => result.current.onDismiss());
-    expect(result.current.mounted).toBe(false);
-    act(() => result.current.show());
-    expect(result.current.open).toBe(true);
+    expect(result.current).toMatchObject({ open: true, mounted: true });
     // Whatever iOS says, it is gone a moment after it closed.
     act(() => result.current.hide());
     act(() => jest.advanceTimersByTime(800));

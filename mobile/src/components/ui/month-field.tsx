@@ -8,6 +8,7 @@ import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { Button } from './button';
 import { Calendar, X } from './lucide';
 import { Text } from './text';
+import { useGatedModal } from '~/lib/sheet-gate';
 
 const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
@@ -76,6 +77,8 @@ export function MonthField({
   const years = Array.from({ length: lastYear - FIRST_YEAR + 1 }, (_, index) => lastYear - index);
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(chosen?.year ?? thisYear);
+  // Shown once no other sheet is still closing: the end month tapped as the start month's sheet slid away never showed.
+  const gate = useGatedModal(open);
   /** A month not yet come, where only months that have come may be picked. */
   const ahead = (month: number) => untilNow && (year > thisYear || (year === thisYear && month > thisMonth));
 
@@ -119,7 +122,7 @@ export function MonthField({
         <Calendar size={18} color={colors.mutedForeground} />
       </Pressable>
 
-      <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
+      <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
         <View style={{ flex: 1, backgroundColor: colors.background, paddingBottom: insets.bottom + space[4] }}>
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <Text variant="headline" weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>

@@ -500,6 +500,25 @@ describe('who gets the form', () => {
     await waitFor(() => expect(result.getPathname()).toBe(`/jobs/${listing.slug}`));
   });
 
+  it('goes back down to the board it came from after applying, rather than a second board on top', async () => {
+    server.on('GET /rest/v1/agent_profiles', [{ cv_path: PROFILE_CV, tracks: ['primary'], district_ids: [newCairo.id], years_experience: 7 }]);
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: '/jobs' });
+    expect(await screen.findByText('the board')).toBeTruthy();
+    act(() => router.push(`/jobs/${listing.slug}`));
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
+    await waitFor(() => expect(result.getPathname()).toBe(APPLY));
+    await waitFor(() => expect(screen.getByRole('button', { name: ar.app.apply.quickSend }).props.accessibilityState.busy).toBe(false));
+    fireEvent.press(screen.getByRole('button', { name: ar.app.apply.quickSend }));
+    expect(await screen.findByText(ar.apply.success)).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: ar.jobs.title }));
+    await waitFor(() => expect(result.getPathname()).toBe('/jobs'));
+    // The same board, the listing and the confirmation gone from above it: nothing to go Back to.
+    expect(router.canGoBack()).toBe(false);
+    expect(screen.getAllByText('the board')).toHaveLength(1);
+  });
+
   it('goes back to the listing it was opened from', async () => {
     server.on('GET /rest/v1/applications', [{ id: 'a-1', created_at: '2026-09-20T10:00:00Z' }]);
     await signedIn();

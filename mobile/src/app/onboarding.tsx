@@ -204,6 +204,21 @@ function OnboardingForm({
   const [visibility, setVisibility] = useState<AgentVisibility | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  // Signing out takes a moment (the phone forgotten for pushes, then the
+  // session): said on the button, and everything else held, so a second tap
+  // does not close the flow a second time — popping whatever was under it.
+  const signOut = () => {
+    if (pending) return;
+    setPending(true);
+    setSigningOut(true);
+    // Stays busy when it works: the screen closes.
+    onSignOut().catch(() => {
+      setPending(false);
+      setSigningOut(false);
+    });
+  };
 
   const steps: Step[] = [
     ...(settledRole ? [] : (['role'] as const)),
@@ -692,7 +707,7 @@ function OnboardingForm({
               <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
                 {t('onboarding.leaveQuestion')}
               </Text>
-              <Button label={t('nav.signOut')} variant="ghost" disabled={pending} onPress={onSignOut} />
+              <Button label={t('nav.signOut')} variant="ghost" loading={signingOut} disabled={pending} onPress={signOut} />
               <Button label={t('onboarding.leaveDelete')} variant="ghost" disabled={pending} onPress={confirmDelete} />
             </View>
           ) : null}

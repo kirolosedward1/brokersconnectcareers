@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale, useTranslations } from 'use-intl';
@@ -32,6 +32,10 @@ import { markupTags } from '~/i18n/rich';
 import { haptic } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { useGatedModal } from '~/lib/sheet-gate';
+
+/** How long the typing pauses before the words are counted on the button. */
+const WORDS_PAUSE_MS = 400;
 
 /**
  * Every filter the website's /jobs panel has (src/components/jobs/job-filters.tsx),
@@ -65,6 +69,9 @@ export function FilterSheet({
   const [draft, setDraft] = useState(filters);
   // The words as they are typed; counted once the typing stops, not per letter.
   const [words, setWords] = useState(filters.q);
+  // The figure on the button counts the words too, once the typing pauses: it
+  // said what the board would show without them, and the board then said fewer.
+  const [counted, setCounted] = useState(words);
   const [open, setOpen] = useState(visible);
 
   // Each time it opens, it starts from what the board is showing.
@@ -73,10 +80,15 @@ export function FilterSheet({
     if (visible) {
       setDraft(filters);
       setWords(filters.q);
+      setCounted(filters.q);
     }
   }
 
-  const query = boardQuery(draft);
+  useEffect(() => {
+    const pause = setTimeout(() => setCounted(words), WORDS_PAUSE_MS);
+    return () => clearTimeout(pause);
+  }, [words]);
+  const query = boardQuery({ ...draft, q: searchWords(counted) });
   const total = useBoardTotal(query, visible);
   const typed = { ...draft, q: searchWords(words) };
   const count = sheetFilterCount(typed);
@@ -110,6 +122,8 @@ export function FilterSheet({
           autoFocus={focusSearch}
           onChangeText={setWords}
           onEndEditing={() => setDraft(typed)}
+          // The keyboard's Search key searches: the board, for what is chosen and typed.
+          onSubmitEditing={() => onApply(typed)}
           placeholder={t('filters.searchPlaceholder')}
           accessibilityLabel={t('filters.search')}
           returnKeyType="search"
@@ -436,9 +450,11 @@ export function FilterSheetFrame({
   const t = useTranslations();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  // Shown once no other sheet is still closing (the order's card, say): one asked for meanwhile was never shown.
+  const gate = useGatedModal(visible);
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <View
           style={{
