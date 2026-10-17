@@ -257,6 +257,28 @@ step_run() {
     echo "maestro: FAILED" > "$out/$name.maestro.verdict"
   fi
 }
+# bar_point <shot> <name>: the middle of the tab named <name> in the tab bar
+# at the foot of <shot>, in percent; nothing if it is not read there.
+bar_point() {
+  python3 - "$out/$1.boxes" "$2" <<'PY'
+import re, sys
+want = sys.argv[2]
+for raw in open(sys.argv[1], encoding="utf-8"):
+    m = re.match(r"y(-?\d+) x(-?\d+)-(-?\d+)  (.*)", raw.rstrip("\n"))
+    if m and int(m[1]) >= 85 and m[4].strip() == want:
+        print(f"{(int(m[2]) + int(m[3])) // 2}%,{int(m[1]) + 1}%")
+        break
+PY
+}
+# back_by_tab <step> <what> <tab> <point if not read>: back to the top of the
+# open tab's list by pressing that tab again, as a person does. Not by the
+# header's Back at the top right: Expo Go's floating tools button sits there
+# and a tap on it opened Expo Go's own menu over the app.
+back_by_tab() {
+  local name="$1" what="$2" tab="$3" fallback="$4" point
+  point=$(bar_point "$last_shot" "$tab")
+  tour "$name" "$what (at ${point:-$fallback})" -e "POINT=${point:-$fallback}" "$flows/expo-go-tap.yaml"
+}
 # word_point <shot> <word>: the middle of where the text recognition read
 # <word> on <shot>, in percent ("62%,17%"); nothing if it is not there.
 # Maestro's own text and id selectors place an element of a screen laid out
@@ -338,8 +360,8 @@ tap_word t4-filters-closed 'tour: the sheet closed' 'شوف النتائج' '50%
 tap_word t5-listing 'tour: the first listing' 'عمولة فقط' '50%,45%'
 tap_word t6-share 'tour: Share' 'مشاركة'
 tap_word t7-share-cancelled 'tour: Share cancelled' 'إلغاء'
-# Back, at the start of the line: the right in Arabic, under the status bar.
-tour t8-back 'tour: back to the board' -e 'POINT=91%,9%' "$flows/expo-go-tap.yaml"
+# Back to the board: the Jobs tab pressed again.
+back_by_tab t8-back 'tour: back to the board' 'الوظائف' '61%,96%'
 # A card held: its menu at the foot of the screen, then closed from the shade above it.
 tour t8b-card-held 'tour: a card held' -e 'POINT=50%,45%' "$flows/expo-go-hold.yaml"
 if ! grep -q 'افتح الإعلان' "$out/t8b-card-held.boxes"; then
@@ -349,7 +371,7 @@ fi
 tour t8c-menu-closed 'tour: the menu closed' -e 'POINT=50%,12%' "$flows/expo-go-tap.yaml"
 tap_word t9-companies 'tour: the Companies tab' 'الشركات'
 tap_word t10-company 'tour: a company' 'الصفوة' '50%,40%'
-tour t11-company-back 'tour: back to the companies' -e 'POINT=91%,9%' "$flows/expo-go-tap.yaml"
+back_by_tab t11-company-back 'tour: back to the companies' 'الشركات' '39%,96%'
 if grep -qE '^y[0-9]+ x[0-9-]+  (Playground|Welcome to your playground\.|Projects|Recently opened)$' "$out/t11-company-back.boxes"; then
   failed+=("tour: the app was left for Expo Go's own screens")
   echo "::error title=Expo Go: tour::the app was left during the tour (Expo Go's own screen showed): see the t1–t11 readings in the log"

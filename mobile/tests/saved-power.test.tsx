@@ -15,6 +15,7 @@ import { bestOf, parseCompareIds, togglePick } from '~/features/saved/compare';
 import { jobNotes, keepNote, NOTE_MAX } from '~/features/saved/notes';
 import {
   closingInDays,
+  forgetTakenRemindersForTests,
   jobReminders,
   reconcileReminders,
   reminderAt,
@@ -149,6 +150,7 @@ beforeEach(async () => {
   jest.mocked(Notifications.getLastNotificationResponse).mockReturnValue(null);
   jobNotes.resetForTests();
   jobReminders.resetForTests();
+  forgetTakenRemindersForTests();
   toast.hide();
 
   server.on('GET /api/mobile/v1/config', mobileConfig());
@@ -352,6 +354,56 @@ describe('a reminder before a saved listing closes', () => {
     await waitFor(() => expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith('reminder-1'));
     expect(phone.__scheduled.size).toBe(0);
     await waitFor(async () => expect(await kept(`bc.saved-reminders.v1:${USER_ID}`)).toEqual([]));
+  });
+
+  it('comes back with the bookmark when its removal is undone', async () => {
+    const soon = job('1', {}, 5 * DAY);
+    savedJobs = [soon];
+    // The website puts the bookmark back as it took it off.
+    server.on('POST /api/mobile/v1/actions/toggleSavedJob', (_url, init) => {
+      const { input } = JSON.parse(String(init?.body));
+      const had = savedJobs.some((item) => item.id === input.jobId);
+      savedJobs = had ? savedJobs.filter((item) => item.id !== input.jobId) : [...savedJobs, soon];
+      return { ok: true, data: { saved: !had } };
+    });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.remind.setSpoken }));
+    await waitFor(() => expect(phone.__scheduled.size).toBe(1));
+
+    fireEvent.press(screen.getByRole('button', { name: ar.jobs.removeSaved }));
+    await waitFor(() => expect(phone.__scheduled.size).toBe(0));
+    await waitFor(() => expect(shownToast()?.action?.label).toBe(ar.app.toast.undo));
+    await act(async () => shownToast()?.action?.onPress());
+
+    // Scheduled again, for the same moment, and kept for this person: the card says it is set.
+    await waitFor(() => expect(phone.__scheduled.size).toBe(1));
+    const [again] = [...phone.__scheduled.values()];
+    expect(again.trigger).toEqual({ type: 'date', date: reminderAt(soon.expires_at)?.getTime() });
+    await waitFor(async () => expect(await kept(`bc.saved-reminders.v1:${USER_ID}`)).toEqual([expect.objectContaining({ id: soon.id, notificationId: again.identifier })]));
+    const said = tAr('app.saved.remind.when', { when: formatDateTime(reminderAt(soon.expires_at) as Date, 'ar') });
+    expect(await screen.findByRole('button', { name: said })).toBeTruthy();
+  });
+
+  it('follows the saved list without the Saved tab being opened: a listing closed early takes its reminder with it', async () => {
+    const soon = job('1', {}, 5 * DAY);
+    await setReminder(USER_ID, soon, words);
+    expect(phone.__scheduled.size).toBe(1);
+    // Closed by the company since; the reader only ever opens the board.
+    savedJobs = [{ ...soon, status: 'closed' }];
+    await signedIn();
+    renderRouter(app, { initialUrl: '/jobs' });
+
+    await waitFor(() => expect(phone.__scheduled.size).toBe(0));
+    expect(await jobReminders.read(USER_ID)).toEqual([]);
+  });
+
+  it('reads nothing for the reminders when there are none to keep in step', async () => {
+    await signedIn();
+    renderRouter(app, { initialUrl: '/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    await act(async () => {});
+    expect(server.asked('/rest/v1/saved_jobs').filter((request) => request.url.searchParams.get('select') !== 'job_id')).toEqual([]);
   });
 
   it('is taken back from the card, with Undo', async () => {
@@ -597,6 +649,11 @@ describe('choosing listings to compare', () => {
     // Two alike at the top are both best; all alike, none.
     expect([...bestOf([rich, { ...floor, basic_salary_max: 20000 }, commissionOnly]).salary]).toEqual([rich.id, floor.id]);
     expect(bestOf([rich, { ...floor, basic_salary_max: 20000 }]).salary.size).toBe(0);
+    // Equal percentages beside a commission that is not a percentage: neither beats what cannot be compared.
+    const threePct = { commission_type: 'percentage' as const, commission_value: 3 };
+    const split = job('5', { commission_type: 'split', commission_value: null });
+    expect(bestOf([job('6', threePct), job('7', threePct), split]).commission.size).toBe(0);
+    expect([...bestOf([job('6', threePct), job('7', { ...threePct, commission_value: 2 }), split]).commission]).toEqual([job('6').id]);
   });
 
   const a = job('1', { title_ar: 'استشاري أ', basic_salary_min: 10000, basic_salary_max: 15000, leads_source: 'company_provided' });
@@ -663,6 +720,23 @@ describe('choosing listings to compare', () => {
     renderRouter(app, { initialUrl: '/dashboard/saved' });
     expect(await screen.findByText(a.title_ar)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.app.saved.compare.start })).toBeNull();
+  });
+
+  it('leaves out one chosen that has closed since, as Saved does', async () => {
+    savedJobs = [a, b, { ...c, status: 'closed' }];
+    await signedIn();
+    renderRouter(app, { initialUrl: `/dashboard/saved/compare?ids=${a.id},${b.id},${c.id}` });
+    expect(await screen.findByText(a.title_ar)).toBeTruthy();
+    expect(screen.getByText(b.title_ar)).toBeTruthy();
+    expect(screen.queryByText(c.title_ar)).toBeNull();
+    expect(screen.getAllByRole('link', { name: new RegExp(`^${ar.app.jobMenu.open}\\. `) })).toHaveLength(2);
+  });
+
+  it('says there is nothing to compare when only one chosen is still hiring', async () => {
+    savedJobs = [a, { ...b, expires_at: new Date(Date.now() - DAY).toISOString() }];
+    await signedIn();
+    renderRouter(app, { initialUrl: `/dashboard/saved/compare?ids=${a.id},${b.id}` });
+    expect(await screen.findByText(ar.app.saved.compare.tooFew)).toBeTruthy();
   });
 
   it('says so when fewer than two of those chosen are still saved', async () => {

@@ -15,6 +15,7 @@ import {
 import { useUnreadCount } from '~/features/notifications/queries';
 import { pushTapped, takePushTap, usePushTap } from '~/features/push/taps';
 import { syncReminders } from '~/features/saved/reminders';
+import { useRemindersFollowSaved } from '~/features/saved/reminders-follow';
 import { openWhenReady } from '~/lib/open-path';
 import { clearPersonalCache } from '~/lib/personal-cache';
 import { storedSession, useSession } from '~/lib/session';
@@ -128,6 +129,8 @@ export function PushBridge() {
   useEffect(() => {
     void syncReminders(userId ?? 'anon');
   }, [userId]);
+  // And in step with the saved list, whether or not the Saved tab is opened.
+  useRemindersFollowSaved();
 
   // Taps: the one that launched the app, then each one after.
   useEffect(() => {

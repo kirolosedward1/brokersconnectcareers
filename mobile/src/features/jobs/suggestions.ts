@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useQuery, useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query';
+import { useIsFetching, useQuery, useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query';
 import { useLocale } from 'use-intl';
 import type { JobFilters } from '@/lib/job-filters';
 import type { JobListItem } from '@/lib/job-list';
@@ -303,10 +303,16 @@ export function useSearchSuggestions(typed: string): SearchSuggestion[] {
   const hiddenCompanies = useHiddenCompanies();
   const hiddenJobs = useHiddenJobs();
 
+  // The board's reads under way: one landing (the first, on a slow start, with
+  // the sheet already open over the skeleton) brings listings to name.
+  const boardReads = useIsFetching({ queryKey: ['jobs', 'board'] });
+
   return useMemo(() => {
     if (!enough) return [];
-    // Read as the words change, not followed: the board's cache does not move while the sheet is up.
+    // Read again as the words change and as a read of the board lands.
     const listings = withoutHiddenJobs(withoutHidden(listingsRead(client), hiddenCompanies), hiddenJobs);
     return suggestionsFor(typed, { locale, districts: districts ?? [], aliases: aliases ?? [], listings });
-  }, [enough, typed, locale, client, districts, aliases, hiddenCompanies, hiddenJobs]);
+    // boardReads: not read here, but its change is the board's cache changing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enough, typed, locale, client, districts, aliases, hiddenCompanies, hiddenJobs, boardReads]);
 }

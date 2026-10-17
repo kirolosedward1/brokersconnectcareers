@@ -1,6 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import type { JobListItem } from '@/lib/job-list';
+import { jobIsLive } from '@/lib/job-state';
 import { CompareTable } from '~/components/saved/compare-table';
 import { Button } from '~/components/ui/button';
 import { Scale } from '~/components/ui/lucide';
@@ -14,15 +15,19 @@ import { useSavedJobs } from '~/features/saved/queries';
  * the Saved tab's stack, with Back to the choosing.
  *
  * Drawn from the saved list the tab has already read, so it opens at once;
- * a listing no longer saved by the time it opens drops out, and with fewer
- * than two left there is nothing to compare, which it says.
+ * a listing no longer saved, or no longer hiring (closed, or past its closing
+ * date) — as Saved lets only open ones be chosen — drops out, at once or at
+ * the list's next read, and with fewer than two left there is nothing to
+ * compare, which it says.
  */
 export default function CompareScreen() {
   const t = useTranslations();
   const { ids } = useLocalSearchParams<{ ids?: string }>();
   const saved = useSavedJobs();
   const wanted = parseCompareIds(ids);
-  const jobs = wanted.map((id) => saved.data?.find((job) => job.id === id)).filter((job): job is JobListItem => Boolean(job));
+  const jobs = wanted
+    .map((id) => saved.data?.find((job) => job.id === id && jobIsLive(job)))
+    .filter((job): job is JobListItem => Boolean(job));
 
   let body: React.ReactNode;
   if (saved.isPending) {

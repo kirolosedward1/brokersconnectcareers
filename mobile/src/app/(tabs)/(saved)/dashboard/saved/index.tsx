@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
@@ -14,12 +14,9 @@ import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAppliedLast } from '~/features/jobs/marks';
 import { useListMotion } from '~/components/motion/list-motion';
-import { useListOwner } from '~/features/jobs/recent';
 import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { COMPARE_MAX, COMPARE_MIN, togglePick } from '~/features/saved/compare';
 import { useSavedJobs, useSavedSearches } from '~/features/saved/queries';
-import { useReminderWords } from '~/features/saved/reminder-words';
-import { reconcileReminders } from '~/features/saved/reminders';
 import { useTabList } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
 import { haptic } from '~/lib/haptics';
@@ -52,8 +49,6 @@ export default function SavedScreen() {
   const searches = useSavedSearches();
   const pull = usePullRefresh(() => Promise.all([jobs.refetch(), searches.refetch()]));
   const list = useTabList();
-  const owner = useListOwner();
-  const reminderWords = useReminderWords();
 
   const hiddenJobs = useHiddenJobs();
   // A listing set aside from its card's menu leaves this list too, as the toast says.
@@ -65,19 +60,7 @@ export default function SavedScreen() {
   const open = ordered.filter((job) => jobIsLive(job));
   const closed = ordered.filter((job) => !jobIsLive(job));
 
-  // The reminders follow the list as read: one for a listing no longer saved
-  // (taken off on the website), closed early, or given a new closing date.
-  const read = jobs.isSuccess ? jobs.dataUpdatedAt : 0;
-  useEffect(() => {
-    if (!read || !jobs.data) return;
-    const all = jobs.data;
-    void reconcileReminders(owner, all, read, (id) => {
-      const job = all.find((item) => item.id === id);
-      return job ? reminderWords(job) : null;
-    });
-    // Once per read of the list; the words are the same catalogue's each render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [owner, read]);
+  // The reminders follow each read of this list wherever it is read (features/saved/reminders-follow.ts, from PushBridge).
 
   // Choosing listings to compare: only those still hiring, two or three of them.
   const [comparing, setComparing] = useState(false);

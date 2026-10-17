@@ -6,7 +6,7 @@ import type { SavedSearchRow } from '@/lib/supabase/database.types';
 import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
-import { cancelReminder } from './reminders';
+import { cancelReminder, restoreReminder } from './reminders';
 
 /**
  * What a candidate keeps: bookmarked listings, saved searches, and followed
@@ -59,12 +59,12 @@ export function useSavedJobIds(): { ids: Set<string>; known: boolean } {
  * /dashboard/saved read. The same set as the ids above, so it answers them
  * too: the cards in the list never draw as unsaved while those are read.
  */
-export function useSavedJobs() {
+export function useSavedJobs({ active = true }: { active?: boolean } = {}) {
   const queryClient = useQueryClient();
   const candidateId = useCandidateId();
   return useQuery({
     queryKey: ['saved', 'jobs', candidateId],
-    enabled: Boolean(candidateId),
+    enabled: Boolean(candidateId) && active,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('saved_jobs')
@@ -129,8 +129,9 @@ export function useToggleSavedJob() {
     // The server's answer is the truth: it toggles what it has, not what the screen showed.
     onSuccess: (saved, { jobId }) => {
       set(jobId, saved);
-      // A reminder before it closes is for a listing kept: the bookmark gone, so is the reminder.
-      if (!saved && candidateId) void cancelReminder(candidateId, jobId);
+      // A reminder before it closes is for a listing kept: the bookmark gone, so
+      // is the reminder; the bookmark back (Undo), the reminder with it.
+      if (candidateId) void (saved ? restoreReminder(candidateId, jobId) : cancelReminder(candidateId, jobId, { withBookmark: true }));
     },
     onError: (_error, { jobId, saved }) => set(jobId, saved),
     onSettled: (_saved, error) => {

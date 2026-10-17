@@ -270,6 +270,27 @@ describe('suggestions as the reader types', () => {
       await waitFor(() => expect(screen.queryByLabelText(ar.filters.search)).toBeNull());
     });
 
+    it('names a company from the board once its first read lands, the sheet already open over the skeleton', async () => {
+      let release = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      server.on('/api/mobile/v1/jobs', async () => (await gate, board()));
+      renderRouter(boardApp, { initialUrl: '/jobs' });
+      // The filters work before the first listings are in (a slow first start).
+      fireEvent.press(await screen.findByRole('button', { name: ar.jobs.filters }));
+      fireEvent.changeText(await screen.findByLabelText(ar.filters.search), 'نايل');
+      const name = t('app.jobs.suggestWords', { words: listing.company.name_ar });
+      // Everything else the suggestions read (the areas, the other names people search by) in by now.
+      await act(() => jest.advanceTimersByTimeAsync(2000));
+      expect(server.asked('/rest/v1/search_aliases').length).toBeGreaterThan(0);
+      expect(screen.queryByRole('button', { name })).toBeNull();
+
+      // The board's read lands with the words still there: the company is offered without another letter typed.
+      await act(async () => release());
+      expect(await screen.findByRole('button', { name })).toBeTruthy();
+    });
+
     it('offers the recent searches again once the words are cleared', async () => {
       await typeInSheet('القاهره');
       expect(await screen.findByRole('button', { name: t('app.jobs.suggestArea', { name: newCairo.name_ar }) })).toBeTruthy();

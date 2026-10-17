@@ -37,7 +37,9 @@ const LEADS_RANK: Record<JobListItem['leads_source'], number> = { company_provid
 
 /**
  * The listings with the highest score, or none: when fewer than two have a
- * score to compare, or every one scores the same, no column is better.
+ * score to compare, or every one with a score scores the same, no column is
+ * better — one with nothing to compare (a commission split, not said) is not
+ * beaten by the others' equal figures.
  */
 function winners(jobs: readonly JobListItem[], score: (job: JobListItem) => number | null): ReadonlySet<string> {
   const scored = jobs.flatMap((job) => {
@@ -47,7 +49,7 @@ function winners(jobs: readonly JobListItem[], score: (job: JobListItem) => numb
   if (scored.length < 2) return new Set();
   const top = Math.max(...scored.map((item) => item.value));
   const best = scored.filter((item) => item.value === top);
-  return best.length === jobs.length ? new Set() : new Set(best.map((item) => item.id));
+  return best.length === scored.length ? new Set() : new Set(best.map((item) => item.id));
 }
 
 /**

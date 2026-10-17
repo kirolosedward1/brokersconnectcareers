@@ -242,15 +242,61 @@ export function setReminder(
   });
 }
 
-/** Takes a listing's reminder back; whether there was one. */
-export function cancelReminder(owner: string, jobId: string): Promise<boolean> {
+/**
+ * Reminders taken back with their bookmark, by person and listing, so an Undo
+ * that puts the bookmark back puts the reminder back too (restoreReminder) —
+ * as it does the note. Held while the app runs; a few at most.
+ */
+const takenWithBookmark = new Map<string, JobReminder>();
+const TAKEN_KEPT = 10;
+const takenKey = (owner: string, jobId: string) => `${owner}\n${jobId}`;
+
+/**
+ * Takes a listing's reminder back; whether there was one. `withBookmark`: it
+ * goes because the bookmark did, and comes back if the bookmark does.
+ */
+export function cancelReminder(owner: string, jobId: string, { withBookmark = false }: { withBookmark?: boolean } = {}): Promise<boolean> {
   return serially(async () => {
     const reminder = (await jobReminders.read(owner)).find((item) => item.id === jobId);
     if (!reminder) return false;
     jobReminders.remove(owner, jobId);
     await cancelScheduled(reminder.notificationId);
+    if (withBookmark) {
+      takenWithBookmark.delete(takenKey(owner, jobId));
+      takenWithBookmark.set(takenKey(owner, jobId), reminder);
+      // The oldest let go first: a Map keeps the order things were put in.
+      while (takenWithBookmark.size > TAKEN_KEPT) takenWithBookmark.delete(takenWithBookmark.keys().next().value as string);
+    }
     return true;
   });
+}
+
+/**
+ * The bookmark is back (Undo, or saved again): so is the reminder it took
+ * with it, if it is still to go off, none has been set since, and the phone
+ * still lets the app notify. Never asks the phone anything; whether it was put back.
+ */
+export function restoreReminder(owner: string, jobId: string, now: Date = new Date()): Promise<boolean> {
+  return serially(async () => {
+    const key = takenKey(owner, jobId);
+    const reminder = takenWithBookmark.get(key);
+    takenWithBookmark.delete(key);
+    if (!reminder || !isPending(reminder, now.getTime())) return false;
+    if ((await jobReminders.read(owner)).some((item) => item.id === jobId)) return false;
+    if ((await readPermission().catch(() => 'denied')) !== 'granted') return false;
+    try {
+      // Set again now: a read of the list from before the bookmark came back does not take it for unsaved.
+      jobReminders.add(owner, { ...reminder, notificationId: await schedule(reminder), setAt: now.getTime() });
+      return true;
+    } catch {
+      return false;
+    }
+  }).catch(() => false);
+}
+
+/** For tests: nothing held for an Undo. */
+export function forgetTakenRemindersForTests() {
+  takenWithBookmark.clear();
 }
 
 /**
