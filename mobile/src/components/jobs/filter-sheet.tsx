@@ -33,6 +33,7 @@ import { haptic } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { useGatedModal } from '~/lib/sheet-gate';
+import { useSheetFence } from '~/components/ui/sheet-fence';
 
 /** How long the typing pauses before the words are counted on the button. */
 const WORDS_PAUSE_MS = 400;
@@ -448,14 +449,16 @@ export function FilterSheetFrame({
   children: ReactNode;
 }) {
   const t = useTranslations();
+  // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
+  const fence = useSheetFence();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   // Shown once no other sheet is still closing (the order's card, say): one asked for meanwhile was never shown.
-  const gate = useGatedModal(visible);
+  const gate = useGatedModal(visible, onClose);
 
   return (
     <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={{ flex: 1, backgroundColor: colors.background }} {...fence}>
         <View
           style={{
             flexDirection: 'row',

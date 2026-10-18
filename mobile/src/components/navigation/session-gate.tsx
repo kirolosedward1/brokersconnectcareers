@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { router, useRootNavigationState, useSegments } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession, type Viewer } from '~/lib/session';
+import { leaveSheets } from '~/lib/sheet-gate';
 
 /**
  * What the website's middleware and onboarding page enforce, on the phone: a
@@ -23,18 +24,30 @@ export function SessionGate() {
   const navigationReady = Boolean(useRootNavigationState()?.key);
   const inFlow = FLOWS.has(segments[0] ?? '');
   const needsProfile = Boolean(session && viewer && !viewer.profile && !viewer.profileUnreadable);
+  // A flow on its way, waiting for a sheet to close first: not asked for twice.
+  const going = useRef(false);
 
   useEffect(() => {
-    if (!navigationReady || !ready || !session || inFlow) return;
-    if (secondFactorDue) router.push('/mfa');
+    if (!navigationReady || !ready || !session || inFlow || going.current) return;
+    let flow: '/mfa' | '/onboarding' | null = null;
+    if (secondFactorDue) flow = '/mfa';
     else if (needsProfile) {
       // The read onboarding finished with is in the cache a moment before it
       // reaches this screen: as the flow closed, the profile it had just
       // made was not here yet, and onboarding opened a second time.
       const latest = queryClient.getQueryData<Viewer>(['viewer', session.user.id]);
       if (latest?.profile || latest?.profileUnreadable) return;
-      router.push('/onboarding');
+      flow = '/onboarding';
     }
+    if (!flow) return;
+    const to = flow;
+    // A sheet still showing is closed first: presented over it, the flow
+    // made iOS take it down unawares, and its button did nothing after.
+    going.current = true;
+    leaveSheets(() => {
+      going.current = false;
+      router.push(to);
+    });
   }, [navigationReady, ready, session, inFlow, secondFactorDue, needsProfile, queryClient]);
 
   return null;

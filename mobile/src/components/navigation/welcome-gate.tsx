@@ -3,6 +3,7 @@ import { router, usePathname, useRootNavigationState, useSegments } from 'expo-r
 import { useLaunchHeld } from '~/features/launch';
 import { welcomeOpens } from '~/features/welcome';
 import { useSession } from '~/lib/session';
+import { leaveSheets } from '~/lib/sheet-gate';
 
 /**
  * Opens the welcome (src/app/welcome.tsx) whenever nobody is signed in: over
@@ -33,7 +34,7 @@ export function WelcomeGate({ onDecided }: { onDecided: (opened: boolean) => voi
     const open = welcomeOpens() && !session && pathname === '/';
     // Opened now, it also answers a sign-out made while the launch was still deciding: not opened twice.
     if (open) due.current = false;
-    if (open) router.push('/welcome');
+    if (open) leaveSheets(() => router.push('/welcome'));
     onDecided(open);
   }, [navigationReady, ready, curtainHeld, session, pathname, onDecided]);
 
@@ -53,7 +54,9 @@ export function WelcomeGate({ onDecided }: { onDecided: (opened: boolean) => voi
     signedIn.current = now;
     if (!due.current || !overTabs || !decided.current) return;
     due.current = false;
-    if (welcomeOpens()) router.push('/welcome');
+    // A sheet still showing (the session ended under the filters) is closed
+    // first: presented over it, the welcome made iOS take it down unawares.
+    if (welcomeOpens()) leaveSheets(() => router.push('/welcome'));
   }, [ready, session, overTabs, onWelcome]);
 
   return null;

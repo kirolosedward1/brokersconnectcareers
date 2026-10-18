@@ -64,8 +64,14 @@ export function TwoFactorSettings() {
     if (pending) return;
     setError(null);
     setPending(true);
-    const accepted = await verifyCode(enrolment?.factorId ?? null, digits).catch(() => false);
-    if (!accepted) {
+    const answer = await verifyCode(enrolment?.factorId ?? null, digits).catch(() => 'offline' as const);
+    if (answer === 'offline') {
+      // Not asked: the code stays, for Verify again once the phone is back online.
+      setPending(false);
+      setError(t('app.offline.body'));
+      return;
+    }
+    if (answer === 'wrong') {
       setPending(false);
       setCode('');
       setError(t('account.mfaCodeInvalid'));

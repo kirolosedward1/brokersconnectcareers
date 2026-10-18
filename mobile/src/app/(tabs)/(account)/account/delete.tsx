@@ -137,7 +137,8 @@ export default function DeleteAccountScreen() {
               <Button
                 label={t('app.account.contact')}
                 variant="outline"
-                onPress={() => Linking.openURL(`mailto:${supportEmail}`).catch(() => {})}
+                // A phone with no mail app to write it opens nothing: it is told the address instead.
+                onPress={() => Linking.openURL(`mailto:${supportEmail}`).catch(() => dialog.alert(t('app.account.contact'), supportEmail))}
               />
             ) : null}
           </View>

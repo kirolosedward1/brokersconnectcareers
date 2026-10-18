@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { router } from 'expo-router';
@@ -7,6 +7,7 @@ import { catalogues } from '~/i18n/provider';
 import { resetLaunchForTests } from '~/features/launch';
 import { resetWelcomeForTests } from '~/features/welcome';
 import { SESSION_KEY, supabase } from '~/lib/supabase';
+import { useSheet } from '~/lib/use-sheet';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
 import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
@@ -85,13 +86,30 @@ async function signOut() {
   });
 }
 
-function launch(initialUrl = '/') {
+/** Home with a sheet of its own, as the board has its filters. */
+function HomeWithSheet() {
+  const sheet = useSheet();
+  return (
+    <>
+      <Pressable accessibilityRole="button" onPress={sheet.show}>
+        <Text>open-sheet</Text>
+      </Pressable>
+      {sheet.mounted ? (
+        <Modal visible={sheet.open} presentationStyle="pageSheet" onDismiss={sheet.onDismiss}>
+          <Text>a-sheet</Text>
+        </Modal>
+      ) : null}
+    </>
+  );
+}
+
+function launch(initialUrl = '/', home: () => React.JSX.Element = () => <Text>home-screen</Text>) {
   renderRouter(
     {
       _layout: RootLayout,
       '(tabs)/_layout': TabsLayout,
       [STACK]: TabStack,
-      '(tabs)/(home)/index': () => <Text>home-screen</Text>,
+      '(tabs)/(home)/index': home,
       '(tabs)/(jobs)/jobs/index': () => <Text>board-screen</Text>,
       welcome: WelcomeScreen,
       mfa: SignOutHere,
@@ -208,6 +226,22 @@ it('never shows to somebody signed in, and opens when they sign out', async () =
   await act(async () => {});
   expect(screen.queryByTestId('welcome')).toBeNull();
   expect(screen.getByText('home-screen')).toBeTruthy();
+});
+
+it('opens after a session ends only once a sheet still showing has gone, which iOS would otherwise take down unawares', async () => {
+  signedIn();
+  launch('/', HomeWithSheet);
+  const open = await screen.findByRole('button', { name: 'open-sheet' });
+  await act(async () => {});
+  fireEvent.press(open);
+  const sheet = () => screen.UNSAFE_getAllByType(Modal).find((modal) => modal.props.presentationStyle === 'pageSheet');
+  await waitFor(() => expect(sheet()?.props.visible).toBe(true));
+  await signOut();
+  // The sheet closes through its own state first; the welcome waits for it.
+  await waitFor(() => expect(sheet()?.props.visible).toBe(false));
+  expect(screen.queryByTestId('welcome')).toBeNull();
+  act(() => sheet()?.props.onDismiss());
+  expect(await screen.findByTestId('welcome')).toBeTruthy();
 });
 
 it('waits for the screen somebody signed out from to close, and opens over the tabs', async () => {

@@ -13,6 +13,7 @@ import { createLocalList } from '~/lib/local-list';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { useSheetFence } from '~/components/ui/sheet-fence';
 
 export type SavedReply = { id: string; text: string };
 
@@ -61,6 +62,8 @@ export function SavedRepliesSheet({
   values: { name: string; job: string };
 }) {
   const t = useTranslations('app.replies');
+  // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
+  const fence = useSheetFence();
   const tCommon = useTranslations('common');
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -87,7 +90,7 @@ export function SavedRepliesSheet({
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
       <KeyboardRoom>
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1, backgroundColor: colors.background }} {...fence}>
           <View style={styles.header}>
             <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
               {t('title')}

@@ -26,6 +26,7 @@ import { gutter, hitTarget, space } from '~/theme/tokens';
 import { dateOf, monthOf, wholeNumber } from './fields';
 import { toast } from '~/components/feedback/toast';
 import { useGatedModal } from '~/lib/sheet-gate';
+import { useSheetFence } from '~/components/ui/sheet-fence';
 
 /** This month, as the form shows a date ("2026-10"): no later month has come yet. */
 function thisMonth(): string {
@@ -62,21 +63,25 @@ export function CvEntrySheet({ agentId, entry, onClose }: { agentId: string; ent
   const confirm = useConfirmDiscard();
   const close = () => (dirty.current ? confirm(onClose) : onClose());
   // Shown once no other sheet is still closing.
-  const gate = useGatedModal(entry !== null);
+  const gate = useGatedModal(entry !== null, onClose);
+  const fence = useSheetFence();
   return (
     <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
       <KeyboardRoom>
-        {/* A fresh form for every entry opened. */}
-        {entry ? (
-          <EntryForm
-            key={`${entry.section}:${entry.row?.id ?? 'new'}`}
-            agentId={agentId}
-            entry={entry}
-            onClose={onClose}
-            onRequestClose={close}
-            onDirty={onDirty}
-          />
-        ) : null}
+        {/* The sheet keeps its touches from the screen it is drawn in (sheet-fence.ts). */}
+        <View style={{ flex: 1 }} {...fence}>
+          {/* A fresh form for every entry opened. */}
+          {entry ? (
+            <EntryForm
+              key={`${entry.section}:${entry.row?.id ?? 'new'}`}
+              agentId={agentId}
+              entry={entry}
+              onClose={onClose}
+              onRequestClose={close}
+              onDirty={onDirty}
+            />
+          ) : null}
+        </View>
       </KeyboardRoom>
     </Modal>
   );

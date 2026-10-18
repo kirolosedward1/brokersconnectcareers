@@ -8,6 +8,7 @@ import { Text } from '~/components/ui/text';
 import { appDirection } from '~/lib/direction';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { useSheetFence } from '~/components/ui/sheet-fence';
 
 export type MenuItem = {
   label: string;
@@ -38,12 +39,14 @@ export function ActionMenu({
   items: MenuItem[];
 }) {
   const t = useTranslations('common');
+  // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
+  const fence = useSheetFence();
   const { colors, shadow } = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={() => onClose()} onDismiss={onDismiss}>
-      <View style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.5)' }}>
+      <View style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.5)' }} {...fence}>
         {/* The shade beside the card, not around it: wrapped round the card, it was one element to VoiceOver, which found only "Close". */}
         <Pressable accessibilityRole="button" accessibilityLabel={t('close')} onPress={() => onClose()} style={StyleSheet.absoluteFill} />
         <Appear from="below" distance={40} duration={320}>

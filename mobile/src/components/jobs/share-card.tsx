@@ -17,6 +17,7 @@ import { env } from '~/lib/env';
 import { haptic } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { useSheetFence } from '~/components/ui/sheet-fence';
 
 /** The card's own size, in points, a story's shape; captured at a story's own 1080 × 1920. */
 export const CARD = { width: 324, height: 576 } as const;
@@ -150,6 +151,8 @@ export function ShareCardSheet({
   onDismiss?: () => void;
 }) {
   const t = useTranslations();
+  // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
+  const fence = useSheetFence();
   const locale = useLocale();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -173,7 +176,7 @@ export function ShareCardSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={{ flex: 1, backgroundColor: colors.background }} {...fence}>
         <View style={styles.header}>
           <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
             {t('app.share.asImage')}

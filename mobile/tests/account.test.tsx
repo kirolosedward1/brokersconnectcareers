@@ -406,6 +406,27 @@ describe('signing in and security', () => {
     expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
   });
 
+  it('keeps the first code when there is no connection, and says so rather than that it was wrong', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.mfaSetup }));
+    expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
+
+    let online = false;
+    server.on(`POST /auth/v1/factors/${totpFactor.id}/challenge`, () => {
+      if (!online) throw new TypeError('Network request failed');
+      return { id: 'challenge-1', type: 'totp', expires_at: Math.floor(Date.now() / 1000) + 300 };
+    });
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+    expect(screen.queryByText(ar.account.mfaCodeInvalid)).toBeNull();
+    expect(screen.getByLabelText(ar.account.mfaCode).props.value).toBe('123456');
+
+    online = true;
+    fireEvent.press(screen.getByRole('button', { name: ar.account.mfaVerify }));
+    expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
+  });
+
   it('takes the first code by itself once six digits are in: the number pad has no return key', async () => {
     await signIn();
     renderRouter(app, { initialUrl: '/account/security' });

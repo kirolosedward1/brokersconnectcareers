@@ -1578,6 +1578,12 @@ describe('deleting the account', () => {
     expect(await screen.findByText(ar.account.deleteBlockedCompany)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.account.deleteCta })).toBeNull();
     expect(screen.getByRole('button', { name: ar.app.account.contact })).toBeTruthy();
+    // With no mail app on the phone, the address is told rather than nothing happening.
+    const open = jest.spyOn(Linking, 'openURL').mockRejectedValueOnce(new Error('no mail app'));
+    jest.mocked(Alert.alert).mockClear();
+    await press(ar.app.account.contact);
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.contact, 'help@brokersconnect.net'));
+    open.mockRestore();
 
     await press(ar.account.deleteRequestCta);
     expect(await screen.findByText(ar.account.deleteRequested.replace('{reference}', 'BC-7K3M-9QX2'))).toBeTruthy();

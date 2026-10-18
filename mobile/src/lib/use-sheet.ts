@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import { CLOSING_MS, sheetClosing, whenSheetsSettled } from './sheet-gate';
+import { CLOSING_MS, sheetClosing, sheetShowing, whenSheetsSettled } from './sheet-gate';
 
 /**
  * A sheet (a React Native Modal) that is drawn only while it is wanted —
@@ -22,11 +22,16 @@ export function useSheet() {
   // An open asked for while another sheet was still closing, and this one's own closing still counted.
   const opening = useRef<(() => void) | null>(null);
   const closed = useRef<(() => void) | null>(null);
+  // Showing, for leaveSheets (sheet-gate.ts), which closes it as hide() does.
+  const unlisted = useRef<(() => void) | null>(null);
+  const hideNow = useRef<() => void>(() => {});
 
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current);
       opening.current?.();
+      unlisted.current?.();
+      unlisted.current = null;
       // Chosen, and then taken away with its row (a list drawn again) before it
       // had gone: still done, once iOS has had the time to take the sheet down.
       const next = then.current;
@@ -47,6 +52,39 @@ export function useSheet() {
     next?.();
   };
 
+  /** Closes it; `after` runs once it has gone. (Handed to onPress, it is given an event: only a function is kept.) */
+  const hide = (after?: unknown) => {
+    const next = typeof after === 'function' ? (after as () => void) : null;
+    opening.current?.();
+    opening.current = null;
+    if (!open) {
+      next?.();
+      return;
+    }
+    setOpen(false);
+    // No longer showing — once its closing is counted, so nothing waiting on
+    // the sheets (leaveSheets) goes before it has gone.
+    const unlist = () => {
+      unlisted.current?.();
+      unlisted.current = null;
+    };
+    if (Platform.OS !== 'ios') {
+      setMounted(false);
+      unlist();
+      next?.();
+      return;
+    }
+    if (next) then.current = next;
+    closed.current?.();
+    closed.current = sheetClosing();
+    unlist();
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(gone, CLOSING_MS);
+  };
+  useEffect(() => {
+    hideNow.current = () => hide();
+  });
+
   return {
     open,
     /** Whether to draw the sheet at all: while open, and while it closes. */
@@ -58,29 +96,11 @@ export function useSheet() {
         opening.current = null;
         setMounted(true);
         setOpen(true);
+        unlisted.current?.();
+        unlisted.current = sheetShowing(() => hideNow.current());
       });
     },
-    /** Closes it; `after` runs once it has gone. (Handed to onPress, it is given an event: only a function is kept.) */
-    hide(after?: unknown) {
-      const next = typeof after === 'function' ? (after as () => void) : null;
-      opening.current?.();
-      opening.current = null;
-      if (!open) {
-        next?.();
-        return;
-      }
-      setOpen(false);
-      if (Platform.OS !== 'ios') {
-        setMounted(false);
-        next?.();
-        return;
-      }
-      if (next) then.current = next;
-      closed.current?.();
-      closed.current = sheetClosing();
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(gone, CLOSING_MS);
-    },
+    hide,
     /** For the Modal's `onDismiss`. */
     onDismiss: gone,
   };

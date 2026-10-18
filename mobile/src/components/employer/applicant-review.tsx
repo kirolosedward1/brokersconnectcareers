@@ -18,6 +18,7 @@ import { haptic } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { gutter, hitTarget, space } from '~/theme/tokens';
 import { ApplicantCard } from './applicant-card';
+import { useSheetFence } from '~/components/ui/sheet-fence';
 
 type CardProps = {
   jobTitleOf: (applicant: Applicant) => string;
@@ -55,6 +56,8 @@ export function ApplicantReview({
   rows: Applicant[];
 }) {
   const t = useTranslations();
+  // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
+  const fence = useSheetFence();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const move = useSetApplicationStatus();
@@ -131,7 +134,7 @@ export function ApplicantReview({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => onClose()} onDismiss={onDismiss}>
-      <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }}>
+      <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Pressable
             accessibilityRole="button"

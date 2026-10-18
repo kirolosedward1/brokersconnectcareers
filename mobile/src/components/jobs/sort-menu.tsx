@@ -9,6 +9,7 @@ import { haptic } from '~/lib/haptics';
 import { useSheet } from '~/lib/use-sheet';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { useSheetFence } from '~/components/ui/sheet-fence';
 
 /**
  * The board's order as one small button beside Filters — "↕ newest ⌄" — that
@@ -81,6 +82,8 @@ export function SortButton<T extends string>({
  */
 export function SortSheet<T extends string>({ sheet, label, value, options, onChange }: SortProps<T> & { sheet: ReturnType<typeof useSheet> }) {
   const t = useTranslations('common');
+  // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
+  const fence = useSheetFence();
   const { colors, shadow } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -96,7 +99,7 @@ export function SortSheet<T extends string>({ sheet, label, value, options, onCh
   if (!sheet.mounted) return null;
   return (
     <Modal visible={sheet.open} transparent animationType="fade" onRequestClose={sheet.hide} onDismiss={sheet.onDismiss}>
-      <View style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.45)' }}>
+      <View style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.45)' }} {...fence}>
         {/* The shade beside the card, not around it, so VoiceOver reaches the orders in the card. */}
         <Pressable accessibilityRole="button" accessibilityLabel={t('close')} onPress={sheet.hide} style={StyleSheet.absoluteFill} />
         <View

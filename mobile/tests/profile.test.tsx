@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { AccessibilityInfo, Alert, Modal, Pressable, Text, type AlertButton } from 'react-native';
+import { AccessibilityInfo, Alert, Keyboard, Modal, Pressable, Text, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
@@ -582,6 +582,27 @@ describe('the CV sections', () => {
     );
     expect(screen.queryByText(ar.app.profile.notFuture)).toBeNull();
     expect(screen.queryByText(ar.app.profile.endBeforeStart)).toBeNull();
+  });
+
+  it('puts the keyboard away when a choice or a month is to be picked, so the sheet is not under it', async () => {
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
+    const dismiss = jest.spyOn(Keyboard, 'dismiss');
+    try {
+      fireEvent.press(screen.getByRole('button', { name: `${ar.cv.track}: —` }));
+      expect(dismiss).toHaveBeenCalledTimes(1);
+      for (const modal of screen.UNSAFE_getAllByType(Modal)) {
+        if (modal.props.visible && modal.props.presentationStyle === 'pageSheet') act(() => modal.props.onRequestClose?.());
+      }
+      for (const modal of screen.UNSAFE_getAllByType(Modal)) {
+        if (!modal.props.visible) act(() => modal.props.onDismiss?.());
+      }
+      fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${ar.cv.started}: `) }));
+      expect(dismiss).toHaveBeenCalledTimes(2);
+    } finally {
+      dismiss.mockRestore();
+    }
   });
 
   it('catches an end before the start, before sending anything — in view in the sheet, and said', async () => {

@@ -19,6 +19,7 @@ import { useSession } from '~/lib/session';
 import { useSheet } from '~/lib/use-sheet';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { useSheetFence } from '~/components/ui/sheet-fence';
 
 /**
  * A private note on a saved listing, written in a small card at the foot of
@@ -43,6 +44,8 @@ export function NoteSheet({
   jobTitle: string;
 }) {
   const t = useTranslations('app.saved.notes');
+  // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
+  const fence = useSheetFence();
   const tCommon = useTranslations('common');
   const tToast = useTranslations('app.toast');
   const { colors, shadow } = useTheme();
@@ -85,6 +88,7 @@ export function NoteSheet({
       <KeyboardAvoidingView
         behavior="padding"
         style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.5)' }}
+        {...fence}
       >
         {/* The shade beside the card, not around it, so VoiceOver reaches what is in the card. */}
         <Pressable

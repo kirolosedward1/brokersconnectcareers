@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react-native';
-import { sheetsClosingForTests, useGatedModal } from '~/lib/sheet-gate';
+import { leaveSheets, sheetsClosingForTests, sheetsShowing, useGatedModal } from '~/lib/sheet-gate';
 import { useSheet } from '~/lib/use-sheet';
 
 /*
@@ -45,7 +45,7 @@ it('opens it a moment later when iOS never says the first has gone', () => {
 
 it('shows a sheet opened by a flag (the filters, a picker) only once no other is closing, and counts its own closing', () => {
   const sort = renderHook(() => useSheet());
-  const filters = renderHook(({ wanted }: { wanted: boolean }) => useGatedModal(wanted), { initialProps: { wanted: false } });
+  const filters = renderHook(({ wanted }: { wanted: boolean }) => useGatedModal(wanted, jest.fn()), { initialProps: { wanted: false } });
 
   act(() => sort.result.current.show());
   act(() => sort.result.current.hide());
@@ -66,7 +66,7 @@ it('shows a sheet opened by a flag (the filters, a picker) only once no other is
 
 it('drops an open asked for and then called off before it could happen', () => {
   const sort = renderHook(() => useSheet());
-  const filters = renderHook(({ wanted }: { wanted: boolean }) => useGatedModal(wanted), { initialProps: { wanted: false } });
+  const filters = renderHook(({ wanted }: { wanted: boolean }) => useGatedModal(wanted, jest.fn()), { initialProps: { wanted: false } });
   act(() => sort.result.current.show());
   act(() => sort.result.current.hide());
   filters.rerender({ wanted: true });
@@ -89,4 +89,61 @@ it('runs what was chosen in a sheet once it has gone, before the next waiting sh
   act(() => menu.result.current.hide(other));
   expect(other).toHaveBeenCalledTimes(1);
   expect(sheetsClosingForTests()).toBe(0);
+});
+
+describe('leaving every sheet, to go elsewhere of the app\'s own accord', () => {
+  it('goes at once when no sheet shows', () => {
+    const go = jest.fn();
+    leaveSheets(go);
+    expect(go).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes a sheet showing and goes once it has gone, not before', () => {
+    const menu = renderHook(() => useSheet());
+    act(() => menu.result.current.show());
+    expect(sheetsShowing()).toBe(1);
+    const go = jest.fn();
+    act(() => leaveSheets(go));
+    expect(menu.result.current.open).toBe(false);
+    expect(go).not.toHaveBeenCalled();
+    act(() => menu.result.current.onDismiss());
+    expect(go).toHaveBeenCalledTimes(1);
+    expect(sheetsShowing()).toBe(0);
+  });
+
+  it("closes a sheet opened by a flag through its owner's own close", () => {
+    let wanted = true;
+    const close = jest.fn(() => {
+      wanted = false;
+    });
+    const filters = renderHook(() => useGatedModal(wanted, close));
+    expect(filters.result.current.visible).toBe(true);
+    const go = jest.fn();
+    act(() => leaveSheets(go));
+    expect(close).toHaveBeenCalledTimes(1);
+    filters.rerender({});
+    expect(filters.result.current.visible).toBe(false);
+    expect(go).not.toHaveBeenCalled();
+    act(() => filters.result.current.onDismiss());
+    expect(go).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes a moment later all the same when a sheet does not close (one that asks first)', () => {
+    renderHook(() => useGatedModal(true, () => {}));
+    const go = jest.fn();
+    act(() => leaveSheets(go));
+    expect(go).not.toHaveBeenCalled();
+    act(() => jest.advanceTimersByTime(1500));
+    expect(go).toHaveBeenCalledTimes(1);
+  });
+
+  it('no longer counts a sheet taken away while showing', () => {
+    const menu = renderHook(() => useSheet());
+    act(() => menu.result.current.show());
+    menu.unmount();
+    expect(sheetsShowing()).toBe(0);
+    const go = jest.fn();
+    leaveSheets(go);
+    expect(go).toHaveBeenCalledTimes(1);
+  });
 });

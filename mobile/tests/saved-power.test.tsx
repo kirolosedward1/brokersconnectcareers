@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Linking } from 'react-native';
+import { Linking, Modal } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
@@ -28,6 +28,7 @@ import {
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { markupTags } from '~/i18n/rich';
 import { rememberActor } from '~/lib/last-actor';
+import { openWhenReady } from '~/lib/open-path';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { tabsFor } from '~/lib/tabs';
@@ -430,6 +431,21 @@ describe('a reminder before a saved listing closes', () => {
     act(() => unhideJob(soon.id));
     await waitFor(() => expect(phone.__scheduled.size).toBe(1));
     expect(await jobReminders.read(USER_ID)).toEqual([expect.objectContaining({ id: soon.id, fireAt: reminderAt(soon.expires_at)?.getTime() })]);
+  });
+
+  it("opens a tapped reminder's listing once the board's filters have closed, not under them", async () => {
+    await signedIn();
+    const result = renderRouter(app, { initialUrl: '/jobs' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.filters }));
+    const filters = () => screen.UNSAFE_getAllByType(Modal).find((modal) => modal.props.presentationStyle === 'pageSheet');
+    await waitFor(() => expect(filters()?.props.visible).toBe(true));
+
+    // The notification tapped: its page waits for the sheet.
+    act(() => openWhenReady(`/jobs/${listing.slug}`));
+    await waitFor(() => expect(filters()?.props.visible).toBe(false));
+    expect(result.getPathname()).toBe('/jobs');
+    act(() => filters()?.props.onDismiss());
+    await waitFor(() => expect(result.getPathname()).toBe(`/jobs/${listing.slug}`));
   });
 
   it('reads nothing for the reminders when there are none to keep in step', async () => {

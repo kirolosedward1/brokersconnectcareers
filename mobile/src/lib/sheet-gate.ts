@@ -20,12 +20,67 @@ export const CLOSING_MS = 700;
 
 let closing = 0;
 const waiting = new Set<() => void>();
+/** The sheets showing now, each with how to close it. */
+const showing = new Map<object, () => void>();
+/** What waits for every sheet to have gone (leaveSheets). */
+const leaving = new Set<() => void>();
 
 function settle() {
   if (closing > 0) return;
+  if (showing.size === 0 && leaving.size > 0) {
+    const go = [...leaving];
+    leaving.clear();
+    for (const run of go) run();
+  }
   const run = [...waiting];
   waiting.clear();
   for (const open of run) open();
+}
+
+/**
+ * A sheet is showing; `close` takes it down. Returns what to call once it is
+ * no longer showing — as it starts closing, whose own closing is then
+ * counted (sheetClosing), or when it is taken away.
+ */
+export function sheetShowing(close: () => void): () => void {
+  const token = {};
+  showing.set(token, close);
+  return () => {
+    if (showing.delete(token)) settle();
+  };
+}
+
+/**
+ * Leaves every sheet before going somewhere else of the app's own accord — a
+ * notification's page, a shortcut, the welcome after a session ended, a link:
+ * opened while a sheet showed, the page was pushed under it unseen, and a
+ * screen presented whole (the welcome, the sign-in) made iOS take the sheet
+ * down without a word to it, after which its button did nothing. So each
+ * sheet showing is closed, and `go` runs once all have gone — at once when
+ * none shows, and a moment later whatever a sheet does (one that asks before
+ * closing, say).
+ */
+export function leaveSheets(go: () => void): void {
+  if (showing.size === 0 && closing === 0) {
+    go();
+    return;
+  }
+  let done = false;
+  const run = () => {
+    if (done) return;
+    done = true;
+    leaving.delete(run);
+    go();
+  };
+  leaving.add(run);
+  for (const close of [...showing.values()]) close();
+  setTimeout(run, CLOSING_MS * 2);
+  settle();
+}
+
+/** How many sheets are showing, for a link deciding whether it must wait for them. */
+export function sheetsShowing(): number {
+  return showing.size;
 }
 
 /**
@@ -65,28 +120,39 @@ export function sheetsClosingForTests(): number {
   return closing;
 }
 
-/** For tests: nothing closing, nothing waiting. */
+/** For tests: nothing closing, showing or waiting. */
 export function resetSheetGateForTests() {
   closing = 0;
   waiting.clear();
+  showing.clear();
+  leaving.clear();
 }
 
 /**
  * A sheet whose being open is a plain flag (`wanted`) — a picker, the board's
  * filters — shown through the gate: `visible` for its Modal turns true only
  * once no other sheet is closing, and its own closing is counted until its
- * Modal's `onDismiss`.
+ * Modal's `onDismiss`. `close` is the owner's own way of closing it, for
+ * leaveSheets.
  */
-export function useGatedModal(wanted: boolean): { visible: boolean; onDismiss: () => void } {
+export function useGatedModal(wanted: boolean, close: () => void): { visible: boolean; onDismiss: () => void } {
   const [visible, setVisible] = useState(false);
   const shown = useRef(false);
   const gone = useRef<(() => void) | null>(null);
+  // Showing, for leaveSheets: closed by the owner's own close.
+  const unlisted = useRef<(() => void) | null>(null);
+  const closeNow = useRef(close);
+  useEffect(() => {
+    closeNow.current = close;
+  });
 
   useEffect(() => {
     if (wanted) {
       return whenSheetsSettled(() => {
         shown.current = true;
         setVisible(true);
+        unlisted.current?.();
+        unlisted.current = sheetShowing(() => closeNow.current());
       });
     }
     if (shown.current) {
@@ -94,9 +160,19 @@ export function useGatedModal(wanted: boolean): { visible: boolean; onDismiss: (
       setVisible(false);
       gone.current?.();
       gone.current = sheetClosing();
+      unlisted.current?.();
+      unlisted.current = null;
     }
     return undefined;
   }, [wanted]);
+
+  useEffect(
+    () => () => {
+      unlisted.current?.();
+      unlisted.current = null;
+    },
+    [],
+  );
 
   return {
     visible,

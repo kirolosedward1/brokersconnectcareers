@@ -2,6 +2,7 @@ import { Stack, Tabs } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Alert, Modal, RefreshControl, type AlertButton } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { VerifiedExplainerHost } from '~/components/companies/verified-mark';
 import { hideCompany, unhideCompany } from '~/features/moderation/hidden-companies';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { SessionProvider } from '~/lib/session';
@@ -71,6 +72,7 @@ function Root() {
         <I18nProvider>
           <SessionProvider>
             <Stack screenOptions={{ headerShown: false }} />
+            <VerifiedExplainerHost />
           </SessionProvider>
         </I18nProvider>
       </ThemeProvider>
@@ -456,6 +458,18 @@ describe('companies', () => {
     renderRouter(app, { initialUrl: '/(companies)/companies?q=%D9%86%D8%A7%D9%8A%D9%84' });
     await screen.findByText('نايل بروكرز');
     expect(screen.getByLabelText(ar.filters.search).props.value).toBe('نايل');
+  });
+
+  it("keeps a touch on the verified sheet in the sheet: the board's card it was opened from is not opened", async () => {
+    const result = renderRouter(app, { initialUrl: '/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    fireEvent.press(screen.getAllByRole('button', { name: ar.companies.verified })[0]);
+    expect(await screen.findByText(ar.app.verified.title)).toBeTruthy();
+    // The sheet's own words, tapped: not the listing under it.
+    fireEvent.press(screen.getByText(ar.app.verified.papers));
+    await act(async () => {});
+    expect(result.getPathname()).toBe('/jobs');
+    expect(screen.getByText(ar.app.verified.title)).toBeTruthy();
   });
 
   it('says what verified means when its mark is tapped', async () => {

@@ -656,6 +656,24 @@ describe('the inbox', () => {
     await waitFor(() => expect(result.getPathname()).toBe('/agents/sara-a1b2'));
   });
 
+  it("keeps a touch in the replies or the stage picker from the applicant's row they are drawn in, which swipes", async () => {
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.replies.open}: سارة عادل` }));
+    await screen.findByLabelText(ar.app.replies.new);
+    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` }));
+    // The two open: the replies, and the stage picker over them.
+    const sheets = screen.UNSAFE_getAllByType(Modal).filter((modal) => modal.props.presentationStyle === 'pageSheet' && modal.props.visible);
+    expect(sheets).toHaveLength(2);
+    for (const sheet of sheets) {
+      // The first view drawn in the sheet that settles touches at all: its outermost.
+      const outermost = sheet.findAll((node) => typeof node.props.onResponderTerminationRequest === 'function')[0] as unknown as {
+        props: Record<string, (event: never) => boolean>;
+      };
+      expect(outermost.props.onStartShouldSetResponder?.({} as never)).toBe(true);
+      expect(outermost.props.onResponderTerminationRequest?.({} as never)).toBe(false);
+    }
+  });
+
   it("keeps the saved replies' new box above the keyboard", async () => {
     renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.press(await screen.findByRole('button', { name: `${ar.app.replies.open}: سارة عادل` }));

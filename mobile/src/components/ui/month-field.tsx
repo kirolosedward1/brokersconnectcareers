@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Keyboard, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale, useTranslations } from 'use-intl';
 import { westernDigits } from '@/lib/search/arabic';
@@ -9,6 +9,7 @@ import { Button } from './button';
 import { Calendar, X } from './lucide';
 import { Text } from './text';
 import { useGatedModal } from '~/lib/sheet-gate';
+import { useSheetFence } from '~/components/ui/sheet-fence';
 
 const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
@@ -65,6 +66,8 @@ export function MonthField({
   untilNow?: boolean;
 }) {
   const t = useTranslations();
+  // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
+  const fence = useSheetFence();
   const locale = useLocale();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -78,13 +81,15 @@ export function MonthField({
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(chosen?.year ?? thisYear);
   // Shown once no other sheet is still closing: the end month tapped as the start month's sheet slid away never showed.
-  const gate = useGatedModal(open);
+  const gate = useGatedModal(open, () => setOpen(false));
   /** A month not yet come, where only months that have come may be picked. */
   const ahead = (month: number) => untilNow && (year > thisYear || (year === thisYear && month > thisMonth));
 
   const shown = chosen ? `${months[chosen.month - 1]} ${chosen.year}` : value.trim() || null;
 
   const show = () => {
+    // A field still being typed in keeps the keyboard up over the sheet, hiding its foot.
+    Keyboard.dismiss();
     setYear(chosen?.year ?? thisYear);
     setOpen(true);
   };
@@ -123,7 +128,7 @@ export function MonthField({
       </Pressable>
 
       <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
-        <View style={{ flex: 1, backgroundColor: colors.background, paddingBottom: insets.bottom + space[4] }}>
+        <View style={{ flex: 1, backgroundColor: colors.background, paddingBottom: insets.bottom + space[4] }} {...fence}>
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <Text variant="headline" weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
               {label}
