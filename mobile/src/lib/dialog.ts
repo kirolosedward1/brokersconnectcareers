@@ -1,4 +1,5 @@
-import { Alert, I18nManager, Platform, type AlertButton } from 'react-native';
+import { Alert, Platform, type AlertButton } from 'react-native';
+import { getLocales } from 'expo-localization';
 import { appDirection } from '~/lib/direction';
 
 /**
@@ -30,9 +31,24 @@ export const dialog = {
   },
 };
 
-/** The app reads right to left where iOS itself lays out left to right. */
-function mirrored(): boolean {
-  return Platform.OS === 'ios' && appDirection === 'rtl' && !I18nManager.isRTL;
+/**
+ * The app reads right to left where iOS itself lays out left to right.
+ *
+ * iOS lays its alert out in the phone's own language, not in React Native's
+ * direction: I18nManager.isRTL is true in Expo Go (it applies the manifest's
+ * forcesRTL) while an English iPhone still drew "Cancel" on the left of
+ * "اسحب الطلب". So the phone's language decides, as iOS does.
+ */
+export function mirrored(): boolean {
+  return Platform.OS === 'ios' && appDirection === 'rtl' && systemDirection() !== 'rtl';
+}
+
+function systemDirection(): 'rtl' | 'ltr' {
+  try {
+    return getLocales()[0]?.textDirection === 'rtl' ? 'rtl' : 'ltr';
+  } catch {
+    return 'ltr';
+  }
 }
 
 /** Two buttons, Cancel on the right: the other first, Cancel last and unmarked. */
