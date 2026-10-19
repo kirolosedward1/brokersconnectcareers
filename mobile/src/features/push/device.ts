@@ -9,6 +9,7 @@ import { callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { encryptedSessionStorage } from '~/lib/session-storage';
 import { SESSION_KEY, supabase } from '~/lib/supabase';
+import { announceLocalSignOut } from '~/lib/local-sign-out';
 
 /**
  * This phone's part in pushes (docs/mobile.md, "Pushes"). The website sends
@@ -191,7 +192,7 @@ export async function signOutHere(): Promise<void> {
   // Where onboarding was going (the door's role, the listing) was kept for
   // iOS ending the app midway, not for a person who chose to leave: signed
   // in again, onboarding asks afresh rather than fix the role it was given.
-  await forgetOnboardingIntent();
+  await forgetOnboardingIntent().catch(() => {});
   await Promise.race([
     forgetThisPhone().catch(() => {}),
     new Promise((resolve) => setTimeout(resolve, FORGET_TIMEOUT_MS)),
@@ -202,7 +203,16 @@ export async function signOutHere(): Promise<void> {
   ]);
   if (!error) return;
   await encryptedSessionStorage.removeItem(SESSION_KEY).catch(() => {});
-  await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  // The app draws nobody now: an answer that is an error (auth-js's lock not
+  // got) emits no SIGNED_OUT, and the screen stayed signed in.
+  announceLocalSignOut();
+  // Still bounded: this signOut waits on the same auth-js lock as the first,
+  // and a refresh holding it kept the button spinning with nobody signed out.
+  // Left running, it still clears supabase-js's own copy when the lock frees.
+  await Promise.race([
+    supabase.auth.signOut({ scope: 'local' }).catch(() => {}),
+    new Promise((resolve) => setTimeout(resolve, SIGN_OUT_TIMEOUT_MS)),
+  ]);
 }
 
 /** Pushes on or off for this person on this phone, in the app (not the phone's settings). */

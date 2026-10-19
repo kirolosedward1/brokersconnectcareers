@@ -30,6 +30,7 @@ function fresh() {
     callAction: typeof import('~/lib/api').callAction;
     ApiError: typeof import('~/lib/api').ApiError;
     loadViewer: typeof import('~/lib/session').loadViewer;
+    onLocalSignOut: typeof import('~/lib/local-sign-out').onLocalSignOut;
   };
   jest.isolateModules(() => {
     /* eslint-disable @typescript-eslint/no-require-imports -- a fresh copy of each module, per case */
@@ -40,6 +41,7 @@ function fresh() {
       callAction: require('~/lib/api').callAction,
       ApiError: require('~/lib/api').ApiError,
       loadViewer: require('~/lib/session').loadViewer,
+      onLocalSignOut: require('~/lib/local-sign-out').onLocalSignOut,
     };
     /* eslint-enable @typescript-eslint/no-require-imports */
   });
@@ -97,6 +99,30 @@ describe('signing out', () => {
     expect(events).toContain('SIGNED_OUT');
     const { data } = await supabase.auth.getSession();
     expect(data.session).toBeNull();
+  });
+});
+
+describe('signing out while the auth service never answers', () => {
+  it('finishes in seconds and signs out on the phone, though supabase-js is still waiting', async () => {
+    const { SESSION_KEY, signOutHere, onLocalSignOut } = fresh();
+    store().set(SESSION_KEY, JSON.stringify(expired()));
+    // A connection that takes the request and never answers, nor gives up when asked to.
+    network(() => new Promise<Response>(() => {}));
+    let announced = false;
+    onLocalSignOut(() => {
+      announced = true;
+    });
+
+    let finished = false;
+    const done = signOutHere().then(() => {
+      finished = true;
+    });
+    await jest.advanceTimersByTimeAsync(11_000);
+    expect(finished).toBe(true);
+    await done;
+
+    expect(store().has(SESSION_KEY)).toBe(false);
+    expect(announced).toBe(true);
   });
 });
 

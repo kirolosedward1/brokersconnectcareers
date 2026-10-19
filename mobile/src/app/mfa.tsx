@@ -87,7 +87,9 @@ export default function SecondFactorScreen() {
 
   const signOut = () => {
     setPending(true);
-    signOutHere().then(() => {
+    signOutHere()
+      .catch(() => {})
+      .then(() => {
       setPending(false);
       close();
     });

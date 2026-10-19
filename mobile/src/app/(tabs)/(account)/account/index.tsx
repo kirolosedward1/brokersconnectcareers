@@ -282,7 +282,9 @@ export default function AccountScreen() {
               busy={signingOut}
               onPress={() => {
                 setSigningOut(true);
-                signOutHere().then(() => setSigningOut(false));
+                signOutHere()
+                  .catch(() => {})
+                  .then(() => setSigningOut(false));
               }}
             />
           ) : null}
