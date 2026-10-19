@@ -111,7 +111,17 @@ export async function askPermission(): Promise<PushPermission> {
  */
 export const PUSH_TOKEN_TIMEOUT_MS = 15_000;
 
-export async function registerThisPhone(locale: string): Promise<string> {
+/** One registration at a time: a second ask while one is on its way shares it. */
+let registering: Promise<string> | null = null;
+
+export function registerThisPhone(locale: string): Promise<string> {
+  registering ??= registerNow(locale).finally(() => {
+    registering = null;
+  });
+  return registering;
+}
+
+async function registerNow(locale: string): Promise<string> {
   // A stop on its way for the person before finishes first, so Apple's
   // registration is not undone under the new one.
   await stopping;

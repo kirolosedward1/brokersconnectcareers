@@ -21,3 +21,10 @@ it('gives up on the push token after its limit', async () => {
     jest.useRealTimers();
   }
 });
+
+it('shares one registration between asks made while it is on its way', () => {
+  const first = registerThisPhone('ar');
+  const second = registerThisPhone('ar');
+  expect(second).toBe(first);
+  first.catch(() => {});
+});
