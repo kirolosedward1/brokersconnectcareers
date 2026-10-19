@@ -393,5 +393,15 @@
       "notifyTitle": "{day, select, today {الإعلان ده بيقفل النهارده} other {الإعلان ده بيقفل بكرة}}",
       "notifyBody": "{job} في {company}. قدّم قبل ما يقفل."
     }
+  },
+  "notificationsFeed": {
+    "delete": "امسح",
+    "deleted": "اتمسح التنبيه",
+    "clearAll": "مسح الكل",
+    "clearAllTitle": "تمسح كل التنبيهات؟",
+    "clearAllBody": "كل التنبيهات اللي قدامك هتتمسح، ومش هترجع تاني.",
+    "clearAllConfirm": "امسح الكل",
+    "cancel": "إلغاء",
+    "deleteFailed": "مقدرناش نمسح التنبيه. جرّب تاني."
   }
 }

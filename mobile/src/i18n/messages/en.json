@@ -393,5 +393,15 @@
       "notifyTitle": "{day, select, today {This listing closes today} other {This listing closes tomorrow}}",
       "notifyBody": "{job} at {company}. Apply before it closes."
     }
+  },
+  "notificationsFeed": {
+    "delete": "Delete",
+    "deleted": "Notification deleted",
+    "clearAll": "Clear all",
+    "clearAllTitle": "Clear all notifications?",
+    "clearAllBody": "Every notification shown here will be deleted, and can't be brought back.",
+    "clearAllConfirm": "Clear all",
+    "cancel": "Cancel",
+    "deleteFailed": "We couldn't delete it. Try again."
   }
 }

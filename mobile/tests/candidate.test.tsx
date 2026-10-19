@@ -352,6 +352,55 @@ describe('the feed', () => {
     await waitFor(() => expect(screen.queryByText(ar.notifications.markAllRead) === null).toBe(true));
   });
 
+  it('deletes one row from VoiceOver, and puts it back when the database refuses', async () => {
+    let refuse = true;
+    server.on('DELETE /rest/v1/notifications', (url) => {
+      if (refuse) return { status: 500, body: { message: 'down' } };
+      feed = feed.filter((row) => !String(url).includes(row.id));
+      return { status: 204, body: null };
+    });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/notifications' });
+    await screen.findByText(ar.notifications.markAllRead);
+    const rows = () => screen.UNSAFE_root.findAll((node) => typeof node.type === 'string' && Array.isArray(node.props.accessibilityActions) && node.props.accessibilityActions.some((a: { label: string }) => a.label === ar.app.notificationsFeed.delete));
+    await waitFor(() => expect(rows().length).toBe(2));
+    const action = (index: number) => {
+      const row = rows()[index];
+      const name = row.props.accessibilityActions[0].name;
+      act(() => row.props.onAccessibilityAction({ nativeEvent: { actionName: name } }));
+    };
+
+    action(0);
+    expect(await screen.findByText(ar.app.notificationsFeed.deleteFailed)).toBeTruthy();
+    await waitFor(() => expect(rows().length).toBe(2));
+    const asked = server.asked('/rest/v1/notifications').filter((request) => request.method === 'DELETE');
+    expect(String(asked[0].url)).toContain(`id=eq.${feed[0].id}`);
+    expect(String(asked[0].url)).toContain('user_id=eq.');
+
+    refuse = false;
+    action(0);
+    await waitFor(() => expect(rows().length).toBe(1));
+  });
+
+  it('clears everything shown only after asking', async () => {
+    server.on('DELETE /rest/v1/notifications', () => {
+      feed = [];
+      return { status: 204, body: null };
+    });
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    await signedIn();
+    renderRouter(app, { initialUrl: '/notifications' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.notificationsFeed.clearAll }));
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(server.asked('/rest/v1/notifications').some((request) => request.method === 'DELETE')).toBe(false);
+    act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
+    await waitFor(() => expect(server.asked('/rest/v1/notifications').some((request) => request.method === 'DELETE')).toBe(true));
+    const asked = server.asked('/rest/v1/notifications').find((request) => request.method === 'DELETE');
+    expect(decodeURIComponent(String(asked?.url))).toContain('created_at=lte.2026-09-27');
+    expect(await screen.findByText(ar.notifications.empty)).toBeTruthy();
+    alert.mockRestore();
+  });
+
   it('says a quiet feed is quiet, and points a candidate at the board', async () => {
     feed = [];
     await signedIn();

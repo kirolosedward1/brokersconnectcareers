@@ -4,7 +4,8 @@ import { router, Stack, useLocalSearchParams, useNavigation, type Href } from 'e
 import { FlashList } from '@shopify/flash-list';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
-import { Bell, CheckCheck, UserRound } from '~/components/ui/lucide';
+import { Bell, CheckCheck, Trash2, UserRound } from '~/components/ui/lucide';
+import { SwipeRow } from '~/components/ui/swipe-row';
 import { canAccessCandidateArea } from '@/lib/permissions';
 import type { NotificationRow } from '@/lib/supabase/database.types';
 import { NotificationItem } from '~/components/notifications/notification-item';
@@ -13,7 +14,10 @@ import { Notice } from '~/components/ui/notice';
 import { PageFooter } from '~/components/ui/page-footer';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
-import { markReadLocally, useMarkAllRead, useNotificationFeed, useUnreadCount } from '~/features/notifications/queries';
+import { markReadLocally, useDeleteNotifications, useMarkAllRead, useNotificationFeed, useUnreadCount } from '~/features/notifications/queries';
+import { dialog } from '~/lib/dialog';
+import { appDirection } from '~/lib/direction';
+import { haptic } from '~/lib/haptics';
 import { useShrinkingTabBar } from '~/features/tab-bar';
 import { callAction } from '~/lib/api';
 import { routeInside } from '~/lib/links';
@@ -66,6 +70,7 @@ export default function NotificationsScreen() {
   const unread = useUnreadCount().data ?? 0;
   const shrink = useShrinkingTabBar();
   const markAll = useMarkAllRead();
+  const remove = useDeleteNotifications();
   const navigation = useNavigation();
   // A tapped push whose link is gone opens here with the reason in the address.
   const { link } = useLocalSearchParams<{ link?: string }>();
@@ -111,6 +116,29 @@ export default function NotificationsScreen() {
       });
   };
 
+  // Deleting: one row swiped away, or "clear all" up to the newest shown.
+  // The swipe that reveals Delete is toward the reading's end, as Mail's is:
+  // dragged left in English (the action at the right), right in Arabic.
+  const deleteSide: 'left' | 'right' = appDirection === 'rtl' ? 'left' : 'right';
+  const deleteOne = (row: NotificationRow) => {
+    haptic.tap();
+    remove.mutate({ id: row.id });
+  };
+  const clearAll = () => {
+    if (!newestShown || remove.isPending) return;
+    dialog.alert(t('app.notificationsFeed.clearAllTitle'), t('app.notificationsFeed.clearAllBody'), [
+      { text: t('app.notificationsFeed.cancel'), style: 'cancel' },
+      {
+        text: t('app.notificationsFeed.clearAllConfirm'),
+        style: 'destructive',
+        onPress: () => {
+          haptic.tap();
+          remove.mutate({ upTo: newestShown });
+        },
+      },
+    ]);
+  };
+
   const header = (
     <View style={{ gap: space[3], paddingBottom: space[2] }}>
       <Text tone="mutedForeground">{t('notifications.lede')}</Text>
@@ -131,7 +159,21 @@ export default function NotificationsScreen() {
         </View>
       ) : null}
 
+      {rows.length > 0 ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+          <Button
+            label={t('app.notificationsFeed.clearAll')}
+            variant="ghost"
+            size="sm"
+            loading={remove.isPending && remove.variables !== undefined && 'upTo' in remove.variables}
+            icon={<Trash2 size={16} color={colors.foreground} />}
+            onPress={clearAll}
+          />
+        </View>
+      ) : null}
+
       {markAll.isError ? <Notice tone="destructive">{t('common.errorBody')}</Notice> : null}
+      {remove.isError ? <Notice tone="destructive">{t('app.notificationsFeed.deleteFailed')}</Notice> : null}
       {notice === 'gone' ? <Notice tone="muted">{t('notifications.linkGone')}</Notice> : null}
       {notice === 'unavailable' ? <Notice tone="muted">{t('notifications.linkUnavailable')}</Notice> : null}
       {notice === 'failed' ? <Notice tone="destructive">{t('common.errorBody')}</Notice> : null}
@@ -175,9 +217,19 @@ export default function NotificationsScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={header}
-        renderItem={({ item }) => (
-          <NotificationItem notification={item} opening={opening === item.id} onPress={() => open(item)} />
-        )}
+        renderItem={({ item }) => {
+          const action = {
+            label: t('app.notificationsFeed.delete'),
+            icon: <Trash2 size={18} color={colors.destructiveForeground} />,
+            color: colors.destructive,
+            onPress: () => deleteOne(item),
+          };
+          return (
+            <SwipeRow {...{ [deleteSide]: action }}>
+              <NotificationItem notification={item} opening={opening === item.id} onPress={() => open(item)} />
+            </SwipeRow>
+          );
+        }}
         onEndReached={nextPage}
         onEndReachedThreshold={0.5}
         ListFooterComponent={<PageFooter query={feed} />}
