@@ -1,6 +1,6 @@
 import { NoteSheetHost } from '~/components/saved/note-sheet';
 import type { ReactNode } from 'react';
-import { Linking, Modal } from 'react-native';
+import { DeviceEventEmitter, Linking, Modal, StyleSheet } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
@@ -636,6 +636,33 @@ describe('a private note on a saved listing', () => {
     await waitFor(async () => expect(await kept(`bc.saved-notes.v1:${USER_ID}`)).toEqual([]));
     act(() => shownToast()?.action?.onPress());
     expect(await screen.findByRole('button', { name: changed })).toBeTruthy();
+  });
+
+  it('focuses the field once the sheet is up, not as it mounts', async () => {
+    savedJobs = [job('1')];
+    await signedIn();
+    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
+    const field = await screen.findByLabelText(ar.app.saved.notes.title);
+    // autoFocus raised the keyboard while iOS was still presenting the sheet.
+    expect(field.props.autoFocus).toBeFalsy();
+    const modal = screen.UNSAFE_getAllByType(Modal).find((node) => node.props.visible && node.props.onShow);
+    expect(modal).toBeTruthy();
+  });
+
+  it('stands the sheet above the keyboard, by the keyboard’s own height', async () => {
+    savedJobs = [job('1')];
+    await signedIn();
+    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
+    await screen.findByLabelText(ar.app.saved.notes.title);
+    const room = () => StyleSheet.flatten(screen.getByTestId('note-sheet-room').props.style);
+    expect(room().paddingBottom).toBe(0);
+    const keyboard = { duration: 250, easing: 'keyboard', endCoordinates: { height: 336, screenX: 0, screenY: 508, width: 390 } };
+    act(() => DeviceEventEmitter.emit('keyboardWillShow', keyboard));
+    expect(room().paddingBottom).toBe(336);
+    act(() => DeviceEventEmitter.emit('keyboardWillHide', { ...keyboard, endCoordinates: { ...keyboard.endCoordinates, screenY: 844 } }));
+    expect(room().paddingBottom).toBe(0);
   });
 
   it('keeps Save quiet until something changed', async () => {

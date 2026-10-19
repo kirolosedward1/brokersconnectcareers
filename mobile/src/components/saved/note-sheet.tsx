@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Keyboard, LayoutAnimation, Modal, Platform, Pressable, StyleSheet, View, type KeyboardEvent, type TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
 import { canSaveJobs } from '@/lib/permissions';
@@ -57,7 +57,27 @@ export function NoteSheet({
   const text = draft ?? note?.text ?? '';
   const clean = cleanNote(text);
   const changed = clean !== (note?.text ?? '');
-  const keyboard = useKeyboardShown();
+  const lift = useKeyboardHeight();
+  const keyboard = lift > 0;
+  // Focused once iOS has finished presenting the sheet, not as it mounts:
+  // autoFocus raised the keyboard mid-presentation, and the sheet went while
+  // the keyboard stayed up over the list, with nothing to type into.
+  const field = useRef<TextInput>(null);
+  const focused = useRef(false);
+  const focusField = () => {
+    if (focused.current) return;
+    focused.current = true;
+    field.current?.focus();
+  };
+  useEffect(() => {
+    if (!visible) {
+      focused.current = false;
+      return;
+    }
+    // onShow is iOS's word that it is up; should it never come, the field is focused a moment after.
+    const late = setTimeout(focusField, 600);
+    return () => clearTimeout(late);
+  }, [visible]);
 
   const deleted = (before: JobNote): Toast => ({
     message: t('deleted'),
@@ -84,10 +104,13 @@ export function NoteSheet({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} onDismiss={onDismiss}>
-      <KeyboardAvoidingView
-        behavior="padding"
-        style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.5)' }}
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} onDismiss={onDismiss} onShow={focusField}>
+      <View
+        // Lifted by the keyboard's own height, not a KeyboardAvoidingView: that
+        // reckons from its frame, and with the keyboard rising as the sheet was
+        // presented it measured nothing to avoid and left the card under it.
+        style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', paddingBottom: lift, backgroundColor: 'rgba(5, 10, 25, 0.5)' }}
+        testID="note-sheet-room"
         {...fence}
       >
         {/* The shade beside the card, not around it, so VoiceOver reaches what is in the card. */}
@@ -134,13 +157,13 @@ export function NoteSheet({
 
             <View style={{ gap: space[1] }}>
               <TextField
+                ref={field}
                 value={text}
                 onChangeText={setDraft}
                 accessibilityLabel={t('title')}
                 accessibilityHint={t('private')}
                 placeholder={t('placeholder')}
                 multiline
-                autoFocus
                 maxLength={NOTE_MAX}
                 style={{ minHeight: 96, maxHeight: 180, paddingVertical: space[3], textAlignVertical: 'top' }}
               />
@@ -175,7 +198,7 @@ export function NoteSheet({
             </View>
           </View>
         </Appear>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -222,26 +245,42 @@ export function NoteSheetHost() {
         Keyboard.dismiss();
         sheet.hide();
       }}
-      onDismiss={sheet.onDismiss}
+      onDismiss={() => {
+        Keyboard.dismiss();
+        sheet.onDismiss();
+      }}
       jobId={target.jobId}
       jobTitle={target.jobTitle}
     />
   );
 }
 
-/** Whether the keyboard is up: the card's foot stands off the home indicator only while it is not. */
-function useKeyboardShown(): boolean {
-  const [shown, setShown] = useState(false);
+/**
+ * How much of the screen the keyboard covers, from the keyboard's own events:
+ * the sheet's Modal fills the screen, so its height is the overlap. Read at
+ * once too, for a keyboard already up as the sheet opens.
+ */
+export function useKeyboardHeight(): number {
+  const [height, setHeight] = useState(() => (Keyboard.isVisible() ? (Keyboard.metrics()?.height ?? 0) : 0));
   useEffect(() => {
     const ios = Platform.OS === 'ios';
-    const show = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () => setShown(true));
-    const hide = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => setShown(false));
-    return () => {
-      show.remove();
-      hide.remove();
+    const move = (event: KeyboardEvent, next: number) => {
+      if (ios && event.duration) {
+        LayoutAnimation.configureNext({
+          duration: event.duration,
+          update: { type: LayoutAnimation.Types.keyboard },
+        });
+      }
+      setHeight(next);
     };
+    // iOS says keyboardWillShow again when the keyboard changes height (the suggestions bar, another language).
+    const subscriptions = [
+      Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (event) => move(event, event.endCoordinates.height)),
+      Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', (event) => move(event, 0)),
+    ];
+    return () => subscriptions.forEach((subscription) => subscription.remove());
   }, []);
-  return shown;
+  return height;
 }
 
 /**

@@ -147,3 +147,18 @@ describe('leaving every sheet, to go elsewhere of the app\'s own accord', () => 
     expect(go).toHaveBeenCalledTimes(1);
   });
 });
+
+it('opens again after iOS took it down unasked, instead of leaving its button dead', () => {
+  const note = renderHook(() => useSheet());
+  act(() => note.result.current.show());
+  expect(note.result.current).toMatchObject({ open: true, mounted: true });
+  expect(sheetsShowing()).toBe(1);
+
+  // Gone without hide(): the Modal's onDismiss while still meant to be open.
+  act(() => note.result.current.onDismiss());
+  expect(note.result.current).toMatchObject({ open: false, mounted: false });
+  expect(sheetsShowing()).toBe(0);
+
+  act(() => note.result.current.show());
+  expect(note.result.current).toMatchObject({ open: true, mounted: true });
+});

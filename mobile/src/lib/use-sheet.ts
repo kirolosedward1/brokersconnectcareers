@@ -44,6 +44,13 @@ export function useSheet() {
   const gone = () => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
+    // Gone while still meant to be open: iOS took it down unawares. Left
+    // "open", the next show() did nothing and its button was dead.
+    if (open) {
+      setOpen(false);
+      unlisted.current?.();
+      unlisted.current = null;
+    }
     setMounted(false);
     closed.current?.();
     closed.current = null;
