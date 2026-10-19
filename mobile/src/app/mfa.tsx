@@ -60,6 +60,8 @@ export default function SecondFactorScreen() {
     if (verifyError) {
       // No answer is not a wrong code: the code stays for another try.
       if (isAuthRetryableFetchError(verifyError)) return t('app.offline.body');
+      // Too many tries is not a wrong code either: said as that, the code kept.
+      if (verifyError.status === 429 || /rate_limit/.test(verifyError.code ?? '')) return t('auth.errTooMany');
       setCode('');
       return t('account.mfaCodeInvalid');
     }

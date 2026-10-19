@@ -71,6 +71,11 @@ export function TwoFactorSettings() {
       setError(t('app.offline.body'));
       return;
     }
+    if (answer === 'busy') {
+      setPending(false);
+      setError(t('auth.errTooMany'));
+      return;
+    }
     if (answer === 'wrong') {
       setPending(false);
       setCode('');

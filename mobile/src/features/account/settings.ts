@@ -241,7 +241,7 @@ export async function beginEnrolment(): Promise<Enrolment | null> {
  * aal1: accepted, wrong, or not asked at all for want of a connection — which
  * is not a wrong code (the /mfa screen tells them apart the same way).
  */
-export async function verifyCode(factorId: string | null, code: string): Promise<'accepted' | 'wrong' | 'offline'> {
+export async function verifyCode(factorId: string | null, code: string): Promise<'accepted' | 'wrong' | 'offline' | 'busy'> {
   let id = factorId;
   if (!id) {
     const { data, error } = await supabase.auth.mfa.listFactors();
@@ -251,7 +251,9 @@ export async function verifyCode(factorId: string | null, code: string): Promise
   if (!id) return 'wrong';
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: id, code });
   if (!error) return 'accepted';
-  return isAuthRetryableFetchError(error) ? 'offline' : 'wrong';
+  if (isAuthRetryableFetchError(error)) return 'offline';
+  // Too many tries: not a wrong code, and the code should stay.
+  return error.status === 429 || /rate_limit/.test(error.code ?? '') ? 'busy' : 'wrong';
 }
 
 /**

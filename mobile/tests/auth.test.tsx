@@ -763,6 +763,21 @@ describe('the second factor', () => {
     });
   });
 
+  it('says too many tries as that, and keeps the code', async () => {
+    user = authUser({ factors: [totpFactor] });
+    server.on(`POST /auth/v1/factors/${totpFactor.id}/verify`, {
+      status: 429,
+      body: { code: 'over_request_rate_limit', error_code: 'over_request_rate_limit', msg: 'Too many requests' },
+    });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+    expect(await screen.findByText(ar.auth.errTooMany)).toBeTruthy();
+    expect(screen.queryByText(ar.account.mfaCodeInvalid)).toBeNull();
+    expect(screen.getByLabelText(ar.account.mfaCode).props.value).toBe('123456');
+  });
+
   it('answers by itself once six digits are in: the number pad has no return key, and AutoFill presses nothing', async () => {
     user = authUser({ factors: [totpFactor] });
     await signedIn();
