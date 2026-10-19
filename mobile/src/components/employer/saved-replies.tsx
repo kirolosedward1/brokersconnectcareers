@@ -14,6 +14,7 @@ import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
 import { useSheetFence } from '~/components/ui/sheet-fence';
+import { appDirection } from '~/lib/direction';
 
 export type SavedReply = { id: string; text: string };
 
@@ -90,7 +91,7 @@ export function SavedRepliesSheet({
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
       <KeyboardRoom>
-        <View style={{ flex: 1, backgroundColor: colors.background }} {...fence}>
+        <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
           <View style={styles.header}>
             <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
               {t('title')}

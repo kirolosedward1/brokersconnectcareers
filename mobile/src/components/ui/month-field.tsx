@@ -10,6 +10,7 @@ import { Calendar, X } from './lucide';
 import { Text } from './text';
 import { useGatedModal } from '~/lib/sheet-gate';
 import { useSheetFence } from '~/components/ui/sheet-fence';
+import { appDirection } from '~/lib/direction';
 
 const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
@@ -128,7 +129,7 @@ export function MonthField({
       </Pressable>
 
       <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
-        <View style={{ flex: 1, backgroundColor: colors.background, paddingBottom: insets.bottom + space[4] }} {...fence}>
+        <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background, paddingBottom: insets.bottom + space[4] }} {...fence}>
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <Text variant="headline" weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
               {label}

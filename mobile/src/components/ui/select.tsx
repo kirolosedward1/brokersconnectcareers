@@ -8,6 +8,7 @@ import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { Text } from './text';
 import { useGatedModal } from '~/lib/sheet-gate';
 import { useSheetFence } from '~/components/ui/sheet-fence';
+import { appDirection } from '~/lib/direction';
 
 export type SelectOption<T extends string | number> = { value: T; label: string };
 
@@ -86,7 +87,7 @@ export function Select<T extends string | number>({
       </Pressable>
 
       <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
-        <View style={{ flex: 1, backgroundColor: colors.background }} {...fence}>
+        <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
           <View
             style={{
               flexDirection: 'row',
