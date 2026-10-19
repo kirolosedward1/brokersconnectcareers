@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, LayoutAnimation, Modal, Platform, Pressable, StyleSheet, View, type KeyboardEvent, type TextInput } from 'react-native';
+import { Keyboard, Modal, Pressable, StyleSheet, View, type TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
 import { canSaveJobs } from '@/lib/permissions';
@@ -22,8 +22,8 @@ import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { useSheetFence } from '~/components/ui/sheet-fence';
 
 /**
- * A private note on a saved listing, written in a small card at the foot of
- * the screen that rises with the keyboard: what it is about at the top, the
+ * A private note on a saved listing, written in a small card at the top of
+ * the screen, above anywhere the keyboard reaches: what it is about, the
  * field (300 characters, counted as they go), Save, and Delete once there is
  * a note to delete. Saving says so; deleting offers Undo rather than asking
  * first. Typed and not saved, a tap on the shade only puts the keyboard away —
@@ -57,8 +57,6 @@ export function NoteSheet({
   const text = draft ?? note?.text ?? '';
   const clean = cleanNote(text);
   const changed = clean !== (note?.text ?? '');
-  const lift = useKeyboardHeight();
-  const keyboard = lift > 0;
   // Focused once iOS has finished presenting the sheet, not as it mounts:
   // autoFocus raised the keyboard mid-presentation, and the sheet went while
   // the keyboard stayed up over the list, with nothing to type into.
@@ -106,10 +104,16 @@ export function NoteSheet({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} onDismiss={onDismiss} onShow={focusField}>
       <View
-        // Lifted by the keyboard's own height, not a KeyboardAvoidingView: that
-        // reckons from its frame, and with the keyboard rising as the sheet was
-        // presented it measured nothing to avoid and left the card under it.
-        style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', paddingBottom: lift, backgroundColor: 'rgba(5, 10, 25, 0.5)' }}
+        // The card stands at the top of the screen, under the status bar, where
+        // the keyboard never reaches: lifting a card from the foot by the
+        // keyboard's measured height still left it under the keyboard in Expo Go.
+        style={{
+          flex: 1,
+          direction: appDirection,
+          justifyContent: 'flex-start',
+          paddingTop: insets.top + space[2],
+          backgroundColor: 'rgba(5, 10, 25, 0.5)',
+        }}
         testID="note-sheet-room"
         {...fence}
       >
@@ -120,11 +124,10 @@ export function NoteSheet({
           onPress={() => (changed ? Keyboard.dismiss() : onClose())}
           style={StyleSheet.absoluteFill}
         />
-        <Appear from="below" distance={40} duration={320}>
+        <Appear from="none" duration={220}>
           <View
             style={{
               margin: space[3],
-              marginBottom: keyboard ? space[3] : Math.max(insets.bottom, space[3]),
               padding: gutter,
               gap: space[3],
               ...corner('xxl'),
@@ -165,7 +168,7 @@ export function NoteSheet({
                 placeholder={t('placeholder')}
                 multiline
                 maxLength={NOTE_MAX}
-                style={{ minHeight: 96, maxHeight: 180, paddingVertical: space[3], textAlignVertical: 'top' }}
+                style={{ minHeight: 96, maxHeight: 140, paddingVertical: space[3], textAlignVertical: 'top' }}
               />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
                 <Lock size={12} color={colors.mutedForeground} />
@@ -255,33 +258,6 @@ export function NoteSheetHost() {
   );
 }
 
-/**
- * How much of the screen the keyboard covers, from the keyboard's own events:
- * the sheet's Modal fills the screen, so its height is the overlap. Read at
- * once too, for a keyboard already up as the sheet opens.
- */
-export function useKeyboardHeight(): number {
-  const [height, setHeight] = useState(() => (Keyboard.isVisible() ? (Keyboard.metrics()?.height ?? 0) : 0));
-  useEffect(() => {
-    const ios = Platform.OS === 'ios';
-    const move = (event: KeyboardEvent, next: number) => {
-      if (ios && event.duration) {
-        LayoutAnimation.configureNext({
-          duration: event.duration,
-          update: { type: LayoutAnimation.Types.keyboard },
-        });
-      }
-      setHeight(next);
-    };
-    // iOS says keyboardWillShow again when the keyboard changes height (the suggestions bar, another language).
-    const subscriptions = [
-      Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (event) => move(event, event.endCoordinates.height)),
-      Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', (event) => move(event, 0)),
-    ];
-    return () => subscriptions.forEach((subscription) => subscription.remove());
-  }, []);
-  return height;
-}
 
 /**
  * The note as a line to tap: "Your note: …" in two lines at most, or the

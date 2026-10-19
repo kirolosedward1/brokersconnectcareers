@@ -650,19 +650,22 @@ describe('a private note on a saved listing', () => {
     expect(modal).toBeTruthy();
   });
 
-  it('stands the sheet above the keyboard, by the keyboard’s own height', async () => {
+  it('stands the card at the top of the screen, where the keyboard never reaches', async () => {
     savedJobs = [job('1')];
     await signedIn();
     renderRouter(app, { initialUrl: '/dashboard/saved' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
     await screen.findByLabelText(ar.app.saved.notes.title);
     const room = () => StyleSheet.flatten(screen.getByTestId('note-sheet-room').props.style);
-    expect(room().paddingBottom).toBe(0);
-    const keyboard = { duration: 250, easing: 'keyboard', endCoordinates: { height: 336, screenX: 0, screenY: 508, width: 390 } };
-    act(() => DeviceEventEmitter.emit('keyboardWillShow', keyboard));
-    expect(room().paddingBottom).toBe(336);
-    act(() => DeviceEventEmitter.emit('keyboardWillHide', { ...keyboard, endCoordinates: { ...keyboard.endCoordinates, screenY: 844 } }));
-    expect(room().paddingBottom).toBe(0);
+    expect(room().justifyContent).toBe('flex-start');
+    // The keyboard rising moves nothing: there is nothing under it to move.
+    act(() => DeviceEventEmitter.emit('keyboardWillShow', { duration: 250, easing: 'keyboard', endCoordinates: { height: 336, screenX: 0, screenY: 508, width: 390 } }));
+    expect(room().justifyContent).toBe('flex-start');
+    expect(room().paddingBottom).toBeUndefined();
+    // Typed and saved, from the card at the top.
+    fireEvent.changeText(screen.getByLabelText(ar.app.saved.notes.title), 'اتصل بيهم الأحد');
+    fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
+    expect(await screen.findByRole('button', { name: `${ar.app.saved.notes.prefix} اتصل بيهم الأحد` })).toBeTruthy();
   });
 
   it('keeps Save quiet until something changed', async () => {

@@ -49,6 +49,19 @@ export function publishedAt(): Date | null {
 }
 
 /**
+ * Which update this phone runs, to the letter: the first eight characters of
+ * its update id and the commit it was published from. Account shows it, so
+ * "is the fix on my phone?" is answered by reading, not by guessing.
+ */
+export function buildMarker(): string | null {
+  const manifest = Constants.manifest2 as { id?: string } | null | undefined;
+  const id = Updates.updateId ?? manifest?.id ?? null;
+  const commit = (Constants.expoConfig?.extra as { commit?: string } | undefined)?.commit ?? null;
+  const parts = [id ? id.slice(0, 8) : null, commit].filter((part): part is string => Boolean(part));
+  return parts.length ? parts.join(' · ') : null;
+}
+
+/**
  * Each platform against its own floor and its own store: Android's builds are
  * released apart from the iPhone's, and the App Store is no use on Android.
  * A website that does not yet say Android's floor gives the iPhone's.
