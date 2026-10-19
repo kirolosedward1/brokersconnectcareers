@@ -4,6 +4,7 @@ import * as LegacyFileSystem from 'expo-file-system/legacy';
 import { CV_BUCKET } from '@/lib/buckets';
 import { fileExtension, fileType } from '@/lib/file-type';
 import { supabase } from '~/lib/supabase';
+import { withTimeout } from '~/lib/timeout';
 
 /**
  * A CV from the phone: picked with the system's document picker, checked as
@@ -79,17 +80,26 @@ function describe(error: unknown): string {
  * native module is older than the JavaScript, as in Expo Go) through the
  * legacy API as base64. Both failing is said with both reasons.
  */
+/** How long each step of a CV's upload may take before it is said as failed. */
+export const CV_READ_TIMEOUT_MS = 15_000;
+export const CV_SESSION_TIMEOUT_MS = 15_000;
+export const CV_UPLOAD_TIMEOUT_MS = 60_000;
+
 export async function readCvBytes(uri: string): Promise<ArrayBuffer> {
   let first: unknown;
   try {
-    const bytes = await new File(uri).arrayBuffer();
+    const bytes = await withTimeout(new File(uri).arrayBuffer(), CV_READ_TIMEOUT_MS, 'reading the file');
     if (bytes.byteLength > 0) return bytes;
     first = new Error('empty file');
   } catch (error) {
     first = error;
   }
   try {
-    const base64 = await LegacyFileSystem.readAsStringAsync(uri, { encoding: LegacyFileSystem.EncodingType.Base64 });
+    const base64 = await withTimeout(
+      LegacyFileSystem.readAsStringAsync(uri, { encoding: LegacyFileSystem.EncodingType.Base64 }),
+      CV_READ_TIMEOUT_MS,
+      'reading the file (base64)',
+    );
     const bytes = base64ToBytes(base64);
     if (bytes.byteLength === 0) throw new Error('empty file');
     return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
@@ -103,9 +113,18 @@ export async function uploadCv(userId: string, cv: PickedCv): Promise<string> {
   if (bytes.byteLength > MAX_CV_BYTES) throw new CvUploadFailed('fileTooLarge');
   // The extension from the type, not the name: a provider can hand over a name with none.
   const path = `${userId}/${crypto.randomUUID()}.${fileExtension({ name: cv.name, type: cv.type }, 'pdf')}`;
+  // The session first, on a clock of its own: storage asks supabase-js for the
+  // token, which waits out a refresh in flight (half a minute of retries
+  // offline), and the upload's request had not even left the phone.
   let error: unknown;
   try {
-    ({ error } = await supabase.storage.from(CV_BUCKET).upload(path, bytes, { upsert: false, contentType: cv.type }));
+    const { data } = await withTimeout(supabase.auth.getSession(), CV_SESSION_TIMEOUT_MS, 'the session');
+    if (!data.session) throw new Error('not signed in on this phone');
+    ({ error } = await withTimeout(
+      supabase.storage.from(CV_BUCKET).upload(path, bytes, { upsert: false, contentType: cv.type }),
+      CV_UPLOAD_TIMEOUT_MS,
+      'the upload',
+    ));
   } catch (thrown) {
     error = thrown;
   }
@@ -115,8 +134,5 @@ export async function uploadCv(userId: string, cv: PickedCv): Promise<string> {
 
 /** Never throws: whoever calls it is already telling the person it did not go through. */
 export async function removeCv(path: string) {
-  await supabase.storage
-    .from(CV_BUCKET)
-    .remove([path])
-    .catch(() => {});
+  await withTimeout(Promise.resolve(supabase.storage.from(CV_BUCKET).remove([path])), 10_000, 'removing the file').catch(() => {});
 }

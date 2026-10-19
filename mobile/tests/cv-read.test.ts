@@ -65,3 +65,33 @@ describe('readCvBytes', () => {
     expect((failure as CvUploadFailed).detail).toContain('second');
   });
 });
+
+describe('timeouts', () => {
+  it('a File read that never answers falls back to the base64 read after the limit', async () => {
+    jest.useFakeTimers();
+    try {
+      mockArrayBuffer.mockReturnValue(new Promise<ArrayBuffer>(() => {}));
+      mockReadAsString.mockResolvedValue(btoa('%PDF'));
+      const done = readCvBytes('file:///cv.pdf');
+      await jest.advanceTimersByTimeAsync(16_000);
+      expect(text(await done)).toBe('%PDF');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('both reads hanging is said as a failure naming the step, not a spinner forever', async () => {
+    jest.useFakeTimers();
+    try {
+      mockArrayBuffer.mockReturnValue(new Promise<ArrayBuffer>(() => {}));
+      mockReadAsString.mockReturnValue(new Promise<string>(() => {}));
+      const done = readCvBytes('file:///cv.pdf').catch((error: unknown) => error);
+      await jest.advanceTimersByTimeAsync(31_000);
+      const failure = (await done) as CvUploadFailed;
+      expect(failure).toBeInstanceOf(CvUploadFailed);
+      expect(failure.detail).toContain('no answer after 15 s');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});

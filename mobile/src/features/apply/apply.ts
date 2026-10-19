@@ -9,6 +9,7 @@ import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-j
 import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
+import { withTimeout } from '~/lib/timeout';
 
 /**
  * Applying — the website's apply form and page (src/components/jobs/apply-form.tsx,
@@ -74,13 +75,14 @@ export function useApplyContext(jobId: string | null) {
 
 /** Whether this candidate's application to the listing is in; a read that fails is "not known to be". */
 async function applied(jobId: string, candidateId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('applications')
-    .select('id')
-    .eq('job_id', jobId)
-    .eq('candidate_id', candidateId)
-    .maybeSingle();
-  return !error && Boolean(data);
+  const answer = await withTimeout(
+    Promise.resolve(
+      supabase.from('applications').select('id').eq('job_id', jobId).eq('candidate_id', candidateId).maybeSingle(),
+    ),
+    15_000,
+    'checking the application',
+  ).catch(() => null);
+  return Boolean(answer && !answer.error && answer.data);
 }
 
 export function useApplyToJob() {

@@ -324,7 +324,10 @@ function ApplyForm({
               ...(fields.note || fields.jobId ? { form: t('common.errorBody') } : {}),
             });
           }
-          showErrors({ form: t('common.errorBody') });
+          // What went wrong underneath, in brackets: "something went wrong" alone told nobody anything.
+          // The website's own answers (offline, unavailable) are said as they always were.
+          const detail = failure instanceof Error && !(failure instanceof ApiError) && failure.message ? failure.message : '';
+          showErrors({ form: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
         },
       },
     );
