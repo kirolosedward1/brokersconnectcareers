@@ -10,6 +10,7 @@ import { useSession } from '~/lib/session';
 import { encryptedSessionStorage } from '~/lib/session-storage';
 import { SESSION_KEY, supabase } from '~/lib/supabase';
 import { announceLocalSignOut } from '~/lib/local-sign-out';
+import { withTimeout } from '~/lib/timeout';
 
 /**
  * This phone's part in pushes (docs/mobile.md, "Pushes"). The website sends
@@ -108,11 +109,15 @@ export async function askPermission(): Promise<PushPermission> {
  * the app speaks. Throws when there is no token to be had (no EAS project in
  * a development build, no network) or the database refused it.
  */
+export const PUSH_TOKEN_TIMEOUT_MS = 15_000;
+
 export async function registerThisPhone(locale: string): Promise<string> {
   // A stop on its way for the person before finishes first, so Apple's
   // registration is not undone under the new one.
   await stopping;
-  const { data: token } = await Notifications.getExpoPushTokenAsync();
+  // Bounded: Apple's or Expo's answer can stall (Expo Go, no network), and the
+  // notifications switch spun with it.
+  const { data: token } = await withTimeout(Notifications.getExpoPushTokenAsync(), PUSH_TOKEN_TIMEOUT_MS, 'the push token');
   const version = Application.nativeApplicationVersion;
   const { error } = await supabase.rpc('register_push_device', {
     p_token: token,
