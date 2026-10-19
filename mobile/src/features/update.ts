@@ -55,7 +55,9 @@ export function publishedAt(): Date | null {
  */
 export function useUpdateRequired(): { required: boolean; storeUrl: string | null } {
   const config = useMobileConfig().data;
-  const version = appVersion();
+  // In Expo Go the native version is Expo Go's own (2.x), not this app's: the
+  // app's floor said nothing about it, and could lock the reader out or never.
+  const version = shownVersion();
   const android = Platform.OS === 'android';
   const minimum = android ? (config?.minAndroidAppVersion ?? config?.minAppVersion) : config?.minAppVersion;
   const required = Boolean(minimum && version && isOlderThan(version, minimum));
