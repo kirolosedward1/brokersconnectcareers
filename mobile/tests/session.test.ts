@@ -375,3 +375,25 @@ describe('an account with no profile', () => {
     expect(sent.some((request) => request.path === '/auth/v1/user')).toBe(false);
   });
 });
+
+describe('an auth request on a connection that stalls', () => {
+  it('a password sign-in is given up on, not left spinning', async () => {
+    const { supabase } = fresh();
+    // Takes the request and never answers until it is aborted.
+    network(
+      (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new TypeError('Network request failed: aborted')));
+        }),
+    );
+    let answered = false;
+    const done = supabase.auth.signInWithPassword({ email: 'a@b.eg', password: 'x' }).then((result) => {
+      answered = true;
+      return result;
+    });
+    await jest.advanceTimersByTimeAsync(21_000);
+    expect(answered).toBe(true);
+    const { error } = await done;
+    expect(error).not.toBeNull();
+  });
+});
