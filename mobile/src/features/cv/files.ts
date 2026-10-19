@@ -1,5 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
+import * as LegacyFileSystem from 'expo-file-system/legacy';
 import { CV_BUCKET } from '@/lib/buckets';
 import { fileExtension, fileType } from '@/lib/file-type';
 import { supabase } from '~/lib/supabase';
@@ -37,21 +38,78 @@ export async function pickCv(): Promise<{ cv: PickedCv } | { problem: CvProblem 
   return { cv: { uri: asset.uri, name: asset.name, type } };
 }
 
-/** Why a picked CV did not reach the bucket. */
+/** Why a picked CV did not reach the bucket, with what went wrong to show the person. */
 export class CvUploadFailed extends Error {
-  constructor(readonly reason: 'fileTooLarge' | 'upload') {
-    super(reason);
+  constructor(
+    readonly reason: 'fileTooLarge' | 'upload',
+    readonly detail?: string,
+  ) {
+    super(detail ? `${reason}: ${detail}` : reason);
     this.name = 'CvUploadFailed';
   }
 }
 
+const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/** Base64 to bytes, without relying on atob or a Buffer the engine may not have. */
+export function base64ToBytes(text: string): Uint8Array {
+  const clean = text.replace(/[^A-Za-z0-9+/]/g, '');
+  const out = new Uint8Array(Math.floor((clean.length * 3) / 4));
+  let bits = 0;
+  let value = 0;
+  let at = 0;
+  for (let index = 0; index < clean.length; index += 1) {
+    value = (value << 6) | BASE64.indexOf(clean[index]);
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out[at++] = (value >> bits) & 0xff;
+    }
+  }
+  return out.subarray(0, at);
+}
+
+function describe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * The picked file's bytes: through expo-file-system's File first, and when
+ * that fails (an iCloud or provider URI it will not open, a runtime whose
+ * native module is older than the JavaScript, as in Expo Go) through the
+ * legacy API as base64. Both failing is said with both reasons.
+ */
+export async function readCvBytes(uri: string): Promise<ArrayBuffer> {
+  let first: unknown;
+  try {
+    const bytes = await new File(uri).arrayBuffer();
+    if (bytes.byteLength > 0) return bytes;
+    first = new Error('empty file');
+  } catch (error) {
+    first = error;
+  }
+  try {
+    const base64 = await LegacyFileSystem.readAsStringAsync(uri, { encoding: LegacyFileSystem.EncodingType.Base64 });
+    const bytes = base64ToBytes(base64);
+    if (bytes.byteLength === 0) throw new Error('empty file');
+    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  } catch (second) {
+    throw new CvUploadFailed('upload', `read: ${describe(first)}; ${describe(second)}`);
+  }
+}
+
 export async function uploadCv(userId: string, cv: PickedCv): Promise<string> {
-  const bytes = await new File(cv.uri).arrayBuffer();
+  const bytes = await readCvBytes(cv.uri);
   if (bytes.byteLength > MAX_CV_BYTES) throw new CvUploadFailed('fileTooLarge');
   // The extension from the type, not the name: a provider can hand over a name with none.
   const path = `${userId}/${crypto.randomUUID()}.${fileExtension({ name: cv.name, type: cv.type }, 'pdf')}`;
-  const { error } = await supabase.storage.from(CV_BUCKET).upload(path, bytes, { upsert: false, contentType: cv.type });
-  if (error) throw new CvUploadFailed('upload');
+  let error: unknown;
+  try {
+    ({ error } = await supabase.storage.from(CV_BUCKET).upload(path, bytes, { upsert: false, contentType: cv.type }));
+  } catch (thrown) {
+    error = thrown;
+  }
+  if (error) throw new CvUploadFailed('upload', `storage: ${describe(error)}`);
   return path;
 }
 

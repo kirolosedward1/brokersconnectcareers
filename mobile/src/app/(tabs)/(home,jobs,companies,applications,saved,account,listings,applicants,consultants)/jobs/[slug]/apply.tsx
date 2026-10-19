@@ -310,7 +310,10 @@ function ApplyForm({
           if (reason === 'already_applied') return showErrors({ form: t('apply.alreadyApplied') });
           if (reason === 'rate_limit') return showErrors({ form: t('apply.rateLimit') });
           if (reason === 'fileTooLarge' || reason === 'fileType') return showErrors({ cv: t(`validation.${reason}`) });
-          if (reason === 'upload' || reason === 'invalid_cv_path') return showErrors({ cv: t('common.errorBody') });
+          if (reason === 'upload' || reason === 'invalid_cv_path') {
+            const detail = failure instanceof ApplyRefused ? failure.detail : undefined;
+            return showErrors({ cv: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
+          }
           const fields = failure instanceof ApplyRefused ? failure.fieldErrors : undefined;
           if (reason === 'invalid' && fields && Object.keys(fields).length) {
             return showErrors({

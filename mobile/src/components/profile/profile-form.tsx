@@ -145,7 +145,10 @@ export function ProfileForm({
           const reason = failure instanceof SaveRefused ? failure.reason : 'failed';
           const fields = failure instanceof SaveRefused ? failure.fieldErrors : undefined;
           if (reason === 'fileTooLarge') return refuse({ cv: t('validation.fileTooLarge') });
-          if (reason === 'upload' || reason === 'invalid_cv_path') return refuse({ cv: t('common.errorBody') });
+          if (reason === 'upload' || reason === 'invalid_cv_path') {
+            const detail = failure instanceof SaveRefused ? failure.detail : undefined;
+            return refuse({ cv: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
+          }
           if (fields?.whatsapp || fields?.cv) {
             return refuse({
               ...(fields.whatsapp ? { whatsapp: t('validation.invalidPhone') } : {}),

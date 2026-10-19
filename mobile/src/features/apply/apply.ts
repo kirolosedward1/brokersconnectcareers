@@ -34,8 +34,10 @@ export class ApplyRefused extends Error {
     /** An action error code ('already_applied', 'rate_limit', 'invalid', …), 'upload' or a CvProblem. */
     readonly reason: string,
     readonly fieldErrors?: Record<string, string>,
+    /** What went wrong underneath, said with the error (an upload's own message). */
+    readonly detail?: string,
   ) {
-    super(reason);
+    super(detail ? `${reason}: ${detail}` : reason);
     this.name = 'ApplyRefused';
   }
 }
@@ -91,7 +93,7 @@ export function useApplyToJob() {
       const uploaded =
         attachment?.kind === 'file'
           ? await uploadCv(userId, attachment.file).catch((error: unknown) => {
-              throw error instanceof CvUploadFailed ? new ApplyRefused(error.reason) : error;
+              throw error instanceof CvUploadFailed ? new ApplyRefused(error.reason, undefined, error.detail) : error;
             })
           : null;
       const cvPath = uploaded ?? (attachment?.kind === 'profile' ? attachment.path : null);

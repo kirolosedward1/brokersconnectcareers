@@ -121,8 +121,10 @@ export class SaveRefused extends Error {
   constructor(
     readonly reason: string,
     readonly fieldErrors?: Record<string, string>,
+    /** What went wrong underneath, said with the error (an upload's own message). */
+    readonly detail?: string,
   ) {
-    super(reason);
+    super(detail ? `${reason}: ${detail}` : reason);
     this.name = 'SaveRefused';
   }
 }
@@ -146,7 +148,7 @@ export function useSaveAgentProfile() {
       const uploaded =
         cv.kind === 'file'
           ? await uploadCv(userId, cv.file).catch((error: unknown) => {
-              throw error instanceof CvUploadFailed ? new SaveRefused(error.reason) : error;
+              throw error instanceof CvUploadFailed ? new SaveRefused(error.reason, undefined, error.detail) : error;
             })
           : null;
 
