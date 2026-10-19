@@ -18,7 +18,6 @@ import {
   UserRound,
   X,
 } from '~/components/ui/lucide';
-import { formatDate } from '@/lib/format';
 import type { JobDetail } from '@/lib/job-list';
 import { jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -567,19 +566,13 @@ function WhoSees() {
   );
 }
 
-/** The confirmation: what, where and when, where to follow it, and what to look at next. */
-function Sent({ job, at }: { job: JobDetail; at: Date }) {
+/** The confirmation: that it went, where to follow it, and what to look at next. */
+function Sent({ job }: { job: JobDetail; at?: Date }) {
   const toBoard = useToBoard();
   const t = useTranslations();
-  const locale = useLocale();
   const { colors } = useTheme();
   const next = useNextRoles(job.id, true);
 
-  const rows: [string, string][] = [
-    [t('apply.labelJob'), localized(locale, job.title_ar, job.title_en)],
-    [t('apply.labelCompany'), localized(locale, job.company.name_ar, job.company.name_en)],
-    [t('apply.labelDate'), formatDate(at, locale)],
-  ];
 
   return (
     <ScrollView
@@ -608,32 +601,6 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
           {t('apply.successBody')}
         </Text>
       </Appear>
-
-      {/* Read from the right as Arabic is: the labels a column at the start,
-          each value beside its own, starting where the others do — not
-          pushed to the far edge, where it read as a left-to-right table. */}
-      <Card style={{ padding: 0 }}>
-        {rows.map(([label, value], index) => (
-          <View
-            key={label}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              gap: space[4],
-              padding: space[4],
-              borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
-              borderTopColor: colors.border,
-            }}
-          >
-            <Text variant="small" tone="mutedForeground" style={{ width: 112 }}>
-              {label}
-            </Text>
-            <Text variant="small" weight="medium" style={{ flex: 1 }}>
-              {value}
-            </Text>
-          </View>
-        ))}
-      </Card>
 
       <View style={{ gap: space[2] }}>
         <Button label={t('apply.viewApplications')} onPress={() => router.navigate('/dashboard/applications')} />
