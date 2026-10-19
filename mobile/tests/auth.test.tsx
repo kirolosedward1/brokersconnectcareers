@@ -1175,6 +1175,20 @@ describe('an email link opened in the app', () => {
     expect(server.asked('/auth/v1/logout')[0]?.url.searchParams.get('scope')).toBe('others');
   });
 
+  it('says a password the same as the old one is that, not something gone wrong', async () => {
+    server.on('PUT /auth/v1/user', {
+      status: 422,
+      body: { code: 'same_password', error_code: 'same_password', msg: 'New password should be different from the old password.' },
+    });
+    renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
+    expect(await screen.findByText(ar.auth.newPasswordTitle)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.auth.password), 'the-old-password');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'the-old-password');
+    await press(ar.auth.resetPassword);
+    expect(await screen.findByText(ar.auth.errSamePassword)).toBeTruthy();
+    expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(0);
+  });
+
   describe('with an account signed in here', () => {
     const OTHER_ID = '8b7c7f1e-0000-4000-8000-0000000000ee';
     const other = authUser({
