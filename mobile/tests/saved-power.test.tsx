@@ -1,3 +1,4 @@
+import { NoteSheetHost } from '~/components/saved/note-sheet';
 import type { ReactNode } from 'react';
 import { Linking, Modal } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
@@ -208,6 +209,7 @@ function Root() {
               <Stack screenOptions={{ headerShown: false }} />
               <PendingPath />
               <PushBridge />
+              <NoteSheetHost />
             </Settled>
           </SessionProvider>
         </I18nProvider>

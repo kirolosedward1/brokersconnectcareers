@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
@@ -180,6 +180,55 @@ export function NoteSheet({
   );
 }
 
+
+/** The host's way of opening the note sheet (NoteSheetHost), while one is drawn. */
+const hosts = new Set<(target: { jobId: string; jobTitle: string }) => void>();
+
+/** Open the note sheet for a listing, drawn once at the app's root. */
+export function openNoteSheet(jobId: string, jobTitle: string) {
+  for (const show of hosts) show({ jobId, jobTitle });
+}
+
+/**
+ * Where the note sheet is drawn: once, beside the app's navigators, outside
+ * every list. Drawn inside the saved card, it went with the card: the
+ * keyboard rising resized the list, the list drew its rows again, and the
+ * sheet vanished under the reader's fingers while the keyboard stayed up
+ * over a list nobody could type into.
+ */
+export function NoteSheetHost() {
+  const sheet = useSheet();
+  const [target, setTarget] = useState<{ jobId: string; jobTitle: string } | null>(null);
+  const show = useRef(sheet.show);
+  useEffect(() => {
+    show.current = sheet.show;
+  });
+  useEffect(() => {
+    const open = (next: { jobId: string; jobTitle: string }) => {
+      setTarget(next);
+      show.current();
+    };
+    hosts.add(open);
+    return () => {
+      hosts.delete(open);
+    };
+  }, []);
+  if (!sheet.mounted || !target) return null;
+  return (
+    <NoteSheet
+      key={target.jobId}
+      visible={sheet.open}
+      onClose={() => {
+        Keyboard.dismiss();
+        sheet.hide();
+      }}
+      onDismiss={sheet.onDismiss}
+      jobId={target.jobId}
+      jobTitle={target.jobTitle}
+    />
+  );
+}
+
 /** Whether the keyboard is up: the card's foot stands off the home indicator only while it is not. */
 function useKeyboardShown(): boolean {
   const [shown, setShown] = useState(false);
@@ -255,16 +304,9 @@ export function SavedJobNote({ jobId, title }: { jobId: string; title: string })
   const { actor } = useSession();
   const { ids } = useSavedJobIds();
   const note = useJobNote(jobId);
-  const sheet = useSheet();
   const shown = canSaveJobs(actor) && ids.has(jobId);
-  // A sheet open when the bookmark is taken off stays until it is closed.
-  if (!shown && !sheet.mounted) return null;
-  return (
-    <>
-      {shown ? <NoteLine note={note} onPress={sheet.show} framed label={t('forListing')} /> : null}
-      {sheet.mounted ? <NoteSheet visible={sheet.open} onClose={sheet.hide} onDismiss={sheet.onDismiss} jobId={jobId} jobTitle={title} /> : null}
-    </>
-  );
+  if (!shown) return null;
+  return <NoteLine note={note} onPress={() => openNoteSheet(jobId, title)} framed label={t('forListing')} />;
 }
 
 const styles = StyleSheet.create({
