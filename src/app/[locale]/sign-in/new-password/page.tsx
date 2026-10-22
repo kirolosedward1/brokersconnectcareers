@@ -56,8 +56,10 @@ export default async function NewPasswordPage({
     the code and comes back here once it is answered.
   */
   if (user) {
-    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (assurance?.currentLevel === 'aal1' && assurance.nextLevel === 'aal2') {
+    const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    // Unreadable (it is read from the session's own token, so rarely): the
+    // form, whose refusal sends such an account to the code all the same.
+    if (!assuranceError && assurance?.currentLevel === 'aal1' && assurance.nextLevel === 'aal2') {
       redirect({ href: secondFactorChallenge('/sign-in/new-password', '')!, locale });
     }
   }

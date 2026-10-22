@@ -78,7 +78,7 @@ console.log('\n— the reset and the settings ask for it');
 const resetPage = readFileSync(join(ROOT, 'src/app/[locale]/sign-in/new-password/page.tsx'), 'utf8');
 is(
   'the reset page sends an account with an authenticator to the code before the form',
-  /currentLevel === 'aal1' && assurance\.nextLevel === 'aal2'\) \{\s*redirect\(\{ href: secondFactorChallenge\('\/sign-in\/new-password', ''\)/.test(resetPage),
+  /!assuranceError && assurance\?\.currentLevel === 'aal1' && assurance\.nextLevel === 'aal2'\) \{\s*redirect\(\{ href: secondFactorChallenge\('\/sign-in\/new-password', ''\)/.test(resetPage),
   true,
 );
 is(
