@@ -27,6 +27,7 @@ import { dateOf, monthOf, wholeNumber } from './fields';
 import { toast } from '~/components/feedback/toast';
 import { useGatedModal } from '~/lib/sheet-gate';
 import { useSheetFence } from '~/components/ui/sheet-fence';
+import { appDirection } from '~/lib/direction';
 
 /** This month, as the form shows a date ("2026-10"): no later month has come yet. */
 function thisMonth(): string {
@@ -69,7 +70,7 @@ export function CvEntrySheet({ agentId, entry, onClose }: { agentId: string; ent
     <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
       <KeyboardRoom>
         {/* The sheet keeps its touches from the screen it is drawn in (sheet-fence.ts). */}
-        <View style={{ flex: 1 }} {...fence}>
+        <View style={{ flex: 1, direction: appDirection }} {...fence}>
           {/* A fresh form for every entry opened. */}
           {entry ? (
             <EntryForm

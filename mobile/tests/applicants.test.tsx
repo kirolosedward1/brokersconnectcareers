@@ -762,13 +762,23 @@ describe('the inbox', () => {
     await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false));
   });
 
+  it('finds a name however Arabic spells its alef and its last letter', async () => {
+    const result = renderRouter(app, { initialUrl: '/employer/applicants' });
+    fireEvent.changeText(await screen.findByLabelText(ar.employer.searchApplicants), 'احمد مصطفي');
+    fireEvent(screen.getByLabelText(ar.employer.searchApplicants), 'submitEditing');
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'احمد مصطفي' }));
+    await waitFor(() =>
+      expect(server.asked('/rest/v1/applications').some((request) => request.url.searchParams.get('candidate.full_name') === 'ilike.%_حمد مصطف_%')).toBe(true),
+    );
+  });
+
   it('searches by name, with LIKE’s own characters taken as typed', async () => {
     const result = renderRouter(app, { initialUrl: '/employer/applicants' });
     fireEvent.changeText(await screen.findByLabelText(ar.employer.searchApplicants), 'سارة_1%');
     fireEvent(screen.getByLabelText(ar.employer.searchApplicants), 'submitEditing');
     await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'سارة_1%' }));
     await waitFor(() =>
-      expect(server.asked('/rest/v1/applications').some((request) => request.url.searchParams.get('candidate.full_name') === 'ilike.%سارة\\_1\\%%')).toBe(
+      expect(server.asked('/rest/v1/applications').some((request) => request.url.searchParams.get('candidate.full_name') === 'ilike.%س_رة\\_1\\%%')).toBe(
         true,
       ),
     );

@@ -182,7 +182,7 @@ function ReportSheet({
   return (
     <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <KeyboardRoom>
-        <View style={{ flex: 1, backgroundColor: colors.background }} {...fence}>
+        <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
           <View
             style={{
               flexDirection: 'row',

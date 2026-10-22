@@ -1,5 +1,5 @@
 import { useRef, useState, type ComponentType } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type TextInput } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import {
@@ -18,7 +18,6 @@ import {
   UserRound,
   X,
 } from '~/components/ui/lucide';
-import { formatDate } from '@/lib/format';
 import type { JobDetail } from '@/lib/job-list';
 import { jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -239,6 +238,8 @@ function ApplyForm({
   const apply = useApplyToJob();
   const scroll = useRef<ScrollView>(null);
   const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'experienceBand', 'cv']);
+  // The return key moves on from the name to the number.
+  const whatsappField = useRef<TextInput>(null);
 
   const [fullName, setFullName] = useState(defaultName);
   const [whatsapp, setWhatsapp] = useState(defaultPhone);
@@ -309,8 +310,12 @@ function ApplyForm({
           const reason = failure instanceof ApplyRefused ? failure.reason : 'failed';
           if (reason === 'already_applied') return showErrors({ form: t('apply.alreadyApplied') });
           if (reason === 'rate_limit') return showErrors({ form: t('apply.rateLimit') });
+          if (reason === 'not_open') return showErrors({ form: t('apply.notOpen') });
           if (reason === 'fileTooLarge' || reason === 'fileType') return showErrors({ cv: t(`validation.${reason}`) });
-          if (reason === 'upload' || reason === 'invalid_cv_path') return showErrors({ cv: t('common.errorBody') });
+          if (reason === 'upload' || reason === 'invalid_cv_path') {
+            const detail = failure instanceof ApplyRefused ? failure.detail : undefined;
+            return showErrors({ cv: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
+          }
           const fields = failure instanceof ApplyRefused ? failure.fieldErrors : undefined;
           if (reason === 'invalid' && fields && Object.keys(fields).length) {
             return showErrors({
@@ -321,7 +326,10 @@ function ApplyForm({
               ...(fields.note || fields.jobId ? { form: t('common.errorBody') } : {}),
             });
           }
-          showErrors({ form: t('common.errorBody') });
+          // What went wrong underneath, in brackets: "something went wrong" alone told nobody anything.
+          // The website's own answers (offline, unavailable) are said as they always were.
+          const detail = failure instanceof Error && !(failure instanceof ApiError) && failure.message ? failure.message : '';
+          showErrors({ form: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
         },
       },
     );
@@ -370,11 +378,15 @@ function ApplyForm({
               autoComplete="name"
               textContentType="name"
               maxLength={120}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => whatsappField.current?.focus()}
             />
           </Field>
 
           <Field ref={inView.place('whatsapp')} label={t('apply.whatsapp')} error={errors.whatsapp}>
             <TextField
+              ref={whatsappField}
               value={whatsapp}
               onChangeText={setWhatsapp}
               accessibilityLabel={t('apply.whatsapp')}
@@ -561,19 +573,13 @@ function WhoSees() {
   );
 }
 
-/** The confirmation: what, where and when, where to follow it, and what to look at next. */
-function Sent({ job, at }: { job: JobDetail; at: Date }) {
+/** The confirmation: that it went, where to follow it, and what to look at next. */
+function Sent({ job }: { job: JobDetail; at?: Date }) {
   const toBoard = useToBoard();
   const t = useTranslations();
-  const locale = useLocale();
   const { colors } = useTheme();
   const next = useNextRoles(job.id, true);
 
-  const rows: [string, string][] = [
-    [t('apply.labelJob'), localized(locale, job.title_ar, job.title_en)],
-    [t('apply.labelCompany'), localized(locale, job.company.name_ar, job.company.name_en)],
-    [t('apply.labelDate'), formatDate(at, locale)],
-  ];
 
   return (
     <ScrollView
@@ -602,32 +608,6 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
           {t('apply.successBody')}
         </Text>
       </Appear>
-
-      {/* Read from the right as Arabic is: the labels a column at the start,
-          each value beside its own, starting where the others do — not
-          pushed to the far edge, where it read as a left-to-right table. */}
-      <Card style={{ padding: 0 }}>
-        {rows.map(([label, value], index) => (
-          <View
-            key={label}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              gap: space[4],
-              padding: space[4],
-              borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
-              borderTopColor: colors.border,
-            }}
-          >
-            <Text variant="small" tone="mutedForeground" style={{ width: 112 }}>
-              {label}
-            </Text>
-            <Text variant="small" weight="medium" style={{ flex: 1 }}>
-              {value}
-            </Text>
-          </View>
-        ))}
-      </Card>
 
       <View style={{ gap: space[2] }}>
         <Button label={t('apply.viewApplications')} onPress={() => router.navigate('/dashboard/applications')} />

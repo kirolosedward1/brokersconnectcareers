@@ -89,7 +89,19 @@ export function PushBridge() {
   useEffect(() => {
     if (!wanted) return;
     registerThisPhone(locale).catch(() => {});
-    const subscription = Notifications.addPushTokenListener(() => {
+    // Only a token that changed: asking for the token fires this listener
+    // too, and re-registering on every event looped — dozens of
+    // register_push_device calls a minute from one phone, each refused 401
+    // once its session had gone.
+    let lastToken: string | null = null;
+    const subscription = Notifications.addPushTokenListener((token) => {
+      const value = typeof token?.data === 'string' ? token.data : JSON.stringify(token?.data ?? null);
+      if (lastToken === null) {
+        lastToken = value;
+        return;
+      }
+      if (value === lastToken) return;
+      lastToken = value;
       registerThisPhone(locale).catch(() => {});
     });
     return () => subscription.remove();

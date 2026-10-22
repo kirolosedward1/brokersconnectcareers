@@ -6,6 +6,7 @@ import { localeHref, type Locale } from '@/i18n/routing';
 import { deleteMyAccount } from '@/lib/actions/account';
 import { reach } from '@/lib/reach';
 import { Button } from '@/components/ui/button';
+import { forgetDrafts } from '@/lib/form-draft';
 
 /**
  * The way out of onboarding, for somebody who signed up and changed their
@@ -45,6 +46,9 @@ export function LeaveOnboarding({ locale, signOutLabel }: { locale: Locale; sign
       const { createClient } = await import('@/lib/supabase/client');
       // This browser only: the phone's session, and any other, stays signed in.
       await createClient().auth.signOut({ scope: 'local' });
+      // And what this browser kept of half-typed forms (lib/form-draft.ts):
+      // the next person at a shared computer should find none of it.
+      forgetDrafts();
       // A document navigation, as the user menu does: who the server thinks
       // you are has just changed.
       window.location.assign(localeHref(locale, '/'));

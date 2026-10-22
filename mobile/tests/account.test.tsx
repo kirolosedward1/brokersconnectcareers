@@ -353,6 +353,50 @@ describe('signing in and security', () => {
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
   });
 
+  it('asks for the emailed code when the session is more than a day old, as secure password change does', async () => {
+    // GoTrue's rule: no nonce on an old session is refused; the code it emailed is accepted.
+    server.on('PUT /auth/v1/user', (_url, init) => {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      if (!body.nonce) {
+        return { status: 400, body: { code: 400, error_code: 'reauthentication_needed', msg: 'Password update requires reauthentication' } };
+      }
+      if (body.nonce !== '123456') {
+        return { status: 422, body: { code: 422, error_code: 'reauthentication_not_valid', msg: 'Nonce has expired or is invalid' } };
+      }
+      return user;
+    });
+    server.on('GET /auth/v1/reauthenticate', {});
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.account.newPassword), 'a-new-password');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+
+    // Not "something went wrong": a code, sent to the account's own address.
+    expect(await screen.findByLabelText(ar.account.reauthCode)).toBeTruthy();
+    expect(server.asked('/auth/v1/reauthenticate')).toHaveLength(1);
+    expect(screen.queryByText(ar.common.errorBody)).toBeNull();
+
+    // Saved with the code left empty: said, and no second email.
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.validation.required)).toBeTruthy();
+    expect(server.asked('/auth/v1/reauthenticate')).toHaveLength(1);
+    expect(userUpdates()).toHaveLength(1);
+
+    fireEvent.changeText(screen.getByLabelText(ar.account.reauthCode), '000000');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.account.reauthInvalid)).toBeTruthy();
+
+    // Typed on an Arabic keyboard.
+    fireEvent.changeText(screen.getByLabelText(ar.account.reauthCode), '١٢٣٤٥٦');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.account.passwordSaved)).toBeTruthy();
+    expect(userUpdates().at(-1)?.body).toEqual(expect.objectContaining({ password: 'a-new-password', nonce: '123456' }));
+    expect(screen.queryByLabelText(ar.account.reauthCode)).toBeNull();
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
+  });
+
   it('moves to the second password with the return key, and saves from there', async () => {
     await signIn();
     const focus = watchFocus();

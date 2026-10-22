@@ -1,5 +1,5 @@
-import { useState, type RefObject } from 'react';
-import { Pressable, View, type ScrollView } from 'react-native';
+import { useRef, useState, type RefObject } from 'react';
+import { Pressable, View, type ScrollView, type TextInput } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2, Eye, EyeOff, FileText, Paperclip, ShieldCheck, Trash2, X } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
@@ -82,6 +82,8 @@ export function ProfileForm({
   const [cv, setCv] = useState<CvChange>({ kind: 'keep' });
   const [errors, setErrors] = useState<Errors>({});
   const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'yearsExperience', 'cv']);
+  // The return key moves on from the name to the number.
+  const whatsappField = useRef<TextInput>(null);
   const refuse = (next: Errors) => {
     setErrors(next);
     inView.show(next);
@@ -145,7 +147,10 @@ export function ProfileForm({
           const reason = failure instanceof SaveRefused ? failure.reason : 'failed';
           const fields = failure instanceof SaveRefused ? failure.fieldErrors : undefined;
           if (reason === 'fileTooLarge') return refuse({ cv: t('validation.fileTooLarge') });
-          if (reason === 'upload' || reason === 'invalid_cv_path') return refuse({ cv: t('common.errorBody') });
+          if (reason === 'upload' || reason === 'invalid_cv_path') {
+            const detail = failure instanceof SaveRefused ? failure.detail : undefined;
+            return refuse({ cv: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
+          }
           if (fields?.whatsapp || fields?.cv) {
             return refuse({
               ...(fields.whatsapp ? { whatsapp: t('validation.invalidPhone') } : {}),
@@ -168,11 +173,15 @@ export function ProfileForm({
           autoComplete="name"
           textContentType="name"
           maxLength={120}
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => whatsappField.current?.focus()}
         />
       </Field>
 
       <Field ref={inView.place('whatsapp')} label={t('onboarding.whatsapp')} error={errors.whatsapp}>
         <TextField
+          ref={whatsappField}
           value={whatsapp}
           onChangeText={(value) => form.set({ whatsapp: value })}
           accessibilityLabel={t('onboarding.whatsapp')}

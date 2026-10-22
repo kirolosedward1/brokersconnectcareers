@@ -43,7 +43,7 @@ import { useHiddenCompanyEntries } from '~/features/moderation/hidden-companies'
 import { useHiddenJobEntries } from '~/features/moderation/hidden-jobs';
 import { signOutHere } from '~/features/push/device';
 import { useTabList } from '~/features/tab-bar';
-import { publishedAt, shownVersion } from '~/features/update';
+import { buildMarker, publishedAt, shownVersion } from '~/features/update';
 import { ApiError } from '~/lib/api';
 import { useScreenRefresh } from '~/lib/use-pull-refresh';
 import { env } from '~/lib/env';
@@ -84,6 +84,7 @@ export default function AccountScreen() {
   const [signingOut, setSigningOut] = useState(false);
   const version = shownVersion() ?? '';
   const published = publishedAt();
+  const marker = buildMarker();
 
   const themes: { value: ThemePreference; label: string }[] = [
     { value: 'light', label: t('theme.light') },
@@ -282,7 +283,9 @@ export default function AccountScreen() {
               busy={signingOut}
               onPress={() => {
                 setSigningOut(true);
-                signOutHere().then(() => setSigningOut(false));
+                signOutHere()
+                  .catch(() => {})
+                  .then(() => setSigningOut(false));
               }}
             />
           ) : null}
@@ -331,6 +334,11 @@ export default function AccountScreen() {
             <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
               {t('app.account.version', { version })}
               {published ? ` · ${t('app.account.published', { date: formatDateTime(published, locale) })}` : ''}
+            </Text>
+          ) : null}
+          {marker ? (
+            <Text selectable variant="caption" tone="mutedForeground" testID="build-marker" style={{ textAlign: 'center', writingDirection: 'ltr' }}>
+              {marker}
             </Text>
           ) : null}
         </View>

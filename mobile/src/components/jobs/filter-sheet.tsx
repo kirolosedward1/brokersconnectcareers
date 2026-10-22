@@ -34,6 +34,7 @@ import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { useGatedModal } from '~/lib/sheet-gate';
 import { useSheetFence } from '~/components/ui/sheet-fence';
+import { appDirection } from '~/lib/direction';
 
 /** How long the typing pauses before the words are counted on the button. */
 const WORDS_PAUSE_MS = 400;
@@ -462,7 +463,7 @@ export function FilterSheetFrame({
 
   return (
     <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: colors.background }} {...fence}>
+      <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
         <View
           style={{
             flexDirection: 'row',

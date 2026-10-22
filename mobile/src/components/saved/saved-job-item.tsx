@@ -27,11 +27,10 @@ import {
 } from '~/features/saved/reminders';
 import { markupTags } from '~/i18n/rich';
 import { haptic } from '~/lib/haptics';
-import { useSheet } from '~/lib/use-sheet';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, radius, space } from '~/theme/tokens';
-import { NoteLine, NoteSheet } from './note-sheet';
+import { NoteLine, openNoteSheet } from './note-sheet';
 
 /** While choosing listings to compare: where this one stands. */
 export type ComparePick = {
@@ -132,7 +131,6 @@ function Tray({ job, applied, waiting }: { job: JobListItem; applied: boolean; w
   const locale = useLocale();
   const note = useJobNote(job.id);
   const reminder = useJobReminder(job.id);
-  const sheet = useSheet();
   const large = useLargeText();
   const live = jobIsLive(job);
   const days = live ? closingInDays(job.expires_at) : null;
@@ -174,7 +172,7 @@ function Tray({ job, applied, waiting }: { job: JobListItem; applied: boolean; w
       {/* Side by side; at the accessibility text sizes the reminder goes under the note rather than squeezing it. */}
       <View style={large ? { gap: space[1], paddingBottom: space[2] } : { flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
         <View style={large ? undefined : { flex: 1 }}>
-          <NoteLine note={note} onPress={sheet.show} />
+          <NoteLine note={note} onPress={() => openNoteSheet(job.id, localized(locale, job.title_ar, job.title_en))} />
         </View>
         {remindable || reminder ? (
           <View style={{ alignItems: 'flex-start' }}>
@@ -182,15 +180,6 @@ function Tray({ job, applied, waiting }: { job: JobListItem; applied: boolean; w
           </View>
         ) : null}
       </View>
-      {sheet.mounted ? (
-        <NoteSheet
-          visible={sheet.open}
-          onClose={sheet.hide}
-          onDismiss={sheet.onDismiss}
-          jobId={job.id}
-          jobTitle={localized(locale, job.title_ar, job.title_en)}
-        />
-      ) : null}
     </View>
   );
 }

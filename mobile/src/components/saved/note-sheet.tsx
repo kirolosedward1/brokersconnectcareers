@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Keyboard, Modal, Pressable, StyleSheet, View, type TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
 import { canSaveJobs } from '@/lib/permissions';
@@ -22,8 +22,8 @@ import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { useSheetFence } from '~/components/ui/sheet-fence';
 
 /**
- * A private note on a saved listing, written in a small card at the foot of
- * the screen that rises with the keyboard: what it is about at the top, the
+ * A private note on a saved listing, written in a small card at the top of
+ * the screen, above anywhere the keyboard reaches: what it is about, the
  * field (300 characters, counted as they go), Save, and Delete once there is
  * a note to delete. Saving says so; deleting offers Undo rather than asking
  * first. Typed and not saved, a tap on the shade only puts the keyboard away —
@@ -57,7 +57,25 @@ export function NoteSheet({
   const text = draft ?? note?.text ?? '';
   const clean = cleanNote(text);
   const changed = clean !== (note?.text ?? '');
-  const keyboard = useKeyboardShown();
+  // Focused once iOS has finished presenting the sheet, not as it mounts:
+  // autoFocus raised the keyboard mid-presentation, and the sheet went while
+  // the keyboard stayed up over the list, with nothing to type into.
+  const field = useRef<TextInput>(null);
+  const focused = useRef(false);
+  const focusField = () => {
+    if (focused.current) return;
+    focused.current = true;
+    field.current?.focus();
+  };
+  useEffect(() => {
+    if (!visible) {
+      focused.current = false;
+      return;
+    }
+    // onShow is iOS's word that it is up; should it never come, the field is focused a moment after.
+    const late = setTimeout(focusField, 600);
+    return () => clearTimeout(late);
+  }, [visible]);
 
   const deleted = (before: JobNote): Toast => ({
     message: t('deleted'),
@@ -84,10 +102,19 @@ export function NoteSheet({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} onDismiss={onDismiss}>
-      <KeyboardAvoidingView
-        behavior="padding"
-        style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.5)' }}
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} onDismiss={onDismiss} onShow={focusField}>
+      <View
+        // The card stands at the top of the screen, under the status bar, where
+        // the keyboard never reaches: lifting a card from the foot by the
+        // keyboard's measured height still left it under the keyboard in Expo Go.
+        style={{
+          flex: 1,
+          direction: appDirection,
+          justifyContent: 'flex-start',
+          paddingTop: insets.top + space[2],
+          backgroundColor: 'rgba(5, 10, 25, 0.5)',
+        }}
+        testID="note-sheet-room"
         {...fence}
       >
         {/* The shade beside the card, not around it, so VoiceOver reaches what is in the card. */}
@@ -97,11 +124,10 @@ export function NoteSheet({
           onPress={() => (changed ? Keyboard.dismiss() : onClose())}
           style={StyleSheet.absoluteFill}
         />
-        <Appear from="below" distance={40} duration={320}>
+        <Appear from="none" duration={220}>
           <View
             style={{
               margin: space[3],
-              marginBottom: keyboard ? space[3] : Math.max(insets.bottom, space[3]),
               padding: gutter,
               gap: space[3],
               ...corner('xxl'),
@@ -134,15 +160,15 @@ export function NoteSheet({
 
             <View style={{ gap: space[1] }}>
               <TextField
+                ref={field}
                 value={text}
                 onChangeText={setDraft}
                 accessibilityLabel={t('title')}
                 accessibilityHint={t('private')}
                 placeholder={t('placeholder')}
                 multiline
-                autoFocus
                 maxLength={NOTE_MAX}
-                style={{ minHeight: 96, maxHeight: 180, paddingVertical: space[3], textAlignVertical: 'top' }}
+                style={{ minHeight: 96, maxHeight: 140, paddingVertical: space[3], textAlignVertical: 'top' }}
               />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
                 <Lock size={12} color={colors.mutedForeground} />
@@ -175,25 +201,63 @@ export function NoteSheet({
             </View>
           </View>
         </Appear>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
 
-/** Whether the keyboard is up: the card's foot stands off the home indicator only while it is not. */
-function useKeyboardShown(): boolean {
-  const [shown, setShown] = useState(false);
+
+/** The host's way of opening the note sheet (NoteSheetHost), while one is drawn. */
+const hosts = new Set<(target: { jobId: string; jobTitle: string }) => void>();
+
+/** Open the note sheet for a listing, drawn once at the app's root. */
+export function openNoteSheet(jobId: string, jobTitle: string) {
+  for (const show of hosts) show({ jobId, jobTitle });
+}
+
+/**
+ * Where the note sheet is drawn: once, beside the app's navigators, outside
+ * every list. Drawn inside the saved card, it went with the card: the
+ * keyboard rising resized the list, the list drew its rows again, and the
+ * sheet vanished under the reader's fingers while the keyboard stayed up
+ * over a list nobody could type into.
+ */
+export function NoteSheetHost() {
+  const sheet = useSheet();
+  const [target, setTarget] = useState<{ jobId: string; jobTitle: string } | null>(null);
+  const show = useRef(sheet.show);
   useEffect(() => {
-    const ios = Platform.OS === 'ios';
-    const show = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () => setShown(true));
-    const hide = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => setShown(false));
+    show.current = sheet.show;
+  });
+  useEffect(() => {
+    const open = (next: { jobId: string; jobTitle: string }) => {
+      setTarget(next);
+      show.current();
+    };
+    hosts.add(open);
     return () => {
-      show.remove();
-      hide.remove();
+      hosts.delete(open);
     };
   }, []);
-  return shown;
+  if (!sheet.mounted || !target) return null;
+  return (
+    <NoteSheet
+      key={target.jobId}
+      visible={sheet.open}
+      onClose={() => {
+        Keyboard.dismiss();
+        sheet.hide();
+      }}
+      onDismiss={() => {
+        Keyboard.dismiss();
+        sheet.onDismiss();
+      }}
+      jobId={target.jobId}
+      jobTitle={target.jobTitle}
+    />
+  );
 }
+
 
 /**
  * The note as a line to tap: "Your note: …" in two lines at most, or the
@@ -255,16 +319,9 @@ export function SavedJobNote({ jobId, title }: { jobId: string; title: string })
   const { actor } = useSession();
   const { ids } = useSavedJobIds();
   const note = useJobNote(jobId);
-  const sheet = useSheet();
   const shown = canSaveJobs(actor) && ids.has(jobId);
-  // A sheet open when the bookmark is taken off stays until it is closed.
-  if (!shown && !sheet.mounted) return null;
-  return (
-    <>
-      {shown ? <NoteLine note={note} onPress={sheet.show} framed label={t('forListing')} /> : null}
-      {sheet.mounted ? <NoteSheet visible={sheet.open} onClose={sheet.hide} onDismiss={sheet.onDismiss} jobId={jobId} jobTitle={title} /> : null}
-    </>
-  );
+  if (!shown) return null;
+  return <NoteLine note={note} onPress={() => openNoteSheet(jobId, title)} framed label={t('forListing')} />;
 }
 
 const styles = StyleSheet.create({

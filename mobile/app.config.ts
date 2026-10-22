@@ -1,5 +1,20 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
+/** The commit this bundle is published from, shown on Account so a phone can be matched to it. */
+function commitSha(): string | undefined {
+  if (process.env.EAS_BUILD_GIT_COMMIT_HASH) return process.env.EAS_BUILD_GIT_COMMIT_HASH.slice(0, 7);
+  try {
+    // Node's own, required: the app's typings have no Node in them.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { execSync } = require('node:child_process') as {
+      execSync: (command: string, options: { stdio: string[] }) => { toString: () => string };
+    };
+    return execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * The app's native configuration.
  *
@@ -236,15 +251,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     [
-      // An interview added to the phone's calendar from an application, when the candidate asks.
-      'expo-calendar',
-      {
-        calendarPermission: 'بنستخدم التقويم عشان نضيف ميعاد مقابلتك فيه، لما انت تطلب ده.',
-        writeOnlyCalendarPermission: 'بنستخدم التقويم عشان نضيف ميعاد مقابلتك فيه، لما انت تطلب ده.',
-        remindersPermission: false,
-      },
-    ],
-    [
       'expo-image-picker',
       {
         // The base language's strings; the English ones are in assets/locales.
@@ -272,5 +278,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // same from the expo-localization plugin above.
     supportsRTL: true,
     forcesRTL: true,
+    commit: commitSha(),
   },
 });

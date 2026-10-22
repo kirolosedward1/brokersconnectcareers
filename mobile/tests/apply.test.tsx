@@ -23,6 +23,7 @@ import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,
 import * as ApplyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/jobs/[slug]/apply';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
 import { board, cairo, jobPage, listing, newCairo } from './fixtures';
+import { watchFocus } from './focus';
 import { placeViewsAt } from './measure';
 import { fakeServer } from './server';
 
@@ -181,7 +182,11 @@ describe('the form', () => {
     );
     expect(uploads()).toHaveLength(0);
     expect(await screen.findByText(ar.apply.success)).toBeTruthy();
-    expect(screen.getByText(listing.title_ar)).toBeTruthy();
+    // No summary card of job, company and date under the confirmation.
+    expect(screen.queryByText(ar.apply.labelJob)).toBeNull();
+    expect(screen.queryByText(ar.apply.labelCompany)).toBeNull();
+    expect(screen.queryByText(ar.apply.labelDate)).toBeNull();
+    expect(screen.queryByText(listing.title_ar)).toBeNull();
     // Two more roles while the candidate is here, ranked against their profile.
     expect(await screen.findByText(ar.apply.nextRolesMatched)).toBeTruthy();
     expect(screen.getByText('مدير مبيعات')).toBeTruthy();
@@ -446,6 +451,23 @@ describe('the form', () => {
       await waitFor(() => expect(layout.scrollTo).toHaveBeenCalledWith({ y: 260 - 16, animated: true }));
     } finally {
       layout.undo();
+    }
+  });
+
+  it('moves from the name to the number with the return key, and puts the phone pad away with its Done', async () => {
+    await signedIn();
+    const focus = watchFocus();
+    try {
+      renderRouter(app, { initialUrl: APPLY });
+      await openForm();
+      const name = await screen.findByLabelText(ar.apply.fullName);
+      expect(name.props.returnKeyType).toBe('next');
+      fireEvent(name, 'submitEditing');
+      expect(focus.focused).toEqual([ar.apply.whatsapp]);
+      // The phone pad has no return key: a Done rides above it.
+      expect(screen.getByLabelText(ar.apply.whatsapp).props.inputAccessoryViewID).toEqual(expect.any(String));
+    } finally {
+      focus.undo();
     }
   });
 

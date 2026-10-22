@@ -17,6 +17,7 @@ import {
   verifyCode,
   type Enrolment,
 } from '~/features/account/settings';
+import { useErrorFeedback } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
@@ -39,6 +40,7 @@ export function TwoFactorSettings() {
   const [enrolment, setEnrolment] = useState<Enrolment | null>(null);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  useErrorFeedback(error);
   const [noApp, setNoApp] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -69,6 +71,11 @@ export function TwoFactorSettings() {
       // Not asked: the code stays, for Verify again once the phone is back online.
       setPending(false);
       setError(t('app.offline.body'));
+      return;
+    }
+    if (answer === 'busy') {
+      setPending(false);
+      setError(t('auth.errTooMany'));
       return;
     }
     if (answer === 'wrong') {

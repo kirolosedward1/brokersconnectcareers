@@ -27,6 +27,7 @@ import { InSheet } from '~/components/ui/states';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
 import { useHiddenJobsLoaded } from '~/features/moderation/hidden-jobs';
 import { VerifiedExplainerHost } from '~/components/companies/verified-mark';
+import { NoteSheetHost } from '~/components/saved/note-sheet';
 import { ToastHost } from '~/components/feedback/toast';
 import { HomeShortcuts } from '~/components/navigation/home-shortcuts';
 import { launchReady, useLaunchHeld, useLaunchReady } from '~/features/launch';
@@ -163,6 +164,7 @@ function AppStack() {
       <CrashNotice />
       <HomeShortcuts />
       <VerifiedExplainerHost />
+      <NoteSheetHost />
       <ToastHost />
     </UpdateGate>
   );

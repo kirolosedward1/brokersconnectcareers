@@ -85,6 +85,8 @@
     "configRetry": "Try again",
     "appleRevokedTitle": "You have been signed out",
     "appleRevokedBody": "Sign in with Apple is no longer on for this app, so we signed you out on this phone. You can sign in again at any time.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "continueWithEmail": "Continue with email",
     "otherWays": "Other ways to sign in"
   },
@@ -393,5 +395,18 @@
       "notifyTitle": "{day, select, today {This listing closes today} other {This listing closes tomorrow}}",
       "notifyBody": "{job} at {company}. Apply before it closes."
     }
+  },
+  "notificationsFeed": {
+    "delete": "Delete",
+    "deleted": "Notification deleted",
+    "clearAll": "Clear all",
+    "clearAllTitle": "Clear all notifications?",
+    "clearAllBody": "Every notification shown here will be deleted, and can't be brought back.",
+    "clearAllConfirm": "Clear all",
+    "cancel": "Cancel",
+    "deleteFailed": "We couldn't delete it. Try again."
+  },
+  "keyboard": {
+    "done": "Done"
   }
 }
