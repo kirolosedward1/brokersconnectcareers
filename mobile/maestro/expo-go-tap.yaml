@@ -1,7 +1,9 @@
 # Taps a point of the screen, in percent (POINT="89%,48%"), where
 # scripts/expo-go-look.sh read Expo Go's own control: the X of its developer
-# menu, which has no words to find it by.
+# menu, which has no words to find it by. Then waits for what the tap opened
+# to finish arriving (a menu fading in), so the screen read next shows it.
 appId: host.exp.Exponent
 ---
 - tapOn:
     point: ${POINT}
+- waitForAnimationToEnd

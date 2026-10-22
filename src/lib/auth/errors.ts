@@ -43,6 +43,7 @@ export const AUTH_ERROR_CODES: Record<string, AuthErrorKey> = {
   email_address_invalid: { namespace: 'validation', key: 'invalidEmail' },
   validation_failed: { namespace: 'validation', key: 'invalidEmail' },
   weak_password: { namespace: 'validation', key: 'passwordShort' },
+  same_password: { namespace: 'auth', key: 'errSamePassword' },
   // CAPTCHA on in Supabase Auth (SUPABASE_SETTINGS.md) and a token missing,
   // spent or refused: the form loads the check again; this says to retry.
   captcha_failed: { namespace: 'auth', key: 'errCaptcha' },
@@ -55,6 +56,7 @@ export const AUTH_ERRORS: { match: RegExp; namespace: 'auth' | 'validation'; key
   { match: /email not confirmed|confirm your email/i, namespace: 'auth', key: 'errEmailUnconfirmed' },
   { match: /for security purposes|rate limit|too many requests/i, namespace: 'auth', key: 'errTooMany' },
   { match: /unable to validate email|invalid format|address .* is invalid/i, namespace: 'validation', key: 'invalidEmail' },
+  { match: /different from the old password/i, namespace: 'auth', key: 'errSamePassword' },
   { match: /password should be at least/i, namespace: 'validation', key: 'passwordShort' },
   { match: /captcha/i, namespace: 'auth', key: 'errCaptcha' },
 ];

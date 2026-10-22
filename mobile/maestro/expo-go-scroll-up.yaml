@@ -1,7 +1,11 @@
-# Comes back up the screen: a finger drawn down it (scripts/expo-go-look.sh).
+# Comes back up the screen: a finger drawn down it (scripts/expo-go-look.sh),
+# the very reverse of the step down (maestro/expo-go-scroll-down.yaml). The
+# swipe to the foot of the screen this used before left the list where it
+# was whenever the step down had moved it. Down the page's margin, beside
+# the cards, as the step down goes: a card held would open its menu.
 appId: host.exp.Exponent
 ---
 - swipe:
-    start: 50%, 35%
-    end: 50%, 85%
+    start: 3%, 30%
+    end: 3%, 75%
 - waitForAnimationToEnd

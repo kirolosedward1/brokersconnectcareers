@@ -1,19 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import type { SearchBarCommands } from 'react-native-screens';
 import { SearchX, ShieldCheck, SlidersHorizontal, UserRoundCheck } from '~/components/ui/lucide';
 import { EMPTY_AGENT_FILTERS, parseAgentFilters, type AgentFilters } from '@/lib/agent-filters';
 import { formatNumber } from '@/lib/format';
 import { canBrowseAgentDirectory, canShortlistAgents, hasVerifiedCompany, isAdmin } from '@/lib/permissions';
+import type { AgentCardRow } from '@/lib/supabase/database.types';
 import { AgentCard } from '~/components/directory/agent-card';
 import { DirectoryClosed } from '~/components/directory/directory-closed';
 import { DirectoryFilterSheet } from '~/components/directory/directory-filter-sheet';
+import { SaveAgentSearch, SavedAgentSearches } from '~/components/directory/saved-searches';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
 import { PageFooter } from '~/components/ui/page-footer';
+import { SearchField } from '~/components/ui/search-field';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
 import { ForwardChevron } from '~/components/ui/icons';
@@ -26,9 +28,10 @@ import {
   sheetFilterCount,
   useAgentFilterLabel,
 } from '~/features/directory/filters';
-import { flattenAgents, useAgentDirectory, useShortlistedIds } from '~/features/directory/queries';
+import { directorySearch, flattenAgents, useAgentDirectory, useShortlistedIds } from '~/features/directory/queries';
 import { useCompanyPage } from '~/features/employer/company';
 import { useDistricts } from '~/features/taxonomy';
+import { useTabList } from '~/features/tab-bar';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useVisited } from '~/lib/use-visited';
@@ -53,7 +56,6 @@ import { totalShown } from '~/features/moderation/hidden-store';
 export default function DirectoryScreen() {
   const t = useTranslations();
   const bell = useHeaderBell();
-  const { colors } = useTheme();
   const { actor } = useSession();
   const raw = useLocalSearchParams();
   const filters = useMemo(() => parseAgentFilters(raw as Record<string, string | string[] | undefined>), [raw]);
@@ -63,6 +65,7 @@ export default function DirectoryScreen() {
   const directory = useAgentDirectory(filters, { enabled: visited });
   const nextPage = useNextPage(directory);
   const pull = usePullRefresh(() => directory.refetch());
+  const list = useTabList<FlashListRef<AgentCardRow>>();
   // Without the consultants hidden on this phone (hidden-agents.ts).
   const hiddenAgents = useHiddenAgents();
   const read = useMemo(() => flattenAgents(directory.data?.pages), [directory.data]);
@@ -74,30 +77,21 @@ export default function DirectoryScreen() {
   const apply = (next: AgentFilters) => router.setParams(agentFiltersToParams(next));
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // The header's search field follows the words, whichever way they changed.
-  const searchBar = useRef<SearchBarCommands>(null);
-  useEffect(() => {
-    searchBar.current?.setText(filters.q);
-  }, [filters.q]);
+  const header = <Stack.Screen options={{ title: t('nav.agents'), headerRight: bell }} />;
 
-  const header = (
-    <Stack.Screen
-      options={{
-        title: t('nav.agents'),
-        headerRight: bell,
-        headerSearchBarOptions: {
-          ref: searchBar,
-          placeholder: t('agents.searchPlaceholder'),
-          hideWhenScrolling: false,
-          autoCapitalize: 'none',
-          tintColor: colors.primary,
-          onSearchButtonPress: (event) => apply({ ...filters, q: event.nativeEvent.text.trim().slice(0, 120) }),
-          onCancelButtonPress: () => {
-            if (filters.q) apply({ ...filters, q: '' });
-          },
-        },
-      }}
-    />
+  // The search, over whatever is below it — the cards, or their loading and
+  // errors — so the words stay in view while their answer comes.
+  const searched = (content: ReactNode) => (
+    <View style={{ flex: 1 }}>
+      <SearchField
+        value={filters.q}
+        label={t('filters.search')}
+        placeholder={t('agents.searchPlaceholder')}
+        onSearch={(q) => apply({ ...filters, q })}
+        style={{ marginHorizontal: gutter, marginTop: space[2], marginBottom: space[1] }}
+      />
+      {content}
+    </View>
   );
 
   const sheet = (
@@ -127,7 +121,7 @@ export default function DirectoryScreen() {
       <>
         {header}
         {sheet}
-        <LoadingState />
+        {searched(<LoadingState />)}
       </>
     );
   }
@@ -136,7 +130,7 @@ export default function DirectoryScreen() {
     return (
       <>
         {header}
-        <ErrorState error={directory.error} onRetry={() => directory.refetch()} />
+        {searched(<ErrorState error={directory.error} onRetry={() => directory.refetch()} />)}
       </>
     );
   }
@@ -145,43 +139,47 @@ export default function DirectoryScreen() {
     <>
       {header}
       {sheet}
-      <FlashList
-        data={agents}
-        keyExtractor={(agent) => agent.id}
-        renderItem={({ item }) => (
-          <AgentCard agent={item} districts={districtMap} shortlistable={canShortlist && item.is_unlocked} />
-        )}
-        ItemSeparatorComponent={Separator}
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardDismissMode="on-drag"
-        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
-        ListHeaderComponent={
-          <DirectoryHeader
-            filters={filters}
-            total={totalShown(directory.data?.pages[0]?.total ?? 0, read.length, agents.length)}
-            apply={apply}
-            onFilters={() => setSheetOpen(true)}
-          />
-        }
-        ListEmptyComponent={
-          activeFilterCount(filters) > 0 ? (
-            <EmptyState
-              icon={SearchX}
-              title={t('agents.empty')}
-              body={t('agents.emptyHint')}
-              action={<Button label={t('jobs.clearFilters')} variant="outline" onPress={() => apply(EMPTY_AGENT_FILTERS)} />}
+      {searched(
+        <FlashList
+          {...list}
+          data={agents}
+          keyExtractor={(agent) => agent.id}
+          renderItem={({ item }) => (
+            <AgentCard agent={item} districts={districtMap} shortlistable={canShortlist && item.is_unlocked} />
+          )}
+          ItemSeparatorComponent={Separator}
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
+          ListHeaderComponent={
+            <DirectoryHeader
+              filters={filters}
+              total={totalShown(directory.data?.pages[0]?.total ?? 0, read.length, agents.length)}
+              apply={apply}
+              onFilters={() => setSheetOpen(true)}
             />
-          ) : (
-            // Nothing narrows it: the directory itself has nobody to show yet.
-            <EmptyState icon={SearchX} title={t('agents.emptyDirectory')} body={t('agents.emptyDirectoryHint')} />
-          )
-        }
-        ListFooterComponent={<PageFooter query={directory} />}
-        onEndReached={nextPage}
-        onEndReachedThreshold={0.5}
-        refreshing={pull.refreshing}
-        onRefresh={pull.onRefresh}
-      />
+          }
+          ListEmptyComponent={
+            activeFilterCount(filters) > 0 ? (
+              <EmptyState
+                icon={SearchX}
+                illustration="search"
+                title={t('agents.empty')}
+                body={t('agents.emptyHint')}
+                action={<Button label={t('jobs.clearFilters')} variant="outline" onPress={() => apply(EMPTY_AGENT_FILTERS)} />}
+              />
+            ) : (
+              // Nothing narrows it: the directory itself has nobody to show yet.
+              <EmptyState icon={SearchX} title={t('agents.emptyDirectory')} body={t('agents.emptyDirectoryHint')} />
+            )
+          }
+          ListFooterComponent={<PageFooter query={directory} />}
+          onEndReached={nextPage}
+          onEndReachedThreshold={0.5}
+          refreshing={pull.refreshing}
+          onRefresh={pull.onRefresh}
+        />,
+      )}
     </>
   );
 }
@@ -270,6 +268,9 @@ function DirectoryHeader({
         </Card>
       ) : null}
 
+      {/* Searches kept to be told about new consultants (features/directory/alerts.ts). */}
+      <SavedAgentSearches current={directorySearch(filters)} />
+
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
         <Chip
           label={inSheet ? `${t('jobs.filters')} · ${formatNumber(inSheet, locale)}` : t('jobs.filters')}
@@ -302,6 +303,7 @@ function DirectoryHeader({
           ) : null}
         </View>
       ) : null}
+      {active.length ? <SaveAgentSearch filters={filters} label={active.map((filter) => labelFor(filter)).join(' · ')} /> : null}
     </View>
   );
 }

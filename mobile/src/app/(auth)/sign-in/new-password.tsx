@@ -1,3 +1,4 @@
+import { useAuthErrorText } from '~/features/auth/errors';
 import { useRef, useState } from 'react';
 import { View, type TextInput } from 'react-native';
 import { router } from 'expo-router';
@@ -30,6 +31,7 @@ export default function NewPasswordScreen() {
   const { colors } = useTheme();
   const { ready, session } = useSession();
   const land = useLand();
+  const authError = useAuthErrorText();
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -62,13 +64,9 @@ export default function NewPasswordScreen() {
         router.replace({ pathname: '/mfa', params: { then: 'new-password' } });
         return;
       }
-      setError(
-        refusal === null
-          ? t('app.offline.body')
-          : refusal === 'session'
-            ? t('auth.linkExpired')
-            : t('common.errorBody'),
-      );
+      // GoTrue's refusals in the reader's words (the same password again, one
+      // too weak): they were all "something went wrong", with nothing to change.
+      setError(refusal === 'session' ? t('auth.linkExpired') : authError(updateError));
       return;
     }
 

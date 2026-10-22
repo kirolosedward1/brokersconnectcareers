@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Platform } from 'react-native';
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Application from 'expo-application';
 import * as ImagePicker from 'expo-image-picker';
@@ -235,16 +236,24 @@ export async function beginEnrolment(): Promise<Enrolment | null> {
   return { factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret, uri: data.totp.uri };
 }
 
-/** The first code from a new authenticator, or a code for a session still at aal1. True when accepted. */
-export async function verifyCode(factorId: string | null, code: string): Promise<boolean> {
+/**
+ * The first code from a new authenticator, or a code for a session still at
+ * aal1: accepted, wrong, or not asked at all for want of a connection — which
+ * is not a wrong code (the /mfa screen tells them apart the same way).
+ */
+export async function verifyCode(factorId: string | null, code: string): Promise<'accepted' | 'wrong' | 'offline' | 'busy'> {
   let id = factorId;
   if (!id) {
-    const { data } = await supabase.auth.mfa.listFactors();
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error && isAuthRetryableFetchError(error)) return 'offline';
     id = data?.totp[0]?.id ?? null;
   }
-  if (!id) return false;
+  if (!id) return 'wrong';
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: id, code });
-  return !error;
+  if (!error) return 'accepted';
+  if (isAuthRetryableFetchError(error)) return 'offline';
+  // Too many tries: not a wrong code, and the code should stay.
+  return error.status === 429 || /rate_limit/.test(error.code ?? '') ? 'busy' : 'wrong';
 }
 
 /**
