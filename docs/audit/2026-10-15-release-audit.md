@@ -203,6 +203,48 @@ Play Store URL. iOS is the first target.
 (opaque, accepted by the store, slightly soft); `docs/app-store.md` step 5 already
 suggests a vector redraw.
 
+## Addendum, 2026-10-22: `main` moved on
+
+While this branch was open, `main` gained 30 commits (to `bc2408d`): mobile
+reliability fixes, migrations 350–351 and `HANDOFF.md`. They merge cleanly with
+this branch, leave the website's dependencies alone (Next is still 15.5.24 on
+`main`), and the merged tree passes the licence checks, `pnpm typecheck` and
+`pnpm audit`. What they change in the findings above:
+
+- **The Web check was red on `main`** from migration 350 onward (runs 134–136),
+  and fixed on this branch. Two tests had not followed two deliberate
+  migrations: `schema.test.mjs` still listed `my_company_id` among the
+  anon-callable definer functions after 350 took it from anon (with its
+  reasons in the migration's header), and `notifications.test.mjs` still
+  expected a withdrawn application's receipt to survive after 351 made a
+  withdrawal take it away — though 351's header says that test covers it.
+  The tests now assert what the migrations do (351's case gains an assertion
+  that the receipt goes on withdrawal). No migration changed. The merged tree:
+  `pnpm check` 3,257 passed, 0 failed; `pnpm build` passes.
+- **New P0 — no iOS build exists.** `HANDOFF.md` ("Open items", 6): no iOS build
+  has ever been made, EAS holds no iOS credentials, `eas.json`'s submit profile
+  has no `ascAppId` / `appleTeamId`, and an Apple Developer Program membership
+  is still needed. It also says nothing has been verified on a real device or a
+  store build (item 8). So the native build has not yet been proven anywhere
+  but CI's `ios-build` job.
+- **Open pull requests that address findings here** (not yet on `main`, so the
+  findings still stand on `main` today): #40 adds an ESLint config and lints the
+  website in `pnpm check` (M2); #41 adds `src/instrumentation.ts` crash logging
+  (M3) and counts request bodies as they arrive (L2); #39 is store readiness,
+  and also names the missing `SUPABASE_SERVICE_ROLE_KEY` (P0-1). #40 changes
+  `pnpm-lock.yaml` too: whichever of it and this branch merges second
+  regenerates the lockfile with `pnpm install`, rather than resolving the
+  conflict by hand.
+- **P1-1 has moved.** The latest Expo Go run on `main` (39223248430, `ab8dad0`,
+  2026-10-19) gets past the welcome: Skip now leads to Home, and Home after a
+  relaunch has its tab bar right to left. It still fails, on a different step:
+  `3b-jobs-scrolled-down` / `3c-jobs-scrolled-up` — "the swipe did not move the
+  list" on the board. That is either the board not scrolling in Expo Go or
+  Maestro's swipe (`mobile/maestro/expo-go-scroll-{down,up}.yaml`) landing
+  where it scrolls nothing; the run's `expo-go-screens` artifact has the
+  before/after screenshots to tell which. Until it is understood, the check
+  stays red on `main`.
+
 ## What was checked and found sound
 
 The mobile API door (`withMobileAuth`: bearer shape, one verification per

@@ -69,12 +69,15 @@ report.section('duplicates: one event, one notification per person');
     (await count(`user_id = '${APPLICANT}' and kind = 'application_submitted'`)) === 1);
 
   // Withdraw and apply again: the row is new, the event for the employer is not.
+  const receipts = `user_id = '${APPLICANT}' and kind = 'application_submitted'`;
   await db.exec(`delete from applications where job_id = '${job.id}' and candidate_id = '${APPLICANT}'`);
+  report.check('withdrawing takes the applicant\'s receipt with it (migration 351)',
+    (await count(receipts)) === 0, String(await count(receipts)));
   await db.exec(apply);
   report.check('apply → withdraw → apply rings the employer once, not twice',
     (await count(received)) === 1, String(await count(received)));
-  report.check('but the applicant has a receipt for each thing they did',
-    (await count(`user_id = '${APPLICANT}' and kind = 'application_submitted'`)) === 2);
+  report.check('and the applicant has one receipt, for the application that stands',
+    (await count(receipts)) === 1, String(await count(receipts)));
 
   const app = (await db.query(`select id from applications where job_id = '${job.id}' and candidate_id = '${APPLICANT}'`)).rows[0].id;
   const moved = `user_id = '${APPLICANT}' and kind = 'application_moved'`;
