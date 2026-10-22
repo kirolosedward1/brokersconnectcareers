@@ -73,8 +73,10 @@ report.section('duplicates: one event, one notification per person');
   await db.exec(apply);
   report.check('apply → withdraw → apply rings the employer once, not twice',
     (await count(received)) === 1, String(await count(received)));
-  report.check('but the applicant has a receipt for each thing they did',
-    (await count(`user_id = '${APPLICANT}' and kind = 'application_submitted'`)) === 2);
+  // The withdrawn application took its receipt with it (migration 351); the
+  // one standing is for the application that exists.
+  report.check('and the applicant has a receipt for the application they have now',
+    (await count(`user_id = '${APPLICANT}' and kind = 'application_submitted'`)) === 1);
 
   const app = (await db.query(`select id from applications where job_id = '${job.id}' and candidate_id = '${APPLICANT}'`)).rows[0].id;
   const moved = `user_id = '${APPLICANT}' and kind = 'application_moved'`;
