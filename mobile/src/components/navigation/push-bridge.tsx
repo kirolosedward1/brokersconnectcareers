@@ -176,15 +176,22 @@ export function PushBridge() {
 
   const tapped = usePushTap();
   const known = ready && (!session || !viewerLoading);
+  // Which tap is the latest. Each asks the website where it leads, and on a
+  // poor connection an earlier tap's answer can come after a later one's: it
+  // took the reader away from the push they had just chosen. Only the latest
+  // tap's answer opens anything.
+  const latestTap = useRef(0);
   useEffect(() => {
     if (!tapped || !known) return;
     const id = takePushTap();
     if (!id) return;
+    const tap = ++latestTap.current;
     if (!userId) {
       openWhenReady('/notifications');
       return;
     }
     destinationOf(id).then((href) => {
+      if (tap !== latestTap.current) return;
       openWhenReady(href);
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['viewer'] });
