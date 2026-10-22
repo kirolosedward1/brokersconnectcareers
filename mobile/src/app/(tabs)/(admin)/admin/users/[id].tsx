@@ -72,7 +72,8 @@ export default function AdminAccountScreen() {
     <>
       <Stack.Screen options={{ title: t('admin.account') }} />
       <AdminGate>
-        <File id={typeof id === 'string' && UUID.test(id) ? id : undefined} />
+        {/* Keyed by the account: another account's file starts without the last one's revealed contact. */}
+        <File key={typeof id === 'string' ? id : 'none'} id={typeof id === 'string' && UUID.test(id) ? id : undefined} />
       </AdminGate>
     </>
   );
@@ -87,6 +88,8 @@ function File({ id }: { id: string | undefined }) {
   const file = useAccountFile(id);
   const pull = usePullRefresh(() => file.refetch());
   const [tab, setTab] = useState<Tab>('overview');
+  // A contact revealed on this screen stays through its tabs (Contact says why).
+  const [contact, setContact] = useState<RevealedContact | null>(null);
 
   if (!id) return <NotFoundState />;
   if (file.isPending) return <LoadingState />;
@@ -127,7 +130,7 @@ function File({ id }: { id: string | undefined }) {
       />
 
       {tab === 'overview' ? (
-        <Overview account={account} self={self} />
+        <Overview account={account} self={self} contact={contact} onReveal={setContact} />
       ) : tab === 'activity' ? (
         <Activity account={account} self={self} />
       ) : tab === 'security' ? (
@@ -174,7 +177,17 @@ function WebsiteRow({ label, onPress, children }: { label: string; onPress: () =
 }
 
 /** Who they are and what they belong to, with the account's own levers and its contact. */
-function Overview({ account, self }: { account: AccountFile; self: boolean }) {
+function Overview({
+  account,
+  self,
+  contact,
+  onReveal,
+}: {
+  account: AccountFile;
+  self: boolean;
+  contact: RevealedContact | null;
+  onReveal: (contact: RevealedContact) => void;
+}) {
   const t = useTranslations();
   const locale = useLocale();
   const roleLabel = useRoleLabel();
@@ -248,7 +261,7 @@ function Overview({ account, self }: { account: AccountFile; self: boolean }) {
       ) : null}
 
       <Actions account={account} self={self} />
-      <Contact account={account} self={self} />
+      <Contact account={account} self={self} contact={contact} onReveal={onReveal} />
     </>
   );
 }
@@ -340,7 +353,10 @@ function Actions({ account, self }: { account: AccountFile; self: boolean }) {
     }
     // Not while sign-in is blocked: the block is lifted only on a non-admin
     // (admin_set_sign_in_block), so this would make an admin nobody could let in.
-    if (!account.facts.sign_in_blocked_until) buttons.push(
+    // Nor an account still waiting, or suspended: approve or restore it first
+    // (the function refuses too), rather than have a promotion lift a hold
+    // nobody meant to lift.
+    if (!account.facts.sign_in_blocked_until && profile.approval_status === 'approved') buttons.push(
       <Button
         key="promote"
         label={t('admin.makeAdmin')}
@@ -397,15 +413,25 @@ function Actions({ account, self }: { account: AccountFile; self: boolean }) {
 
 /**
  * The phone number and the email, behind a reason — the website's
- * RevealContact. Held in this component's state and nowhere else: not in the
- * query cache, not in the address, and gone with the screen. The reason is
- * recorded with the request, so "who looked this person up, and why" always
- * has an answer.
+ * RevealContact. Held in the screen's state (File) and nowhere else: not in
+ * the query cache, not in the address, and gone with the screen — but not
+ * with a tab switch, which would ask for a second reveal, and a second record,
+ * for one look-up. The reason is recorded with the request, so "who looked
+ * this person up, and why" always has an answer.
  */
-function Contact({ account, self }: { account: AccountFile; self: boolean }) {
+function Contact({
+  account,
+  self,
+  contact,
+  onReveal,
+}: {
+  account: AccountFile;
+  self: boolean;
+  contact: RevealedContact | null;
+  onReveal: (contact: RevealedContact) => void;
+}) {
   const t = useTranslations();
   const { colors } = useTheme();
-  const [contact, setContact] = useState<RevealedContact | null>(null);
 
   return (
     <Card style={{ gap: space[3] }}>
@@ -461,7 +487,7 @@ function Contact({ account, self }: { account: AccountFile; self: boolean }) {
               reasonMax: 300,
               confirmLabel: t('admin.revealContact'),
               onDone: (data) => {
-                if (data && typeof data === 'object' && 'phone' in data) setContact(data as RevealedContact);
+                if (data && typeof data === 'object' && 'phone' in data) onReveal(data as RevealedContact);
               },
             })
           }

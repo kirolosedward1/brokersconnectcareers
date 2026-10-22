@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Linking, Text } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FlashList } from '@shopify/flash-list';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { AdminUserActivity, AdminUserFacts, AdminUserSearchRow, ProfileRow } from '@/lib/supabase/database.types';
@@ -244,6 +245,28 @@ describe('the accounts', () => {
     expect(lastSearch()).not.toHaveProperty('p_blocked');
   });
 
+  it('asks for the next twenty-five from where the last page ended, and stops at the total', async () => {
+    const page = (offset: number, count: number) =>
+      Array.from({ length: count }, (_, i) => ({ ...row, id: `00000000-0000-4000-8000-${String(offset + i).padStart(12, '0')}`, full_name: `حساب ${offset + i}`, total_count: 30 }));
+    server.on('POST /rest/v1/rpc/admin_search_users', (url: URL, init: RequestInit | undefined) => {
+      const offset = Number(JSON.parse(String(init?.body)).p_offset);
+      return offset === 0 ? page(0, 25) : page(25, 5);
+    });
+    await signIn();
+    renderRouter(app, { initialUrl: '/admin/users' });
+
+    expect(await screen.findByText('حساب 0')).toBeTruthy();
+    expect(lastSearch()).toMatchObject({ p_limit: 25, p_offset: 0 });
+
+    await act(async () => screen.UNSAFE_getByType(FlashList).props.onEndReached());
+    await waitFor(() => expect(lastSearch()).toMatchObject({ p_limit: 25, p_offset: 25 }));
+    // (FlashList draws a window of the rows under Jest, so the thirtieth is not looked for.)
+
+    // Thirty of thirty: the end is the end.
+    await act(async () => screen.UNSAFE_getByType(FlashList).props.onEndReached());
+    expect(server.asked('/rest/v1/rpc/admin_search_users')).toHaveLength(2);
+  });
+
   it('says a search found nobody, and that a failed read failed — never that nothing is waiting', async () => {
     await signIn();
     server.on('POST /rest/v1/rpc/admin_search_users', (url: URL, init: RequestInit | undefined) =>
@@ -346,6 +369,15 @@ describe("an account's file", () => {
     expect(openURL).toHaveBeenCalledWith('tel:+201001234567');
     fireEvent.press(screen.getByRole('button', { name: ar.app.admin.openWhatsApp }));
     expect(openURL).toHaveBeenCalledWith('https://wa.me/201001234567');
+
+    // Still here after a look at another tab: one look-up, one record — not a
+    // second reveal for the same question.
+    fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.security }));
+    expect(await screen.findByText(ar.admin.signedInDevices)).toBeTruthy();
+    fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.overview }));
+    expect(await screen.findByText('+201001234567')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.admin.revealContact })).toBeNull();
+    expect(actionsCalled('revealContact')).toHaveLength(1);
     openURL.mockRestore();
   });
 

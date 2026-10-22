@@ -15,7 +15,7 @@ const report = reporter();
 const db = await createTestDb();
 const as = runner(db);
 
-const { employerVerified, employerUnverified, candidate, publicAgent, admin } = FIXTURES;
+const { employerVerified, employerUnverified, employerPending, candidate, publicAgent, admin } = FIXTURES;
 
 /**
  * Several statements as one user in one transaction, rolled back afterwards —
@@ -645,6 +645,7 @@ report.section('accounts managed from one place (migration 355)');
     `select admin_set_role('${candidate}', 'admin', 'انضم لفريق الدعم')`,
     `select admin_set_sign_in_block('${candidate}', true, 'حساب مخترق')`,
     `select admin_end_sessions('${candidate}', 'حساب مخترق')`,
+    `select admin_end_sessions_of('${candidate}')`,
     `select admin_user_activity('${candidate}')`,
     `select * from admin_search_users(null, null, null, 25, 0, true)`,
   ];
@@ -672,6 +673,28 @@ report.section('accounts managed from one place (migration 355)');
   report.check('a candidate is not made an employer by an admin', !r.ok && /invalid_transition/.test(r.error ?? ''), r.error);
   r = await as(admin, `select admin_set_role('${candidate}', 'candidate', 'سبب كافٍ')`);
   report.check('the role an account already has is no change', !r.ok && /no_change/.test(r.error ?? ''), r.error);
+  r = await as(admin, `select admin_set_role('${employerPending}', 'admin', 'سبب كافٍ')`);
+  report.check(
+    'an account still waiting is not made an admin (approve it first; a promotion lifts no hold)',
+    !r.ok && /invalid_transition/.test(r.error ?? ''),
+    r.error,
+  );
+  // The lever is the only way: a plain update under an admin's token walks
+  // round its reason, its record and its rules, and is refused by the guard.
+  r = await as(admin, `update profiles set role = 'admin' where id = '${candidate}'`);
+  report.check('a role is not changed by a plain update, even by an admin', !r.ok && /admin_set_role/.test(r.error ?? ''), r.error);
+  const direct = await session(admin, async (q) => {
+    await q('reset role');
+    // The owner's own connection — migrations, the seed, the service role —
+    // is trusted as before: no claims, no admin's token.
+    await q(`set local request.jwt.claims = ''`);
+    await q(`set local request.jwt.claim.sub = ''`);
+    const [row] = await q(`update profiles set role = 'admin' where id = '${candidate}' returning role`);
+    return row.role;
+  });
+  report.check('while a connection with no token (the seed, a migration) still may', direct.ok && direct.value === 'admin', direct.error);
+  r = await as(admin, `select admin_end_sessions_of('${candidate}')`);
+  report.check("the helper behind the levers is not an admin's to call (no reason, no record)", !r.ok && /permission denied|forbidden/i.test(r.error ?? ''), r.error);
 
   const blockedFirst = await session(admin, async (q) => {
     await q(`select admin_set_sign_in_block('${candidate}', true, 'حساب مخترق')`);
@@ -701,7 +724,7 @@ report.section('accounts managed from one place (migration 355)');
     return { profile, promoted, after, demoted };
   });
   report.check(
-    'making an admin sets the role, approves the account, and records why',
+    'making an admin sets the role, leaves the standing as it was (approved), and records why',
     role.ok && role.value.profile.role === 'admin' && role.value.profile.approval_status === 'approved'
       && role.value.promoted?.reason === 'انضم لفريق الدعم' && role.value.promoted?.metadata?.to === 'admin',
     role.ok ? JSON.stringify(role.value.profile) : role.error,
@@ -721,7 +744,11 @@ report.section('accounts managed from one place (migration 355)');
   const block = await session(admin, async (q) => {
     const [first] = await q(`select admin_set_sign_in_block('${candidate}', true, 'حساب مخترق') as n`);
     const [facts] = await q(`select admin_user_facts('${candidate}') as f`);
-    const listed = await q(`select id from admin_search_users(null, null, null, 25, 0, true)`);
+    const listed = await q(`select id, total_count from admin_search_users(null, null, null, 25, 0, true)`);
+    // The row says so, the "not blocked" view leaves it out, and no view at all counts both.
+    const [row] = await q(`select sign_in_blocked, last_sign_in_at from admin_search_users(null, null, null, 500, 0, null) where id = '${candidate}'`);
+    const unblocked = await q(`select id, total_count from admin_search_users(null, null, null, 500, 0, false)`);
+    const [everyone] = await q(`select total_count from admin_search_users(null, null, null, 1, 0, null)`);
     await q('savepoint twice');
     let twice = null;
     try {
@@ -736,13 +763,24 @@ report.section('accounts managed from one place (migration 355)');
     const trail = await q(
       `select action, metadata from admin_audit_log where target_type = 'user' and target_id = '${candidate}' and action like 'user.sign_in_%' order by id`,
     );
-    return { first: first.n, facts: facts.f, listed, twice, lifted: lifted.f, unlisted, trail };
+    return { first: first.n, facts: facts.f, listed, row, unblocked, everyone, twice, lifted: lifted.f, unlisted, trail };
   });
   report.check(
     'blocking sign-in bans the account at the auth server, lists it as blocked, and records it',
     block.ok && Boolean(block.value.facts.sign_in_blocked_until) && block.value.listed.some((row) => row.id === candidate)
       && block.value.trail[0]?.action === 'user.sign_in_blocked' && block.value.trail[0]?.metadata?.sessions_ended === 0,
     block.ok ? JSON.stringify({ facts: block.value.facts, trail: block.value.trail }) : block.error,
+  );
+  report.check(
+    'the list row says it is blocked, and carries the last sign-in',
+    block.ok && block.value.row?.sign_in_blocked === true && 'last_sign_in_at' in (block.value.row ?? {}),
+    block.ok ? JSON.stringify(block.value.row) : block.error,
+  );
+  report.check(
+    'the "not blocked" view leaves it out, and no view at all counts both',
+    block.ok && !block.value.unblocked.some((row) => row.id === candidate)
+      && Number(block.value.everyone.total_count) === Number(block.value.unblocked[0]?.total_count ?? 0) + Number(block.value.listed[0]?.total_count ?? 0),
+    block.ok ? `all ${block.value.everyone.total_count} = ${block.value.unblocked[0]?.total_count} + ${block.value.listed[0]?.total_count}` : block.error,
   );
   report.check('blocking it twice is no change', /no_change/.test(block.value?.twice ?? ''), block.value?.twice);
   report.check(
@@ -770,14 +808,25 @@ report.section('accounts managed from one place (migration 355)');
   r = await as(admin, `select admin_end_sessions('${admin}', 'سبب كافٍ')`);
   report.check('an admin cannot end their own sessions', !r.ok && /own sessions/.test(r.error ?? ''), r.error);
   // Two devices signed in and an authenticator enrolled, on the stub's own
-  // tables, inside one transaction the session() helper rolls back with it.
-  await db.exec('begin');
-  await db.exec(`insert into auth.mfa_factors (user_id, status) values ('${candidate}', 'verified')`);
-  await db.exec(`insert into auth.sessions (user_id) values ('${candidate}'), ('${candidate}')`);
-  await db.exec(
-    `insert into auth.refresh_tokens (user_id, session_id) select '${candidate}', id from auth.sessions where user_id = '${candidate}'`,
-  );
+  // tables, and somebody else's one device, which must survive — seeded as
+  // the database's owner inside the session's own transaction (rolled back
+  // with it), then back to the admin's role for the levers.
+  const seedDevices = async (q, n) => {
+    await q('reset role');
+    await q(`insert into auth.sessions (user_id) select '${candidate}' from generate_series(1, ${n})`);
+    await q(
+      `insert into auth.refresh_tokens (user_id, session_id) select user_id, id from auth.sessions s where s.user_id = '${candidate}' and not exists (select 1 from auth.refresh_tokens t where t.session_id = s.id)`,
+    );
+    await q('set local role authenticated');
+  };
   const ended = await session(admin, async (q) => {
+    await q('reset role');
+    await q(`insert into auth.mfa_factors (user_id, status) values ('${candidate}', 'verified')`);
+    await q(`insert into auth.sessions (user_id) values ('${publicAgent}')`);
+    await q(`insert into auth.refresh_tokens (user_id, session_id) select '${publicAgent}', id from auth.sessions where user_id = '${publicAgent}'`);
+    await q('set local role authenticated');
+    await seedDevices(q, 2);
+    const others = async () => (await q(`select count(*)::int as n from auth.sessions where user_id = '${publicAgent}'`))[0].n;
     const [before] = await q(`select admin_user_facts('${candidate}') as f`);
     const [n] = await q(`select admin_end_sessions('${candidate}', 'حساب مخترق') as n`);
     const [after] = await q(`select admin_user_facts('${candidate}') as f`);
@@ -785,9 +834,17 @@ report.section('accounts managed from one place (migration 355)');
     const [audit] = await q(
       `select reason, metadata from admin_audit_log where target_type = 'user' and target_id = '${candidate}' and action = 'user.sessions_ended' order by id desc limit 1`,
     );
-    return { before: before.f, n: n.n, after: after.f, left: left.n, audit };
+    const othersAfterEnd = await others();
+    // The block ends them too, by the same helper.
+    await seedDevices(q, 3);
+    const [blocked] = await q(`select admin_set_sign_in_block('${candidate}', true, 'حساب مخترق') as n`);
+    const [afterBlock] = await q(`select admin_user_facts('${candidate}') as f`);
+    const [blockAudit] = await q(
+      `select metadata from admin_audit_log where target_type = 'user' and target_id = '${candidate}' and action = 'user.sign_in_blocked' order by id desc limit 1`,
+    );
+    const othersAfterBlock = await others();
+    return { before: before.f, n: n.n, after: after.f, left: left.n, audit, othersAfterEnd, blocked: blocked.n, afterBlock: afterBlock.f, blockAudit, othersAfterBlock };
   });
-  await db.exec('rollback').catch(() => {});
   report.check(
     'the facts count the authenticator and the signed-in devices',
     ended.ok && ended.value.before.verified_factors === 1 && ended.value.before.sessions === 2,
@@ -798,6 +855,16 @@ report.section('accounts managed from one place (migration 355)');
     ended.ok && ended.value.n === 2 && ended.value.after.sessions === 0 && ended.value.left === 0
       && ended.value.audit?.metadata?.sessions_ended === 2 && ended.value.audit?.reason === 'حساب مخترق',
     ended.ok ? JSON.stringify({ n: ended.value.n, after: ended.value.after, left: ended.value.left }) : ended.error,
+  );
+  report.check(
+    'blocking sign-in ends every device too, and records how many',
+    ended.ok && ended.value.blocked === 3 && ended.value.afterBlock.sessions === 0 && ended.value.blockAudit?.metadata?.sessions_ended === 3,
+    ended.ok ? JSON.stringify({ blocked: ended.value.blocked, after: ended.value.afterBlock, audit: ended.value.blockAudit }) : ended.error,
+  );
+  report.check(
+    "and neither lever touches anybody else's devices",
+    ended.ok && ended.value.othersAfterEnd === 1 && ended.value.othersAfterBlock === 1,
+    ended.ok ? `${ended.value.othersAfterEnd}, ${ended.value.othersAfterBlock}` : ended.error,
   );
 
   // What the account has done.

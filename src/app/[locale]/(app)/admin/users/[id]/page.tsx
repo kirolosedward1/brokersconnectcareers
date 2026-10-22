@@ -575,8 +575,11 @@ async function SecurityTab({
             <p className="rounded-lg bg-destructive-muted px-3 py-2 text-sm text-destructive">
               {blockedSince ? t('signInBlockedSince', { date: formatDate(blockedSince, locale) }) : t('signInBlocked')}
             </p>
-          ) : (
+          ) : 'sign_in_blocked_until' in facts ? (
             <p className="text-sm text-muted-foreground">{t('signInAllowed')}</p>
+          ) : (
+            // A database before migration 355 does not say: unknown, not "allowed".
+            <p className="text-sm text-muted-foreground">—</p>
           )}
 
           <Facts
@@ -584,7 +587,8 @@ async function SecurityTab({
               { label: t('emailConfirmed'), value: facts.email_confirmed ? t('yes') : t('no') },
               { label: t('signInWith'), value: formatList(facts.providers ?? [], locale) || '—' },
               { label: t('lastSignIn'), value: facts.last_sign_in_at ? formatDate(facts.last_sign_in_at, locale) : '—' },
-              { label: t('twoStep'), value: (facts.verified_factors ?? 0) > 0 ? t('yes') : t('no') },
+              // Unknown on a database before migration 355: said as unknown, not as "no".
+              { label: t('twoStep'), value: typeof facts.verified_factors === 'number' ? (facts.verified_factors > 0 ? t('yes') : t('no')) : '—' },
               { label: t('signedInDevices'), value: typeof facts.sessions === 'number' ? n(facts.sessions) : '—' },
             ]}
           />
@@ -656,6 +660,10 @@ async function SecurityTab({
               // Not while sign-in is blocked: the block is lifted only on a
               // non-admin, so this would make an admin nobody could let in.
               <span className="text-sm text-muted-foreground">{t('signInBlocked')}</span>
+            ) : profile.approval_status !== 'approved' ? (
+              // Nor while waiting or suspended: approve or restore it first,
+              // on the record (the function refuses too).
+              <span className="text-sm text-muted-foreground">{t('approveFirst')}</span>
             ) : (
               <ConfirmAction
                 lever={{ do: 'role', userId: profile.id, role: 'admin' }}

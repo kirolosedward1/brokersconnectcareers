@@ -116,7 +116,8 @@ jobs:
           pnpm run ota expo-go --message "$message (${GITHUB_SHA::7})" --non-interactive 2>&1 | tee "$RUNNER_TEMP/publish.log"
           # One match each, and none is not an error here.
           link=$(grep -m 1 -o 'https://qr.expo.dev/eas-update?[^ ]*' "$RUNNER_TEMP/publish.log" || true)
-          phone=$(grep -m 1 -o 'exp://u.expo.dev/[^ ]*' "$RUNNER_TEMP/publish.log" || true)
+          # The script's own line, not any link eas-cli may print: its link is the channel's, for good.
+          phone=$(grep -m 1 -o 'paste into Safari on the phone: exp://u.expo.dev/[^ ]*' "$RUNNER_TEMP/publish.log" | sed 's/^.*: //' || true)
           dashboard=$(grep -m 1 -o 'https://expo.dev/accounts/[^ ]*/updates/[^ ]*' "$RUNNER_TEMP/publish.log" || true)
           project=$(grep -m 1 -o 'EAS project id: [0-9a-f-]*' "$RUNNER_TEMP/publish.log" | cut -d ' ' -f 4 || true)
           {

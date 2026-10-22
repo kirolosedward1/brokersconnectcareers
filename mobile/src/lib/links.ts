@@ -99,7 +99,8 @@ const APP_PATHS: Record<string, string> = {
  * the rest of the website's console — the audit log, taxonomy, one account's
  * file — opens the app's overview, which links to the website for them.
  */
-const ADMIN_SCREENS = /^\/admin(?:\/(?:jobs(?:\/[0-9a-f-]{36})?|reports|users(?:\/[0-9a-f-]{36})?|companies))?$/;
+// Case-insensitive, as the screens read their id: an uppercase uuid in a link still lands on the file.
+const ADMIN_SCREENS = /^\/admin(?:\/(?:jobs(?:\/[0-9a-f-]{36})?|reports|users(?:\/[0-9a-f-]{36})?|companies))?$/i;
 
 /** A website path (already through webPathToAppPath) as the app opens it; the query is kept. */
 export function appPathFor(path: string): string {

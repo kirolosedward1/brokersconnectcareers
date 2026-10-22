@@ -43,7 +43,7 @@ function useOpen() {
 /**
  * What each view asks admin_search_users for. `p_blocked` is sent only by the
  * view that needs it, as the website does: a database from before migration
- * 352 knows the function without that argument, and would refuse every view
+ * 355 knows the function without that argument, and would refuse every view
  * that named it.
  */
 function filtersFor(view: AccountsView): { p_role: UserRole | null; p_status: ApprovalStatus | null; p_blocked?: true } {

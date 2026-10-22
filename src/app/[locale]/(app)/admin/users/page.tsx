@@ -66,7 +66,7 @@ export default async function AdminUsersPage({
     }),
     'searching accounts',
   ).data;
-  const total = Number(rows[0]?.total_count ?? 0);
+  const total = Number(rows?.[0]?.total_count ?? 0);
 
   const t = await getTranslations('admin');
   const tOnboarding = await getTranslations('onboarding');
