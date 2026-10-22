@@ -1480,52 +1480,122 @@
       "ogAlt": "The Brokers Connect app on an iPhone"
     },
     "hero": {
-      "eyebrow": "The Brokers Connect app · iPhone · in Arabic",
+      "pill": "The Brokers Connect app · iPhone · in Arabic",
       "title": "Brokers Connect, now in your pocket",
-      "subtitle": "The board, your applications and the companies that are hiring, with the basic salary and the commission in figures on every listing.",
-      "note": "No fees for candidates.",
-      "showScreen": "Show screen {n} of {total}"
+      "subtitle": "Real estate sales and marketing jobs across Egypt. The basic salary, the commission and the lead source in figures on every listing, and one-tap applications.",
+      "trust": "No fees for candidates"
     },
-    "badges": {
+    "store": {
       "appStoreTop": "Download on the",
       "appStoreLabel": "Download on the App Store",
       "googlePlayTop": "GET IT ON",
       "googlePlayLabel": "Get it on Google Play",
-      "comingSoon": "Coming soon"
+      "comingSoon": "Coming soon",
+      "get": "Get"
     },
-    "screens": {
-      "title": "What is on the screen",
-      "subtitle": "Five screens, as a consultant uses them.",
+    "highlights": {
+      "payTitle": "Pay in figures",
+      "payBody": "On every listing, before you apply.",
+      "applyTitle": "One-tap apply",
+      "applyBody": "Your CV is saved.",
+      "alertsTitle": "Instant notifications",
+      "alertsBody": "Know the moment your application moves.",
+      "verifiedTitle": "Verified companies",
+      "verifiedBody": "A badge on approved companies."
+    },
+    "transparency": {
+      "eyebrow": "Transparency",
+      "title": "The figures before you apply",
+      "body": "Every listing shows the basic salary, the commission and who supplies the leads. No “attractive package”, no “we’ll talk in the interview”.",
+      "calloutSalary": "Basic salary",
+      "calloutCommission": "Commission",
+      "calloutLeads": "Lead source",
+      "compareBadTitle": "A typical listing",
+      "compareBadBody": "Attractive package, generous commission",
+      "compareGoodTitle": "On Brokers Connect",
+      "compareGoodBody": "Basic salary + commission + lead source, in figures"
+    },
+    "search": {
+      "eyebrow": "Search",
+      "title": "The right job, without the runaround",
+      "body": "Search from the first screen, or browse by district with the number of open roles in each. Sort by newest or highest salary, and filter by track, district and lead source.",
+      "trackLabel": "Track",
+      "areaLabel": "Area",
+      "leadsLabel": "Lead source",
+      "sortLabel": "Sort",
+      "demoLabel": "The filters, to try",
+      "area": {
+        "tagamoa": "New Cairo",
+        "zayed": "Sheikh Zayed",
+        "october": "6th of October",
+        "capital": "New Capital",
+        "madinaty": "Madinaty",
+        "maadi": "Maadi",
+        "heliopolis": "Heliopolis",
+        "nasr": "Nasr City"
+      }
+    },
+    "apply": {
+      "eyebrow": "Applying",
+      "title": "Apply in a minute, then with one tap",
+      "body": "Your details and your CV are saved, so every application after the first is one tap.",
+      "step1": "Open the listing",
+      "step2": "Tap apply",
+      "step3": "Sent"
+    },
+    "notifications": {
+      "eyebrow": "Notifications",
+      "title": "Know the moment it moves",
+      "body": "A notification when a company opens your application, shortlists you or asks for an interview, and when a new role matches a saved search.",
+      "now": "now",
+      "n1": "The company opened your application.",
+      "n2": "You were moved to the shortlist.",
+      "n3": "The company is asking for an interview.",
+      "n4": "A new job matches your saved search."
+    },
+    "companies": {
+      "eyebrow": "Companies",
+      "title": "Know the company before you apply",
+      "body": "Where it is, how big it is, its open roles, and a badge on the verified ones.",
+      "point1": "Who is hiring now",
+      "point2": "A verified badge on approved companies",
+      "point3": "Follow the company, and its next role reaches you",
+      "follow": "Follow the company",
+      "following": "Following"
+    },
+    "profile": {
+      "eyebrow": "Profile",
+      "title": "Your profile, your call",
+      "body": "Your areas, your sales record and your CV in the consultant directory, for approved companies to find. You decide whether it is shown.",
+      "name": "Your name here",
+      "areas": "Areas",
+      "sales": "Sales record",
+      "cv": "CV",
+      "visible": "Shown in the consultant directory",
+      "hidden": "Hidden from companies"
+    },
+    "tour": {
+      "eyebrow": "Tour",
+      "title": "Five screens, as a consultant uses them",
       "list": "The app’s screens",
       "prev": "Previous screen",
       "next": "Next screen",
       "alt": "The {screen} screen of the Brokers Connect app",
-      "welcome": "Welcome",
       "home": "Home",
       "homeBody": "Search from the first screen, or browse by district with the number of open roles in each.",
       "jobs": "Jobs",
-      "jobsBody": "Sort by newest or by pay, filter by track, district and lead source. Every card shows the terms.",
+      "jobsBody": "Sort by newest or by pay, and filter by track, district and lead source.",
       "listing": "The listing",
-      "listingBody": "The basic salary, the commission and who supplies the leads, before you apply. Then one tap to apply.",
+      "listingBody": "The basic salary, the commission and who supplies the leads, then one tap to apply.",
       "companies": "Companies",
       "companiesBody": "Who is hiring right now, with the verified companies marked.",
       "company": "The company",
-      "companyBody": "Where it is, how big it is, its open roles, and a follow button so its next role reaches you."
-    },
-    "features": {
-      "title": "What the phone adds",
-      "payTitle": "Pay in figures",
-      "payBody": "The basic salary, the commission and the lead source on every listing. Never “attractive package”.",
-      "applyTitle": "Apply in a minute",
-      "applyBody": "Your details and your CV are saved, so every application after the first is one tap.",
-      "followTitle": "Hear when it moves",
-      "followBody": "A notification when a company opens your application, shortlists you or asks for an interview, and when a new role matches a saved search.",
-      "profileTitle": "Your profile, your call",
-      "profileBody": "Your areas, your sales record and your CV in the consultant directory, for approved companies to find. You decide whether it is shown."
+      "companyBody": "Where it is, how big it is, its roles, and the “follow the company” button."
     },
     "appearance": {
+      "eyebrow": "Appearance",
       "title": "On your phone, your way",
-      "subtitle": "Light or dark, and your own text size. The app follows the phone’s settings.",
+      "body": "Light or dark, and your own text size. The app follows the phone’s settings.",
       "legend": "Appearance",
       "light": "Light",
       "dark": "Dark",
@@ -1535,9 +1605,44 @@
       "altDark": "in the dark appearance",
       "altLarge": "at the largest text size"
     },
-    "band": {
+    "how": {
+      "eyebrow": "Getting started",
+      "title": "How to start",
+      "step1Title": "Get the app",
+      "step1Body": "From the App Store, on iPhone.",
+      "step2Title": "Complete your profile",
+      "step2Body": "Your areas and your CV, once.",
+      "step3Title": "Apply and follow",
+      "step3Body": "One-tap applications, and the notifications reach you as they move."
+    },
+    "audiences": {
+      "seekerTitle": "Looking for a job",
+      "seekerBody": "The lead source is named on every listing, with the salary and commission in figures whenever the company publishes them.",
+      "seekerCta": "Browse jobs",
+      "employerTitle": "Hiring",
+      "employerBody": "Your listing is reviewed before it goes live, and every application reaches you with the applicant’s name and WhatsApp number.",
+      "employerCta": "Post a job"
+    },
+    "faq": {
+      "eyebrow": "Questions",
+      "title": "Common questions",
+      "q1": "Is the app free?",
+      "a1": "Yes. No fees for candidates.",
+      "q2": "Is there an Android version?",
+      "a2": "The app is on iPhone now, and Android comes next. Until then the website works from any phone.",
+      "q3": "Who can see my profile?",
+      "a3": "Approved companies only, and only if you chose to be shown in the consultant directory. You can hide it at any time.",
+      "q4": "What does “lead source” mean?",
+      "a4": "Who supplies the clients: the company, or you. It is written on every listing so you know before you apply.",
+      "q5": "How do I know a company is verified?",
+      "a5": "Verified companies carry a badge on the companies screen and on the company’s page.",
+      "q6": "How do I delete my account?",
+      "a6": "From the account deletion page.",
+      "a6Rich": "From <link>the account deletion page</link>."
+    },
+    "final": {
       "title": "Get Brokers Connect",
-      "body": "On iPhone now. Android is next."
+      "body": "On iPhone now, Android next."
     }
   },
   "blog": {

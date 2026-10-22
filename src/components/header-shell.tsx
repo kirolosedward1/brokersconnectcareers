@@ -5,16 +5,15 @@ import { usePathname } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
 
 /**
- * The pages whose hero the header sits on top of: the employers' landing
- * page and the page for the app, both of which open on the landing pages'
- * dark gradient and clear the bar with their own padding.
+ * The pages whose hero the header sits on top of.
  *
  * `/` is conditional, which is the whole reason this takes a prop. The home
  * page only draws a hero for somebody who is not signed in — a signed-in
  * reader gets a listings feed — and a transparent header with white type over
  * a white feed is an invisible header lying on top of the first heading.
+ * (/app opens on a light hero, so it keeps the solid bar.)
  */
-const ALWAYS_OVER_HERO = ['/employers', '/app'];
+const ALWAYS_OVER_HERO = ['/employers'];
 
 /**
  * The header's chrome.
