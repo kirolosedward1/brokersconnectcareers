@@ -32,6 +32,8 @@ export type Decision = {
   reasonLabel?: string;
   /** The longest reason the lever takes; the admin functions' own cap unless a lever says otherwise. */
   reasonMax?: number;
+  /** The shortest a required reason may be; the admin functions' three characters unless a lever says otherwise (a note is any words). */
+  reasonMin?: number;
   /** Shown once the website answered ok, with what it answered: a contact revealed, a count of sessions ended. */
   onDone?: (data: unknown) => void;
 };
@@ -70,7 +72,8 @@ export function DecisionSheet({
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const tooShort = decision.reason === 'required' && text.trim().length < REASON_MIN;
+  const reasonMin = decision.reasonMin ?? REASON_MIN;
+  const tooShort = decision.reason === 'required' && text.trim().length < reasonMin;
   // Still on screen: an answer that arrives after the sheet has gone (swiped
   // away, its row drawn again) must not close the next decision's sheet.
   const live = useRef(true);
@@ -206,7 +209,7 @@ export function DecisionSheet({
                     textAlign: appDirection === 'rtl' ? 'right' : 'left',
                   }}
                 />
-                {decision.reason === 'required' ? (
+                {decision.reason === 'required' && reasonMin === REASON_MIN ? (
                   <Text variant="caption" tone="mutedForeground">
                     {t('admin.errors.reason_required')}
                   </Text>

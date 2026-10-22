@@ -15,9 +15,9 @@ import { withTimeout } from '~/lib/timeout';
  *              (SessionGate is already asking for the code)
  *   enrol      the deployment requires an authenticator (ADMIN_MFA_REQUIRED,
  *              from /config) and the account has none yet
- *   error      the session's level could not be read: said as that, with a
- *              retry — never as "no authenticator", which would send an
- *              enrolled admin to enrol again
+ *   error      the session's level, or the deployment's rule (/config), could
+ *              not be read: said as that, with a retry — never as "no
+ *              authenticator", which would send an admin to enrol again
  *   checking   not known yet
  *
  * This decides what to show. What the levers may do is decided again on the
@@ -56,9 +56,14 @@ export function useAdminDoor(): { state: DoorState; recheck: () => Promise<void>
     },
   });
 
-  // A factor set up on the website reaches this phone with the session's next refresh: asked for now.
+  // A factor set up on the website reaches this phone with the session's next
+  // refresh: asked for now — and the deployment's rule asked again too, for
+  // a config read that failed while the phone was offline.
   const recheck = async () => {
-    await withTimeout(supabase.auth.refreshSession(), REFRESH_TIMEOUT_MS, 'refreshing the session').catch(() => {});
+    await Promise.all([
+      withTimeout(supabase.auth.refreshSession(), REFRESH_TIMEOUT_MS, 'refreshing the session').catch(() => {}),
+      config.refetch().catch(() => {}),
+    ]);
     await level.refetch();
   };
 
@@ -67,11 +72,12 @@ export function useAdminDoor(): { state: DoorState; recheck: () => Promise<void>
   else if (level.data?.next === 'aal2') state = 'challenge';
   else if (level.isError && !level.data) state = 'error';
   else if (level.data) {
-    // No authenticator. Whether that is allowed is the deployment's say; a
-    // config that could not be read, or a server older than the setting, is
-    // held to the stricter rule.
+    // No authenticator. Whether that is allowed is the deployment's say — a
+    // server older than the setting is held to the stricter rule — and a
+    // config that could not be read is said as that, with a retry: "set up
+    // two-step" is not the answer to a dropped connection.
     if (config.data) state = config.data.adminMfaRequired === false ? 'open' : 'enrol';
-    else if (config.isError) state = 'enrol';
+    else if (config.isError) state = 'error';
   }
   return { state, recheck };
 }

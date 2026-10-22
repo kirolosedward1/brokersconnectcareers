@@ -769,17 +769,35 @@ report.section('accounts managed from one place (migration 352)');
   // The sessions.
   r = await as(admin, `select admin_end_sessions('${admin}', 'سبب كافٍ')`);
   report.check('an admin cannot end their own sessions', !r.ok && /own sessions/.test(r.error ?? ''), r.error);
+  // Two devices signed in and an authenticator enrolled, on the stub's own
+  // tables, inside one transaction the session() helper rolls back with it.
+  await db.exec('begin');
+  await db.exec(`insert into auth.mfa_factors (user_id, status) values ('${candidate}', 'verified')`);
+  await db.exec(`insert into auth.sessions (user_id) values ('${candidate}'), ('${candidate}')`);
+  await db.exec(
+    `insert into auth.refresh_tokens (user_id, session_id) select '${candidate}', id from auth.sessions where user_id = '${candidate}'`,
+  );
   const ended = await session(admin, async (q) => {
+    const [before] = await q(`select admin_user_facts('${candidate}') as f`);
     const [n] = await q(`select admin_end_sessions('${candidate}', 'حساب مخترق') as n`);
+    const [after] = await q(`select admin_user_facts('${candidate}') as f`);
+    const [left] = await q(`select count(*)::int as n from auth.refresh_tokens where user_id = '${candidate}'`);
     const [audit] = await q(
       `select reason, metadata from admin_audit_log where target_type = 'user' and target_id = '${candidate}' and action = 'user.sessions_ended' order by id desc limit 1`,
     );
-    return { n: n.n, audit };
+    return { before: before.f, n: n.n, after: after.f, left: left.n, audit };
   });
+  await db.exec('rollback').catch(() => {});
   report.check(
-    'ending sessions is recorded with how many went (none on a database without GoTrue’s table)',
-    ended.ok && ended.value.n === 0 && ended.value.audit?.metadata?.sessions_ended === 0 && ended.value.audit?.reason === 'حساب مخترق',
-    ended.ok ? JSON.stringify(ended.value) : ended.error,
+    'the facts count the authenticator and the signed-in devices',
+    ended.ok && ended.value.before.verified_factors === 1 && ended.value.before.sessions === 2,
+    ended.ok ? JSON.stringify(ended.value.before) : ended.error,
+  );
+  report.check(
+    'ending sessions signs every device out, takes its refresh tokens with it, and records how many',
+    ended.ok && ended.value.n === 2 && ended.value.after.sessions === 0 && ended.value.left === 0
+      && ended.value.audit?.metadata?.sessions_ended === 2 && ended.value.audit?.reason === 'حساب مخترق',
+    ended.ok ? JSON.stringify({ n: ended.value.n, after: ended.value.after, left: ended.value.left }) : ended.error,
   );
 
   // What the account has done.
@@ -799,8 +817,8 @@ report.section('accounts managed from one place (migration 352)');
   );
   const facts = await as(admin, `select admin_user_facts('${admin}') as f`);
   report.check(
-    'the facts say whether two-step sign-in is on and how many devices are signed in',
-    facts.ok && 'verified_factors' in facts.rows[0].f && 'sessions' in facts.rows[0].f && facts.rows[0].f.sign_in_blocked_until === null,
+    'an account with no authenticator and no device reads as exactly that, and not blocked',
+    facts.ok && facts.rows[0].f.verified_factors === 0 && facts.rows[0].f.sessions === 0 && facts.rows[0].f.sign_in_blocked_until === null,
     facts.error ?? JSON.stringify(facts.rows[0]?.f),
   );
 }

@@ -60,9 +60,10 @@ type RevealedContact = { email: string | null; phone: string };
  * are revealed one account at a time, for a reason that goes on the record,
  * and held on this screen alone until it is left.
  *
- * An admin's own file has no lever (the functions refuse every one of them),
- * and another admin's only the two the product has for an admin: removing
- * the access, and signing them out everywhere.
+ * An admin's own file has no lever but a note (the functions refuse every
+ * other one), and another admin's only the two the product has for an admin
+ * — removing the access, and signing them out everywhere — beside a note and
+ * the contact.
  */
 export default function AdminAccountScreen() {
   const t = useTranslations();
@@ -553,9 +554,11 @@ function Activity({ account, self }: { account: AccountFile; self: boolean }) {
           </Card>
         </>
       ) : (
+        // No function to ask (a database before migration 352): said as that,
+        // never as "nothing yet", which is an answer a moderator acts on.
         <Card>
           <Text variant="small" tone="mutedForeground">
-            {t('admin.activityEmpty')}
+            {t('admin.errors.not_migrated')}
           </Text>
         </Card>
       )}
@@ -651,7 +654,8 @@ function Security({ account, self }: { account: AccountFile; self: boolean }) {
         <Card style={{ gap: space[3] }}>
           <SectionTitle>{t('admin.actions')}</SectionTitle>
           <View style={{ gap: space[2] }}>
-            {blocked ? (
+            {/* Neither direction for an admin: the function refuses both (demote first). */}
+            {admin ? null : blocked ? (
               <Button
                 label={t('admin.unblockSignIn')}
                 variant="outline"
@@ -667,7 +671,7 @@ function Security({ account, self }: { account: AccountFile; self: boolean }) {
                   })
                 }
               />
-            ) : admin ? null : (
+            ) : (
               <Button
                 label={t('admin.blockSignIn')}
                 variant="ghost"
@@ -719,26 +723,27 @@ function Trail({ account, self }: { account: AccountFile; self: boolean }) {
   return (
     <Card style={{ gap: space[3] }}>
       <SectionTitle>{t('admin.record')}</SectionTitle>
-      {self ? null : (
-        <View style={{ flexDirection: 'row' }}>
-          <Button
-            label={t('app.admin.addNote')}
-            variant="outline"
-            size="sm"
-            icon={<NotebookPen size={16} color={colors.foreground} />}
-            onPress={() =>
-              openDecision({
-                lever: { do: 'note', targetType: 'user', targetId: account.profile.id },
-                title: t('app.admin.addNote'),
-                reason: 'required',
-                reasonLabel: t('app.admin.noteLabel'),
-                reasonMax: 2000,
-                confirmLabel: t('app.admin.addNote'),
-              })
-            }
-          />
-        </View>
-      )}
+      {/* On every file, one's own included: a note is for other admins, and admin_add_note refuses nobody. */}
+      <View style={{ flexDirection: 'row' }}>
+        <Button
+          label={t('app.admin.addNote')}
+          variant="outline"
+          size="sm"
+          icon={<NotebookPen size={16} color={colors.foreground} />}
+          onPress={() =>
+            openDecision({
+              lever: { do: 'note', targetType: 'user', targetId: account.profile.id },
+              title: t('app.admin.addNote'),
+              reason: 'required',
+              // A note is any words at all, as the website takes it; the three-character floor is for reasons.
+              reasonMin: 1,
+              reasonLabel: t('app.admin.noteLabel'),
+              reasonMax: 2000,
+              confirmLabel: t('app.admin.addNote'),
+            })
+          }
+        />
+      </View>
       {entries.length === 0 ? (
         <Text variant="small" tone="mutedForeground">
           {t('admin.trailEmpty')}

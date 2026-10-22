@@ -48,9 +48,19 @@ export default function AdminAccountsScreen() {
   );
 }
 
-/** The view a link asks for (the overview's "suspended" figure), the waiting accounts otherwise. */
-function viewFor(status: string | undefined): AccountsView {
-  return status === 'rejected' ? 'suspended' : 'pending';
+/**
+ * The view a link asks for, in the website's own terms (`?status=`, `?role=`
+ * on /admin/users — the overview's figures, a push); the waiting accounts
+ * otherwise.
+ */
+function viewFor(status: string | undefined, role: string | undefined): AccountsView {
+  if (status === 'blocked') return 'blocked';
+  if (status === 'rejected') return 'suspended';
+  if (status === 'pending') return 'pending';
+  if (role === 'candidate') return 'candidates';
+  if (role === 'employer') return 'employers';
+  if (role === 'admin') return 'admins';
+  return status === 'approved' || status === 'all' ? 'all' : 'pending';
 }
 
 function useViewLabels(): Record<AccountsView, string> {
@@ -68,8 +78,8 @@ function useViewLabels(): Record<AccountsView, string> {
 
 function Accounts() {
   const t = useTranslations();
-  const params = useLocalSearchParams<{ status?: string }>();
-  const [view, setView] = useState<AccountsView>(() => viewFor(params.status));
+  const params = useLocalSearchParams<{ status?: string; role?: string }>();
+  const [view, setView] = useState<AccountsView>(() => viewFor(params.status, params.role));
   const [query, setQuery] = useState('');
   const accounts = useAccountList(view, query);
   const nextPage = useNextPage(accounts);

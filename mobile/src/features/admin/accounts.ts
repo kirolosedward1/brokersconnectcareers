@@ -40,23 +40,28 @@ function useOpen() {
   return isAdmin(actor) && door.state === 'open';
 }
 
-/** What each view asks admin_search_users for. */
-function filtersFor(view: AccountsView): { p_role: UserRole | null; p_status: ApprovalStatus | null; p_blocked: boolean | null } {
+/**
+ * What each view asks admin_search_users for. `p_blocked` is sent only by the
+ * view that needs it, as the website does: a database from before migration
+ * 352 knows the function without that argument, and would refuse every view
+ * that named it.
+ */
+function filtersFor(view: AccountsView): { p_role: UserRole | null; p_status: ApprovalStatus | null; p_blocked?: true } {
   switch (view) {
     case 'pending':
-      return { p_role: null, p_status: 'pending', p_blocked: null };
+      return { p_role: null, p_status: 'pending' };
     case 'suspended':
-      return { p_role: null, p_status: 'rejected', p_blocked: null };
+      return { p_role: null, p_status: 'rejected' };
     case 'candidates':
-      return { p_role: 'candidate', p_status: null, p_blocked: null };
+      return { p_role: 'candidate', p_status: null };
     case 'employers':
-      return { p_role: 'employer', p_status: null, p_blocked: null };
+      return { p_role: 'employer', p_status: null };
     case 'admins':
-      return { p_role: 'admin', p_status: null, p_blocked: null };
+      return { p_role: 'admin', p_status: null };
     case 'blocked':
       return { p_role: null, p_status: null, p_blocked: true };
     default:
-      return { p_role: null, p_status: null, p_blocked: null };
+      return { p_role: null, p_status: null };
   }
 }
 

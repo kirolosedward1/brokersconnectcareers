@@ -205,7 +205,9 @@ describe('the accounts', () => {
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(screen.getByText(ar.admin.approval.approved)).toBeTruthy();
     // The waiting accounts first, as the website's queue; no words, no search.
-    expect(lastSearch()).toMatchObject({ p_query: null, p_role: null, p_status: 'pending', p_blocked: null, p_offset: 0 });
+    expect(lastSearch()).toMatchObject({ p_query: null, p_role: null, p_status: 'pending', p_offset: 0 });
+    // Named only by the view that needs it: a database before migration 352 knows the function without it.
+    expect(lastSearch()).not.toHaveProperty('p_blocked');
 
     const field = screen.getByLabelText(ar.filters.search);
     expect(field.props.placeholder).toBe(ar.admin.usersSearchPlaceholder);
@@ -217,7 +219,29 @@ describe('the accounts', () => {
     await waitFor(() => expect(lastSearch()).toMatchObject({ p_blocked: true, p_status: null, p_role: null }));
 
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.approval.rejected }));
-    await waitFor(() => expect(lastSearch()).toMatchObject({ p_status: 'rejected', p_blocked: null }));
+    await waitFor(() => expect(lastSearch()).toMatchObject({ p_status: 'rejected' }));
+    expect(lastSearch()).not.toHaveProperty('p_blocked');
+  });
+
+  it("opens the view a website link names, and marks an account whose sign-in is blocked", async () => {
+    server.on('POST /rest/v1/rpc/admin_search_users', () => [{ ...row, sign_in_blocked: true }]);
+    await signIn();
+    renderRouter(app, { initialUrl: '/admin/users?status=blocked' });
+
+    expect(await screen.findByText('أحمد سمير')).toBeTruthy();
+    expect(lastSearch()).toMatchObject({ p_blocked: true, p_status: null, p_role: null });
+    // The view's chip, and the row's own badge.
+    expect(screen.getAllByText(ar.admin.signInBlocked)).toHaveLength(2);
+    expect(screen.getByRole('radio', { name: ar.admin.signInBlocked }).props.accessibilityState).toMatchObject({ checked: true });
+  });
+
+  it("opens the role a website link names", async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/admin/users?role=employer' });
+
+    expect(await screen.findByText('أحمد سمير')).toBeTruthy();
+    expect(lastSearch()).toMatchObject({ p_role: 'employer', p_status: null });
+    expect(lastSearch()).not.toHaveProperty('p_blocked');
   });
 
   it('says a search found nobody, and that a failed read failed — never that nothing is waiting', async () => {
@@ -299,15 +323,21 @@ describe("an account's file", () => {
     await signIn();
     renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
+    let answer: (value: unknown) => void = () => {};
+    server.on('POST /api/mobile/v1/actions/revealContact', () => new Promise((resolve) => (answer = resolve)));
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.revealContact }));
     fireEvent.changeText(await screen.findByLabelText(ar.admin.reasonOnRecord), 'طلب دعم من صاحب الحساب');
-    expect(screen.queryByText('+201001234567')).toBeNull();
     await act(async () => {
       fireEvent.press(confirmButton(ar.admin.revealContact));
     });
 
     await waitFor(() => expect(actionsCalled('revealContact')).toHaveLength(1));
     expect(actionsCalled('revealContact')[0].body).toEqual({ input: { userId: OTHER_USER, reason: 'طلب دعم من صاحب الحساب' } });
+    // Asked, not yet answered: nothing is shown.
+    expect(screen.queryByText('+201001234567')).toBeNull();
+    await act(async () => {
+      answer({ ok: true, data: { email: 'ahmed@example.com', phone: '+201001234567' } });
+    });
     expect(await screen.findByText('+201001234567')).toBeTruthy();
     expect(screen.getByText('ahmed@example.com')).toBeTruthy();
     expect(screen.getByText(ar.admin.contactRecorded)).toBeTruthy();
@@ -317,6 +347,56 @@ describe("an account's file", () => {
     fireEvent.press(screen.getByRole('button', { name: ar.app.admin.openWhatsApp }));
     expect(openURL).toHaveBeenCalledWith('https://wa.me/201001234567');
     openURL.mockRestore();
+  });
+
+  it('shows nothing of the contact when the website refuses', async () => {
+    server.on('POST /api/mobile/v1/actions/revealContact', { ok: false, error: 'forbidden' });
+    await signIn();
+    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.admin.revealContact }));
+    fireEvent.changeText(await screen.findByLabelText(ar.admin.reasonOnRecord), 'طلب دعم من صاحب الحساب');
+    await act(async () => {
+      fireEvent.press(confirmButton(ar.admin.revealContact));
+    });
+
+    expect(await screen.findByText(ar.admin.errors.forbidden)).toBeTruthy();
+    expect(screen.queryByText('+201001234567')).toBeNull();
+    expect(screen.queryByText(ar.admin.contactRecorded)).toBeNull();
+  });
+
+  it('withholds "make an admin" while sign-in is blocked, and offers to allow it again', async () => {
+    server.on('POST /rest/v1/rpc/admin_user_facts', () => ({ ...facts, sign_in_blocked_until: '2999-12-31T00:00:00Z' }));
+    server.on('GET /rest/v1/admin_audit_log', [
+      { id: 1, actor_id: USER_ID, actor_name: 'كيرلس', action: 'user.sign_in_blocked', target_type: 'user', target_id: OTHER_USER, target_label: null, reason: 'حساب مخترق', metadata: {}, via: 'console', created_at: '2026-10-20T10:00:00Z' },
+    ]);
+    await signIn();
+    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+
+    expect(await screen.findByText(ar.admin.suspendAccount)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.admin.makeAdmin })).toBeNull();
+
+    fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.security }));
+    expect(await screen.findByRole('button', { name: ar.admin.unblockSignIn })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.admin.blockSignIn })).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: ar.admin.unblockSignIn }));
+    fireEvent.changeText(await screen.findByLabelText(ar.admin.reasonOnRecord), 'اتأكدنا إنه هو');
+    await act(async () => {
+      fireEvent.press(confirmButton(ar.admin.unblockSignIn));
+    });
+    await waitFor(() => expect(actionsCalled('setSignInBlock')).toHaveLength(1));
+    expect(actionsCalled('setSignInBlock')[0].body).toEqual({ input: { userId: OTHER_USER, block: false, reason: 'اتأكدنا إنه هو' } });
+  });
+
+  it('says the activity could not be read on a database without the function — never "nothing yet"', async () => {
+    server.on('POST /rest/v1/rpc/admin_user_activity', { status: 404, body: { code: 'PGRST202', message: 'Could not find the function' } });
+    await signIn();
+    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+
+    expect(await screen.findByText('أحمد سمير')).toBeTruthy();
+    fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.activity }));
+    expect(await screen.findByText(ar.admin.errors.not_migrated)).toBeTruthy();
+    expect(screen.queryByText(ar.admin.activityEmpty)).toBeNull();
   });
 
   it("offers no lever on the admin's own file", async () => {
@@ -333,6 +413,10 @@ describe("an account's file", () => {
     expect(await screen.findByText(ar.admin.signedInDevices)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.admin.endSessions })).toBeNull();
     expect(screen.queryByRole('button', { name: ar.admin.blockSignIn })).toBeNull();
+
+    // A note is the one thing: it is for other admins, and the function refuses nobody.
+    fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.record }));
+    expect(await screen.findByRole('button', { name: ar.app.admin.addNote })).toBeTruthy();
   });
 
   it("offers another admin's file only the two levers the product has for an admin", async () => {
@@ -348,6 +432,40 @@ describe("an account's file", () => {
 
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.security }));
     expect(await screen.findByRole('button', { name: ar.admin.endSessions })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.admin.blockSignIn })).toBeNull();
+
+    // Removing the access sends them back to where they came from: a consultant with no company.
+    fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.overview }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.admin.removeAdmin }));
+    expect(await screen.findByText(ar.admin.removeAdminBody.replace('{role}', ar.onboarding.roleCandidate))).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.admin.reasonOnRecord), 'انتهى عمله معانا');
+    await act(async () => {
+      fireEvent.press(confirmButton(ar.admin.removeAdmin));
+    });
+    await waitFor(() => expect(actionsCalled('setUserRole')).toHaveLength(1));
+    expect(actionsCalled('setUserRole')[0].body).toEqual({ input: { userId: OTHER_USER, role: 'candidate', reason: 'انتهى عمله معانا' } });
+  });
+
+  it('sends an admin who runs a company back to being an employer, and blocks neither direction of their sign-in', async () => {
+    other = { ...account, role: 'admin' };
+    server.on('GET /rest/v1/company_members', [
+      { role: 'admin', created_at: '2026-10-21T10:00:00Z', company: { id: company.id, name_ar: company.name_ar, name_en: null, verification_status: 'verified', suspended_at: null } },
+    ]);
+    server.on('POST /rest/v1/rpc/admin_user_facts', () => ({ ...facts, sign_in_blocked_until: '2999-12-31T00:00:00Z' }));
+    await signIn();
+    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.admin.removeAdmin }));
+    expect(await screen.findByText(ar.admin.removeAdminBody.replace('{role}', ar.onboarding.roleEmployer))).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.admin.reasonOnRecord), 'رجع لشركته');
+    await act(async () => {
+      fireEvent.press(confirmButton(ar.admin.removeAdmin));
+    });
+    await waitFor(() => expect(actionsCalled('setUserRole')[0]?.body).toEqual({ input: { userId: OTHER_USER, role: 'employer', reason: 'رجع لشركته' } }));
+
+    fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.security }));
+    expect(await screen.findByRole('button', { name: ar.admin.endSessions })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.admin.unblockSignIn })).toBeNull();
     expect(screen.queryByRole('button', { name: ar.admin.blockSignIn })).toBeNull();
   });
 });

@@ -419,6 +419,18 @@ describe('the door', () => {
     expect(await screen.findByText(ar.admin.needsAttention)).toBeTruthy();
   });
 
+  it("says the deployment's rule could not be read, with a retry — never 'set up two-step' for a dropped connection", async () => {
+    server.on('GET /api/mobile/v1/config', { status: 503, body: { error: 'unavailable' } });
+    await signIn({ aal: 'aal1', factor: false });
+    renderRouter(app, { initialUrl: '/admin' });
+
+    expect(await screen.findByText(ar.common.error)).toBeTruthy();
+    expect(screen.queryByText(ar.app.admin.door.enrolTitle)).toBeNull();
+    server.on('GET /api/mobile/v1/config', mobileConfig({ adminMfaRequired: true }));
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
+    expect(await screen.findByText(ar.app.admin.door.enrolTitle)).toBeTruthy();
+  });
+
   it('asks an admin without an authenticator to set one up first, and reads nothing of the console', async () => {
     await signIn({ aal: 'aal1', factor: false });
     renderRouter(app, { initialUrl: '/admin' });

@@ -65,6 +65,25 @@ create table auth.mfa_factors (
   created_at timestamptz not null default now()
 );
 
+-- Signed-in devices and their refresh tokens, as GoTrue keeps them: what
+-- admin_end_sessions_of (migration 352) deletes. Only the columns it names.
+create table auth.sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table auth.refresh_tokens (
+  id bigserial primary key,
+  user_id varchar(255),
+  session_id uuid references auth.sessions (id) on delete cascade,
+  revoked boolean default false,
+  updated_at timestamptz default now()
+);
+
+-- The tests look at what is left after a lever, as the test role.
+grant select on auth.sessions, auth.refresh_tokens to authenticated;
+
 create table storage.buckets (
   id text primary key, name text, public boolean,
   file_size_limit bigint, allowed_mime_types text[]
