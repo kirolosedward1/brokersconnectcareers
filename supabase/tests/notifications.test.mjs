@@ -69,15 +69,17 @@ report.section('duplicates: one event, one notification per person');
     (await count(`user_id = '${APPLICANT}' and kind = 'application_submitted'`)) === 1);
 
   // Withdraw and apply again: the row is new, the event for the employer is not.
-  const receipts = `user_id = '${APPLICANT}' and kind = 'application_submitted'`;
   await db.exec(`delete from applications where job_id = '${job.id}' and candidate_id = '${APPLICANT}'`);
-  report.check('withdrawing takes the applicant\'s receipt with it (migration 351)',
-    (await count(receipts)) === 0, String(await count(receipts)));
+  // Migration 351: a withdrawn application takes the candidate's notices
+  // about that listing with it, so the bell lists no application they no
+  // longer have.
+  report.check('withdrawing takes the applicant’s receipt with it',
+    (await count(`user_id = '${APPLICANT}' and kind = 'application_submitted'`)) === 0);
   await db.exec(apply);
   report.check('apply → withdraw → apply rings the employer once, not twice',
     (await count(received)) === 1, String(await count(received)));
-  report.check('and the applicant has one receipt, for the application that stands',
-    (await count(receipts)) === 1, String(await count(receipts)));
+  report.check('and applying again is a receipt of its own, the one standing application’s',
+    (await count(`user_id = '${APPLICANT}' and kind = 'application_submitted'`)) === 1);
 
   const app = (await db.query(`select id from applications where job_id = '${job.id}' and candidate_id = '${APPLICANT}'`)).rows[0].id;
   const moved = `user_id = '${APPLICANT}' and kind = 'application_moved'`;
