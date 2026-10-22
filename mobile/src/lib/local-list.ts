@@ -3,6 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /** Every list's way to let go of one person's copy in memory (forgetOwner). */
 const lists = new Set<(owner: string) => void>();
+/**
+ * The people forgotten while the app has been running. A change already on
+ * its way when the account was deleted — a saved search's alert checked as
+ * the app opened, a note's Undo, a reminder put back — would otherwise write
+ * their list again after it was removed; for them nothing is read or written
+ * any more. An id is never anybody else's, so this costs nobody anything.
+ */
+const forgotten = new Set<string>();
 
 /**
  * Everything kept for one person on this phone, gone: their account was
@@ -16,6 +24,7 @@ const lists = new Set<(owner: string) => void>();
  */
 export async function forgetOwner(owner: string): Promise<void> {
   if (!owner) return;
+  forgotten.add(owner);
   for (const drop of lists) drop(owner);
   try {
     const theirs = (await AsyncStorage.getAllKeys()).filter((key) => key.endsWith(`:${owner}`));
@@ -60,8 +69,10 @@ export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: 
 
   const load = (owner: string): Promise<void> => {
     const store = storeFor(owner);
-    store.loading ??= AsyncStorage.getItem(`${prefix}:${owner}`)
+    store.loading ??= (forgotten.has(owner) ? Promise.resolve(null) : AsyncStorage.getItem(`${prefix}:${owner}`))
       .then((stored) => {
+        // Read before the account was deleted, answered after: nothing of it comes back.
+        if (forgotten.has(owner)) return;
         const parsed = stored ? (JSON.parse(stored) as unknown) : [];
         const read = Array.isArray(parsed) ? parsed.filter(valid) : [];
         // Anything kept while the phone was still answering stays, first.
@@ -77,6 +88,7 @@ export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: 
   };
 
   const save = (owner: string, next: readonly T[]) => {
+    if (forgotten.has(owner)) return;
     const store = storeFor(owner);
     store.items = next.slice(0, max);
     emit(store);

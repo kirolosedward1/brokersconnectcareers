@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { isAuthRetryableFetchError, type AuthError, type User } from '@supabase/supabase-js';
 import { appleAuthorizationCode } from '~/features/auth/providers';
+import { signOutHere } from '~/features/push/device';
 import { callAction } from '~/lib/api';
 import { forgetOwner } from '~/lib/local-list';
 import { supabase } from '~/lib/supabase';
@@ -50,8 +51,12 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   // No answer — a connection dropped, the half minute ran out — is not "not
   // deleted": the website deletes the account, then answers. Asked whether it
   // still knows this account, the auth server settles it.
-  if (!result && (await accountGone())) {
-    await forgetHere(user);
+  const gone = result ? false : await accountGone();
+  if (gone) {
+    // What the person kept on this phone goes only when the auth server named
+    // the account as no more; a token it merely refused says too little to
+    // throw away notes nobody could get back.
+    await forgetHere(user, gone === 'certain');
     return null;
   }
   if (!result?.ok) {
@@ -66,31 +71,34 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   }
 
   // The account no longer exists (its phones went with it); what is left on this phone goes too.
-  await forgetHere(user);
+  await forgetHere(user, true);
   return null;
 }
 
-/** The session, and what the person kept on this phone: notes, reminders, searches, the jobs they looked at. */
-async function forgetHere(user: User | null | undefined): Promise<void> {
-  await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-  if (user?.id) await forgetOwner(user.id);
+/**
+ * Signed out as the Account tab signs out (signOutHere: the phone stops
+ * listening for pushes, and a sign-out auth-js answers with an error still
+ * leaves nobody signed in), and — `everything` — what the person kept on this
+ * phone goes too: notes, reminders, searches, the jobs they looked at.
+ */
+async function forgetHere(user: User | null | undefined, everything: boolean): Promise<void> {
+  await signOutHere();
+  if (everything && user?.id) await forgetOwner(user.id);
 }
 
 /**
  * Whether the auth server says this session's account is no more: refused
  * outright (401, 403, 404, user_not_found), as it answers for a user deleted
  * from under a token. No answer, or the account read back, is not gone.
+ * 'certain' when it named the account as missing (user_not_found, 404);
+ * 'likely' when it only refused the token, which an expired or unverifiable
+ * one is refused with too.
  */
-async function accountGone(): Promise<boolean> {
+async function accountGone(): Promise<'certain' | 'likely' | false> {
   const { data, error } = await supabase.auth
     .getUser()
     .catch((failure: unknown) => ({ data: { user: null }, error: failure as AuthError }));
   if (data.user || !error || isAuthRetryableFetchError(error)) return false;
-  return (
-    error.status === 401 ||
-    error.status === 403 ||
-    error.status === 404 ||
-    error.code === 'user_not_found' ||
-    error.code === 'session_not_found'
-  );
+  if (error.code === 'user_not_found' || error.status === 404) return 'certain';
+  return error.status === 401 || error.status === 403 || error.code === 'session_not_found' ? 'likely' : false;
 }

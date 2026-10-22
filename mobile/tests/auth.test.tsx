@@ -1594,6 +1594,39 @@ describe('deleting the account', () => {
     expect(await AsyncStorage.getItem(`bc.recent-searches.v1:${mine}`)).toBeNull();
   });
 
+  it('leaves nobody signed in after a deletion even when auth-js answers the sign-out with an error', async () => {
+    // auth-js returns { error } without throwing when it cannot take its lock:
+    // the deleted account stayed on screen, and its lists were written again.
+    jest.mocked(Alert.alert).mockClear();
+    await signedIn();
+    jest.spyOn(supabase.auth, 'signOut').mockResolvedValueOnce({ error: new Error('lock not acquired') } as never);
+    renderRouter(app, { initialUrl: '/account/delete' });
+    fireEvent.changeText(await screen.findByLabelText(deleteLabel), ar.account.deleteConfirmWord);
+    await press(ar.account.deleteCta);
+
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
+    await waitFor(async () => expect((await supabase.auth.getSession()).data.session).toBeNull());
+  });
+
+  it('keeps what the account kept on this phone when the auth server only refused its token', async () => {
+    // A token refused as unverifiable (bad_jwt) is refused just as a deleted
+    // account's is, but says nothing about whether the account is gone: notes
+    // nobody could get back are not thrown away on that.
+    await signedIn();
+    const mine = (await supabase.auth.getSession()).data.session!.user.id;
+    await AsyncStorage.setItem(`bc.saved-notes.v1:${mine}`, JSON.stringify([{ id: 'j1', text: 'asked for 12k', updatedAt: 1 }]));
+    server.on('POST /api/mobile/v1/actions/deleteMyAccount', () => {
+      server.on('GET /auth/v1/user', { status: 403, body: { code: 403, error_code: 'bad_jwt', msg: 'invalid JWT' } });
+      throw new TypeError('Network request failed');
+    });
+    renderRouter(app, { initialUrl: '/account/delete' });
+    fireEvent.changeText(await screen.findByLabelText(deleteLabel), ar.account.deleteConfirmWord);
+    await press(ar.account.deleteCta);
+
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
+    expect(await AsyncStorage.getItem(`bc.saved-notes.v1:${mine}`)).not.toBeNull();
+  });
+
   it('says it could not delete when the answer was lost and the account is still there', async () => {
     jest.mocked(Alert.alert).mockClear();
     await signedIn();
