@@ -272,10 +272,20 @@ describe('the Account tab', () => {
     expect(await screen.findByText(ar.app.licenses.intro)).toBeTruthy();
   });
 
-  it('shows the address to write to, not only a link to the mail app', async () => {
+  it('writes to the address without showing it, and tells it when no mail app can', async () => {
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    // Alert.alert is the suite's own stand-in (above).
+    jest.mocked(Alert.alert).mockClear();
     renderRouter(app, { initialUrl: '/account' });
-    expect(await screen.findByText('help@brokersconnect.net')).toBeTruthy();
-    expect(screen.getByRole('button', { name: new RegExp(ar.app.account.contact) })).toBeTruthy();
+    await press(ar.app.account.contact);
+    expect(open).toHaveBeenCalledWith('mailto:help@brokersconnect.net');
+    expect(screen.queryByText('help@brokersconnect.net')).toBeNull();
+    expect(Alert.alert).not.toHaveBeenCalled();
+
+    open.mockRejectedValue(new Error('no mail app'));
+    await press(ar.app.account.contact);
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.contact, 'help@brokersconnect.net'));
+    open.mockRestore();
   });
 
   it('says who is signed in, and signs out of this phone only', async () => {
@@ -352,9 +362,11 @@ describe('signing in with a password', () => {
     expect(bodyOf('/auth/v1/token')).toMatchObject({ email: 'sara@example.com', password: PASSWORD });
   });
 
-  it('closes the first launch\'s welcome along with the sheet when the sign-in began there', async () => {
+  it('closes the welcome along with the sheet when the sign-in began there', async () => {
     renderRouter(app, { initialUrl: '/welcome' });
     await press(ar.nav.signIn);
+    // No one-tap way offered: no round buttons beside Sign in, and the form at once.
+    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
     await fillSignIn('sara@example.com', PASSWORD);
     await press(ar.auth.signIn);
 
@@ -751,6 +763,21 @@ describe('the second factor', () => {
     });
   });
 
+  it('says too many tries as that, and keeps the code', async () => {
+    user = authUser({ factors: [totpFactor] });
+    server.on(`POST /auth/v1/factors/${totpFactor.id}/verify`, {
+      status: 429,
+      body: { code: 'over_request_rate_limit', error_code: 'over_request_rate_limit', msg: 'Too many requests' },
+    });
+    await signedIn();
+    renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+    expect(await screen.findByText(ar.auth.errTooMany)).toBeTruthy();
+    expect(screen.queryByText(ar.account.mfaCodeInvalid)).toBeNull();
+    expect(screen.getByLabelText(ar.account.mfaCode).props.value).toBe('123456');
+  });
+
   it('answers by itself once six digits are in: the number pad has no return key, and AutoFill presses nothing', async () => {
     user = authUser({ factors: [totpFactor] });
     await signedIn();
@@ -990,6 +1017,88 @@ describe('one-tap sign-in, as App Review asks', () => {
     expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeTruthy();
   });
+
+  it('keeps the email and password behind a button of their own beside them, and goes back to them', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
+    renderRouter(app, { initialUrl: '/sign-in' });
+    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+    expect(screen.queryByLabelText(ar.auth.email)).toBeNull();
+
+    await press(ar.app.auth.continueWithEmail);
+    await fillSignIn('sara@example.com', PASSWORD);
+    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+
+    // The other ways are a tap away, and what was typed is still there on the way back.
+    await press(ar.app.auth.otherWays);
+    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+    expect(screen.queryByLabelText(ar.auth.email)).toBeNull();
+    await press(ar.app.auth.continueWithEmail);
+    expect((await screen.findByLabelText(ar.auth.email)).props.value).toBe('sara@example.com');
+
+    await press(ar.auth.signIn);
+    expect(await screen.findByText('home screen')).toBeTruthy();
+    expect(bodyOf('/auth/v1/token')).toMatchObject({ email: 'sara@example.com', password: PASSWORD });
+  });
+
+  it('keeps the form someone is typing in when the config answers late with a one-tap way', async () => {
+    let online = false;
+    server.on('GET /api/mobile/v1/config', () =>
+      online ? mobileConfig({ providers: { google: true, apple: true } }) : { status: 503, body: { error: 'unavailable' } },
+    );
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
+    renderRouter(app, { initialUrl: '/sign-in' });
+    // No one-tap way known: the form is the page.
+    fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'sara@example.com');
+
+    online = true;
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.auth.configRetry }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: ar.app.auth.configRetry })).toBeNull());
+    // Still the form, with what was typed; the one-tap ways a link away.
+    expect(screen.getByLabelText(ar.auth.email).props.value).toBe('sara@example.com');
+    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+    await press(ar.app.auth.otherWays);
+    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+  });
+
+  it('lets the welcome finish its own sign-in before anything else opens over it', async () => {
+    // An account with no profile yet, signed in while the welcome is on screen (its round buttons do this).
+    profileRow = null;
+    renderRouter(app, { initialUrl: '/welcome' });
+    expect(await screen.findByTestId('welcome')).toBeTruthy();
+    await act(async () => {
+      const { error } = await supabase.auth.signInWithPassword({ email: 'sara@example.com', password: PASSWORD });
+      expect(error).toBeNull();
+    });
+    await act(() => jest.advanceTimersByTimeAsync(500));
+    // Not pushed over it by the session gate: the welcome hands over itself once its sign-in has finished (useLand).
+    expect(screen.queryByText(ar.onboarding.title)).toBeNull();
+    expect(screen.getByTestId('welcome')).toBeTruthy();
+
+    // Left without finishing: the gate takes over from the tabs.
+    fireEvent.press(screen.getByRole('button', { name: ar.app.welcome.skip }));
+    expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
+  });
+
+  it('signs in from the welcome with the round buttons beside Sign in, and closes it', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValue({
+      type: 'success',
+      url: 'brokersconnect://auth/callback?code=google-code',
+    });
+    renderRouter(app, { initialUrl: '/welcome' });
+    const google = await screen.findByRole('button', { name: ar.auth.continueWithGoogle });
+    expect(google.props.accessibilityHint).toBe(ar.app.welcome.signInGoogleHint);
+    // Apple's beside Google's, no less to hand.
+    expect(screen.getByRole('button', { name: ar.auth.continueWithApple }).props.accessibilityHint).toBe(ar.app.welcome.signInAppleHint);
+
+    fireEvent.press(google);
+    expect(await screen.findByText('home screen')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByTestId('welcome')).toBeNull());
+    const exchange = server.asked('/auth/v1/token').find((request) => request.url.searchParams.get('grant_type') === 'pkce');
+    expect(exchange?.body).toMatchObject({ auth_code: 'google-code' });
+  });
 });
 
 describe('a forgotten password', () => {
@@ -1079,6 +1188,20 @@ describe('an email link opened in the app', () => {
       password: 'a-new-password',
     });
     expect(server.asked('/auth/v1/logout')[0]?.url.searchParams.get('scope')).toBe('others');
+  });
+
+  it('says a password the same as the old one is that, not something gone wrong', async () => {
+    server.on('PUT /auth/v1/user', {
+      status: 422,
+      body: { code: 'same_password', error_code: 'same_password', msg: 'New password should be different from the old password.' },
+    });
+    renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
+    expect(await screen.findByText(ar.auth.newPasswordTitle)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.auth.password), 'the-old-password');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'the-old-password');
+    await press(ar.auth.resetPassword);
+    expect(await screen.findByText(ar.auth.errSamePassword)).toBeTruthy();
+    expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(0);
   });
 
   describe('with an account signed in here', () => {
@@ -1302,6 +1425,23 @@ describe('onboarding cut short', () => {
     }
   });
 
+  it('holds onboarding while it signs out, so nothing else can be pressed meanwhile', async () => {
+    profileRow = null;
+    await signedIn();
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.on('POST /auth/v1/logout', async () => (await gate, {}));
+    renderRouter(app, { initialUrl: '/onboarding' });
+    await press(ar.nav.signOut);
+    // Said on the button, and the other ways on held, until the screen closes.
+    await waitFor(() => expect(screen.getByRole('button', { name: ar.nav.signOut }).props.accessibilityState).toMatchObject({ busy: true }));
+    expect(screen.getByRole('button', { name: ar.onboarding.leaveDelete }).props.accessibilityState).toMatchObject({ disabled: true });
+    await act(async () => release());
+    await waitFor(async () => expect((await supabase.auth.getSession()).data.session).toBeNull());
+  });
+
   it('forgets the door it came in by once the person signs out of onboarding', async () => {
     profileRow = null;
     await signedIn();
@@ -1467,6 +1607,12 @@ describe('deleting the account', () => {
     expect(await screen.findByText(ar.account.deleteBlockedCompany)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.account.deleteCta })).toBeNull();
     expect(screen.getByRole('button', { name: ar.app.account.contact })).toBeTruthy();
+    // With no mail app on the phone, the address is told rather than nothing happening.
+    const open = jest.spyOn(Linking, 'openURL').mockRejectedValueOnce(new Error('no mail app'));
+    jest.mocked(Alert.alert).mockClear();
+    await press(ar.app.account.contact);
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.contact, 'help@brokersconnect.net'));
+    open.mockRestore();
 
     await press(ar.account.deleteRequestCta);
     expect(await screen.findByText(ar.account.deleteRequested.replace('{reference}', 'BC-7K3M-9QX2'))).toBeTruthy();

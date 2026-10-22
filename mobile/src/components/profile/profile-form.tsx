@@ -28,6 +28,7 @@ import { useStoredFields } from '~/lib/use-stored-fields';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 import { ChipGroup, wholeNumber } from './fields';
+import { toast } from '~/components/feedback/toast';
 
 const VISIBILITIES: AgentVisibility[] = ['public', 'verified_employers_only', 'hidden'];
 const LANGUAGES = ['ar', 'en', 'fr'] as const;
@@ -138,12 +139,16 @@ export function ProfileForm({
         onSuccess: () => {
           setCv({ kind: 'keep' });
           form.saved(sending);
+          toast.show({ message: t('app.toast.changesSaved'), tone: 'success' });
         },
         onError: (failure) => {
           const reason = failure instanceof SaveRefused ? failure.reason : 'failed';
           const fields = failure instanceof SaveRefused ? failure.fieldErrors : undefined;
           if (reason === 'fileTooLarge') return refuse({ cv: t('validation.fileTooLarge') });
-          if (reason === 'upload' || reason === 'invalid_cv_path') return refuse({ cv: t('common.errorBody') });
+          if (reason === 'upload' || reason === 'invalid_cv_path') {
+            const detail = failure instanceof SaveRefused ? failure.detail : undefined;
+            return refuse({ cv: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
+          }
           if (fields?.whatsapp || fields?.cv) {
             return refuse({
               ...(fields.whatsapp ? { whatsapp: t('validation.invalidPhone') } : {}),

@@ -1,15 +1,16 @@
 import type { ReactNode } from 'react';
-import { Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Dimensions, FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaInsetsContext, SafeAreaProvider } from 'react-native-safe-area-context';
-import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { Stack } from 'expo-router';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
+import { router, Stack } from 'expo-router';
 import { HeaderHeightContext } from 'expo-router/react-navigation';
 import { renderRouter } from 'expo-router/testing-library';
 import TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
 import { AuthScroll } from '~/components/auth/auth-scroll';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { SetupChecklist } from '~/components/employer/setup-checklist';
+import { BarOnly } from '~/components/navigation/page-header';
 import { FilterSheetFrame } from '~/components/jobs/filter-sheet';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
@@ -17,10 +18,12 @@ import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
 import { KeyboardRoom, roomForScreen } from '~/components/ui/keyboard-room';
 import { PageFooter } from '~/components/ui/page-footer';
+import { MonthField } from '~/components/ui/month-field';
 import { Select } from '~/components/ui/select';
 import { EmptyState, ErrorState, InSheet } from '~/components/ui/states';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { ApiError } from '~/lib/api';
+import { dialog, readingOrder } from '~/lib/dialog';
 import { env } from '~/lib/env';
 import { ThemeProvider } from '~/theme/provider';
 import { company } from './fixtures';
@@ -410,12 +413,116 @@ describe('the keyboard', () => {
   });
 });
 
+describe('a month picked up to today', () => {
+  it('offers no year after this one, and no month of this year still to come', () => {
+    jest.useFakeTimers({ now: new Date('2026-10-09T12:00:00Z') });
+    const onChange = jest.fn();
+    try {
+      render(
+        <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, bottom: 34, left: 0, right: 0 } }}>
+          <ThemeProvider>
+            <I18nProvider>
+              <MonthField label="بدأت" value="" onChange={onChange} untilNow />
+            </I18nProvider>
+          </ThemeProvider>
+        </SafeAreaProvider>,
+      );
+      fireEvent.press(screen.getByRole('button', { name: /بدأت/ }));
+      expect(screen.queryByRole('radio', { name: '2027' })).toBeNull();
+      expect(screen.getByRole('radio', { name: '2026' }).props.accessibilityState).toMatchObject({ checked: true });
+      const months = screen.getAllByRole('radio', { name: / 2026$/ });
+      // January to October can be picked; November and December are still to come.
+      expect(months.map((month) => Boolean(month.props.accessibilityState.disabled))).toEqual([...Array(10).fill(false), true, true]);
+      fireEvent.press(months[10]);
+      expect(onChange).not.toHaveBeenCalled();
+      fireEvent.press(months[9]);
+      expect(onChange).toHaveBeenCalledWith('2026-10');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+describe("the app's alerts", () => {
+  it('stand Cancel on the right where iOS lays an Arabic question out left to right', () => {
+    const withdraw = jest.fn();
+    const arranged = readingOrder([
+      { text: 'إلغاء', style: 'cancel' },
+      { text: 'اسحب الطلب', style: 'destructive', onPress: withdraw },
+    ]);
+    // iOS keeps the order given unless a button is marked cancel, which it puts first (left).
+    expect(arranged.map((button) => [button.text, button.style])).toEqual([
+      ['اسحب الطلب', 'destructive'],
+      ['إلغاء', 'default'],
+    ]);
+    arranged[0].onPress?.();
+    expect(withdraw).toHaveBeenCalledTimes(1);
+  });
+
+  it("are iOS's own, which shows over any sheet, asked as given where nothing needs turning", () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const buttons = [{ text: 'إلغاء', style: 'cancel' as const }, { text: 'تمام' }];
+    dialog.alert('سؤال', 'تفاصيل', buttons);
+    expect(alert).toHaveBeenCalledWith('سؤال', 'تفاصيل', buttons);
+    alert.mockRestore();
+  });
+});
+
+describe("a stack page's bar", () => {
+  const app = {
+    _layout: () => (
+      <ThemeProvider>
+        <I18nProvider>
+          <Stack screenOptions={{ headerShown: false }} />
+        </I18nProvider>
+      </ThemeProvider>
+    ),
+    '(tabs)/_layout': () => <Stack screenOptions={{ headerShown: false }} />,
+    '(tabs)/(jobs)/_layout': TabStack,
+    '(tabs)/(jobs)/jobs/index': function Board() {
+      return (
+        <>
+          <Stack.Screen
+            options={{
+              title: 'الوظائف',
+              headerRight: () => (
+                <BarOnly>
+                  <Text>bell</Text>
+                </BarOnly>
+              ),
+            }}
+          />
+          <Text onPress={() => router.push('/jobs/one')}>open</Text>
+        </>
+      );
+    },
+    '(tabs)/(jobs)/jobs/[slug]': () => <Text>the listing</Text>,
+  };
+
+  it('is drawn inside the page, so it slides with it, its items once, and Back goes back', async () => {
+    renderRouter(app, { initialUrl: '/jobs' });
+    expect(await screen.findByText('الوظائف')).toBeTruthy();
+    // Once: not again in iOS's own bar, hidden under it.
+    expect(screen.getAllByText('bell')).toHaveLength(1);
+    // A tab's first page has nowhere to go back to.
+    expect(screen.queryByTestId('header-back')).toBeNull();
+
+    fireEvent.press(screen.getByText('open'));
+    expect(await screen.findByText('the listing')).toBeTruthy();
+    const back = screen.getByRole('button', { name: catalogues.ar.common.back });
+    fireEvent.press(back);
+    await waitFor(() => expect(screen.queryByText('the listing')).toBeNull());
+  });
+});
+
 describe('where the keyboard is given room', () => {
   // The root stack as the app has it, and the tabs' own stack; a plain stack stands in for the tab bar.
   const app = {
     _layout: () => (
       <ThemeProvider>
-        <Stack screenOptions={{ headerShown: false }} screenLayout={roomForScreen} />
+        <I18nProvider>
+          <Stack screenOptions={{ headerShown: false }} screenLayout={roomForScreen} />
+        </I18nProvider>
       </ThemeProvider>
     ),
     '(tabs)/_layout': () => <Stack screenOptions={{ headerShown: false }} />,

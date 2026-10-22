@@ -1,35 +1,44 @@
 import { useEffect, useRef } from 'react';
-import { Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { ActionSheetIOS, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
+import { VerifiedMark } from '~/components/companies/verified-mark';
 import { BadgeCheck, Building2, CalendarClock, CalendarX2, Eye, MapPin, Share2, Users } from '~/components/ui/lucide';
 import type { JobDetailResponse } from '@/lib/mobile-api/reads';
 import { formatDate, formatNumber } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import { isApproved, isCandidate } from '@/lib/permissions';
-import { withShareSource } from '@/lib/share-source';
 import { buildLandingSlug } from '@/lib/taxonomy';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { HiddenNotice } from '~/components/moderation/hide-company';
 import { ReportButton } from '~/components/moderation/report';
+import { SavedJobNote } from '~/components/saved/note-sheet';
 import { SaveJobButton } from '~/components/saved/save-controls';
 import { CompensationCard } from '~/components/jobs/compensation-card';
 import { JobCard } from '~/components/jobs/job-card';
 import { Badge } from '~/components/ui/badge';
+import { BarOnly } from '~/components/navigation/page-header';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { ForwardChevron } from '~/components/ui/icons';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
+import { recentJobs, useListOwner, viewedFrom } from '~/features/jobs/recent';
+import { ShareCardSheet } from './share-card';
 import { useAppliedJobIds } from '~/features/jobs/marks';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
+import { shareJobLink } from '~/features/jobs/share';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { callAction } from '~/lib/api';
-import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { useHasBoard } from '~/lib/use-tabs';
+import { useToBoard } from '~/features/jobs/to-board';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
+import { useSheet } from '~/lib/use-sheet';
 
 /**
  * One listing — the website's JobDetailView, in the order a phone reads it:
@@ -58,6 +67,7 @@ export function JobDetail({
   const tCompanies = useTranslations('companies');
   const tLanding = useTranslations('landing');
   const tApply = useTranslations('apply');
+  const shrink = useShrinkingTabBar();
   const { colors } = useTheme();
   const { session, viewer, actor } = useSession();
 
@@ -70,21 +80,47 @@ export function JobDetail({
   const canApply = !role || role === 'candidate';
   const applied = useAppliedJobIds([job.id]).has(job.id);
   const hasBoard = useHasBoard();
-  const similarShown = withoutHidden(similar, useHiddenCompanies());
+  const toBoard = useToBoard();
+  // Like it, and not already applied to: those are done with, as Home's suggestions leave them out.
+  const similarApplied = useAppliedJobIds(similar.map((item) => item.id));
+  const similarShown = withoutHiddenJobs(withoutHidden(similar, useHiddenCompanies()), useHiddenJobs()).filter((item) => !similarApplied.has(item.id));
 
   // A view is a reader opening an open listing, once per visit — the website
   // counts the page render the same way (recordJobView, after the response).
   const counted = useRef<string | null>(null);
+  // Kept on this phone for Home's "recently viewed" (features/jobs/recent.ts).
+  const owner = useListOwner();
+  useEffect(() => {
+    recentJobs.add(owner, viewedFrom(job));
+    // Once per listing opened; a refresh of the same page changes nothing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner, job.id]);
   useEffect(() => {
     if (!open || counted.current === job.slug) return;
     counted.current = job.slug;
     callAction('recordJobView', { slug: job.slug }).catch(() => {});
   }, [open, job.slug]);
 
+  const shareLink = () => shareJobLink({ slug: job.slug, title });
+  // The link, or the listing as a picture for a status or a story (share-card.tsx).
+  const card = useSheet();
+  const tApp = useTranslations('app.share');
+  const tCommon = useTranslations('common');
   const share = () => {
-    const url = withShareSource(`${env.siteUrl}/jobs/${job.slug}`);
-    // `url` is iOS's alone: Android shares the message, so there the link goes inside it.
-    Share.share(Platform.OS === 'ios' ? { message: title, url } : { message: `${title}\n${url}` }).catch(() => {});
+    const options = [tApp('asLink'), tApp('asImage'), tCommon('cancel')];
+    const pick = (index: number) => {
+      if (index === 0) shareLink();
+      if (index === 1) card.show();
+    };
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions({ options, cancelButtonIndex: 2 }, pick);
+    } else {
+      dialog.alert(t('share'), undefined, [
+        { text: options[0], onPress: () => pick(0) },
+        { text: options[1], onPress: () => pick(1) },
+        { text: options[2], style: 'cancel' },
+      ]);
+    }
   };
 
   return (
@@ -93,19 +129,23 @@ export function JobDetail({
         options={{
           title: '',
           headerRight: () => (
-            <Button
-              label={t('share')}
-              variant="ghost"
-              size="sm"
-              icon={<Share2 size={16} color={colors.foreground} />}
-              // The bar does not grow with the text: capped as the bell's count is.
-              maxFontSizeMultiplier={1.4}
-              onPress={share}
-            />
+            <BarOnly>
+              <Button
+                label={t('share')}
+                variant="ghost"
+                size="sm"
+                icon={<Share2 size={16} color={colors.foreground} />}
+                // The bar does not grow with the text: capped as the bell's count is.
+                maxFontSizeMultiplier={1.4}
+                onPress={share}
+              />
+            </BarOnly>
           ),
         }}
       />
+      {card.mounted ? <ShareCardSheet job={job} visible={card.open} onClose={card.hide} onDismiss={card.onDismiss} /> : null}
       <ScrollView
+        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
@@ -133,7 +173,9 @@ export function JobDetail({
                   {companyName}
                 </Text>
                 {job.company.verification_status === 'verified' ? (
-                  <Badge variant="accent" label={tCompanies('verified')} icon={<BadgeCheck size={12} color={colors.accentForeground} />} />
+                  <VerifiedMark>
+                    <Badge variant="accent" label={tCompanies('verified')} icon={<BadgeCheck size={12} color={colors.accentForeground} />} />
+                  </VerifiedMark>
                 ) : null}
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -180,7 +222,7 @@ export function JobDetail({
             <Text variant="small" tone="mutedForeground">
               {job.expires_at ? t('closedOn', { date: formatDate(job.expires_at, locale) }) : t('closedCtaBody')}
             </Text>
-            {hasBoard ? <Button label={t('browseOpen')} onPress={() => router.navigate('/jobs')} /> : null}
+            {hasBoard ? <Button label={t('browseOpen')} onPress={toBoard} /> : null}
           </Card>
         ) : !canApply ? (
           <Card>
@@ -217,6 +259,8 @@ export function JobDetail({
 
         {/* A bookmark is a candidate's; somebody signed out is sent to sign in. */}
         <SaveJobButton jobId={job.id} slug={job.slug} />
+        {/* Saved, it carries the candidate's own note, kept on this phone. */}
+        <SavedJobNote jobId={job.id} title={title} />
 
         <Section title={t('description')}>
           <Text selectable>{description}</Text>

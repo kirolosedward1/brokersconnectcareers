@@ -1,5 +1,5 @@
 import type { ReactNode, Ref } from 'react';
-import { Platform, ScrollView, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandLogo } from '~/components/brand/brand-logo';
 import { gutter, space } from '~/theme/tokens';
@@ -41,18 +41,23 @@ export function AuthScroll({ ref, children, bare = false }: { ref?: Ref<ScrollVi
 /**
  * The page's heading and the sentence under it, under the website's logo —
  * as the website's own sign-in page has it — so a sheet that asks for a
- * password says whose it is.
+ * password says whose it is. Centred over the page, a size under the app's
+ * largest titles: a sheet's heading, not a page's.
  */
 export function AuthHeading({ title, body }: { title: string; body?: string | null }) {
   return (
-    <View style={{ gap: space[1] }}>
-      <View style={{ alignItems: 'flex-start', marginBottom: space[4] }}>
+    <View style={{ gap: space[1], alignItems: 'center' }}>
+      <View style={{ marginBottom: space[3] }}>
         <BrandLogo size="form" />
       </View>
-      <Text variant="display" weight="bold" accessibilityRole="header">
+      <Text variant="display" weight="bold" accessibilityRole="header" style={styles.title}>
         {title}
       </Text>
-      {body ? <Text tone="mutedForeground">{body}</Text> : null}
+      {body ? (
+        <Text variant="small" tone="mutedForeground" style={styles.centred}>
+          {body}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -68,3 +73,8 @@ export function AuthSwitch({ question, action, onPress }: { question?: string; a
     </Text>
   );
 }
+
+const styles = StyleSheet.create({
+  centred: { textAlign: 'center' },
+  title: { textAlign: 'center', fontSize: 26, lineHeight: 38 },
+});

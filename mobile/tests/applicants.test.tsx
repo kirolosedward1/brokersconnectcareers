@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
-import { Linking, RefreshControl, Text } from 'react-native';
+import { Linking, Modal, RefreshControl, Text } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import type { ApplicationNoteRow, ProfileRow } from '@/lib/supabase/database.types';
 import type { Applicant } from '~/features/employer/applicants';
 import { parseInboxFilters } from '~/features/employer/applicants';
@@ -244,7 +244,8 @@ describe("a listing's applicants", () => {
 
     server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: false, error: 'moved_already' });
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` }));
-    fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.rejected }));
+    // The first move's sheet still sliding away: this one opens once it has gone.
+    fireEvent.press(await screen.findByRole('radio', { name: ar.applicationStatus.rejected }));
     expect(await screen.findByText(ar.employer.applicantMovedAlready)).toBeTruthy();
     // Put back: the card says where it stood.
     expect(screen.getByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` })).toBeTruthy();
@@ -322,7 +323,8 @@ describe("a listing's applicants", () => {
 
     // The next move carries the reason the card holds, not the hidden sentence.
     fireEvent.press(screen.getByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` }));
-    fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.rejected }));
+    // The first move's sheet still sliding away: this one opens once it has gone.
+    fireEvent.press(await screen.findByRole('radio', { name: ar.applicationStatus.rejected }));
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/setApplicationStatus')).toHaveLength(2));
     expect(input('/api/mobile/v1/actions/setApplicationStatus', 1)).toEqual({
       applicationId: sara.id,
@@ -584,6 +586,128 @@ describe('the inbox', () => {
     expect(screen.queryByText(ar.employer.applicantMovedAlready)).toBeNull();
   });
 
+  it('reviews the inbox one applicant at a time: shortlisted, the next one comes in, and the review ends after the last', async () => {
+    const moves: { applicationId: string; status: string; from: string }[] = [];
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', (_url: URL, init: RequestInit | undefined) => {
+      const move = (JSON.parse(String(init?.body)) as { input: { applicationId: string; status: Applicant['status']; from: string } }).input;
+      moves.push(move);
+      rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status } : row));
+      return { ok: true };
+    });
+    renderRouter(app, { initialUrl: '/employer/applicants' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
+
+    expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
+    const first = rows[0];
+    fireEvent.press(screen.getByRole('button', { name: ar.app.review.shortlist }));
+    await waitFor(() => expect(moves).toEqual([{ applicationId: first.id, status: 'shortlisted', decisionNote: null, from: 'new' }]));
+
+    // The second comes in; passed over, the review is done.
+    expect((await screen.findAllByText(rows[1].candidate?.full_name ?? '')).length).toBeGreaterThan(1);
+    fireEvent.press(screen.getAllByRole('button', { name: ar.app.review.done }).pop()!);
+    await waitFor(() => expect(screen.queryByRole('header', { name: ar.app.review.title })).toBeNull(), { timeout: 2000 });
+  });
+
+  it('shows one shortlisted in a review of the new as shortlisted when stepped back to, though the list no longer holds them', async () => {
+    const moves: { applicationId: string; status: string; from: string }[] = [];
+    rows = [sara, layla];
+    server.on('GET /rest/v1/applications', (url: URL) => {
+      if (url.searchParams.get('select')?.startsWith('status,')) return rows.map((row) => ({ status: row.status }));
+      // Narrowed to a stage: only those in it.
+      const stage = url.searchParams.get('status')?.replace(/^eq\./, '');
+      const shown = stage ? rows.filter((row) => row.status === stage) : rows;
+      return { body: shown, headers: { 'content-range': `0-${shown.length - 1}/${shown.length}` } };
+    });
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', (_url: URL, init: RequestInit | undefined) => {
+      const move = (JSON.parse(String(init?.body)) as { input: { applicationId: string; status: Applicant['status']; from: string } }).input;
+      moves.push(move);
+      rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status } : row));
+      return { ok: true };
+    });
+    renderRouter(app, { initialUrl: '/employer/applicants?stage=new' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
+    expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: ar.app.review.shortlist }));
+    await waitFor(() => expect(moves).toHaveLength(1));
+    // Read again: the stage no longer lists her.
+    await waitFor(() => expect(server.asked('/rest/v1/applications').filter((r) => r.url.searchParams.get('status') === 'eq.new').length).toBeGreaterThan(1));
+    await act(async () => {});
+
+    fireEvent.press(screen.getByRole('button', { name: ar.app.review.previous }));
+    expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.shortlisted}` })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.app.review.shortlist })).toBeNull();
+    expect(moves).toHaveLength(1);
+  });
+
+  it("opens an applicant's profile from the review once the review has gone, not under it", async () => {
+    const result = renderRouter(app, { initialUrl: '/employer/applicants' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
+    expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
+    const review = () => screen.UNSAFE_getAllByType(Modal).find((modal) => modal.props.presentationStyle === 'pageSheet');
+
+    // The review's own copy of the card: drawn before the inbox's list.
+    fireEvent.press(screen.getAllByHintText(ar.agents.viewProfile)[0]);
+    expect(review()?.props.visible).toBe(false);
+    expect(result.getPathname()).toBe('/employer/applicants');
+
+    // iOS says it has gone.
+    act(() => review()?.props.onDismiss());
+    await waitFor(() => expect(result.getPathname()).toBe('/agents/sara-a1b2'));
+  });
+
+  it("keeps a touch in the replies or the stage picker from the applicant's row they are drawn in, which swipes", async () => {
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.replies.open}: سارة عادل` }));
+    await screen.findByLabelText(ar.app.replies.new);
+    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` }));
+    // The two open: the replies, and the stage picker over them.
+    const sheets = screen.UNSAFE_getAllByType(Modal).filter((modal) => modal.props.presentationStyle === 'pageSheet' && modal.props.visible);
+    expect(sheets).toHaveLength(2);
+    for (const sheet of sheets) {
+      // The first view drawn in the sheet that settles touches at all: its outermost.
+      const outermost = sheet.findAll((node) => typeof node.props.onResponderTerminationRequest === 'function')[0] as unknown as {
+        props: Record<string, (event: never) => boolean>;
+      };
+      expect(outermost.props.onStartShouldSetResponder?.({} as never)).toBe(true);
+      expect(outermost.props.onResponderTerminationRequest?.({} as never)).toBe(false);
+    }
+  });
+
+  it("keeps the saved replies' new box above the keyboard", async () => {
+    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.replies.open}: سارة عادل` }));
+    let node = (await screen.findByLabelText(ar.app.replies.new)).parent;
+    while (node && node.props.keyboardShouldPersistTaps === undefined) node = node.parent;
+    expect(node?.props.automaticallyAdjustKeyboardInsets).toBe(true);
+    expect(node?.props.keyboardDismissMode).toBe('interactive');
+  });
+
+  it('shows in the search box the words a link narrows the inbox by', async () => {
+    renderRouter(app, { initialUrl: '/employer/applicants' });
+    expect((await screen.findByLabelText(ar.employer.searchApplicants)).props.value).toBe('');
+    // Sent here again, narrowed, with the tab still open.
+    act(() => router.setParams({ q: 'سارة' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.employer.searchApplicants).props.value).toBe('سارة'));
+  });
+
+  it('begins a review started again at its first applicant, even as the last one is still closing', async () => {
+    renderRouter(app, { initialUrl: '/employer/applicants' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
+    expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
+    const review = () => screen.UNSAFE_getAllByType(Modal).find((modal) => modal.props.presentationStyle === 'pageSheet');
+    const shown = () => review()?.findAllByProps({ accessibilityRole: 'progressbar' })[0]?.props.accessibilityValue?.now;
+    const first = shown();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.review.next }));
+    expect(shown()).toBeGreaterThan(first);
+
+    fireEvent.press(within(review()!).getByRole('button', { name: ar.common.close }));
+    fireEvent.press(screen.getByRole('button', { name: ar.app.review.start }));
+    act(() => review()?.props.onDismiss());
+    await waitFor(() => expect(review()?.props.visible).toBe(true));
+    expect(shown()).toBe(first);
+  });
+
   it('takes in a new applicant with a pull', async () => {
     renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByText('سارة عادل')).toBeTruthy();
@@ -638,13 +762,23 @@ describe('the inbox', () => {
     await waitFor(() => expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false));
   });
 
+  it('finds a name however Arabic spells its alef and its last letter', async () => {
+    const result = renderRouter(app, { initialUrl: '/employer/applicants' });
+    fireEvent.changeText(await screen.findByLabelText(ar.employer.searchApplicants), 'احمد مصطفي');
+    fireEvent(screen.getByLabelText(ar.employer.searchApplicants), 'submitEditing');
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'احمد مصطفي' }));
+    await waitFor(() =>
+      expect(server.asked('/rest/v1/applications').some((request) => request.url.searchParams.get('candidate.full_name') === 'ilike.%_حمد مصطف_%')).toBe(true),
+    );
+  });
+
   it('searches by name, with LIKE’s own characters taken as typed', async () => {
     const result = renderRouter(app, { initialUrl: '/employer/applicants' });
     fireEvent.changeText(await screen.findByLabelText(ar.employer.searchApplicants), 'سارة_1%');
     fireEvent(screen.getByLabelText(ar.employer.searchApplicants), 'submitEditing');
     await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'سارة_1%' }));
     await waitFor(() =>
-      expect(server.asked('/rest/v1/applications').some((request) => request.url.searchParams.get('candidate.full_name') === 'ilike.%سارة\\_1\\%%')).toBe(
+      expect(server.asked('/rest/v1/applications').some((request) => request.url.searchParams.get('candidate.full_name') === 'ilike.%س_رة\\_1\\%%')).toBe(
         true,
       ),
     );

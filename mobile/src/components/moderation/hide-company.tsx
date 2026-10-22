@@ -1,4 +1,4 @@
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { EyeOff } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
@@ -8,6 +8,7 @@ import { hideAgent, unhideAgent, useHiddenAgents } from '~/features/moderation/h
 import { hideCompany, unhideCompany, useHiddenCompanies } from '~/features/moderation/hidden-companies';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * "Hide this company", asked once with what it does (see hidden-companies.ts).
@@ -35,7 +36,7 @@ export function HideCompany({
       variant="ghost"
       icon={<EyeOff size={16} color={colors.foreground} />}
       onPress={() =>
-        Alert.alert(t('app.moderation.hideTitle', { company: companyName }), t('app.moderation.hideBody'), [
+        dialog.alert(t('app.moderation.hideTitle', { company: companyName }), t('app.moderation.hideBody'), [
           { text: t('common.cancel'), style: 'cancel' },
           {
             text: t('app.moderation.hideConfirm'),
@@ -81,7 +82,7 @@ export function HideAgent({ agentId, name, slug }: { agentId: string; name: stri
       variant="ghost"
       icon={<EyeOff size={16} color={colors.foreground} />}
       onPress={() =>
-        Alert.alert(t('app.moderation.hideAgentTitle', { name }), t('app.moderation.hideAgentBody'), [
+        dialog.alert(t('app.moderation.hideAgentTitle', { name }), t('app.moderation.hideAgentBody'), [
           { text: t('common.cancel'), style: 'cancel' },
           // Its own word: the company's is feminine in Arabic, a consultant's is not.
           { text: t('app.moderation.hideAgentConfirm'), style: 'destructive', onPress: () => hideAgent(agentId, { name, slug }) },

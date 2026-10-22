@@ -1,24 +1,15 @@
-import { useEffect, useSyncExternalStore } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSyncExternalStore } from 'react';
 
 /**
- * Whether the welcome has had its answer on this phone: the reader chose to
- * look around without an account, or signed in. Until then, a signed-out
- * launch opens on it (src/app/welcome.tsx, src/components/navigation/welcome-gate.tsx);
- * after, never again — signing out later leads to Account's own sign-in.
- *
- * `unknown` until the phone has answered; a phone that cannot answer counts
- * as answered, so a storage failure never shows the welcome on every launch.
- *
- * The second welcome (Skip at the top, the emblem) asks again on a phone that
- * answered the first, once.
+ * The welcome (src/app/welcome.tsx) opens whenever nobody is signed in: at
+ * every launch of the app as itself (src/components/navigation/welcome-gate.tsx),
+ * and again when the reader signs out. Skipping it closes it until the app is
+ * next started; signing in closes it with the sign-in sheet. Nothing about it
+ * is kept on the phone.
  */
-export const WELCOME_KEY = 'bc.welcome.v2';
 
-export type WelcomeState = 'unknown' | 'due' | 'done';
-
-let state: WelcomeState = 'unknown';
-let loading: Promise<void> | null = null;
+let drawn = false;
+let opens = true;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -32,36 +23,6 @@ function subscribe(listener: () => void) {
   };
 }
 
-function load(): Promise<void> {
-  loading ??= AsyncStorage.getItem(WELCOME_KEY)
-    .then((stored) => {
-      if (state === 'unknown') state = stored === 'done' ? 'done' : 'due';
-    })
-    .catch(() => {
-      if (state === 'unknown') state = 'done';
-    })
-    .finally(emit);
-  return loading;
-}
-
-export function useWelcomeState(): WelcomeState {
-  useEffect(() => {
-    void load();
-  }, []);
-  return useSyncExternalStore(subscribe, () => state);
-}
-
-/** The welcome has its answer: kept, so it is not asked again. */
-export function welcomeAnswered() {
-  if (state !== 'done') {
-    state = 'done';
-    emit();
-  }
-  AsyncStorage.setItem(WELCOME_KEY, 'done').catch(() => {});
-}
-
-let drawn = false;
-
 /** The welcome is on screen: the splash screen can come down onto it (the root layout). */
 export function welcomeDrawn() {
   if (!drawn) {
@@ -74,9 +35,13 @@ export function useWelcomeDrawn(): boolean {
   return useSyncExternalStore(subscribe, () => drawn);
 }
 
-/** For tests: the state a fresh install has. */
-export function resetWelcomeForTests() {
-  state = 'unknown';
-  loading = null;
+/** Whether the welcome opens at all: always in the app; a test of something else turns it off. */
+export function welcomeOpens(): boolean {
+  return opens;
+}
+
+/** For tests: a fresh launch, with the welcome opening as it does in the app or, `false`, never. */
+export function resetWelcomeForTests(open = true) {
   drawn = false;
+  opens = open;
 }

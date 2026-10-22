@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
-import { AccessibilityInfo, Alert, Modal, Pressable, Text, type AlertButton } from 'react-native';
+import { AccessibilityInfo, Alert, Keyboard, Modal, Pressable, Text, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { AgentExperienceRow, AgentProfileRow } from '@/lib/supabase/database.types';
+import { monthNames } from '~/components/ui/month-field';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -379,6 +380,13 @@ describe('the profile', () => {
     expect(screen.queryByLabelText(ar.onboarding.fullName)).toBeNull();
   });
 
+  it('never offers the form over developers it could not read, which a save would wipe', async () => {
+    server.on('GET /rest/v1/agent_developers', { status: 500, body: { message: 'boom' } });
+    open();
+    expect(await screen.findByText(ar.common.error)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.onboarding.fullName)).toBeNull();
+  });
+
   it('offers the form to somebody with no profile yet, and says what comes after', async () => {
     agent = null;
     open();
@@ -407,6 +415,25 @@ describe('the profile', () => {
 });
 
 describe('the sales record', () => {
+  it('keeps up with the figures stored since it was filled, and sends them, not the old ones', async () => {
+    open();
+    expect((await screen.findByLabelText(ar.cv.unitsClosed)).props.value).toBe('');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.objective), 'بيع الوحدات الجاهزة في التجمع');
+
+    // Changed on the website meanwhile; read again after the profile's own save.
+    agent = { ...(agent as AgentProfileRow), units_closed: 40, volume_egp: 9000000 };
+    fireEvent.press(saveButton());
+    await waitFor(() => expect(screen.getByLabelText(ar.cv.unitsClosed).props.value).toBe('40'));
+    expect(screen.getByLabelText(ar.cv.objective).props.value).toBe('بيع الوحدات الجاهزة في التجمع');
+
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/saveProfileRecord')).toEqual({
+        input: { summaryAr: 'بيع الوحدات الجاهزة في التجمع', unitsClosed: 40, volumeEgp: 9000000 },
+      }),
+    );
+  });
+
   it('saves the objective and the figures, in either set of digits', async () => {
     open();
     fireEvent.changeText(await screen.findByLabelText(ar.cv.unitsClosed), '12');
@@ -420,13 +447,24 @@ describe('the sales record', () => {
   });
 });
 
+/** A month picked as a reader does: the field, then its year, then the month. */
+function pickMonth(field: string, year: number, month: number) {
+  fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${field}: `) }));
+  fireEvent.press(screen.getByRole('radio', { name: String(year) }));
+  fireEvent.press(screen.getByRole('radio', { name: `${monthNames('ar')[month - 1]} ${year}` }));
+  // iOS says the sheet has slid away: until it does, no other sheet may open (src/lib/sheet-gate.ts).
+  for (const modal of screen.UNSAFE_getAllByType(Modal)) {
+    if (!modal.props.visible) act(() => modal.props.onDismiss?.());
+  }
+}
+
 describe('the CV sections', () => {
   it('adds a job from a sheet, dated by its month', async () => {
     open();
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'سيتي سكيب');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
+    pickMonth(ar.cv.started, 2023, 5);
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
 
     await waitFor(() =>
@@ -475,7 +513,7 @@ describe('the CV sections', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), '  سيتي سكيب ');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
+    pickMonth(ar.cv.started, 2023, 5);
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
 
     // The database has it: the sheet closes, and nothing is sent twice.
@@ -489,7 +527,7 @@ describe('the CV sections', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'بالم هيلز');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مستشار مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2022-01');
+    pickMonth(ar.cv.started, 2022, 1);
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
     expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
     expect(screen.getByLabelText(ar.cv.company).props.value).toBe('بالم هيلز');
@@ -529,13 +567,51 @@ describe('the CV sections', () => {
     );
   });
 
+  it('takes an end in the month the job started, and a start kept from the website this month — months, not days', async () => {
+    const today = new Date();
+    const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    // Started on the 28th of this month, as the website keeps it.
+    server.on('GET /rest/v1/agent_experience', [{ ...job, started: `${thisMonth}-28` }]);
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.profile.edit}: ${job.title} · ${job.company_name}` }));
+    pickMonth(ar.cv.ended, today.getFullYear(), today.getMonth() + 1);
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/saveExperience')?.input).toMatchObject({ started: `${thisMonth}-28`, ended: `${thisMonth}-01` }),
+    );
+    expect(screen.queryByText(ar.app.profile.notFuture)).toBeNull();
+    expect(screen.queryByText(ar.app.profile.endBeforeStart)).toBeNull();
+  });
+
+  it('puts the keyboard away when a choice or a month is to be picked, so the sheet is not under it', async () => {
+    open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
+    const dismiss = jest.spyOn(Keyboard, 'dismiss');
+    try {
+      fireEvent.press(screen.getByRole('button', { name: `${ar.cv.track}: —` }));
+      expect(dismiss).toHaveBeenCalledTimes(1);
+      for (const modal of screen.UNSAFE_getAllByType(Modal)) {
+        if (modal.props.visible && modal.props.presentationStyle === 'pageSheet') act(() => modal.props.onRequestClose?.());
+      }
+      for (const modal of screen.UNSAFE_getAllByType(Modal)) {
+        if (!modal.props.visible) act(() => modal.props.onDismiss?.());
+      }
+      fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${ar.cv.started}: `) }));
+      expect(dismiss).toHaveBeenCalledTimes(2);
+    } finally {
+      dismiss.mockRestore();
+    }
+  });
+
   it('catches an end before the start, before sending anything — in view in the sheet, and said', async () => {
     open();
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'سيتي سكيب');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.ended), '2022-01');
+    pickMonth(ar.cv.started, 2023, 5);
+    pickMonth(ar.cv.ended, 2022, 1);
     const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
     announce.mockClear();
     const layout = placeViewsAt(320);
