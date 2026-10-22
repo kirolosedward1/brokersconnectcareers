@@ -16,8 +16,8 @@ export type TabName =
 const PUBLIC: readonly TabName[] = ['home', 'jobs', 'companies', 'account'];
 const CANDIDATE: readonly TabName[] = ['home', 'jobs', 'applications', 'saved', 'account'];
 const EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'consultants', 'account'];
-const ADMIN: readonly TabName[] = ['home', 'jobs', 'companies', 'admin', 'account'];
-const ADMIN_EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'admin', 'account'];
+/** The console first, so it is the tab the app opens on, then the account. */
+const ADMIN: readonly TabName[] = ['admin', 'account'];
 
 /**
  * The tab bar each person has, in order — decided by src/lib/permissions.ts,
@@ -27,11 +27,12 @@ const ADMIN_EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'a
  * directory, which is still a tap away from home (five tabs is what fits).
  * An employer's is theirs: the overview at home, their listings, their
  * applicants, the consultant directory, and the account — where the company,
- * its team and its billing are kept. An admin's has the console (the website's
- * /admin queues) beside the public site's tabs — or, for an admin who also
- * runs a company, in the directory's place beside that company's console;
- * the directory and the shortlist then open inside the Admin tab
- * ((consultants,admin) in the routes, links.ts).
+ * its team and its billing are kept. An admin's is the console alone, then
+ * the account — whether or not they also run a company. The company's page
+ * and its billing stay in the account. A listing, a company, the consultant
+ * directory and the shortlist opened from the console (or from a link) open
+ * inside the Admin tab ((consultants,admin) and the shared stack in the
+ * routes, links.ts), never in a tab the bar does not have.
  *
  * The bar changes with the role, never with the standing. Every tab's screens
  * are drawn again whenever the set of tabs changes, so a Consultants tab that
@@ -45,7 +46,16 @@ const ADMIN_EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'a
  * one must be decided before it is opened — see routeFromOutside in links.ts.
  */
 export function tabsFor(actor: Actor): readonly TabName[] {
-  if (canAccessAdminArea(actor)) return canAccessEmployerArea(actor) ? ADMIN_EMPLOYER : ADMIN;
+  if (canAccessAdminArea(actor)) return ADMIN;
   if (canAccessEmployerArea(actor)) return EMPLOYER;
   return canAccessCandidateArea(actor) ? CANDIDATE : PUBLIC;
+}
+
+/**
+ * Where the app opens for this person, and where a path into a tab they do
+ * not have falls back to: the console for an admin (it is the first tab),
+ * Home for everyone else.
+ */
+export function startPath(actor: Actor): '/admin' | '/' {
+  return tabsFor(actor)[0] === 'admin' ? '/admin' : '/';
 }

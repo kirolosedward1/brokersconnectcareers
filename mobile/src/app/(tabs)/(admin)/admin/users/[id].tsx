@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams, type Href } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDate, formatDateTime, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
@@ -12,6 +12,7 @@ import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
+import { ForwardChevron } from '~/components/ui/icons';
 import {
   Ban,
   Check,
@@ -34,7 +35,9 @@ import { Segmented } from '~/components/ui/segmented';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAccountFile, type AccountFile, type AccountMembership } from '~/features/admin/accounts';
+import { inOwnTab } from '~/lib/links';
 import { useSession } from '~/lib/session';
+import { tabsFor } from '~/lib/tabs';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
@@ -154,8 +157,12 @@ function Facts({ children }: { children: ReactNode }) {
   return <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space[3], columnGap: space[4] }}>{children}</View>;
 }
 
-/** A row that opens a page of the website's console. */
-function WebsiteRow({ label, onPress, children }: { label: string; onPress: () => void; children: ReactNode }) {
+/**
+ * A row that opens somewhere: a page in this tab (`external` false — the
+ * public company or consultant, which an admin's bar has no tab of its own
+ * for) or a page of the website's console.
+ */
+function WebsiteRow({ label, onPress, external = true, children }: { label: string; onPress: () => void; external?: boolean; children: ReactNode }) {
   const { colors } = useTheme();
   return (
     <Pressable
@@ -171,7 +178,7 @@ function WebsiteRow({ label, onPress, children }: { label: string; onPress: () =
       })}
     >
       <View style={{ flex: 1, gap: 2 }}>{children}</View>
-      <ExternalLink size={16} color={colors.mutedForeground} />
+      {external ? <ExternalLink size={16} color={colors.mutedForeground} /> : <ForwardChevron size={16} color={colors.mutedForeground} />}
     </Pressable>
   );
 }
@@ -191,7 +198,9 @@ function Overview({
   const t = useTranslations();
   const locale = useLocale();
   const roleLabel = useRoleLabel();
+  const actor = useSession().actor;
   const { profile, memberships, agent } = account;
+  const openHere = (path: string) => router.push(inOwnTab(path, tabsFor(actor)) as Href);
   const companies = memberships.filter(
     (membership): membership is AccountMembership & { company: NonNullable<AccountMembership['company']> } => Boolean(membership.company),
   );
@@ -221,7 +230,16 @@ function Overview({
           {companies.map((membership) => {
             const name = localized(locale, membership.company.name_ar, membership.company.name_en);
             return (
-              <WebsiteRow key={membership.company.id} label={name} onPress={() => openOnWebsite(`/admin/companies/${membership.company.id}`)}>
+              <WebsiteRow
+                key={membership.company.id}
+                label={name}
+                external={!membership.company.slug}
+                onPress={() =>
+                  membership.company.slug
+                    ? openHere(`/companies/${membership.company.slug}`)
+                    : openOnWebsite(`/admin/companies/${membership.company.id}`)
+                }
+              >
                 <Text weight="medium" tone="primary">
                   {name}
                 </Text>
@@ -244,7 +262,7 @@ function Overview({
       {agent ? (
         <Card style={{ gap: space[2] }}>
           <SectionTitle>{t('admin.agentProfile')}</SectionTitle>
-          <WebsiteRow label={agent.slug} onPress={() => openOnWebsite(`/admin/agents/${agent.id}`)}>
+          <WebsiteRow label={agent.slug} external={false} onPress={() => openHere(`/agents/${agent.slug}`)}>
             <Text weight="medium" tone="primary" style={{ writingDirection: 'ltr' }}>
               {agent.slug}
             </Text>
@@ -548,21 +566,35 @@ function Activity({ account, self }: { account: AccountFile; self: boolean }) {
                 {t('admin.noApplications')}
               </Text>
             ) : (
-              applications.map((application) => (
-                <View key={application.id} style={{ gap: 2, padding: space[3], ...corner('lg'), backgroundColor: colors.muted }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] }}>
-                    <Text variant="small" weight="medium" style={{ flex: 1 }}>
-                      {application.job ? localized(locale, application.job.title_ar, application.job.title_en) : '—'}
+              applications.map((application) => {
+                const job = application.job;
+                const title = job ? localized(locale, job.title_ar, job.title_en) : '—';
+                const body = (
+                  <View style={{ gap: 2, padding: space[3], ...corner('lg'), backgroundColor: colors.muted }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] }}>
+                      <Text variant="small" weight="medium" style={{ flex: 1 }}>
+                        {title}
+                      </Text>
+                      <Badge variant="outline" label={t(`applicationStatus.${application.status}`)} />
+                    </View>
+                    <Text variant="caption" tone="mutedForeground">
+                      {job ? `${t(`jobStatus.${job.status}`)} · ${formatDate(application.created_at, locale)}` : formatDate(application.created_at, locale)}
                     </Text>
-                    <Badge variant="outline" label={t(`applicationStatus.${application.status}`)} />
                   </View>
-                  <Text variant="caption" tone="mutedForeground">
-                    {application.job
-                      ? `${t(`jobStatus.${application.job.status}`)} · ${formatDate(application.created_at, locale)}`
-                      : formatDate(application.created_at, locale)}
-                  </Text>
-                </View>
-              ))
+                );
+                // The listing's review, in this tab. A job that has gone is just the title.
+                if (!job) return <View key={application.id}>{body}</View>;
+                return (
+                  <Pressable
+                    key={application.id}
+                    accessibilityRole="link"
+                    accessibilityLabel={title}
+                    onPress={() => router.push({ pathname: '/admin/jobs/[id]', params: { id: job.id } })}
+                  >
+                    {body}
+                  </Pressable>
+                );
+              })
             )}
           </Card>
 

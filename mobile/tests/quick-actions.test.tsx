@@ -246,5 +246,17 @@ describe('the shortcuts held from the app icon', () => {
       '/employer/jobs',
     ]);
     expect(hrefs(null)).toEqual(['/jobs', '/companies']);
+    expect(hrefs({ userId: 'u', profile: { role: 'admin', approval_status: 'approved' }, company: null })).toEqual([
+      '/admin/jobs',
+      '/admin/reports',
+      '/admin/users',
+    ]);
+    expect(
+      hrefs({
+        userId: 'u',
+        profile: { role: 'admin', approval_status: 'approved' },
+        company: { id: 'c', verification_status: 'verified' },
+      }),
+    ).toEqual(['/admin/jobs', '/admin/reports', '/admin/users']);
   });
 });

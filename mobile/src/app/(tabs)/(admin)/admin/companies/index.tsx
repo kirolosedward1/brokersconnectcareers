@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Pressable, View } from 'react-native';
+import { router, Stack, type Href } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
@@ -18,6 +18,9 @@ import { usePendingCompanies, type QueueCompany } from '~/features/admin/queries
 import { useTabList } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
 import { callAction } from '~/lib/api';
+import { inOwnTab } from '~/lib/links';
+import { useSession } from '~/lib/session';
+import { tabsFor } from '~/lib/tabs';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
@@ -81,6 +84,7 @@ function CompanyRow({ company }: { company: QueueCompany }) {
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const actor = useSession().actor;
   const name = localized(locale, company.name_ar, company.name_en);
   // How long the papers have waited: the oldest of them, not the company's age.
   const waited = daysSince(company.company_documents.map((doc) => doc.created_at).sort()[0] ?? company.created_at);
@@ -114,7 +118,15 @@ function CompanyRow({ company }: { company: QueueCompany }) {
   return (
     <Card style={{ gap: space[3] }}>
       <View style={{ gap: 2 }}>
-        <Text weight="semibold">{name}</Text>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={name}
+          onPress={() => router.push(inOwnTab(`/companies/${company.slug}`, tabsFor(actor)) as Href)}
+        >
+          <Text weight="semibold" tone="primary">
+            {name}
+          </Text>
+        </Pressable>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <Clock size={14} color={waited >= 1 ? colors.destructive : colors.mutedForeground} />
           <Text variant="caption" tone={waited >= 1 ? 'destructive' : 'mutedForeground'}>

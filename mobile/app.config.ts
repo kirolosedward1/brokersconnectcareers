@@ -26,6 +26,14 @@ function commitSha(): string | undefined {
  * Arabic only, right to left, like the website while ENGLISH_ENABLED is false.
  * The day English is published, `forcesRTL` goes and the language switch
  * decides the direction at run time.
+ *
+ * The blue gear floating over the header is the Expo dev menu
+ * (expo-dev-menu's floating button), not a control in this app. That menu is
+ * compiled into debug builds only (`apple.debugOnly` on the module). The
+ * `development` and `development-simulator` profiles in eas.json set
+ * `developmentClient: true`, which builds that debug client. `preview` and
+ * `production` set it to false, so those builds are standalone releases and
+ * do not include the menu.
  */
 const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? 'https://www.brokersconnect.net';
 const SITE_HOST = new URL(SITE_URL).host;
