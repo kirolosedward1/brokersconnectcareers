@@ -8,11 +8,13 @@ import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
+import { PasswordField } from '~/components/ui/password-field';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useAuthErrorText } from '~/features/auth/errors';
 import { callAction } from '~/lib/api';
 import { EMAIL_SHAPE } from '~/lib/email-shape';
+import { useErrorFeedback } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
@@ -31,6 +33,7 @@ export function EmailSettings({ email }: { email: string }) {
   const authError = useAuthErrorText();
   const [next, setNext] = useState(email);
   const [error, setError] = useState<string | null>(null);
+  useErrorFeedback(error);
   const [sent, setSent] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -100,6 +103,7 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  useErrorFeedback(error);
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
   // The return key moves on to the second password, and from there saves.
@@ -183,31 +187,25 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
       {hasPassword ? (
         <>
           <Field label={t('account.newPassword')}>
-            <TextField
+            <PasswordField
               value={password}
               onChangeText={setPassword}
               accessibilityLabel={t('account.newPassword')}
-              ltr
-              secureTextEntry
               textContentType="newPassword"
               autoComplete="new-password"
-              autoCapitalize="none"
               returnKeyType="next"
               submitBehavior="submit"
               onSubmitEditing={() => confirmField.current?.focus()}
             />
           </Field>
           <Field label={t('auth.passwordConfirm')} error={error}>
-            <TextField
+            <PasswordField
               ref={confirmField}
               value={confirm}
               onChangeText={setConfirm}
               accessibilityLabel={t('auth.passwordConfirm')}
-              ltr
-              secureTextEntry
               textContentType="newPassword"
               autoComplete="new-password"
-              autoCapitalize="none"
               returnKeyType="go"
               onSubmitEditing={() => {
                 if (!pending) void save();
