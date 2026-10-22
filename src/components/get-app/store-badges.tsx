@@ -19,6 +19,10 @@ import { cn } from '@/lib/utils';
 const BADGE =
   'relative inline-flex h-12 items-center gap-2.5 rounded-lg border px-3 text-white [&_svg]:shrink-0';
 
+/** The live badge answers the pointer: a touch larger and brighter under it, a touch smaller as it is pressed. */
+const LIVE =
+  'border-[#a6a6a6] bg-black transition-[transform,filter] duration-150 ease-out hover:scale-[1.03] hover:brightness-125 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:scale-100';
+
 function BadgeText({ top, name }: { top: string; name: string }) {
   return (
     <span className="flex flex-col text-start">
@@ -64,7 +68,7 @@ export function AppStoreBadge({
     <a
       href={href}
       aria-label={label}
-      className={cn(BADGE, 'border-[#a6a6a6] bg-black transition-opacity hover:opacity-85', className)}
+      className={cn(BADGE, LIVE, className)}
     >
       <AppleMark />
       <BadgeText top={top} name="App Store" />

@@ -1476,13 +1476,15 @@
   "appPage": {
     "meta": {
       "title": "Get the Brokers Connect app",
-      "description": "Real estate sales jobs across Egypt, on your phone: the salary and commission in figures, the lead source named on every listing, and one-tap applications.",
+      "description": "Real estate sales jobs across Egypt, on your phone: the salary and commission in figures on every listing, who supplies the leads, and one-tap applications.",
       "ogAlt": "The Brokers Connect app on an iPhone"
     },
     "hero": {
+      "eyebrow": "The Brokers Connect app · iPhone · in Arabic",
       "title": "Brokers Connect, now in your pocket",
-      "subtitle": "The same board, on your phone: every listing with the basic salary and the commission in figures and the name of who supplies the leads, one-tap applications, and a notification the moment a company moves yours.",
-      "note": "No fees for candidates. The app is in Arabic."
+      "subtitle": "The board, your applications and the companies that are hiring, with the basic salary and the commission in figures on every listing.",
+      "note": "No fees for candidates.",
+      "showScreen": "Show screen {n} of {total}"
     },
     "badges": {
       "appStoreTop": "Download on the",
@@ -1492,29 +1494,50 @@
       "comingSoon": "Coming soon"
     },
     "screens": {
-      "title": "A look inside",
-      "subtitle": "The screens a consultant lives in: the board, their applications, what they saved, and their profile in the directory.",
+      "title": "What is on the screen",
+      "subtitle": "Five screens, as a consultant uses them.",
+      "list": "The app’s screens",
+      "prev": "Previous screen",
+      "next": "Next screen",
+      "alt": "The {screen} screen of the Brokers Connect app",
+      "welcome": "Welcome",
       "home": "Home",
+      "homeBody": "Search from the first screen, or browse by district with the number of open roles in each.",
       "jobs": "Jobs",
-      "applications": "Applications",
-      "saved": "Saved",
-      "profile": "Profile",
-      "alt": "The {screen} screen of the Brokers Connect app"
+      "jobsBody": "Sort by newest or by pay, filter by track, district and lead source. Every card shows the terms.",
+      "listing": "The listing",
+      "listingBody": "The basic salary, the commission and who supplies the leads, before you apply. Then one tap to apply.",
+      "companies": "Companies",
+      "companiesBody": "Who is hiring right now, with the verified companies marked.",
+      "company": "The company",
+      "companyBody": "Where it is, how big it is, its open roles, and a follow button so its next role reaches you."
     },
     "features": {
-      "title": "Made for a consultant on the move",
+      "title": "What the phone adds",
       "payTitle": "Pay in figures",
-      "payBody": "Every listing says the basic salary and the commission in numbers, and who supplies the leads — before you apply.",
+      "payBody": "The basic salary, the commission and the lead source on every listing. Never “attractive package”.",
       "applyTitle": "Apply in a minute",
       "applyBody": "Your details and your CV are saved, so every application after the first is one tap.",
-      "followTitle": "Follow every application",
-      "followBody": "A notification on your phone when a company opens your application, shortlists you or invites you to an interview.",
+      "followTitle": "Hear when it moves",
+      "followBody": "A notification when a company opens your application, shortlists you or asks for an interview, and when a new role matches a saved search.",
       "profileTitle": "Your profile, your call",
       "profileBody": "Your areas, your sales record and your CV in the consultant directory, for approved companies to find. You decide whether it is shown."
     },
+    "appearance": {
+      "title": "On your phone, your way",
+      "subtitle": "Light or dark, and your own text size. The app follows the phone’s settings.",
+      "legend": "Appearance",
+      "light": "Light",
+      "dark": "Dark",
+      "large": "Large text",
+      "alt": "The Brokers Connect app’s home screen, {appearance}",
+      "altLight": "in the light appearance",
+      "altDark": "in the dark appearance",
+      "altLarge": "at the largest text size"
+    },
     "band": {
-      "title": "Ready? Get Brokers Connect",
-      "body": "On iPhone today. The Android app is on its way."
+      "title": "Get Brokers Connect",
+      "body": "On iPhone now. Android is next."
     }
   },
   "blog": {
