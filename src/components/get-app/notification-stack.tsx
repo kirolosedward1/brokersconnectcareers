@@ -6,27 +6,34 @@ import { cn } from '@/lib/utils';
 import { PhoneFrame, Screenshot } from '@/components/get-app/phone-frame';
 
 /**
- * The four notifications the app sends, as the cards a phone shows them in,
- * sliding in one after another over a dimmed Home screen once the section
- * is in view. Under reduced motion they are simply there.
+ * Four notifications, as a phone shows them, sliding in one after another
+ * over a blurred Home screen once the section is in view. Under reduced
+ * motion they are simply there.
  *
- * Drawn, not captured: the simulator run is signed out and sees none. No
- * company is named in them.
+ * The words are the app's own: each card is built from the same catalogue
+ * keys the bell, the feed and the push use (lib/notifications/title.ts),
+ * with a sample job title and saved search in them — never a company's
+ * name. Drawn, not captured, because the capture run is signed out and
+ * sees none.
+ *
+ * The screen behind is blurred as well as dimmed, so no half-legible line
+ * of it shows between two cards.
  */
 export function NotificationStack({
   screen,
-  screenAlt,
   appName,
   now,
   items,
+  label,
   className,
 }: {
   screen: string;
-  screenAlt: string;
   appName: string;
   /** The timestamp every card carries. */
   now: string;
   items: readonly string[];
+  /** What the list is, for a screen reader. */
+  label: string;
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -52,22 +59,22 @@ export function NotificationStack({
   }, []);
 
   return (
-    <div ref={ref} className={cn('relative mx-auto w-64 sm:w-[18rem]', className)}>
+    <div ref={ref} className={cn('relative mx-auto w-[17rem] sm:w-[18rem]', className)}>
       <div
         aria-hidden
-        className="absolute -inset-x-20 -inset-y-10 -z-10 rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--brand-blue)_45%,transparent),transparent)]"
+        className="absolute -inset-x-16 -inset-y-10 -z-10 rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--brand-blue)_45%,transparent),transparent)]"
       />
       <PhoneFrame>
-        <Screenshot src={screen} alt={screenAlt} sizes="18rem" />
-        <div aria-hidden className="absolute inset-0 bg-black/45" />
+        <Screenshot src={screen} alt="" hidden sizes="18rem" />
+        <div aria-hidden className="absolute inset-0 bg-black/50 backdrop-blur-[6px]" />
 
-        <ol className="absolute inset-x-[5%] top-[14%] space-y-2" aria-label={appName}>
+        <ol className="absolute inset-x-[4%] top-[15%] space-y-1.5" aria-label={label}>
           {items.map((text, index) => (
             <li
               key={text}
               style={{ transitionDelay: shown ? `${index * 450}ms` : undefined }}
               className={cn(
-                'flex items-start gap-2.5 rounded-2xl bg-white/92 p-3 text-slate-900 shadow-md backdrop-blur transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none',
+                'flex items-start gap-2.5 rounded-[1.1rem] bg-white/90 px-3 py-2.5 text-slate-900 shadow-md transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none',
                 shown ? 'translate-y-0 opacity-100' : '-translate-y-6 opacity-0',
               )}
             >
@@ -76,15 +83,15 @@ export function NotificationStack({
                 alt=""
                 width={450}
                 height={450}
-                sizes="2rem"
-                className="size-8 shrink-0 rounded-lg"
+                sizes="1.75rem"
+                className="mt-0.5 size-7 shrink-0 rounded-md"
               />
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline justify-between gap-2">
-                  <span className="text-[0.8rem] font-semibold">{appName}</span>
-                  <span className="text-[0.7rem] text-slate-500">{now}</span>
+                  <span className="text-xs font-semibold">{appName}</span>
+                  <span className="text-[0.6875rem] text-slate-500">{now}</span>
                 </span>
-                <span className="mt-0.5 block text-[0.85rem] leading-snug">{text}</span>
+                <span className="mt-0.5 block text-[0.8125rem] leading-snug">{text}</span>
               </span>
             </li>
           ))}
