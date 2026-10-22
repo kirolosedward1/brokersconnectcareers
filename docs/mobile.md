@@ -23,11 +23,11 @@ iOS app ──supabase-js (publishable key + the user's JWT, row-level security)
 server action the website's form runs, as the signed-in user. The emails, the
 upload checks, the slugs, the sanitising and the rate limits therefore happen
 for the app exactly as for the site. The actions the app may call are listed in
-`src/lib/mobile-api/registry.ts` — nothing else is reachable. Of the admin
-console, only the levers the app's own console screens offer are
-(`ADMIN_ACTIONS`), each behind the admin door
-(`src/lib/mobile-api/admin-door.ts`). Their inputs and outputs are typed in
-`src/lib/mobile-api/contract.ts`, which the app imports.
+`src/lib/mobile-api/registry.ts` — nothing else is reachable. Every lever of
+the admin console is there (`ADMIN_ACTIONS`, twenty of them), each behind the
+admin door (`src/lib/mobile-api/admin-door.ts`); checkout is not. Their inputs
+and outputs are typed in `src/lib/mobile-api/contract.ts`, which the app
+imports.
 
 Three kinds of write go straight to Supabase, as the website's browser code
 does: notification read-state (the `mark_notifications_read` /
@@ -951,12 +951,15 @@ tabs, and the consultant directory opens inside the Admin tab
   (`mobile/src/features/admin/queries.ts`). Row policies and the functions
   answer an admin only.
 - **Writes** are the website's own admin actions (`ADMIN_ACTIONS` in
-  `src/lib/mobile-api/contract.ts`: `moderateJob`, `reviewCompany`,
-  `setAccountApproval`, `moderateReports`, `getDocumentUrl`, `revealContact`,
-  `addModerationNote`, `setReportingRestriction`, `setUserRole`,
-  `setSignInBlock`, `endSessions`) through `/api/mobile/v1/actions`, each one
+  `src/lib/mobile-api/contract.ts`: every lever of the console — listings
+  decided and featured, companies reviewed and suspended, accounts in every
+  respect, consultants restricted, reports and appeals answered, taxonomy
+  kept, a dead letter retried, a deletion request closed, a paper opened, a
+  contact revealed, a note left) through `/api/mobile/v1/actions`, each one
   admin_* function that checks, decides and writes the audit record in one
-  transaction. Every lever opens one confirmation sheet
+  transaction. One read is the console's alone too: `GET /api/mobile/v1/admin/mail`
+  says whether mail is configured and which variable names stand in the way,
+  behind the same door. Every lever opens one confirmation sheet
   (`mobile/src/components/admin/decision-sheet.tsx`, drawn once at the root):
   a reason where somebody is owed one, the version the screen showed, and
   "done" only once the website answers `ok`.
