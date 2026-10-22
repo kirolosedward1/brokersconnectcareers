@@ -17,7 +17,7 @@ import { register } from 'node:module';
 
 register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 
-const { asConfirmType, confirmDestination, isTokenHash, landingFromRedirect, readRedirectTo } = await import(
+const { asConfirmType, confirmDestination, isSameOriginPost, isTokenHash, landingFromRedirect, readRedirectTo } = await import(
   '../src/lib/auth/confirm-link.ts'
 );
 
@@ -122,6 +122,20 @@ is(
     /function linkFailed[\s\S]*?, 303\)/.test(route),
   true,
 );
+// What the browser sends with the page's own form, and with a forged one.
+is('a post naming this site is let in', isSameOriginPost(SITE, 'same-origin', SITE), true);
+is('a post naming another site is refused', isSameOriginPost('https://evil.example', 'cross-site', SITE), false);
+is('another site that leaves Sec-Fetch-Site out is still refused', isSameOriginPost('https://evil.example', null, SITE), false);
+is('Origin: null from this site’s own page is let in', isSameOriginPost('null', 'same-origin', SITE), true);
+is('Origin: null from a sandboxed frame elsewhere is refused', isSameOriginPost('null', 'cross-site', SITE), false);
+is('Origin: null with nothing to vouch for it is refused', isSameOriginPost('null', null, SITE), false);
+is('an old browser with neither header is let in', isSameOriginPost(null, null, SITE), true);
+is('a post with only Sec-Fetch-Site naming another site is refused', isSameOriginPost(null, 'cross-site', SITE), false);
+// The browser names this site on the page's own post only if the page lets it:
+// under no-referrer it sends Origin: null, and every link was answered 403.
+is('the page’s referrer policy lets its own post say where it came from', /<meta name="referrer" content="no-referrer">/.test(route), false);
+is('and still tells no other site the address', /<meta name="referrer" content="same-origin">/.test(route), true);
+is('the route asks isSameOriginPost', /isSameOriginPost\(request\.headers\.get\('origin'\)/.test(route), true);
 is('the page is never cached or indexed', /'cache-control': 'no-store'/.test(route) && /noindex/.test(route), true);
 
 console.log('\n— signing out on the website');
