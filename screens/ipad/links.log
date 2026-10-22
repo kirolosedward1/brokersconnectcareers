@@ -1,0 +1,38 @@
+Running on store-ipad - iOS 26.5 - 1616D7F8-DF74-43D5-B57F-8EB6E41731E1
+ > Flow link
+Open ${LINK}... COMPLETED
+Wait for animation to end... COMPLETED
+Run confirm-link.yaml...
+  Run flow when "فتح|Open" is visible...
+    Tap on "فتح|Open"... COMPLETED
+  Run flow when "فتح|Open" is visible... COMPLETED
+Run confirm-link.yaml... COMPLETED
+Running on store-ipad - iOS 26.5 - 1616D7F8-DF74-43D5-B57F-8EB6E41731E1
+ > Flow confirm-link
+Run flow when "فتح|Open" is visible...
+  Tap on "فتح|Open"... COMPLETED
+Run flow when "فتح|Open" is visible... COMPLETED
+Running on store-ipad - iOS 26.5 - 1616D7F8-DF74-43D5-B57F-8EB6E41731E1
+ > Flow link
+Open ${LINK}... COMPLETED
+Wait for animation to end... COMPLETED
+Run confirm-link.yaml...
+  Run flow when "فتح|Open" is visible...
+  Run flow when "فتح|Open" is visible... SKIPPED
+Run confirm-link.yaml... COMPLETED
+Running on store-ipad - iOS 26.5 - 1616D7F8-DF74-43D5-B57F-8EB6E41731E1
+ > Flow link
+Open ${LINK}... COMPLETED
+Wait for animation to end... COMPLETED
+Run confirm-link.yaml...
+  Run flow when "فتح|Open" is visible...
+  Run flow when "فتح|Open" is visible... SKIPPED
+Run confirm-link.yaml... COMPLETED
+Running on store-ipad - iOS 26.5 - 1616D7F8-DF74-43D5-B57F-8EB6E41731E1
+ > Flow link
+Open ${LINK}... COMPLETED
+Wait for animation to end... COMPLETED
+Run confirm-link.yaml...
+  Run flow when "فتح|Open" is visible...
+  Run flow when "فتح|Open" is visible... SKIPPED
+Run confirm-link.yaml... COMPLETED

@@ -1,0 +1,105 @@
+Running on store-iphone - iOS 26.5 - E4D288AA-1F51-47CE-9932-BD36BE8675DD
+ > Flow Store screens, dark
+Run launch.yaml...
+  Launch app "net.brokersconnect.app" with clear state... COMPLETED
+  Assert that "تخطي" is visible... COMPLETED
+  Wait for animation to end...WARNING: GL pipe is running in software mode (Renderer ID=0x1020400)
+ COMPLETED
+  Take screenshot 0-welcome... COMPLETED
+  Retry 2 times...
+    Tap on "تخطي"... COMPLETED
+    Assert that "تخطي" is not visible... COMPLETED
+  Retry 2 times... COMPLETED
+  Assert that "منصة متخصصة لوظائف العقارات في مصر" is visible... COMPLETED
+  Wait for animation to end... COMPLETED
+Run launch.yaml... COMPLETED
+Tap on "حسابي"... COMPLETED
+Tap on "غامق"... COMPLETED
+Tap on "الرئيسية"... COMPLETED
+Assert that "منصة متخصصة لوظائف العقارات في مصر" is visible... COMPLETED
+Wait for animation to end... COMPLETED
+Run screens.yaml...
+  Run checks.yaml...
+    Assert that "في حاجة غلط" is not visible... COMPLETED
+    Assert that "مفيش اتصال بالإنترنت" is not visible... COMPLETED
+    Assert that "الخدمة مش متاحة دلوقتي" is not visible... COMPLETED
+    Assert that "الصفحة مش موجودة" is not visible... COMPLETED
+    Assert that "في نسخة أحدث من التطبيق" is not visible... COMPLETED
+  Run checks.yaml... COMPLETED
+  Take screenshot 1-home... COMPLETED
+  Open brokersconnect:///jobs... COMPLETED
+  Run confirm-link.yaml...
+    Run flow when "فتح|Open" is visible...
+    Run flow when "فتح|Open" is visible... SKIPPED
+  Run confirm-link.yaml... COMPLETED
+  Assert that "الفلاتر.*" is visible... COMPLETED
+  Run flow when ${JOB_SLUG != 'none'} is true...
+    Assert that ".*${JOB_TITLE}.*" is visible... COMPLETED
+  Run flow when true is true... COMPLETED
+  Run flow when ${JOB_SLUG == 'none'} is true...
+  Run flow when false is true... SKIPPED
+  Wait for animation to end... COMPLETED
+  Run checks.yaml...
+    Assert that "في حاجة غلط" is not visible... COMPLETED
+    Assert that "مفيش اتصال بالإنترنت" is not visible... COMPLETED
+    Assert that "الخدمة مش متاحة دلوقتي" is not visible... COMPLETED
+    Assert that "الصفحة مش موجودة" is not visible... COMPLETED
+    Assert that "في نسخة أحدث من التطبيق" is not visible... COMPLETED
+  Run checks.yaml... COMPLETED
+  Take screenshot 2-jobs... COMPLETED
+  Run listing.yaml when ${JOB_SLUG != 'none'} is true...
+    Open brokersconnect:///jobs/${JOB_SLUG}... COMPLETED
+    Run confirm-link.yaml...
+      Run flow when "فتح|Open" is visible...
+      Run flow when "فتح|Open" is visible... SKIPPED
+    Run confirm-link.yaml... COMPLETED
+    Assert that "مشاركة" is visible... COMPLETED
+    Assert that "${JOB_TITLE}" is visible... COMPLETED
+    Wait for animation to end... COMPLETED
+    Run checks.yaml...
+      Assert that "في حاجة غلط" is not visible... COMPLETED
+      Assert that "مفيش اتصال بالإنترنت" is not visible... COMPLETED
+      Assert that "الخدمة مش متاحة دلوقتي" is not visible... COMPLETED
+      Assert that "الصفحة مش موجودة" is not visible... COMPLETED
+      Assert that "في نسخة أحدث من التطبيق" is not visible... COMPLETED
+    Run checks.yaml... COMPLETED
+    Take screenshot 3-listing... COMPLETED
+  Run listing.yaml when true is true... COMPLETED
+  Open brokersconnect:///companies... COMPLETED
+  Run confirm-link.yaml...
+    Run flow when "فتح|Open" is visible...
+    Run flow when "فتح|Open" is visible... SKIPPED
+  Run confirm-link.yaml... COMPLETED
+  Run flow when ${COMPANY_SLUG != 'none'} is true...
+    Assert that "الشركات اللي بتوظّف على بروكرز كونكت، والموثّق منها." is visible... COMPLETED
+    Assert that ".*${COMPANY_NAME}.*" is visible... COMPLETED
+  Run flow when true is true... COMPLETED
+  Run flow when ${COMPANY_SLUG == 'none'} is true...
+  Run flow when false is true... SKIPPED
+  Wait for animation to end... COMPLETED
+  Run checks.yaml...
+    Assert that "في حاجة غلط" is not visible... COMPLETED
+    Assert that "مفيش اتصال بالإنترنت" is not visible... COMPLETED
+    Assert that "الخدمة مش متاحة دلوقتي" is not visible... COMPLETED
+    Assert that "الصفحة مش موجودة" is not visible... COMPLETED
+    Assert that "في نسخة أحدث من التطبيق" is not visible... COMPLETED
+  Run checks.yaml... COMPLETED
+  Take screenshot 4-companies... COMPLETED
+  Run company.yaml when ${COMPANY_SLUG != 'none'} is true...
+    Open brokersconnect:///companies/${COMPANY_SLUG}... COMPLETED
+    Run confirm-link.yaml...
+      Run flow when "فتح|Open" is visible...
+      Run flow when "فتح|Open" is visible... SKIPPED
+    Run confirm-link.yaml... COMPLETED
+    Assert that "${COMPANY_NAME}" is visible... COMPLETED
+    Wait for animation to end... COMPLETED
+    Run checks.yaml...
+      Assert that "في حاجة غلط" is not visible... COMPLETED
+      Assert that "مفيش اتصال بالإنترنت" is not visible... COMPLETED
+      Assert that "الخدمة مش متاحة دلوقتي" is not visible... COMPLETED
+      Assert that "الصفحة مش موجودة" is not visible... COMPLETED
+      Assert that "في نسخة أحدث من التطبيق" is not visible... COMPLETED
+    Run checks.yaml... COMPLETED
+    Take screenshot 5-company... COMPLETED
+  Run company.yaml when true is true... COMPLETED
+Run screens.yaml... COMPLETED
