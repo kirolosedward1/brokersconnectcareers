@@ -94,7 +94,7 @@ Who is an admin: **only `k4hosting@gmail.com`** (promoted 2026-10-22, has a veri
 8. Not verified on a real device or store build: anything — all testing this session was Jest + Expo Go reports from the user.
 9. **Migration 352** must be applied to production when the admin branch merges (see above). The website's users page calls `admin_search_users` with named arguments, so it works against the old function until then, minus the "Sign-in blocked" view.
 10. **Demo data still live**: 14 demo listings on the board and 4 real applications sent to demo companies; `scripts/remove-demo.mjs` (needs a service key and DB URL) takes them down. The new admin's own public consultant profile (`consultant-33529768`) is still listed — hide it if they do not want it seen.
-11. **Admin console parity in the app**: the app has the queues and the accounts; search, the audit log, appeals, applications, taxonomy, email and operations are still website-only (the app's overview links to them).
+11. **Admin console parity in the app**: the app has the queues and the accounts; search, the audit log, appeals, applications, consultant profiles, one company's page, taxonomy, email and operations are still website-only (the app's overview links to them). `docs/prompts/mobile-admin-parity.md` is a complete build prompt for the rest, written from an inventory of every website admin page and lever.
 
 ## Gotchas
 
