@@ -1,0 +1,56 @@
+# The captures of one `iOS screens` run, put on a branch.
+#
+# The run keeps its screenshots as an artifact, which is a zip behind a signed
+# link on GitHub's artifact store — fine from a browser, out of reach from
+# anywhere that can talk to GitHub but not to that store (the agent sessions
+# that write most of this repository are one such place; the readiness audit
+# could not read a run's hierarchy dump for the same reason). Git reaches
+# everywhere GitHub does, so this fetches the artifact on a runner and commits
+# it to an orphan branch, `screens/ios-<run id>`, holding nothing else. Read
+# it, take what is wanted, and delete the branch.
+#
+# By hand only: Actions → "iOS screens to a branch" → Run workflow, with the
+# run's id (the number in its URL). The repository is public and the token is
+# the workflow's own; nothing here is secret.
+name: iOS screens to a branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: The iOS screens run whose captures to fetch (the number in its URL)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  fetch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name ios-screens --dir screens
+          find screens -type f | sort
+
+      - name: Commit it to its own branch
+        env:
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          branch="screens/ios-$RUN_ID"
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git checkout --orphan "$branch"
+          git rm -rfq --cached .
+          git add -f screens
+          git commit -qm "iOS screens from run $RUN_ID"
+          git push -f origin "$branch"
+          echo "::notice::pushed $branch"
