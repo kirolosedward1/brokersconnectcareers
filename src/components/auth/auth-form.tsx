@@ -55,6 +55,8 @@ export function AuthForm({
   audience,
   googleEnabled = false,
   appleEnabled = false,
+  nextPath,
+  onSignedIn,
 }: {
   mode: 'sign-in' | 'sign-up';
   locale: Locale;
@@ -75,6 +77,19 @@ export function AuthForm({
    * iOS app may be all it has, so the website has to offer it too.
    */
   appleEnabled?: boolean;
+  /**
+   * Where the person was going, when the form is drawn somewhere other than
+   * the sign-in page — the sign-in dialog over a listing (sign-in-gate.tsx).
+   * The page's own `?next=` otherwise.
+   */
+  nextPath?: string;
+  /**
+   * Called instead of leaving the page once a password sign-in has gone
+   * through: the dialog closes and the action that asked for it carries on.
+   * Sign-up and the one-tap providers still navigate — a new account has to
+   * pass through onboarding, and OAuth leaves the page by its nature.
+   */
+  onSignedIn?: () => void;
 }) {
   const t = useTranslations('auth');
   const tValidation = useTranslations('validation');
@@ -104,7 +119,7 @@ export function AuthForm({
   // Validated, not taken on trust: this decides a navigation and arrives in a
   // query string anybody can craft. An unusable value falls back to onboarding
   // rather than being handed to the router to turn into a 404.
-  const next = safeNext(searchParams.get('next')) ?? undefined;
+  const next = safeNext(nextPath ?? searchParams.get('next')) ?? undefined;
 
   // Onboarding is where a new account chooses its role; if the door already
   // implied one, hand it over. An existing account skips onboarding entirely,
@@ -281,6 +296,14 @@ export function AuthForm({
    * The same mistake was fixed in the apply form for the same reason.
    */
   function landAfterSignIn() {
+    // Drawn in a dialog over the page the person was on: they stay on it,
+    // signed in, and whatever they pressed carries on (sign-in-gate.tsx).
+    // The session cookie is already set by the browser client, so the next
+    // server action and the page's refresh both see them signed in.
+    if (mode === 'sign-in' && onSignedIn) {
+      onSignedIn();
+      return;
+    }
     // Onboarding decides for itself whether there is anything left to ask.
     // A brand-new account always has something left, so a sign-up that got a
     // session straight away goes there first, with the destination in tow —

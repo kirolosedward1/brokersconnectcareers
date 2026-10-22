@@ -393,7 +393,11 @@ phone (`mobile/src/lib/local-list.ts`, keyed by user id or `anon`):
 ## Signing in
 
 The sign-in sheet (`mobile/src/app/(auth)/`) is the website's auth form, rule
-for rule, over Supabase Auth directly — as the website's browser code does:
+for rule, over Supabase Auth directly — as the website's browser code does.
+The website has the same sheet since October 2026: Save, Follow and Apply
+pressed by a visitor open a sign-in dialog over the page
+(`src/components/auth/sign-in-gate.tsx`), and the press goes through once
+they are in, instead of the round trip through the sign-in page.
 
 - **Password.** Eight characters before anything is sent; GoTrue's refusals in
   the reader's language through the website's own mapping

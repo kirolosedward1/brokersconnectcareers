@@ -1,6 +1,8 @@
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { PolicyNotice } from '@/components/legal/policy-notice';
+import { SignInGateProvider } from '@/components/auth/sign-in-gate';
+import { enabledProviders } from '@/lib/auth-providers';
 import type { Locale } from '@/i18n/routing';
 
 /**
@@ -25,9 +27,12 @@ export default async function SiteLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  // For the sign-in dialog Save, Follow and Apply open over a page; cached
+  // for five minutes, as the sign-in page's own read is.
+  const providers = await enabledProviders();
 
   return (
-    <>
+    <SignInGateProvider locale={locale as Locale} googleEnabled={providers.google} appleEnabled={providers.apple}>
       <SiteHeader locale={locale as Locale} />
       {/* Somebody signed in who has not agreed to the documents as they are
           now; nothing for anybody else. */}
@@ -36,6 +41,6 @@ export default async function SiteLayout({
         {children}
       </main>
       <SiteFooter locale={locale} />
-    </>
+    </SignInGateProvider>
   );
 }

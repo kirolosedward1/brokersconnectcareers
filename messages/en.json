@@ -340,6 +340,10 @@
     "slowDown": "Wait {seconds, plural, one {a second} other {# seconds}} and try again.",
     "challengeHint": "After several attempts we check you are not a script. Complete the verification above and try again.",
     "applyingToCompanySignUp": "at {company} — create your account and we will bring you back to this job to finish.",
+    "gateSave": "Sign in to save this job",
+    "gateFollow": "Sign in to follow this company",
+    "gateApply": "Sign in to apply",
+    "gateLead": "Sign in and you will be back here, with nothing lost.",
     "confirm": {
       "titleEmail": "Confirm your email",
       "titleRecovery": "Reset your password",

@@ -108,7 +108,9 @@ async function landsOn(page, pattern, timeout = 15000) {
 const submit = (page) => page.locator('form button[type="submit"]').last();
 
 // The apply form's own words for success, from the catalogue the site renders.
-const APPLY = JSON.parse(readFileSync(new URL('../../messages/ar.json', import.meta.url), 'utf8')).apply;
+const CATALOGUE = JSON.parse(readFileSync(new URL('../../messages/ar.json', import.meta.url), 'utf8'));
+const APPLY = CATALOGUE.apply;
+const JOBS = CATALOGUE.jobs;
 /**
  * Whether the apply form shows that it went: its green panel, or the server's
  * confirmation at ?applied=1 that the form hands over to straight after.
@@ -290,6 +292,51 @@ section('applying on a slow line, pressing send twice');
   await submit(page).click();
   check('back online, the same form sends it, and says so', await showsApplied(page), page.url());
   check('once', (await sql('select 1 from applications where candidate_id = $1 and job_id = $2', [userId, other.id])).length === 1);
+  await context.close();
+}
+
+// ---------------------------------------------------------------------------
+section('a visitor presses Save, signs in where they stand, and the listing is saved');
+{
+  // The website's sign-in sheet (src/components/auth/sign-in-gate.tsx): Save,
+  // Follow and Apply open it over the page for somebody signed out, and the
+  // action goes through once they are in — as the app's sheet does. The
+  // candidate made above, on a fresh browser with no session.
+  const { page, context, errors } = await device();
+  const listing = (await sql("select slug, id from jobs where status = 'active' and expires_at > now() order by published_at desc limit 1"))[0];
+  await page.goto(`${SITE}/jobs/${listing.slug}`);
+  const save = page.locator('main button[aria-pressed="false"]').first();
+  await save.click();
+  const dialog = page.locator('[role="dialog"]');
+  check('Save signed out opens the sign-in dialog, on the listing', (await dialog.count()) === 1 && path(page) === `/jobs/${listing.slug}`, page.url());
+  await dialog.locator('input[name="email"]').fill(email);
+  await dialog.locator('input[name="password"]').fill(password);
+  await dialog.locator('form button[type="submit"]').click();
+  let saved = false;
+  for (let i = 0; i < 40 && !saved; i += 1) {
+    await sleep(500);
+    saved = (await sql('select 1 from saved_jobs where candidate_id = $1 and job_id = $2', [userId, listing.id])).length === 1;
+  }
+  check('signing in there saves the listing, with no second press', saved);
+  check('the dialog has closed and the reader is still on the listing', (await dialog.count()) === 0 && path(page) === `/jobs/${listing.slug}`, page.url());
+  check('the page now draws them signed in', (await page.locator('main button[aria-pressed="true"]').count()) >= 1);
+  check('none of it threw a script error', errors.length === 0, errors.slice(0, 3));
+  await context.close();
+}
+
+{
+  // Apply, signed out: the same dialog, naming the listing; dismissed, nothing moves.
+  const { page, context } = await device();
+  const listing = (await sql("select slug, title_ar from jobs where status = 'active' and expires_at > now() order by published_at desc limit 1"))[0];
+  await page.goto(`${SITE}/jobs/${listing.slug}`);
+  // At this width the apply button is the summary's (jobs.apply); the phone bar's is hidden.
+  await page.locator('main button:visible', { hasText: JOBS.apply }).first().click();
+  const dialog = page.locator('[role="dialog"]');
+  check('Apply signed out opens the sign-in dialog', (await dialog.count()) === 1, page.url());
+  check('and names the listing', (await dialog.getByText(listing.title_ar, { exact: false }).count()) >= 1);
+  await page.keyboard.press('Escape');
+  await sleep(300);
+  check('Escape closes it and leaves the reader where they were', (await dialog.count()) === 0 && path(page) === `/jobs/${listing.slug}`, page.url());
   await context.close();
 }
 
