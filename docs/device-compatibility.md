@@ -54,7 +54,25 @@ pass next to `large-text`).
 
 ### The website
 
-Pending: a local production build in Chromium 141 (15 pages × 15 widths, axe-core at 390 and 1280 px) is running; its results replace this paragraph.
+A local production build (`next build` / `next start` of this branch) in
+**Chromium 141** (Playwright). Phones at 320–480 px with touch, an iPhone user
+agent and DPR 3; tablets with touch; desktops without. No database: the
+build ran with placeholder Supabase keys, since production and a local
+Supabase were both out of reach, so the board, the companies list and Home
+drew their empty or unavailable states, not real listing cards.
+
+| | |
+| --- | --- |
+| Pages | `/`, `/jobs`, `/companies`, `/employers`, `/blog`, `/privacy`, `/terms`, `/cookies`, `/refunds`, `/account-deletion`, `/licenses`, `/sign-in`, `/sign-up`, `/sign-in/forgot`, and a 404 |
+| Widths | 320, 360, 375, 390, 412, 430, 480, 768, 820, 1024, 1280, 1366, 1440, 1536, 1920 — 225 loads |
+| Horizontal overflow | **none** (document `scrollWidth` against `clientWidth`) |
+| Arabic font loaded | 225 of 225; every page `dir="rtl"`, `lang="ar"` |
+| Page errors | none |
+| axe-core 4.10 (WCAG 2.0/2.1 A and AA) | at 390 and 1280 px, 30 loads: **0 violations**. axe was checked against a page with four planted violations, and found all four |
+
+Not repeated this round: WebKit and Firefox (not installed here; September's
+pass covered them), signed-in consoles (no database), and anything real
+Safari on an iPhone does differently.
 
 ## What was fixed
 
