@@ -1117,7 +1117,12 @@
       "user_appeal_overturned": "Appeal: account decision reversed",
       "user_appeal_upheld": "Appeal: account decision stands",
       "agent_appeal_overturned": "Appeal: profile restriction lifted",
-      "agent_appeal_upheld": "Appeal: profile restriction stands"
+      "agent_appeal_upheld": "Appeal: profile restriction stands",
+      "user_promoted": "Made an admin",
+      "user_demoted": "Admin access removed",
+      "user_sign_in_blocked": "Sign-in blocked",
+      "user_sign_in_unblocked": "Sign-in allowed again",
+      "user_sessions_ended": "Signed out everywhere"
     },
     "taxonomyTab": {
       "district": "Districts",
@@ -1244,7 +1249,35 @@
     "deletionRequests": "Account deletion requests",
     "deletionRequestsLede": "Company owners asking to leave. Deleting the account would delete the company, its listings and the applications to them: agree what happens to the company, do it, then close the request.",
     "deletionRequestClose": "Close request",
-    "deletionRequestAccountGone": "Account already deleted"
+    "deletionRequestAccountGone": "Account already deleted",
+    "signInBlocked": "Sign-in blocked",
+    "signInAllowed": "Sign-in allowed",
+    "signInBlockedSince": "Sign-in blocked since {date}",
+    "twoStep": "Two-step sign-in",
+    "signedInDevices": "Signed-in devices",
+    "userTabs": {
+      "overview": "Overview",
+      "activity": "Activity",
+      "security": "Sign-in and security",
+      "record": "Record and notes"
+    },
+    "makeAdmin": "Make an admin",
+    "makeAdminBody": "They get the whole console: every lever, and every account’s details on request. The website asks them to set up two-step sign-in before it opens. Nobody is emailed — tell them yourself.",
+    "removeAdmin": "Remove admin access",
+    "removeAdminBody": "They become a {role} again. Everything else about the account stays as it is. You cannot remove your own access.",
+    "blockSignIn": "Block sign-in",
+    "blockSignInBody": "They are signed out of every device and cannot sign in again until you lift it. Their listings and applications are untouched — Suspend is the lever for those. Nobody is emailed.",
+    "unblockSignIn": "Allow sign-in",
+    "unblockSignInBody": "They can sign in again.",
+    "endSessions": "Sign out everywhere",
+    "endSessionsBody": "Every device signed in to this account is signed out within the hour. They can sign in again at once.",
+    "sessionsEnded": "{count, plural, =0 {No device was signed in.} one {Signed out of # device.} other {Signed out of # devices.}}",
+    "reasonOnRecord": "Why (kept on the record, sent to nobody)",
+    "savedJobsCount": "Saved listings: {count}",
+    "appealsCount": "Appeals: {count} ({open} open)",
+    "decisionsCount": "Decisions on this account: {count}",
+    "notesCount": "Notes: {count}",
+    "activityEmpty": "Nothing yet."
   },
   "reportReason": {
     "fake_listing": "Fake listing",

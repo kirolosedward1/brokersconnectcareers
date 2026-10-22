@@ -15,13 +15,16 @@ import { withTimeout } from '~/lib/timeout';
  *              (SessionGate is already asking for the code)
  *   enrol      the deployment requires an authenticator (ADMIN_MFA_REQUIRED,
  *              from /config) and the account has none yet
+ *   error      the session's level could not be read: said as that, with a
+ *              retry — never as "no authenticator", which would send an
+ *              enrolled admin to enrol again
  *   checking   not known yet
  *
  * This decides what to show. What the levers may do is decided again on the
  * website (mobile-api/admin-door.ts) and in the database (is_admin()), for a
  * request that never went near this screen.
  */
-export type DoorState = 'checking' | 'open' | 'challenge' | 'enrol';
+export type DoorState = 'checking' | 'open' | 'challenge' | 'enrol' | 'error';
 
 /** How long reading the session's level may take; it is read from the phone, so this is a stall, not a slow line. */
 const LEVEL_TIMEOUT_MS = 10_000;
@@ -36,6 +39,12 @@ export function useAdminDoor(): { state: DoorState; recheck: () => Promise<void>
     queryKey: ['admin-door', session?.user.id ?? null, token],
     enabled: isAdmin(actor) && Boolean(token),
     staleTime: Infinity,
+    // The same person's last answer stands while the refreshed token's is
+    // read: without it, every token refresh (each hour, in the foreground)
+    // drew the console's screens afresh, and a list scrolled or a queue
+    // chosen went back to its start.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === (session?.user.id ?? null) ? previous : undefined,
     queryFn: async () => {
       const { data, error } = await withTimeout(
         supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
@@ -56,9 +65,11 @@ export function useAdminDoor(): { state: DoorState; recheck: () => Promise<void>
   let state: DoorState = 'checking';
   if (level.data?.current === 'aal2') state = 'open';
   else if (level.data?.next === 'aal2') state = 'challenge';
-  else if (level.data || level.isError) {
-    // Unreadable is not "no authenticator": a server older than the setting, or
-    // a config that could not be read, is held to the stricter rule.
+  else if (level.isError && !level.data) state = 'error';
+  else if (level.data) {
+    // No authenticator. Whether that is allowed is the deployment's say; a
+    // config that could not be read, or a server older than the setting, is
+    // held to the stricter rule.
     if (config.data) state = config.data.adminMfaRequired === false ? 'open' : 'enrol';
     else if (config.isError) state = 'enrol';
   }

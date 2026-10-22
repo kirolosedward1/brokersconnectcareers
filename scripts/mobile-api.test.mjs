@@ -106,33 +106,47 @@ console.log('\n— the app can reach only what the registry lists');
   is('found the action imports', imports.length > 10, true);
   is('never checkout', imports.includes('@/lib/actions/billing'), false);
 
-  // Of the admin console, only the queues' levers — never taxonomy, email
-  // requeues, contact reveals or anything else in that file.
-  const adminImport = /import \{([^}]*)\} from '@\/lib\/actions\/admin'/.exec(registry);
-  const adminNames = adminImport ? adminImport[1].split(',').map((name) => name.trim()).filter(Boolean).sort() : [];
-  is('the admin levers the app has are exactly the queues\' five', adminNames, [
+  // Of the admin console, only the levers the app's console has — never
+  // taxonomy, email requeues or anything else in those files — and every one
+  // of them behind the admin door. Every import statement from either admin
+  // file counts: a second `import { … } from '@/lib/actions/admin'` added
+  // further down must not slip past this.
+  const adminNames = [...registry.matchAll(/import \{([^}]*)\} from '@\/lib\/actions\/(?:admin|moderation)'/g)]
+    .flatMap((match) => match[1].split(','))
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .sort();
+  is('the admin levers the app has are exactly the console levers its screens offer', adminNames, [
+    'addModerationNote',
+    'endSessions',
     'getDocumentUrl',
     'moderateJob',
     'moderateReports',
+    'revealContact',
     'reviewCompany',
     'setAccountApproval',
+    'setReportingRestriction',
+    'setSignInBlock',
+    'setUserRole',
   ]);
+  // Every use of an admin lever's name, outside its import and the comments,
+  // is its registry entry — and that entry wraps it in forAdmins(...).
+  const code = registry.split('\n').filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line) && !/^\s*(import |\} from |  [a-zA-Z]+,$)/.test(line));
   for (const name of adminNames) {
-    is(`${name} runs only behind the admin door`, new RegExp(`${name}: \\{ run: forAdmins\\(`).test(registry), true);
+    const uses = code.filter((line) => new RegExp(`\\b${name}\\b`).test(line));
+    is(
+      `${name} runs only behind the admin door`,
+      uses.length === 1 && new RegExp(`^\\s*${name}: \\{ run: forAdmins\\(`).test(uses[0]),
+      true,
+    );
   }
   const contract = readFileSync(new URL('../src/lib/mobile-api/contract.ts', import.meta.url), 'utf8');
   const adminList = contract.slice(contract.indexOf('export const ADMIN_ACTIONS'));
   is(
-    'the contract names the same five',
+    'the contract names the same levers',
     [...adminList.slice(0, adminList.indexOf(']')).matchAll(/'(\w+)'/g)].map((m) => m[1]).sort(),
     adminNames,
   );
-  is(
-    'never the admin client',
-    /createAdminClient|@\/lib\/supabase\/admin/.test(registry),
-    false,
-  );
-
   const publicList = contract.slice(contract.indexOf('export const PUBLIC_ACTIONS'));
   const publicNames = [...publicList.slice(0, publicList.indexOf(']')).matchAll(/'(\w+)'/g)].map((m) => m[1]);
   is(

@@ -95,11 +95,11 @@ const APP_PATHS: Record<string, string> = {
 };
 
 /**
- * The admin console's pages the app has (its queues and a listing's review);
+ * The admin console's pages the app has (its queues, a listing's review, an account's file);
  * the rest of the website's console — the audit log, taxonomy, one account's
  * file — opens the app's overview, which links to the website for them.
  */
-const ADMIN_SCREENS = /^\/admin(?:\/(?:jobs(?:\/[0-9a-f-]{36})?|reports|users|companies))?$/;
+const ADMIN_SCREENS = /^\/admin(?:\/(?:jobs(?:\/[0-9a-f-]{36})?|reports|users(?:\/[0-9a-f-]{36})?|companies))?$/;
 
 /** A website path (already through webPathToAppPath) as the app opens it; the query is kept. */
 export function appPathFor(path: string): string {
@@ -130,10 +130,12 @@ const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabNa
   ['/employer/applicants', ['applicants']],
   ['/employer/company', ['account']],
   ['/employer/billing', ['account']],
-  // The directory is the Consultants tab's own screen; a consultant's page opens in any tab.
-  ['/agents', ['consultants'], 'exact'],
-  ['/agents', ['consultants', 'home']],
-  ['/employer/talent', ['consultants']],
+  // The directory is the Consultants tab's own screen — and the Admin tab's,
+  // for an admin who runs a company, whose bar has no room for both; a
+  // consultant's page opens in any tab.
+  ['/agents', ['consultants', 'admin'], 'exact'],
+  ['/agents', ['consultants', 'admin', 'home']],
+  ['/employer/talent', ['consultants', 'admin']],
   ['/admin', ['admin']],
 ];
 

@@ -14,12 +14,18 @@ import {
   updatePushPreferences,
 } from '@/lib/actions/account';
 import {
+  addModerationNote,
+  endSessions,
   getDocumentUrl,
   moderateJob,
   moderateReports,
+  revealContact,
   reviewCompany,
   setAccountApproval,
+  setSignInBlock,
+  setUserRole,
 } from '@/lib/actions/admin';
+import { setReportingRestriction } from '@/lib/actions/moderation';
 import { recordAgentView } from '@/lib/agent-views';
 import { revealAgentContact } from '@/lib/actions/agent-contact';
 import { saveAgentProfile } from '@/lib/actions/agent-profile';
@@ -265,6 +271,12 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   setAccountApproval: { run: forAdmins(setAccountApproval) },
   moderateReports: { run: forAdmins(moderateReports) },
   getDocumentUrl: { run: forAdmins(positional(uuid, 'documentId', getDocumentUrl)) },
+  revealContact: { run: forAdmins(revealContact) },
+  addModerationNote: { run: forAdmins(addModerationNote) },
+  setReportingRestriction: { run: forAdmins(setReportingRestriction) },
+  setUserRole: { run: forAdmins(setUserRole) },
+  setSignInBlock: { run: forAdmins(setSignInBlock) },
+  endSessions: { run: forAdmins(endSessions) },
 };
 
 export function isActionName(name: string): name is MobileActionName {

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
@@ -10,21 +11,21 @@ import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Ban, CheckCheck, ExternalLink, EyeOff, Search, ShieldAlert, ShieldCheck, ThumbsUp } from '~/components/ui/lucide';
+import { Segmented } from '~/components/ui/segmented';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
-import { useReportCases, type ReportCase } from '~/features/admin/queries';
+import { SHOWN_REPORTS, useReportCases, type ReportCase, type ReportView } from '~/features/admin/queries';
 import { useTabList } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 
-/** How many of a case's reports are drawn under it; the website has them all. */
-const SHOWN_REPORTS = 3;
-
 /**
  * Open reports, one case per thing reported — the website's /admin/reports:
- * the most serious first, then the most people, then the longest waiting.
+ * the most serious first, then the most people, then the longest waiting,
+ * in two queues as the website has them: new, and under investigation (a
+ * case moves there when a moderator takes it; its levers go with it).
  * Beside each case, who the reporters are (new accounts, a record of
  * groundless reports, employers): what separates a real pile of complaints
  * from a pile-on. Every lever is a person's decision, and the take-down ones
@@ -44,31 +45,45 @@ export default function AdminReportsScreen() {
 
 function Cases() {
   const t = useTranslations();
-  const cases = useReportCases();
+  const [view, setView] = useState<ReportView>('new');
+  const cases = useReportCases(view);
   const pull = usePullRefresh(() => cases.refetch());
   const list = useTabList<FlashListRef<ReportCase>>();
 
-  if (cases.isPending) return <LoadingState />;
-  if (cases.isError && !cases.data) return <ErrorState error={cases.error} onRetry={() => cases.refetch()} />;
-  const { cases: rows, total } = cases.data;
+  const header = (
+    <View style={{ gap: space[3], marginBottom: space[4] }}>
+      <Segmented
+        label={t('admin.colStatus')}
+        options={[
+          { value: 'new', label: t('admin.reportView.new') },
+          { value: 'under_review', label: t('admin.reportView.under_review') },
+        ]}
+        value={view}
+        onChange={setView}
+      />
+      {cases.data && cases.data.cases.length < cases.data.total ? (
+        <Text variant="small" tone="mutedForeground">
+          {t.markup('app.admin.showing', { shown: cases.data.cases.length, total: cases.data.total, ...markupTags })}
+        </Text>
+      ) : null}
+    </View>
+  );
+
+  let body: React.ReactNode = null;
+  if (cases.isPending) body = <LoadingState />;
+  else if (cases.isError && !cases.data) body = <ErrorState error={cases.error} onRetry={() => cases.refetch()} />;
 
   return (
     <FlashList
       {...list}
-      data={rows}
+      data={body ? [] : (cases.data?.cases ?? [])}
       keyExtractor={(row) => `${row.target_type}:${row.target_id}`}
       renderItem={({ item }) => <CaseCard key={`${item.target_type}:${item.target_id}`} item={item} />}
       ItemSeparatorComponent={Separator}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
-      ListHeaderComponent={
-        rows.length < total ? (
-          <Text variant="small" tone="mutedForeground" style={{ marginBottom: space[3] }}>
-            {t.markup('app.admin.showing', { shown: rows.length, total, ...markupTags })}
-          </Text>
-        ) : null
-      }
-      ListEmptyComponent={<EmptyState icon={ShieldCheck} title={t('admin.emptyQueue')} />}
+      ListHeaderComponent={header}
+      ListEmptyComponent={body ?? <EmptyState icon={ShieldCheck} title={t('admin.emptyQueue')} />}
       {...pull}
     />
   );
@@ -181,13 +196,19 @@ function CaseCard({ item }: { item: ReportCase }) {
             </Text>
           ) : null}
           <Text variant="caption" tone="mutedForeground">
-            {`${report.reporter_name ? t('app.admin.reportedBy', { name: report.reporter_name }) : t('admin.unknownActor')} · ${formatDate(report.created_at, locale)}`}
+            {`${
+              report.source === 'system'
+                ? t('admin.systemFlag')
+                : report.reporter_name
+                  ? t('app.admin.reportedBy', { name: report.reporter_name })
+                  : t('admin.reporterGone')
+            } · ${formatDate(report.created_at, locale)}`}
           </Text>
         </View>
       ))}
-      {item.details.length > SHOWN_REPORTS ? (
+      {item.reports > SHOWN_REPORTS ? (
         <Text variant="caption" tone="mutedForeground">
-          {t.markup('app.admin.reportCount', { count: item.details.length, ...markupTags })}
+          {t.markup('app.admin.reportCount', { count: item.reports, ...markupTags })}
         </Text>
       ) : null}
 

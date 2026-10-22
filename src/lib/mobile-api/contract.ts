@@ -368,6 +368,21 @@ export type MobileActions = {
   };
   /** A five-minute link to one verification document; asking is recorded. */
   getDocumentUrl: { input: { documentId: string }; output: ActionResult<{ url: string }> };
+  /** One account's email and phone, for a reason that is recorded with the request. */
+  revealContact: { input: { userId: string; reason: string }; output: ActionResult<{ email: string | null; phone: string }> };
+  /** A note for other admins, on the record of what it is about. */
+  addModerationNote: {
+    input: { targetType: 'user' | 'company' | 'job' | 'agent' | 'application' | 'report'; targetId: string; body: string };
+    output: ActionResult;
+  };
+  /** Stop, or allow again, one account's reports. */
+  setReportingRestriction: { input: { userId: string; restrict: boolean; reason: string }; output: ActionResult };
+  /** Make an account an admin, or an admin a candidate or employer again (never yourself, never the last admin). */
+  setUserRole: { input: { userId: string; role: 'candidate' | 'employer' | 'admin'; reason: string }; output: ActionResult };
+  /** Stop an account signing in at all (and end its sessions), or allow it again. */
+  setSignInBlock: { input: { userId: string; block: boolean; reason: string }; output: ActionResult<{ sessionsEnded: number }> };
+  /** Sign one account out of every device. */
+  endSessions: { input: { userId: string; reason: string }; output: ActionResult<{ sessionsEnded: number }> };
 };
 
 export type MobileActionName = keyof MobileActions;
@@ -389,6 +404,12 @@ export const ADMIN_ACTIONS = [
   'setAccountApproval',
   'moderateReports',
   'getDocumentUrl',
+  'revealContact',
+  'addModerationNote',
+  'setReportingRestriction',
+  'setUserRole',
+  'setSignInBlock',
+  'endSessions',
 ] as const satisfies readonly MobileActionName[];
 
 /** Sent as multipart/form-data rather than JSON. */

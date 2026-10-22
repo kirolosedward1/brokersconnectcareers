@@ -11,7 +11,7 @@ import { Notice } from '~/components/ui/notice';
 import { useSheetFence } from '~/components/ui/sheet-fence';
 import { Text } from '~/components/ui/text';
 import { pullLever, useAfterLever, type Lever } from '~/features/admin/levers';
-import { ApiError } from '~/lib/api';
+import { refusedAtTheDoor } from '~/lib/api';
 import { appDirection } from '~/lib/direction';
 import { haptic } from '~/lib/haptics';
 import { useSheet } from '~/lib/use-sheet';
@@ -30,6 +30,10 @@ export type Decision = {
   reason: 'none' | 'optional' | 'required';
   /** Who reads the reason: "Note (sent to the company)". */
   reasonLabel?: string;
+  /** The longest reason the lever takes; the admin functions' own cap unless a lever says otherwise. */
+  reasonMax?: number;
+  /** Shown once the website answered ok, with what it answered: a contact revealed, a count of sessions ended. */
+  onDone?: (data: unknown) => void;
 };
 
 /** The shortest reason the admin functions accept (reason_required). */
@@ -67,6 +71,15 @@ export function DecisionSheet({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const tooShort = decision.reason === 'required' && text.trim().length < REASON_MIN;
+  // Still on screen: an answer that arrives after the sheet has gone (swiped
+  // away, its row drawn again) must not close the next decision's sheet.
+  const live = useRef(true);
+  useEffect(
+    () => () => {
+      live.current = false;
+    },
+    [],
+  );
 
   async function confirm() {
     if (pending) return;
@@ -83,10 +96,18 @@ export function DecisionSheet({
     setPending(false);
 
     const { result, failure } = outcome;
+    if (!live.current) {
+      // Gone before the answer: what was done is still said, and everything read again.
+      if (result?.ok) toast.show({ message: t('admin.doneWhat', { what: decision.title }), icon: CheckCheck, tone: 'success' });
+      void afterLever();
+      return;
+    }
     if (!result) {
-      // The request never came back, or never reached the action: nothing is
-      // claimed, and the queue is read again to find out where things stand.
-      setError(failure instanceof ApiError && failure.status !== 0 ? t('admin.errors.unknown') : t('admin.errors.network'));
+      // Turned away at the door (a 4xx): the action never ran, nothing changed.
+      // No answer at all, or the server failing (0, 5xx): the action may have
+      // run and only its answer been lost, so nothing is claimed either way,
+      // and the queue is read again to find out where things stand.
+      setError(refusedAtTheDoor(failure) ? t('admin.errors.unknown') : t('admin.errors.network'));
       void afterLever();
       return;
     }
@@ -102,11 +123,21 @@ export function DecisionSheet({
     Keyboard.dismiss();
     onClose();
     toast.show({ message: t('admin.doneWhat', { what: decision.title }), icon: CheckCheck, tone: 'success' });
+    decision.onDone?.(result.data);
     void afterLever();
   }
 
   return (
-    <Modal visible={visible} onDismiss={onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      onDismiss={onDismiss}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      // Not while the website is deciding: the answer would land on a closed sheet.
+      onRequestClose={() => {
+        if (!pending) onClose();
+      }}
+    >
       <KeyboardRoom>
         <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
           <View
@@ -155,7 +186,7 @@ export function DecisionSheet({
                   }}
                   accessibilityLabel={decision.reasonLabel ?? t('admin.reasonLabel')}
                   multiline
-                  maxLength={REASON_MAX}
+                  maxLength={decision.reasonMax ?? REASON_MAX}
                   textAlignVertical="top"
                   keyboardAppearance={scheme}
                   placeholderTextColor={colors.mutedForeground}

@@ -166,21 +166,33 @@ export function useAdminListing(id: string | undefined) {
 
 export type ReportCase = AdminReportCase & { details: AdminReportDetail[] };
 
-/** Open reports, one case per target, most serious first (admin_report_cases, the website's /admin/reports). */
-export function useReportCases() {
+/** The two queues of open cases, as the website's /admin/reports has them: new, and under investigation. */
+export type ReportView = 'new' | 'under_review';
+
+/** How many of a case's reports are drawn under it, and so read; the website has them all. */
+export const SHOWN_REPORTS = 3;
+
+/**
+ * Open reports, one case per target, most serious first (admin_report_cases,
+ * the website's /admin/reports). A case whose reports are all under
+ * investigation leaves the new queue for the under-review one, where its
+ * levers still are. Only the reports drawn are read: admin_report_rows takes
+ * at most 500 ids, and a viral listing alone can collect that many.
+ */
+export function useReportCases(view: ReportView) {
   const open = useOpen();
   return useQuery({
-    queryKey: ['admin', 'reports', 'new'],
+    queryKey: ['admin', 'reports', view],
     enabled: open,
     queryFn: async (): Promise<{ cases: ReportCase[]; total: number }> => {
       const { data, error } = await supabase.rpc('admin_report_cases', {
-        p_view: 'new',
+        p_view: view,
         p_limit: QUEUE_SIZE,
         p_offset: 0,
       });
       if (error) throw error;
       const cases = data ?? [];
-      const ids = cases.flatMap((item) => item.report_ids);
+      const ids = cases.flatMap((item) => item.report_ids.slice(0, SHOWN_REPORTS));
       const byId = new Map<string, AdminReportDetail>();
       if (ids.length) {
         const details = await supabase.rpc('admin_report_rows', { p_ids: ids });

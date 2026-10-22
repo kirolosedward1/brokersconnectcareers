@@ -27,8 +27,8 @@ import { ThemeProvider } from '~/theme/provider';
 import * as AgentScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/agents/[slug]';
 import * as PreviewScreen from '../src/app/(tabs)/(account)/account/profile/preview';
 import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
-import * as DirectoryScreen from '../src/app/(tabs)/(consultants)/agents/index';
-import * as ShortlistScreen from '../src/app/(tabs)/(consultants)/employer/talent';
+import * as DirectoryScreen from '../src/app/(tabs)/(consultants,admin)/agents/index';
+import * as ShortlistScreen from '../src/app/(tabs)/(consultants,admin)/employer/talent';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { cairo, newCairo } from './fixtures';
 import { fakeServer } from './server';
@@ -246,9 +246,9 @@ function Root() {
 const app = {
   _layout: Root,
   '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
-  '(tabs)/(consultants)/agents/index': DirectoryScreen,
-  '(tabs)/(consultants)/agents/[slug]': AgentScreen,
-  '(tabs)/(consultants)/employer/talent': ShortlistScreen,
+  '(tabs)/(consultants,admin)/agents/index': DirectoryScreen,
+  '(tabs)/(consultants,admin)/agents/[slug]': AgentScreen,
+  '(tabs)/(consultants,admin)/employer/talent': ShortlistScreen,
   '(tabs)/(account)/account/profile/preview': PreviewScreen,
   '(tabs)/(account)/account/hidden': HiddenScreen,
 };

@@ -1016,6 +1016,9 @@ export type AdminUserSearchRow = {
   agent_slug: string | null;
   agent_restricted: boolean;
   total_count: number;
+  /** The auth server's own ban (migration 352). Absent from a database before it. */
+  sign_in_blocked?: boolean;
+  last_sign_in_at?: string | null;
 };
 
 export type AdminSearchKind = 'user' | 'company' | 'job' | 'agent' | 'application';
@@ -1033,6 +1036,24 @@ export type AdminUserFacts = {
   last_sign_in_at?: string | null;
   auth_created_at?: string | null;
   providers?: string[];
+  /** Migration 352. Null when sign-in is allowed. */
+  sign_in_blocked_until?: string | null;
+  /** Authenticators enrolled and confirmed: two-step sign-in is on when there is one. */
+  verified_factors?: number;
+  /** Devices signed in; null where the auth server's sessions cannot be counted. */
+  sessions?: number | null;
+};
+
+/** admin_user_activity() (migration 352): what one account has done, in counts. */
+export type AdminUserActivity = {
+  applications: { total: number; by_status: Partial<Record<ApplicationStatus, number>> };
+  /** The listings of every company the account is a member of. */
+  listings: { total: number; by_status: Partial<Record<JobStatus, number>> };
+  reports_filed: { total: number; dismissed: number; abusive: number; open: number };
+  appeals: { total: number; open: number };
+  saved_jobs: number;
+  notes: number;
+  decisions: number;
 };
 
 export type TaxonomyKind = 'district' | 'governorate' | 'developer';
@@ -1637,6 +1658,11 @@ export type Database = {
         Returns: { email: string | null; whatsapp_phone: string }[];
       };
       admin_user_facts: { Args: { p_user: string }; Returns: AdminUserFacts };
+      admin_user_activity: { Args: { p_user: string }; Returns: AdminUserActivity };
+      /** The account levers of migration 352. The two that touch sessions return how many they ended. */
+      admin_set_role: { Args: { p_user: string; p_role: UserRole; p_reason: string }; Returns: undefined };
+      admin_set_sign_in_block: { Args: { p_user: string; p_block: boolean; p_reason: string }; Returns: number };
+      admin_end_sessions: { Args: { p_user: string; p_reason: string }; Returns: number };
       /** Returns the storage path and records that this admin opened it. */
       admin_open_document: { Args: { p_document: string }; Returns: string };
       admin_search_users: {
@@ -1646,6 +1672,8 @@ export type Database = {
           p_status?: ApprovalStatus | null;
           p_limit?: number;
           p_offset?: number;
+          /** Only accounts whose sign-in is blocked (true), or only those whose is not (false). Migration 352. */
+          p_blocked?: boolean | null;
         };
         Returns: AdminUserSearchRow[];
       };

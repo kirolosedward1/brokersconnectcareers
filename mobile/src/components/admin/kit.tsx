@@ -7,7 +7,7 @@ import { isAdmin } from '@/lib/permissions';
 import type { SafetyFlag } from '@/lib/supabase/database.types';
 import { Button } from '~/components/ui/button';
 import { AlertTriangle, ExternalLink, Info, KeyRound, ShieldAlert, ShieldCheck } from '~/components/ui/lucide';
-import { EmptyState, LoadingState } from '~/components/ui/states';
+import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAdminDoor } from '~/features/admin/door';
 import { env } from '~/lib/env';
@@ -42,6 +42,7 @@ export function AdminGate({ children }: { children: ReactNode }) {
     return <EmptyState icon={ShieldAlert} title={t('admin.errors.forbidden')} />;
   }
   if (door.state === 'checking') return <LoadingState />;
+  if (door.state === 'error') return <ErrorState error={null} onRetry={() => void door.recheck()} />;
   if (door.state === 'challenge') {
     return (
       <EmptyState

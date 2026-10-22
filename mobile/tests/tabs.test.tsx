@@ -14,7 +14,7 @@ import { ThemeProvider } from '~/theme/provider';
 import TabsLayout from '../src/app/(tabs)/_layout';
 import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as InboxScreen from '../src/app/(tabs)/(applicants)/employer/applicants/index';
-import * as DirectoryScreen from '../src/app/(tabs)/(consultants)/agents/index';
+import * as DirectoryScreen from '../src/app/(tabs)/(consultants,admin)/agents/index';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { fakeServer } from './server';
 
@@ -147,7 +147,7 @@ const app = {
   '(tabs)/(listings)/employer/jobs/index': standIn('listings'),
   '(tabs)/(listings)/employer/jobs/new': WizardStandIn,
   '(tabs)/(applicants)/employer/applicants/index': InboxScreen,
-  '(tabs)/(consultants)/agents/index': DirectoryScreen,
+  '(tabs)/(consultants,admin)/agents/index': DirectoryScreen,
   '(tabs)/(account)/account/index': standIn('account'),
 };
 

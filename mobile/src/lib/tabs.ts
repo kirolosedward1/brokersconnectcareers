@@ -29,7 +29,9 @@ const ADMIN_EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'a
  * applicants, the consultant directory, and the account — where the company,
  * its team and its billing are kept. An admin's has the console (the website's
  * /admin queues) beside the public site's tabs — or, for an admin who also
- * runs a company, in the directory's place beside that company's console.
+ * runs a company, in the directory's place beside that company's console;
+ * the directory and the shortlist then open inside the Admin tab
+ * ((consultants,admin) in the routes, links.ts).
  *
  * The bar changes with the role, never with the standing. Every tab's screens
  * are drawn again whenever the set of tabs changes, so a Consultants tab that

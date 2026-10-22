@@ -4,6 +4,7 @@ import { Stack, Tabs } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Modal } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type {
   AdminOverview,
@@ -22,6 +23,8 @@ import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { tabsFor } from '~/lib/tabs';
 import { ThemeProvider } from '~/theme/provider';
+import TabsLayout from '../src/app/(tabs)/_layout';
+import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as OverviewScreen from '../src/app/(tabs)/(admin)/admin/index';
 import * as ListingsScreen from '../src/app/(tabs)/(admin)/admin/jobs/index';
 import * as ListingScreen from '../src/app/(tabs)/(admin)/admin/jobs/[id]';
@@ -330,6 +333,47 @@ const admin = (company: { id: string } | null = null) => ({
   company: company ? { id: company.id, verification_status: 'verified' as const } : null,
 });
 
+const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)';
+
+/** The app's own tab bar, with the real Admin tab and its screen. */
+const tabbed = {
+  _layout: Root,
+  '(tabs)/_layout': TabsLayout,
+  [`${SHARED}/_layout`]: SharedLayout,
+  '(tabs)/(home)/index': stand('home'),
+  '(tabs)/(jobs)/jobs/index': stand('board'),
+  [`${SHARED}/companies/index`]: stand('companies'),
+  '(tabs)/(applications)/dashboard/applications/index': stand('applications'),
+  '(tabs)/(saved)/dashboard/saved/index': stand('saved'),
+  '(tabs)/(admin)/admin/index': OverviewScreen,
+  '(tabs)/(account)/account/index': stand('account'),
+};
+
+describe('the tab bar', () => {
+  it('gives an admin the Admin tab, wearing what waits on a decision', async () => {
+    await signIn();
+    renderRouter(tabbed, { initialUrl: '/' });
+    await screen.findByText('home');
+
+    // 3 listings + 2 report cases + 2 companies + 4 accounts, said with the tab's name.
+    await waitFor(() => {
+      const labels = screen.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel as string);
+      expect(labels.some((label) => label.startsWith(ar.admin.title) && /11/.test(label))).toBe(true);
+    });
+  });
+
+  it('and nobody else', async () => {
+    me = { ...me, role: 'candidate' };
+    await signIn();
+    renderRouter(tabbed, { initialUrl: '/' });
+    await screen.findByText('home');
+
+    const labels = screen.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel as string);
+    expect(labels.some((label) => label.startsWith(ar.admin.title))).toBe(false);
+    expect(server.requests.some((request) => request.url.pathname === '/rest/v1/rpc/admin_overview')).toBe(false);
+  });
+});
+
 describe('who has the Admin tab', () => {
   it('is an admin: beside the public tabs, or beside the console of a company they run', () => {
     expect(tabsFor(admin())).toEqual(['home', 'jobs', 'companies', 'admin', 'account']);
@@ -350,9 +394,32 @@ describe('who has the Admin tab', () => {
     expect(routeFromOutside('https://www.brokersconnect.net/admin', candidate)).toBe('/');
     expect(routeFromOutside('https://www.brokersconnect.net/admin', null)).toBe('/sign-in?next=%2Fadmin');
   });
+
+  it('keeps the consultant directory for an admin who runs a company, inside the Admin tab', () => {
+    // Their bar has the company's console where the Consultants tab would be;
+    // the directory and the shortlist open in the Admin tab's stack instead.
+    expect(routeFromOutside('https://www.brokersconnect.net/agents', admin(company))).toBe('/(admin)/agents');
+    expect(routeInside('/employer/talent', admin(company))).toBe('/employer/talent');
+    expect(routeFromOutside('https://www.brokersconnect.net/agents', admin())).toBe('/(admin)/agents');
+  });
 });
 
 describe('the door', () => {
+  it('says the sign-in level could not be read, with a retry — never that there is no authenticator', async () => {
+    await signIn({ aal: 'aal2', factor: true });
+    // Every reader of the level (the session provider asks too), until the retry.
+    const level = jest
+      .spyOn(supabase.auth.mfa, 'getAuthenticatorAssuranceLevel')
+      .mockResolvedValue({ data: null, error: Object.assign(new Error('storage'), { name: 'AuthError', status: 0 }) } as never);
+    renderRouter(app, { initialUrl: '/admin' });
+
+    expect(await screen.findByText(ar.common.error)).toBeTruthy();
+    expect(screen.queryByText(ar.app.admin.door.enrolTitle)).toBeNull();
+    level.mockRestore();
+    fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
+    expect(await screen.findByText(ar.admin.needsAttention)).toBeTruthy();
+  });
+
   it('asks an admin without an authenticator to set one up first, and reads nothing of the console', async () => {
     await signIn({ aal: 'aal1', factor: false });
     renderRouter(app, { initialUrl: '/admin' });
@@ -479,7 +546,85 @@ describe('deciding on a listing', () => {
   });
 });
 
+describe('a decision that did not go through', () => {
+  it('claims nothing after the server failed, and reads the queue again', async () => {
+    server.on('POST /api/mobile/v1/actions/moderateJob', { status: 502, body: { error: 'bad_gateway' } });
+    await signIn();
+    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.approve}: مستشار مبيعات` }));
+    await screen.findByText(ar.admin.approveListingBody);
+    server.requests.length = 0;
+    await act(async () => {
+      fireEvent.press(screen.getAllByRole('button', { name: ar.admin.approve }).at(-1)!);
+    });
+
+    // The action may have run: the network sentence, not "nothing was changed".
+    expect(await screen.findByText(ar.admin.errors.network)).toBeTruthy();
+    expect(screen.queryByText(ar.admin.errors.unknown)).toBeNull();
+    expect(shownToast()).toBeNull();
+    await waitFor(() => expect(server.requests.some((request) => request.url.pathname === '/rest/v1/jobs')).toBe(true));
+  });
+
+  it('cannot be swiped away while the website is still deciding', async () => {
+    let answer: (value: unknown) => void = () => {};
+    server.on('POST /api/mobile/v1/actions/moderateJob', () => new Promise((resolve) => (answer = resolve)));
+    await signIn();
+    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.approve}: مستشار مبيعات` }));
+    await screen.findByText(ar.admin.approveListingBody);
+    await act(async () => {
+      fireEvent.press(screen.getAllByRole('button', { name: ar.admin.approve }).at(-1)!);
+    });
+    await waitFor(() => expect(actionsCalled('moderateJob')).toHaveLength(1));
+
+    const sheet = screen.UNSAFE_getAllByType(Modal).find((modal) => modal.props.visible);
+    expect(sheet).toBeTruthy();
+    act(() => {
+      sheet!.props.onRequestClose();
+    });
+    expect(screen.getByText(ar.admin.approveListingBody)).toBeTruthy();
+
+    await act(async () => {
+      answer({ ok: true });
+    });
+    await waitFor(() => expect(shownToast()?.message).toBe(`تم: ${ar.admin.approveListingTitle}`));
+  });
+});
+
 describe('the other queues', () => {
+  it('keeps a case under investigation in the under-review queue, with its levers', async () => {
+    const investigated = { ...reportCase, open_reports: 0, investigating_reports: 2 };
+    server.on('POST /rest/v1/rpc/admin_report_cases', (_url: URL, init?: RequestInit) =>
+      JSON.parse(String(init?.body ?? '{}')).p_view === 'under_review' ? [investigated] : [],
+    );
+    await signIn();
+    renderRouter(app, { initialUrl: '/admin/reports' });
+
+    expect(await screen.findByText(ar.admin.emptyQueue)).toBeTruthy();
+    fireEvent.press(screen.getByRole('radio', { name: ar.admin.reportView.under_review }));
+    expect(await screen.findByText(reportRow.detail as string)).toBeTruthy();
+    // Nothing left to take: no Investigate — the decisions are still here.
+    expect(screen.queryByRole('button', { name: ar.admin.investigate })).toBeNull();
+    expect(screen.getByRole('button', { name: ar.admin.resolveTakeDownJob })).toBeTruthy();
+    expect(screen.getByRole('button', { name: ar.admin.resolveOnly })).toBeTruthy();
+    expect(screen.getByRole('button', { name: ar.admin.dismissReports })).toBeTruthy();
+  });
+
+  it('reads only the reports it draws, never more than the database takes', async () => {
+    const pile = { ...reportCase, reports: 600, reporters: 600, report_ids: Array.from({ length: 600 }, (_, i) => `r${i}`) };
+    server.on('POST /rest/v1/rpc/admin_report_cases', [pile]);
+    await signIn();
+    renderRouter(app, { initialUrl: '/admin/reports' });
+
+    expect(await screen.findByText(reportRow.detail as string)).toBeTruthy();
+    const asked = server.requests.find((request) => request.url.pathname === '/rest/v1/rpc/admin_report_rows');
+    expect((asked?.body as { p_ids: string[] }).p_ids).toHaveLength(3);
+    // The count, isolated left to right inside the Arabic sentence.
+    expect(screen.getByText(/600.*بلاغ/)).toBeTruthy();
+  });
+
   it('takes a reported listing down and resolves its reports in one step, with the reason', async () => {
     await signIn();
     renderRouter(app, { initialUrl: '/admin/reports' });

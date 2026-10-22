@@ -426,6 +426,11 @@
     "deletedTarget": "Removed since it was reported. Close these reports from the full console on the website.",
     "companyRecord": "The company's record — rejections, duplicates, shared phones — is on its page in the full console.",
     "reportedBy": "Reported by {name}",
-    "reportCount": "{count, plural, one {<v>#</v> report} other {<v>#</v> reports}}"
+    "reportCount": "{count, plural, one {<v>#</v> report} other {<v>#</v> reports}}",
+    "openWhatsApp": "Open WhatsApp",
+    "call": "Call",
+    "addNote": "Add a note",
+    "noteLabel": "Note (admins only)",
+    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever."
   }
 }

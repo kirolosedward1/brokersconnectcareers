@@ -17,7 +17,12 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return { title: t('users'), robots: { index: false, follow: false } };
 }
 
-const STATUSES = ['all', 'pending', 'approved', 'rejected'] as const;
+/**
+ * The approval states, and one view that is not one: `blocked` lists the
+ * accounts the auth server will not let in (migration 352), whatever their
+ * standing — the door, not the account's standing, is what the view is for.
+ */
+const STATUSES = ['all', 'pending', 'approved', 'rejected', 'blocked'] as const;
 const ROLES = ['all', 'candidate', 'employer', 'admin'] as const;
 
 /**
@@ -48,13 +53,16 @@ export default async function AdminUsersPage({
   const page = pageOf(sp);
 
   const supabase = await createClient();
+  // The blocked view asks for the block alone; every other view leaves
+  // p_blocked out, which a database from before the column knows how to take.
   const rows = must(
     await supabase.rpc('admin_search_users', {
       p_query: q ?? null,
       p_role: role === 'all' ? null : (role as UserRole),
-      p_status: status === 'all' ? null : (status as ApprovalStatus),
+      p_status: status === 'all' || status === 'blocked' ? null : (status as ApprovalStatus),
       p_limit: PAGE_SIZE,
       p_offset: (page - 1) * PAGE_SIZE,
+      ...(status === 'blocked' ? { p_blocked: true } : {}),
     }),
     'searching accounts',
   ).data;
@@ -91,7 +99,27 @@ export default async function AdminUsersPage({
       mobile: 'meta',
     },
     { key: 'joined', header: t('colJoined'), cell: (row) => formatDate(row.created_at, locale), mobile: 'meta' },
-    { key: 'status', header: t('colStatus'), cell: (row) => <ApprovalBadge status={row.approval_status} />, mobile: 'aside' },
+    {
+      key: 'lastSignIn',
+      header: t('lastSignIn'),
+      cell: (row) => (row.last_sign_in_at ? formatDate(row.last_sign_in_at, locale) : '—'),
+      mobile: 'hidden',
+    },
+    {
+      key: 'status',
+      header: t('colStatus'),
+      // The block rides beside the standing rather than replacing it: a
+      // suspended account whose door is also shut is both, and an admin
+      // deciding what to lift wants to see both. Absent on a database from
+      // before migration 352, which reads as not blocked.
+      cell: (row) => (
+        <span className="inline-flex flex-wrap gap-1">
+          <ApprovalBadge status={row.approval_status} />
+          {row.sign_in_blocked ? <Badge variant="destructive">{t('signInBlocked')}</Badge> : null}
+        </span>
+      ),
+      mobile: 'aside',
+    },
   ];
 
   return (
@@ -111,7 +139,7 @@ export default async function AdminUsersPage({
         label={t('colStatus')}
         items={STATUSES.map((value) => ({
           key: value,
-          label: value === 'all' ? t('filterAll') : t(`approval.${value}`),
+          label: value === 'all' ? t('filterAll') : value === 'blocked' ? t('signInBlocked') : t(`approval.${value}`),
           href: hrefWith('/admin/users', current, { status: value === 'all' ? undefined : value }),
           active: status === value,
         }))}

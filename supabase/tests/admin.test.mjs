@@ -638,4 +638,157 @@ report.section('the overview answers for an admin with real counts');
     `${o?.jobs.live} vs ${liveCount}`);
 }
 
+// ---------------------------------------------------------------------------
+report.section('accounts managed from one place (migration 352)');
+{
+  const levers = [
+    `select admin_set_role('${candidate}', 'admin', 'انضم لفريق الدعم')`,
+    `select admin_set_sign_in_block('${candidate}', true, 'حساب مخترق')`,
+    `select admin_end_sessions('${candidate}', 'حساب مخترق')`,
+    `select admin_user_activity('${candidate}')`,
+    `select * from admin_search_users(null, null, null, 25, 0, true)`,
+  ];
+  for (const [label, id] of [['a candidate', candidate], ['a verified employer', employerVerified]]) {
+    const allowed = [];
+    for (const sql of levers) {
+      const r = await as(id, sql);
+      if (r.ok) allowed.push(sql.slice(7, 40));
+    }
+    report.check(`${label} is refused by every one of the account levers`, allowed.length === 0, allowed.join(', '));
+  }
+  const anonAllowed = [];
+  for (const sql of levers) {
+    const r = await as(null, sql, 'anon');
+    if (r.ok) anonAllowed.push(sql.slice(7, 40));
+  }
+  report.check('and a signed-out visitor cannot call them', anonAllowed.length === 0, anonAllowed.join(', '));
+
+  // The role.
+  let r = await as(admin, `select admin_set_role('${admin}', 'candidate', 'سبب كافٍ')`);
+  report.check('an admin cannot change their own role', !r.ok && /own role/.test(r.error ?? ''), r.error);
+  r = await as(admin, `select admin_set_role('${candidate}', 'admin', '')`);
+  report.check('making an admin needs a reason', !r.ok && /reason_required/.test(r.error ?? ''), r.error);
+  r = await as(admin, `select admin_set_role('${candidate}', 'employer', 'سبب كافٍ')`);
+  report.check('a candidate is not made an employer by an admin', !r.ok && /invalid_transition/.test(r.error ?? ''), r.error);
+  r = await as(admin, `select admin_set_role('${candidate}', 'candidate', 'سبب كافٍ')`);
+  report.check('the role an account already has is no change', !r.ok && /no_change/.test(r.error ?? ''), r.error);
+
+  const role = await session(admin, async (q) => {
+    await q(`select admin_set_role('${candidate}', 'admin', 'انضم لفريق الدعم')`);
+    const [profile] = await q(`select role, approval_status from profiles where id = '${candidate}'`);
+    const [promoted] = await q(
+      `select reason, metadata from admin_audit_log where target_type = 'user' and target_id = '${candidate}' and action = 'user.promoted' order by id desc limit 1`,
+    );
+    await q(`select admin_set_role('${candidate}', 'candidate', 'انتهى عمله معانا')`);
+    const [after] = await q(`select role from profiles where id = '${candidate}'`);
+    const [demoted] = await q(
+      `select metadata from admin_audit_log where target_type = 'user' and target_id = '${candidate}' and action = 'user.demoted' order by id desc limit 1`,
+    );
+    return { profile, promoted, after, demoted };
+  });
+  report.check(
+    'making an admin sets the role, approves the account, and records why',
+    role.ok && role.value.profile.role === 'admin' && role.value.profile.approval_status === 'approved'
+      && role.value.promoted?.reason === 'انضم لفريق الدعم' && role.value.promoted?.metadata?.to === 'admin',
+    role.ok ? JSON.stringify(role.value.profile) : role.error,
+  );
+  report.check(
+    'and taking it away is recorded with where they came from',
+    role.ok && role.value.after.role === 'candidate' && role.value.demoted?.metadata?.from === 'admin',
+    role.ok ? JSON.stringify(role.value.demoted) : role.error,
+  );
+
+  // The door.
+  r = await as(admin, `select admin_set_sign_in_block('${admin}', true, 'سبب كافٍ')`);
+  report.check('an admin cannot block their own sign-in', !r.ok && /own sign-in/.test(r.error ?? ''), r.error);
+  r = await as(admin, `select admin_set_sign_in_block('${candidate}', true, '')`);
+  report.check('blocking sign-in needs a reason', !r.ok && /reason_required/.test(r.error ?? ''), r.error);
+
+  const block = await session(admin, async (q) => {
+    const [first] = await q(`select admin_set_sign_in_block('${candidate}', true, 'حساب مخترق') as n`);
+    const [facts] = await q(`select admin_user_facts('${candidate}') as f`);
+    const listed = await q(`select id from admin_search_users(null, null, null, 25, 0, true)`);
+    await q('savepoint twice');
+    let twice = null;
+    try {
+      await q(`select admin_set_sign_in_block('${candidate}', true, 'تاني')`);
+    } catch (error) {
+      twice = error.message;
+    }
+    await q('rollback to savepoint twice');
+    await q(`select admin_set_sign_in_block('${candidate}', false, 'اتأكدنا إنه هو')`);
+    const [lifted] = await q(`select admin_user_facts('${candidate}') as f`);
+    const unlisted = await q(`select id from admin_search_users(null, null, null, 25, 0, true)`);
+    const trail = await q(
+      `select action, metadata from admin_audit_log where target_type = 'user' and target_id = '${candidate}' and action like 'user.sign_in_%' order by id`,
+    );
+    return { first: first.n, facts: facts.f, listed, twice, lifted: lifted.f, unlisted, trail };
+  });
+  report.check(
+    'blocking sign-in bans the account at the auth server, lists it as blocked, and records it',
+    block.ok && Boolean(block.value.facts.sign_in_blocked_until) && block.value.listed.some((row) => row.id === candidate)
+      && block.value.trail[0]?.action === 'user.sign_in_blocked' && block.value.trail[0]?.metadata?.sessions_ended === 0,
+    block.ok ? JSON.stringify({ facts: block.value.facts, trail: block.value.trail }) : block.error,
+  );
+  report.check('blocking it twice is no change', /no_change/.test(block.value?.twice ?? ''), block.value?.twice);
+  report.check(
+    'and lifting the block lets the account sign in again',
+    block.ok && !block.value.lifted.sign_in_blocked_until && !block.value.unlisted.some((row) => row.id === candidate)
+      && block.value.trail[1]?.action === 'user.sign_in_unblocked',
+    block.ok ? JSON.stringify(block.value.lifted) : block.error,
+  );
+
+  const adminDoor = await session(admin, async (q) => {
+    await q(`select admin_set_role('${candidate}', 'admin', 'ترقية')`);
+    await q('savepoint door');
+    let refused = null;
+    try {
+      await q(`select admin_set_sign_in_block('${candidate}', true, 'سبب كافٍ')`);
+    } catch (error) {
+      refused = error.message;
+    }
+    await q('rollback to savepoint door');
+    return refused;
+  });
+  report.check("an admin's sign-in is not blocked from here", /belongs to an admin/.test(adminDoor.value ?? ''), adminDoor.value ?? adminDoor.error);
+
+  // The sessions.
+  r = await as(admin, `select admin_end_sessions('${admin}', 'سبب كافٍ')`);
+  report.check('an admin cannot end their own sessions', !r.ok && /own sessions/.test(r.error ?? ''), r.error);
+  const ended = await session(admin, async (q) => {
+    const [n] = await q(`select admin_end_sessions('${candidate}', 'حساب مخترق') as n`);
+    const [audit] = await q(
+      `select reason, metadata from admin_audit_log where target_type = 'user' and target_id = '${candidate}' and action = 'user.sessions_ended' order by id desc limit 1`,
+    );
+    return { n: n.n, audit };
+  });
+  report.check(
+    'ending sessions is recorded with how many went (none on a database without GoTrue’s table)',
+    ended.ok && ended.value.n === 0 && ended.value.audit?.metadata?.sessions_ended === 0 && ended.value.audit?.reason === 'حساب مخترق',
+    ended.ok ? JSON.stringify(ended.value) : ended.error,
+  );
+
+  // What the account has done.
+  r = await as(admin, `select admin_user_activity('${candidate}') as a`);
+  const activity = r.rows[0]?.a;
+  report.check(
+    'the activity has every section',
+    r.ok && ['applications', 'listings', 'reports_filed', 'appeals', 'saved_jobs', 'notes', 'decisions'].every((key) => key in (activity ?? {})),
+    r.error ?? JSON.stringify(activity),
+  );
+  const applied = (await one(`select count(*)::int as n from applications where candidate_id = '${candidate}'`)).n;
+  const saved = (await one(`select count(*)::int as n from saved_jobs where candidate_id = '${candidate}'`)).n;
+  report.check(
+    'and counts what the account did',
+    activity?.applications?.total === applied && activity?.saved_jobs === saved,
+    `${activity?.applications?.total} vs ${applied}, ${activity?.saved_jobs} vs ${saved}`,
+  );
+  const facts = await as(admin, `select admin_user_facts('${admin}') as f`);
+  report.check(
+    'the facts say whether two-step sign-in is on and how many devices are signed in',
+    facts.ok && 'verified_factors' in facts.rows[0].f && 'sessions' in facts.rows[0].f && facts.rows[0].f.sign_in_blocked_until === null,
+    facts.error ?? JSON.stringify(facts.rows[0]?.f),
+  );
+}
+
 process.exit(report.finish() ? 0 : 1);

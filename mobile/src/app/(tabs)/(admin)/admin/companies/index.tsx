@@ -82,7 +82,8 @@ function CompanyRow({ company }: { company: QueueCompany }) {
   const locale = useLocale();
   const { colors } = useTheme();
   const name = localized(locale, company.name_ar, company.name_en);
-  const waited = daysSince(company.company_documents.reduce((first, doc) => (doc.created_at < first ? doc.created_at : first), company.created_at));
+  // How long the papers have waited: the oldest of them, not the company's age.
+  const waited = daysSince(company.company_documents.map((doc) => doc.created_at).sort()[0] ?? company.created_at);
   const lever = (decision: 'verify' | 'request_changes' | 'reject') => {
     const words = {
       verify: {
