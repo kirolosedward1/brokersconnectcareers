@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState, useTransition } from 'react';
+import { useId, useMemo, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Briefcase, Search } from 'lucide-react';
 
@@ -16,6 +16,9 @@ import { completeOnboarding } from '@/lib/actions/onboarding';
 import { reach } from '@/lib/reach';
 import type { DistrictRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
+import { draftKey } from '@/lib/form-draft';
+import { useFormDraft } from '@/lib/use-form-draft';
+import { DraftNotice } from '@/components/ui/draft-notice';
 
 /** Who may see a candidate's directory card, from most open to closed; nothing is chosen in advance. */
 const VISIBILITIES = [
@@ -26,12 +29,15 @@ const VISIBILITIES = [
 
 export function OnboardingForm({
   locale,
+  ownerId,
   defaultName,
   defaultRole,
   districts,
   next,
 }: {
   locale: Locale;
+  /** Whose draft this form keeps (lib/form-draft.ts). */
+  ownerId: string;
   defaultName: string;
   /** Pre-selects the account type when the sign-up door already implied one. */
   defaultRole?: 'candidate' | 'employer';
@@ -56,26 +62,56 @@ export function OnboardingForm({
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
 
+  /*
+    What was typed, kept until the account is made (lib/form-draft.ts) — for
+    the employer, a company's details on top of their own. The agreement is
+    not among it: it is given each time the form is sent, never remembered.
+  */
+  const [fields, setFields] = useState({
+    fullName: defaultName,
+    whatsapp: '',
+    visibility: '',
+    companyName: '',
+    companyWebsite: '',
+    companyDistrict: '',
+    companyHeadcount: '',
+    locale: locale as string,
+  });
+  const set = (key: keyof typeof fields) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setFields((current) => ({ ...current, [key]: event.target.value }));
+  const draft = useFormDraft({
+    key: draftKey('onboarding', ownerId),
+    values: useMemo(() => ({ role, fields }), [role, fields]),
+    restore: (kept: { role: 'candidate' | 'employer'; fields: typeof fields }) => {
+      // The door's answer stands over a draft's: it is the decision.
+      if (!roleSettled && (kept.role === 'candidate' || kept.role === 'employer')) setRole(kept.role);
+      setFields(kept.fields);
+    },
+  });
+
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    // Kept now, not after the pause: what follows can end in a sign-in.
+    draft.flush();
 
     startTransition(async () => {
       const result = await reach(completeOnboarding({
         role,
-        fullName: String(form.get('fullName') ?? ''),
-        whatsapp: String(form.get('whatsapp') ?? ''),
-        locale: String(form.get('locale') ?? locale),
+        fullName: fields.fullName,
+        whatsapp: fields.whatsapp,
+        locale: fields.locale || locale,
         // Checked or not, as it was: the server refuses anything but a yes.
         agreed: form.get('agreed') === 'on',
-        visibility: role === 'candidate' ? String(form.get('visibility') ?? '') || undefined : undefined,
+        visibility: role === 'candidate' ? fields.visibility || undefined : undefined,
         company:
           role === 'employer'
             ? {
-                nameAr: String(form.get('companyName') ?? ''),
-                website: String(form.get('companyWebsite') ?? '') || null,
-                headcountBand: String(form.get('companyHeadcount') ?? '') || null,
-                districtId: String(form.get('companyDistrict') ?? '') || null,
+                nameAr: fields.companyName,
+                website: fields.companyWebsite || null,
+                headcountBand: fields.companyHeadcount || null,
+                districtId: fields.companyDistrict || null,
               }
             : undefined,
       }));
@@ -101,6 +137,8 @@ export function OnboardingForm({
       */
       // The same answer homeFor gives on the server: the console for the role
       // the database recorded, not the one the form asked for.
+      // The account exists: nothing left to keep.
+      draft.clear();
       const destination =
         safeNext(next) ?? (result.data!.role === 'employer' ? '/employer' : '/dashboard');
       /*
@@ -115,6 +153,8 @@ export function OnboardingForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      <DraftNotice draft={draft} />
+
       {roleSettled ? (
         <div className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm">
           <span className="inline-flex items-center gap-2 font-medium">
@@ -160,7 +200,8 @@ export function OnboardingForm({
           id="fullName"
           name="fullName"
           required
-          defaultValue={defaultName}
+          value={fields.fullName}
+          onChange={set('fullName')}
           autoComplete="name"
           maxLength={120}
         />
@@ -180,6 +221,8 @@ export function OnboardingForm({
           inputMode="tel"
           autoComplete="tel"
           placeholder={t('whatsappPlaceholder')}
+          value={fields.whatsapp}
+          onChange={set('whatsapp')}
           className="numeral-field"
         />
       </Field>
@@ -202,6 +245,8 @@ export function OnboardingForm({
                 type="radio"
                 name="visibility"
                 value={value}
+                checked={fields.visibility === value}
+                onChange={set('visibility')}
                 required
                 className="mt-1 size-4 shrink-0 accent-primary"
               />
@@ -233,7 +278,14 @@ export function OnboardingForm({
             htmlFor="companyName"
             error={errors.company ? tValidation('required') : undefined}
           >
-            <Input id="companyName" name="companyName" required maxLength={160} />
+            <Input
+              id="companyName"
+              name="companyName"
+              required
+              maxLength={160}
+              value={fields.companyName}
+              onChange={set('companyName')}
+            />
           </Field>
 
           <Field
@@ -250,12 +302,19 @@ export function OnboardingForm({
               inputMode="url"
               placeholder="https://"
               maxLength={200}
+              value={fields.companyWebsite}
+              onChange={set('companyWebsite')}
             />
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t('companyDistrict')} htmlFor="companyDistrict">
-              <Select id="companyDistrict" name="companyDistrict" defaultValue="">
+              <Select
+                id="companyDistrict"
+                name="companyDistrict"
+                value={fields.companyDistrict}
+                onChange={set('companyDistrict')}
+              >
                 <option value="">{tCommon('optional')}</option>
                 {districts.map((district) => (
                   <option key={district.id} value={district.id}>
@@ -266,7 +325,12 @@ export function OnboardingForm({
             </Field>
 
             <Field label={t('companyHeadcount')} htmlFor="companyHeadcount">
-              <Select id="companyHeadcount" name="companyHeadcount" defaultValue="">
+              <Select
+                id="companyHeadcount"
+                name="companyHeadcount"
+                value={fields.companyHeadcount}
+                onChange={set('companyHeadcount')}
+              >
                 <option value="">{tCommon('optional')}</option>
                 {HEADCOUNT_BANDS.map((band) => (
                   <option key={band} value={band}>
@@ -290,7 +354,7 @@ export function OnboardingForm({
           namespace is for naming a language *to* a reader, which is a
           different job: it labels the languages a consultant speaks.
         */}
-        <Select id="locale" name="locale" defaultValue={locale}>
+        <Select id="locale" name="locale" value={fields.locale} onChange={set('locale')}>
           <option value="ar">العربية</option>
           <option value="en">English</option>
         </Select>

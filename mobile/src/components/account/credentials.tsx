@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { View, type TextInput } from 'react-native';
 import { useTranslations } from 'use-intl';
+import { passwordRefusal } from '@/lib/auth/errors';
+import { westernDigits } from '@/lib/search/arabic';
 import { Check, KeyRound, Mail } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
@@ -13,6 +15,7 @@ import { useAuthErrorText } from '~/features/auth/errors';
 import { callAction } from '~/lib/api';
 import { EMAIL_SHAPE } from '~/lib/email-shape';
 import { useErrorFeedback } from '~/lib/haptics';
+import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
@@ -105,8 +108,28 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
   const [pending, setPending] = useState(false);
   // The return key moves on to the second password, and from there saves.
   const confirmField = useRef<TextInput>(null);
+  /*
+    Secure password change: on a session more than a day old GoTrue wants a
+    code it emails, sent back with the new password — the website's form
+    asks the same way. A session on a phone is nearly always that old.
+  */
+  const [codeSent, setCodeSent] = useState(false);
+  const [code, setCode] = useState('');
+  const email = useSession().session?.user.email ?? '';
 
   const hasPassword = provider === 'email';
+
+  /** The code GoTrue asks for, emailed to the account's own address. */
+  const sendCode = async () => {
+    const { error: refused } = await supabase.auth.reauthenticate();
+    if (refused) {
+      setError(authError(refused));
+      return;
+    }
+    setError(null);
+    setCode('');
+    setCodeSent(true);
+  };
 
   const save = async () => {
     setDone(false);
@@ -119,15 +142,27 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
       setError(t('validation.passwordMismatch'));
       return;
     }
+    // Typed on an Arabic keyboard, the number pad gives Arabic-Indic digits.
+    const nonce = codeSent ? westernDigits(code).replace(/\D/g, '') : '';
+    // Asked for and not given: sent without it, GoTrue would ask again and
+    // another email would go out, until the address hit its limit.
+    if (codeSent && !nonce) {
+      setError(t('validation.required'));
+      return;
+    }
     setPending(true);
-    const { error: refused } = await supabase.auth.updateUser({ password });
+    const { error: refused } = await supabase.auth.updateUser(nonce ? { password, nonce } : { password });
     if (refused) {
+      const refusal = passwordRefusal(refused);
+      if (refusal === 'reauthenticate' || (refusal === 'code_invalid' && !nonce)) await sendCode();
+      else setError(refusal === 'code_invalid' ? t('account.reauthInvalid') : authError(refused));
       setPending(false);
-      setError(authError(refused));
       return;
     }
     setPassword('');
     setConfirm('');
+    setCode('');
+    setCodeSent(false);
     setDone(true);
     await supabase.auth.signOut({ scope: 'others' }).catch(() => {});
     setPending(false);
@@ -177,6 +212,36 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
               }}
             />
           </Field>
+          {codeSent ? (
+            <>
+              <Notice tone="muted">{t('account.reauthSent', { email })}</Notice>
+              <Field label={t('account.reauthCode')}>
+                <TextField
+                  value={code}
+                  onChangeText={setCode}
+                  accessibilityLabel={t('account.reauthCode')}
+                  ltr
+                  keyboardType="number-pad"
+                  textContentType="oneTimeCode"
+                  autoComplete="one-time-code"
+                  maxLength={10}
+                  autoFocus
+                />
+              </Field>
+              <View style={{ alignItems: 'flex-start' }}>
+                <Button
+                  label={t('account.reauthResend')}
+                  variant="ghost"
+                  size="sm"
+                  disabled={pending}
+                  onPress={() => {
+                    setPending(true);
+                    void sendCode().finally(() => setPending(false));
+                  }}
+                />
+              </View>
+            </>
+          ) : null}
           {done ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }} accessibilityLiveRegion="polite">
               <Check size={16} color={colors.success} />

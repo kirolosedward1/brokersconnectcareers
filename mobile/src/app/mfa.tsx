@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
 import { OPERATOR } from '@/lib/business';
@@ -34,9 +34,16 @@ export default function SecondFactorScreen() {
   const t = useTranslations();
   const config = useMobileConfig();
   const supportEmail = config.data?.supportEmail || OPERATOR.email;
-  const params = useLocalSearchParams<{ next?: string; role?: string; confirmed?: string }>();
+  const params = useLocalSearchParams<{ next?: string; role?: string; confirmed?: string; then?: string }>();
   const intent = intentFromParams(params);
-  const land = useLand();
+  const landing = useLand();
+  /*
+    Asked on the way to the new-password form (a reset link, on an account
+    with an authenticator): answered, the form, whose change GoTrue now
+    accepts. Anything else lands as a sign-in does.
+  */
+  const land = (arrived: typeof intent) =>
+    params.then === 'new-password' ? Promise.resolve(router.replace('/sign-in/new-password')) : landing(arrived);
   const close = useCloseFlow();
   useHoldBack();
   const [code, setCode] = useState('');

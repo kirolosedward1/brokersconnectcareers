@@ -310,6 +310,7 @@ function ApplyForm({
           const reason = failure instanceof ApplyRefused ? failure.reason : 'failed';
           if (reason === 'already_applied') return showErrors({ form: t('apply.alreadyApplied') });
           if (reason === 'rate_limit') return showErrors({ form: t('apply.rateLimit') });
+          if (reason === 'not_open') return showErrors({ form: t('apply.notOpen') });
           if (reason === 'fileTooLarge' || reason === 'fileType') return showErrors({ cv: t(`validation.${reason}`) });
           if (reason === 'upload' || reason === 'invalid_cv_path') {
             const detail = failure instanceof ApplyRefused ? failure.detail : undefined;
