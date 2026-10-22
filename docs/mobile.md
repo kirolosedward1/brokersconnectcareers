@@ -361,6 +361,18 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   signing out and deleting the account, which runs the Account tab's own path
   (`mobile/src/features/account/delete.ts`); the website's onboarding page has
   the same two (`src/components/auth/leave-onboarding.tsx`).
+- **The app lock and the cover** (`mobile/src/components/navigation/app-lock.tsx`,
+  `mobile/src/features/app-lock/`). While somebody is signed in and the app is
+  not in front, the screens are covered by the page and the logo, so the
+  picture iOS keeps for the app switcher is never an applicant's number or CV.
+  "Lock the app", under Sign-in and security, asks Face ID (or the passcode)
+  at launch and after a minute in the background — for the person who turned
+  it on, on that phone only; turning it on or off asks first. Signing out is
+  the way past it; a phone that can no longer ask (its passcode turned off)
+  drops the lock rather than shut its owner out. Over the tab screens only:
+  the root stack's sheets (sign-in, onboarding, the code) sit above it.
+  Built on `expo-local-authentication`, already in the native build, so it
+  ships over the air.
 - **The Account tab** signs out of this phone only (`scope: 'local'`), as the
   website's menus sign out of that browser only, so signing out of one never
   signs the other out; a password change ends the other sessions. It
@@ -838,8 +850,8 @@ go to that build only. What is not native stays out of the fingerprint
 installed build off from later updates without a word. The same test computes
 the fingerprint and checks what it is made of. So the first App Store build already carries the
 native modules this round's later features need — `expo-store-review` for the
-rating prompt, `expo-local-authentication` for the app lock — and those
-features can follow over the air.
+rating prompt, `expo-local-authentication` for the app lock (which has since
+followed over the air) — and those features can follow over the air.
 
 The native iOS build is also compiled in CI on `main` (`ios-build` in
 `.github/workflows/mobile.yml`), so a config plugin or native dependency that

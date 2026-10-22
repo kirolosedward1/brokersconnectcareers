@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { SESSION_COOKIE_OPTIONS } from './cookie-options';
+import { secondFactorDue as isSecondFactorDue } from '@/lib/auth/second-factor';
 import type { User } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
@@ -74,12 +75,15 @@ export async function updateSession(
     /*
       An authenticator on the account that this session has not answered:
       what the session's own token proved (aal) against what the account could
-      prove (a verified factor). Read from the session, no request.
+      prove (a verified factor). The factors are the auth server's answer
+      above, not the copy of the user the cookie carries — that copy is the
+      browser's to edit, and an edited one with no factors skipped the code.
+      The token is the one getUser() just had accepted; no further request.
     */
     let secondFactorDue = false;
     if (user) {
-      const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      secondFactorDue = data?.currentLevel === 'aal1' && data.nextLevel === 'aal2';
+      const { data } = await supabase.auth.getSession();
+      secondFactorDue = isSecondFactorDue(user, data.session?.access_token);
     }
 
     return { user, response, isAdmin, secondFactorDue };

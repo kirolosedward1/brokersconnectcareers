@@ -26,3 +26,20 @@ allowBuilds:
 # pnpm 10 resolves the same way, so `npx expo install` never records a version
 # that a newer pnpm then rejects.
 minimumReleaseAge: 1440
+
+# Advisories with a fix inside the same major (`pnpm audit`, October 2026):
+#
+#   shell-quote    critical: quote() could be made to inject a command through
+#                  a line break (React Native's dev tools, react-devtools-core).
+#   source-map-js  high: an indexed source map with crafted section offsets
+#                  stalls the event loop (Metro's postcss).
+#
+# Both are build- and development-time, and both are patch or minor releases.
+# Not here, on purpose: decode-uri-component (expo-router's query-string 7
+# require()s it, and the fixed 0.5 is ESM only — taking it would break every
+# link the app opens), xcode's uuid (the advisory is v3/v5/v6 into a buffer;
+# xcode calls v4), and the three with no fixed version yet (node-forge in the
+# Expo CLI, braces and sprintf-js under Jest).
+overrides:
+  shell-quote: '^1.11.0'
+  source-map-js: '^1.2.2'

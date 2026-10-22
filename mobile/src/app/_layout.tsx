@@ -16,12 +16,14 @@ import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arab
 import { AppError, ScreenError } from '~/components/navigation/error-boundaries';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
+import { AppLock } from '~/components/navigation/app-lock';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
 import { WelcomeGate } from '~/components/navigation/welcome-gate';
 import { roomForScreen } from '~/components/ui/keyboard-room';
 import { InSheet } from '~/components/ui/states';
+import { useAppLockLoaded } from '~/features/app-lock/lock';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
 import { useWelcomeDrawn } from '~/features/welcome';
 import { I18nProvider } from '~/i18n/provider';
@@ -103,7 +105,10 @@ function AppStack() {
   // A cold start draws the board kept from the last run at once: not before
   // the phone has said whose listings the reader hid.
   const hiddenKnown = useHiddenCompaniesLoaded();
-  const ready = settled && hiddenKnown;
+  // Nor before it has said whether this person keeps the app locked: the
+  // first frame is the lock, not the screens behind it.
+  const lockKnown = useAppLockLoaded();
+  const ready = settled && hiddenKnown && lockKnown;
   const [welcome, setWelcome] = useState<'deciding' | 'opened' | 'not'>('deciding');
   const welcomeDrawn = useWelcomeDrawn();
   const [waitedEnough, setWaitedEnough] = useState(false);
@@ -140,6 +145,8 @@ function AppStack() {
       <PendingPath />
       <PushBridge />
       <AppleCredentialWatch />
+      {/* Last, so it is drawn over every screen of the stack. */}
+      <AppLock />
     </UpdateGate>
   );
 }

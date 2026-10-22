@@ -23,12 +23,17 @@ import type { Database } from '@/lib/supabase/database.types';
 
 export type MobileSession = { jwt: string; user: User } | null;
 
-type Scope = { session: MobileSession };
+/**
+ * `secondFactorDue`: the request carried a good token for an account with an
+ * authenticator, signed in with the password alone. It runs signed out (the
+ * session is null), and a route that needs somebody says why it refused.
+ */
+type Scope = { session: MobileSession; secondFactorDue: boolean };
 
 const scope = new AsyncLocalStorage<Scope>();
 
-export function runAsMobile<T>(session: MobileSession, work: () => T): T {
-  return scope.run({ session }, work);
+export function runAsMobile<T>(session: MobileSession, work: () => T, secondFactorDue = false): T {
+  return scope.run({ session, secondFactorDue }, work);
 }
 
 /** Inside a mobile route, its scope; outside one, undefined. */
