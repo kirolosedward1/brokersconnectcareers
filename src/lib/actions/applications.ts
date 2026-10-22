@@ -19,6 +19,7 @@ import type {
   ExperienceBand,
 } from '@/lib/supabase/database.types';
 import { logFailure } from '@/lib/observe';
+import { jobIsLive } from '@/lib/job-state';
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -120,16 +121,19 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
       again" can never work then, so it is asked once and named — 'not_open'
       — and the person is told the listing stopped taking applications. The
       raw database text stays here rather than travelling to the browser.
+
+      Only when the listing was actually read. A lookup that failed says
+      nothing about the listing, and 'not_open' makes the form throw away
+      what was typed — so a passing database error falls through to the
+      ordinary, retryable 'failed' below.
     */
     if (error.code === '42501') {
-      const { data: listing } = await supabase
+      const { data: listing, error: listingError } = await supabase
         .from('jobs')
         .select('status, expires_at')
         .eq('id', parsed.data.jobId)
         .maybeSingle();
-      const open =
-        listing?.status === 'active' && Boolean(listing.expires_at) && new Date(listing.expires_at!) > new Date();
-      if (!open) return { ok: false, error: 'not_open' };
+      if (!listingError && (!listing || !jobIsLive(listing))) return { ok: false, error: 'not_open' };
     }
 
     /*
