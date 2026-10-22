@@ -229,7 +229,7 @@ export default function BoardScreen() {
           <>
             {item.id === seenBefore ? <SeenDivider /> : null}
             {item.id === firstApplied ? <AppliedHeading /> : null}
-            <JobCard job={item} applied={applied.has(item.id)} swipeable />
+            <JobCard job={item} applied={applied.has(item.id)} />
           </>
         )}
         // The divider can move without the listings changing (this visit's start read from the phone).
