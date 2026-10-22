@@ -65,7 +65,10 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const total = totalShown(board.data?.pages[0]?.total ?? 0, read.length, jobs.length);
 
   const factLines: string[] = [];
-  if (facts.listings > 0) {
+  // The area's facts are the server's, of every listing: beside an empty page
+  // — all it read hidden on this phone — they described listings not shown.
+  const allHidden = read.length > 0 && jobs.length === 0;
+  if (facts.listings > 0 && !allHidden) {
     factLines.push(t('companiesHiring', { count: facts.companies }));
     if (facts.withBasicSalary > 0) {
       factLines.push(

@@ -445,6 +445,35 @@ describe('a reminder before a saved listing closes', () => {
     expect(await jobReminders.read(USER_ID)).toEqual([]);
   });
 
+  it('does not put back the reminder of a listing applied to while it was hidden', async () => {
+    const soon = job('1', {}, 5 * DAY);
+    await setReminder(USER_ID, soon, words);
+    savedJobs = [soon];
+    let applications: unknown[] = [];
+    server.on('GET /rest/v1/applications', () => applications);
+    await signedIn();
+    renderRouter(app, { initialUrl: '/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+
+    act(() => hideJob(soon.id, { name: soon.title_ar, slug: soon.slug }));
+    await waitFor(() => expect(phone.__scheduled.size).toBe(0));
+    // Applied while hidden (from its page, or on the website).
+    applications = [{ id: 'application-1', job_id: soon.id, status: 'submitted', created_at: '2026-10-01T10:00:00Z', job: { ...soon } }];
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['applications'] });
+    });
+    await act(async () => {});
+
+    try {
+      act(() => unhideJob(soon.id));
+      await act(async () => {});
+      expect(phone.__scheduled.size).toBe(0);
+      expect(await jobReminders.read(USER_ID)).toEqual([]);
+    } finally {
+      unhideJob(soon.id);
+    }
+  });
+
   it('takes back the reminder of a listing hidden, and puts it back when the listing is', async () => {
     const soon = job('1', {}, 5 * DAY);
     await setReminder(USER_ID, soon, words);

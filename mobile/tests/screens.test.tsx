@@ -422,6 +422,10 @@ describe('a listing', () => {
       expect(await screen.findByText(landingTitle)).toBeTruthy();
       expect(await screen.findByText(ar.jobs.empty)).toBeTruthy();
       expect(screen.queryByText(listing.title_ar)).toBeNull();
+      // Counted as drawn — none — and no facts about listings it does not show.
+      expect(screen.getByText('مفيش نتائج')).toBeTruthy();
+      expect(screen.queryByText('نتيجة واحدة')).toBeNull();
+      expect(screen.queryByLabelText(ar.landing.factsLabel)).toBeNull();
     } finally {
       act(() => unhideJob(listing.id));
     }
