@@ -67,12 +67,28 @@ export function profileFor(eas, name) {
  * native code, so its runtime version is Expo Go's SDK (EXPO_GO_UPDATE in
  * app.config.ts), and the bundle carries the store build's settings: the
  * production profile's environment, so the phone talks to production.
+ *
+ * A channel holds one newest update, so a branch published beside main would
+ * replace what main's link opens, and be replaced by the next branch minutes
+ * later. EXPO_GO_CHANNEL names another channel for such a publish — the
+ * workflow gives each pull request its own (`expo-go-pr-<number>`) and keeps
+ * `expo-go` for main — with its own link.
  */
 export const EXPO_GO = 'expo-go';
 
-export function expoGoTarget(eas) {
-  const { env } = profileFor(eas, 'production');
-  return { channel: EXPO_GO, env: { ...env, EXPO_GO_UPDATE: '1' } };
+/** The channel an Expo Go publish goes to: EXPO_GO_CHANNEL, or `expo-go`. */
+export function expoGoChannel(env = process.env) {
+  const named = env.EXPO_GO_CHANNEL;
+  if (named === undefined || named === '') return EXPO_GO;
+  if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(named)) {
+    throw new Error(`EXPO_GO_CHANNEL "${named}": a channel is lowercase letters, digits and dashes`);
+  }
+  return named;
+}
+
+export function expoGoTarget(eas, env = process.env) {
+  const { env: profileEnv } = profileFor(eas, 'production');
+  return { channel: expoGoChannel(env), env: { ...profileEnv, EXPO_GO_UPDATE: '1' } };
 }
 
 /** The EAS project's id: EAS_PROJECT_ID, or the constant app.config.ts carries. */
@@ -151,9 +167,14 @@ export function findOrCreateProject({ name, slug }, eas = runEas) {
 }
 
 /** Expo's page with the QR code that opens the channel's newest update in Expo Go (`slug=exp`). */
-export function expoGoLink(projectId, sdkVersion) {
-  const query = new URLSearchParams({ slug: 'exp', projectId, runtimeVersion: `exposdk:${sdkVersion}`, channel: EXPO_GO });
+export function expoGoLink(projectId, sdkVersion, channel = EXPO_GO) {
+  const query = new URLSearchParams({ slug: 'exp', projectId, runtimeVersion: `exposdk:${sdkVersion}`, channel });
   return `https://qr.expo.dev/eas-update?${query}`;
+}
+
+/** The same update as a link the phone opens itself: pasted into Safari, or long-pressed. */
+export function expoGoDeepLink(projectId, sdkVersion, channel = EXPO_GO) {
+  return `exp://u.expo.dev/${projectId}?channel-name=${channel}&runtime-version=exposdk:${sdkVersion}`;
 }
 
 /** The `eas update` command line for a profile, with the options given after it. */
@@ -173,6 +194,7 @@ if (isMain) {
     const eas = JSON.parse(readFileSync(join(appRoot, 'eas.json'), 'utf8'));
     let target;
     let link = null;
+    let deepLink = null;
     if (name === EXPO_GO) {
       const source = readFileSync(join(appRoot, 'app.config.ts'), 'utf8');
       let projectId = projectIdFrom(process.env, source);
@@ -189,7 +211,8 @@ if (isMain) {
       target = expoGoTarget(eas);
       // app.config.ts takes the id from here when it carries none itself.
       target.env.EAS_PROJECT_ID = projectId;
-      link = expoGoLink(projectId, `${sdkMajor}.0.0`);
+      link = expoGoLink(projectId, `${sdkMajor}.0.0`, target.channel);
+      deepLink = expoGoDeepLink(projectId, `${sdkMajor}.0.0`, target.channel);
       console.log(`Publishing for Expo Go (SDK ${sdkMajor}) to the "${target.channel}" channel, with the store build's settings.`);
     } else {
       target = profileFor(eas, name);
@@ -201,7 +224,9 @@ if (isMain) {
       env: { ...process.env, ...target.env },
     });
     if (run.status === 0 && link) {
-      console.log(`\nOpen it in Expo Go: scan the QR code on ${link}\nwith the iPhone's camera (signed in to the same Expo account in Expo Go).`);
+      console.log(
+        `\nOpen it in Expo Go: scan the QR code on ${link}\nwith the iPhone's camera (signed in to the same Expo account in Expo Go),\nor paste into Safari on the phone: ${deepLink}`,
+      );
     }
     process.exit(run.status ?? 1);
   } catch (error) {

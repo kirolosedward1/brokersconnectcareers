@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { ImageUp, Trash2 } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
@@ -8,6 +8,7 @@ import { PhotoRefused, pickPhoto, useRemovePhoto, useUploadPhoto } from '~/featu
 import { ApiError } from '~/lib/api';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * The photo's two buttons — the website's AvatarUpload. The one thing on the
@@ -47,7 +48,7 @@ export function PhotoControls({ hasPhoto }: { hasPhoto: boolean }) {
   };
 
   const confirmRemove = () =>
-    Alert.alert(t('account.photo'), undefined, [
+    dialog.alert(t('account.photo'), undefined, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),

@@ -19,7 +19,7 @@ import { installIntlPolyfills } from '~/lib/intl-polyfills';
   Locale: Intl.Locale,
   getCanonicalLocales: Intl.getCanonicalLocales,
 };
-installIntlPolyfills({ force: true });
+installIntlPolyfills({ force: true, locales: ['ar', 'en'] });
 
 // And without the built-ins Node has and Hermes, the phone's engine, does not
 // (checked against Hermes V1, which React Native 0.86 runs): code using one
@@ -118,6 +118,7 @@ jest.mock('expo-notifications', () => {
     setNotificationChannelAsync: jest.fn(async () => null),
     getPermissionsAsync: jest.fn(async () => ({ status: 'undetermined', granted: false, canAskAgain: true, expires: 'never' })),
     requestPermissionsAsync: jest.fn(async () => ({ status: 'granted', granted: true, canAskAgain: true, expires: 'never' })),
+    scheduleNotificationAsync: jest.fn(async () => 'local-notification'),
     getExpoPushTokenAsync: jest.fn(async () => ({ type: 'expo', data: 'ExponentPushToken[test-token-0001]' })),
     addPushTokenListener: jest.fn(subscription),
     addNotificationReceivedListener: jest.fn(subscription),
@@ -159,3 +160,7 @@ jest.mock('expo-local-authentication', () => ({
     return createElement(inside.Provider, { value: null }, drawModal.call(this));
   };
 }
+
+// A native module: the picture a view would make, as a file on the phone.
+jest.mock('react-native-view-shot', () => ({ captureRef: jest.fn(async () => 'file:///tmp/listing-card.png') }));
+jest.mock('expo-sharing', () => ({ shareAsync: jest.fn(async () => {}), isAvailableAsync: jest.fn(async () => true) }));

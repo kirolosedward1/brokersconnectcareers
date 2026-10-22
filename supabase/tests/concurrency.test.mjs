@@ -447,6 +447,43 @@ async function main() {
     report.check('with nobody verifying it, the next run deletes them', (await papers()) === 0);
   }
 
+  // -------------------------------------------------------------------------
+  report.section("two admins taking each other's role at once leave one admin, not none");
+  {
+    // A second admin, made the owner's way (no token: the guard trusts it).
+    const { rows: [{ id: first }] } = await setup.query(`select id from profiles where role = 'admin' order by id limit 1`);
+    const { rows: [{ id: second }] } = await setup.query(
+      `select id from profiles where role = 'candidate' and approval_status = 'approved' order by id limit 1`,
+    );
+    await setup.query(`update profiles set role = 'admin' where id = $1`, [second]);
+
+    const asAdmin = async (client, who) => {
+      await client.query('set local role authenticated');
+      await client.query(`select set_config('request.jwt.claim.sub', $1, true)`, [who]);
+      await client.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ role: 'authenticated', sub: who })]);
+    };
+
+    // Forced: the first admin's demotion of the second holds the role lock,
+    // uncommitted; the second's demotion of the first must wait for it, and
+    // then see that it is the last admin standing.
+    await a.query('begin');
+    await asAdmin(a, first);
+    await a.query(`select public.admin_set_role($1, 'candidate', 'انتهى عمله معانا')`, [second]);
+    await b.query('begin');
+    await asAdmin(b, second);
+    const { rows: [{ pid }] } = await b.query('select pg_backend_pid() as pid');
+    const demoting = b.query(`select public.admin_set_role($1, 'candidate', 'انتهى عمله معانا')`, [first])
+      .then(() => ({ ok: true }), (error) => ({ ok: false, error: error.message }));
+    await waitUntilBlocked(observer, pid, "the second admin's demotion behind the first's");
+    await a.query('commit');
+    const outcome = await demoting;
+    await b.query(outcome.ok ? 'commit' : 'rollback');
+    const { rows: [{ n }] } = await setup.query(`select count(*)::int as n from profiles where role = 'admin'`);
+    report.check("the second demotion waited for the first, then was refused: it would have left no admin",
+      !outcome.ok && /last_admin/.test(outcome.error ?? ''), outcome.error ?? 'went through');
+    report.check('one admin is left, not none', n === 1, `admins: ${n}`);
+  }
+
 }
 
 let failed = false;

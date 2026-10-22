@@ -65,6 +65,9 @@ export function bandFor(years: number): ExperienceBand {
 /** Track and district are what a consultant actually searches by; experience breaks ties. */
 const WEIGHT = { track: 2, district: 2, experience: 1 } as const;
 
+/** The most a listing can score: every point the profile could match. */
+export const MAX_MATCH_SCORE = WEIGHT.track + WEIGHT.district + WEIGHT.experience;
+
 export function scoreJob(
   job: MatchableJob,
   profile: MatchProfile,

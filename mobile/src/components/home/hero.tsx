@@ -9,7 +9,8 @@ import { corner, space } from '~/theme/tokens';
  * The first thing Home shows: a deep sapphire panel falling to midnight, a
  * line in champagne above the headline, the headline and its promise, and
  * whatever the screen puts beneath (the search, its button); compact, a
- * dashboard's greeting in the same panel. Fine champagne
+ * dashboard's greeting in the same panel, with what stands beside it at its
+ * end (`aside`: the reader's photo) — in Arabic, the left. Fine champagne
  * arcs open from its far corner, the way a plan's sightlines do; they are
  * drawing, not content, and are hidden from VoiceOver.
  */
@@ -18,6 +19,7 @@ export function Hero({
   title,
   subtitle,
   compact = false,
+  aside,
   children,
 }: {
   eyebrow?: string;
@@ -25,9 +27,29 @@ export function Hero({
   subtitle?: string;
   /** A dashboard's greeting: the same panel, a smaller headline. */
   compact?: boolean;
+  /** Beside the words, at the end of the line, centred on them. */
+  aside?: ReactNode;
   children?: ReactNode;
 }) {
   const { colors, shadow } = useTheme();
+  const gap = compact ? space[1] : space[3];
+  const words = (
+    <>
+      {eyebrow ? (
+        <Text variant="label" weight="semibold" style={{ color: colors.champagne }}>
+          {eyebrow}
+        </Text>
+      ) : null}
+      <Text variant={compact ? 'title' : 'display'} weight="bold" accessibilityRole="header" style={{ color: colors.onHero }}>
+        {title}
+      </Text>
+      {subtitle ? (
+        <Text variant="small" style={{ color: colors.onHeroMuted }}>
+          {subtitle}
+        </Text>
+      ) : null}
+    </>
+  );
 
   return (
     <View style={{ ...corner('xxxl'), boxShadow: shadow.hero }}>
@@ -38,7 +60,7 @@ export function Hero({
           backgroundColor: colors.hero,
           experimental_backgroundImage: `linear-gradient(160deg, ${colors.hero} 0%, ${colors.heroDeep} 100%)`,
           padding: compact ? space[5] : space[6],
-          gap: compact ? space[1] : space[3],
+          gap,
         }}
       >
         <View
@@ -55,19 +77,14 @@ export function Hero({
           </Svg>
         </View>
 
-        {eyebrow ? (
-          <Text variant="label" weight="semibold" style={{ color: colors.champagne }}>
-            {eyebrow}
-          </Text>
-        ) : null}
-        <Text variant={compact ? 'title' : 'display'} weight="bold" accessibilityRole="header" style={{ color: colors.onHero }}>
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text variant="small" style={{ color: colors.onHeroMuted }}>
-            {subtitle}
-          </Text>
-        ) : null}
+        {aside ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
+            <View style={{ flex: 1, gap }}>{words}</View>
+            {aside}
+          </View>
+        ) : (
+          words
+        )}
         {children ? <View style={{ gap: space[3], marginTop: space[2] }}>{children}</View> : null}
       </View>
     </View>

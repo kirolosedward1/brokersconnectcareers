@@ -27,19 +27,13 @@ allowBuilds:
 # that a newer pnpm then rejects.
 minimumReleaseAge: 1440
 
-# Advisories with a fix inside the same major (`pnpm audit`, October 2026):
-#
-#   shell-quote    critical: quote() could be made to inject a command through
-#                  a line break (React Native's dev tools, react-devtools-core).
-#   source-map-js  high: an indexed source map with crafted section offsets
-#                  stalls the event loop (Metro's postcss).
-#
-# Both are build- and development-time, and both are patch or minor releases.
-# Not here, on purpose: decode-uri-component (expo-router's query-string 7
-# require()s it, and the fixed 0.5 is ESM only — taking it would break every
-# link the app opens), xcode's uuid (the advisory is v3/v5/v6 into a buffer;
-# xcode calls v4), and the three with no fixed version yet (node-forge in the
-# Expo CLI, braces and sprintf-js under Jest).
+# Lift two tooling packages off versions with published advisories, as the
+# website does (../pnpm-workspace.yaml). Both arrive through the development
+# toolchain, not the app's bundle: shell-quote through React Native's
+# devtools (quote() command injection, GHSA reported critical, fixed in
+# 1.11.0), source-map-js through Expo's Metro config and postcss (an
+# event-loop denial of service, GHSA-68fv-2mgg-jv7q, fixed in 1.2.2). Each is
+# a minor or patch release inside the range its dependents ask for.
 overrides:
   shell-quote: '^1.11.0'
   source-map-js: '^1.2.2'

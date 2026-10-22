@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocale, useTranslations } from 'use-intl';
@@ -16,40 +16,47 @@ import {
   MailCheck,
   Receipt,
   Scale,
-  ShieldAlert,
   ShieldCheck,
-  Trash2,
   UserRound,
+  UserRoundPlus,
 } from '~/components/ui/lucide';
 import { OPERATOR } from '@/lib/business';
-import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
+import { canAccessAdminArea, canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { PhotoControls } from '~/components/account/photo-controls';
 import { useHeaderBell } from '~/components/notifications/header-bell';
+import { CompletenessRing } from '~/components/profile/completeness-ring';
+import { useCandidateSummary } from '~/features/profile/queries';
 import { Avatar } from '~/components/ui/avatar';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
-import { ForwardChevron, SignOutMark } from '~/components/ui/icons';
+import { ForwardChevron, SignInMark, SignOutMark } from '~/components/ui/icons';
 import { Segmented } from '~/components/ui/segmented';
 import { LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { shareMyData } from '~/features/account/settings';
 import { useMobileConfig } from '~/features/config';
+import { useFewerKinds } from '~/features/jobs/fewer';
+import { useListOwner } from '~/features/jobs/recent';
 import { useHiddenAgentEntries } from '~/features/moderation/hidden-agents';
 import { useHiddenCompanyEntries } from '~/features/moderation/hidden-companies';
+import { useHiddenJobEntries } from '~/features/moderation/hidden-jobs';
 import { signOutHere } from '~/features/push/device';
-import { publishedAt, shownVersion } from '~/features/update';
+import { useTabList } from '~/features/tab-bar';
+import { buildMarker, publishedAt, shownVersion } from '~/features/update';
 import { ApiError } from '~/lib/api';
+import { useScreenRefresh } from '~/lib/use-pull-refresh';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { useTheme, type ThemePreference } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * The Account tab. Signed out, it is the door: sign in, create an account, or
  * register a company. Signed in, who this is and their photo, the app's
  * appearance, the settings the website keeps on /dashboard/account (signing in
  * and security, the emails, a copy of the data), the way to the website
- * (where the admin console stays), signing out of this phone, and deleting the
+ * (where the rest of the admin console stays), signing out of this phone, and deleting the
  * account — which an app that creates accounts must offer in the app itself.
  *
  * Signing out here is this phone only (`scope: 'local'`): leaving the app
@@ -62,15 +69,21 @@ export default function AccountScreen() {
   const { colors, preference, setPreference } = useTheme();
   const { ready, session, viewer, actor } = useSession();
   const config = useMobileConfig();
-  // What this phone hides, signed in or not: the way back to it, once there is any.
-  const hiddenCount = useHiddenCompanyEntries().length + useHiddenAgentEntries().length;
+  // Read for a candidate only (useCandidateSummary): nobody else has a profile score.
+  const completeness = useCandidateSummary().data?.profile_completeness ?? null;
+  // What this phone hides, signed in or not — and the kinds this person sees fewer of: the way back to it, once there is any.
+  const hiddenCount =
+    useHiddenCompanyEntries().length + useHiddenAgentEntries().length + useHiddenJobEntries().length + useFewerKinds(useListOwner()).length;
   // The website's own fallback (its footer and the config route): the
   // operator's published address when no support inbox is set.
   const supportEmail = config.data?.supportEmail || OPERATOR.email;
   const [exporting, setExporting] = useState(false);
+  const list = useTabList();
+  const pull = useScreenRefresh();
   const [signingOut, setSigningOut] = useState(false);
   const version = shownVersion() ?? '';
   const published = publishedAt();
+  const marker = buildMarker();
 
   const themes: { value: ThemePreference; label: string }[] = [
     { value: 'light', label: t('theme.light') },
@@ -90,7 +103,7 @@ export default function AccountScreen() {
     shareMyData(session.user.id, t('account.exportTitle'))
       .catch((failure: unknown) => {
         const status = failure instanceof ApiError ? failure.status : -1;
-        Alert.alert(
+        dialog.alert(
           t('account.exportTitle'),
           status === 429 ? t('app.account.exportLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'),
         );
@@ -102,14 +115,24 @@ export default function AccountScreen() {
     <>
       <Stack.Screen options={{ title: t('app.tabs.account'), headerRight: bell }} />
       <ScrollView
+        {...list}
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
       >
         {session ? (
           <Card style={{ gap: space[1] }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
               {viewer?.profile ? (
-                <Avatar name={viewer.profile.full_name} src={viewer.profile.avatar_url} seed={viewer.profile.id} size="lg" />
+                // A candidate's profile completeness round the photo (CompletenessRing); a tap opens the profile.
+                <CompletenessRing
+                  percent={completeness}
+                  size={64}
+                  radius={32}
+                  onPress={() => router.push('/account/profile')}
+                >
+                  <Avatar name={viewer.profile.full_name} src={viewer.profile.avatar_url} seed={viewer.profile.id} size="lg" />
+                </CompletenessRing>
               ) : null}
               <View style={{ flex: 1, gap: space[1] }}>
                 {viewer?.profile?.full_name ? (
@@ -132,14 +155,6 @@ export default function AccountScreen() {
                 {viewer.company.name_ar}
               </Text>
             ) : null}
-            {role === 'admin' ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], marginTop: space[2] }}>
-                <ShieldAlert size={16} color={colors.warning} />
-                <Text variant="small" tone="mutedForeground" style={{ flexShrink: 1 }}>
-                  {t('app.account.adminOnWeb')}
-                </Text>
-              </View>
-            ) : null}
             {/* The one thing here other people see. */}
             {viewer?.profile ? (
               <View style={{ marginTop: space[3] }}>
@@ -155,11 +170,23 @@ export default function AccountScreen() {
               </Text>
               <Text tone="mutedForeground">{t('app.account.signedOutBody')}</Text>
             </View>
-            <Button label={t('nav.signIn')} size="lg" onPress={() => router.push('/sign-in')} />
-            <Button label={t('nav.signUp')} variant="outline" size="lg" onPress={() => router.push('/sign-up')} />
+            <Button
+              label={t('nav.signIn')}
+              size="lg"
+              icon={<SignInMark size={20} color={colors.primaryForeground} />}
+              onPress={() => router.push('/sign-in')}
+            />
+            <Button
+              label={t('nav.signUp')}
+              variant="outline"
+              size="lg"
+              icon={<UserRoundPlus size={20} color={colors.foreground} />}
+              onPress={() => router.push('/sign-up')}
+            />
             <Button
               label={t('app.auth.forCompanies')}
               variant="ghost"
+              icon={<Building2 size={18} color={colors.foreground} />}
               onPress={() => router.push({ pathname: '/sign-up', params: { role: 'employer' } })}
             />
           </View>
@@ -171,6 +198,14 @@ export default function AccountScreen() {
         </View>
 
         <Group>
+          {/* The admin console has a tab of its own; this is the way to it from the account, as the website's menu has. */}
+          {canAccessAdminArea(actor) ? (
+            <Row
+              icon={<ShieldCheck size={18} color={colors.primary} />}
+              label={t('app.admin.adminConsole')}
+              onPress={() => router.navigate('/admin')}
+            />
+          ) : null}
           {/* A candidate's directory profile: the website keeps it in the console, the app here. */}
           {canAccessCandidateArea(actor) ? (
             <Row
@@ -201,14 +236,15 @@ export default function AccountScreen() {
                 label={t('app.account.security')}
                 onPress={() => router.push('/account/security')}
               />
+              {/* One word each; the screens they open say the rest. */}
               <Row
                 icon={<BellRing size={18} color={colors.primary} />}
-                label={t('app.push.title')}
+                label={t('app.account.notifications')}
                 onPress={() => router.push('/account/alerts')}
               />
               <Row
                 icon={<MailCheck size={18} color={colors.primary} />}
-                label={t('account.emailsTitle')}
+                label={t('app.account.messages')}
                 onPress={() => router.push('/account/emails')}
               />
               <Row
@@ -233,10 +269,10 @@ export default function AccountScreen() {
             <Row
               icon={<Mail size={18} color={colors.primary} />}
               label={t('app.account.contact')}
-              // The address itself, not only a link to the mail app: a phone
-              // with no mail account set up opens nothing, and says nothing.
-              detail={supportEmail}
-              onPress={() => Linking.openURL(`mailto:${supportEmail}`).catch(() => {})}
+              // A phone with no mail app to write it opens nothing: it is told the address instead.
+              onPress={() =>
+                Linking.openURL(`mailto:${supportEmail}`).catch(() => dialog.alert(t('app.account.contact'), supportEmail))
+              }
             />
           ) : null}
           {session ? (
@@ -246,18 +282,13 @@ export default function AccountScreen() {
               busy={signingOut}
               onPress={() => {
                 setSigningOut(true);
-                signOutHere().then(() => setSigningOut(false));
+                signOutHere()
+                  .catch(() => {})
+                  .then(() => setSigningOut(false));
               }}
             />
           ) : null}
-          {session ? (
-            <Row
-              icon={<Trash2 size={18} color={colors.destructive} />}
-              label={t('account.deleteTitle')}
-              destructive
-              onPress={() => router.push('/account/delete')}
-            />
-          ) : null}
+          {/* Deleting the account is at the foot of "Sign-in and security" (security.tsx). */}
         </Group>
 
         {hiddenCount ? (
@@ -304,6 +335,11 @@ export default function AccountScreen() {
               {published ? ` · ${t('app.account.published', { date: formatDateTime(published, locale) })}` : ''}
             </Text>
           ) : null}
+          {marker ? (
+            <Text selectable variant="caption" tone="mutedForeground" testID="build-marker" style={{ textAlign: 'center', writingDirection: 'ltr' }}>
+              {marker}
+            </Text>
+          ) : null}
         </View>
       </ScrollView>
     </>
@@ -318,15 +354,12 @@ function openSitePage(path: '/privacy' | '/terms') {
 function Row({
   icon,
   label,
-  detail,
   onPress,
   destructive = false,
   busy = false,
 }: {
   icon: ReactNode;
   label: string;
-  /** A second line under the label, for what the row leads to (an address). */
-  detail?: string;
   onPress: () => void;
   destructive?: boolean;
   /** Its action is under way: said, and not started twice. */
@@ -373,14 +406,9 @@ function Row({
           borderTopColor: colors.border,
         }}
       >
-        <View style={{ flex: 1, paddingVertical: detail ? space[2] : 0 }}>
-          <Text tone={destructive ? 'destructive' : 'foreground'}>{label}</Text>
-          {detail ? (
-            <Text variant="small" tone="mutedForeground" selectable>
-              {detail}
-            </Text>
-          ) : null}
-        </View>
+        <Text tone={destructive ? 'destructive' : 'foreground'} style={{ flex: 1 }}>
+          {label}
+        </Text>
         {busy ? <ActivityIndicator color={colors.mutedForeground} /> : <ForwardChevron size={18} color={colors.mutedForeground} />}
       </View>
     </Pressable>

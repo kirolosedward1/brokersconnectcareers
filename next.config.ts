@@ -1,7 +1,25 @@
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
-const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+/*
+  The catalogue's ICU messages are compiled when the site is built, not parsed
+  in every visitor's browser. Each client component's useTranslations used to
+  bring the whole ICU parser with it (@formatjs/icu-messageformat-parser, its
+  skeleton parser and intl-messageformat: 31 KB, 10 KB compressed, on every
+  page), and parse each message the first time it was drawn. Compiled, the
+  messages reach the browser as next-intl's small formatter's own trees and
+  the parser stays on the build machine.
+
+  Holds while every message is a string (no arrays, no t.raw), which is what
+  the catalogue is; the loader refuses the build otherwise. The mobile app
+  reads the same JSON through Metro, untouched by this.
+*/
+const withNextIntl = createNextIntlPlugin({
+  requestConfig: './src/i18n/request.ts',
+  experimental: {
+    messages: { path: './messages', format: 'json', locales: 'infer', precompile: true },
+  },
+});
 
 /** The Supabase project's host, from the build's environment; null when unset or unreadable. */
 function storageHost(): string | null {

@@ -12,7 +12,7 @@ import { useCloseFlow, useLand } from '~/features/auth/land';
 import { checkLink } from '~/features/auth/verify-link';
 import { env } from '~/lib/env';
 import { openWhenReady } from '~/lib/open-path';
-import { storedSession, useSession } from '~/lib/session';
+import { secondFactorDue, storedSession, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { space } from '~/theme/tokens';
 
@@ -57,6 +57,12 @@ export default function ConfirmLinkScreen() {
 
   const go = useCallback(async () => {
     if (type === 'recovery') {
+      // A reset link's session is aal1, and GoTrue refuses the new password
+      // at aal1 on an account with an authenticator: the code first.
+      if (await secondFactorDue().catch(() => false)) {
+        router.replace({ pathname: '/mfa', params: { then: 'new-password' } });
+        return;
+      }
       router.replace('/sign-in/new-password');
       return;
     }

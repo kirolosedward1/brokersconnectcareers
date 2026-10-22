@@ -23,10 +23,10 @@ export const LOCKUP = { wordmark: 1375, gap: 106, mark: 439, height: 286 } as co
 
 /** The logo's height. */
 const HEIGHTS = {
-  /** A navigation bar's title. */
-  header: 28,
-  /** Above a sign-in form. */
-  form: 36,
+  /** Home's own header (HomeFrame): slimmer than a navigation bar, the logo at its start. */
+  header: 22,
+  /** Above a sign-in form, centred over it. */
+  form: 30,
   /** A page of its own. */
   hero: 46,
 } as const;
@@ -85,16 +85,16 @@ export function BrandLogo({ size = 'header' }: { size?: keyof typeof HEIGHTS }) 
 
 /**
  * The logo's wordmark alone, for a page that shows the mark already: in the
- * logo's blue, or in the page's ink in dark mode. Not read by VoiceOver: the
- * page around it says the name.
+ * logo's blue, or in the page's ink in dark mode — or in `tint`, white over a
+ * photograph. Not read by VoiceOver: the page around it says the name.
  */
-export function Wordmark({ height }: { height: number }) {
+export function Wordmark({ height, tint }: { height: number; tint?: string }) {
   const { colors, scheme } = useTheme();
   return (
     <Image
       source={LOGO_WORDMARK}
       contentFit="contain"
-      tintColor={scheme === 'dark' ? colors.foreground : undefined}
+      tintColor={tint ?? (scheme === 'dark' ? colors.foreground : undefined)}
       style={{ width: (LOCKUP.wordmark * height) / LOCKUP.height, height }}
       accessible={false}
     />

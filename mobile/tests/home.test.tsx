@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Text } from 'react-native';
+import { RefreshControl, Text } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -249,6 +249,46 @@ describe("a candidate's home", () => {
     const result = open();
     fireEvent.press(await screen.findByRole('link', { name }));
     await waitFor(() => expect(result.getPathname()).toBe(path));
+  });
+
+  it("sums up the candidate's week: new listings in their areas, applications opened, profile views", async () => {
+    server.on('POST /rest/v1/rpc/candidate_summary', summary({ profile_views_30d: 4 }));
+    await signIn();
+    const result = open();
+
+    expect(await screen.findByRole('header', { name: ar.app.week.title })).toBeTruthy();
+    // The listings of the last seven days in the profile's areas, counted on the server.
+    await waitFor(() =>
+      expect(
+        server.asked('/api/mobile/v1/jobs').some((request) => request.url.searchParams.get('posted') === '7' && request.url.searchParams.has('district')),
+      ).toBe(true),
+    );
+    expect(await screen.findByRole('link', { name: `4 ${ar.app.week.views}` })).toBeTruthy();
+    // Opened more than a week ago: not this week's.
+    expect(screen.getByRole('link', { name: `0 ${ar.app.week.opened}` })).toBeTruthy();
+    fireEvent.press(screen.getByRole('link', { name: `4 ${ar.app.week.views}` }));
+    await waitFor(() => expect(result.getPathname()).toBe('/account/profile'));
+  });
+
+  it("counts the week back from when the applications were read, not from when Home was first drawn", async () => {
+    // Opened by the company six days ago: this week's.
+    const sixDaysAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString();
+    server.on('GET /rest/v1/applications', [{ ...application, employer_viewed_at: sixDaysAgo }]);
+    await signIn();
+    open();
+    expect(await screen.findByRole('link', { name: `1 ${ar.app.week.opened}` })).toBeTruthy();
+
+    // Two days on, Home still open under its tab, pulled to read again.
+    const start = Date.now();
+    jest.setSystemTime(start + 2 * 24 * 60 * 60 * 1000);
+    try {
+      await act(async () => {
+        screen.UNSAFE_getAllByType(RefreshControl)[0].props.onRefresh();
+      });
+      expect(await screen.findByRole('link', { name: `0 ${ar.app.week.opened}` })).toBeTruthy();
+    } finally {
+      jest.setSystemTime(start);
+    }
   });
 
   it('asks for the profile when it is under 60%, and does not call newest-first a match without a track or district', async () => {
