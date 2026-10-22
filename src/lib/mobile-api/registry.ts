@@ -15,17 +15,24 @@ import {
 } from '@/lib/actions/account';
 import {
   addModerationNote,
+  closeDeletionRequest,
+  deleteTaxonomy,
   endSessions,
   getDocumentUrl,
   moderateJob,
   moderateReports,
+  requeueEmail,
   revealContact,
   reviewCompany,
+  saveTaxonomy,
   setAccountApproval,
+  setAgentRestriction,
+  setCompanySuspension,
+  setJobFeatured,
   setSignInBlock,
   setUserRole,
 } from '@/lib/actions/admin';
-import { setReportingRestriction } from '@/lib/actions/moderation';
+import { closeReports, decideAppeal, setReportingRestriction } from '@/lib/actions/moderation';
 import { recordAgentView } from '@/lib/agent-views';
 import { revealAgentContact } from '@/lib/actions/agent-contact';
 import { saveAgentProfile } from '@/lib/actions/agent-profile';
@@ -83,8 +90,9 @@ import {
  * Each entry runs the website's own server action, so an application from the
  * app sends the same emails, passes the same file check and meets the same
  * rate limits as one from the website. Checkout is not here: the app sells
- * nothing. Of the admin console, only the levers its queues need (ADMIN_ACTIONS)
- * — listings, companies, accounts and reports decided, a verification paper
+ * nothing. Of the admin console, every lever the website's console has
+ * (ADMIN_ACTIONS) — listings, companies, accounts, consultants, reports and
+ * appeals decided, taxonomy kept, a dead letter retried, a verification paper
  * opened — and each behind the admin door below, so the app's console asks of
  * a session exactly what the website's does.
  *
@@ -277,6 +285,15 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   setUserRole: { run: forAdmins(setUserRole) },
   setSignInBlock: { run: forAdmins(setSignInBlock) },
   endSessions: { run: forAdmins(endSessions) },
+  setJobFeatured: { run: forAdmins(setJobFeatured) },
+  setCompanySuspension: { run: forAdmins(setCompanySuspension) },
+  setAgentRestriction: { run: forAdmins(setAgentRestriction) },
+  closeReports: { run: forAdmins(closeReports) },
+  decideAppeal: { run: forAdmins(decideAppeal) },
+  saveTaxonomy: { run: forAdmins(saveTaxonomy) },
+  deleteTaxonomy: { run: forAdmins(deleteTaxonomy) },
+  requeueEmail: { run: forAdmins(requeueEmail) },
+  closeDeletionRequest: { run: forAdmins(closeDeletionRequest) },
 };
 
 export function isActionName(name: string): name is MobileActionName {

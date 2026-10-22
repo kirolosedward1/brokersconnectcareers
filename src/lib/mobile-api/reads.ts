@@ -48,6 +48,15 @@ export type MobileConfig = {
   adminMfaRequired?: boolean;
 };
 
+/**
+ * GET /admin/mail — an admin's alone, behind the admin door: whether this
+ * deployment can send mail, and the names (never the values) of the
+ * variables in the way when it cannot. The console's mail-off banner and the
+ * email page's configuration notice, which the phone cannot read from the
+ * server's environment itself.
+ */
+export type AdminMailStatus = { configured: boolean; missing: string[] };
+
 /** GET /jobs */
 export type JobBoardResponse = {
   jobs: JobListItem[];

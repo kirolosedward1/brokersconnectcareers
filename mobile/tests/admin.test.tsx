@@ -387,8 +387,12 @@ describe('who has the Admin tab', () => {
   it("opens the console's links in that tab, and nobody else's", () => {
     expect(routeFromOutside('https://www.brokersconnect.net/admin/reports', admin())).toBe('/(admin)/admin/reports');
     expect(routeInside(`/admin/jobs/${JOB_ID}`, admin())).toBe(`/admin/jobs/${JOB_ID}`);
-    // A page of the console the app does not have opens the app's overview.
-    expect(routeInside('/admin/audit', admin())).toBe('/admin');
+    // Every page of the website's console opens natively, by the website's own path…
+    expect(routeInside('/admin/audit', admin())).toBe('/admin/audit');
+    expect(routeInside(`/admin/companies/${JOB_ID}`, admin())).toBe(`/admin/companies/${JOB_ID}`);
+    expect(routeInside('/admin/users/ABCDEF01-2345-4678-8ABC-DEF012345678', admin())).toBe('/admin/users/ABCDEF01-2345-4678-8ABC-DEF012345678');
+    // …and a path the console does not have opens the app's overview.
+    expect(routeInside('/admin/nowhere', admin())).toBe('/admin');
     const candidate = { userId: USER_ID, profile: { role: 'candidate' as const, approval_status: 'approved' as const }, company: null };
     expect(routeFromOutside('https://www.brokersconnect.net/admin', candidate)).toBe('/');
     expect(routeFromOutside('https://www.brokersconnect.net/admin', null)).toBe('/sign-in?next=%2Fadmin');
