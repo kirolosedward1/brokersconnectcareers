@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Alert, Modal, RefreshControl, type AlertButton } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import { VerifiedExplainerHost } from '~/components/companies/verified-mark';
+import { hideJob, unhideJob } from '~/features/moderation/hidden-jobs';
 import { hideCompany, unhideCompany } from '~/features/moderation/hidden-companies';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { SessionProvider } from '~/lib/session';
@@ -405,6 +406,28 @@ describe('a listing', () => {
       expect(screen.queryByText(listing.title_ar)).toBeNull();
     } finally {
       act(() => unhideCompany(company.id));
+    }
+  });
+
+  it('says a track-in-district page has nothing to show when its only listing was hidden one by one, not a count over an empty space', async () => {
+    server.on('/api/mobile/v1/landing/primary-sales-new-cairo', {
+      track: 'primary',
+      district: newCairo,
+      facts: { listings: 1, companies: 1, withBasicSalary: 1, salaryFloor: 10000, salaryCeiling: 15000 },
+    });
+    server.on('/api/mobile/v1/jobs', board([listing]));
+    act(() => hideJob(listing.id, { name: listing.title_ar, slug: listing.slug }));
+    try {
+      renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+      expect(await screen.findByText(landingTitle)).toBeTruthy();
+      expect(await screen.findByText(ar.jobs.empty)).toBeTruthy();
+      expect(screen.queryByText(listing.title_ar)).toBeNull();
+      // Counted as drawn — none — and no facts about listings it does not show.
+      expect(screen.getByText('مفيش نتائج')).toBeTruthy();
+      expect(screen.queryByText('نتيجة واحدة')).toBeNull();
+      expect(screen.queryByLabelText(ar.landing.factsLabel)).toBeNull();
+    } finally {
+      act(() => unhideJob(listing.id));
     }
   });
 
