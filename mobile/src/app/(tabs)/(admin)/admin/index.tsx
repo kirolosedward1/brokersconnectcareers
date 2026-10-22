@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDateTime, formatNumber } from '@/lib/format';
 import { AdminGate, auditLabel, openOnWebsite, SectionTitle } from '~/components/admin/kit';
+import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { StatStrip } from '~/components/dashboard/stat-strip';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { ForwardChevron } from '~/components/ui/icons';
@@ -12,6 +13,7 @@ import { ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAdminOverview } from '~/features/admin/queries';
 import { useTabList } from '~/features/tab-bar';
+import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
@@ -40,6 +42,7 @@ function Overview() {
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const { viewer } = useSession();
   const overview = useAdminOverview();
   const pull = usePullRefresh(() => overview.refetch());
   const list = useTabList();
@@ -56,6 +59,7 @@ function Overview() {
       refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
     >
+      {viewer?.profile ? <StandingNotice profile={viewer.profile} company={viewer.company} /> : null}
       <Text tone="mutedForeground">{t('admin.overviewLede')}</Text>
 
       <View style={{ gap: space[2] }}>

@@ -30,6 +30,7 @@ import * as ListingScreen from '../src/app/(tabs)/(admin)/admin/jobs/[id]';
 import * as ReportsScreen from '../src/app/(tabs)/(admin)/admin/reports/index';
 import * as AccountsScreen from '../src/app/(tabs)/(admin)/admin/users/index';
 import * as CompaniesScreen from '../src/app/(tabs)/(admin)/admin/companies/index';
+import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { company } from './fixtures';
 import { fakeServer } from './server';
@@ -362,6 +363,14 @@ describe('the tab bar', () => {
     expect(labels.some((label) => label.startsWith(ar.app.tabs.home))).toBe(false);
   });
 
+  it('sends an admin who followed a missing link back to the console', async () => {
+    await signIn();
+    const result = renderRouter(app, { initialUrl: '/admin/jobs/not-a-uuid' });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.tabs.home }));
+    await waitFor(() => expect(result.getPathname()).toBe('/admin'));
+  });
+
   it('wears what waits on a decision on the console tab, once another tab is open', async () => {
     await signIn();
     renderRouter(tabbed, { initialUrl: '/account' });
@@ -384,6 +393,40 @@ describe('the tab bar', () => {
     const labels = screen.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel as string);
     expect(labels.some((label) => label.startsWith(ar.admin.title))).toBe(false);
     expect(server.requests.some((request) => request.url.pathname === '/rest/v1/rpc/admin_overview')).toBe(false);
+  });
+});
+
+describe('an admin who also runs a company', () => {
+  function suspendedCompany() {
+    server.on('POST /rest/v1/rpc/my_company_id', () => company.id);
+    server.on('POST /rest/v1/rpc/my_company_private', () => ({
+      owner_id: USER_ID,
+      post_credits: 1,
+      suspended_at: '2026-09-20T10:00:00Z',
+    }));
+  }
+
+  it('is told on the console that the company is suspended', async () => {
+    suspendedCompany();
+    await signIn();
+    renderRouter(app, { initialUrl: '/admin' });
+
+    expect(await screen.findByText(ar.standing.companySuspendedTitle)).toBeTruthy();
+    expect(await screen.findByText(ar.standing.companySuspendedBody)).toBeTruthy();
+  });
+
+  it('is told the same on Account', async () => {
+    suspendedCompany();
+    await signIn();
+    renderRouter(
+      {
+        ...app,
+        '(tabs)/(account)/account/index': AccountScreen,
+      },
+      { initialUrl: '/account' },
+    );
+
+    expect(await screen.findByText(ar.standing.companySuspendedTitle)).toBeTruthy();
   });
 });
 

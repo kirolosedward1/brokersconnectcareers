@@ -580,6 +580,19 @@ describe('billing', () => {
     expect(selects.some((select) => select.includes('post_credits'))).toBe(true);
   });
 
+  it('reads the balance off the row when the member function refuses the role', async () => {
+    company = { ...baseCompany, post_credits: 2 };
+    server.on('POST /rest/v1/rpc/my_company_private', {
+      status: 403,
+      body: { code: '42501', message: 'permission denied for function my_company_private' },
+    });
+    renderRouter(app, { initialUrl: '/employer/billing' });
+
+    expect(await screen.findByText('2')).toBeTruthy();
+    const selects = server.asked('/rest/v1/companies').map((request) => request.url.searchParams.get('select') ?? '');
+    expect(selects.some((select) => select.includes('post_credits'))).toBe(true);
+  });
+
   it('shows the credits and gives a verified company its free post — when the database says it was given', async () => {
     company = { ...baseCompany, verification_status: 'verified', post_credits: 2 };
     server.on('GET /rest/v1/orders', [

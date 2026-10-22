@@ -32,7 +32,9 @@ export function StandingNotice({ profile, company = null }: { profile: ProfileRo
   const status = profile.approval_status;
   const employer = profile.role === 'employer';
   const standing = status !== 'approved';
-  const companySuspended = employer && Boolean(company?.suspended_at);
+  // An admin who also runs a company has no employer Home, so the company's
+  // suspension is said on the console and on Account. The role is admin.
+  const companySuspended = (employer || profile.role === 'admin') && Boolean(company?.suspended_at);
 
   const note = useAccountNote(standing).data ?? null;
   const account = useAppealState('account', standing ? profile.id : null).data ?? null;

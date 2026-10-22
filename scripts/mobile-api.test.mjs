@@ -230,6 +230,12 @@ console.log('\n— a member reads the company columns that are not public');
     true,
   );
   is('those three come from my_company_private()', /rpc\('my_company_private'\)/.test(reader), true);
+  const companies = readFileSync(new URL('../src/lib/queries/companies.ts', import.meta.url), 'utf8');
+  is(
+    'a privilege refusal (42501) falls back like a missing function',
+    /42501/.test(reader) && /memberReadUnavailable\(suspended\.error\)/.test(companies),
+    true,
+  );
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

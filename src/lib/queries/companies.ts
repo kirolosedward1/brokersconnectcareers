@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { COMPANY_PUBLIC_COLUMNS } from '@/lib/company-member';
+import { COMPANY_PUBLIC_COLUMNS, memberReadUnavailable } from '@/lib/company-member';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from './error';
 import { queryWords } from '@/lib/search/arabic';
@@ -194,13 +194,14 @@ export const getCompanyBySlug = cache(async function getCompanyBySlug(
     listings were taken down with it, and a profile page left standing would
     keep vouching for it. Asked of company_suspended() rather than read off
     the row, so the column need not be publicly selectable. Until that
-    function exists, the column is read directly, which the grants still allow.
+    function exists — or this role may not call it (42501) — the column is
+    read directly, which the grants still allow.
   */
   const id = (data as { id: string }).id;
   const suspended = await supabase.rpc('company_suspended', { p_id: id });
   if (!suspended.error) {
     if (suspended.data) return null;
-  } else if (suspended.error.code === 'PGRST202' || suspended.error.code === '42883') {
+  } else if (memberReadUnavailable(suspended.error)) {
     const flag = await supabase.from('companies').select('suspended_at').eq('id', id).maybeSingle();
     if (flag.error) raise(flag.error, 'loading a company');
     if ((flag.data as { suspended_at?: string | null } | null)?.suspended_at) return null;

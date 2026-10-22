@@ -47,8 +47,13 @@ export const COMPANY_PUBLIC_COLUMNS =
 
 const PRIVATE_COLUMNS = 'owner_id, post_credits, suspended_at';
 
-function functionNotThere(error: { code?: string } | null): boolean {
-  return error?.code === 'PGRST202' || error?.code === '42883';
+/**
+ * The member function cannot be called yet, so the columns are read off the
+ * row while the grants still allow it. PGRST202 and 42883: it has not been
+ * created. 42501: this role may not execute it (insufficient privilege).
+ */
+export function memberReadUnavailable(error: { code?: string } | null): boolean {
+  return error?.code === 'PGRST202' || error?.code === '42883' || error?.code === '42501';
 }
 
 /** The member function's answer, or null when it names nobody. Throws when the read failed. */
@@ -56,7 +61,7 @@ export async function readCompanyPrivate(supabase: PassedClient, companyId: stri
   const client = asClient(supabase);
   const { data, error } = await client.rpc('my_company_private');
   if (!error) return companyPrivate(data);
-  if (!functionNotThere(error)) throw error;
+  if (!memberReadUnavailable(error)) throw error;
 
   const fallback = await client.from('companies').select(PRIVATE_COLUMNS).eq('id', companyId).maybeSingle();
   if (fallback.error) throw fallback.error;
