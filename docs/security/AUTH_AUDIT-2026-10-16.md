@@ -88,8 +88,8 @@ indefinitely on the phone, so for most people the settings form answered
 
 ## Not done here
 
-No end-to-end run against a live Supabase project: `pnpm test:db` needs the
-local stack, which this environment does not have. The flows above were
-exercised through the app's Jest suite, which runs the real screens and real
-supabase-js against a stand-in auth server, and through the website's
-source-level tests.
+No end-to-end run against a live Supabase project. The flows above were
+exercised through the app's Jest suite (the real screens and real supabase-js
+against a stand-in auth server), the website's source-level tests, and the
+database suite (`pnpm test:db`, which runs every migration in an in-process
+Postgres).
