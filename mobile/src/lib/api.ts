@@ -171,6 +171,22 @@ async function failure(response: Response): Promise<ApiError> {
   );
 }
 
+/**
+ * The body of a 200, as the website's JSON. A body that is not — a Wi-Fi's
+ * sign-in page answering for every address until somebody accepts its terms,
+ * or one cut off on the way — is not the website's answer, and threw the
+ * parser's SyntaxError: "something went wrong" where it was no connection,
+ * and a write's caller could not tell that its action might have run. Said
+ * as no answer, as offline is.
+ */
+async function answer<T>(response: Response): Promise<T> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new ApiError(0, 'offline');
+  }
+}
+
 /** Run one of the website's server actions as the signed-in user (or signed out, for the four that allow it). */
 export async function callAction<N extends MobileActionName>(
   name: N,
@@ -189,7 +205,7 @@ export async function callAction<N extends MobileActionName>(
     true,
   );
   if (response.status !== 200) throw await failure(response);
-  return (await response.json()) as MobileActionOutput<N>;
+  return answer<MobileActionOutput<N>>(response);
 }
 
 /**
@@ -202,5 +218,5 @@ export async function callAction<N extends MobileActionName>(
 export async function getJson<T>(path: string, options: { signedIn?: boolean } = {}): Promise<T> {
   const response = await send(path, { method: 'GET' }, options.signedIn ?? false);
   if (!response.ok) throw await failure(response);
-  return (await response.json()) as T;
+  return answer<T>(response);
 }

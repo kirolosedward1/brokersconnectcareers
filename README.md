@@ -184,6 +184,14 @@ waiting and dead counts; and the last 50 runs. `/api/health` adds
 (job-alerts) — and reports `degraded` if any is stale. Logs carry job names,
 ids and counts only, never addresses or content.
 
+**Crashes.** Any server render, route, action or middleware that throws also
+leaves one `[crash]` line (`src/instrumentation.ts`, `src/lib/crash.ts`): the
+route's pattern, the error's kind and code, and its `digest` — the code the
+error page shows the reader as «كود العطل». Search the platform log for
+`digest=<that code>` (the part before any `@`, which Next adds to its own
+errors) to find the route. Never the message, the path asked for
+or its query, which can carry somebody's address or number.
+
 **Tests.** The SQL is exercised by `pnpm test:db` against the real migrations
 in PGlite (`pnpm test:email` runs the outbox suite on its own). The policy,
 runner and sweeper modules in `src/lib/jobs/` take their dependencies as

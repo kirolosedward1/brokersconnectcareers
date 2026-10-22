@@ -4,6 +4,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { env } from '@/lib/env';
 import { logFailure } from '@/lib/observe';
 import { challenge, readBearer, tokenRefused } from './bearer';
+import { readWithin } from './body';
 import { runAsMobile, type MobileSession } from './context';
 
 /**
@@ -138,23 +139,34 @@ export async function readActionInput(
     return { refused: mobileJson({ error: 'too_large' }, { status: 413 }) };
   }
 
+  const expected = kind === 'multipart' ? 'multipart/form-data' : 'application/json';
+  if (!type.startsWith(expected)) {
+    return { refused: mobileJson({ error: 'unsupported_media_type' }, { status: 415 }) };
+  }
+
+  let read: Awaited<ReturnType<typeof readWithin>>;
+  try {
+    read = await readWithin(request.body, limit);
+  } catch {
+    // The sender went away part-way.
+    return { refused: mobileJson({ error: 'malformed' }, { status: 400 }) };
+  }
+  if ('tooLarge' in read) return { refused: mobileJson({ error: 'too_large' }, { status: 413 }) };
+
   if (kind === 'multipart') {
-    if (!type.startsWith('multipart/form-data')) {
-      return { refused: mobileJson({ error: 'unsupported_media_type' }, { status: 415 }) };
-    }
     try {
-      return { value: await request.formData() };
+      // Parsed from the bytes already counted, with the boundary the request declared.
+      const form = await new Response(read.bytes, {
+        headers: { 'content-type': request.headers.get('content-type') ?? '' },
+      }).formData();
+      return { value: form };
     } catch {
       return { refused: mobileJson({ error: 'malformed' }, { status: 400 }) };
     }
   }
 
-  if (!type.startsWith('application/json')) {
-    return { refused: mobileJson({ error: 'unsupported_media_type' }, { status: 415 }) };
-  }
-
-  const text = await request.text();
-  if (text.length > limit) return { refused: mobileJson({ error: 'too_large' }, { status: 413 }) };
+  // Decoded as the platform's own text() decodes, a broken byte read as U+FFFD.
+  const text = new TextDecoder().decode(read.bytes);
   if (text.trim() === '') return { value: undefined };
 
   try {
