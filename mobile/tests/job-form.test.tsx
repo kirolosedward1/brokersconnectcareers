@@ -468,7 +468,7 @@ describe('a listing on the board', () => {
     await renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobForm.review }));
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
-    expect(await screen.findByText(ar.employer.listingMovedKept)).toBeTruthy();
+    expect(await screen.findByText(ar.employer.listingMoved)).toBeTruthy();
   });
 
   it('sends the version it was opened on, though the listing was read again since, and so never overwrites a colleague', async () => {
@@ -500,7 +500,7 @@ describe('a listing on the board', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
     await waitFor(() => expect(saved()).toHaveLength(1));
     expect(saved()[0].version).toBe(4);
-    expect(await screen.findByText(ar.employer.listingMovedKept)).toBeTruthy();
+    expect(await screen.findByText(ar.employer.listingMoved)).toBeTruthy();
   });
 
   it('fills the editor from a read made for this visit, not from the copy kept since the last one', async () => {
@@ -529,7 +529,7 @@ describe('a listing on the board', () => {
       fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
       await waitFor(() => expect(saved()).toHaveLength(1));
       expect(saved()[0].version).toBe(5);
-      expect(screen.queryByText(ar.employer.listingMovedKept)).toBeNull();
+      expect(screen.queryByText(ar.employer.listingMoved)).toBeNull();
     } finally {
       gcTime = 0;
     }
@@ -569,7 +569,7 @@ describe('a listing on the board', () => {
       fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
       await waitFor(() => expect(saved()).toHaveLength(1));
       expect(saved()[0].version).toBe(5);
-      expect(screen.queryByText(ar.employer.listingMovedKept)).toBeNull();
+      expect(screen.queryByText(ar.employer.listingMoved)).toBeNull();
     } finally {
       gcTime = 0;
     }
@@ -655,7 +655,7 @@ describe('a listing on the board', () => {
     fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
     await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
-    expect(screen.queryByText(ar.employer.listingMovedKept)).toBeNull();
+    expect(screen.queryByText(ar.employer.listingMoved)).toBeNull();
   });
 
   it("is not found when it is not the company's", async () => {

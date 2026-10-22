@@ -36,22 +36,29 @@ export type KeptDraftState = {
  *
  * Written once the typing settles, and at once when the app leaves the
  * foreground — the moment iOS may end it without asking.
+ *
+ * `typed` picks out what is typed from what is only where the form is (a
+ * wizard's step): moving between steps to look at the current version is not
+ * an answer to an offered draft, and must not throw it away.
  */
 export function useKeptDraft<T>({
   key,
   values,
   restore,
+  typed = (all) => all,
   base = null,
 }: {
   key: string | null;
   values: T;
   restore: (values: T) => void;
+  typed?: (values: T) => unknown;
   base?: string | number | null;
 }): KeptDraftState {
   const baseText = base == null ? null : String(base);
   const pristine = useRef(values);
   const latest = useRef(values);
   const restoreRef = useRef(restore);
+  const typedRef = useRef(typed);
 
   const ready = useRef(false);
   const written = useRef<string | null>(null);
@@ -67,6 +74,7 @@ export function useKeptDraft<T>({
   useEffect(() => {
     latest.current = values;
     restoreRef.current = restore;
+    typedRef.current = typed;
     offerRef.current = offer;
   });
 
@@ -104,10 +112,12 @@ export function useKeptDraft<T>({
       await pruneKeptDrafts();
       const draft = await readKeptDraft<T>(key);
       if (!live) return;
+      let found = false;
       if (draft && !same(draft.values, pristine.current)) {
+        found = true;
         written.current = JSON.stringify(draft.values);
         const stale = baseText !== null && draft.base !== baseText;
-        const typing = !same(latest.current, pristine.current);
+        const typing = !same(typedRef.current(latest.current), typedRef.current(pristine.current));
         if (stale || typing) {
           offerRef.current = { values: draft.values, savedAt: draft.savedAt };
           setOffer(offerRef.current);
@@ -119,8 +129,11 @@ export function useKeptDraft<T>({
         void dropDraft(key);
       }
       ready.current = true;
-      // What was typed while the read was out has not been written yet.
-      if (!offerRef.current) save();
+      // What was typed while the read was out has not been written yet — when
+      // nothing was found. A draft just put back is already what is stored: a
+      // write here would read the opening values (the restore has not been
+      // drawn yet), drop the draft, and write it again younger than it is.
+      if (!found) save();
     })().catch(() => {
       ready.current = true;
     });
@@ -133,7 +146,7 @@ export function useKeptDraft<T>({
   useEffect(() => {
     if (!key || !ready.current) return;
     if (offerRef.current) {
-      if (same(values, pristine.current)) return;
+      if (same(typedRef.current(values), typedRef.current(pristine.current))) return;
       offerRef.current = null;
       setOffer(null);
     }

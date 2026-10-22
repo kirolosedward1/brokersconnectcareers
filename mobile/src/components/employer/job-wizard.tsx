@@ -116,6 +116,9 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
       setValues(held.values);
       setStep(Math.min(Math.max(0, held.step), STEPS.length - 1));
     }, []),
+    // The step is where the wizard is, not something typed: going to look at
+    // another step does not answer an offered draft.
+    typed: (held) => held.values,
     base: version ?? null,
   });
   useLeaveGuard(!saved && JSON.stringify(draft) !== opened, !saved && save.isPending, kept.drop);
@@ -207,7 +210,9 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
         if (failure instanceof ApiError && failure.status === 0) return refuse(t('app.offline.body'));
         const reason = failure instanceof JobSaveRefused ? failure.reason : 'failed';
         const fields = failure instanceof JobSaveRefused ? failure.fieldErrors : undefined;
-        if (reason === 'stale' || reason === 'invalid_transition') return refuse(t('employer.listingMovedKept'));
+        // Not the website's "your changes are kept": on the phone the way to the
+        // new version is leaving the wizard, and leaving asks to discard them.
+        if (reason === 'stale' || reason === 'invalid_transition') return refuse(t('employer.listingMoved'));
         // Under review is not restricted: an account still pending is told it is being looked at.
         if (reason === 'standing') {
           return refuse(t(actor?.profile?.approval_status === 'pending' ? 'employer.pendingBody' : 'employer.standingBlocked'));

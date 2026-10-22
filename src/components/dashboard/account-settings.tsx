@@ -12,6 +12,7 @@ import { reach } from '@/lib/reach';
 import type { ProfileRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { uuid } from '@/lib/uuid';
+import { forgetDrafts } from '@/lib/form-draft';
 
 type Prefs = Pick<
   ProfileRow,
@@ -97,8 +98,10 @@ export function AccountSettings({
       if (result.ok) {
         /*
           The account is gone. Nothing the client router is holding about
-          this person is true any more, so the browser starts again.
+          this person is true any more, so the browser starts again — and
+          nothing of their half-typed forms stays behind (lib/form-draft.ts).
         */
+        forgetDrafts();
         window.location.assign(localeHref(locale, '/'));
         return;
       }

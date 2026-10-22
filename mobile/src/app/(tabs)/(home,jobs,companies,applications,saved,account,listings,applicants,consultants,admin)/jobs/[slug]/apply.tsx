@@ -285,10 +285,11 @@ function ApplyForm({
         setWhatsapp(held.whatsapp);
         setBand(held.picked);
         setNote(held.note);
-        // A changed name or number is shown, not folded away under the summary.
-        if (held.fullName !== defaultName || held.whatsapp !== defaultPhone) setEditing(true);
+        // What was kept is shown, not folded away under the one-tap summary:
+        // the notice says it was put back, and a note behind a tap reads as lost.
+        setEditing(true);
       },
-      [defaultName, defaultPhone],
+      [],
     ),
   });
   useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file', apply.isPending, kept.drop);

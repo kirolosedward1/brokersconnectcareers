@@ -65,10 +65,16 @@ describe('the store', () => {
 
 function Probe({ base = null, initial = '' }: { base?: string | null; initial?: string }) {
   const [text, setText] = useState(initial);
+  // Where a wizard is, kept with its fields but not itself typing.
+  const [step, setStep] = useState(0);
   const draft = useKeptDraft({
     key: KEY,
-    values: useMemo(() => ({ text }), [text]),
-    restore: useCallback((held: { text: string }) => setText(held.text), []),
+    values: useMemo(() => ({ text, step }), [text, step]),
+    restore: useCallback((held: { text: string; step?: number }) => {
+      setText(held.text);
+      setStep(held.step ?? 0);
+    }, []),
+    typed: (held) => held.text,
     base,
   });
   return (
@@ -78,6 +84,7 @@ function Probe({ base = null, initial = '' }: { base?: string | null; initial?: 
       <Pressable testID="accept" onPress={draft.accept} />
       <Pressable testID="discard" onPress={draft.discard} />
       <Pressable testID="clear" onPress={draft.clear} />
+      <Pressable testID="next" onPress={() => setStep((current) => current + 1)} />
     </>
   );
 }
@@ -95,12 +102,28 @@ describe('a form that keeps its draft', () => {
     expect(await stored()).toBeNull();
 
     fireEvent.changeText(screen.getByTestId('text'), 'وكيل مبيعات');
-    await waitFor(async () => expect((await stored())?.values).toEqual({ text: 'وكيل مبيعات' }));
+    await waitFor(async () => expect((await stored())?.values).toEqual({ text: 'وكيل مبيعات', step: 0 }));
     first.unmount();
 
     render(<Probe />);
     await waitFor(() => expect(value()).toBe('وكيل مبيعات'));
     expect(screen.getByTestId('state').props.children).toBe('restored');
+  });
+
+  it('puts a draft back without dropping it or making it younger: its week runs from when it was typed', async () => {
+    const typedAt = Date.now() - 60 * 60 * 1000;
+    await keepDraft(KEY, { text: 'كُتب من ساعة', step: 0 }, null, typedAt);
+    // The mock's removeItem is a jest.fn already: its calls are counted from here, not from the tests before.
+    const removals = () => jest.mocked(AsyncStorage.removeItem).mock.calls.filter(([key]) => key === KEY).length;
+    const before = removals();
+    render(<Probe />);
+    await waitFor(() => expect(value()).toBe('كُتب من ساعة'));
+    // Past the pause a write would wait for.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+    });
+    expect(removals()).toBe(before);
+    expect(JSON.parse((await AsyncStorage.getItem(KEY)) ?? 'null')?.at).toBe(typedAt);
   });
 
   it('writes at once when the app leaves the foreground, without waiting for the pause', async () => {
@@ -141,6 +164,19 @@ describe('a form that keeps its draft', () => {
     fireEvent.press(screen.getByTestId('accept'));
     await waitFor(() => expect(value()).toBe('over v1'));
     await waitFor(async () => expect((await stored())?.base).toBe('2'));
+  });
+
+  it('does not take moving between steps as the answer to an offer: only typing is', async () => {
+    await keepDraft(KEY, { text: 'over v1', step: 2 }, '1');
+    render(<Probe base="2" initial="server" />);
+    await waitFor(() => expect(screen.getByTestId('state').props.children).toBe('offered'));
+    // Looking at the current version before deciding.
+    fireEvent.press(screen.getByTestId('next'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+    });
+    expect(screen.getByTestId('state').props.children).toBe('offered');
+    expect((await stored())?.values).toEqual({ text: 'over v1', step: 2 });
   });
 
   it('takes typing past an offer as the answer: the new work replaces the old draft', async () => {

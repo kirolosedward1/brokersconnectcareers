@@ -76,7 +76,35 @@ step) and the apply screen (name, number, band, note; never the CV). A draft
 typed over an older version of a listing, or found after typing had begun, is
 offered rather than poured in. It goes on sending, on "start over", on
 discarding at the leave guard, and on any sign-out (`push-bridge.tsx`).
-`mobile/tests/kept-draft.test.tsx` and the wizard's own test cover it.
+`mobile/tests/kept-draft.test.tsx`, the wizard's and the apply screen's own
+tests cover it.
+
+A stale save in the app keeps the original "this listing changed, reload"
+wording rather than the website's "your changes are kept": on the phone the
+way to the new version is leaving the wizard, and leaving asks to discard.
+
+## Review, 2026-10-22
+
+A second pass, with an independent reviewer and a browser walkthrough of the
+production build against a local Supabase stack, found and fixed:
+
+- An offered draft was thrown away by moving to another wizard step to look
+  at the current version first. Both hooks take a `typed` projection now, and
+  only a change to what was typed answers an offer.
+- Deleting the account on the website (settings, or leaving onboarding) left
+  the account's drafts in the browser. Both clear them;
+  `scripts/form-draft.test.mjs` holds every client sign-out and deletion path
+  to calling `forgetDrafts()`.
+- The app dropped a draft the moment it put it back and wrote it again 400 ms
+  later, so merely opening a form restarted its week.
+- The app's apply screen restored a note behind the folded one-tap summary,
+  under a notice saying it had been put back.
+
+Open, for a decision: the app clears drafts whenever a session ends,
+including one revoked elsewhere, where the website keeps them through a lapsed
+session so the person can sign in and carry on. The company and consultant
+profile forms (web and app) keep no draft; they are single-page edits of a
+saved record, and the same hooks would serve them.
 
 ## Left as it is, on purpose
 
