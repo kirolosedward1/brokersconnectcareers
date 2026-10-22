@@ -19,6 +19,7 @@ import type {
   ExperienceBand,
 } from '@/lib/supabase/database.types';
 import { logFailure } from '@/lib/observe';
+import { insertOnce } from '@/lib/actions/idempotency';
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -371,6 +372,9 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
 const noteSchema = z.object({
   applicationId: z.string().uuid(),
   body: z.string().trim().min(1).max(2000),
+  // Made once when the composer opens, so a retry after a lost answer finds
+  // the note the first attempt wrote rather than writing it twice.
+  idempotencyKey: z.string().uuid().optional(),
 });
 
 /**
@@ -407,21 +411,35 @@ export async function addApplicationNote(
     and wrong under any comparison. So the row it wrote is the row it answers
     with, and nothing is fabricated.
   */
-  const { data, error } = await supabase
-    .from('application_notes')
-    .insert({
-      application_id: parsed.data.applicationId,
-      author_id: user.id,
-      body: clean(parsed.data.body, true),
-    })
-    .select('*')
-    .single();
+  const key = parsed.data.idempotencyKey;
+  const note = {
+    application_id: parsed.data.applicationId,
+    author_id: user.id,
+    body: clean(parsed.data.body, true),
+  };
+  const { data, error } = await insertOnce(
+    key,
+    (withKey) =>
+      supabase
+        .from('application_notes')
+        .insert({ ...note, ...(withKey ? { idempotency_key: key } : {}) })
+        .select('*')
+        .single(),
+    () =>
+      supabase
+        .from('application_notes')
+        .select('*')
+        .eq('application_id', parsed.data.applicationId)
+        .eq('author_id', user.id)
+        .eq('idempotency_key', key!)
+        .maybeSingle(),
+  );
 
-  if (error) {
+  if (error || !data) {
     logFailure('pipeline', 'note refused', {
       application: parsed.data.applicationId,
       by: user.id,
-      code: error.code,
+      code: error?.code,
     });
     return { ok: false, error: 'forbidden' };
   }

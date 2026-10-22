@@ -3,6 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useIsFocused } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { canAccessEmployerArea } from '@/lib/permissions';
+import { useRetryKey } from '@/lib/retry-key';
 import { clean } from '@/lib/security/sanitize';
 import type {
   ApplicationNoteRow,
@@ -404,12 +405,14 @@ async function noteWritten(input: { applicationId: string; body: string; after: 
 export function useAddNote() {
   const queryClient = useQueryClient();
   const authorId = useSession().session?.user.id ?? null;
+  const retryKey = useRetryKey();
   return useMutation({
     // `after`: the newest note the card showed, or null while its notes were unread — then an
     // older note in the same words could not be told from this one, and nothing is looked for.
     mutationFn: async (input: { applicationId: string; body: string; after: number | null }) => {
       const { after } = input;
-      const result = await callAction('addApplicationNote', { applicationId: input.applicationId, body: input.body }).catch(
+      const idempotencyKey = retryKey.for([input.applicationId, input.body]);
+      const result = await callAction('addApplicationNote', { applicationId: input.applicationId, body: input.body, idempotencyKey }).catch(
         async (error: unknown) => {
           // No answer: the note may be in, and only the answer lost — sent again,
           // it was written twice. What the database holds decides.
@@ -420,6 +423,7 @@ export function useAddNote() {
         },
       );
       if (!result.ok) throw new Error(result.error);
+      retryKey.done();
       return result.data?.note ?? null;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employer', 'notes'] }),

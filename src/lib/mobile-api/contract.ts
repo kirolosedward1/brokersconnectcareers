@@ -215,6 +215,8 @@ export type MobileActions = {
   saveExperience: {
     input: {
       id?: string;
+      /** A new entry's key, made once per form and sent with every attempt: a retry finds the entry rather than adding it twice. */
+      idempotencyKey?: string;
       agentId: string;
       companyName: string;
       title: string;
@@ -230,6 +232,8 @@ export type MobileActions = {
   saveEducation: {
     input: {
       id?: string;
+      /** A new entry's key, made once per form and sent with every attempt: a retry finds the entry rather than adding it twice. */
+      idempotencyKey?: string;
       agentId: string;
       institution: string;
       degree?: Nullable<string>;
@@ -241,6 +245,8 @@ export type MobileActions = {
   saveCertification: {
     input: {
       id?: string;
+      /** A new entry's key, made once per form and sent with every attempt: a retry finds the entry rather than adding it twice. */
+      idempotencyKey?: string;
       agentId: string;
       name: string;
       issuer?: Nullable<string>;
@@ -292,7 +298,8 @@ export type MobileActions = {
     output: ActionResult;
   };
   addApplicationNote: {
-    input: { applicationId: string; body: string };
+    /** idempotencyKey: made once per composer, so a retry finds the note rather than writing it twice. */
+    input: { applicationId: string; body: string; idempotencyKey?: string };
     output: ActionResult<{ note: ApplicationNoteRow }>;
   };
   deleteApplicationNote: { input: { id: number }; output: ActionResult };

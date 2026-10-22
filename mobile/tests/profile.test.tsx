@@ -439,6 +439,7 @@ describe('the CV sections', () => {
           started: '2023-05-01',
           ended: null,
           highlights: null,
+          idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
         },
       }),
     );
@@ -493,6 +494,16 @@ describe('the CV sections', () => {
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
     expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
     expect(screen.getByLabelText(ar.cv.company).props.value).toBe('بالم هيلز');
+
+    // Saved again, it is the same entry: the same key, which the website
+    // answers with the entry if the first attempt did add it.
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/saveExperience')).toHaveLength(3));
+    const keys = server
+      .asked('/api/mobile/v1/actions/saveExperience')
+      .map((request) => (request.body as { input: { idempotencyKey?: string } }).input.idempotencyKey);
+    expect(keys[2]).toBe(keys[1]);
+    expect(keys[1]).not.toBe(keys[0]);
   });
 
   it('does not take an entry that was already there for the one whose answer was lost', async () => {

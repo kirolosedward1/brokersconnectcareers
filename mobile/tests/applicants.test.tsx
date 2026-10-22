@@ -416,7 +416,11 @@ describe("a listing's applicants", () => {
     fireEvent.changeText(screen.getAllByLabelText(ar.employer.notesTitle)[0], 'اتفقنا على مقابلة.');
     fireEvent.press(screen.getAllByRole('button', { name: ar.employer.notesAdd })[0]);
     await waitFor(() =>
-      expect(input('/api/mobile/v1/actions/addApplicationNote')).toEqual({ applicationId: sara.id, body: 'اتفقنا على مقابلة.' }),
+      expect(input('/api/mobile/v1/actions/addApplicationNote')).toEqual({
+        applicationId: sara.id,
+        body: 'اتفقنا على مقابلة.',
+        idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      }),
     );
 
     // Only the viewer's own note offers a delete.
@@ -452,6 +456,16 @@ describe("a listing's applicants", () => {
     fireEvent.press(screen.getAllByRole('button', { name: ar.employer.notesAdd })[0]);
     expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
     expect(screen.getAllByLabelText(ar.employer.notesTitle)[0].props.value).toBe('نكلمها تاني الأسبوع الجاي.');
+
+    // Pressed again, it is the same note: the same key, so the website finds
+    // the first attempt's note if it did go in. The note before it had its own.
+    fireEvent.press(screen.getAllByRole('button', { name: ar.employer.notesAdd })[0]);
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/addApplicationNote')).toHaveLength(3));
+    const keys = server
+      .asked('/api/mobile/v1/actions/addApplicationNote')
+      .map((request) => (request.body as { input: { idempotencyKey?: string } }).input.idempotencyKey);
+    expect(keys[2]).toBe(keys[1]);
+    expect(keys[1]).not.toBe(keys[0]);
   });
 
   it('does not take an older note in the same words for the new one while the notes are unread', async () => {
