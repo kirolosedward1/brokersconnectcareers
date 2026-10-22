@@ -281,6 +281,68 @@ report.section("5. a logo is a file in the company's own folder");
   report.check("another company's logo file is refused", refused(foreign, /logo_url must be a file/), JSON.stringify(foreign.rows[0] ?? foreign.error));
   report.check('a file in its own folder is taken, as the upload writes it', own.ok && own.rows.length === 1, own.error);
   report.check('and the logo can be taken off', cleared.ok && cleared.rows.length === 1, cleared.error);
+
+  // A local Supabase stack serves storage over http on the loopback (migration
+  // 352); the column's CHECK allowed it since 307 and the guard now does too.
+  // Any other http address is still a third party.
+  const [local, localhost, plainHttp, localForeign] = await scenario([
+    {
+      as: E1,
+      sql: `update companies set logo_url = 'http://127.0.0.1:54321/storage/v1/object/public/company-logos/${ROWAD}/logo-1a2b.webp'
+             where id = '${ROWAD}' returning id`,
+    },
+    {
+      as: E1,
+      sql: `update companies set logo_url = 'http://localhost:54321/storage/v1/object/public/company-logos/${ROWAD}/logo-1a2c.webp'
+             where id = '${ROWAD}' returning id`,
+    },
+    {
+      as: E1,
+      sql: `update companies set logo_url = 'http://abc.supabase.co/storage/v1/object/public/company-logos/${ROWAD}/logo.webp'
+             where id = '${ROWAD}' returning id`,
+    },
+    {
+      as: E1,
+      sql: `update companies set logo_url = 'http://127.0.0.1:54321/storage/v1/object/public/company-logos/${CAPITAL}/logo.webp'
+             where id = '${ROWAD}' returning id`,
+    },
+  ]);
+  report.check("the local stack's own storage address is taken", local.ok && local.rows.length === 1, local.error);
+  report.check('as localhost too', localhost.ok && localhost.rows.length === 1, localhost.error);
+  report.check('plain http anywhere else is refused', refused(plainHttp, /logo_url must be a file/), JSON.stringify(plainHttp.rows[0] ?? plainHttp.error));
+  report.check(
+    "and on the local stack another company's folder is still refused",
+    refused(localForeign, /logo_url must be a file/),
+    JSON.stringify(localForeign.rows[0] ?? localForeign.error),
+  );
+}
+
+report.section("5b. a photo is a file in the account's own folder, on the local stack too");
+{
+  const [local, plainHttp, someoneElses] = await scenario([
+    {
+      as: candidate,
+      sql: `update profiles set avatar_url = 'http://127.0.0.1:54321/storage/v1/object/public/avatars/${candidate}/3f2a.webp'
+             where id = '${candidate}' returning id`,
+    },
+    {
+      as: candidate,
+      sql: `update profiles set avatar_url = 'http://tracker.example/storage/v1/object/public/avatars/${candidate}/3f2a.webp'
+             where id = '${candidate}' returning id`,
+    },
+    {
+      as: candidate,
+      sql: `update profiles set avatar_url = 'http://127.0.0.1:54321/storage/v1/object/public/avatars/${publicAgent}/3f2a.webp'
+             where id = '${candidate}' returning id`,
+    },
+  ]);
+  report.check("the local stack's own storage address is taken", local.ok && local.rows.length === 1, local.error);
+  report.check('plain http anywhere else is refused', refused(plainHttp, /avatar_url must be a file/), JSON.stringify(plainHttp.rows[0] ?? plainHttp.error));
+  report.check(
+    "and another account's folder is still refused",
+    refused(someoneElses, /avatar_url must be a file/),
+    JSON.stringify(someoneElses.rows[0] ?? someoneElses.error),
+  );
 }
 
 report.section("6. the directory's rows are approved consultants'");

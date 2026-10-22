@@ -116,3 +116,25 @@ export function confirmDestination(type: ConfirmType, redirectTo: string | null,
   if (asked) return asked;
   return type === 'email_change' ? '/dashboard/account' : null;
 }
+
+/**
+ * Whether the confirm page's form post came from the confirm page itself —
+ * the guard against a site that posts somebody else's token hash at
+ * /auth/confirm and so signs a visitor into the attacker's account.
+ *
+ * The browser says where a post came from: `Origin` on every POST from a
+ * current browser, `Sec-Fetch-Site` beside it, both set by the browser and
+ * not by the page. `Origin` naming this site is enough. It is `null` rather
+ * than absent when the page's referrer policy is `no-referrer` (the Fetch
+ * standard's rule), and from a sandboxed frame or a `data:` page; a null one
+ * is let through only when `Sec-Fetch-Site` says the post was this site's own.
+ * The confirm page sent `no-referrer` once, and every browser then posted
+ * `Origin: null` — every reset, confirmation and email change link was
+ * answered 403. A request with neither header (an old browser) is let
+ * through, because it can only have come from a link somebody followed.
+ */
+export function isSameOriginPost(origin: string | null, fetchSite: string | null, ownOrigin: string): boolean {
+  if (origin && origin !== 'null') return origin === ownOrigin;
+  if (origin === 'null') return fetchSite === 'same-origin';
+  return !fetchSite || fetchSite === 'same-origin';
+}
