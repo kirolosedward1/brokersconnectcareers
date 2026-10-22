@@ -15,6 +15,7 @@ import { useBrowseCounts, useLanding } from '~/features/browse/queries';
 import { boardQuery, filtersToParams } from '~/features/jobs/filters';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
 import { useShrinkingTabBar } from '~/features/tab-bar';
@@ -47,6 +48,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const shrink = useShrinkingTabBar();
   // The companies this phone hides stay hidden here too, as on the board and Home.
   const hiddenCompanies = useHiddenCompanies();
+  const hiddenJobs = useHiddenJobs();
 
   if (landing.isPending) return <LoadingState />;
   if (landing.isError && !landing.data) {
@@ -57,7 +59,9 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const trackName = tTrack(track);
   const districtName = localized(locale, district.name_ar, district.name_en);
   const read = flattenBoard(board.data?.pages);
-  const jobs = withoutHidden(read, hiddenCompanies);
+  // Without what this phone hides — a company's listings, and listings set aside one by one — as the board does,
+  // so the count, the empty state and the first twenty are of what is drawn.
+  const jobs = withoutHiddenJobs(withoutHidden(read, hiddenCompanies), hiddenJobs);
   const total = totalShown(board.data?.pages[0]?.total ?? 0, read.length, jobs.length);
 
   const factLines: string[] = [];
