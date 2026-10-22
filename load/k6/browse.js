@@ -39,7 +39,7 @@ export function setup() {
   return { slugs };
 }
 
-export default function ({ slugs }) {
+export default function browse({ slugs }) {
   const roll = Math.random();
   if (roll < 0.15) page('/', 'home');
   else if (roll < 0.45) {

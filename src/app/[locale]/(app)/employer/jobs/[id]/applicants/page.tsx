@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { asLocale, localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApplicantCard, type ApplicantProfile } from '@/components/employer/applicant-card';

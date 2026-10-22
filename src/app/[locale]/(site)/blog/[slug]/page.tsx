@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { ArrowLeft, CalendarDays, Clock } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { asLocale, routing, activeLocales, ENGLISH_ENABLED, type Locale } from '@/i18n/routing';
+import { asLocale, routing, activeLocales, ENGLISH_ENABLED } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { JsonLd } from '@/components/json-ld';

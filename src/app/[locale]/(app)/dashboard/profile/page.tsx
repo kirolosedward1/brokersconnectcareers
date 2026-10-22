@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Eye, Info } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
-import { asLocale, type Locale } from '@/i18n/routing';
+import { asLocale } from '@/i18n/routing';
 import { AgentProfileForm } from '@/components/dashboard/agent-profile-form';
 import { CvEditor } from '@/components/dashboard/cv-editor';
 import { ProfileRecordForm } from '@/components/dashboard/profile-record-form';

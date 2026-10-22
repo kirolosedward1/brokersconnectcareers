@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Check, Infinity as InfinityIcon } from 'lucide-react';
-import { asLocale, type Locale } from '@/i18n/routing';
+import { asLocale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { BuyPackButton } from '@/components/employer/buy-pack-button';
 import { ClaimFreePostButton } from '@/components/employer/claim-free-post';

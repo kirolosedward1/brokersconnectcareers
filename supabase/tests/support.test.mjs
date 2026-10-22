@@ -366,6 +366,8 @@ report.section('an answer rings the bell once');
 
     report.check('the request is answered and says by whom',
       first.rows[0]?.status === 'answered' && rows[0]?.replied_by === admin, first.error);
+    report.check('saving the same answer again succeeds rather than erroring',
+      again.rows?.[0]?.status === 'answered', again.error);
     report.check('the sender is told once, and saving the same answer twice does not tell them again',
       bells.length === 1, `${bells.length} notifications`);
     report.check('the notification names the request it answers',

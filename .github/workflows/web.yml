@@ -6,8 +6,8 @@
 # mobile app now calls the website's server actions through /api/mobile/v1,
 # so a change that breaks that contract has to fail somewhere visible.
 #
-# `pnpm check` runs the typecheck, the message catalogue checks and every
-# suite, including the database ones against an in-process Postgres (PGlite)
+# `pnpm check` runs the typecheck, ESLint, the message catalogue checks and
+# every suite, including the database ones against an in-process Postgres (PGlite)
 # and the concurrency ones against the runner's own Postgres binaries. The
 # build runs with placeholder Supabase values: it needs no database, and a
 # route that cannot be built is exactly what this should catch.

@@ -1,6 +1,5 @@
 import 'server-only';
 import {
-  notifyApplicationWithdrawn,
   notifyCandidateOfApplication,
   notifyCandidateOfStatus,
   notifyCompanyVerification,

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { raise } from './error';
 import { queryWords } from '@/lib/search/arabic';
 import { logFailure } from '@/lib/observe';
-import type { CompanyRow, DistrictRow, VerificationStatus } from '@/lib/supabase/database.types';
+import type { VerificationStatus } from '@/lib/supabase/database.types';
 import { LIST_SELECT, type JobListItem } from './jobs';
 import type { CompanyListItem, CompanyProfile } from '@/lib/read-types';
 

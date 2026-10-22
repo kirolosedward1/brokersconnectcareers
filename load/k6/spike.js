@@ -35,7 +35,7 @@ export function setup() {
   return { slug };
 }
 
-export default function ({ slug }) {
+export default function spike({ slug }) {
   page('/jobs', 'board');
   if (slug) page(`/jobs/${slug}`, 'job');
   sleep(0.5 + Math.random());

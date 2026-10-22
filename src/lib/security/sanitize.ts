@@ -18,7 +18,6 @@
 const INVISIBLE = /[​‎‪-‮⁠-⁤⁦-⁩﻿]/g;
 
 /** C0 and C1 controls, minus tab and newline. */
-// eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g;
 
 const TAG = /<\/?[a-z!?][^>]*>/gi;

@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { CalendarDays, Clock } from 'lucide-react';
 import { Illustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
-import { asLocale, alternatesFor, routing, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor } from '@/i18n/routing';
 import { CoverArt } from '@/components/blog/cover-art';
 import { Badge } from '@/components/ui/badge';
 import { getAllPosts } from '@/lib/blog';

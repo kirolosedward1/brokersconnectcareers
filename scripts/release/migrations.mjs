@@ -127,7 +127,6 @@ function localFiles() {
 }
 
 const version = (file) => NAME.exec(file)?.[1] ?? null;
-const namePart = (file) => NAME.exec(file)?.[2] ?? null;
 
 // ---------------------------------------------------------------------------
 // SQL scanning

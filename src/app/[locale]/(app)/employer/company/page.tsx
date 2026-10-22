@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { asLocale, localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized } from '@/i18n/routing';
 import { CompanyForm } from '@/components/employer/company-form';
 import { VerificationPanel } from '@/components/employer/verification-panel';
 import { LogoUpload } from '@/components/employer/logo-upload';
