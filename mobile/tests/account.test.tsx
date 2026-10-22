@@ -378,6 +378,12 @@ describe('signing in and security', () => {
     expect(server.asked('/auth/v1/reauthenticate')).toHaveLength(1);
     expect(screen.queryByText(ar.common.errorBody)).toBeNull();
 
+    // Saved with the code left empty: said, and no second email.
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.validation.required)).toBeTruthy();
+    expect(server.asked('/auth/v1/reauthenticate')).toHaveLength(1);
+    expect(userUpdates()).toHaveLength(1);
+
     fireEvent.changeText(screen.getByLabelText(ar.account.reauthCode), '000000');
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
     expect(await screen.findByText(ar.account.reauthInvalid)).toBeTruthy();

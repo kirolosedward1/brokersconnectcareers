@@ -75,6 +75,12 @@ export function CredentialsSettings({
 
     // Typed on an Arabic keyboard, the digits are Arabic-Indic.
     const nonce = codeSent ? westernDigits(String(data.get('reauthCode') ?? '')).replace(/\D/g, '') : '';
+    // Asked for and not given: sent without it, GoTrue would ask again and
+    // another email would go out, until the address hit its limit.
+    if (codeSent && !nonce) {
+      setPasswordError(tValidation('required'));
+      return;
+    }
 
     startPassword(async () => {
       const supabase = createClient();

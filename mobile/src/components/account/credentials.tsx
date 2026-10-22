@@ -138,9 +138,15 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
       setError(t('validation.passwordMismatch'));
       return;
     }
-    setPending(true);
     // Typed on an Arabic keyboard, the number pad gives Arabic-Indic digits.
     const nonce = codeSent ? westernDigits(code).replace(/\D/g, '') : '';
+    // Asked for and not given: sent without it, GoTrue would ask again and
+    // another email would go out, until the address hit its limit.
+    if (codeSent && !nonce) {
+      setError(t('validation.required'));
+      return;
+    }
+    setPending(true);
     const { error: refused } = await supabase.auth.updateUser(nonce ? { password, nonce } : { password });
     if (refused) {
       const refusal = passwordRefusal(refused);

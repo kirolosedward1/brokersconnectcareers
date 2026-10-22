@@ -90,7 +90,17 @@ const resetForm = readFileSync(join(ROOT, 'src/components/auth/new-password-form
 is('the reset form no longer reads GoTrue\'s prose for itself', /\/session\|jwt\|expired\//.test(resetForm), false);
 is("and goes to the code when GoTrue asks for it", /refusal === 'second_factor'[\s\S]*?secondFactorChallenge\('\/sign-in\/new-password'/.test(resetForm), true);
 const settings = readFileSync(join(ROOT, 'src/components/dashboard/credentials-settings.tsx'), 'utf8');
-is("the settings ask for an emailed code when GoTrue wants one", /refusal === 'reauthenticate'[\s\S]*?sendCode\(\)/.test(settings) && /auth\.reauthenticate\(\)/.test(settings), true);
+is(
+  'the settings ask for an emailed code when GoTrue wants one',
+  /if \(refusal === 'reauthenticate' \|\| \(refusal === 'code_invalid' && !nonce\)\) \{\s*await sendCode\(\);/.test(settings) &&
+    /async function sendCode\(\) \{\s*const \{ error \} = await createClient\(\)\.auth\.reauthenticate\(\);/.test(settings),
+  true,
+);
+is(
+  'and send nothing while the code asked for is empty, rather than email another',
+  /if \(codeSent && !nonce\) \{\s*setPasswordError\(tValidation\('required'\)\);\s*return;/.test(settings),
+  true,
+);
 is('and send it back as the nonce', /updateUser\(nonce \? \{ password, nonce \} : \{ password \}\)/.test(settings), true);
 
 console.log(`\n${pass} passed, ${fail} failed`);
