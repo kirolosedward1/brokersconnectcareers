@@ -11,13 +11,23 @@ import { cn } from '@/lib/utils';
  * page only draws a hero for somebody who is not signed in — a signed-in
  * reader gets a listings feed — and a transparent header with white type over
  * a white feed is an invisible header lying on top of the first heading.
+ * (/app opens on a light hero, so it keeps the solid bar.)
  */
 const ALWAYS_OVER_HERO = ['/employers'];
 
 /**
+ * The pages where the bar scrolls away with the page instead of sticking.
+ *
+ * /app is a long page about a phone app, with its own bar at the foot of the
+ * screen on a phone (the download button); two bars pinned to one small
+ * screen leave the phones in between too little room.
+ */
+const SCROLLS_AWAY = ['/app'];
+
+/**
  * The header's chrome.
  *
- * On the two landing pages it lifts off the page and sits on the film: no
+ * On the landing pages it lifts off the page and sits on the film: no
  * background, no border, white type. Everywhere else it stays the solid
  * sticky bar, because a transparent header over a white listings page is just
  * a header you cannot see the edge of.
@@ -76,7 +86,7 @@ export function HeaderShell({
       data-over-hero={floating ? 'true' : undefined}
       className={cn(
         'group/header z-40 transition-colors duration-150',
-        overHero ? 'fixed inset-x-0 top-0' : 'sticky top-0',
+        overHero ? 'fixed inset-x-0 top-0' : SCROLLS_AWAY.includes(pathname) ? 'relative' : 'sticky top-0',
         // On the film the focus ring is white, as it is in the hero below:
         // the brand blue is all but invisible against it.
         floating

@@ -19,7 +19,7 @@ import { installIntlPolyfills } from '~/lib/intl-polyfills';
   Locale: Intl.Locale,
   getCanonicalLocales: Intl.getCanonicalLocales,
 };
-installIntlPolyfills({ force: true });
+installIntlPolyfills({ force: true, locales: ['ar', 'en'] });
 
 // And without the built-ins Node has and Hermes, the phone's engine, does not
 // (checked against Hermes V1, which React Native 0.86 runs): code using one
@@ -118,6 +118,7 @@ jest.mock('expo-notifications', () => {
     setNotificationChannelAsync: jest.fn(async () => null),
     getPermissionsAsync: jest.fn(async () => ({ status: 'undetermined', granted: false, canAskAgain: true, expires: 'never' })),
     requestPermissionsAsync: jest.fn(async () => ({ status: 'granted', granted: true, canAskAgain: true, expires: 'never' })),
+    scheduleNotificationAsync: jest.fn(async () => 'local-notification'),
     getExpoPushTokenAsync: jest.fn(async () => ({ type: 'expo', data: 'ExponentPushToken[test-token-0001]' })),
     addPushTokenListener: jest.fn(subscription),
     addNotificationReceivedListener: jest.fn(subscription),
@@ -130,6 +131,14 @@ jest.mock('expo-notifications', () => {
   };
 });
 jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '1' }));
+
+// The phone's own check (the app lock): a phone with Face ID that answers yes.
+// A test that needs another answer sets it on the mock.
+jest.mock('expo-local-authentication', () => ({
+  SecurityLevel: { NONE: 0, SECRET: 1, BIOMETRIC_WEAK: 2, BIOMETRIC_STRONG: 3 },
+  getEnrolledLevelAsync: jest.fn(async () => 3),
+  authenticateAsync: jest.fn(async () => ({ success: true })),
+}));
 
 // React Native's ScrollView tells what it holds that it is inside one
 // (ScrollView.Context): lists read it to warn of a list nested in a page that
@@ -151,3 +160,7 @@ jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', native
     return createElement(inside.Provider, { value: null }, drawModal.call(this));
   };
 }
+
+// A native module: the picture a view would make, as a file on the phone.
+jest.mock('react-native-view-shot', () => ({ captureRef: jest.fn(async () => 'file:///tmp/listing-card.png') }));
+jest.mock('expo-sharing', () => ({ shareAsync: jest.fn(async () => {}), isAvailableAsync: jest.fn(async () => true) }));

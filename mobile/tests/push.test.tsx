@@ -224,6 +224,26 @@ describe('this phone, registered', () => {
     await waitFor(() => expect(registered()).toHaveLength(1));
   });
 
+  it('does not register again for token events that carry the same token — asking for one fires them', async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
+    jest.mocked(Notifications.addPushTokenListener).mockClear();
+    renderRouter(app, { initialUrl: '/' });
+    await waitFor(() => expect(registered()).toHaveLength(1));
+    const calls = jest.mocked(Notifications.addPushTokenListener).mock.calls;
+    const listener = calls[calls.length - 1][0];
+    await act(async () => {
+      for (let index = 0; index < 5; index += 1) listener({ type: 'ios', data: 'device-token-1' });
+      await Promise.resolve();
+    });
+    expect(registered()).toHaveLength(1);
+    // A token that really changed is registered.
+    await act(async () => {
+      listener({ type: 'ios', data: 'device-token-2' });
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(registered()).toHaveLength(2));
+  });
+
   it('is turned off and on from the account, the database told each time', async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
     renderRouter(app, { initialUrl: '/account/alerts' });

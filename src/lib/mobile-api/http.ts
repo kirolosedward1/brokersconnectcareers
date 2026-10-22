@@ -3,9 +3,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { env } from '@/lib/env';
 import { logFailure } from '@/lib/observe';
+import { createClient } from '@/lib/supabase/server';
+import { secondFactorDue } from '@/lib/auth/second-factor';
+import { sessionOwesSecondFactor } from '@/lib/auth/second-factor-server';
 import { challenge, readBearer, tokenRefused } from './bearer';
 import { readWithin } from './body';
-import { runAsMobile, type MobileSession } from './context';
+import { mobileScope, runAsMobile, type MobileSession } from './context';
 
 /**
  * The doors of /api/mobile/v1, and the two routes the website shares with the
@@ -27,6 +30,26 @@ export function unauthorized(reason: 'unauthenticated' | 'invalid_token') {
 }
 
 /**
+ * A good token for an account with an authenticator, from a sign-in that has
+ * not given the code yet. 403, not 401: refreshing would only mint another
+ * token at the same level, and nothing about the session is wrong except that
+ * it is unfinished. The app asks for the code before it calls anything that
+ * reaches here (session-gate.tsx), so only a client that skipped the code —
+ * a password taken straight to this API — ever sees it.
+ */
+export function secondFactorRequired() {
+  return mobileJson(
+    { error: 'second_factor_required' },
+    { status: 403, headers: { 'www-authenticate': 'Bearer error="insufficient_user_authentication"' } },
+  );
+}
+
+/** Inside a mobile route: whether its caller was turned into a signed-out one for want of the code. */
+export function refusedForSecondFactor(): boolean {
+  return mobileScope()?.secondFactorDue === true;
+}
+
+/**
  * Ask the auth server whether a token is good, once per request.
  *
  * Three answers, kept apart because the app does different things with them:
@@ -36,14 +59,20 @@ export function unauthorized(reason: 'unauthenticated' | 'invalid_token') {
  * service is unavailable; signing somebody out because Supabase blinked would
  * be the worst reading of an outage).
  */
-async function verify(jwt: string): Promise<{ session: NonNullable<MobileSession> } | { refused: Response }> {
+async function verify(
+  jwt: string,
+): Promise<{ session: NonNullable<MobileSession>; secondFactorDue: boolean } | { refused: Response }> {
   const verifier = createSupabaseClient(env.supabaseUrl, env.supabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
 
   try {
     const { data, error } = await verifier.auth.getUser(jwt);
-    if (data?.user && !error) return { session: { jwt, user: data.user } };
+    if (data?.user && !error) {
+      // The user is the auth server's answer, so its factor list is the real
+      // one; the aal claim is read from the token that answer just accepted.
+      return { session: { jwt, user: data.user }, secondFactorDue: secondFactorDue(data.user, jwt) };
+    }
     if (tokenRefused(error)) return { refused: unauthorized('invalid_token') };
     logFailure('mobile-api', 'the auth server did not answer a token check', { status: error?.status });
   } catch (error) {
@@ -60,6 +89,12 @@ type RouteHandler<C> = (request: NextRequest, context: C) => Promise<Response>;
  * A mobile route. With a bearer token, the handler runs as that user; without
  * one it runs signed out — and is refused outright unless `optional` says a
  * signed-out caller is welcome. Either way the cookie session is never read.
+ *
+ * A token that has not given the account's second factor is not that user
+ * yet: refused where somebody is needed (403), signed out where nobody is.
+ * Without this the code was asked for only by the app's own screens, and a
+ * password alone, sent here, could do anything the account could — delete
+ * it among them.
  */
 export function withMobileAuth<C>(
   handler: (request: NextRequest, context: C, session: MobileSession) => Promise<Response>,
@@ -70,10 +105,13 @@ export function withMobileAuth<C>(
     if (bearer.kind === 'malformed') return unauthorized('invalid_token');
 
     let session: MobileSession = null;
+    let factorDue = false;
     if (bearer.kind === 'token') {
       const verified = await verify(bearer.token);
       if ('refused' in verified) return verified.refused;
-      session = verified.session;
+      factorDue = verified.secondFactorDue;
+      if (factorDue && !options.optional) return secondFactorRequired();
+      session = factorDue ? null : verified.session;
     } else if (!options.optional) {
       return unauthorized('unauthenticated');
     }
@@ -88,7 +126,7 @@ export function withMobileAuth<C>(
         });
         return mobileJson({ error: 'failed' }, { status: 500 });
       }
-    });
+    }, factorDue);
   };
 }
 
@@ -102,13 +140,35 @@ export function withMobileAuth<C>(
 export function withOptionalBearer<C>(handler: RouteHandler<C>): RouteHandler<C> {
   return async (request, context) => {
     const bearer = readBearer(request.headers.get('authorization'));
-    if (bearer.kind === 'none') return handler(request, context);
+    if (bearer.kind === 'none') {
+      // The website's cookie session, held to the rule the middleware applies
+      // to pages — which never sees these routes (its matcher skips /api).
+      if (await cookieSecondFactorDue()) return secondFactorRequired();
+      return handler(request, context);
+    }
     if (bearer.kind === 'malformed') return unauthorized('invalid_token');
 
     const verified = await verify(bearer.token);
     if ('refused' in verified) return verified.refused;
+    if (verified.secondFactorDue) return secondFactorRequired();
     return runAsMobile(verified.session, () => handler(request, context));
   };
+}
+
+/**
+ * Whether the request's cookie session is one with an authenticator it has
+ * not used. The user is the auth server's answer (getUser), never the cookie's
+ * copy; nobody signed in, or an auth server that did not answer, is not due —
+ * the handler then finds nobody, as it would have.
+ */
+async function cookieSecondFactorDue(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    return data.user ? await sessionOwesSecondFactor(supabase, data.user) : false;
+  } catch {
+    return false;
+  }
 }
 
 /** True when the caller asked for JSON rather than to be redirected. */

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { ImageUp, Trash2 } from '~/components/ui/lucide';
 import { CompanyLogo } from '~/components/companies/company-logo';
@@ -11,6 +11,7 @@ import { useRemoveLogo, useUploadLogo } from '~/features/employer/company';
 import { ApiError } from '~/lib/api';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * The company's mark — the website's LogoUpload, first on the page because it
@@ -60,7 +61,7 @@ export function LogoControls({
   };
 
   const confirmRemove = () =>
-    Alert.alert(t('employer.logo'), undefined, [
+    dialog.alert(t('employer.logo'), undefined, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),

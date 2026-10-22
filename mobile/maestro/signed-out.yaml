@@ -25,6 +25,14 @@ appId: net.brokersconnect.app
 - waitForAnimationToEnd
 - runFlow: checks.yaml
 
+# With a one-tap way offered, the email and password wait behind their own
+# button: opened as a person opens them.
+- runFlow:
+    when:
+      visible: "المتابعة بالإيميل"
+    commands:
+      - tapOn: "المتابعة بالإيميل"
+
 # The forgotten-password page, from the link under the password.
 - scrollUntilVisible:
     element: "نسيت كلمة المرور؟"
