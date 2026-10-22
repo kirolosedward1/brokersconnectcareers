@@ -22,6 +22,7 @@ const zoomable =
  * the zoom is not available, `fallback` (the card with its own press) is drawn.
  */
 export function ZoomLink({ href, card, fallback }: { href: Href; card: ReactElement; fallback: ReactElement }) {
+  return fallback; // H1 bisect: the zoom link off
   if (!zoomable) return fallback;
   return (
     <Link href={href} push asChild>
