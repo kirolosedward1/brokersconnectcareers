@@ -166,7 +166,7 @@ section('a visitor: the public pages, and the empty ones');
   check('a listing that does not exist is a 404', missing?.status() === 404, `${missing?.status()}`);
   const nothing = await page.goto(`${SITE}/jobs?q=${encodeURIComponent('لا توجد وظيفة بهذا الاسم xyzzy')}`);
   check('a search that finds nothing still answers 200', nothing?.status() === 200);
-  check('and draws no listing cards', (await page.locator(`a[href*="/jobs/${live.slug}"]`).count()) === 0);
+  check('and draws no listing cards', (await page.locator('main article').count()) === 0, `${await page.locator('main article').count()} cards`);
   const guarded = await page.goto(`${SITE}/dashboard`);
   check('a signed-out visitor sent to the dashboard is asked to sign in', /\/sign-in/.test(path(page)), `${guarded?.status()} ${page.url()}`);
   check('the public pages threw no script errors', errors.length === 0, errors.slice(0, 3));
@@ -241,7 +241,7 @@ section('applying on a slow line, pressing send twice');
   check('they sign back in', await landsOn(page, /\/dashboard/), page.url());
 
   const target = (await sql(
-    `select j.slug, j.id from jobs j
+    `select j.slug, j.id, j.title_ar from jobs j
       where j.status = 'active' and j.expires_at > now()
         and not exists (select 1 from applications a where a.job_id = j.id and a.candidate_id = $1)
       order by j.published_at desc limit 1`,
@@ -268,7 +268,7 @@ section('applying on a slow line, pressing send twice');
   check('exactly one application, new, with the note', rows.length === 1 && rows[0].status === 'new' && rows[0].note?.includes('browser'), rows);
 
   await page.goto(`${SITE}/dashboard/applications`);
-  check('the applications page lists it', (await page.content()).includes(target.slug) || (await page.locator('article, li').count()) > 0);
+  check('the applications page lists it, by its title', (await page.locator('main').innerText()).includes(target.title_ar), target.title_ar);
   check('no script errors along the way', errors.length === 0, errors.slice(0, 3));
 
   // Offline, then back: the page does not pretend it sent anything.

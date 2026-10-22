@@ -410,9 +410,16 @@ const withdrawnAgain = await action(token, 'withdrawApplication', { applicationI
 check('withdrawing one that is not there is refused, not reported done', refused(withdrawnAgain, 'forbidden'), describe(withdrawnAgain));
 
 // Saving: two taps on the bookmark at once settle on one state, not two rows.
+// Each tap toggles, so two at once may land either way; what must hold is that
+// both went through and the row agrees with the last answer the server gave.
+const savedBeforeTaps = (await sql('select count(*)::int as n from saved_jobs where candidate_id = $1 and job_id = $2', [freshId, jobD.id]))[0].n;
 const taps = await Promise.all([action(token, 'toggleSavedJob', { jobId: jobD.id }), action(token, 'toggleSavedJob', { jobId: jobD.id })]);
-check('two taps on the bookmark both answer', taps.every((r) => r.status === 200), taps.map(describe));
-check('and leave at most one saved row', (await sql('select count(*)::int as n from saved_jobs where candidate_id = $1 and job_id = $2', [freshId, jobD.id]))[0].n <= 1);
+check('two taps on the bookmark both go through', taps.every(ok) && taps.every((r) => typeof r.json?.data?.saved === 'boolean'), taps.map(describe));
+const savedAfterTaps = (await sql('select count(*)::int as n from saved_jobs where candidate_id = $1 and job_id = $2', [freshId, jobD.id]))[0].n;
+check('and leave at most one saved row, matching one of the answers', savedAfterTaps <= 1 && taps.some((r) => r.json?.data?.saved === (savedAfterTaps === 1)), { savedBeforeTaps, savedAfterTaps, answers: taps.map((r) => r.json?.data?.saved) });
+const settle = await action(token, 'toggleSavedJob', { jobId: jobD.id });
+const savedAfterSettle = (await sql('select count(*)::int as n from saved_jobs where candidate_id = $1 and job_id = $2', [freshId, jobD.id]))[0].n;
+check('one more tap flips it, and says which way', ok(settle) && settle.json?.data?.saved === (savedAfterSettle === 1) && savedAfterSettle !== savedAfterTaps, { settle: describe(settle), savedAfterSettle });
 const searchTwice = await Promise.all([
   action(token, 'saveSearch', { query: 'track=resale', label: 'ريسيل (edge)' }),
   action(token, 'saveSearch', { query: 'track=resale', label: 'ريسيل (edge)' }),
