@@ -105,6 +105,7 @@ console.log('\n— the app can reach only what the registry lists');
   const imports = [...registry.matchAll(/from '(@\/lib\/actions\/[\w-]+)'/g)].map((match) => match[1]);
   is('found the action imports', imports.length > 10, true);
   is('never checkout', imports.includes('@/lib/actions/billing'), false);
+  is('never the admin client', /createAdminClient|@\/lib\/supabase\/admin/.test(registry), false);
 
   // Of the admin console, only the levers the app's console has — never
   // taxonomy, email requeues or anything else in those files — and every one

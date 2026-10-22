@@ -4,7 +4,8 @@ import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useTranslations } from 'use-intl';
 import { isAdmin } from '@/lib/permissions';
-import type { SafetyFlag } from '@/lib/supabase/database.types';
+import type { ApprovalStatus, SafetyFlag, UserRole } from '@/lib/supabase/database.types';
+import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { AlertTriangle, ExternalLink, Info, KeyRound, ShieldAlert, ShieldCheck } from '~/components/ui/lucide';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
@@ -136,5 +137,26 @@ export function SectionTitle({ children }: { children: string }) {
     <Text variant="label" weight="semibold" tone="mutedForeground" accessibilityRole="header" style={{ paddingHorizontal: space[1] }}>
       {children}
     </Text>
+  );
+}
+
+/** The website's audit label for an action word (`job.approved`), or the word itself for one it does not name. */
+export function auditLabel(t: ReturnType<typeof useTranslations>, action: string): string {
+  const key = `admin.auditAction.${action.replace('.', '_')}`;
+  return t.has(key as never) ? t(key as never) : action;
+}
+
+/** What an account is called for its role — the website's words, and "Admin" for one of the console's own. */
+export function useRoleLabel(): (role: UserRole) => string {
+  const t = useTranslations();
+  return (role) =>
+    role === 'employer' ? t('onboarding.roleEmployer') : role === 'admin' ? t('admin.title') : t('onboarding.roleCandidate');
+}
+
+/** An account's standing, as the website's ApprovalBadge colours it: green active, amber under review, red suspended. */
+export function ApprovalBadge({ status }: { status: ApprovalStatus }) {
+  const t = useTranslations('admin');
+  return (
+    <Badge variant={status === 'rejected' ? 'destructive' : status === 'pending' ? 'warning' : 'success'} label={t(`approval.${status}`)} />
   );
 }

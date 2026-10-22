@@ -266,7 +266,7 @@ create or replace function public.admin_set_role(
 returns void
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = public, auth, pg_temp
 as $$
 declare
   v_actor   uuid;
@@ -294,6 +294,14 @@ begin
   if v_profile.role <> 'admin' and p_role <> 'admin' then
     raise exception 'invalid_transition'
       using hint = 'An admin can make an account an admin, or an admin a candidate or employer again.';
+  end if;
+  -- An account whose sign-in is blocked is not made an admin: the block is
+  -- lifted only on a non-admin (admin_set_sign_in_block), so promoting it
+  -- would make an admin nobody could let back in. Allow sign-in first.
+  if p_role = 'admin' and exists (
+    select 1 from auth.users u where u.id = p_user and u.banned_until is not null and u.banned_until > now()
+  ) then
+    raise exception 'invalid_transition' using hint = 'Allow the account to sign in first.';
   end if;
 
   update profiles

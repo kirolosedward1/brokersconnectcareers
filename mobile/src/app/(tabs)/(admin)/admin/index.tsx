@@ -3,7 +3,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-n
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDateTime, formatNumber } from '@/lib/format';
-import { AdminGate, openOnWebsite, SectionTitle } from '~/components/admin/kit';
+import { AdminGate, auditLabel, openOnWebsite, SectionTitle } from '~/components/admin/kit';
 import { StatStrip } from '~/components/dashboard/stat-strip';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { ForwardChevron } from '~/components/ui/icons';
@@ -181,12 +181,6 @@ function Overview() {
       </Panel>
     </ScrollView>
   );
-}
-
-/** The website's audit label for an action word (`job.approved`), or the word itself for one it does not name. */
-function auditLabel(t: ReturnType<typeof useTranslations>, action: string): string {
-  const key = `admin.auditAction.${action.replace('.', '_')}`;
-  return t.has(key as never) ? t(key as never) : action;
 }
 
 function Panel({ children }: { children: ReactNode }) {

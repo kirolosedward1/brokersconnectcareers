@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
-import { Text } from 'react-native';
+import { Modal, Text } from 'react-native';
 import { Stack, Tabs } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Modal } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type {
   AdminOverview,

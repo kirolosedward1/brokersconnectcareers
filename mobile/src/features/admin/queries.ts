@@ -5,8 +5,6 @@ import type {
   AdminOverview,
   AdminReportCase,
   AdminReportDetail,
-  AdminUserSearchRow,
-  ApprovalStatus,
   CompanyDocumentRow,
   JobRow,
   ReportReason,
@@ -206,27 +204,6 @@ export function useReportCases(view: ReportView) {
         })),
         total: Number(cases[0]?.total_count ?? 0),
       };
-    },
-  });
-}
-
-/** Accounts by standing (admin_search_users): waiting for approval, or suspended. No phone, no email. */
-export function useAccounts(status: Extract<ApprovalStatus, 'pending' | 'rejected'>) {
-  const open = useOpen();
-  return useQuery({
-    queryKey: ['admin', 'accounts', status],
-    enabled: open,
-    queryFn: async (): Promise<{ rows: AdminUserSearchRow[]; total: number }> => {
-      const { data, error } = await supabase.rpc('admin_search_users', {
-        p_query: null,
-        p_role: null,
-        p_status: status,
-        p_limit: QUEUE_SIZE,
-        p_offset: 0,
-      });
-      if (error) throw error;
-      const rows = data ?? [];
-      return { rows, total: Number(rows[0]?.total_count ?? 0) };
     },
   });
 }

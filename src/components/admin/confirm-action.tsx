@@ -203,7 +203,9 @@ export function ConfirmAction({
       setOpen(false);
       setText('');
       setDone(true);
-      const ended = sessionsEndedOf(result.data);
+      // Only a lever that ends sessions says how many: allowing sign-in again
+      // answers with the same shape and a count of none, which is no news.
+      const ended = lever.do === 'sessions' || (lever.do === 'signInBlock' && lever.block) ? sessionsEndedOf(result.data) : null;
       announceDone(
         ended === null
           ? t('doneWhat', { what: title })

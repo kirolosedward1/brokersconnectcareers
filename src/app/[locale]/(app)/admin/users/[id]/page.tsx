@@ -652,6 +652,10 @@ async function SecurityTab({
                 variant="outline"
                 icon={<ShieldOff aria-hidden />}
               />
+            ) : blocked ? (
+              // Not while sign-in is blocked: the block is lifted only on a
+              // non-admin, so this would make an admin nobody could let in.
+              <span className="text-sm text-muted-foreground">{t('signInBlocked')}</span>
             ) : (
               <ConfirmAction
                 lever={{ do: 'role', userId: profile.id, role: 'admin' }}

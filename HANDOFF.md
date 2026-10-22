@@ -1,6 +1,6 @@
 # Handoff — Brokers Connect Careers
 
-State as of 2026-10-19 (main at `ab8dad0` before this file). No secrets in this file; none belong in the repo.
+State as of 2026-10-22 (main at `bc2408d`; branch `claude/tender-davinci-dzouqf` carries the admin work below). No secrets in this file; none belong in the repo.
 
 ## What it is
 
@@ -8,7 +8,7 @@ Arabic-first job board for Egypt's real-estate brokerage market (candidates = sa
 
 - **Web** (repo root): Next.js 15 + TypeScript + Supabase, pnpm, Node 22 (`.nvmrc`). Deployed by **Vercel** on every push to `main`.
 - **iOS app** (`mobile/`): Expo SDK 57 / React Native, expo-router, TanStack Query, Supabase JS. Talks to Supabase directly (RLS) and to the website's `/api/mobile/v1/*` for server actions.
-- **Database**: Supabase project ref `hiwdhicwsohbipxzazmb`. Schema lives in `supabase/migrations/` (numbered `20260101000NNN_*.sql`; latest `…351`).
+- **Database**: Supabase project ref `hiwdhicwsohbipxzazmb`. Schema lives in `supabase/migrations/` (numbered `20260101000NNN_*.sql`; latest `…352`).
 
 ## Layout
 
@@ -73,6 +73,15 @@ cd .. && pnpm typecheck   # web; `pnpm check` at root runs the full web/DB suite
 | 7dd5da0 | Two-step code: 429 "too many tries" said as such, code kept |
 | bce9f60, bf03953, ab8dad0 | Saved-tab note sheet: drawn once at root, focuses after presentation, now a **top-anchored card** the keyboard can't cover; build marker on Account |
 
+## The admin console, on both clients (October 2026, branch `claude/tender-davinci-dzouqf`)
+
+Who is an admin: **only `k4hosting@gmail.com`** (promoted 2026-10-22, has a verified authenticator). The 15 `@demo.test` accounts that shipped with the public demo password are **banned** (`auth.users.banned_until = 2999-12-31`) and `admin@demo.test` was demoted; nothing of theirs was deleted, so 14 demo listings are still on the public board and 4 real applications went to demo companies (see Open items).
+
+- **Website** `/admin/**` — unchanged in shape. `requireAdmin` sends an admin without an authenticator to enrol (`ADMIN_MFA_REQUIRED`, on by default in production) and one with an unused authenticator to the challenge; `is_admin()` (migration 311) refuses an enrolled admin at aal1 regardless. The **accounts page** (`/admin/users`, `/admin/users/<id>`) is now the users-management system: a "Sign-in blocked" list view, and an account file in four tabs (`?tab=overview|activity|security|record`) with every lever: approve / hold / suspend / restore, **make or remove admin**, **block or allow sign-in**, **sign out everywhere**, reporting restriction, contact revealed for a reason, notes.
+- **Database** — migration **352** (`accounts_managed_from_one_place`): `admin_set_role`, `admin_set_sign_in_block` (writes `auth.users.banned_until` and deletes the account's `auth.sessions` by dynamic SQL — those tables are GoTrue's; the test DB stubs `auth.users` without `auth.sessions`, so the lever ends 0 sessions there), `admin_end_sessions`, `admin_user_activity`, and wider `admin_search_users` (+`p_blocked`; the 5-argument signature is **dropped**) and `admin_user_facts`. Rules: never yourself; an admin's sign-in is not blocked (demote first); only moves that make or unmake an admin; every call behind `admin_begin()` with a reason and an audit row. Tests: `pnpm test:admin` (section "accounts managed from one place"). **Not yet applied to production** — apply when the branch merges (`pnpm db:apply` or the Supabase MCP `apply_migration`).
+- **iOS app** — an **Admin** tab for `role = 'admin'` (`mobile/src/lib/tabs.ts`; an admin who runs a company gets it in the directory's place, and the directory opens inside it: route group `(consultants,admin)`). Screens under `mobile/src/app/(tabs)/(admin)/admin/`: overview (`admin_overview`, the tab's badge), listings queue + one listing's review, reports (two queues: new / under review), accounts (list + file), companies' papers. Reads go to Supabase under the admin's session (`mobile/src/features/admin/{queries,accounts}.ts`); **writes are the website's own admin actions** through `/api/mobile/v1/actions`, exactly the names in `ADMIN_ACTIONS` (`src/lib/mobile-api/contract.ts`), each wrapped in `forAdmins()` (`registry.ts`) which applies the website's console rule to the bearer token (`src/lib/mobile-api/admin-door.ts`: aal2 when a factor exists, else refused while `ADMIN_MFA_REQUIRED` — the app reads that flag from `/config`). `scripts/mobile-api.test.mjs` pins the list and the door; `scripts/e2e/journeys.mjs` and `scripts/mobile-api.smoke.mjs` assert the door over HTTP. Every lever opens one confirmation sheet (`mobile/src/components/admin/decision-sheet.tsx`, host at the root) and says "done" only after the website answered `ok`. Tests: `mobile/tests/admin.test.tsx`, `mobile/tests/admin-accounts.test.tsx`. Docs: `docs/mobile.md` ("The admin console in the app"), `docs/security/THREAT_MODEL.md` §6.
+- **Signing in as the admin**: website — Google, the authenticator code, `/admin`. App — the same Google sign-in; the app asks for the code (`mobile/src/app/mfa.tsx`) and the Admin tab appears. Reaches phones by the Expo Go OTA when `main` changes (no `EXPO_TOKEN` was available in the session that built this).
+
 ## Open items
 
 1. **Note sheet (ab8dad0)** — awaiting user confirmation on device that the top-anchored card is no longer covered by the keyboard (two earlier attempts weren't enough in Expo Go). Ask for the Account build marker first.
@@ -83,6 +92,9 @@ cd .. && pnpm typecheck   # web; `pnpm check` at root runs the full web/DB suite
 6. **TestFlight / App Store** — no iOS build has ever been made; EAS holds **no iOS credentials** and `eas.json` submit has no `ascAppId`/`appleTeamId`. Blocked until the user has a paid Apple Developer Program membership. Then, on their machine: `cd mobile && npx eas-cli@latest build --platform ios --profile production --auto-submit` (Apple ID + 2FA once; EAS creates and stores cert/profile/ASC key), or provide an ASC API key (.p8, Key ID, Issuer ID), Team ID and the App Store Connect app's Apple ID for non-interactive builds. Details: `docs/app-store.md`. Store builds take OTAs on channel `production`, not `expo-go`.
 7. **Unused packages** — `react-native-maps`, `expo-calendar`, `react-native-qrcode-svg` (added in 39e89ee) are imported nowhere; remove or use, and regenerate licences.
 8. Not verified on a real device or store build: anything — all testing this session was Jest + Expo Go reports from the user.
+9. **Migration 352** must be applied to production when the admin branch merges (see above). The website's users page calls `admin_search_users` with named arguments, so it works against the old function until then, minus the "Sign-in blocked" view.
+10. **Demo data still live**: 14 demo listings on the board and 4 real applications sent to demo companies; `scripts/remove-demo.mjs` (needs a service key and DB URL) takes them down. The new admin's own public consultant profile (`consultant-33529768`) is still listed — hide it if they do not want it seen.
+11. **Admin console parity in the app**: the app has the queues and the accounts; search, the audit log, appeals, applications, taxonomy, email and operations are still website-only (the app's overview links to them).
 
 ## Gotchas
 
@@ -91,5 +103,7 @@ cd .. && pnpm typecheck   # web; `pnpm check` at root runs the full web/DB suite
 - **Hangs**: supabase-js auth calls share a lock; a stuck refresh blocked sign-out and storage. Wrap anything that can stall in `withTimeout` (`lib/timeout.ts`); auth fetches are bounded in `lib/supabase.ts`, data requests by `db.timeout`, website calls in `lib/api.ts`.
 - **Egypt**: time zone `Africa/Cairo` (has DST again), Western digits (`-u-nu-latn`), `ar-EG`/`en-GB`, EGP. Parse user digits with `westernDigits`. Mobile numbers: `+20` + 10/11/12/15 (`src/lib/phone.ts`).
 - **Supabase advisors**: the 13 anon-executable SECURITY DEFINER helpers (`is_admin`, `owns_job`, `current_role_of_user`, …) are used in RLS policies that anon evaluates (public jobs/companies/storage) — revoking them breaks logged-out browsing. `submit_support_request`/`record_support_event` are intentionally anon (rate-limited). All `admin_*` call `admin_begin()` → `is_admin()`. Every definer function sets `search_path`.
+- **Admin levers from the app**: add a lever by (1) the server action in `src/lib/actions/admin.ts` (or `moderation.ts`), (2) its entry in `MobileActions` + `ADMIN_ACTIONS` in `contract.ts`, (3) `name: { run: forAdmins(action) }` in `registry.ts` — `scripts/mobile-api.test.mjs` fails if any of the three is missing or the entry is not behind `forAdmins`, (4) a `Lever` kind in `mobile/src/features/admin/levers.ts`. Never expose `createAdminClient` through the registry.
+- **`auth` schema from SQL**: only migration 352 writes to it (`banned_until`, sessions, refresh tokens), by dynamic SQL guarded with `to_regclass`, as the `postgres` role. Reading `auth.users` from definer functions has precedent (201, 305, 318).
 - **Arabic search**: web job search folds spelling (`src/lib/search/arabic.ts`); ilike lists use `looseArabicNeedle`-style patterns.
 - Commits in this repo are small, one fix each, with a descriptive message; keep `pnpm check` green before pushing.

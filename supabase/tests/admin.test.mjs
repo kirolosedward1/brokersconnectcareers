@@ -673,6 +673,20 @@ report.section('accounts managed from one place (migration 352)');
   r = await as(admin, `select admin_set_role('${candidate}', 'candidate', 'سبب كافٍ')`);
   report.check('the role an account already has is no change', !r.ok && /no_change/.test(r.error ?? ''), r.error);
 
+  const blockedFirst = await session(admin, async (q) => {
+    await q(`select admin_set_sign_in_block('${candidate}', true, 'حساب مخترق')`);
+    await q('savepoint promote');
+    let refused = null;
+    try {
+      await q(`select admin_set_role('${candidate}', 'admin', 'ترقية')`);
+    } catch (error) {
+      refused = error.message;
+    }
+    await q('rollback to savepoint promote');
+    return refused;
+  });
+  report.check('an account whose sign-in is blocked is not made an admin (nobody could let it back in)', /invalid_transition/.test(blockedFirst.value ?? ''), blockedFirst.value ?? blockedFirst.error);
+
   const role = await session(admin, async (q) => {
     await q(`select admin_set_role('${candidate}', 'admin', 'انضم لفريق الدعم')`);
     const [profile] = await q(`select role, approval_status from profiles where id = '${candidate}'`);

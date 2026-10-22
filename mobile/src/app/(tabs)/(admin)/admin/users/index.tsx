@@ -1,38 +1,40 @@
-import { useState } from 'react';
-import { View } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { useMemo, useState, type ReactNode } from 'react';
+import { ScrollView, View } from 'react-native';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDate } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { AdminUserSearchRow } from '@/lib/supabase/database.types';
 import { openDecision } from '~/components/admin/decision-sheet';
-import { AdminGate, openOnWebsite } from '~/components/admin/kit';
+import { AdminGate, ApprovalBadge, useRoleLabel } from '~/components/admin/kit';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
-import { Ban, Check, ExternalLink, RotateCcw, UserCheck } from '~/components/ui/lucide';
-import { Segmented } from '~/components/ui/segmented';
+import { Chip } from '~/components/ui/chip';
+import { ForwardChevron } from '~/components/ui/icons';
+import { Check, RotateCcw, SearchX, UserCheck } from '~/components/ui/lucide';
+import { PageFooter } from '~/components/ui/page-footer';
+import { SearchField } from '~/components/ui/search-field';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
-import { useAccounts } from '~/features/admin/queries';
+import { ACCOUNTS_VIEWS, flattenAccounts, useAccountList, type AccountsView } from '~/features/admin/accounts';
 import { useTabList } from '~/features/tab-bar';
-import { markupTags } from '~/i18n/rich';
+import { useNextPage } from '~/lib/use-next-page';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 
-type Standing = 'pending' | 'rejected';
-
 /**
- * Accounts waiting for approval, and the suspended — the website's
- * /admin/users, by standing. Approving lets the account act and emails its
- * owner; suspending needs a reason, which the owner is sent, and takes an
- * employer's live listings down with it when nobody approved is left on the
- * company. An admin account has no lever here (set_account_approval refuses
- * one). No phone or email is shown: those come one at a time, on the record,
- * from the account's file on the website.
+ * The accounts — the website's /admin/users: any account, found the way
+ * support gets asked about it (a name fragment, or an exact email, phone or
+ * id, through admin_search_users, which never carries a phone or an email
+ * back), in the views the website has, the waiting accounts first. A row
+ * opens the account's file, where its facts and every lever are; the queue's
+ * own work — approving an account that waits, restoring one — is a tap from
+ * the row too. No phone or email is shown: those come one at a time, on the
+ * record, from the file.
  */
 export default function AdminAccountsScreen() {
   const t = useTranslations();
@@ -46,50 +48,92 @@ export default function AdminAccountsScreen() {
   );
 }
 
+/** The view a link asks for (the overview's "suspended" figure), the waiting accounts otherwise. */
+function viewFor(status: string | undefined): AccountsView {
+  return status === 'rejected' ? 'suspended' : 'pending';
+}
+
+function useViewLabels(): Record<AccountsView, string> {
+  const t = useTranslations();
+  return {
+    pending: t('admin.approval.pending'),
+    all: t('admin.filterAll'),
+    candidates: t('onboarding.roleCandidate'),
+    employers: t('onboarding.roleEmployer'),
+    admins: t('admin.title'),
+    suspended: t('admin.approval.rejected'),
+    blocked: t('admin.signInBlocked'),
+  };
+}
+
 function Accounts() {
   const t = useTranslations();
   const params = useLocalSearchParams<{ status?: string }>();
-  const [view, setView] = useState<Standing>(params.status === 'rejected' ? 'rejected' : 'pending');
-  const accounts = useAccounts(view);
+  const [view, setView] = useState<AccountsView>(() => viewFor(params.status));
+  const [query, setQuery] = useState('');
+  const accounts = useAccountList(view, query);
+  const nextPage = useNextPage(accounts);
   const pull = usePullRefresh(() => accounts.refetch());
   const list = useTabList<FlashListRef<AdminUserSearchRow>>();
+  const rows = useMemo(() => flattenAccounts(accounts.data?.pages), [accounts.data]);
+  const labels = useViewLabels();
 
-  const header = (
-    <View style={{ gap: space[3], marginBottom: space[4] }}>
-      <Segmented
-        label={t('admin.colStatus')}
-        options={[
-          { value: 'pending', label: t('admin.approval.pending') },
-          { value: 'rejected', label: t('admin.approval.rejected') },
-        ]}
-        value={view}
-        onChange={setView}
-      />
-      {accounts.data && accounts.data.rows.length < accounts.data.total ? (
-        <Text variant="small" tone="mutedForeground">
-          {t.markup('app.admin.showing', { shown: accounts.data.rows.length, total: accounts.data.total, ...markupTags })}
-        </Text>
-      ) : null}
-    </View>
-  );
-
-  let body: React.ReactNode = null;
+  let body: ReactNode = null;
   if (accounts.isPending) body = <LoadingState />;
   else if (accounts.isError && !accounts.data) body = <ErrorState error={accounts.error} onRetry={() => accounts.refetch()} />;
 
+  const header = (
+    <View style={{ gap: space[3], marginBottom: space[4] }}>
+      <Text variant="small" tone="mutedForeground">
+        {t('app.admin.accountsLede')}
+      </Text>
+      {/* One view at a time: a radio group, as VoiceOver should say it. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        accessibilityRole="radiogroup"
+        accessibilityLabel={t('admin.colStatus')}
+        contentContainerStyle={{ gap: space[2] }}
+      >
+        {ACCOUNTS_VIEWS.map((option) => (
+          <Chip key={option} radio label={labels[option]} selected={option === view} onPress={() => setView(option)} />
+        ))}
+      </ScrollView>
+    </View>
+  );
+
   return (
-    <FlashList
-      {...list}
-      data={body ? [] : (accounts.data?.rows ?? [])}
-      keyExtractor={(row) => row.id}
-      renderItem={({ item }) => <AccountRow key={item.id} account={item} />}
-      ItemSeparatorComponent={Separator}
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
-      ListHeaderComponent={header}
-      ListEmptyComponent={body ?? <EmptyState icon={UserCheck} title={t('admin.emptyQueue')} />}
-      {...pull}
-    />
+    // The search, over whatever is below it, so the words stay in view while their answer comes.
+    <View style={{ flex: 1 }}>
+      <SearchField
+        value={query}
+        label={t('filters.search')}
+        placeholder={t('admin.usersSearchPlaceholder')}
+        onSearch={setQuery}
+        style={{ marginHorizontal: gutter, marginTop: space[2], marginBottom: space[1] }}
+      />
+      <FlashList
+        {...list}
+        data={body ? [] : rows}
+        keyExtractor={(row) => row.id}
+        renderItem={({ item }) => <AccountRow key={item.id} account={item} />}
+        ItemSeparatorComponent={Separator}
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
+        ListHeaderComponent={header}
+        ListEmptyComponent={
+          body ??
+          // A search that found nobody says so; a view with nobody in it is a queue that is clear.
+          (query ? <EmptyState icon={SearchX} title={t('admin.searchNothing')} /> : <EmptyState icon={UserCheck} title={t('admin.emptyQueue')} />)
+        }
+        ListFooterComponent={<PageFooter query={accounts} />}
+        onEndReached={nextPage}
+        onEndReachedThreshold={0.5}
+        {...pull}
+      />
+    </View>
   );
 }
 
@@ -101,34 +145,32 @@ function AccountRow({ account }: { account: AdminUserSearchRow }) {
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
-  const employer = account.role === 'employer';
-  const role =
-    account.role === 'employer' ? t('onboarding.roleEmployer') : account.role === 'admin' ? t('admin.title') : t('onboarding.roleCandidate');
-  const lever = (status: 'approved' | 'rejected') => {
-    if (status === 'approved') {
-      const label = account.approval_status === 'rejected' ? t('admin.restoreAccount') : t('admin.approveAccount');
-      openDecision({
-        lever: { do: 'approval', userId: account.id, status },
-        title: `${label} — ${account.full_name}`,
-        body: t('admin.approveAccountBody'),
-        confirmLabel: label,
-        reason: 'none',
-      });
-    } else {
-      openDecision({
-        lever: { do: 'approval', userId: account.id, status },
-        title: `${t('admin.suspendAccount')} — ${account.full_name}`,
-        body: employer ? t('admin.suspendTakesListingsDown') : t('admin.suspendCandidateBody'),
-        confirmLabel: t('admin.suspendAccount'),
-        destructive: true,
-        reason: 'required',
-        reasonLabel: t('admin.reasonToUser'),
-      });
-    }
-  };
+  const role = useRoleLabel()(account.role);
+  const open = () => router.push({ pathname: '/admin/users/[id]', params: { id: account.id } });
+
+  // The queue's one-tap work: approving an account that waits, or restoring
+  // one (set_account_approval refuses an admin's). Everything else is decided
+  // on the file, with the facts in front of the admin.
+  const approvable = account.role !== 'admin' && account.approval_status !== 'approved';
+  const approveLabel = account.approval_status === 'rejected' ? t('admin.restoreAccount') : t('admin.approveAccount');
+  const approve = () =>
+    openDecision({
+      lever: { do: 'approval', userId: account.id, status: 'approved' },
+      title: `${approveLabel} — ${account.full_name}`,
+      body: t('admin.approveAccountBody'),
+      confirmLabel: approveLabel,
+      reason: 'none',
+    });
 
   return (
-    <Card style={{ gap: space[3] }}>
+    <Card
+      accessibilityLabel={`${account.full_name}، ${role}`}
+      // The card is one element to VoiceOver: the lever inside it is offered as an action on it.
+      accessibilityActions={approvable ? [{ name: 'approve', label: approveLabel }] : undefined}
+      onAccessibilityAction={approvable ? (event) => (event.nativeEvent.actionName === 'approve' ? approve() : undefined) : undefined}
+      onPress={open}
+      style={{ gap: space[3] }}
+    >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
         <Avatar name={account.full_name} src={account.avatar_url} seed={account.id} size="md" />
         <View style={{ flex: 1, gap: 2 }}>
@@ -140,55 +182,32 @@ function AccountRow({ account }: { account: AdminUserSearchRow }) {
             {`${t('admin.colJoined')}: ${formatDate(account.created_at, locale)}`}
           </Text>
         </View>
-        <Badge
-          variant={account.approval_status === 'rejected' ? 'destructive' : account.approval_status === 'pending' ? 'warning' : 'success'}
-          label={t(`admin.approval.${account.approval_status}`)}
-        />
+        <ForwardChevron size={18} color={colors.mutedForeground} />
       </View>
-      {account.approval_note ? (
-        <Text variant="small" tone="mutedForeground">{`«${account.approval_note}»`}</Text>
-      ) : null}
 
-      {account.role === 'admin' ? (
-        <Text variant="small" tone="mutedForeground">
-          {t('admin.adminNoLever')}
-        </Text>
-      ) : (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-          {account.approval_status !== 'approved' ? (
-            <Button
-              label={account.approval_status === 'rejected' ? t('admin.restoreAccount') : t('admin.approveAccount')}
-              accessibilityLabel={`${account.approval_status === 'rejected' ? t('admin.restoreAccount') : t('admin.approveAccount')}: ${account.full_name}`}
-              size="sm"
-              icon={
-                account.approval_status === 'rejected' ? (
-                  <RotateCcw size={16} color={colors.primaryForeground} />
-                ) : (
-                  <Check size={16} color={colors.primaryForeground} />
-                )
-              }
-              onPress={() => lever('approved')}
-            />
-          ) : null}
-          {account.approval_status !== 'rejected' ? (
-            <Button
-              label={t('admin.suspendAccount')}
-              accessibilityLabel={`${t('admin.suspendAccount')}: ${account.full_name}`}
-              variant="ghost"
-              size="sm"
-              icon={<Ban size={16} color={colors.destructive} />}
-              onPress={() => lever('rejected')}
-            />
-          ) : null}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[1] }}>
+        <ApprovalBadge status={account.approval_status} />
+        {account.sign_in_blocked ? <Badge variant="destructive" label={t('admin.signInBlocked')} /> : null}
+        {account.agent_restricted ? <Badge variant="destructive" label={t('admin.restricted')} /> : null}
+      </View>
+
+      {approvable ? (
+        <View style={{ flexDirection: 'row' }}>
           <Button
-            label={t('app.admin.onWebsite')}
-            variant="ghost"
+            label={approveLabel}
+            accessibilityLabel={`${approveLabel}: ${account.full_name}`}
             size="sm"
-            icon={<ExternalLink size={16} color={colors.foreground} />}
-            onPress={() => openOnWebsite(`/admin/users/${account.id}`)}
+            icon={
+              account.approval_status === 'rejected' ? (
+                <RotateCcw size={16} color={colors.primaryForeground} />
+              ) : (
+                <Check size={16} color={colors.primaryForeground} />
+              )
+            }
+            onPress={approve}
           />
         </View>
-      )}
+      ) : null}
     </Card>
   );
 }
