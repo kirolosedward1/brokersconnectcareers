@@ -85,6 +85,8 @@
     "configRetry": "جرّب تاني",
     "appleRevokedTitle": "خرجنا من حسابك",
     "appleRevokedBody": "«تسجيل الدخول بـ Apple» اتوقف للتطبيق ده، فخرجنا من حسابك على الموبايل ده. تقدر تدخل تاني في أي وقت.",
+    "showPassword": "إظهار كلمة المرور",
+    "hidePassword": "إخفاء كلمة المرور",
     "continueWithEmail": "المتابعة بالإيميل",
     "otherWays": "طرق تانية للدخول"
   },
@@ -403,5 +405,8 @@
     "clearAllConfirm": "امسح الكل",
     "cancel": "إلغاء",
     "deleteFailed": "مقدرناش نمسح التنبيه. جرّب تاني."
+  },
+  "keyboard": {
+    "done": "تم"
   }
 }
