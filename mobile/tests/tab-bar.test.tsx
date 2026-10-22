@@ -12,7 +12,7 @@ import { ThemeProvider } from '~/theme/provider';
 import { useReduceMotion } from '~/theme/reduce-motion';
 import { motion } from '~/theme/tokens';
 import TabsLayout from '../src/app/(tabs)/_layout';
-import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import { mobileConfig } from './auth-fixtures';
 import { fakeServer } from './server';
 
@@ -34,7 +34,7 @@ jest.mock('~/theme/reduce-motion', () => ({ useReduceMotion: jest.fn(() => false
 
 const ar = catalogues.ar;
 const server = fakeServer();
-const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)';
+const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)';
 let client: QueryClient;
 let timing: jest.SpyInstance;
 

@@ -75,8 +75,10 @@ console.log('\n— malformed credentials are refused without a round trip');
 
 console.log('\n— only listed actions exist');
 {
-  const r = await call('/api/mobile/v1/actions/moderateJob', { headers: json, body: '{}' });
-  check('an admin action is not one (404)', r.status === 404, `got ${r.status}`);
+  const r = await call('/api/mobile/v1/actions/requeueEmail', { headers: json, body: '{}' });
+  check('an admin action the app does not have is not one (404)', r.status === 404, `got ${r.status}`);
+  const lever = await call('/api/mobile/v1/actions/moderateJob', { headers: json, body: '{}' });
+  check('an admin lever the app has still wants a token (401)', lever.status === 401, `got ${lever.status}`);
   const p = await call('/api/mobile/v1/actions/__proto__', { headers: json, body: '{}' });
   check('nor is a prototype key (404)', p.status === 404, `got ${p.status}`);
   const g = await call('/api/mobile/v1/actions/reportAuthOutcome', { method: 'GET' });

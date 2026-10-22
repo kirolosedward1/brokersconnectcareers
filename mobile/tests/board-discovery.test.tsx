@@ -25,7 +25,7 @@ import { palette } from '~/theme/tokens';
 import TabsLayout from '../src/app/(tabs)/_layout';
 import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
-import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
 import { board, browse, cairo, listing, newCairo } from './fixtures';
@@ -59,7 +59,7 @@ const ar = catalogues.ar;
 const t = createTranslator({ locale: 'ar', messages: catalogues.ar });
 const server = fakeServer();
 const user = authUser();
-const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)';
+const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)';
 
 const october: DistrictRow = { id: 12, governorate_id: 2, name_ar: 'السادس من أكتوبر', name_en: '6th of October', slug: '6th-of-october' };
 const zayed: DistrictRow = { id: 13, governorate_id: 2, name_ar: 'الشيخ زايد', name_en: 'Sheikh Zayed', slug: 'sheikh-zayed' };
@@ -311,6 +311,33 @@ describe('suggestions as the reader types', () => {
       fireEvent.press(salary);
       await act(() => jest.advanceTimersByTimeAsync(800));
       await waitFor(() => expect(boardReads().some((params) => params.get('sort') === 'salary')).toBe(true));
+    });
+
+    it('keeps a quick chip tapped as the order card fades, and the order with it', async () => {
+      const result = renderRouter(boardApp, { initialUrl: '/jobs' });
+      expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+      fireEvent.press(screen.getByRole('button', { name: `${ar.jobs.sortBy}: ${ar.jobs.sortNewest}` }));
+      fireEvent.press(await screen.findByRole('radio', { name: ar.jobs.sortSalary }));
+      // The card still fading: a chip tapped meanwhile.
+      fireEvent.press(screen.getAllByRole('button', { name: ar.filters.hasBasicSalaryYes })[0]);
+      await waitFor(() => expect(result.getSearchParams()).toMatchObject({ salary: 'yes' }));
+      await act(() => jest.advanceTimersByTimeAsync(800));
+      await waitFor(() => expect(result.getSearchParams()).toMatchObject({ salary: 'yes', sort: 'salary' }));
+    });
+
+    it('keeps the order chosen just before the filters were opened when they are applied', async () => {
+      const result = renderRouter(boardApp, { initialUrl: '/jobs' });
+      expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+      fireEvent.press(screen.getByRole('button', { name: `${ar.jobs.sortBy}: ${ar.jobs.sortNewest}` }));
+      fireEvent.press(await screen.findByRole('radio', { name: ar.jobs.sortSalary }));
+      // Filters tapped as the card fades: the sheet opens once it has gone, and the order lands.
+      fireEvent.press(screen.getByRole('button', { name: ar.jobs.filters }));
+      await act(() => jest.advanceTimersByTimeAsync(800));
+      await waitFor(() => expect(result.getSearchParams()).toMatchObject({ sort: 'salary' }));
+      fireEvent(await screen.findByLabelText(ar.filters.search), 'submitEditing');
+      await waitFor(() => expect(screen.queryByLabelText(ar.filters.search)).toBeNull());
+      await act(async () => {});
+      expect(result.getSearchParams()).toMatchObject({ sort: 'salary' });
     });
 
     it("searches with the keyboard's Search key, and counts the words typed on the sheet's button", async () => {

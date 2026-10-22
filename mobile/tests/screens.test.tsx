@@ -3,16 +3,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Alert, Modal, RefreshControl, type AlertButton } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import { VerifiedExplainerHost } from '~/components/companies/verified-mark';
+import { hideJob, unhideJob } from '~/features/moderation/hidden-jobs';
 import { hideCompany, unhideCompany } from '~/features/moderation/hidden-companies';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { SessionProvider } from '~/lib/session';
 import { ThemeProvider } from '~/theme/provider';
-import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
-import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/companies/[slug]';
-import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/jobs/[slug]';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
+import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/companies/[slug]';
+import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/jobs/[slug]';
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
-import * as CompaniesScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/companies/index';
+import * as CompaniesScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/companies/index';
 import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as NotFoundScreen from '../src/app/+not-found';
 import { board, browse, cairo, company, companyPage, directory, jobPage, listing, newCairo } from './fixtures';
@@ -405,6 +406,69 @@ describe('a listing', () => {
       expect(screen.queryByText(listing.title_ar)).toBeNull();
     } finally {
       act(() => unhideCompany(company.id));
+    }
+  });
+
+  it('says a track-in-district page has nothing to show when its only listing was hidden one by one, not a count over an empty space', async () => {
+    server.on('/api/mobile/v1/landing/primary-sales-new-cairo', {
+      track: 'primary',
+      district: newCairo,
+      facts: { listings: 1, companies: 1, withBasicSalary: 1, salaryFloor: 10000, salaryCeiling: 15000 },
+    });
+    server.on('/api/mobile/v1/jobs', board([listing]));
+    act(() => hideJob(listing.id, { name: listing.title_ar, slug: listing.slug }));
+    try {
+      renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+      expect(await screen.findByText(landingTitle)).toBeTruthy();
+      expect(await screen.findByText(ar.jobs.empty)).toBeTruthy();
+      expect(screen.queryByText(listing.title_ar)).toBeNull();
+      // Counted as drawn — none — and no facts about listings it does not show.
+      expect(screen.getByText('مفيش نتائج')).toBeTruthy();
+      expect(screen.queryByText('نتيجة واحدة')).toBeNull();
+      expect(screen.queryByLabelText(ar.landing.factsLabel)).toBeNull();
+    } finally {
+      act(() => unhideJob(listing.id));
+    }
+  });
+
+  // A first page of twenty, more on the server than the page holds.
+  const firstPage = Array.from({ length: 20 }, (_, index) => ({
+    ...listing,
+    id: `5b0c7d1e-0000-4000-8000-${String(200 + index).padStart(12, '0')}`,
+    slug: `sales-${index}`,
+    title_ar: `وظيفة مبيعات رقم ${index + 1}`,
+  }));
+  const landingFacts = {
+    track: 'primary',
+    district: newCairo,
+    facts: { listings: 21, companies: 1, withBasicSalary: 1, salaryFloor: 10000, salaryCeiling: 15000 },
+  };
+
+  it('keeps the way to the rest of a track-in-district page once a listing on its first page is hidden', async () => {
+    server.on('/api/mobile/v1/landing/primary-sales-new-cairo', landingFacts);
+    server.on('/api/mobile/v1/jobs', board(firstPage, { total: 21, pageCount: 2 }));
+    act(() => hideJob(firstPage[0].id, { name: firstPage[0].title_ar, slug: firstPage[0].slug }));
+    try {
+      renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+      expect(await screen.findByText(firstPage[1].title_ar)).toBeTruthy();
+      // Twenty in all, nineteen drawn: the twenty-first is on the board.
+      expect(screen.getByText(ar.jobs.title)).toBeTruthy();
+    } finally {
+      act(() => unhideJob(firstPage[0].id));
+    }
+  });
+
+  it('sends a track-in-district page whose first page is all hidden to the board for the rest, not "no jobs"', async () => {
+    server.on('/api/mobile/v1/landing/primary-sales-new-cairo', { ...landingFacts, facts: { ...landingFacts.facts, listings: 30 } });
+    server.on('/api/mobile/v1/jobs', board(firstPage, { total: 30, pageCount: 2 }));
+    act(() => firstPage.forEach((job) => hideJob(job.id, { name: job.title_ar, slug: job.slug })));
+    try {
+      renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+      expect(await screen.findByText(ar.jobs.title)).toBeTruthy();
+      expect(screen.queryByText(ar.jobs.empty)).toBeNull();
+      expect(screen.queryByText(firstPage[0].title_ar)).toBeNull();
+    } finally {
+      act(() => firstPage.forEach((job) => unhideJob(job.id)));
     }
   });
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# The app as the owner's iPhone opens it: the newest update on the expo-go
-# channel, opened from Expo's servers in Expo Go on an iPhone simulator, and
+# The app as the owner's iPhone opens it: the newest update on the channel
+# just published (EXPO_GO_CHANNEL, or expo-go: main's, which the phone has),
+# opened from Expo's servers in Expo Go on an iPhone simulator, and
 # read back (docs/mobile.md, "Trying it in Expo Go"). The Expo Go job in
 # .github/workflows/expo-go.yml runs it after each publish; on a Mac with
 # Xcode 26, Maestro and jq:
@@ -39,7 +40,8 @@ out="$(cd "$out" && pwd)"
 project=$(sed -nE "s/^const EAS_PROJECT_ID: string \| null = '([^']+)';/\1/p" "$here/../app.config.ts")
 [ -n "$project" ] || { echo "::error::no EAS project id in app.config.ts"; exit 1; }
 sdk="$(node -p "require('$here/../package.json').dependencies.expo.replace(/[^0-9.]/g, '').split('.')[0]").0.0"
-query="channel-name=expo-go&runtime-version=exposdk:$sdk"
+# The channel the publish went to: a pull request's own, or expo-go (publish-update.mjs).
+query="channel-name=${EXPO_GO_CHANNEL:-expo-go}&runtime-version=exposdk:$sdk"
 # link [path]: the channel's newest update in Expo Go, opened at a path of the app's.
 link() { if [ -n "${1:-}" ]; then echo "exp://u.expo.dev/$project/--/$1?$query"; else echo "exp://u.expo.dev/$project?$query"; fi; }
 

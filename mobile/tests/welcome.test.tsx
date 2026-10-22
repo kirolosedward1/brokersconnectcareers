@@ -10,7 +10,7 @@ import { SESSION_KEY, supabase } from '~/lib/supabase';
 import { useSheet } from '~/lib/use-sheet';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
-import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as WelcomeScreen from '../src/app/welcome';
 import { authSession, authUser, mobileConfig, profile } from './auth-fixtures';
 import { board, browse, cairo, newCairo } from './fixtures';
@@ -47,7 +47,7 @@ jest.mock('~/lib/session-storage', () => ({
 }));
 
 const ar = catalogues.ar;
-const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 const server = fakeServer();
 const hide = jest.mocked(SplashScreen.hideAsync);
 
