@@ -431,6 +431,47 @@ describe('a listing', () => {
     }
   });
 
+  // A first page of twenty, more on the server than the page holds.
+  const firstPage = Array.from({ length: 20 }, (_, index) => ({
+    ...listing,
+    id: `5b0c7d1e-0000-4000-8000-${String(200 + index).padStart(12, '0')}`,
+    slug: `sales-${index}`,
+    title_ar: `وظيفة مبيعات رقم ${index + 1}`,
+  }));
+  const landingFacts = {
+    track: 'primary',
+    district: newCairo,
+    facts: { listings: 21, companies: 1, withBasicSalary: 1, salaryFloor: 10000, salaryCeiling: 15000 },
+  };
+
+  it('keeps the way to the rest of a track-in-district page once a listing on its first page is hidden', async () => {
+    server.on('/api/mobile/v1/landing/primary-sales-new-cairo', landingFacts);
+    server.on('/api/mobile/v1/jobs', board(firstPage, { total: 21, pageCount: 2 }));
+    act(() => hideJob(firstPage[0].id, { name: firstPage[0].title_ar, slug: firstPage[0].slug }));
+    try {
+      renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+      expect(await screen.findByText(firstPage[1].title_ar)).toBeTruthy();
+      // Twenty in all, nineteen drawn: the twenty-first is on the board.
+      expect(screen.getByText(ar.jobs.title)).toBeTruthy();
+    } finally {
+      act(() => unhideJob(firstPage[0].id));
+    }
+  });
+
+  it('sends a track-in-district page whose first page is all hidden to the board for the rest, not "no jobs"', async () => {
+    server.on('/api/mobile/v1/landing/primary-sales-new-cairo', { ...landingFacts, facts: { ...landingFacts.facts, listings: 30 } });
+    server.on('/api/mobile/v1/jobs', board(firstPage, { total: 30, pageCount: 2 }));
+    act(() => firstPage.forEach((job) => hideJob(job.id, { name: job.title_ar, slug: job.slug })));
+    try {
+      renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+      expect(await screen.findByText(ar.jobs.title)).toBeTruthy();
+      expect(screen.queryByText(ar.jobs.empty)).toBeNull();
+      expect(screen.queryByText(firstPage[0].title_ar)).toBeNull();
+    } finally {
+      act(() => firstPage.forEach((job) => unhideJob(job.id)));
+    }
+  });
+
   it("says a track-in-district page's listings could not be read, never that there are none", async () => {
     server.on('/api/mobile/v1/landing/primary-sales-new-cairo', {
       track: 'primary',

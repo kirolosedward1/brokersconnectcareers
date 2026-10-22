@@ -63,11 +63,15 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   // so the count, the empty state and the first twenty are of what is drawn.
   const jobs = withoutHiddenJobs(withoutHidden(read, hiddenCompanies), hiddenJobs);
   const total = totalShown(board.data?.pages[0]?.total ?? 0, read.length, jobs.length);
+  // More listings than the twenty drawn here, the board has the rest: once
+  // this phone hides some of a first page, more than the page holds is not
+  // "more than 20", and a first page all hidden is not "none".
+  const more = total > Math.min(jobs.length, 20);
 
   const factLines: string[] = [];
   // The area's facts are the server's, of every listing: beside an empty page
-  // — all it read hidden on this phone — they described listings not shown.
-  const allHidden = read.length > 0 && jobs.length === 0;
+  // — all there is hidden on this phone — they described listings not shown.
+  const allHidden = read.length > 0 && total === 0;
   if (facts.listings > 0 && !allHidden) {
     factLines.push(t('companiesHiring', { count: facts.companies }));
     if (facts.withBasicSalary > 0) {
@@ -151,7 +155,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
           <ErrorState error={board.error} onRetry={() => board.refetch()} />
         ) : jobs.length ? (
           <JobCardList jobs={jobs.slice(0, 20)} />
-        ) : (
+        ) : more && hasBoard ? null : (
           <EmptyState
             icon={SearchX}
             title={tJobs('empty')}
@@ -159,7 +163,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
           />
         )}
 
-        {total > 20 && hasBoard ? (
+        {more && hasBoard ? (
           <Button
             label={tJobs('title')}
             variant="outline"
