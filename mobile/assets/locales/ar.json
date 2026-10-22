@@ -3,6 +3,9 @@
     "CFBundleDisplayName": "بروكرز كونكت",
     "NSPhotoLibraryUsageDescription": "بنستخدم صورك عشان تختار صورتك الشخصية أو لوجو شركتك أو مستنداتها، ومفيش حاجة بتترفع غير اللي انت تختاره.",
     "NSCameraUsageDescription": "بنستخدم الكاميرا عشان تصوّر مستندات شركتك لتوثيقها.",
-    "NSFaceIDUsageDescription": "بنستخدم Face ID عشان تقفل التطبيق وتفتحه، لو انت شغّلت القفل بنفسك."
+    "NSFaceIDUsageDescription": "بنستخدم Face ID عشان تقفل التطبيق وتفتحه، لو انت شغّلت القفل بنفسك.",
+    "NSCalendarsUsageDescription": "بنستخدم التقويم عشان نضيف ميعاد مقابلتك فيه، لما انت تطلب ده.",
+    "NSCalendarsWriteOnlyAccessUsageDescription": "بنستخدم التقويم عشان نضيف ميعاد مقابلتك فيه، لما انت تطلب ده.",
+    "NSCalendarsFullAccessUsageDescription": "بنستخدم التقويم عشان نضيف ميعاد مقابلتك فيه، لما انت تطلب ده."
   }
 }

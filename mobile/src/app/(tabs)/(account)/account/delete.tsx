@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Linking, ScrollView, View } from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
 import { Stack, useNavigation } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { confirmsDeletion } from '@/lib/delete-confirmation';
@@ -17,6 +17,7 @@ import { ApiError } from '~/lib/api';
 import { useErrorFeedback } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { gutter, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * Delete the account — the website's section, through its action
@@ -90,7 +91,7 @@ export default function DeleteAccountScreen() {
     // This screen's own Back: the app's would take whatever is in front if the
     // person moved on while the account was being deleted.
     if (navigation.canGoBack()) navigation.goBack();
-    Alert.alert(t('app.account.deleted'));
+    dialog.alert(t('app.account.deleted'));
   }
 
   // Reached from a link with nobody signed in: there is no account here to delete.
@@ -139,7 +140,8 @@ export default function DeleteAccountScreen() {
               <Button
                 label={t('app.account.contact')}
                 variant="outline"
-                onPress={() => Linking.openURL(`mailto:${supportEmail}`).catch(() => {})}
+                // A phone with no mail app to write it opens nothing: it is told the address instead.
+                onPress={() => Linking.openURL(`mailto:${supportEmail}`).catch(() => dialog.alert(t('app.account.contact'), supportEmail))}
               />
             ) : null}
           </View>

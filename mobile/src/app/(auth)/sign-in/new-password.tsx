@@ -1,3 +1,4 @@
+import { useAuthErrorText } from '~/features/auth/errors';
 import { useRef, useState } from 'react';
 import { View, type TextInput } from 'react-native';
 import { router } from 'expo-router';
@@ -30,6 +31,7 @@ export default function NewPasswordScreen() {
   const { colors } = useTheme();
   const { ready, session } = useSession();
   const land = useLand();
+  const authError = useAuthErrorText();
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -57,12 +59,12 @@ export default function NewPasswordScreen() {
       .catch((failure: unknown) => ({ error: failure as AuthError }));
     if (updateError) {
       setPending(false);
+      // GoTrue's refusals in the reader's words (the same password again, one
+      // too weak): they were all "something went wrong", with nothing to change.
       setError(
-        isAuthRetryableFetchError(updateError)
-          ? t('app.offline.body')
-          : /session|jwt|expired/i.test(updateError.message)
-            ? t('auth.linkExpired')
-            : t('common.errorBody'),
+        !isAuthRetryableFetchError(updateError) && /session|jwt|expired/i.test(updateError.message)
+          ? t('auth.linkExpired')
+          : authError(updateError),
       );
       return;
     }

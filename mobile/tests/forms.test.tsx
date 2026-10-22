@@ -132,7 +132,7 @@ describe('a select', () => {
     );
   }
 
-  it('says whether its choices are open, and clicks for a new choice only', () => {
+  it('says whether its choices are open, and clicks for a new choice only', async () => {
     render(<Experience />, { wrapper: Providers });
     const select = () => screen.getByRole('button', { name: /^experience: / });
     expect(select().props.accessibilityState).toMatchObject({ expanded: false });
@@ -142,8 +142,9 @@ describe('a select', () => {
     fireEvent.press(screen.getByRole('radio', { name: 'A' }));
     expect(click).not.toHaveBeenCalled();
 
+    // Opened again once the first sheet has gone (src/lib/sheet-gate.ts).
     fireEvent.press(select());
-    fireEvent.press(screen.getByRole('radio', { name: 'B' }));
+    fireEvent.press(await screen.findByRole('radio', { name: 'B' }, { timeout: 2000 }));
     expect(click).toHaveBeenCalledTimes(1);
     expect(select()).toHaveProp('accessibilityLabel', 'experience: B');
   });

@@ -146,7 +146,18 @@ export function parseInboxFilters(params: Record<string, string | string[] | und
 
 /** A name to search for, with LIKE's own characters taken literally. */
 function likePattern(q: string): string {
-  return `%${q.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
+  // LIKE's own characters as typed, and the letters Arabic spells more than
+  // one way left open (as the website's looseArabicNeedle): «احمد» found
+  // nobody called «أحمد», nor «مصطفي» «مصطفى».
+  const escaped = q
+    .trim()
+    .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+    .replace(/[\\%_]/g, (match) => `\\${match}`);
+  const loose = escaped
+    .replace(/[اأإآٱ]/g, '_')
+    .replace(/[ةه](?=\s|$)/g, '_')
+    .replace(/[ىي](?=\s|$)/g, '_');
+  return `%${/[^\s_]/.test(loose.replace(/\\_/g, 'x')) ? loose : escaped}%`;
 }
 
 export type Inbox = { rows: Applicant[]; counts: Record<ApplicationStatus, number>; any: number };

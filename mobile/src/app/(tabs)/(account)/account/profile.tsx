@@ -85,6 +85,16 @@ export default function ProfileScreen() {
       </>
     );
   }
+  // The developers ticked on the profile could not be read: no form until
+  // they are, or a save would send none and wipe them.
+  if (agent && profile.data?.developerIds === null) {
+    return (
+      <>
+        {header}
+        <ErrorState error={profile.error} onRetry={() => profile.refetch()} />
+      </>
+    );
+  }
   const developerIds = profile.data?.developerIds ?? [];
 
   return (

@@ -51,6 +51,8 @@ module.exports = {
   testMatch: ['**/*.test.ts?(x)'],
   resolver: '<rootDir>/jest.resolver.js',
   setupFiles: ['<rootDir>/tests/setup.ts'],
+  // Run in each test file's own world, before every test (Jest's hooks exist there, not in setupFiles).
+  setupFilesAfterEnv: ['<rootDir>/tests/after-env.ts'],
   moduleNameMapper: {
     // Its React Native entries are .mjs files, which Jest's transform does not
     // pick up; the CommonJS build draws the same icons (the app imports each

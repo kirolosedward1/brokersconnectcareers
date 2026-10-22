@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Linking, View } from 'react-native';
+import { ActivityIndicator, Linking, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
@@ -20,6 +20,7 @@ import {
 import { useErrorFeedback } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * Two-step verification with an authenticator app — the website's
@@ -65,8 +66,19 @@ export function TwoFactorSettings() {
     if (pending) return;
     setError(null);
     setPending(true);
-    const accepted = await verifyCode(enrolment?.factorId ?? null, digits).catch(() => false);
-    if (!accepted) {
+    const answer = await verifyCode(enrolment?.factorId ?? null, digits).catch(() => 'offline' as const);
+    if (answer === 'offline') {
+      // Not asked: the code stays, for Verify again once the phone is back online.
+      setPending(false);
+      setError(t('app.offline.body'));
+      return;
+    }
+    if (answer === 'busy') {
+      setPending(false);
+      setError(t('auth.errTooMany'));
+      return;
+    }
+    if (answer === 'wrong') {
       setPending(false);
       setCode('');
       setError(t('account.mfaCodeInvalid'));
@@ -79,7 +91,7 @@ export function TwoFactorSettings() {
   };
 
   const turnOff = () =>
-    Alert.alert(t('app.account.mfaDisableConfirm'), t('app.account.mfaDisableBody'), [
+    dialog.alert(t('app.account.mfaDisableConfirm'), t('app.account.mfaDisableBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('account.mfaDisable'),

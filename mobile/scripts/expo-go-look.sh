@@ -12,7 +12,9 @@
 # from the network and when it comes back from its own home screen, and lays
 # its bars out in its own language — English here, as on an iPhone set to
 # English. So it opens the update — the welcome, then Home — and three screens
-# by link, then goes back to Expo Go's home and opens the app again from there. Each screen
+# by link, then goes back to Expo Go's home and opens the app again from there:
+# the welcome once more, as every launch with nobody signed in opens on it,
+# then Home. Each screen
 # is read by macOS's text recognition with where every line sits (percent of
 # the screen: how far down, left and right edges), into the run's log and its
 # annotations, with a verdict on the tab bar: Home must be its rightmost tab.
@@ -20,9 +22,9 @@
 # Each tab's title is looked for in its header's bar too, not only as its name
 # in the tab bar: iOS 26 left the tabs' large titles empty until the screen
 # was scrolled, then drew them mirrored, and the tabs now take the bar's own
-# title. And the board is scrolled down and back up, to read the tab bar
-# shrinking to the open tab and coming back (iOS 26), reported in the
-# annotations.
+# title. And the board is scrolled down and back up: scrolled down, the tab
+# bar grows smaller and its names go (src/components/navigation/tab-bar.tsx),
+# so none is read; scrolled back up, all four are read again.
 #
 # A screen that never shows what it should, a tab without its title, or a tab
 # bar laid out left to right, fails it.
@@ -65,6 +67,8 @@ udid=$(xcrun simctl create expo-go "$type" "$runtime")
 xcrun simctl boot "$udid"
 xcrun simctl bootstatus "$udid" -b > "$work/boot.log"
 xcrun simctl install "$udid" "$work/ExpoGo.app"
+# From here on, whatever Expo Go logs is the app's run (read back at the end).
+started=$(date -u +%Y-%m-%dT%H:%M:%S)
 echo "runtime $runtime, $type, simulator $udid"
 
 swiftc -O "$here/screen-text.swift" -o "$work/screen-text" > "$work/swiftc.log" 2>&1 ||
@@ -196,7 +200,6 @@ in_header() {
 }
 
 # glance <shot> <what was done>: the screen as it is now, read and reported.
-# A tab bar whose names are not read there has shrunk to the open tab (iOS 26).
 glance() {
   sleep 2
   xcrun simctl io "$udid" screenshot "$out/$1.png" > /dev/null 2>&1 || true
@@ -204,22 +207,178 @@ glance() {
   report "$1" "$2"
 }
 
+# skip: answers the welcome the way someone looking around does, with Skip
+# (maestro/expo-go-browse.yaml), onto Home — known by its tab bar, as the
+# welcome has the headline too.
+skip() {
+  maestro --device "$udid" test "$flows/expo-go-browse.yaml" >> "$out/maestro.log" 2>&1 ||
+    { echo "Maestro could not answer the welcome:"; tail -n 15 "$out/maestro.log" | sed 's/^/    /'; }
+}
+
+# bar_names <shot>: how many of the signed-out tab bar's four names are read at
+# the foot of the screen.
+bar_names() {
+  python3 - "$out/$1.boxes" <<'PY'
+import re, sys
+names = {"الرئيسية", "الوظائف", "الشركات", "حسابي"}
+read = set()
+for raw in open(sys.argv[1], encoding="utf-8"):
+    m = re.match(r"y(-?\d+) x(-?\d+)-(-?\d+)  (.*)", raw.rstrip("\n"))
+    if m and int(m[1]) >= 85 and m[4].strip() in names:
+        read.add(m[4].strip())
+print(len(read))
+PY
+}
+
+# same_screen <shot> <shot>: whether two readings are the same screen, the
+# clock aside — a swipe that left the list where it was.
+same_screen() {
+  python3 - "$out/$1.boxes" "$out/$2.boxes" <<'PY'
+import re, sys
+def lines(path):
+    try:
+        rows = [raw.rstrip("\n") for raw in open(path, encoding="utf-8")]
+    except OSError:
+        return None
+    return [row for row in rows if not re.match(r"y[0-4] ", row)]
+a, b = lines(sys.argv[1]), lines(sys.argv[2])
+print("yes" if a is not None and a == b else "no")
+PY
+}
+
+# Each step's Maestro run is kept apart and shown with the step's reading:
+# whether it found what it was to tap, and what it saw of the screen.
+step_run() {
+  local name="$1"
+  shift
+  if maestro --device "$udid" test "$@" > "$out/$name.maestro.log" 2>&1; then
+    echo "maestro: ok" > "$out/$name.maestro.verdict"
+  else
+    echo "maestro: FAILED" > "$out/$name.maestro.verdict"
+  fi
+}
+# bar_point <shot> <name>: the middle of the tab named <name> in the tab bar
+# at the foot of <shot>, in percent; nothing if it is not read there.
+bar_point() {
+  python3 - "$out/$1.boxes" "$2" <<'PY'
+import re, sys
+want = sys.argv[2]
+for raw in open(sys.argv[1], encoding="utf-8"):
+    m = re.match(r"y(-?\d+) x(-?\d+)-(-?\d+)  (.*)", raw.rstrip("\n"))
+    if m and int(m[1]) >= 85 and m[4].strip() == want:
+        print(f"{(int(m[2]) + int(m[3])) // 2}%,{int(m[1]) + 1}%")
+        break
+PY
+}
+# back_by_tab <step> <what> <tab> <point if not read>: back to the top of the
+# open tab's list by pressing that tab again, as a person does. Not by the
+# header's Back at the top right: Expo Go's floating tools button sits there
+# and a tap on it opened Expo Go's own menu over the app.
+back_by_tab() {
+  local name="$1" what="$2" tab="$3" fallback="$4" point
+  point=$(bar_point "$last_shot" "$tab")
+  tour "$name" "$what (at ${point:-$fallback})" -e "POINT=${point:-$fallback}" "$flows/expo-go-tap.yaml"
+}
+# word_point <shot> <word>: the middle of where the text recognition read
+# <word> on <shot>, in percent ("62%,17%"); nothing if it is not there.
+# Maestro's own text and id selectors place an element of a screen laid out
+# right to left at its mirror image: its tap on the filter sheet's X landed on
+# Expo Go's floating button at the other edge and opened Expo Go's menu.
+word_point() {
+  python3 - "$out/$1.boxes" "$2" <<'PY'
+import re, sys
+want = sys.argv[2]
+for raw in open(sys.argv[1], encoding="utf-8"):
+    m = re.match(r"y(-?\d+) x(-?\d+)-(-?\d+)  (.*)", raw.rstrip("\n"))
+    if m and want in m[4]:
+        print(f"{(int(m[2]) + int(m[3])) // 2}%,{int(m[1]) + 1}%")
+        break
+PY
+}
+last_shot=""
+# tap_word <step> <what> <word> [point if not read]: taps the word where it was read on the last screen.
+tap_word() {
+  local name="$1" what="$2" word="$3" fallback="${4:-}" point
+  point=$(word_point "$last_shot" "$word")
+  point="${point:-$fallback}"
+  if [ -z "$point" ]; then
+    echo "::group::$name — «${word}» not read on the screen; nothing tapped"
+    echo "::endgroup::"
+    glance "$name" "$what (not tapped)"
+    last_shot="$name"
+    return
+  fi
+  tour "$name" "$what (at $point)" -e "POINT=$point" "$flows/expo-go-tap.yaml"
+}
+tour() {
+  local name="$1" what="$2"
+  shift 2
+  step_run "$name" "$@"
+  glance "$name" "$what"
+  last_shot="$name"
+  echo "::group::$name — $(cat "$out/$name.maestro.verdict")"
+  tail -n 12 "$out/$name.maestro.log"
+  echo "::endgroup::"
+}
+
 # The first open, from the network: the case that came up left to right. A
-# first launch opens on the welcome; skipping it goes on to Home
-# (maestro/expo-go-browse.yaml), known by its tab bar — the welcome has the
-# headline too.
+# launch with nobody signed in opens on the welcome; skipping it goes on to Home.
 open_app
 see 1-welcome 'إنشاء حساب'
-maestro --device "$udid" test "$flows/expo-go-browse.yaml" >> "$out/maestro.log" 2>&1 ||
-  { echo "Maestro could not answer the welcome:"; tail -n 15 "$out/maestro.log" | sed 's/^/    /'; }
+skip
 see 2-home 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
 open_app jobs
 see 3-jobs 'الفلاتر'
 in_header 3-jobs 'الوظائف'
-maestro --device "$udid" test "$flows/expo-go-scroll-down.yaml" >> "$out/maestro.log" 2>&1 || true
-glance 3b-jobs-scrolled-down 'scrolled down: the bar shrinks, its names unread'
-maestro --device "$udid" test "$flows/expo-go-scroll-up.yaml" >> "$out/maestro.log" 2>&1 || true
-glance 3c-jobs-scrolled-up 'scrolled back up: the bar is back, names and all'
+tour 3b-jobs-scrolled-down 'scrolled down: the bar smaller, its names gone' "$flows/expo-go-scroll-down.yaml"
+if [ "$(same_screen 3-jobs 3b-jobs-scrolled-down)" = yes ]; then
+  failed+=("3b-jobs-scrolled-down: the swipe did not move the list")
+  echo "::error title=Expo Go: 3b-jobs-scrolled-down::the board reads the same before and after the swipe: the list did not move, so the bar had nothing to shrink for"
+elif [ "$(bar_names 3b-jobs-scrolled-down)" != 0 ]; then
+  failed+=("3b-jobs-scrolled-down: the tab bar kept its names")
+  echo "::error title=Expo Go: 3b-jobs-scrolled-down::the tab bar's names are still read after scrolling down"
+fi
+tour 3c-jobs-scrolled-up 'scrolled back up: the bar whole again, names and all' "$flows/expo-go-scroll-up.yaml"
+if [ "$(same_screen 3b-jobs-scrolled-down 3c-jobs-scrolled-up)" = yes ]; then
+  failed+=("3c-jobs-scrolled-up: the swipe did not move the list")
+  echo "::error title=Expo Go: 3c-jobs-scrolled-up::the board reads the same before and after the swipe back up: the list did not move"
+elif [ "$(bar_names 3c-jobs-scrolled-up)" != 4 ]; then
+  failed+=("3c-jobs-scrolled-up: the tab bar's names did not come back")
+  echo "::error title=Expo Go: 3c-jobs-scrolled-up::not all four of the tab bar's names are read after scrolling back up"
+fi
+# A tour of what was added lately, one step at a time and each read back:
+# the order's menu, the filter sheet, a listing and its Share, back, a card
+# held for its menu, a company. Expo Go must still be on the app at the end of it.
+glance t0-board 'tour: the board, before'
+last_shot=t0-board
+tap_word t1-sort-menu 'tour: the order' 'الأحدث'
+tap_word t2-sorted 'tour: by salary' 'الأعلى راتباً'
+tap_word t3-filters 'tour: the filter sheet' 'الفلاتر'
+# Closed with its own button, not its X: Expo Go's floating tools button sits
+# over the sheet's top corner, and a tap there opened Expo Go's menu instead.
+tap_word t4-filters-closed 'tour: the sheet closed' 'شوف النتائج' '50%,92%'
+tap_word t5-listing 'tour: the first listing' 'عمولة فقط' '50%,45%'
+tap_word t6-share 'tour: Share' 'مشاركة'
+tap_word t7-share-cancelled 'tour: Share cancelled' 'إلغاء'
+# Back to the board: the Jobs tab pressed again.
+back_by_tab t8-back 'tour: back to the board' 'الوظائف' '61%,96%'
+# A card held: its menu at the foot of the screen, then closed from the shade above it.
+tour t8b-card-held 'tour: a card held' -e 'POINT=50%,45%' "$flows/expo-go-hold.yaml"
+if ! grep -q 'افتح الإعلان' "$out/t8b-card-held.boxes"; then
+  failed+=("t8b-card-held: no menu on a held card")
+  echo "::error title=Expo Go: t8b-card-held::holding a job card did not show its menu (افتح الإعلان not read)"
+fi
+tour t8c-menu-closed 'tour: the menu closed' -e 'POINT=50%,12%' "$flows/expo-go-tap.yaml"
+tap_word t9-companies 'tour: the Companies tab' 'الشركات'
+tap_word t10-company 'tour: a company' 'الصفوة' '50%,40%'
+back_by_tab t11-company-back 'tour: back to the companies' 'الشركات' '39%,96%'
+if grep -qE '^y[0-9]+ x[0-9-]+  (Playground|Welcome to your playground\.|Projects|Recently opened)$' "$out/t11-company-back.boxes"; then
+  failed+=("tour: the app was left for Expo Go's own screens")
+  echo "::error title=Expo Go: tour::the app was left during the tour (Expo Go's own screen showed): see the t1–t11 readings in the log"
+fi
+open_app jobs
+see 3f-jobs-after-tour 'الفلاتر'
+
 open_app companies
 see 3d-companies 'الموثّقة بس'
 in_header 3d-companies 'شركات العقارات'
@@ -235,12 +394,42 @@ xcrun simctl launch "$udid" host.exp.Exponent > /dev/null
 sleep 8
 xcrun simctl io "$udid" screenshot "$out/6-expo-go-home.png" > /dev/null 2>&1 || true
 open_app
-see 7-home-again 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
+see 7-welcome-again 'إنشاء حساب'
+skip
+see 8-home-again 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
 
 for verdict in "$out"/*.verdict; do
   if grep -q 'LEFT TO RIGHT' "$verdict"; then
     failed+=("$(basename "$verdict" .verdict): tab bar left to right")
   fi
+done
+
+# What Expo Go said went wrong while it ran: the app's own JavaScript errors
+# (React Native logs them as errors, and a fatal one as RCTFatal), and any
+# crash report iOS wrote for it.
+xcrun simctl spawn "$udid" log show --style compact --start "$started" \
+  --predicate 'process == "Expo Go" AND (messageType == error OR messageType == fault OR subsystem == "com.facebook.react.log" OR eventMessage CONTAINS "RCTFatal" OR eventMessage CONTAINS[c] "unhandled")' \
+  > "$out/expo-go-errors.log" 2> /dev/null || true
+if [ -s "$out/expo-go-errors.log" ]; then
+  echo "::group::Expo Go's errors ($(wc -l < "$out/expo-go-errors.log") lines; the last 300)"
+  tail -n 300 "$out/expo-go-errors.log"
+  echo "::endgroup::"
+  python3 -c '
+import sys
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()[-3800:]
+print("::warning title=Expo Go: errors logged::" + text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
+' "$out/expo-go-errors.log"
+fi
+for report in "$HOME"/Library/Logs/DiagnosticReports/*Expo*; do
+  [ -f "$report" ] || continue
+  [ "$report" -nt "$work/boot.log" ] || continue
+  cp "$report" "$out/"
+  failed+=("Expo Go crashed: $(basename "$report")")
+  python3 -c '
+import sys
+text = open(sys.argv[1], encoding="utf-8", errors="replace").read()[:3800]
+print("::error title=Expo Go crashed::" + text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
+' "$report"
 done
 
 xcrun simctl shutdown "$udid" > /dev/null 2>&1 || true

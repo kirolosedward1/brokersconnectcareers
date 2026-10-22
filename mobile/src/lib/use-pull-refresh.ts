@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSession } from '~/lib/session';
 
 /**
  * Pull to refresh that spins for the pull, and only for the pull.
@@ -17,4 +19,15 @@ export function usePullRefresh(refetch: () => Promise<unknown>) {
       .finally(() => setRefreshing(false));
   };
   return { refreshing, onRefresh };
+}
+
+/**
+ * Pull to refresh for a screen that reads several things — the account, its
+ * settings: who is signed in, read again, and every query a screen on show
+ * is following.
+ */
+export function useScreenRefresh() {
+  const queryClient = useQueryClient();
+  const { refreshViewer } = useSession();
+  return usePullRefresh(() => Promise.all([refreshViewer(), queryClient.refetchQueries({ type: 'active' })]));
 }
