@@ -24,6 +24,7 @@
 -- =============================================================================
 
 -- rollback: restate guard_profile_avatar() from migration 322 and guard_company_logo() from migration 344
+-- safety: ships-with-code — the src/ change on this branch (the email-link confirm page) does not touch photos, logos or these guards, and the guards only accept more than before; either order is safe
 
 create or replace function public.guard_profile_avatar()
 returns trigger
