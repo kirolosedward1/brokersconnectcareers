@@ -1367,7 +1367,9 @@
       "searchPlaceholder": "Property consultant, New Cairo…",
       "cta": "Browse jobs",
       "ctaEmployer": "I'm hiring",
-      "trustNoSpam": "No fees for candidates"
+      "trustNoSpam": "No fees for candidates",
+      "trustPay": "Salary and commission in figures, on every listing",
+      "trustLeads": "Every listing says who supplies the leads"
     },
     "features": {
       "title": "Why this board",

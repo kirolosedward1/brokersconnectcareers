@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, type Href } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Briefcase, Building2, Check, Search } from '~/components/ui/lucide';
+import { Briefcase, Building2, Search } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { CandidateHome } from '~/components/home/candidate-home';
 import { EmployerHome } from '~/components/home/employer-home';
 import { HomeFrame } from '~/components/home/home-frame';
 import { Hero } from '~/components/home/hero';
+import { TrustLines } from '~/components/home/trust-lines';
 import { JobBrowse } from '~/components/home/job-browse';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { RecentlyViewed } from '~/components/home/recently-viewed';
@@ -143,12 +144,9 @@ function MarketHome() {
           />
 
           {name ? null : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-              <Check size={16} color={colors.champagne} strokeWidth={2.5} />
-              <Text variant="small" style={{ color: colors.onHeroMuted, flexShrink: 1 }}>
-                {t('landingPage.hero.trustNoSpam')}
-              </Text>
-            </View>
+            <TrustLines
+              lines={[t('landingPage.hero.trustNoSpam'), t('landingPage.hero.trustPay'), t('landingPage.hero.trustLeads')]}
+            />
           )}
         </Hero>
 
