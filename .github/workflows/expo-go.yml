@@ -12,8 +12,12 @@
 # scripts/publish-update.mjs), and the summary gives its id.
 #
 # Runs by hand (Actions → Expo Go → Run workflow, on any branch), on pushes to
-# main, and on this repository's own pull requests. Each publish replaces what
-# Expo Go opens next: the newest of them wins.
+# main, and on this repository's own pull requests. A channel holds one newest
+# update, so pushes to main and runs by hand publish on `expo-go`, the channel
+# the owner's phone opens, and each pull request on its own
+# (`expo-go-pr-<number>`, EXPO_GO_CHANNEL below), with its own link in the
+# run's summary: a branch never replaces what main's link opens, nor is it
+# replaced by the next branch minutes later.
 name: Expo Go
 
 on:
@@ -39,9 +43,15 @@ on:
 permissions:
   contents: read
 
+# One publish at a time per channel: a newer run of the same pull request, or
+# of main, cancels the one before it; another branch's does not.
 concurrency:
-  group: expo-go
+  group: expo-go-${{ github.event_name == 'pull_request' && github.event.number || 'main' }}
   cancel-in-progress: true
+
+env:
+  # The channel this run publishes on and the look job opens (publish-update.mjs).
+  EXPO_GO_CHANNEL: ${{ github.event_name == 'pull_request' && format('expo-go-pr-{0}', github.event.number) || 'expo-go' }}
 
 jobs:
   publish:
@@ -106,12 +116,19 @@ jobs:
           pnpm run ota expo-go --message "$message (${GITHUB_SHA::7})" --non-interactive 2>&1 | tee "$RUNNER_TEMP/publish.log"
           # One match each, and none is not an error here.
           link=$(grep -m 1 -o 'https://qr.expo.dev/eas-update?[^ ]*' "$RUNNER_TEMP/publish.log" || true)
+          phone=$(grep -m 1 -o 'exp://u.expo.dev/[^ ]*' "$RUNNER_TEMP/publish.log" || true)
           dashboard=$(grep -m 1 -o 'https://expo.dev/accounts/[^ ]*/updates/[^ ]*' "$RUNNER_TEMP/publish.log" || true)
           project=$(grep -m 1 -o 'EAS project id: [0-9a-f-]*' "$RUNNER_TEMP/publish.log" | cut -d ' ' -f 4 || true)
           {
             echo "### Open it in Expo Go"
             echo
-            echo "In Expo Go on the iPhone, signed in to the Expo account this token belongs to, the app is under Projects. Or scan the QR code on [this page]($link) with the iPhone's camera."
+            echo "Published on the \`$EXPO_GO_CHANNEL\` channel. Scan the QR code on [this page]($link) with the iPhone's camera, or paste this into Safari on the phone (signed in to the Expo account this token belongs to in Expo Go):"
+            echo
+            echo "    $phone"
+            echo
+            if [ "$EXPO_GO_CHANNEL" != "expo-go" ]; then
+              echo "This is a pull request's own channel: the \`expo-go\` link the phone already has keeps opening main. Each push to this pull request replaces what this link opens."
+            fi
             if [ -n "$dashboard" ]; then
               echo
               echo "The update on Expo's dashboard: $dashboard"
@@ -133,6 +150,11 @@ jobs:
     # Xcode 26, as for the native build in mobile.yml.
     runs-on: macos-26
     timeout-minutes: 60
+    # One simulator at a time, whichever channel: the Mac runner is the
+    # expensive one, and the newest publish anywhere is the one worth looking at.
+    concurrency:
+      group: expo-go-look
+      cancel-in-progress: true
     defaults:
       run:
         working-directory: mobile

@@ -40,6 +40,7 @@ cd .. && pnpm typecheck   # web; `pnpm check` at root runs the full web/DB suite
 ## Deploying
 
 - **Push to `main`** = deploy. Vercel builds the web; `expo-go.yml` auto-publishes an Expo Go OTA when `mobile/**`, `src/lib/**` or `messages/**` change.
+- **Pull requests publish on their own Expo Go channel** (`expo-go-pr-<number>`, `EXPO_GO_CHANNEL`): the run's summary gives that channel's `exp://` link. The `expo-go` link the phone has keeps opening `main`. Before this, every PR publish replaced main's on the one channel, and was replaced by the next PR's minutes later — the reason an update "never arrived" once.
 - **Manual OTA** (what was used this session, after each batch):
   ```bash
   cd mobile && CI=1 node scripts/publish-update.mjs expo-go --message "…" --non-interactive

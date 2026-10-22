@@ -687,7 +687,12 @@ Then, each time the phone should get the newest code:
 
 - from GitHub: Actions → Expo Go → Run workflow (on any branch). It also runs
   by itself on pushes to `main` and on this repository's pull requests. The
-  run's summary links the QR code;
+  run's summary links the QR code and gives the `exp://` link to paste. A
+  channel holds one newest update, so a pull request publishes on its own,
+  `expo-go-pr-<number>` (`EXPO_GO_CHANNEL`, which `pnpm run ota expo-go`
+  honours too): the `expo-go` link below keeps opening `main`, and a branch's
+  link opens that branch until its next push, whatever other branches publish
+  meanwhile;
 - or from a computer, signed in with `npx eas-cli@latest login`:
   `pnpm run ota expo-go --message "what changed"` in `mobile/`, which finds or
   creates the project the same way and prints the same link.
