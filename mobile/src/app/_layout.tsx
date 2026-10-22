@@ -17,6 +17,7 @@ import { LaunchCurtain } from '~/components/brand/launch-screen';
 import { AppError, ScreenError } from '~/components/navigation/error-boundaries';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
+import { AppLock } from '~/components/navigation/app-lock';
 import { CrashNotice } from '~/components/navigation/crash-notice';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
@@ -24,6 +25,7 @@ import { UpdateGate } from '~/components/navigation/update-gate';
 import { WelcomeGate } from '~/components/navigation/welcome-gate';
 import { roomForScreen } from '~/components/ui/keyboard-room';
 import { InSheet } from '~/components/ui/states';
+import { useAppLockLoaded } from '~/features/app-lock/lock';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
 import { useHiddenJobsLoaded } from '~/features/moderation/hidden-jobs';
 import { DecisionSheetHost } from '~/components/admin/decision-sheet';
@@ -119,7 +121,10 @@ function AppStack() {
   const hiddenCompaniesKnown = useHiddenCompaniesLoaded();
   const hiddenJobsKnown = useHiddenJobsLoaded();
   const hiddenKnown = hiddenCompaniesKnown && hiddenJobsKnown;
-  const ready = settled && hiddenKnown;
+  // Nor before it has said whether this person keeps the app locked: the
+  // first frame is the lock, not the screens behind it.
+  const lockKnown = useAppLockLoaded();
+  const ready = settled && hiddenKnown && lockKnown;
   // The welcome opens only once the curtain has been up its moment (WelcomeGate): the wait for it starts then too.
   const curtainHeld = useLaunchHeld();
   const [welcome, setWelcome] = useState<'deciding' | 'opened' | 'not'>('deciding');
@@ -168,6 +173,8 @@ function AppStack() {
       <NoteSheetHost />
       <DecisionSheetHost />
       <ToastHost />
+      {/* Last, so it is drawn over every screen of the stack. */}
+      <AppLock />
     </UpdateGate>
   );
 }

@@ -132,6 +132,14 @@ jest.mock('expo-notifications', () => {
 });
 jest.mock('expo-application', () => ({ nativeApplicationVersion: '1.0.0', nativeBuildVersion: '1' }));
 
+// The phone's own check (the app lock): a phone with Face ID that answers yes.
+// A test that needs another answer sets it on the mock.
+jest.mock('expo-local-authentication', () => ({
+  SecurityLevel: { NONE: 0, SECRET: 1, BIOMETRIC_WEAK: 2, BIOMETRIC_STRONG: 3 },
+  getEnrolledLevelAsync: jest.fn(async () => 3),
+  authenticateAsync: jest.fn(async () => ({ success: true })),
+}));
+
 // React Native's ScrollView tells what it holds that it is inside one
 // (ScrollView.Context): lists read it to warn of a list nested in a page that
 // scrolls, and the app's empty and error states to know whether to scroll

@@ -1,6 +1,13 @@
 import type { NextRequest } from 'next/server';
 import { logFailure } from '@/lib/observe';
-import { mobileJson, readActionInput, unauthorized, withMobileAuth } from '@/lib/mobile-api/http';
+import {
+  mobileJson,
+  readActionInput,
+  refusedForSecondFactor,
+  secondFactorRequired,
+  unauthorized,
+  withMobileAuth,
+} from '@/lib/mobile-api/http';
 import { REGISTRY, isActionName, isMultipartAction, isPublicAction } from '@/lib/mobile-api/registry';
 
 /**
@@ -21,8 +28,12 @@ export const POST = withMobileAuth<Context>(
     if (!isActionName(name)) return mobileJson({ error: 'unknown_action' }, { status: 404 });
 
     // The door lets a signed-out caller in so the four signed-out actions can
-    // run; everything else is refused here, before the action is reached.
-    if (!session && !isPublicAction(name)) return unauthorized('unauthenticated');
+    // run; everything else is refused here, before the action is reached. A
+    // sign-in still owing its second factor runs those four signed out too
+    // (reporting the sign-in's outcome is one), and is told why for the rest.
+    if (!session && !isPublicAction(name)) {
+      return refusedForSecondFactor() ? secondFactorRequired() : unauthorized('unauthenticated');
+    }
 
     const input = await readActionInput(request, isMultipartAction(name) ? 'multipart' : 'json');
     if ('refused' in input) return input.refused;
