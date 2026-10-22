@@ -12,6 +12,7 @@ import type {
   JobTrack,
 } from '@/lib/supabase/database.types';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
+import { looseArabicNeedle } from '@/lib/search/needle';
 import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -144,20 +145,15 @@ export function parseInboxFilters(params: Record<string, string | string[] | und
   };
 }
 
-/** A name to search for, with LIKE's own characters taken literally. */
-function likePattern(q: string): string {
-  // LIKE's own characters as typed, and the letters Arabic spells more than
-  // one way left open (as the website's looseArabicNeedle): «احمد» found
-  // nobody called «أحمد», nor «مصطفي» «مصطفى».
-  const escaped = q
-    .trim()
-    .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
-    .replace(/[\\%_]/g, (match) => `\\${match}`);
-  const loose = escaped
-    .replace(/[اأإآٱ]/g, '_')
-    .replace(/[ةه](?=\s|$)/g, '_')
-    .replace(/[ىي](?=\s|$)/g, '_');
-  return `%${/[^\s_]/.test(loose.replace(/\\_/g, 'x')) ? loose : escaped}%`;
+/**
+ * A name to search for: LIKE's own characters taken out, and the letters
+ * Arabic spells more than one way left open — the website's own reading of
+ * a name (looseArabicNeedle, as its inbox and console read one), so «احمد»
+ * finds «أحمد» on both. Null when nothing searchable was typed.
+ */
+function likePattern(q: string): string | null {
+  const needle = looseArabicNeedle(q);
+  return needle ? `%${needle}%` : null;
 }
 
 export type Inbox = { rows: Applicant[]; counts: Record<ApplicationStatus, number>; any: number };
@@ -176,7 +172,8 @@ export function useInbox(filters: InboxFilters, { enabled = true }: { enabled?: 
       const narrow = <Q extends { eq: (c: string, v: string) => Q; ilike: (c: string, v: string) => Q }>(query: Q) => {
         let next = query.eq('job.company_id', companyId as string);
         if (filters.job) next = next.eq('job_id', filters.job);
-        if (filters.q) next = next.ilike('candidate.full_name', likePattern(filters.q));
+        const pattern = filters.q ? likePattern(filters.q) : null;
+        if (pattern) next = next.ilike('candidate.full_name', pattern);
         if (filters.band) next = next.eq('experience_band', filters.band);
         if (filters.track) next = next.eq('job.track', filters.track);
         return next;

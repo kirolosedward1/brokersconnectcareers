@@ -18,7 +18,7 @@ import { ApiError } from '~/lib/api';
 import { useSession, type Viewer } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
-import { webAddress } from '~/lib/web-address';
+import { webAddress } from '@/lib/web-address';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 import { toast } from '~/components/feedback/toast';

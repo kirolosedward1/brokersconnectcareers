@@ -10,6 +10,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { COMPANY_TYPES, HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { saveCompany } from '@/lib/actions/company';
 import { reach } from '@/lib/reach';
+import { webAddress } from '@/lib/web-address';
 import type { CompanyRow, DistrictRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 
@@ -45,7 +46,8 @@ export function CompanyForm({
         nameEn: String(form.get('nameEn') ?? ''),
         aboutAr: String(form.get('aboutAr') ?? ''),
         aboutEn: String(form.get('aboutEn') ?? ''),
-        website: String(form.get('website') ?? ''),
+        // A bare domain is given its scheme, as the app gives it (lib/web-address.ts).
+        website: webAddress(String(form.get('website') ?? '')) ?? '',
         headcountBand: String(form.get('headcountBand') ?? '') || null,
         companyType: String(form.get('companyType') ?? '') || null,
         districtId: String(form.get('districtId') ?? '') || null,
