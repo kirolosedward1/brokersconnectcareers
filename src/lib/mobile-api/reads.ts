@@ -39,6 +39,14 @@ export type MobileConfig = {
    * to decide whether to ask again. Absent from a server older than migration 336's code.
    */
   policies?: { terms: string; privacy: string };
+  /**
+   * The commit the website is deployed from (Vercel's VERCEL_GIT_COMMIT_SHA),
+   * null where it is not known (a local build). The over-the-air publish
+   * waits on it, so the app's new code never reaches a phone before the
+   * website it calls (.github/workflows/expo-go.yml), and Account shows it
+   * beside the app's own build marker. Absent from a server older than this.
+   */
+  commit?: string | null;
 };
 
 /** GET /jobs */

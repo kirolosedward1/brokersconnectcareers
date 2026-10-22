@@ -30,6 +30,10 @@ import type { MobileConfig } from '@/lib/mobile-api/reads';
  *                     back to the iPhone's; MOBILE_PLAY_STORE_URL).
  *   policies          the Terms' and the Privacy policy's current versions,
  *                     which a person's latest agreement has to name.
+ *   commit            the commit this deployment was built from, so the
+ *                     app's publish can wait for the website to carry the
+ *                     same push, and a phone can be matched to it (Account).
+ *                     Not a secret: the repository is public.
  */
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +53,7 @@ export async function GET() {
       minAndroidAppVersion: configuredValue(process.env.MOBILE_MIN_ANDROID_APP_VERSION) ?? minAppVersion,
       playStoreUrl: storeUrl(process.env.MOBILE_PLAY_STORE_URL, 'play.google.com'),
       policies: currentPolicyVersions(),
+      commit: configuredValue(process.env.VERCEL_GIT_COMMIT_SHA) ?? null,
     } satisfies MobileConfig,
     { headers: { 'cache-control': 'public, s-maxage=300, stale-while-revalidate=600' } },
   );

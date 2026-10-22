@@ -34,6 +34,7 @@
     "deleted": "Your account has been deleted.",
     "version": "Version {version}",
     "published": "Updated {date}",
+    "websiteAt": "website {commit}",
     "security": "Sign-in and security",
     "oauthOnlyApple": "This account signs in with Apple, so there is no password to change.",
     "mfaOpenApp": "Open in your authenticator app",

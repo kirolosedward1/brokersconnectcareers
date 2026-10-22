@@ -39,7 +39,8 @@ cd .. && pnpm typecheck   # web; `pnpm check` at root runs the full web/DB suite
 
 ## Deploying
 
-- **Push to `main`** = deploy. Vercel builds the web; `expo-go.yml` auto-publishes an Expo Go OTA when `mobile/**`, `src/lib/**` or `messages/**` change.
+- **Push to `main`** = deploy, on both sides. Vercel builds the web; `expo-go.yml` ("Over the air") runs the app's checks, waits for production to serve the same push (`/api/mobile/v1/config` → `commit`), then publishes an OTA on **both** the `expo-go` channel and the `production` channel when `mobile/**`, `src/lib/**` or `messages/**` change. A store build, once one exists, takes it from its next launch. Account's footer shows `<update id> · <app commit> · website <web commit>`.
+- **Website ⇄ app parity checks**: `pnpm test:route-parity` (every website page is an app screen, a remap in `mobile/src/lib/links.ts`, or listed as website-only); `mobile.yml`'s `website` job runs the website checks that read `mobile/` on mobile-only changes.
 - **Manual OTA** (what was used this session, after each batch):
   ```bash
   cd mobile && CI=1 node scripts/publish-update.mjs expo-go --message "…" --non-interactive
