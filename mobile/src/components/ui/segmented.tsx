@@ -44,9 +44,9 @@ export function Segmented<T extends string>({
         placeholder={label}
         required
         inlineLabel
+        // The Select clicks for a new choice itself.
         onChange={(next) => {
           if (next === null || next === value) return;
-          haptic.selection();
           onChange(next);
         }}
       />
