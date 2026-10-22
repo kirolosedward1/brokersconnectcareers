@@ -1337,7 +1337,8 @@
     "doorEmployerBody": "Your listing is reviewed before it goes live, and every application reaches you with the applicant’s name and WhatsApp number.",
     "byTrack": "By specialisation",
     "byArea": "By area",
-    "contact": "Contact us"
+    "contact": "Contact us",
+    "getApp": "Get the app"
   },
   "validation": {
     "required": "This field is required",
@@ -1470,6 +1471,50 @@
       "proofCommission": "Commission rate",
       "proofLeads": "Lead source",
       "kindFresh": "Freshness"
+    }
+  },
+  "appPage": {
+    "meta": {
+      "title": "Get the Brokers Connect app",
+      "description": "Real estate sales jobs across Egypt, on your phone: the salary and commission in figures, the lead source named on every listing, and one-tap applications.",
+      "ogAlt": "The Brokers Connect app on an iPhone"
+    },
+    "hero": {
+      "title": "Brokers Connect, now in your pocket",
+      "subtitle": "The same board, on your phone: every listing with the basic salary and the commission in figures and the name of who supplies the leads, one-tap applications, and a notification the moment a company moves yours.",
+      "note": "No fees for candidates. The app is in Arabic."
+    },
+    "badges": {
+      "appStoreTop": "Download on the",
+      "appStoreLabel": "Download on the App Store",
+      "googlePlayTop": "GET IT ON",
+      "googlePlayLabel": "Get it on Google Play",
+      "comingSoon": "Coming soon"
+    },
+    "screens": {
+      "title": "A look inside",
+      "subtitle": "The screens a consultant lives in: the board, their applications, what they saved, and their profile in the directory.",
+      "home": "Home",
+      "jobs": "Jobs",
+      "applications": "Applications",
+      "saved": "Saved",
+      "profile": "Profile",
+      "alt": "The {screen} screen of the Brokers Connect app"
+    },
+    "features": {
+      "title": "Made for a consultant on the move",
+      "payTitle": "Pay in figures",
+      "payBody": "Every listing says the basic salary and the commission in numbers, and who supplies the leads — before you apply.",
+      "applyTitle": "Apply in a minute",
+      "applyBody": "Your details and your CV are saved, so every application after the first is one tap.",
+      "followTitle": "Follow every application",
+      "followBody": "A notification on your phone when a company opens your application, shortlists you or invites you to an interview.",
+      "profileTitle": "Your profile, your call",
+      "profileBody": "Your areas, your sales record and your CV in the consultant directory, for approved companies to find. You decide whether it is shown."
+    },
+    "band": {
+      "title": "Ready? Get Brokers Connect",
+      "body": "On iPhone today. The Android app is on its way."
     }
   },
   "blog": {
