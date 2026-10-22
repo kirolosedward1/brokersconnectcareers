@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentProps } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
@@ -128,6 +128,10 @@ export default function BoardScreen() {
   // Only in the order the words are true of: newest first.
   const seenBefore = filters.sort === 'newest' ? seenDividerBefore(jobs, since, applied) : null;
 
+  const latestFilters = useRef(filters);
+  useEffect(() => {
+    latestFilters.current = filters;
+  });
   const apply = (next: JobFilters) => {
     // Searched for words: kept for the filter sheet to offer again.
     if (next.q !== filters.q) rememberSearch(owner, next.q);
@@ -155,7 +159,15 @@ export default function BoardScreen() {
     />
   );
   const sort = (
-    <SortSheet sheet={sortSheet} label={t('jobs.sortBy')} value={filters.sort} options={sortOptions} onChange={(order) => apply({ ...filters, sort: order })} />
+    <SortSheet
+      sheet={sortSheet}
+      label={t('jobs.sortBy')}
+      value={filters.sort}
+      options={sortOptions}
+      // Applied once the card has gone: onto the filters as they are then, so a
+      // chip tapped as it faded is kept rather than undone by the order.
+      onChange={(order) => apply({ ...latestFilters.current, sort: order })}
+    />
   );
 
   if (board.isPending) {

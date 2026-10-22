@@ -86,6 +86,10 @@ export function FilterSheet({
       setCounted(filters.q);
     }
   }
+  // The order is not the sheet's to choose, only to keep: one chosen in the
+  // order card that lands as the sheet opens (applied once the card has gone)
+  // is the one the sheet sends back, not the one it opened with.
+  if (visible && draft.sort !== filters.sort) setDraft((current) => ({ ...current, sort: filters.sort }));
 
   useEffect(() => {
     const pause = setTimeout(() => setCounted(words), WORDS_PAUSE_MS);
