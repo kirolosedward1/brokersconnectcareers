@@ -6,12 +6,12 @@
  *     "بروكرز كونكت، دلوقتي في جيبك" \
  *     "وظائف البيع والتسويق العقاري في كل مصر على موبايلك: الراتب والعمولة بالأرقام، ومصدر العملاء مذكور في كل إعلان، وتقديم بلمسة واحدة." \
  *     "بروكرز كونكت" \
- *     public/app-screenshots/screen-1.png
+ *     public/app-screenshots/home.webp
  *
  * The headline is appPage.hero.title and the blurb appPage.meta.description,
- * so the card says what the page says; the screenshot is the hero's. Run it
- * again when either changes, or when the stand-in screenshot is replaced by
- * the real capture.
+ * so the card says what the page says; the capture is the hero's first
+ * screen. Run it again when either changes, or when the captures are
+ * refreshed (docs/app-page.md).
  *
  * The same ground as scripts/og-card.mjs — the brand gradient with the
  * bloom — with a phone drawn in CSS at the end of the card, the way
@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const [out, title, blurb, siteName, screenshot = 'public/app-screenshots/screen-1.png'] = process.argv.slice(2);
+const [out, title, blurb, siteName, screenshot = 'public/app-screenshots/home.webp'] = process.argv.slice(2);
 if (!out || !title || !blurb || !siteName) {
   console.error('usage: node scripts/og-app-card.mjs <out.jpg> <title> <blurb> <site name> [screenshot.png]');
   process.exit(1);
@@ -44,7 +44,8 @@ if (!existsSync(FONTS)) {
 const face = (weight, file) =>
   `@font-face { font-family: Plex; font-weight: ${weight}; src: url(data:font/ttf;base64,${readFileSync(join(FONTS, file)).toString('base64')}) format('truetype'); }`;
 
-const screen = `data:image/png;base64,${readFileSync(join(ROOT, screenshot)).toString('base64')}`;
+const mime = screenshot.endsWith('.webp') ? 'image/webp' : screenshot.endsWith('.jpg') ? 'image/jpeg' : 'image/png';
+const screen = `data:${mime};base64,${readFileSync(join(ROOT, screenshot)).toString('base64')}`;
 const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><style>

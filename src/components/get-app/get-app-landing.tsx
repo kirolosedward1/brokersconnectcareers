@@ -1,50 +1,51 @@
 import { getTranslations } from 'next-intl/server';
 import { Banknote, BellRing, Check, EyeOff, Send } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { PhoneFrame } from '@/components/get-app/phone-frame';
+import { HeroPhone } from '@/components/get-app/hero-phone';
+import { Walkthrough } from '@/components/get-app/walkthrough';
+import { AppearanceSwitch } from '@/components/get-app/appearance-switch';
+import { Reveal } from '@/components/get-app/reveal';
 import { AppStoreBadge, GooglePlayBadge } from '@/components/get-app/store-badges';
 
 /**
- * The page that gets somebody to install the app.
+ * The page that gets somebody to install the app. docs/app-page.md is the
+ * plan it is built to: one ask, made twice, with the app itself between —
+ * the real captures from the iOS screens workflow, the five screens as a
+ * consultant uses them, four things the phone adds, and the appearance
+ * switch that proves the one claim best proved by trying it.
  *
- * One ask, made twice: the badges open the page and close it, with the
- * evidence between them — the screens themselves, then the four things a
- * consultant gets out of carrying the board in a pocket. Every claim here is
- * one the store listing makes and the code backs (mobile/store.config.js):
- * the pay in figures, the lead source on every listing, one-tap applications,
- * a notification when an application moves, the directory profile the
- * consultant controls.
+ * Every claim here is one the store listing makes (mobile/store.config.js)
+ * and the code backs. Every link is `#` until the app is in the store.
  *
- * The hero is the landing pages' own first screen — the same gradient the
- * film plays over there, without the film — so the three pages read as one
- * product. The header floats over it the way it floats over /employers
+ * The header floats over the hero the way it floats over /employers
  * (header-shell.tsx), which is why the hero clears it with its own padding.
- *
- * Every link is `#` until the app is in the store.
  */
 
-/**
- * The screens, in the order the app's tabs put them.
- *
- * Stand-ins until the App Store set exists (docs/app-store.md, "Screenshots"):
- * wireframes in the app's own palette, each labelled with its file name, so
- * they are swapped by dropping the captures over them. Their size is the
- * capture's own, 1179 by 2556.
- */
-const SCREENS = [
-  { key: 'home', src: '/app-screenshots/screen-1.png' },
-  { key: 'jobs', src: '/app-screenshots/screen-2.png' },
-  { key: 'applications', src: '/app-screenshots/screen-3.png' },
-  { key: 'saved', src: '/app-screenshots/screen-4.png' },
-  { key: 'profile', src: '/app-screenshots/screen-5.png' },
+const SHOT = '/app-screenshots';
+
+/** The walkthrough's screens, in the order the captures are taken. */
+const STEPS = [
+  { key: 'home', src: `${SHOT}/home.webp` },
+  { key: 'jobs', src: `${SHOT}/jobs.webp` },
+  { key: 'listing', src: `${SHOT}/listing.webp` },
+  { key: 'companies', src: `${SHOT}/companies.webp` },
+  { key: 'company', src: `${SHOT}/company.webp` },
 ] as const;
 
-/** One card per screen the gallery shows, less the home screen, which is all of them. */
+/** The hero shows the first three of them, one after another. */
+const HERO_SCREENS = STEPS.slice(0, 3);
+
 const FEATURES = [
   { key: 'pay', icon: Banknote },
   { key: 'apply', icon: Send },
   { key: 'follow', icon: BellRing },
   { key: 'profile', icon: EyeOff },
+] as const;
+
+const APPEARANCES = [
+  { key: 'light', src: `${SHOT}/home.webp` },
+  { key: 'dark', src: `${SHOT}/dark/home.webp` },
+  { key: 'large', src: `${SHOT}/large-text/home.webp` },
 ] as const;
 
 export async function GetAppLanding() {
@@ -61,29 +62,32 @@ export async function GetAppLanding() {
     </>
   );
 
-  const [hero] = SCREENS;
+  const screenAlt = (key: (typeof STEPS)[number]['key']) =>
+    t('screens.alt', { screen: t(`screens.${key}`) });
 
   return (
     <>
-      {/* Focus rings are white over the gradient, as they are in the other
-          heroes: the brand blue measured under 3:1 against it. */}
+      {/* Focus rings are white over the gradient, as in the other heroes:
+          the brand blue measured under 3:1 against it. */}
       <section
         className="relative isolate overflow-hidden bg-[linear-gradient(135deg,#0b1020_0%,#141c3a_45%,#0e2b47_100%)] text-white [--ring:white]"
         aria-labelledby="get-app-heading"
       >
-        <div
-          aria-hidden
-          className="absolute inset-0 -z-10 opacity-60 bg-[radial-gradient(60rem_32rem_at_75%_-10%,var(--brand-blue),transparent_70%),radial-gradient(40rem_24rem_at_10%_110%,var(--brand-cyan),transparent_75%)]"
-        />
+        {/* The aurora: two soft lights drifting behind the words, transform
+            only, a long loop, still under reduced motion. */}
+        <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute -top-[40%] start-[45%] h-[60rem] w-[60rem] rounded-full bg-[radial-gradient(closest-side,rgba(42,79,246,0.55),transparent_72%)] will-change-transform motion-safe:animate-aurora" />
+          <div className="absolute -bottom-[45%] -start-[20%] h-[50rem] w-[50rem] rounded-full bg-[radial-gradient(closest-side,rgba(92,225,230,0.32),transparent_72%)] will-change-transform motion-safe:animate-aurora-slow" />
+        </div>
 
         {/* Words at the start, the phone at the end — the right of the page
-            in English and the left in Arabic, because the grid is logical.
-            The top padding clears the floating header, as HeroShell's does. */}
-        <div className="shell grid gap-10 pt-24 sm:pt-28 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center lg:gap-16">
-          <div className="max-w-xl lg:py-16">
+            in English and the left in Arabic, because the grid is logical. */}
+        <div className="shell grid gap-10 pt-24 sm:pt-28 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center lg:gap-16 lg:pb-16 lg:pt-36">
+          <div className="max-w-xl">
+            <p className="text-sm font-medium text-white/65">{t('hero.eyebrow')}</p>
             <h1
               id="get-app-heading"
-              className="text-3xl font-bold leading-[1.2] text-balance sm:text-4xl lg:text-5xl"
+              className="mt-3 text-3xl font-bold leading-[1.2] text-balance sm:text-4xl lg:text-5xl"
             >
               {t('hero.title')}
             </h1>
@@ -99,73 +103,60 @@ export async function GetAppLanding() {
             </p>
           </div>
 
-          {/* The phone rises out of the band's lower edge rather than sitting
-              whole inside it: the bottom fifth is cropped by the section,
-              which is what makes it read as a device being held up and not
-              as a picture of one. A cyan wash behind it keeps the dark frame
-              off the dark ground. */}
-          <div className="relative mx-auto w-60 sm:w-64 lg:w-72 lg:justify-self-end">
+          {/* Below lg the phone rises out of the band's lower edge, its bottom
+              fifth cropped by the section; from lg it stands whole, with the
+              dots under it. */}
+          <div className="relative mx-auto w-60 sm:w-64 lg:w-[17rem] lg:justify-self-end">
             <div
               aria-hidden
               className="absolute -inset-x-24 -top-12 -bottom-4 -z-10 bg-[radial-gradient(closest-side,rgba(92,225,230,0.22),transparent)]"
             />
-            <PhoneFrame
-              src={hero.src}
-              alt={t('screens.alt', { screen: t(`screens.${hero.key}`) })}
-              sizes="(min-width: 1024px) 18rem, 16rem"
-              priority
-              className="-mb-28 lg:-mb-24"
+            <HeroPhone
+              screens={HERO_SCREENS.map((screen) => ({ src: screen.src, alt: screenAlt(screen.key) }))}
+              sizes="(min-width: 1024px) 17rem, 16rem"
+              dotLabels={HERO_SCREENS.map((_, index) =>
+                t('hero.showScreen', { n: index + 1, total: HERO_SCREENS.length }),
+              )}
+              className="-mb-28 lg:mb-0"
             />
           </div>
         </div>
       </section>
 
-      <section className="shell py-12 sm:py-14" aria-labelledby="get-app-screens-heading">
-        <div className="max-w-2xl">
-          <h2 id="get-app-screens-heading" className="text-xl font-bold text-balance sm:text-2xl">
+      <section className="shell py-14 sm:py-16" aria-labelledby="get-app-screens-heading">
+        <Reveal as="header" className="max-w-2xl">
+          <h2 id="get-app-screens-heading" className="text-2xl font-bold text-balance sm:text-3xl">
             {t('screens.title')}
           </h2>
           <p className="mt-2 leading-relaxed text-muted-foreground">{t('screens.subtitle')}</p>
-        </div>
+        </Reveal>
 
-        {/* One row, scrolled, on a phone — bleeding to the page's edges so a
-            partly visible frame says the row goes on, the way ChipRow does —
-            and five across from `lg`, every other one dropped a step so the
-            row reads as a hand of cards rather than a shelf. No scrollbar: it
-            is chrome on a row of pictures. */}
-        <ul className="-mx-4 mt-8 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-5 lg:gap-6 lg:overflow-visible lg:px-0 lg:pb-0">
-          {SCREENS.map((screen) => {
-            const caption = t(`screens.${screen.key}`);
-            return (
-              <li
-                key={screen.key}
-                className="w-[13.5rem] shrink-0 snap-center sm:w-60 lg:w-auto lg:even:mt-12"
-              >
-                <figure>
-                  <PhoneFrame
-                    src={screen.src}
-                    alt={t('screens.alt', { screen: caption })}
-                    sizes="(min-width: 1024px) 14rem, 15rem"
-                  />
-                  <figcaption className="mt-3 text-center text-sm font-medium">{caption}</figcaption>
-                </figure>
-              </li>
-            );
-          })}
-        </ul>
+        <Walkthrough
+          className="mt-8 lg:mt-4"
+          labels={{ list: t('screens.list'), prev: t('screens.prev'), next: t('screens.next') }}
+          steps={STEPS.map((step) => ({
+            key: step.key,
+            title: t(`screens.${step.key}`),
+            body: t(`screens.${step.key}Body`),
+            src: step.src,
+            alt: screenAlt(step.key),
+          }))}
+        />
       </section>
 
-      <section className="border-t border-border" aria-labelledby="get-app-features-heading">
-        <div className="shell py-12 sm:py-14">
-          <h2 id="get-app-features-heading" className="text-xl font-bold text-balance sm:text-2xl">
-            {t('features.title')}
-          </h2>
+      <section className="border-t border-border bg-muted/40" aria-labelledby="get-app-features-heading">
+        <div className="shell py-14 sm:py-16">
+          <Reveal as="header">
+            <h2 id="get-app-features-heading" className="text-2xl font-bold text-balance sm:text-3xl">
+              {t('features.title')}
+            </h2>
+          </Reveal>
 
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map(({ key, icon: Icon }) => (
-              <li key={key}>
-                <Card className="h-full p-5">
-                  <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
+          <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {FEATURES.map(({ key, icon: Icon }, index) => (
+              <Reveal key={key} as="li" delay={index * 70}>
+                <Card className="group h-full p-5 transition-[border-color,transform] duration-200 ease-out hover:border-primary/40 motion-safe:hover:-translate-y-0.5">
+                  <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary transition-colors duration-200 group-hover:bg-primary group-hover:text-primary-foreground">
                     <Icon className="size-5" aria-hidden />
                   </span>
                   <h3 className="mt-4 font-semibold leading-snug">{t(`features.${key}Title`)}</h3>
@@ -173,9 +164,38 @@ export async function GetAppLanding() {
                     {t(`features.${key}Body`)}
                   </p>
                 </Card>
-              </li>
+              </Reveal>
             ))}
           </ul>
+        </div>
+      </section>
+
+      <section className="border-t border-border" aria-labelledby="get-app-appearance-heading">
+        <div className="shell grid gap-10 py-14 sm:py-16 lg:grid-cols-2 lg:items-center lg:gap-16">
+          <Reveal as="header" className="max-w-xl">
+            <h2 id="get-app-appearance-heading" className="text-2xl font-bold text-balance sm:text-3xl">
+              {t('appearance.title')}
+            </h2>
+            <p className="mt-2 leading-relaxed text-muted-foreground">{t('appearance.subtitle')}</p>
+          </Reveal>
+
+          <AppearanceSwitch
+            legend={t('appearance.legend')}
+            options={APPEARANCES.map((appearance) => ({
+              key: appearance.key,
+              label: t(`appearance.${appearance.key}`),
+              src: appearance.src,
+              alt: t('appearance.alt', {
+                appearance: t(
+                  appearance.key === 'light'
+                    ? 'appearance.altLight'
+                    : appearance.key === 'dark'
+                      ? 'appearance.altDark'
+                      : 'appearance.altLarge',
+                ),
+              }),
+            }))}
+          />
         </div>
       </section>
 
