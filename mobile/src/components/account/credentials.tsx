@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { View, type TextInput } from 'react-native';
+import { isAuthApiError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
 import { passwordRefusal } from '@/lib/auth/errors';
 import { westernDigits } from '@/lib/search/arabic';
@@ -155,7 +156,17 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
     if (refused) {
       const refusal = passwordRefusal(refused);
       if (refusal === 'reauthenticate' || (refusal === 'code_invalid' && !nonce)) await sendCode();
-      else setError(refusal === 'code_invalid' ? t('account.reauthInvalid') : authError(refused));
+      else {
+        // GoTrue takes the code before it judges the password: refused by it
+        // for anything else (the same password again), the code is spent, and
+        // offered again it would be called wrong. The next save asks afresh.
+        // No answer at all says nothing of the code, which stays.
+        if (nonce && refusal !== 'code_invalid' && isAuthApiError(refused)) {
+          setCodeSent(false);
+          setCode('');
+        }
+        setError(refusal === 'code_invalid' ? t('account.reauthInvalid') : authError(refused));
+      }
       setPending(false);
       return;
     }

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, KeyRound, Mail } from 'lucide-react';
+import { isAuthApiError } from '@supabase/supabase-js';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
@@ -91,6 +92,11 @@ export function CredentialsSettings({
           await sendCode();
           return;
         }
+        // GoTrue takes the code before it judges the password: refused by it
+        // for anything else (the same password again), the code is spent, and
+        // offered again it would be called wrong. The next save asks afresh.
+        // No answer at all says nothing of the code, which stays.
+        if (nonce && refusal !== 'code_invalid' && isAuthApiError(error)) setCodeSent(false);
         setPasswordError(refusal === 'code_invalid' ? t('reauthInvalid') : said(error));
         return;
       }

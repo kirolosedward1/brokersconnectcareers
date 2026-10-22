@@ -6,8 +6,9 @@ sessions, token refresh, account recovery and sign-out, on the website
 against the installed `@supabase/auth-js` (website 2.112.4, app 2.117.2) and
 GoTrue's own source where its behaviour decides the outcome.
 
-Two bugs were found and fixed. Everything else held. The checks behind each
-verdict are named so they can be re-run.
+Two bugs were found and fixed; a QA review afterwards (2026-10-22) found and
+fixed five more, below. Everything else held. The checks behind each verdict are
+named so they can be re-run.
 
 ## Fixed
 
@@ -51,6 +52,35 @@ indefinitely on the phone, so for most people the settings form answered
   on the old code). `scripts/second-factor.test.mjs` covers the classifier and
   the website form.
 
+### 3. QA review, 2026-10-22: five more, in the same flows
+
+Found by reading the merged code again and by an independent review, each
+confirmed against a real GoTrue before it was fixed:
+
+- **A code GoTrue had already taken was offered again as "wrong".** GoTrue
+  checks and spends the emailed code before it judges the password, so a good
+  code sent with the same password as before (`same_password`) was spent, and
+  the next save with it was called a wrong code. Both settings forms now treat
+  a code refused for any other reason as spent and ask for a new one; within
+  GoTrue's one email a minute, that is "wait a moment", never "wrong code".
+  A save that got no answer at all keeps the code typed, since nothing says
+  GoTrue saw it.
+- **A password over 72 characters was called a bad email address.** GoTrue
+  answers it with `validation_failed`, which the shared mapping read as an
+  email error — on sign-up and on every password form, website and app. It now
+  says the password is too long (`validation.passwordLong`).
+- **The website's authenticator code refused an Arabic keyboard's digits**
+  (`pattern="[0-9]{6}"`, `\d`), on the screen a reset now passes through. The
+  code is read through `westernDigits`, as the app's screen already did.
+- **The same screen called a right code wrong on a slow line.** It learns which
+  factor to verify from a request made as it opens, and refused a code sent
+  before that answered (a fast typist, a password manager's fill) with "that
+  code is not right". It now asks for the factor at that moment instead.
+- **The website's two password forms said "something went wrong"** for every
+  refusal but one or two (the same password again, too weak, too many tries);
+  they now use the shared words, as the app does. `passwordRefusal()` also no
+  longer reads the prose of an error that carries a code it does not list.
+
 ## Verified, no change needed
 
 | Area | What holds | Where |
@@ -77,19 +107,32 @@ indefinitely on the phone, so for most people the settings form answered
 - **Secure password change** on the hosted project. The code above works either
   way: with the setting off, no code is ever asked for.
 - **Minimum password length.** `SUPABASE_SETTINGS.md` recommends 10 on the
-  server; the forms enforce 8 and the copy says 8. If the server is raised, the
-  settings form now shows `validation.passwordShort` rather than "something went
-  wrong", but that copy still says 8. Raise it in `messages/*.json` together with
-  the server.
+  server; the forms enforce 8 and the copy says 8. Every password form (sign-up,
+  reset, settings; website and app) answers GoTrue's `weak_password` with
+  `validation.passwordShort`, "at least 8 characters" — so a 9-character
+  password refused by a server set to 10, or one refused by Leaked Password
+  Protection, is told to be at least 8. Decide the server's minimum, then raise
+  the forms' check and that copy to match (and give a leaked password words of
+  its own if that protection is turned on).
 - **`package.json` floor for `@supabase/supabase-js`** is `^2.49.1`. The
   sign-out guarantee above relies on auth-js clearing the local session when the
   logout request fails, which the locked 2.112.4 does. Raise the floor the next
   time the lockfile is regenerated, so a fresh resolve cannot go below it.
 
-## Not done here
+## How this was checked
 
-No end-to-end run against a live Supabase project. The flows above were
-exercised through the app's Jest suite (the real screens and real supabase-js
-against a stand-in auth server), the website's source-level tests, and the
-database suite (`pnpm test:db`, which runs every migration in an in-process
-Postgres).
+- **Live, 2026-10-22:** the local Supabase stack (`supabase start`, the repo's
+  migrations, auth email caught by Mailpit) and the built website, driven in
+  Chromium: both fixed flows end to end with a real TOTP factor and real
+  emailed codes (reset from a phone-width window, the code typed in
+  Arabic-Indic digits, the same password, 80 characters, an empty and a wrong
+  code, a session aged past 24 hours); the repo's `scripts/e2e/journeys.mjs`,
+  `edge-journeys.mjs`, `browser-journeys.mjs` and `mobile-api.smoke.mjs`; and
+  two accounts in one browser, a restarted browser, and an access token run
+  out (refreshed by the middleware, not a sign-out).
+- **The app:** its Jest suite runs the real screens and supabase-js against a
+  stand-in auth server. Not run on a device: a phone restart, losing the
+  network on a phone, and the Keychain are only covered by those tests.
+- **Not live:** sign-up's own confirmation email (the local stack confirms
+  addresses itself; the recovery link exercises the same `/auth/confirm`
+  route), Sign in with Apple and Google, and Turnstile.

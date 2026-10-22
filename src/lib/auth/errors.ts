@@ -58,6 +58,7 @@ export const AUTH_ERRORS: { match: RegExp; namespace: 'auth' | 'validation'; key
   { match: /unable to validate email|invalid format|address .* is invalid/i, namespace: 'validation', key: 'invalidEmail' },
   { match: /different from the old password/i, namespace: 'auth', key: 'errSamePassword' },
   { match: /password should be at least/i, namespace: 'validation', key: 'passwordShort' },
+  { match: /password cannot be longer than/i, namespace: 'validation', key: 'passwordLong' },
   { match: /captcha/i, namespace: 'auth', key: 'errCaptcha' },
 ];
 
@@ -69,6 +70,12 @@ export const AUTH_ERRORS: { match: RegExp; namespace: 'auth' | 'validation'; key
 export function knownAuthError(error: { message: string; code?: string } | string): AuthErrorKey | null {
   const message = typeof error === 'string' ? error : error.message;
   const code = typeof error === 'string' ? undefined : error.code;
+  // GoTrue answers more than one refusal with validation_failed: a password
+  // over 72 characters (bcrypt's limit) is one, and was being called a bad
+  // email address — on sign-up and on every password form.
+  if (code === 'validation_failed' && /password cannot be longer than/i.test(message)) {
+    return { namespace: 'validation', key: 'passwordLong' };
+  }
   return (code ? AUTH_ERROR_CODES[code] : undefined) ?? AUTH_ERRORS.find((entry) => entry.match.test(message)) ?? null;
 }
 
@@ -112,14 +119,19 @@ export function passwordRefusal(error: { message?: string; code?: string; name?:
     case 'otp_expired':
       return 'code_invalid';
     case 'session_not_found':
+    case 'user_not_found':
     case 'session_expired':
     case 'refresh_token_not_found':
     case 'bad_jwt':
     case 'no_authorization':
       return 'session';
   }
+  // A code it does not list is not read from its prose: a coded refusal whose
+  // message happens to mention a session is not a spent link.
+  if (error.code) return 'other';
   const message = error.message ?? '';
-  // Older servers, with no code: the prose, the specific ones first.
+  // Older servers, and the client's own errors, with no code: the prose, the
+  // specific ones first.
   if (/\baal2\b/i.test(message)) return 'second_factor';
   if (/requires reauthentication/i.test(message)) return 'reauthenticate';
   if (/nonce|token has expired or is invalid/i.test(message)) return 'code_invalid';

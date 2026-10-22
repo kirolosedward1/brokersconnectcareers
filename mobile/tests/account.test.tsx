@@ -397,6 +397,77 @@ describe('signing in and security', () => {
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
   });
 
+  it('asks for a new code when GoTrue has taken the last one on a refusal of the password itself', async () => {
+    // GoTrue's order: the code is checked and spent first, then the password judged.
+    let spent = false;
+    server.on('PUT /auth/v1/user', (_url, init) => {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      if (!body.nonce) {
+        return { status: 400, body: { code: 400, error_code: 'reauthentication_needed', msg: 'Password update requires reauthentication' } };
+      }
+      if (body.nonce !== '123456' || spent) {
+        return { status: 422, body: { code: 422, error_code: 'reauthentication_not_valid', msg: 'Nonce has expired or is invalid' } };
+      }
+      spent = true;
+      if (body.password === 'the-old-password') {
+        return { status: 422, body: { code: 422, error_code: 'same_password', msg: 'New password should be different from the old password.' } };
+      }
+      return user;
+    });
+    server.on('GET /auth/v1/reauthenticate', {});
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.account.newPassword), 'the-old-password');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'the-old-password');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    fireEvent.changeText(await screen.findByLabelText(ar.account.reauthCode), '123456');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+
+    // The password's own refusal, said; and the spent code not offered again.
+    expect(await screen.findByText(ar.auth.errSamePassword)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.account.reauthCode)).toBeNull();
+
+    // A different password: GoTrue asks again, and a fresh code is sent — not "that code is wrong".
+    fireEvent.changeText(screen.getByLabelText(ar.account.newPassword), 'a-new-password');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByLabelText(ar.account.reauthCode)).toBeTruthy();
+    expect(server.asked('/auth/v1/reauthenticate')).toHaveLength(2);
+    expect(screen.queryByText(ar.account.reauthInvalid)).toBeNull();
+  });
+
+  it('keeps the code typed when the save gets no answer, for the next try once the line is back', async () => {
+    let online = true;
+    server.on('PUT /auth/v1/user', (_url, init) => {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      if (!body.nonce) {
+        return { status: 400, body: { code: 400, error_code: 'reauthentication_needed', msg: 'Password update requires reauthentication' } };
+      }
+      if (!online) throw new TypeError('Network request failed');
+      return body.nonce === '123456' ? user : { status: 422, body: { code: 422, error_code: 'reauthentication_not_valid', msg: 'Nonce has expired or is invalid' } };
+    });
+    server.on('GET /auth/v1/reauthenticate', {});
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.account.newPassword), 'a-new-password');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    fireEvent.changeText(await screen.findByLabelText(ar.account.reauthCode), '123456');
+
+    online = false;
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+    // Nobody answered, so nothing says the code was spent: it stays where it was typed.
+    expect(screen.getByLabelText(ar.account.reauthCode).props.value).toBe('123456');
+
+    online = true;
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.account.passwordSaved)).toBeTruthy();
+    expect(server.asked('/auth/v1/reauthenticate')).toHaveLength(1);
+  });
+
   it('moves to the second password with the return key, and saves from there', async () => {
     await signIn();
     const focus = watchFocus();

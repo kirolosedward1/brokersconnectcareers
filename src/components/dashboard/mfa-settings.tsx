@@ -9,6 +9,14 @@ import { Field, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
 import { localeHref, type Locale } from '@/i18n/routing';
 import { safeNext } from '@/lib/safe-next';
+import { westernDigits } from '@/lib/search/arabic';
+
+/** The account's authenticator: the verified one, or the one being set up. */
+async function accountFactorId(supabase: ReturnType<typeof createClient>): Promise<string | null> {
+  const { data } = await supabase.auth.mfa.listFactors();
+  const totp = data?.totp?.find((factor) => factor.status === 'verified') ?? data?.totp?.[0];
+  return totp?.id ?? null;
+}
 
 /**
  * A second factor: an authenticator app, through Supabase's TOTP.
@@ -63,13 +71,9 @@ export function MfaSettings({
   useEffect(() => {
     if (!enrolled || level === 'aal2') return;
     let cancelled = false;
-    createClient()
-      .auth.mfa.listFactors()
-      .then(({ data }) => {
-        if (cancelled) return;
-        const totp = data?.totp?.find((factor) => factor.status === 'verified') ?? data?.totp?.[0];
-        if (totp) setFactorId(totp.id);
-      });
+    accountFactorId(createClient()).then((id) => {
+      if (!cancelled && id) setFactorId(id);
+    });
     return () => {
       cancelled = true;
     };
@@ -114,8 +118,11 @@ export function MfaSettings({
 
   function onVerify(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const code = String(new FormData(event.currentTarget).get('code') ?? '').replace(/\s+/g, '');
-    if (!factorId || !/^\d{6}$/.test(code)) {
+    // Typed on an Arabic keyboard, the digits are Arabic-Indic: the reset of
+    // an account with an authenticator now comes through here, as the app's
+    // code screen already took them.
+    const code = westernDigits(String(new FormData(event.currentTarget).get('code') ?? '')).replace(/\s+/g, '');
+    if (!/^\d{6}$/.test(code)) {
       setError(t('mfaCodeInvalid'));
       return;
     }
@@ -123,13 +130,23 @@ export function MfaSettings({
 
     startTransition(async () => {
       const supabase = createClient();
-      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+      /*
+        Typed, or filled in from a password manager, before the page had
+        learned which factor it is for: asked now. Refused instead, a right
+        code read as "that code is not right" on a slow line.
+      */
+      const id = factorId ?? (await accountFactorId(supabase));
+      if (!id) {
+        setError(tCommon('errorBody'));
+        return;
+      }
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: id });
       if (challengeError || !challenge) {
         setError(tCommon('errorBody'));
         return;
       }
       const { error: verifyError } = await supabase.auth.mfa.verify({
-        factorId,
+        factorId: id,
         challengeId: challenge.id,
         code,
       });
@@ -199,7 +216,6 @@ export function MfaSettings({
               name="code"
               inputMode="numeric"
               autoComplete="one-time-code"
-              pattern="[0-9]{6}"
               maxLength={6}
               required
               dir="ltr"
@@ -239,7 +255,6 @@ export function MfaSettings({
                 name="code"
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                pattern="[0-9]{6}"
                 maxLength={6}
                 required
                 dir="ltr"

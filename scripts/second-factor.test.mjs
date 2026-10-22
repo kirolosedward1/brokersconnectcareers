@@ -71,6 +71,7 @@ is('the same with no code', passwordRefusal({ message: 'Password update requires
 is('a wrong emailed code', passwordRefusal({ code: 'reauthentication_not_valid', message: 'Nonce has expired or is invalid' }), 'code_invalid');
 is('a spent emailed code', passwordRefusal({ code: 'otp_expired', message: 'Token has expired or is invalid' }), 'code_invalid');
 is('no session left is still the spent link', passwordRefusal({ name: 'AuthSessionMissingError', message: 'Auth session missing!' }), 'session');
+is('and an account deleted under the session, as before codes decided', passwordRefusal({ code: 'user_not_found', message: 'User from sub claim in JWT does not exist' }), 'session');
 is('as is a session the server no longer has', passwordRefusal({ code: 'session_not_found', message: 'Session from session_id claim in JWT does not exist' }), 'session');
 is('anything else is not called an expired link', passwordRefusal({ code: 'weak_password', message: 'Password should be at least 10 characters.' }), 'other');
 const same = { code: 'same_password', message: 'New password should be different from the old password.' };
@@ -84,6 +85,20 @@ is(
   passwordRefusal({ code: 'validation_failed', message: 'Reauthentication requires the user to have an email or a phone number' }),
   'other',
 );
+
+console.log('\n— the code decides when there is one; the prose only when there is none');
+is(
+  "an unlisted code is not read from its prose (a coded error that mentions 'session' is not a spent link)",
+  passwordRefusal({ code: 'unexpected_failure', message: 'Database error loading session' }),
+  'other',
+);
+is('the client-side errors carry no code, and are still read from their prose', passwordRefusal({ name: 'AuthSessionMissingError', message: 'Auth session missing!' }), 'session');
+
+console.log('\n— a password over 72 characters is said as that, not as a bad email address');
+const tooLong = { code: 'validation_failed', message: 'Password cannot be longer than 72 characters' };
+is('GoTrue\'s refusal, by code', knownAuthError(tooLong)?.key, 'passwordLong');
+is('and by its prose alone', knownAuthError({ message: tooLong.message })?.key, 'passwordLong');
+is('a malformed address under the same code is still the email', knownAuthError({ code: 'validation_failed', message: 'Unable to validate email address: invalid format' })?.key, 'invalidEmail');
 
 console.log('\n— the reset and the settings ask for it');
 const resetPage = readFileSync(join(ROOT, 'src/app/[locale]/sign-in/new-password/page.tsx'), 'utf8');
@@ -126,6 +141,23 @@ is(
   true,
 );
 is('the settings no longer single out one refusal', /knownAuthError\(error\)\?\.key === 'passwordShort'/.test(settings), false);
+
+console.log('\n— a code GoTrue has taken is not offered again');
+is(
+  'the website treats a code refused for anything but itself as spent, and asks afresh',
+  /if \(nonce && refusal !== 'code_invalid' && isAuthApiError\(error\)\) setCodeSent\(false\);/.test(settings),
+  true,
+);
+
+console.log('\n— the authenticator code on the website takes an Arabic keyboard\'s digits');
+const mfa = readFileSync(join(ROOT, 'src/components/dashboard/mfa-settings.tsx'), 'utf8');
+is('the code is read through westernDigits', /westernDigits\(String\(new FormData\(event\.currentTarget\)\.get\('code'\)/.test(mfa), true);
+is('and no field holds it to ASCII digits', /pattern="\[0-9\]\{6\}"/.test(mfa), false);
+is(
+  'a code sent before the page knows its factor asks for the factor, rather than calling the code wrong',
+  /const id = factorId \?\? \(await accountFactorId\(supabase\)\);/.test(mfa) && !/!factorId \|\|/.test(mfa),
+  true,
+);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
