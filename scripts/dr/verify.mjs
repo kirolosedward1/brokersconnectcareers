@@ -100,7 +100,7 @@ console.log('\n— keys and constraints');
                   join pg_attribute a on a.attrelid = c.confrelid and a.attnum = k.n order by k.i) as pcols
       from pg_constraint c
      where c.contype = 'f' and c.connamespace = 'public'::regnamespace`);
-  let orphans = [];
+  const orphans = [];
   for (const fk of fks) {
     const notNull = fk.cols.map((c) => `c.${c} is not null`).join(' and ');
     const join_ = fk.cols.map((c, i) => `p.${fk.pcols[i]} = c.${c}`).join(' and ');

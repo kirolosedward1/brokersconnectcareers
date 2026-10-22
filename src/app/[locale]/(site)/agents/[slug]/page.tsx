@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Download, Lock, MapPin, UserRound } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { asLocale, localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { AgentCv } from '@/components/agents/agent-cv';

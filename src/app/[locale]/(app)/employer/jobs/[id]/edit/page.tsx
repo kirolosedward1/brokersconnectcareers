@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { asLocale, type Locale } from '@/i18n/routing';
+import { asLocale } from '@/i18n/routing';
 import { JobForm } from '@/components/employer/job-form';
 import { requireEmployer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';

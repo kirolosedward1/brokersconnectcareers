@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import { CheckCircle2, FileCheck2, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import { COMPANY_DOCS_BUCKET } from '@/lib/buckets';
 import { recordCompanyDocument } from '@/lib/actions/company';

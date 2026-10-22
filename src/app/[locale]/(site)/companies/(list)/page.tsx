@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Briefcase, MapPin } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { asLocale, alternatesFor, localized, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, localized } from '@/i18n/routing';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { Pagination } from '@/components/pagination';
 import { CompanyFilters } from '@/components/companies/company-filters';

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Globe, MapPin, Users } from 'lucide-react';
-import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, localized } from '@/i18n/routing';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { FollowCompanyButton } from '@/components/companies/follow-company-button';

@@ -15,15 +15,23 @@ packages:
 # @swc/core via the toolchain. None is required for a Vercel build — image
 # optimisation is handled by the platform — but building them is harmless and
 # keeps a local `pnpm start` able to optimise images too.
+#
+# unrs-resolver arrives with ESLint's import resolver (eslint-config-next). Its
+# script only re-fetches a native binding when the optional-dependency install
+# missed one, which pnpm does not; refused, and the lint runs the same.
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
   sharp: true
+  unrs-resolver: false
 
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - '@swc/core'
   - sharp
+
+ignoredBuiltDependencies:
+  - unrs-resolver
 
 # Lift postcss off the version Next pins.
 #

@@ -11,7 +11,6 @@ import { IBM_Plex_Sans_Arabic } from 'next/font/google';
 import {
   activeLocales,
   dirOf,
-  type Locale,
 } from "@/i18n/routing";
 import { PUBLIC_MESSAGES, pick } from '@/i18n/client-messages';
 import { env } from '@/lib/env';

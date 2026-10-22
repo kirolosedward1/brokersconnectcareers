@@ -138,7 +138,6 @@ export function AppShell({
   bell?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const t = useTranslations('dashboard');
   const tNav = useTranslations('nav');
   const pathname = usePathname();
 

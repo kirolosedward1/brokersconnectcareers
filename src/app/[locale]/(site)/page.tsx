@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
-import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor } from '@/i18n/routing';
 import { Landing } from '@/components/home/landing';
 import { EmployerHome, type EmployerSummary } from '@/components/home/employer-home';
 import { SignedInHome } from '@/components/home/signed-in-home';
