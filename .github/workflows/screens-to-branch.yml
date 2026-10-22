@@ -21,6 +21,11 @@ on:
         description: The iOS screens run whose captures to fetch (the number in its URL)
         required: true
         type: string
+  # TEMPORARY, removed before this branch merges: a dispatch only reaches a
+  # workflow that is on the default branch, and this one is not yet.
+  push:
+    branches: [claude/inspiring-ptolemy-snxfrj]
+    paths: ['.github/workflows/screens-to-branch.yml']
 
 permissions:
   contents: write
@@ -30,20 +35,23 @@ jobs:
   fetch:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    strategy:
+      matrix:
+        run_id: ${{ inputs.run_id && fromJSON(format('["{0}"]', inputs.run_id)) || fromJSON('["37616658461", "39764993669"]') }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Fetch the artifact
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ inputs.run_id }}
+          RUN_ID: ${{ matrix.run_id }}
         run: |
           gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name ios-screens --dir screens
           find screens -type f | sort
 
       - name: Commit it to its own branch
         env:
-          RUN_ID: ${{ inputs.run_id }}
+          RUN_ID: ${{ matrix.run_id }}
         run: |
           branch="screens/ios-$RUN_ID"
           git config user.name github-actions
