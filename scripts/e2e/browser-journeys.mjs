@@ -460,6 +460,10 @@ section('the admin: two-step verification, then the console');
   const second = await device();
   await signInThroughForm(second.page, 'admin@demo.test');
   check('the next sign-in is asked for the code before the console', await landsOn(second.page, /\/dashboard\/account\?mfa=challenge/), second.page.url());
+  // A code is good once: GoTrue refuses one already used, as the enrolment
+  // just did with this window's. The admin types the next one, as anybody
+  // whose app has moved on would.
+  await sleep(30_000 - (Date.now() % 30_000) + 1000);
   await second.page.fill('input[name="code"]', totp(secret));
   await submit(second.page).click();
   await sleep(2500);
