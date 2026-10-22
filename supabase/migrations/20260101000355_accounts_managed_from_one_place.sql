@@ -46,6 +46,9 @@
   already issued lasts until it expires, within the hour.
 */
 
+-- rollback: drop function public.admin_set_sign_in_block(uuid, boolean, text), public.admin_end_sessions(uuid, text), public.admin_end_sessions_of(uuid), public.admin_set_role(uuid, user_role, text), public.admin_user_activity(uuid), public.admin_search_users(text, user_role, approval_status, int, int, boolean); then restate admin_search_users (5 arguments) from migration 346 and admin_user_facts from migration 318, with their revoke/grant lines
+-- safety: ships-with-code — the code on this branch works against either database. The website's users page calls admin_search_users with named arguments, so the 5-argument function answers it until this lands (only the "sign-in blocked" view, which alone sends p_blocked, would be refused), and reads the new row fields and admin_user_facts fields as absent; the app treats a missing admin_user_activity (PGRST202/42883) as "not migrated" and draws the file without it. The new levers (role, sign-in block, sessions) are reached only through the website's server actions and the app's registry, which are deployed with this branch, and each refuses anyone but an admin behind admin_begin(). With the migration first and the old code, nothing calls the new functions; the replaced ones keep their old arguments' meaning
+
 -- ---------------------------------------------------------------------------
 -- The list: + sign-in blocked, last sign-in
 -- ---------------------------------------------------------------------------
