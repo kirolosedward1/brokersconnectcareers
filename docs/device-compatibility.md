@@ -31,7 +31,7 @@ or a person can fill are marked so.
 | Check | How | Result |
 | --- | --- | --- |
 | The app's whole suite (`pnpm check`): typecheck, lint, shared-code guard, update-publishing check, licences, Jest | Node 22, jest-expo 57.0.5, React Native 0.86.3 test renderer | 46 suites, 841 tests. All pass, except one timing-dependent sign-in test that timed out once under full load and passes on its own (82/82). That test is untouched by this branch |
-| Text cut short at the accessibility sizes | A static audit of every `numberOfLines` in `src/` | **17 places fixed**, plus the select field. Now a test, `tests/large-text.test.tsx` |
+| Text cut short at the accessibility sizes | A static audit of every `numberOfLines` in `src/` | **37 places fixed** (17, then 20 more that arrived from `main` while this was open), plus the select field. Now a test, `tests/large-text.test.tsx` |
 | The welcome screen on small phones at large text | Line wrapping measured with the app's own font (IBM Plex Sans Arabic via HarfBuzz/raqm), the welcome's real strings and its type scale, at 375 × 667, 375 × 812 and 440 × 956, font scales 1–3.571 | **Fixed**: see below |
 | VoiceOver/TalkBack labels | Static audit of every `Pressable`, `PressableScale`, `Switch`, `TextInput`, `TextField` and `Image` | Every control has a role; all 50 text fields carry their label; errors are announced (`useErrorsInView`). Nothing to fix |
 | Safe areas and pinned bars | Audit of every view pinned with `insets.bottom` or `position: 'absolute'` | The filter sheet's footer is one button and fits; the welcome's footer did not (fixed) |
@@ -92,34 +92,51 @@ their status badge and button under the text there, rather than squeezing it
 to a word a line. `tests/large-text.test.tsx` fails if any `numberOfLines`
 is fixed again without a size cap. It listed all seventeen before the fix.
 
-**The welcome screen at the largest text sizes on a small phone (app).** The
-welcome pins its ways on (create an account, sign in, the company's sign-up)
-to the foot of the screen, and the scrolling part above shrinks to fit.
-Measured with the real font and strings:
+While this was open, `main` added screens (the timeline of an application,
+recently viewed, the weekly summary, the compare table, notes, toasts, the
+month picker, swipe actions, the quick apply card, the board's count) with
+twenty more; the test listed them on the merge (the last two found while
+resolving it), and they follow the same rule now. It allows three kinds of fixed line count: text whose size is
+capped or never grows (`maxFontSizeMultiplier`, `allowFontScaling={false}`,
+as the tab bar's names), a single word that shrinks to fit its cell
+(`adjustsFontSizeToFit`, a month in the picker's grid: wrapping would split
+an Arabic word), and the share card, a fixed-size picture for a story.
 
-| Phone | Text size | Footer height | Room left for the logo and headline |
+**The welcome screen at the largest text sizes on a small phone (app).** The
+welcome pins its ways on (create an account; sign in, with the round Google
+and Apple buttons beside it; the company's sign-up) to the foot of the screen
+and never scrolls; the words above step down in size to fit what is left.
+Nothing limited the ways on themselves. Measured with the real font and
+strings, on the welcome as `main` has it now:
+
+| Phone | Text size | Footer height | Room left for the words |
 | --- | --- | --- | --- |
-| iPhone SE (375 × 667) | default | 160 pt | 441 pt |
-| iPhone SE | AX3 (2.643) | 397 pt | 204 pt |
-| iPhone SE | AX4 (3.143) | 535 pt | 66 pt |
-| iPhone SE | AX5 (3.571) | 707 pt | **−106 pt: the footer is taller than the screen** |
-| iPhone 13 mini (375 × 812) | AX5 | 706 pt | 10 pt |
+| iPhone SE (375 × 667) | default | 176 pt | 425 pt |
+| iPhone SE | AX3 (2.643) | 437 pt | 164 pt |
+| iPhone SE | AX4 (3.143) | 600 pt | 1 pt |
+| iPhone SE | AX5 (3.571) | 779 pt | **−178 pt: the footer is taller than the screen** |
+| iPhone 13 mini (375 × 812) | AX5 | 813 pt | **−97 pt** |
 | iPhone 17 Pro Max (440 × 956) | AX5 | 599 pt | 249 pt |
 
-So on an SE at the largest size the headline had no room at all, and the
-company's way in was drawn off the bottom with nothing to scroll it back.
-The footer now measures itself: once it would take more than half the
-screen, it moves into the scroll after the headline, and every way on can be
-reached. CI's large-text pass runs on the Pro Max, where it still fitted,
-which is why it never showed. `tests/welcome.test.tsx` covers the switch, and
-fails without the fix. The heights are an estimate from measured line
-breaks and the app's line heights, not a screenshot: confirm them on an SE
-simulator.
+So on the two small phones at the largest size the words had no room at all,
+and the company's way in was drawn off the bottom of a screen that does not
+scroll. The ways on now grow with the text size up to twice the ordinary size
+(`WAYS_GROW` in `src/app/welcome.tsx`), as Skip and the headline are already
+capped: about 300 pt of footer on every phone, at least 300 pt left for the
+words. Twice the ordinary size is still between the second and third
+accessibility sizes. (The first version of this fix moved the ways into a
+scroll; `main`'s redesign settled that the welcome never scrolls, so the
+merge keeps that and caps instead.) CI's large-text pass runs on the Pro Max,
+where the footer still fitted, which is why it never showed.
+`tests/welcome.test.tsx` checks the cap. The heights are an estimate from
+measured line breaks and the app's line heights, not a screenshot: confirm
+them on an SE simulator.
 
 ## Checked and left alone
 
 - **Fixed caps on purpose**: the brand wordmark (≤ 1.4×), the welcome's Skip
-  and drifting facts (≤ 1.3–1.4×), the bell's badge, the job page's title bar.
+  (≤ 1.4×) and words (≤ 1.3× once stepped down), the bell's badge, the job
+  page's title bar, the tab bar's names (no scaling).
   Each is decoration or sits in a bar of fixed height, and the words are said
   in full elsewhere or to VoiceOver.
 - **The segmented control** becomes a select at the accessibility sizes, so

@@ -5,9 +5,11 @@ import type { ApplyInput } from '@/lib/mobile-api/contract';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
 import { CvUploadFailed, removeCv, uploadCv, type PickedCv } from '~/features/cv/files';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
+import { withTimeout } from '~/lib/timeout';
 
 /**
  * Applying — the website's apply form and page (src/components/jobs/apply-form.tsx,
@@ -33,8 +35,10 @@ export class ApplyRefused extends Error {
     /** An action error code ('already_applied', 'rate_limit', 'invalid', …), 'upload' or a CvProblem. */
     readonly reason: string,
     readonly fieldErrors?: Record<string, string>,
+    /** What went wrong underneath, said with the error (an upload's own message). */
+    readonly detail?: string,
   ) {
-    super(reason);
+    super(detail ? `${reason}: ${detail}` : reason);
     this.name = 'ApplyRefused';
   }
 }
@@ -71,13 +75,14 @@ export function useApplyContext(jobId: string | null) {
 
 /** Whether this candidate's application to the listing is in; a read that fails is "not known to be". */
 async function applied(jobId: string, candidateId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('applications')
-    .select('id')
-    .eq('job_id', jobId)
-    .eq('candidate_id', candidateId)
-    .maybeSingle();
-  return !error && Boolean(data);
+  const answer = await withTimeout(
+    Promise.resolve(
+      supabase.from('applications').select('id').eq('job_id', jobId).eq('candidate_id', candidateId).maybeSingle(),
+    ),
+    15_000,
+    'checking the application',
+  ).catch(() => null);
+  return Boolean(answer && !answer.error && answer.data);
 }
 
 export function useApplyToJob() {
@@ -90,7 +95,7 @@ export function useApplyToJob() {
       const uploaded =
         attachment?.kind === 'file'
           ? await uploadCv(userId, attachment.file).catch((error: unknown) => {
-              throw error instanceof CvUploadFailed ? new ApplyRefused(error.reason) : error;
+              throw error instanceof CvUploadFailed ? new ApplyRefused(error.reason, undefined, error.detail) : error;
             })
           : null;
       const cvPath = uploaded ?? (attachment?.kind === 'profile' ? attachment.path : null);
@@ -136,6 +141,7 @@ export function useApplyToJob() {
 export function useNextRoles(jobId: string, enabled: boolean) {
   const candidateId = useSession().session?.user.id ?? null;
   const hidden = useHiddenCompanies();
+  const hiddenJobs = useHiddenJobs();
   const query = useQuery({
     queryKey: ['apply', 'next', jobId, candidateId],
     enabled: enabled && Boolean(candidateId),
@@ -162,9 +168,12 @@ export function useNextRoles(jobId: string, enabled: boolean) {
   });
 
   const ranked = query.data?.ranked ?? [];
-  const roles: JobListItem[] = withoutHidden(
-    ranked.map((entry) => entry.job),
-    hidden,
+  const roles: JobListItem[] = withoutHiddenJobs(
+    withoutHidden(
+      ranked.map((entry) => entry.job),
+      hidden,
+    ),
+    hiddenJobs,
   ).slice(0, 2);
   return { roles, personalised: query.data?.personalised ?? false };
 }

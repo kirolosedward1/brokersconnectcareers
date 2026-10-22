@@ -1,19 +1,35 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentType } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { CalendarX2, CheckCircle2, CircleSlash, FileText, Paperclip, ShieldAlert, ShieldCheck, UserRound, X } from '~/components/ui/lucide';
-import { formatDate } from '@/lib/format';
+import {
+  CalendarX2,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  CircleSlash,
+  Briefcase,
+  FileText,
+  Paperclip,
+  Phone,
+  type LucideProps,
+  ShieldAlert,
+  ShieldCheck,
+  UserRound,
+  X,
+} from '~/components/ui/lucide';
 import type { JobDetail } from '@/lib/job-list';
 import { jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import { isApproved, isCandidate } from '@/lib/permissions';
 import { isValidPhone, normalisePhone } from '@/lib/phone';
+import { bandFor } from '@/lib/match';
 import type { ExperienceBand } from '@/lib/supabase/database.types';
 import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
 import { Appear } from '~/components/motion/appear';
+import { Confetti, DrawnCheck } from '~/components/motion/celebration';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
@@ -31,12 +47,14 @@ import {
 } from '~/features/apply/apply';
 import { pickCv, type PickedCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
+import { useAgentProfile } from '~/features/profile/queries';
 import { ApiError } from '~/lib/api';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useHasBoard } from '~/lib/use-tabs';
+import { useToBoard } from '~/features/jobs/to-board';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
@@ -98,6 +116,7 @@ function Apply({ job }: { job: JobDetail }) {
   const { session, viewer, actor } = useSession();
   const context = useApplyContext(isCandidate(actor) ? job.id : null);
   const hasBoard = useHasBoard();
+  const toBoard = useToBoard();
   const navigation = useNavigation();
   const [sentAt, setSentAt] = useState<Date | null>(null);
 
@@ -122,7 +141,7 @@ function Apply({ job }: { job: JobDetail }) {
         icon={CalendarX2}
         title={t('jobs.expired')}
         body={t('jobs.expiredBody')}
-        action={hasBoard ? <Button label={t('jobs.title')} onPress={() => router.navigate('/jobs')} /> : null}
+        action={hasBoard ? <Button label={t('jobs.title')} onPress={toBoard} /> : null}
       />
     );
   }
@@ -224,7 +243,13 @@ function ApplyForm({
 
   const [fullName, setFullName] = useState(defaultName);
   const [whatsapp, setWhatsapp] = useState(defaultPhone);
-  const [band, setBand] = useState<ExperienceBand | null>('junior_1_3');
+  // The band the profile's years put them in, until they pick another. Years
+  // are stored as 0 until given (the column's default): then the website's
+  // own default, not "under a year".
+  const agentProfile = useAgentProfile();
+  const years = agentProfile.data?.agent?.years_experience;
+  const [picked, setBand] = useState<ExperienceBand | null>(null);
+  const band = picked ?? (years ? bandFor(years) : 'junior_1_3');
   const [note, setNote] = useState('');
   // The CV on the profile goes with it unless the candidate says otherwise —
   // the one on the profile as it is now: replaced or taken off in another tab
@@ -234,6 +259,9 @@ function ApplyForm({
   const attachment: Attachment =
     choice.kind === 'file' ? choice : choice.kind === 'profile' && profileCv ? { kind: 'profile', path: profileCv } : null;
   const [errors, setErrors] = useState<Errors>({});
+  // Everything the form needs is already known (the profile's name, WhatsApp
+  // and CV): it is one look and one tap, the fields a tap further for changes.
+  const [editing, setEditing] = useState(() => !defaultName.trim() || !isValidPhone(normalisePhone(defaultPhone)));
   // Leaving with a note written or a file picked asks first (the form goes once
   // it is sent); while it is being sent, the screen waits for the answer.
   useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file', apply.isPending);
@@ -243,6 +271,8 @@ function ApplyForm({
 
   const showErrors = (next: Errors) => {
     setErrors(next);
+    // A field to put right is shown, not summed up.
+    if (next.fullName || next.whatsapp || next.experienceBand || next.cv) setEditing(true);
     // The fields are above the button: the first wrong one is brought back into view, and said.
     inView.show(next);
   };
@@ -281,7 +311,10 @@ function ApplyForm({
           if (reason === 'already_applied') return showErrors({ form: t('apply.alreadyApplied') });
           if (reason === 'rate_limit') return showErrors({ form: t('apply.rateLimit') });
           if (reason === 'fileTooLarge' || reason === 'fileType') return showErrors({ cv: t(`validation.${reason}`) });
-          if (reason === 'upload' || reason === 'invalid_cv_path') return showErrors({ cv: t('common.errorBody') });
+          if (reason === 'upload' || reason === 'invalid_cv_path') {
+            const detail = failure instanceof ApplyRefused ? failure.detail : undefined;
+            return showErrors({ cv: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
+          }
           const fields = failure instanceof ApplyRefused ? failure.fieldErrors : undefined;
           if (reason === 'invalid' && fields && Object.keys(fields).length) {
             return showErrors({
@@ -292,7 +325,10 @@ function ApplyForm({
               ...(fields.note || fields.jobId ? { form: t('common.errorBody') } : {}),
             });
           }
-          showErrors({ form: t('common.errorBody') });
+          // What went wrong underneath, in brackets: "something went wrong" alone told nobody anything.
+          // The website's own answers (offline, unavailable) are said as they always were.
+          const detail = failure instanceof Error && !(failure instanceof ApiError) && failure.message ? failure.message : '';
+          showErrors({ form: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
         },
       },
     );
@@ -316,118 +352,208 @@ function ApplyForm({
         </Text>
       </View>
 
-      <Field ref={inView.place('fullName')} label={t('apply.fullName')} error={errors.fullName}>
-        <TextField
-          value={fullName}
-          onChangeText={setFullName}
-          accessibilityLabel={t('apply.fullName')}
-          autoComplete="name"
-          textContentType="name"
-          maxLength={120}
+      {editing ? null : (
+        <QuickApply
+          rows={[
+            { icon: UserRound, value: fullName.trim() },
+            { icon: Phone, value: normalisePhone(whatsapp), ltr: true },
+            { icon: Briefcase, value: t(`experienceBand.${band}`) },
+            { icon: FileText, value: attachment ? t('app.apply.profileCv') : t('app.apply.quickNoCv') },
+          ]}
+          // Not sent before the profile's years are read: the band shown is the one sent.
+          sending={apply.isPending || agentProfile.isPending}
+          onSend={submit}
+          onEdit={() => setEditing(true)}
         />
-      </Field>
+      )}
 
-      <Field ref={inView.place('whatsapp')} label={t('apply.whatsapp')} error={errors.whatsapp}>
-        <TextField
-          value={whatsapp}
-          onChangeText={setWhatsapp}
-          accessibilityLabel={t('apply.whatsapp')}
-          ltr
-          keyboardType="phone-pad"
-          autoComplete="tel"
-          textContentType="telephoneNumber"
-        />
-      </Field>
-
-      <Field ref={inView.place('experienceBand')} label={t('apply.experienceBand')} error={errors.experienceBand}>
-        <Select
-          label={t('apply.experienceBand')}
-          value={band}
-          placeholder={t('app.onboarding.choose')}
-          options={EXPERIENCE_BANDS.map((value) => ({ value, label: t(`experienceBand.${value}`) }))}
-          onChange={setBand}
-        />
-      </Field>
-
-      <Field ref={inView.place('cv')} label={t('apply.cv')} hint={t('apply.cvOptional')} error={errors.cv}>
-        {attachment ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: space[2],
-              paddingStart: space[3],
-              ...corner('lg'),
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-            }}
-          >
-            {attachment.kind === 'profile' ? (
-              <FileText size={16} color={colors.mutedForeground} />
-            ) : (
-              <Paperclip size={16} color={colors.mutedForeground} />
-            )}
-            <Text variant="small" numberOfLines={large ? undefined : 1} style={{ flex: 1 }}>
-              {attachment.kind === 'profile' ? t('app.apply.profileCv') : attachment.file.name}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('app.apply.removeCv')}
-              onPress={() => setChoice({ kind: 'none' })}
-              style={{ width: hitTarget, height: hitTarget, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <X size={16} color={colors.mutedForeground} />
-            </Pressable>
-          </View>
-        ) : null}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-          <Button
-            label={attachment?.kind === 'file' ? t('app.apply.pickAnother') : t('app.apply.pickCv')}
-            variant="outline"
-            size="sm"
-            icon={<Paperclip size={14} color={colors.foreground} />}
-            onPress={choose}
-          />
-          {profileCv && attachment?.kind !== 'profile' ? (
-            <Button
-              label={t('app.apply.useProfileCv')}
-              variant="ghost"
-              size="sm"
-              onPress={() => setChoice({ kind: 'profile' })}
+      {editing ? (
+        <>
+          <Field ref={inView.place('fullName')} label={t('apply.fullName')} error={errors.fullName}>
+            <TextField
+              value={fullName}
+              onChangeText={setFullName}
+              accessibilityLabel={t('apply.fullName')}
+              autoComplete="name"
+              textContentType="name"
+              maxLength={120}
             />
-          ) : null}
-        </View>
-      </Field>
+          </Field>
 
-      <Field label={t('apply.note')} hint={t('apply.noteOptional')}>
-        <TextField
-          value={note}
-          onChangeText={setNote}
-          accessibilityLabel={t('apply.note')}
-          multiline
-          maxLength={500}
-          style={{ minHeight: 88, paddingVertical: space[2], textAlignVertical: 'top' }}
-        />
-      </Field>
+          <Field ref={inView.place('whatsapp')} label={t('apply.whatsapp')} error={errors.whatsapp}>
+            <TextField
+              value={whatsapp}
+              onChangeText={setWhatsapp}
+              accessibilityLabel={t('apply.whatsapp')}
+              ltr
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              textContentType="telephoneNumber"
+            />
+          </Field>
 
-      {/* What pressing the button gives away, said before it is pressed. */}
-      <View
-        style={{
-          flexDirection: 'row',
-          gap: space[3],
-          padding: space[4],
-          ...corner('xl'),
-          borderWidth: StyleSheet.hairlineWidth * 2,
-          borderColor: colors.border,
-          backgroundColor: colors.muted,
-        }}
+          <Field ref={inView.place('experienceBand')} label={t('apply.experienceBand')} error={errors.experienceBand}>
+            <Select
+              label={t('apply.experienceBand')}
+              value={band}
+              placeholder={t('app.onboarding.choose')}
+              options={EXPERIENCE_BANDS.map((value) => ({ value, label: t(`experienceBand.${value}`) }))}
+              onChange={setBand}
+            />
+          </Field>
+
+          <Field ref={inView.place('cv')} label={t('apply.cv')} hint={t('apply.cvOptional')} error={errors.cv}>
+            {attachment ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: space[2],
+                  paddingStart: space[3],
+                  ...corner('lg'),
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.card,
+                }}
+              >
+                {attachment.kind === 'profile' ? (
+                  <FileText size={16} color={colors.mutedForeground} />
+                ) : (
+                  <Paperclip size={16} color={colors.mutedForeground} />
+                )}
+                <Text variant="small" numberOfLines={large ? undefined : 1} style={{ flex: 1 }}>
+                  {attachment.kind === 'profile' ? t('app.apply.profileCv') : attachment.file.name}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('app.apply.removeCv')}
+                  onPress={() => setChoice({ kind: 'none' })}
+                  style={{ width: hitTarget, height: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <X size={16} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
+            ) : null}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+              <Button
+                label={attachment?.kind === 'file' ? t('app.apply.pickAnother') : t('app.apply.pickCv')}
+                variant="outline"
+                size="sm"
+                icon={<Paperclip size={14} color={colors.foreground} />}
+                onPress={choose}
+              />
+              {profileCv && attachment?.kind !== 'profile' ? (
+                <Button
+                  label={t('app.apply.useProfileCv')}
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => setChoice({ kind: 'profile' })}
+                />
+              ) : null}
+            </View>
+          </Field>
+
+          <Field label={t('apply.note')} hint={t('apply.noteOptional')}>
+            <TextField
+              value={note}
+              onChangeText={setNote}
+              accessibilityLabel={t('apply.note')}
+              multiline
+              maxLength={500}
+              style={{ minHeight: 88, paddingVertical: space[2], textAlignVertical: 'top' }}
+            />
+          </Field>
+        </>
+      ) : null}
+
+      <WhoSees />
+
+      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+
+      {editing ? <Button label={t('apply.submit')} size="lg" loading={apply.isPending} onPress={submit} /> : null}
+    </ScrollView>
+  );
+}
+
+/**
+ * The application as it would go, in one card — who, the WhatsApp the
+ * company will write to, the experience, the CV — with one button to send it
+ * and one to change it first.
+ */
+function QuickApply({
+  rows,
+  sending,
+  onSend,
+  onEdit,
+}: {
+  rows: { icon: ComponentType<LucideProps>; value: string; ltr?: boolean }[];
+  sending: boolean;
+  onSend: () => void;
+  onEdit: () => void;
+}) {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  const large = useLargeText();
+  return (
+    <Card style={{ gap: space[4] }}>
+      <Text weight="semibold" accessibilityRole="header">
+        {t('app.apply.quickTitle')}
+      </Text>
+      <View style={{ gap: space[3] }}>
+        {rows.map(({ icon: Icon, value, ltr }) => (
+          <View key={value} style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
+            <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', ...corner('full'), backgroundColor: colors.secondary }}>
+              <Icon size={16} color={colors.primary} />
+            </View>
+            <Text weight="medium" numberOfLines={large ? undefined : 1} style={{ flex: 1, ...(ltr ? { writingDirection: 'ltr' as const } : null) }}>
+              {ltr ? `\u2066${value}\u2069` : value}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <View style={{ gap: space[2] }}>
+        <Button label={t('app.apply.quickSend')} size="lg" loading={sending} onPress={onSend} />
+        <Button label={t('app.apply.quickEdit')} variant="ghost" onPress={onEdit} />
+      </View>
+    </Card>
+  );
+}
+
+/**
+ * What pressing the button gives away, said before it is pressed: the
+ * question always in view above the button, its answer a tap away, so the
+ * form is not a wall of text on the way to it.
+ */
+function WhoSees() {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  const [open, setOpen] = useState(false);
+  const Chevron = open ? ChevronUp : ChevronDown;
+
+  return (
+    <View
+      style={{
+        ...corner('xl'),
+        borderWidth: StyleSheet.hairlineWidth * 2,
+        borderColor: colors.border,
+        backgroundColor: colors.muted,
+      }}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen(!open)}
+        style={{ minHeight: hitTarget, flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[4] }}
       >
         <ShieldCheck size={20} color={colors.mutedForeground} />
-        <View style={{ flex: 1, gap: space[1] }}>
-          <Text variant="small" weight="semibold">
-            {t('apply.privacyTitle')}
-          </Text>
+        <Text variant="small" weight="semibold" style={{ flex: 1 }}>
+          {t('apply.privacyTitle')}
+        </Text>
+        <Chevron size={18} color={colors.mutedForeground} />
+      </Pressable>
+      {open ? (
+        // Under the question, where its words start: past the shield.
+        <View style={{ gap: space[1], paddingBottom: space[4], paddingStart: space[4] + 20 + space[3], paddingEnd: space[4] }}>
           <Text variant="small" tone="mutedForeground">
             {t('apply.privacyBody')}
           </Text>
@@ -438,27 +564,18 @@ function ApplyForm({
             {t('apply.privacyNote')}
           </Text>
         </View>
-      </View>
-
-      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
-
-      <Button label={t('apply.submit')} size="lg" loading={apply.isPending} onPress={submit} />
-    </ScrollView>
+      ) : null}
+    </View>
   );
 }
 
-/** The confirmation: what, where and when, where to follow it, and what to look at next. */
-function Sent({ job, at }: { job: JobDetail; at: Date }) {
+/** The confirmation: that it went, where to follow it, and what to look at next. */
+function Sent({ job }: { job: JobDetail; at?: Date }) {
+  const toBoard = useToBoard();
   const t = useTranslations();
-  const locale = useLocale();
   const { colors } = useTheme();
   const next = useNextRoles(job.id, true);
 
-  const rows: [string, string][] = [
-    [t('apply.labelJob'), localized(locale, job.title_ar, job.title_en)],
-    [t('apply.labelCompany'), localized(locale, job.company.name_ar, job.company.name_en)],
-    [t('apply.labelDate'), formatDate(at, locale)],
-  ];
 
   return (
     <ScrollView
@@ -476,9 +593,10 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
           backgroundColor: colors.successMuted,
         }}
       >
-        <Appear from="none" scale={0.5} delay={motion.stagger * 2}>
-          <CheckCircle2 size={36} color={colors.success} />
+        <Appear from="none" scale={0.6} delay={motion.stagger}>
+          <DrawnCheck size={72} />
         </Appear>
+        <Confetti />
         <Text variant="title" weight="bold" accessibilityRole="header" style={{ textAlign: 'center' }}>
           {t('apply.success')}
         </Text>
@@ -487,32 +605,9 @@ function Sent({ job, at }: { job: JobDetail; at: Date }) {
         </Text>
       </Appear>
 
-      <Card style={{ padding: 0 }}>
-        {rows.map(([label, value], index) => (
-          <View
-            key={label}
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              gap: space[4],
-              padding: space[4],
-              borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
-              borderTopColor: colors.border,
-            }}
-          >
-            <Text variant="small" tone="mutedForeground">
-              {label}
-            </Text>
-            <Text variant="small" weight="medium" style={{ flexShrink: 1, textAlign: 'right' }}>
-              {value}
-            </Text>
-          </View>
-        ))}
-      </Card>
-
       <View style={{ gap: space[2] }}>
         <Button label={t('apply.viewApplications')} onPress={() => router.navigate('/dashboard/applications')} />
-        <Button label={t('jobs.title')} variant="outline" onPress={() => router.navigate('/jobs')} />
+        <Button label={t('jobs.title')} variant="outline" onPress={toBoard} />
       </View>
 
       {next.roles.length ? (

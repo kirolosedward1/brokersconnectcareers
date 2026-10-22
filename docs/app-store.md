@@ -129,7 +129,7 @@ in the app, and nothing is used to track people across apps or websites.
 
 ## Guidelines that apply, and how the app meets them
 
-- **5.1.1(v) account deletion.** Account → Delete account, with the word typed
+- **5.1.1(v) account deletion.** Account → Sign-in and security → Delete account (at the foot), with the word typed
   out (`deleteMyAccount`). An account made with Sign in with Apple is asked for
   a fresh Apple authorization code first, and the website revokes the grant
   (`src/lib/apple/revoke.ts`). A company owner, whose account cannot be
@@ -375,8 +375,10 @@ said):
 | App activity | Other user-generated content | applications and their notes, listings, reports, appeals, support requests |
 | Device or other IDs | Device or other IDs | the push token (`push_devices`), only when notifications are allowed (optional) |
 
-Not collected: location, contacts, calendar, messages (WhatsApp opens outside
-the app), audio, health, financial info (billing is read-only and sells
+Not collected: what stays on the phone and is never sent (notes and reminders
+on saved listings, recent searches, jobs looked at, a company's saved WhatsApp
+replies; Play does not count data processed only on the device), location,
+contacts, calendar, messages (WhatsApp opens outside the app), audio, health, financial info (billing is read-only and sells
 nothing; revisit before `BILLING_ENABLED`), web browsing, app info and
 performance (no crash reporting or analytics SDK).
 
@@ -390,7 +392,8 @@ manifests; `app.config.ts` blocks `SYSTEM_ALERT_WINDOW`):
 | `POST_NOTIFICATIONS` | pushes, asked from Home's card, never at launch | — |
 | `READ_EXTERNAL_STORAGE` / `WRITE_EXTERNAL_STORAGE` | Android 12 and older only (`maxSdkVersion` 32 where the module sets it; `expo-image` declares the read one without it, and Android 13+ ignores it) | The photo/video permissions policy concerns `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO`, which the app does not declare: photos come through the system photo picker |
 | `USE_BIOMETRIC`, `USE_FINGERPRINT` | `expo-local-authentication`, shipped ahead of the app lock (docs/mobile.md, Over-the-air updates); nothing calls it yet | Normal permissions, no declaration |
-| `RECEIVE_BOOT_COMPLETED` | `expo-notifications`, for local notifications scheduled before a reboot; the app schedules none | Could be added to `blockedPermissions` — try it on a device first |
+| `RECEIVE_BOOT_COMPLETED` | `expo-notifications`: keeps the reminders a candidate sets on saved listings (local notifications) after the phone restarts | Needed now that reminders exist |
+| `READ_CALENDAR`, `WRITE_CALENDAR` | `expo-calendar`, shipped ahead of "add the interview to my calendar"; nothing calls it yet | Dangerous permissions, asked at run time. When the feature is built, prefer the system's own add-event screen, which needs neither; otherwise block `READ_CALENDAR` if writing alone works. Answer "Calendar events" in Data safety only if events are ever read or sent |
 | `VIBRATE` | haptics | — |
 
 **Other Play requirements**

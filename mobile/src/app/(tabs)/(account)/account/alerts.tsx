@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Linking, RefreshControl, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
@@ -11,9 +11,11 @@ import { usePushControls } from '~/features/push/controls';
 import { pushAvailable, usePushState } from '~/features/push/device';
 import { pushPreferencesOf, useSavePushPreferences, type PushPreferences } from '~/features/push/preferences';
 import { useSession } from '~/lib/session';
+import { useScreenRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { UserRound } from '~/components/ui/lucide';
+import { toast } from '~/components/feedback/toast';
 
 /**
  * Pushes on this phone: on or off for the person signed in, without going to
@@ -29,6 +31,7 @@ export default function AlertsScreen() {
   const { colors, shadow } = useTheme();
   const { session, viewer } = useSession();
   const state = usePushState();
+  const pull = useScreenRefresh();
   const { turnOn, turnOff } = usePushControls();
   const header = <Stack.Screen options={{ title: t('app.push.title') }} />;
 
@@ -79,6 +82,7 @@ export default function AlertsScreen() {
       {header}
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
+        refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
       >
         <View
@@ -153,6 +157,7 @@ const KINDS = ['push_job_alerts', 'push_applications', 'push_account', 'push_qui
 function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferences }) {
   const t = useTranslations('app.push');
   const tCommon = useTranslations('common');
+  const tApp = useTranslations('app.toast');
   const { colors, shadow } = useTheme();
   const save = useSavePushPreferences();
   const [saved, setSaved] = useState(false);
@@ -208,6 +213,7 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
         onSuccess: () => {
           settle(key, true);
           setSaved(true);
+          toast.show({ message: tApp('changesSaved'), tone: 'success' });
         },
         onError: () => {
           settle(key, false);

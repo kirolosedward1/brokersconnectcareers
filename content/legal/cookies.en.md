@@ -1,6 +1,6 @@
 ---
 title: Cookies and storage on your device
-updated: 2026-10-03
+updated: 2026-10-22
 ---
 
 This page explains everything the Brokers Connect website keeps in your browser, and everything the app keeps on your phone, and why. It is part of our [Privacy policy](/privacy).
@@ -37,7 +37,10 @@ The app uses no cookies. It keeps only the following on your phone:
 
 - **Your sign-in session:** encrypted, with a key held in the phone's secure storage (the Keychain on an iPhone), and deleted when you sign out.
 - **The last account signed in on this phone:** its kind (consultant or company) and approval status, and its company's id and verification status, so the app knows which tabs to show when it opens, before it reaches the internet. Forgotten when you sign out.
-- **Your settings on this phone:** your appearance choice, the companies you hid from lists, and your notification token and choices.
+- **Your settings on this phone:** your appearance choice, the companies, consultants and listings you hid from lists, and your notification token and choices.
+- **What you keep for yourself, for each account on this phone separately:** the jobs you looked at lately and your recent searches; your notes and reminders on saved jobs (a reminder is a notification the phone itself shows on the day you chose); the kinds of listing you asked to see fewer of; which listings on the board you have already seen, so the new ones can be marked; and, for a company, its saved WhatsApp replies and saved consultant searches. None of it is sent to us. Someone else signing in on the same phone does not see it, and it is deleted when you delete your account in the app.
+- **While you sign up:** where you were going when you began (a listing you tapped Apply on, say), so onboarding takes you back there. Deleted once onboarding is done.
+- **The last crash:** if the app closes because of an error, the error's message and where in the app's code it happened, kept so the app can tell you about it the next time it opens. It is sent to us only if you choose to share it from that notice.
 - **A temporary copy of public lists:** governorates, districts and developers, so search screens open quickly; and the counts on Home with the first page of the job board and of the company directory, so the app opens on them at once, even on a slow connection, and refreshes them behind. None is kept longer than a day, and none holds anything from your account.
 
 All of this is deleted when you delete the app from your phone. (An iPhone may keep the encryption key itself in the Keychain after the app is deleted, but with the session it protected gone, it unlocks nothing.)

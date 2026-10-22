@@ -11,6 +11,7 @@ import type {
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
+import { MonthField } from '~/components/ui/month-field';
 import { KeyboardRoom } from '~/components/ui/keyboard-room';
 import { Notice } from '~/components/ui/notice';
 import { Select } from '~/components/ui/select';
@@ -23,6 +24,25 @@ import { useConfirmDiscard } from '~/lib/use-leave-guard';
 import { useTheme } from '~/theme/provider';
 import { gutter, hitTarget, space } from '~/theme/tokens';
 import { dateOf, monthOf, wholeNumber } from './fields';
+import { toast } from '~/components/feedback/toast';
+import { useGatedModal } from '~/lib/sheet-gate';
+import { useSheetFence } from '~/components/ui/sheet-fence';
+import { appDirection } from '~/lib/direction';
+
+/** This month, as the form shows a date ("2026-10"): no later month has come yet. */
+function thisMonth(): string {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Whether date `a`'s month comes after `b`'s. Months, not days: a date kept
+ * from the website keeps its day ("2026-10-15"), which is still this month,
+ * and an end in the month an entry started is not before it.
+ */
+function laterMonth(a: string, b: string): boolean {
+  return monthOf(a) > monthOf(b);
+}
 
 export type CvEntry =
   | { section: 'experience'; row: AgentExperienceRow | null }
@@ -32,7 +52,8 @@ export type CvEntry =
 /**
  * Adding a CV entry, or changing one — the website's inline forms, as a sheet.
  * Each saves on its own: a mistake in a certification never holds a job just
- * typed hostage. Dates are a year and a month, as the entries show them.
+ * typed hostage. Dates are a year and a month, as the entries show them,
+ * picked from a sheet rather than typed.
  */
 export function CvEntrySheet({ agentId, entry, onClose }: { agentId: string; entry: CvEntry | null; onClose: () => void }) {
   // Whether the form has been typed in: the sheet pulled down asks first then.
@@ -42,20 +63,26 @@ export function CvEntrySheet({ agentId, entry, onClose }: { agentId: string; ent
   }, []);
   const confirm = useConfirmDiscard();
   const close = () => (dirty.current ? confirm(onClose) : onClose());
+  // Shown once no other sheet is still closing.
+  const gate = useGatedModal(entry !== null, onClose);
+  const fence = useSheetFence();
   return (
-    <Modal visible={entry !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
+    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
       <KeyboardRoom>
-        {/* A fresh form for every entry opened. */}
-        {entry ? (
-          <EntryForm
-            key={`${entry.section}:${entry.row?.id ?? 'new'}`}
-            agentId={agentId}
-            entry={entry}
-            onClose={onClose}
-            onRequestClose={close}
-            onDirty={onDirty}
-          />
-        ) : null}
+        {/* The sheet keeps its touches from the screen it is drawn in (sheet-fence.ts). */}
+        <View style={{ flex: 1, direction: appDirection }} {...fence}>
+          {/* A fresh form for every entry opened. */}
+          {entry ? (
+            <EntryForm
+              key={`${entry.section}:${entry.row?.id ?? 'new'}`}
+              agentId={agentId}
+              entry={entry}
+              onClose={onClose}
+              onRequestClose={close}
+              onDirty={onDirty}
+            />
+          ) : null}
+        </View>
       </KeyboardRoom>
     </Modal>
   );
@@ -143,7 +170,13 @@ function EntryForm({
     if (fields?.expires) return refuse({ expires: t('app.profile.endBeforeStart') });
     refuse({ form: failure instanceof ApiError && failure.status === 0 ? t('app.offline.body') : t('common.errorBody') });
   };
-  const done = { onSuccess: onClose, onError };
+  const done = {
+    onSuccess: () => {
+      onClose();
+      toast.show({ message: t('app.toast.entrySaved'), tone: 'success' as const });
+    },
+    onError,
+  };
 
   const submit = () => {
     const local: Record<string, string> = {};
@@ -155,8 +188,10 @@ function EntryForm({
       if (!title.trim()) local.title = required;
       if (startedOn === null) local.started = required;
       else if (startedOn === undefined) local.started = badMonth;
+      else if (laterMonth(startedOn, thisMonth())) local.started = t('app.profile.notFuture');
       if (endedOn === undefined) local.ended = badMonth;
-      else if (endedOn && startedOn && endedOn < startedOn) local.ended = t('app.profile.endBeforeStart');
+      else if (endedOn && laterMonth(endedOn, thisMonth())) local.ended = t('app.profile.notFuture');
+      else if (endedOn && startedOn && laterMonth(startedOn, endedOn)) local.ended = t('app.profile.endBeforeStart');
       if (Object.keys(local).length) return refuse(local);
       setErrors({});
       return save.mutate(
@@ -203,8 +238,9 @@ function EntryForm({
     const expiresOn = dateOf(expires, certification?.expires);
     if (!name.trim()) local.name = required;
     if (issuedOn === undefined) local.issued = badMonth;
+    else if (issuedOn && laterMonth(issuedOn, thisMonth())) local.issued = t('app.profile.notFuture');
     if (expiresOn === undefined) local.expires = badMonth;
-    else if (expiresOn && issuedOn && expiresOn < issuedOn) local.expires = t('app.profile.endBeforeStart');
+    else if (expiresOn && issuedOn && laterMonth(issuedOn, expiresOn)) local.expires = t('app.profile.endBeforeStart');
     if (Object.keys(local).length) return refuse(local);
     setErrors({});
     save.mutate(
@@ -223,9 +259,16 @@ function EntryForm({
     );
   };
 
-  const month = (label: string, value: string, set: (text: string) => void, key: string, hint?: string) => (
-    <Field ref={inView.place(key)} label={label} hint={hint ?? t('app.profile.monthHint')} error={errors[key]}>
-      <TextField value={value} onChangeText={set} accessibilityLabel={label} ltr keyboardType="numbers-and-punctuation" placeholder="2024-03" maxLength={7} />
+  // Picked from a sheet, not typed (MonthField); `clearLabel` for a date that may be left empty.
+  const month = (
+    label: string,
+    value: string,
+    set: (text: string) => void,
+    key: string,
+    { hint, clearLabel, untilNow = false }: { hint?: string; clearLabel?: string; untilNow?: boolean } = {},
+  ) => (
+    <Field ref={inView.place(key)} label={label} hint={hint} error={errors[key]}>
+      <MonthField label={label} value={value} onChange={set} clearLabel={clearLabel} untilNow={untilNow} />
     </Field>
   );
   const text = (label: string, value: string, set: (text: string) => void, key: string, max: number, optional = false) => (
@@ -272,8 +315,8 @@ function EntryForm({
                 onChange={setTrack}
               />
             </Field>
-            {month(t('cv.started'), started, setStarted, 'started')}
-            {month(t('cv.ended'), ended, setEnded, 'ended', t('app.profile.endedHint'))}
+            {month(t('cv.started'), started, setStarted, 'started', { untilNow: true })}
+            {month(t('cv.ended'), ended, setEnded, 'ended', { hint: t('app.profile.endedHint'), clearLabel: t('app.profile.stillThere'), untilNow: true })}
             <Field ref={inView.place('highlights')} label={t('cv.highlights')} error={errors.highlights}>
               <TextField
                 value={highlights}
@@ -305,8 +348,8 @@ function EntryForm({
           <>
             {text(t('cv.certName'), name, setName, 'name', 160)}
             {text(t('cv.issuer'), issuer, setIssuer, 'issuer', 160, true)}
-            {month(t('cv.issued'), issued, setIssued, 'issued')}
-            {month(t('cv.expires'), expires, setExpires, 'expires')}
+            {month(t('cv.issued'), issued, setIssued, 'issued', { hint: t('common.optional'), clearLabel: t('app.profile.monthClear'), untilNow: true })}
+            {month(t('cv.expires'), expires, setExpires, 'expires', { hint: t('common.optional'), clearLabel: t('app.profile.monthClear') })}
           </>
         )}
 

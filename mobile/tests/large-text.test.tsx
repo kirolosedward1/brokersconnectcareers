@@ -58,9 +58,11 @@ function tagAround(text: string, index: number): string {
 
 /*
   Where a fixed line count is right at every size: the segmented control's
-  options, which at the accessibility sizes become a Select instead.
+  options, which at the accessibility sizes become a Select instead, and the
+  share card, a picture of a fixed size captured for a story, never read on
+  the phone's screen.
 */
-const ALLOWED = new Set(['components/ui/segmented.tsx']);
+const ALLOWED = new Set(['components/ui/segmented.tsx', 'components/jobs/share-card.tsx']);
 
 describe('a line cut short', () => {
   it('is never cut at the accessibility sizes, unless its size is capped', () => {
@@ -72,8 +74,11 @@ describe('a line cut short', () => {
       for (const match of text.matchAll(/numberOfLines=\{([^}]*)\}/g)) {
         const expression = match[1];
         if (/\blarge\b|undefined/.test(expression)) continue;
-        // A capped size (maxFontSizeMultiplier ≤ the large-text threshold) never reaches them.
-        if (/maxFontSizeMultiplier=/.test(tagAround(text, match.index))) continue;
+        const tag = tagAround(text, match.index);
+        // Text whose size is capped, or that never grows (the tab bar's names), never reaches them.
+        if (/maxFontSizeMultiplier=|allowFontScaling=\{false\}/.test(tag)) continue;
+        // One word that shrinks to fit its cell (a month in the picker's grid): wrapping would split it.
+        if (/adjustsFontSizeToFit/.test(tag)) continue;
         offenders.push(`${name}:${text.slice(0, match.index).split('\n').length} numberOfLines={${expression}}`);
       }
     }

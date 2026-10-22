@@ -30,6 +30,7 @@ function fresh() {
     callAction: typeof import('~/lib/api').callAction;
     ApiError: typeof import('~/lib/api').ApiError;
     loadViewer: typeof import('~/lib/session').loadViewer;
+    onLocalSignOut: typeof import('~/lib/local-sign-out').onLocalSignOut;
   };
   jest.isolateModules(() => {
     /* eslint-disable @typescript-eslint/no-require-imports -- a fresh copy of each module, per case */
@@ -40,6 +41,7 @@ function fresh() {
       callAction: require('~/lib/api').callAction,
       ApiError: require('~/lib/api').ApiError,
       loadViewer: require('~/lib/session').loadViewer,
+      onLocalSignOut: require('~/lib/local-sign-out').onLocalSignOut,
     };
     /* eslint-enable @typescript-eslint/no-require-imports */
   });
@@ -97,6 +99,30 @@ describe('signing out', () => {
     expect(events).toContain('SIGNED_OUT');
     const { data } = await supabase.auth.getSession();
     expect(data.session).toBeNull();
+  });
+});
+
+describe('signing out while the auth service never answers', () => {
+  it('finishes in seconds and signs out on the phone, though supabase-js is still waiting', async () => {
+    const { SESSION_KEY, signOutHere, onLocalSignOut } = fresh();
+    store().set(SESSION_KEY, JSON.stringify(expired()));
+    // A connection that takes the request and never answers, nor gives up when asked to.
+    network(() => new Promise<Response>(() => {}));
+    let announced = false;
+    onLocalSignOut(() => {
+      announced = true;
+    });
+
+    let finished = false;
+    const done = signOutHere().then(() => {
+      finished = true;
+    });
+    await jest.advanceTimersByTimeAsync(11_000);
+    expect(finished).toBe(true);
+    await done;
+
+    expect(store().has(SESSION_KEY)).toBe(false);
+    expect(announced).toBe(true);
   });
 });
 
@@ -347,5 +373,27 @@ describe('an account with no profile', () => {
 
     expect((await loadViewer(session)).profile?.id).toBe(profile.id);
     expect(sent.some((request) => request.path === '/auth/v1/user')).toBe(false);
+  });
+});
+
+describe('an auth request on a connection that stalls', () => {
+  it('a password sign-in is given up on, not left spinning', async () => {
+    const { supabase } = fresh();
+    // Takes the request and never answers until it is aborted.
+    network(
+      (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new TypeError('Network request failed: aborted')));
+        }),
+    );
+    let answered = false;
+    const done = supabase.auth.signInWithPassword({ email: 'a@b.eg', password: 'x' }).then((result) => {
+      answered = true;
+      return result;
+    });
+    await jest.advanceTimersByTimeAsync(21_000);
+    expect(answered).toBe(true);
+    const { error } = await done;
+    expect(error).not.toBeNull();
   });
 });

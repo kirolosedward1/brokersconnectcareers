@@ -1,8 +1,9 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale, useTranslations } from 'use-intl';
-import { X } from '~/components/ui/lucide';
+import { Appear } from '~/components/motion/appear';
+import { BriefcaseBusiness, Building2, History, Layers, MapPin, Search, X, type LucideProps } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import type { JobFilters } from '@/lib/job-filters';
 import { localized } from '@/lib/locale';
@@ -20,19 +21,31 @@ import type { DistrictRow } from '@/lib/supabase/database.types';
 import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
 import { Text } from '~/components/ui/text';
+import { TextField } from '~/components/ui/text-field';
 import { boardQuery, clearSheetFilters, sheetFilterCount, toggled } from '~/features/jobs/filters';
 import { useBoardTotal } from '~/features/jobs/queries';
+import { useListOwner } from '~/features/jobs/recent';
+import { recentSearches } from '~/features/jobs/recent-searches';
+import { useSearchSuggestions, withSuggestion, type SearchSuggestion, type Span } from '~/features/jobs/suggestions';
 import { useDistricts, useGovernorates } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
+import { haptic } from '~/lib/haptics';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
-import { gutter, hitTarget, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { useGatedModal } from '~/lib/sheet-gate';
+import { useSheetFence } from '~/components/ui/sheet-fence';
+import { appDirection } from '~/lib/direction';
+
+/** How long the typing pauses before the words are counted on the button. */
+const WORDS_PAUSE_MS = 400;
 
 /**
  * Every filter the website's /jobs panel has (src/components/jobs/job-filters.tsx),
- * in the same order and the same words: where the leads come from, a basic
- * salary and how much, the commission, when it was posted, the track, the kind
- * of company, experience, the contract, and the districts grouped by
- * governorate.
+ * in the same order and the same words: the words to search for, where the
+ * leads come from, a basic salary and how much, the commission, when it was
+ * posted, the track, the kind of company, experience, the contract, and the
+ * districts grouped by governorate.
  *
  * On the website each tick reloads the board beside the panel. Here the board
  * is under the sheet, so the choices are kept as a draft and the button says
@@ -44,39 +57,93 @@ export function FilterSheet({
   filters,
   onClose,
   onApply,
+  focusSearch = false,
 }: {
   visible: boolean;
   filters: JobFilters;
   onClose: () => void;
   onApply: (next: JobFilters) => void;
+  /** Opened to search (the Jobs tab pressed again at the top): the keyboard comes up in the words. */
+  focusSearch?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
+  const { colors } = useTheme();
   const [draft, setDraft] = useState(filters);
+  // The words as they are typed; counted once the typing stops, not per letter.
+  const [words, setWords] = useState(filters.q);
+  // The figure on the button counts the words too, once the typing pauses: it
+  // said what the board would show without them, and the board then said fewer.
+  const [counted, setCounted] = useState(words);
   const [open, setOpen] = useState(visible);
 
   // Each time it opens, it starts from what the board is showing.
   if (visible !== open) {
     setOpen(visible);
-    if (visible) setDraft(filters);
+    if (visible) {
+      setDraft(filters);
+      setWords(filters.q);
+      setCounted(filters.q);
+    }
   }
 
-  const query = boardQuery(draft);
+  useEffect(() => {
+    const pause = setTimeout(() => setCounted(words), WORDS_PAUSE_MS);
+    return () => clearTimeout(pause);
+  }, [words]);
+  const query = boardQuery({ ...draft, q: searchWords(counted) });
   const total = useBoardTotal(query, visible);
-  const count = sheetFilterCount(draft);
+  const typed = { ...draft, q: searchWords(words) };
+  const count = sheetFilterCount(typed);
 
   return (
     <FilterSheetFrame
       visible={visible}
       onClose={onClose}
-      onClear={count > 0 ? () => setDraft(clearSheetFilters(draft)) : null}
+      onClear={
+        count > 0
+          ? () => {
+              setWords('');
+              setDraft(clearSheetFilters(typed));
+            }
+          : null
+      }
       applyLabel={
         total.data === undefined
           ? t('filters.showResults')
           : t.markup('jobs.showResultsCount', { count: formatNumber(total.data, locale), ...markupTags })
       }
-      onApply={() => onApply(draft)}
+      // What is typed counts even if the keyboard is still up.
+      onApply={() => onApply(typed)}
     >
+      <View style={{ gap: space[2] }}>
+        <Text variant="small" weight="semibold" accessibilityRole="header">
+          {t('filters.search')}
+        </Text>
+        <TextField
+          value={words}
+          autoFocus={focusSearch}
+          onChangeText={setWords}
+          onEndEditing={() => setDraft(typed)}
+          // The keyboard's Search key searches: the board, for what is chosen and typed.
+          onSubmitEditing={() => onApply(typed)}
+          placeholder={t('filters.searchPlaceholder')}
+          accessibilityLabel={t('filters.search')}
+          returnKeyType="search"
+          enterKeyHint="search"
+          autoCapitalize="none"
+          autoCorrect={false}
+          leading={<Search size={18} color={colors.mutedForeground} />}
+        />
+        {/* What was searched lately, a tap from searching it again — while nothing is typed; once
+            something is, the areas, tracks and listings it names, a tap from the board narrowed to one. */}
+        {words.trim() ? (
+          <SearchSuggestions typed={words} onPick={(suggestion) => onApply(withSuggestion(typed, suggestion))} />
+        ) : (
+          <RecentSearches onPick={(picked) => onApply({ ...typed, q: picked })} />
+        )}
+      </View>
+
       <FilterGroup title={t('filters.leadsSource')}>
         {LEADS_SOURCES.map((value) => (
           <Chip
@@ -187,6 +254,183 @@ export function FilterSheet({
   );
 }
 
+/** The last few searches on this phone, newest first, each a tap from the board searched for it again. */
+function RecentSearches({ onPick }: { onPick: (words: string) => void }) {
+  const t = useTranslations('app.jobs');
+  const { colors } = useTheme();
+  const owner = useListOwner();
+  const kept = recentSearches.useItems(owner);
+  if (!kept.length) return null;
+  return (
+    <View style={{ gap: space[2], paddingTop: space[1] }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
+          <History size={14} color={colors.mutedForeground} />
+          <Text variant="caption" tone="mutedForeground" accessibilityRole="header">
+            {t('recentSearches')}
+          </Text>
+        </View>
+        <Pressable accessibilityRole="button" onPress={() => recentSearches.clear(owner)} hitSlop={10}>
+          <Text variant="caption" weight="semibold" tone="primary">
+            {t('recentSearchesClear')}
+          </Text>
+        </Pressable>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+        {kept.map((words) => (
+          <Chip key={words} label={words} accessibilityLabel={t('recentSearch', { words })} onPress={() => onPick(words)} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const SUGGESTION_ICONS: Record<SearchSuggestion['kind'], ComponentType<LucideProps>> = {
+  district: MapPin,
+  track: Layers,
+  title: BriefcaseBusiness,
+  company: Building2,
+};
+
+/**
+ * What the words typed so far name (features/jobs/suggestions.ts), under the
+ * field: each a row with its kind's icon, the name with the letters typed
+ * marked in it, and what kind of thing it is. Tapped, the board is shown for
+ * it at once, as a recent search is. A tap while the keyboard is up is taken
+ * (the sheet's scroll view keeps taps that are handled).
+ */
+function SearchSuggestions({ typed, onPick }: { typed: string; onPick: (suggestion: SearchSuggestion) => void }) {
+  const large = useLargeText();
+  const t = useTranslations('app.jobs');
+  const { colors } = useTheme();
+  const suggestions = useSearchSuggestions(typed);
+  if (!suggestions.length) return null;
+
+  const kindLabel: Record<SearchSuggestion['kind'], string> = {
+    district: t('suggestKindArea'),
+    track: t('suggestKindTrack'),
+    title: t('suggestKindTitle'),
+    company: t('suggestKindCompany'),
+  };
+  const spoken = (suggestion: SearchSuggestion) =>
+    suggestion.kind === 'district'
+      ? t('suggestArea', { name: suggestion.label })
+      : suggestion.kind === 'track'
+        ? t('suggestTrack', { name: suggestion.label })
+        : t('suggestWords', { words: suggestion.words });
+
+  return (
+    <Appear from="none" duration={200}>
+      <View
+        accessibilityLabel={t('suggestions')}
+        style={{
+          marginTop: space[1],
+          ...corner('lg'),
+          borderWidth: StyleSheet.hairlineWidth * 2,
+          borderColor: colors.border,
+          backgroundColor: colors.card,
+          overflow: 'hidden',
+        }}
+      >
+        {suggestions.map((suggestion, index) => {
+          const Icon = SUGGESTION_ICONS[suggestion.kind];
+          const elsewhere = suggestion.matched !== suggestion.label;
+          return (
+            <Pressable
+              key={suggestion.key}
+              accessibilityRole="button"
+              accessibilityLabel={spoken(suggestion)}
+              onPress={() => {
+                haptic.selection();
+                onPick(suggestion);
+              }}
+              style={({ pressed }) => ({
+                minHeight: hitTarget + 4,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space[3],
+                paddingHorizontal: space[3],
+                paddingVertical: space[2],
+                borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
+                borderTopColor: colors.border,
+                backgroundColor: pressed ? colors.muted : 'transparent',
+              })}
+            >
+              <View style={{ width: 30, height: 30, ...corner('md'), alignItems: 'center', justifyContent: 'center', backgroundColor: colors.secondary }}>
+                <Icon size={16} color={colors.secondaryForeground} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                {elsewhere ? (
+                  <Text weight="medium" numberOfLines={large ? undefined : 2}>
+                    {suggestion.label}
+                  </Text>
+                ) : (
+                  <Marked text={suggestion.label} span={suggestion.span} weight="medium" ink={colors.foreground} mark={colors.primary} ground={colors.secondary} />
+                )}
+                {/* Found by another of its names — "New Cairo", «التجمع»: that name, marked, beneath. */}
+                {elsewhere ? (
+                  <Marked
+                    text={suggestion.matched}
+                    span={suggestion.span}
+                    variant="caption"
+                    ink={colors.mutedForeground}
+                    mark={colors.primary}
+                    ground={colors.secondary}
+                  />
+                ) : null}
+              </View>
+              <Text variant="caption" tone="mutedForeground">
+                {kindLabel[suggestion.kind]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </Appear>
+  );
+}
+
+/**
+ * A name with the letters typed marked in it: in the brand colour on a soft
+ * ground, in the same font as the rest. The marked letters are a run nested
+ * inside the one Text, so Arabic letters either side of its edge stay joined;
+ * a weight of their own would be another font, whose join across the edge
+ * iOS does not promise.
+ */
+function Marked({
+  text,
+  span,
+  variant = 'body',
+  weight = 'regular',
+  ink,
+  mark,
+  ground,
+}: {
+  text: string;
+  span: Span;
+  variant?: 'body' | 'caption';
+  weight?: 'regular' | 'medium';
+  ink: ColorValue;
+  mark: ColorValue;
+  ground: ColorValue;
+}) {
+  const large = useLargeText();
+  return (
+    <Text variant={variant} weight={weight} numberOfLines={large ? undefined : 2} style={{ color: ink }}>
+      {text.slice(0, span.start)}
+      <Text variant={variant} weight={weight} style={{ color: mark, backgroundColor: ground }}>
+        {text.slice(span.start, span.end)}
+      </Text>
+      {text.slice(span.end)}
+    </Text>
+  );
+}
+
+/** The words as the board searches them: trimmed, and no longer than the website lets them be. */
+function searchWords(typed: string): string {
+  return typed.trim().slice(0, 120);
+}
+
 /**
  * The sheet itself, shared by the board and the consultant directory: a close
  * button, the title, "clear" when there is something to clear; the groups;
@@ -209,12 +453,16 @@ export function FilterSheetFrame({
   children: ReactNode;
 }) {
   const t = useTranslations();
+  // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
+  const fence = useSheetFence();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  // Shown once no other sheet is still closing (the order's card, say): one asked for meanwhile was never shown.
+  const gate = useGatedModal(visible, onClose);
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
         <View
           style={{
             flexDirection: 'row',
@@ -246,7 +494,14 @@ export function FilterSheetFrame({
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: gutter, gap: space[6] }}>{children}</ScrollView>
+        {/* A choice tapped while the keyboard is up is taken at the first tap. */}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ padding: gutter, gap: space[6] }}
+        >
+          {children}
+        </ScrollView>
 
         <View
           style={{
@@ -257,7 +512,14 @@ export function FilterSheetFrame({
             borderTopColor: colors.border,
           }}
         >
-          <Button label={applyLabel} size="lg" onPress={onApply} />
+          <Button
+            label={applyLabel}
+            size="lg"
+            onPress={() => {
+              haptic.tap();
+              onApply();
+            }}
+          />
         </View>
       </View>
     </Modal>

@@ -727,7 +727,7 @@ report.section('an avatar is fetched from this site\'s storage, nowhere else');
   report.is(
     trustedAvatarUrl('https://lh3.googleusercontent.com/a/ACg8ocK=s96-c', origin),
     null,
-    'a Google account picture is not: sign-up no longer copies one (migrations 339, 350)',
+    'a Google account picture is not: sign-up no longer copies one (migrations 339, 352)',
   );
   report.is(
     trustedAvatarUrl(`https://attacker.example/storage/v1/object/public/avatars/${uid}/photo.webp`, origin),
