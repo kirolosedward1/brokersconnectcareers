@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import {
   asConfirmType,
   confirmDestination,
+  isSameOriginPost,
   isTokenHash,
   readRedirectTo,
   type ConfirmType,
@@ -98,17 +99,9 @@ export async function POST(request: NextRequest) {
   return NextResponse.redirect(await landingAfterSignIn(supabase, origin, next), 303);
 }
 
-/**
- * The browser says where a form post came from: `Origin` on every POST from a
- * current browser, `Sec-Fetch-Site` beside it. Either one naming another site
- * is refused; a request with neither (an old browser) is let through, because
- * it can only have come from a link somebody followed.
- */
+/** isSameOriginPost (confirm-link.ts), on this request's headers and this site's origin. */
 function sameOrigin(request: NextRequest): boolean {
-  const origin = request.headers.get('origin');
-  if (origin) return origin === request.nextUrl.origin;
-  const site = request.headers.get('sec-fetch-site');
-  return !site || site === 'same-origin';
+  return isSameOriginPost(request.headers.get('origin'), request.headers.get('sec-fetch-site'), request.nextUrl.origin);
 }
 
 function escape(text: string): string {
@@ -148,8 +141,10 @@ function page({
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<!-- The token is in the address: nothing this page loads may be told it. -->
-<meta name="referrer" content="no-referrer">
+<!-- The token is in the address: no other site may be told it. "same-origin",
+     not "no-referrer": under no-referrer the browser posts this page's own form
+     with Origin: null, and the check that refuses other sites' posts refused it. -->
+<meta name="referrer" content="same-origin">
 <title>${escape(title)}</title>
 <style>
   :root { color-scheme: light dark; --bg: #FDFDFF; --card: #FFFFFF; --fg: #111826; --muted: #626978; --border: #DADEE6; --primary: #2A4FF6; --primary-fg: #FAFCFF; }

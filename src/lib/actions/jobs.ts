@@ -45,6 +45,13 @@ export async function toggleSavedJob(input: string): Promise<ActionResult<{ save
   const { error } = await supabase
     .from('saved_jobs')
     .insert({ job_id: jobId, candidate_id: user.id });
+  // Two taps at once both read "not saved" and both insert; the second meets
+  // the first's row. It is saved, which is what both asked for — answered as a
+  // failure, the phone rolled its bookmark back over a listing that was saved.
+  if (error?.code === '23505') {
+    revalidatePath('/dashboard/saved');
+    return { ok: true, data: { saved: true } };
+  }
   // A listing that cannot be saved — a draft somebody guessed the id of, a
   // policy that said no — is answered the same way whatever the reason.
   if (error) return failed('save', 'could not save a listing', error, { job: jobId });

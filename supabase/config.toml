@@ -112,6 +112,17 @@ token_refresh = 150
 
 # Phone OTP is explicitly out of scope for v1 — it needs a paid SMS provider.
 # WhatsApp number is captured as a required profile field at onboarding instead.
+# Two-step verification, as production has it (docs/security/SUPABASE_SETTINGS.md).
+# The CLI leaves TOTP off by default, and the admin console requires a second
+# factor under a production build (requireAdmin), so without this no admin on a
+# local stack — or in .github/workflows/e2e.yml — could reach the console.
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 [auth.sms]
 enable_signup = false
 enable_confirmations = false
