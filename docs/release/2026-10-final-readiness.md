@@ -11,7 +11,7 @@ order in [the path to GO](#the-path-to-go).
 
 _Audited 2026-10-15 and re-verified 2026-10-22 against `main` @ `bc2408d`,
 which is what production serves (Vercel `dpl_7SQqFkdC…`, READY). This branch
-adds two commits on top: the dependency fix and the test fix in §3. Evidence
+(PR #43) adds the fixes in §3 on top. Evidence
 is either reproduced here or read from production through the Vercel and
 GitHub connectors. Anything that could not be checked is marked
 **unverified**, not assumed. The Supabase connector failed to connect, and the
@@ -46,6 +46,9 @@ sandbox cannot reach `www.brokersconnect.net` directly._
 | Commit | What | Evidence |
 |---|---|---|
 | `7abac4c` | **Dependency advisories.** `next` 15.5.24 → **15.5.27** (two cache-poisoning advisories, GHSA-4jqv-mc3x-m676 and GHSA-mcj8-r9mp-w47p). `source-map-js` held at ≥ **1.2.2** by an override beside postcss's and sharp's (an event-loop DoS reported high, GHSA-68fv-2mgg-jv7q). Both releases are over two weeks old. The licence notices are regenerated. | `pnpm audit --prod`: 3 → **0**. The build passes on 15.5.27. E2E run 54 green. |
+| `2ff48ee` | **Three unused native packages removed** (M3, formerly open). `react-native-maps`, `expo-calendar` and `react-native-qrcode-svg` were imported nowhere, and `expo-calendar`'s plugin wrote calendar permission strings into the app for a feature that does not exist. 17 lockfile entries go; nothing is added or changes version. | App `pnpm check`: 68 suites, 1,103 tests, 0 failed. |
+| `641cdef` | **`DR backup` fails when unconfigured** (M2, formerly open). It names the missing secrets instead of passing quietly. `DR_BACKUP_DISABLED=true` turns it off on purpose. **From the next nightly run, `main` shows a red `DR backup` until C4 is done.** | The gate was run in all three states. |
+| `40dfc17` | **README "Known gaps"** (L2, formerly open): the legal pages, the English switch, dark mode and Paymob, as the code has them now. | Each claim checked against its code. |
 | `d7cabaa` | **`main`'s database suites run again.** Migration 350 rightly revoked anon's `EXECUTE` on `my_company_id()`. Built from the migrations, no policy or view calls it, and its nine callers are all `SECURITY DEFINER`. But `schema.test.mjs` still pinned it as anon-callable. That suite runs first in the `&&`-chained `test:db`, so since 10-19 **every database suite after it had not run on `main`**. Running them exposed a second stale test: migration 351 (withdrawing an application removes the candidate's notices about it) claimed to be tested in `notifications.test.mjs`, but that suite still expected the old behaviour. Both tests now assert what production does, and 351 gains checks of its own. | Reproduced: `schema.test.mjs` 29/30 without the fix, 30/30 with it. `pnpm test:db`: **23 suites, 2,051 checks, 0 failed.** |
 
 ## 4. Medium and low
@@ -53,13 +56,10 @@ sandbox cannot reach `www.brokersconnect.net` directly._
 | # | Sev. | Issue | State |
 |---|---|---|---|
 | M1 | Medium | The app's `pnpm audit --prod` reports 7 (1 critical `shell-quote`, 3 high). All of them sit in build and dev tooling (Expo CLI, Metro, React DevTools, Jest), not in the shipped bundle. | Open. Take the next Expo SDK patch. |
-| M2 | Medium | `DR backup` exits green when unconfigured, which hid C4. | Open. Once configured, make an unconfigured run warn or fail. |
-| M3 | Medium | `react-native-maps`, `expo-calendar` and `react-native-qrcode-svg` are installed but imported nowhere (`HANDOFF.md` item 7). Their native code ships, and any permission strings they add are on the record for App Review. | Remove them, or use them. |
 | M4 | Medium | Uploaded CVs and documents get no malware scanning. The type is checked and images are re-encoded. | Accepted risk (`SECURITY_REPORT.md` §12). |
 | M5 | Medium | Google Play is not started: no Firebase or FCM, no `ANDROID_CERT_SHA256`, no Play submit profile. | Open (`docs/app-store.md`, "Android"). |
 | M6 | Medium | Saved-job notes and reminders live only on the phone, so they are lost on reinstall or a new phone (`HANDOFF.md` item 5). | Product decision. Say so in the app. |
-| L1 | Low | Two routes are over the performance budget: `/dashboard/profile` is 230.6 KB against 230, and `/employer/applicants` is 161.1 KB against 160. | Open. |
-| L2 | Low | README "Known gaps" is stale. It says `/privacy` and `/terms` are empty, and they are written. | Open. |
+| L1 | Low | Two routes are over the performance budget: `/dashboard/profile` is 230.6 KB against 230, and `/employer/applicants` is 161.1 KB against 160. The applicants page has grown by about 20 KB since the budget was set, at 137–141 KB. CI does not run `perf:budget`. | Open. |
 | L3 | Info | The runtime error "Failed to find Server Action" (24 in 30 days) comes from scanners posting to `/index.php`. | No action. |
 
 ## 5. Completed improvements (the previous tasks)
@@ -163,7 +163,8 @@ but there is nothing to restore from.
    `pnpm remove-demo --execute --confirm hiwdhicwsohbipxzazmb`. Review the
    Auth logs for demo sign-ins. (C2, C3, H4)
 2. **Take a backup now:** set the `DR_*` secrets, run `DR backup` by hand, and
-   check that it landed. Choose a plan with PITR before launch. (C4)
+   check that it landed. Once PR #43 is merged, the workflow stays red until
+   this is done. Choose a plan with PITR before launch. (C4)
 3. **Set the server keys** on Vercel (Production): `SUPABASE_SERVICE_ROLE_KEY`,
    then `SECURITY_SALT`, `RESEND_WEBHOOK_SECRET`, and the Turnstile pair.
    Then redeploy and `pnpm db:apply`. Confirm `/api/health` says **ok** and
