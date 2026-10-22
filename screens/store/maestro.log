@@ -1,0 +1,48 @@
+Running on store-iphone - iOS 26.5 - 5F0B2543-07CA-40AF-87DB-18B5F80A115A
+ > Flow Store screens
+Run launch.yaml...
+  Launch app "net.brokersconnect.app" with clear state... COMPLETED
+  Assert that "تخطي" is visible... COMPLETED
+  Wait for animation to end...WARNING: GL pipe is running in software mode (Renderer ID=0x1020400)
+ COMPLETED
+  Take screenshot 0-welcome... COMPLETED
+  Retry 2 times...
+    Tap on "تخطي"... COMPLETED
+    Assert that "تخطي" is not visible... COMPLETED
+  Retry 2 times... COMPLETED
+  Assert that "منصة متخصصة لوظائف العقارات في مصر" is visible... COMPLETED
+  Wait for animation to end... COMPLETED
+Run launch.yaml... COMPLETED
+Run screens.yaml...
+  Run checks.yaml...
+    Assert that "في حاجة غلط" is not visible... COMPLETED
+    Assert that "مفيش اتصال بالإنترنت" is not visible... COMPLETED
+    Assert that "الخدمة مش متاحة دلوقتي" is not visible... COMPLETED
+    Assert that "الصفحة مش موجودة" is not visible... COMPLETED
+    Assert that "في نسخة أحدث من التطبيق" is not visible... COMPLETED
+  Run checks.yaml... COMPLETED
+  Take screenshot 1-home... COMPLETED
+  Open brokersconnect:///jobs... COMPLETED
+  Run confirm-link.yaml...
+    Run flow when "فتح|Open" is visible...
+      Tap on "فتح|Open"... COMPLETED
+    Run flow when "فتح|Open" is visible... COMPLETED
+  Run confirm-link.yaml... COMPLETED
+  Assert that "الفلاتر.*" is visible... COMPLETED
+  Run flow when ${JOB_SLUG != 'none'} is true...
+    Assert that ".*${JOB_TITLE}.*" is visible... FAILED
+  Run flow when true is true... FAILED
+Run screens.yaml... FAILED
+
+Assertion is false: ".*مسؤول إعادة بيع وإيجارات.*" is visible
+
+Assertion '".*مسؤول إعادة بيع وإيجارات.*" is visible' failed. Check the UI hierarchy in debug artifacts to verify the element state and properties.
+
+Possible causes:
+- Element selector may be incorrect - check if there are similar elements with slightly different names/properties.
+- Element may be temporarily unavailable due to loading state
+- This could be a real regression that needs to be addressed
+
+==== Debug output (logs & screenshots) ====
+
+/Users/runner/work/_temp/screens/store/debug/.maestro/tests/2026-10-22_110430

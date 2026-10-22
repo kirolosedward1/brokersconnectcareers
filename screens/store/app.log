@@ -1,0 +1,848 @@
+2026-10-22 11:08:02.399 Df BrokersConnect[48613:20a1a] [com.apple.xpc:connection] [0x104f42a50] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-10-22 11:08:02.403 Df BrokersConnect[48613:20a1a] [com.apple.UserNotifications:Connections] [net.brokersconnect.app] Creating a user notification center
+2026-10-22 11:08:02.432 A  BrokersConnect[48613:20a5c] (CoreFoundation) Loading Preferences From User Session CFPrefsD
+2026-10-22 11:08:02.432 Df BrokersConnect[48613:20a1a] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-10-22 11:08:02.435 Df BrokersConnect[48613:20a5d] [com.apple.BoardServices:XPCErrors] [C:1] Alloc com.apple.frontboard.systemappservices
+2026-10-22 11:08:02.436 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x105a08000] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-10-22 11:08:02.437 Df BrokersConnect[48613:20a49] [com.apple.UIKit:BackgroundTask] Creating new assertion because there is no existing background assertion.
+2026-10-22 11:08:02.450 Df BrokersConnect[48613:20a49] [com.apple.UIKit:BackgroundTask] Creating new background assertion
+2026-10-22 11:08:02.450 Df BrokersConnect[48613:20a49] [com.apple.UIKit:BackgroundTask] Created new background assertion <BKSProcessAssertion: 0x104f4aec0>
+2026-10-22 11:08:02.450 Df BrokersConnect[48613:20a49] [com.apple.runningboard:connection] Initializing connection
+2026-10-22 11:08:02.450 Df BrokersConnect[48613:20a49] [com.apple.runningboard:process] Removing all cached process handles
+2026-10-22 11:08:02.451 Df BrokersConnect[48613:20a49] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-10-22 11:08:02.451 Df BrokersConnect[48613:20a49] [com.apple.xpc:connection] [0x105a08140] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-10-22 11:08:02.453 Df BrokersConnect[48613:20a5e] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-10-22 11:08:02.455 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason added: 10; deactivation reasons: 0 -> 1024; animating application lifecycle event: 0
+2026-10-22 11:08:02.463 Df BrokersConnect[48613:20a1a] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.open
+2026-10-22 11:08:02.465 Df BrokersConnect[48613:20a1a] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.workspace-service
+2026-10-22 11:08:02.466 Df BrokersConnect[48613:20a1a] [com.apple.FrontBoard:Common] FBSWorkspace registering source: com.apple.frontboard.systemappservices
+2026-10-22 11:08:02.476 Df BrokersConnect[48613:20a5e] [com.apple.runningboard:connection] Handshake succeeded
+2026-10-22 11:08:02.476 Df BrokersConnect[48613:20a5e] [com.apple.runningboard:connection] Identity resolved as app<net.brokersconnect.app((null))>
+2026-10-22 11:08:02.482 Df BrokersConnect[48613:20a49] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x104f4aec0>
+2026-10-22 11:08:02.483 Df BrokersConnect[48613:20a49] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x105880f80>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1846 (elapsed = 0).
+2026-10-22 11:08:02.483 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UIApplicationSceneKeyboardSettings on FBSSceneSettings
+2026-10-22 11:08:02.485 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneOcclusionSettings> on FBSSceneSettings
+2026-10-22 11:08:02.485 Df BrokersConnect[48613:20a1a] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <BSServiceConnectionEndpoint: 0x1059b4b40; target: com.apple.frontboard.systemappservices; service: com.apple.frontboard.workspace-service>
+2026-10-22 11:08:02.485 Df BrokersConnect[48613:20a1a] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x105958960 com.apple.frontboard.systemappservices> attempting immediate handshake from activate
+2026-10-22 11:08:02.485 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneInterfaceProtectionSettings> on FBSSceneSettings
+2026-10-22 11:08:02.485 Df BrokersConnect[48613:20a1a] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x105958960 com.apple.frontboard.systemappservices> sent handshake
+2026-10-22 11:08:02.486 A  BrokersConnect[48613:20a60] (RunningBoardServices) didChangeInheritances
+2026-10-22 11:08:02.489 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferencesHostSettingsExtension on FBSSceneSettings
+2026-10-22 11:08:02.490 Df BrokersConnect[48613:20a1a] [com.apple.runningboard:general] Added observer for process assertions expiration warning: <_RBSExpirationWarningClient: 0x1059b5040>
+2026-10-22 11:08:02.496 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneSafeAreaSettingsExtension on FBSSceneSettings
+2026-10-22 11:08:02.498 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferenceClientSettingsExtension on FBSSceneClientSettings
+2026-10-22 11:08:02.499 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UIHomeAffordanceHostSceneSettings> on FBSSceneSettings
+2026-10-22 11:08:02.506 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISystemShellSceneHostingEnvironmentSettings on FBSSceneSettings
+2026-10-22 11:08:02.511 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneRenderingEnvironmentSettings on FBSSceneSettings
+2026-10-22 11:08:02.512 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneRenderingEnvironmentClientSettings> on FBSSceneClientSettings
+2026-10-22 11:08:02.522 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneTransitioningHostSettings> on FBSSceneSettings
+2026-10-22 11:08:02.523 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneFocusSystemSettings> on FBSSceneSettings
+2026-10-22 11:08:02.523 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationSettingsExtension on FBSSceneSettings
+2026-10-22 11:08:02.523 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationClientSettingsExtension on FBSSceneClientSettings
+2026-10-22 11:08:02.523 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneWindowingControlClientSettings on FBSSceneClientSettings
+2026-10-22 11:08:02.523 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingContentSizePreferenceClientSettings> on FBSSceneClientSettings
+2026-10-22 11:08:02.524 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneHostingTraitCollectionPropagationSettings on FBSSceneSettings
+2026-10-22 11:08:02.524 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationSettings> on FBSSceneSettings
+2026-10-22 11:08:02.524 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationClientSettings> on FBSSceneClientSettings
+2026-10-22 11:08:02.525 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x105a083c0> for initial
+2026-10-22 11:08:02.526 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingEventDeferringSettings> on FBSSceneSettings
+2026-10-22 11:08:02.526 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x105a083c0> for CADisplay KVO
+2026-10-22 11:08:02.526 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneSettings
+2026-10-22 11:08:02.527 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneClientSettings
+2026-10-22 11:08:02.527 Df BrokersConnect[48613:20a1a] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 1, category name = (null)
+2026-10-22 11:08:02.527 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingViewControllerPreferencePropagationClientSettings> on FBSSceneClientSettings
+2026-10-22 11:08:02.527 Df BrokersConnect[48613:20a49] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneZoomTransitionSettings> on FBSSceneSettings
+2026-10-22 11:08:02.528 Df BrokersConnect[48613:20a1a] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 0, category name = UICTContentSizeCategoryL
+2026-10-22 11:08:02.529 Df BrokersConnect[48613:20a5e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-10-22 11:08:02.530 Df BrokersConnect[48613:20a5e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-10-22 11:08:02.553 Df BrokersConnect[48613:20a5e] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneSettings setting counterpart class: UIApplicationSceneSettings
+2026-10-22 11:08:02.554 Df BrokersConnect[48613:20a5e] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneClientSettings setting counterpart class: UIApplicationSceneClientSettings
+2026-10-22 11:08:02.554 Df BrokersConnect[48613:20a5e] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-10-22 11:08:02.656 A  BrokersConnect[48613:20a5e] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-10-22 11:08:02.673 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:UpdateScheduler] Selected display: name=LCD (PurpleMain), id=1
+2026-10-22 11:08:02.675 Df BrokersConnect[48613:20a1a] [com.apple.app_launch_measurement:ApplicationLaunch] alm_acquire_pageins_recording_assertion: acquired pageins recording assertion!
+2026-10-22 11:08:02.677 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:BackgroundTask] Will add backgroundTask with taskName: Persistent SceneSession Map Update, expirationHandler: <__NSGlobalBlock__: 0x1e78c84e8>
+2026-10-22 11:08:02.677 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:BackgroundTask] Reusing background assertion <BKSProcessAssertion: 0x104f4aec0>
+2026-10-22 11:08:02.677 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x104f4aec0>
+2026-10-22 11:08:02.678 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x10843d340>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 1846 (elapsed = 0).
+2026-10-22 11:08:02.678 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason added: 5; deactivation reasons: 1024 -> 1056; animating application lifecycle event: 1
+2026-10-22 11:08:02.679 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:02.679 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Should send trait collection or coordinate space update, interface style 1 -> 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:02.681 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:02.746 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:HomeAffordanceObservation] Initializing: <_UIHomeAffordanceSceneNotifier: 0x108462ed0>; with scene: <UIWindowScene: 0x108468400>
+2026-10-22 11:08:02.746 Df BrokersConnect[48613:20a1a] [com.apple.BacklightServices:scenes] 0x105a7a280 setDelegate:<0x105a7a040 _UIBacklightEnvironment> hasDelegate:YES for environment:sceneID:net.brokersconnect.app-default
+2026-10-22 11:08:02.747 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:02.747 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDeferring] [0x1084c0a80] Initialized with scene: <UIWindowScene: 0x108468400>; behavior: <_UIEventDeferringBehavior_iOS: 0x10845d460>; availableForProcess: 1, systemShellManagesKeyboardFocus: 1
+2026-10-22 11:08:02.747 Df BrokersConnect[48613:20a1a] [com.apple.BoardServices:XPCErrors] [C:2] Alloc com.apple.backboard.hid-services.xpc
+2026-10-22 11:08:02.747 Df BrokersConnect[48613:20a1a] [com.apple.xpc:connection] [0x105a08c80] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-10-22 11:08:02.754 Df BrokersConnect[48613:20a1a] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x105a71da0; process scope; status: target> was:none
+2026-10-22 11:08:02.754 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomPhone to LastOneWins
+2026-10-22 11:08:02.754 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Scene target of keyboard event deferring environment did change: 1; scene: UIWindowScene: 0x108468400; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Anet.brokersconnect.app-default
+2026-10-22 11:08:02.755 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDeferring] [0x1084c0a80] Scene target of event deferring environments did update: scene: 0x108468400; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-10-22 11:08:02.755 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x108468400; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Anet.brokersconnect.app-default
+2026-10-22 11:08:02.755 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Stack[KeyWindow] 0x10587e100: Taking no further action for migration from LastOneWins -> SystemShellManaged as there are no scenes
+2026-10-22 11:08:02.755 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomPhone to SystemShellManaged
+2026-10-22 11:08:02.755 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Key window needs update: 0; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x108468400; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x0; reason: UIWindowScene: 0x108468400: Window scene became target of keyboard environment
+2026-10-22 11:08:02.756 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:02.757 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:02.758 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:02.758 Df BrokersConnect[48613:20a63] [com.apple.BackBoard:EventDelivery] BKSHIDEventObserver - connection activation
+2026-10-22 11:08:02.759 F  BrokersConnect[48613:20a1a] [com.apple.runtime-issues:UIKit App Config] `UIScene` lifecycle will soon be required. Failure to adopt will result in an assert in the future.
+2026-10-22 11:08:02.759 A  BrokersConnect[48613:20a1a] (libsystem_trace.dylib) Activity for state dumps
+2026-10-22 11:08:02.759 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:02.760 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:net.brokersconnect.app-default  persistentID: B203C5D5-A023-4F13-9067-105BB0888D6A
+2026-10-22 11:08:02.760 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Ignoring already applied deactivation reason: 5; deactivation reasons: 1056
+2026-10-22 11:08:02.761 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason added: 11; deactivation reasons: 1056 -> 3104; animating application lifecycle event: 1
+2026-10-22 11:08:02.761 Df BrokersConnect[48613:20a1a] [com.apple.KeyboardArbiter:Client] startConnection
+2026-10-22 11:08:02.762 Df BrokersConnect[48613:20a1a] [com.apple.xpc:connection] [0x105a09400] activating connection: mach=true listener=false peer=false name=com.apple.UIKit.KeyboardManagement.hosted
+2026-10-22 11:08:02.763 Df BrokersConnect[48613:20a1a] (UIKitCore) You've implemented -[<UIApplicationDelegate> application:performFetchWithCompletionHandler:], but you still need to add "fetch" to the list of your supported UIBackgroundModes in your Info.plist.
+2026-10-22 11:08:02.763 Df BrokersConnect[48613:20a1a] (UIKitCore) You've implemented -[<UIApplicationDelegate> application:didReceiveRemoteNotification:fetchCompletionHandler:], but you still need to add "remote-notification" to the list of your supported UIBackgroundModes in your Info.plist.
+2026-10-22 11:08:02.765 Df BrokersConnect[48613:20a1a] (React) _setUpFeatureFlags called with release level 2
+2026-10-22 11:08:02.859 Df BrokersConnect[48613:20a5d] [com.apple.network:] networkd_settings_read_from_file_locked initialized networkd settings by reading plist directly
+2026-10-22 11:08:02.859 Df BrokersConnect[48613:20a5d] [com.apple.network:] networkd_settings_read_from_file_locked initialized networkd settings by reading plist directly
+2026-10-22 11:08:02.866 Df BrokersConnect[48613:20a62] [com.apple.CFNetwork:Default] Task <22C0250E-1D9C-45C8-A736-D3FFB82E9ACF>.<1> resuming, timeouts(60.0, 604800.0) qos(0x19) voucher(<OS_voucher: 0x105a386e0>) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:02.867 A  BrokersConnect[48613:20a62] (CoreFoundation) Loading Preferences From User Session CFPrefsD
+2026-10-22 11:08:02.871 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Orientation] <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A) Scene updated orientation preferences: none -> ( Pu )
+2026-10-22 11:08:02.882 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Key window API is scene-level: YES
+2026-10-22 11:08:02.882 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] UIWindowScene: 0x108468400: Window became key in scene: UIWindow: 0x105a40400; contextId: 0xA9705A3D: reason: UIWindowScene: 0x108468400: Window requested to become key in scene: 0x105a40400
+2026-10-22 11:08:02.882 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Key window needs update: 1; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x108468400; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x105a40400; reason: UIWindowScene: 0x108468400: Window requested to become key in scene: 0x105a40400
+2026-10-22 11:08:02.882 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Window did become application key: UIWindow: 0x105a40400; contextId: 0xA9705A3D; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Anet.brokersconnect.app-default
+2026-10-22 11:08:02.882 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDeferring] [0x1084c0a80] Begin local event deferring requested for token: 0x105a71020; environments: 1; reason: UIWindowScene: 0x108468400: Begin event deferring in keyboardFocus for window: 0x105a40400
+2026-10-22 11:08:02.883 Df BrokersConnect[48613:20a49] [com.apple.BackBoard:EventDelivery] BKSHIDEventDeliveryManager - connection activation
+2026-10-22 11:08:02.885 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason removed: 10; deactivation reasons: 3104 -> 2080; animating application lifecycle event: 1
+2026-10-22 11:08:02.886 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason added: 12; deactivation reasons: 2080 -> 6176; animating application lifecycle event: 1
+2026-10-22 11:08:02.886 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason removed: 11; deactivation reasons: 6176 -> 4128; animating application lifecycle event: 1
+2026-10-22 11:08:02.886 Df BrokersConnect[48613:20a1a] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneIntelligenceSupportSettings> on FBSSceneSettings
+2026-10-22 11:08:02.890 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:02.891 Df BrokersConnect[48613:20a5d] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-10-22 11:08:02.894 Df BrokersConnect[48613:20a62] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x105a71da0; token: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Anet.brokersconnect.app-default; status: ancestor> was:target
+2026-10-22 11:08:02.895 Df BrokersConnect[48613:20a1a] [com.apple.xpc:connection] [0x10856c500] activating connection: mach=true listener=false peer=false name=com.apple.IOSurface.Remote
+2026-10-22 11:08:02.902 Df BrokersConnect[48613:20a5d] [com.apple.xpc:session] [0x105a3b6b0] Session created.
+2026-10-22 11:08:02.903 Df BrokersConnect[48613:20a5d] [com.apple.xpc:session] [0x105a3b6b0] Session created from connection [0x10856c3c0]
+2026-10-22 11:08:02.903 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x10856c3c0] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-10-22 11:08:02.906 Df BrokersConnect[48613:20a5d] [com.apple.xpc:session] [0x105a3b6b0] Session activated
+2026-10-22 11:08:02.907 Df BrokersConnect[48613:20a1a] [com.apple.xpc:connection] [0x10856c780] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-10-22 11:08:02.912 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Initializing NSHTTPCookieStorage singleton
+2026-10-22 11:08:02.914 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Initializing CFHTTPCookieStorage singleton
+2026-10-22 11:08:02.915 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Creating default cookie storage with process/bundle identifier
+2026-10-22 11:08:02.915 A  BrokersConnect[48613:20a64] (libsystem_containermanager.dylib) container_system_group_path_for_identifier
+2026-10-22 11:08:02.915 Df BrokersConnect[48613:20a64] [com.apple.containermanager:xpc] Requesting container lookup; class = 13, identifier = com.apple.nsurlsessiond, group_identifier = systemgroup.com.apple.nsurlstoragedresources, create = 1, temp = 0, euid = 501, uid = 501
+2026-10-22 11:08:02.915 A  BrokersConnect[48613:20a64] (libsystem_containermanager.dylib) container_query_t
+2026-10-22 11:08:02.915 Df BrokersConnect[48613:20a64] [com.apple.containermanager:xpc] Query; euid = 501, uid = 501, class = 13, identifier = [com.apple.nsurlsessiond](1), flags = 900000003
+2026-10-22 11:08:02.918 Df BrokersConnect[48613:20a64] [com.apple.containermanager:unspecified] _container_query_get_result_at_index: success
+2026-10-22 11:08:02.919 A  BrokersConnect[48613:20a64] (libsystem_containermanager.dylib) container_copy_object
+2026-10-22 11:08:02.919 Df BrokersConnect[48613:20a64] [com.apple.containermanager:unspecified] container_system_group_path_for_identifier: success
+2026-10-22 11:08:02.920 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Initializing AlternativeServices Storage singleton
+2026-10-22 11:08:02.921 Df BrokersConnect[48613:20a64] [com.apple.FileURL:default] kExcludedFromBackupXattrName set on path: /Users/runner/Library/Developer/CoreSimulator/Devices/5F0B2543-07CA-40AF-87DB-18B5F80A115A/data/Containers/Data/Application/97A77A77-26CA-4D30-B1D2-705904AD559C/Library/HTTPStorages/net.brokersconnect.app
+2026-10-22 11:08:02.934 A  BrokersConnect[48613:20a60] (RunningBoardServices) didChangeInheritances
+2026-10-22 11:08:02.936 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Connection 0: creating secure tcp or quic connection
+2026-10-22 11:08:02.936 Df BrokersConnect[48613:20a1a] [com.apple.network:activity] Create activity from XPC object <nw_activity 50:1 [BDCEED5F-91DF-441E-8438-A6B46EA7F937] (reporting strategy default)>
+2026-10-22 11:08:02.936 Df BrokersConnect[48613:20a1a] [com.apple.network:activity] Create activity from XPC object <nw_activity 50:2 [9C31D51B-A5CE-4808-BABA-AF64840B1FC8] (reporting strategy default)>
+2026-10-22 11:08:02.936 Df BrokersConnect[48613:20a1a] [com.apple.network:activity] Set activity <nw_activity 50:1 [BDCEED5F-91DF-441E-8438-A6B46EA7F937] (reporting strategy default)> as the global parent
+2026-10-22 11:08:02.936 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 1
+2026-10-22 11:08:02.936 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:BackgroundTask] Ending task with identifier 1 and description: <_UIBackgroundTaskInfo: 0x105880f80>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1846 (elapsed = 0), _expireHandler: (null)
+2026-10-22 11:08:02.936 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x104f4aec0> (used by background task with identifier 1: <_UIBackgroundTaskInfo: 0x105880f80>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 1846 (elapsed = 0))
+2026-10-22 11:08:02.937 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventBus] Event Timing Profile for Touch: not found, path="/System/Library/EventTimingProfiles/Sim.Touch.plist"
+2026-10-22 11:08:02.937 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventBus] Event Timing Profile for Pencil: not found, path="/System/Library/EventTimingProfiles/Sim.Pencil.plist"
+2026-10-22 11:08:02.937 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:UpdateScheduler] Target list changed: <CADisplay:LCD PurpleMain>
+2026-10-22 11:08:02.938 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:net.brokersconnect.app-default  persistentID: B203C5D5-A023-4F13-9067-105BB0888D6A
+2026-10-22 11:08:02.938 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:02.940 A  BrokersConnect[48613:20a62] (RunningBoardServices) didChangeInheritances
+2026-10-22 11:08:02.980 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Connection 1: enabling TLS
+2026-10-22 11:08:02.980 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Connection 1: starting, TC(0x0)
+2026-10-22 11:08:02.981 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1 76BA1F47-4D08-42E7-9808-A39C4CB0BA9E Hostname#30e774e6:443 quic-connection, url: https://u.expo.dev/5598b160-d5fd-42e3-9cfd-14097b6677e9, definite, attribution: developer, context: com.apple.CFNetwork.NSURLSession.{0C15F3F8-7110-41E9-AAF1-D16ED21C25A0}{(null)}{Y}{2}{0x0} (private), proc: B3E87D8B-CACD-3EC7-AD61-3E72F5F127CA, delegated upid: 0] start
+2026-10-22 11:08:02.981 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1 Hostname#30e774e6:443 initial parent-flow ((null))] event: path:start @0.000s
+2026-10-22 11:08:02.987 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1 Hostname#30e774e6:443 waiting parent-flow (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.006s, uuid: 1901E0C9-B2A8-4742-BB57-BFDC95619262
+2026-10-22 11:08:02.988 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1 Hostname#30e774e6:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_connect @0.007s
+2026-10-22 11:08:02.988 Df BrokersConnect[48613:20a64] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C1] reporting state preparing
+2026-10-22 11:08:03.008 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1 Hostname#30e774e6:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_child @0.026s
+2026-10-22 11:08:03.091 A  BrokersConnect[48613:20a5d] (RunningBoardServices) didChangeInheritances
+2026-10-22 11:08:03.103 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1.1 Hostname#30e774e6:443 initial path ((null))] event: path:start @0.122s
+2026-10-22 11:08:03.104 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1.1 Hostname#30e774e6:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.122s, uuid: 1901E0C9-B2A8-4742-BB57-BFDC95619262
+2026-10-22 11:08:03.105 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1.1 Hostname#30e774e6:443 in_progress transform (satisfied (Path is satisfied), interface: en0)] event: transform:start @0.124s
+2026-10-22 11:08:03.108 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1.1.1 Hostname#30e774e6:443 initial path ((null))] event: path:start @0.126s
+2026-10-22 11:08:03.108 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1.1.1 Hostname#30e774e6:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.127s, uuid: CE90B9C1-2D86-40CD-AD90-C6D0CE10BF80
+2026-10-22 11:08:03.109 Sd BrokersConnect[48613:0] (21AB2359-DEEC-3444-94FE-B7257E43BE34) IOHIDManager State
+{
+    DispatchQueue = 0;
+    RunLoop = 1;
+    createOptions = 0;
+    isOpen = 0;
+    openOptions = 0;
+}
+2026-10-22 11:08:03.109 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1.1.1 Hostname#30e774e6:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] event: resolver:start_dns @0.127s
+2026-10-22 11:08:03.110 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Task <22C0250E-1D9C-45C8-A736-D3FFB82E9ACF>.<1> setting up Connection 1
+2026-10-22 11:08:03.131 Df BrokersConnect[48613:20a60] [com.apple.network:connection] nw_endpoint_resolver_update [C1.1.1 Hostname#30e774e6:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] Adding endpoint handler for IPv4#a84ade65:443
+2026-10-22 11:08:03.131 Df BrokersConnect[48613:20a60] [com.apple.network:connection] nw_endpoint_resolver_update [C1.1.1 Hostname#30e774e6:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] Adding endpoint handler for IPv4#94114741:443
+2026-10-22 11:08:03.131 Df BrokersConnect[48613:20a60] [com.apple.network:connection] [C1.1.1 Hostname#30e774e6:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] event: resolver:receive_dns @0.149s
+2026-10-22 11:08:03.131 Df BrokersConnect[48613:20a60] [com.apple.network:connection] [C1.1.1.1 IPv4#a84ade65:443 initial path ((null))] event: path:start @0.150s
+2026-10-22 11:08:03.132 Df BrokersConnect[48613:20a60] [com.apple.network:connection] [C1.1.1.1 IPv4#a84ade65:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.150s, uuid: ACA4A864-360E-451F-BE9F-9A4EBA50A3EA
+2026-10-22 11:08:03.133 Df BrokersConnect[48613:20a60] [com.apple.network:connection] [C1.1.1.1 IPv4#a84ade65:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_connect @0.151s
+2026-10-22 11:08:03.135 Df BrokersConnect[48613:20a64] [com.apple.network:connection] nw_socket_handle_socket_event [C1.1.1.1:3] Socket received CONNECTED event
+2026-10-22 11:08:03.135 Df BrokersConnect[48613:20a64] [com.apple.network:connection] nw_flow_connected [C1.1.1.1 IPv4#a84ade65:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Transport protocol connected (socket)
+2026-10-22 11:08:03.136 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1.1.1.1 IPv4#a84ade65:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_transport @0.154s
+2026-10-22 11:08:03.136 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_session_apply_protocol_options_for_transport_block_invoke_2(2367) [C1.1.1.1:2][0x105ae6860] TLS configured [server(0) min_version(0x0303) max_version(0x0304) name(redacted) tickets(false) false_start(false) enforce_ev(false) enforce_ats(false) ats_non_pfs_ciphersuite_allowed(false) cc_mode_enforced(false) ech(false) pqtls(true), pake(false) skip_ats_trust(false)]
+2026-10-22 11:08:03.136 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2806) [C1.1.1.1:2][0x105ae6860] Client handshake started
+2026-10-22 11:08:03.137 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS client enter_early_data
+2026-10-22 11:08:03.138 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS client read_server_hello
+2026-10-22 11:08:03.142 Df BrokersConnect[48613:20a60] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client read_hello_retry_request
+2026-10-22 11:08:03.142 Df BrokersConnect[48613:20a60] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client read_server_hello
+2026-10-22 11:08:03.142 Df BrokersConnect[48613:20a60] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client read_encrypted_extensions
+2026-10-22 11:08:03.143 Df BrokersConnect[48613:20a60] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client read_certificate_request
+2026-10-22 11:08:03.143 Df BrokersConnect[48613:20a60] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client read_server_certificate
+2026-10-22 11:08:03.143 Df BrokersConnect[48613:20a60] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client read_server_certificate_verify
+2026-10-22 11:08:03.143 Df BrokersConnect[48613:20a60] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async(2249) [C1.1.1.1:2][0x105ae6860] Performing external trust evaluation
+2026-10-22 11:08:03.143 A  BrokersConnect[48613:20a60] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:03.143 A  BrokersConnect[48613:20a60] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:03.143 A  BrokersConnect[48613:20a60] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:03.143 Df BrokersConnect[48613:20a60] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async_external(2234) [C1.1.1.1:2][0x105ae6860] Asyncing for external verify block
+2026-10-22 11:08:03.144 Df BrokersConnect[48613:20a60] [com.apple.CFNetwork:Default] Connection 1: asked to evaluate TLS Trust
+2026-10-22 11:08:03.148 Df BrokersConnect[48613:20a60] [com.apple.CFNetwork:Default] Task <22C0250E-1D9C-45C8-A736-D3FFB82E9ACF>.<1> auth completion disp=1 cred=0x0
+2026-10-22 11:08:03.148 Df BrokersConnect[48613:20a60] [com.apple.securityd:trust] (Trust 0x105973780) No pending evals, starting
+2026-10-22 11:08:03.148 A  BrokersConnect[48613:20a60] (Security) SecTrustEvaluateIfNecessaryFastAsync
+2026-10-22 11:08:03.149 Df BrokersConnect[48613:20a60] [com.apple.securityd:keychain] System Keychain Always Supported set via feature flag to disabled
+2026-10-22 11:08:03.149 Df BrokersConnect[48613:20a60] [com.apple.xpc:connection] [0x10856dcc0] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:03.150 Df BrokersConnect[48613:20a60] [com.apple.xpc:connection] [0x10856de00] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:03.150 Df BrokersConnect[48613:20a60] [com.apple.securityd:trust] (Trust 0x105973780) Completed async eval kickoff
+2026-10-22 11:08:03.167 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDeferring] [0x1084c0a80] Scene target of event deferring environments did update: scene: 0x108468400; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-10-22 11:08:03.167 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x108468400; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Anet.brokersconnect.app-default
+2026-10-22 11:08:03.170 Df BrokersConnect[48613:20a1a] [com.apple.FrontBoard:SceneExtension] Realizing settings extension SBUISecureRenderingSettingsExtension on FBSSceneSettings
+2026-10-22 11:08:03.173 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:03.174 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:03.174 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:net.brokersconnect.app-default  persistentID: B203C5D5-A023-4F13-9067-105BB0888D6A
+2026-10-22 11:08:03.174 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason removed: 12; deactivation reasons: 4128 -> 32; animating application lifecycle event: 1
+2026-10-22 11:08:03.175 Df BrokersConnect[48613:20a1a] [com.apple.KeyboardArbiter:Client] Send setDeactivating: N (-DeactivationReason:SuspendedEventsOnly)
+2026-10-22 11:08:03.175 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason removed: 5; deactivation reasons: 32 -> 0; animating application lifecycle event: 0
+2026-10-22 11:08:03.177 Df BrokersConnect[48613:20a1a] [com.apple.Accessibility:AXCommon] Read Per-App on Init: Smart invert = (null)
+2026-10-22 11:08:03.180 Df BrokersConnect[48613:20a1a] [com.apple.BackBoard:Display] [FBSDisplaySource 1-1] silently connecting raw configuration: <FBSDisplayConfiguration: 0x105994200; Main; mode: "440x956@3x 60Hz p3 SDR">
+2026-10-22 11:08:03.181 Df BrokersConnect[48613:20a1a] [com.apple.KeyboardArbiter:Client] startConnection
+2026-10-22 11:08:03.182 Df BrokersConnect[48613:20a1a] (UIKitCore) Unbalanced calls to begin/end appearance transitions for <UIViewController: 0x105a40c00>.
+2026-10-22 11:08:03.184 Df BrokersConnect[48613:20a1a] [com.apple.KeyboardArbiter:Client] handleKeyboardChange: set currentKeyboard:N (wasKeyboard:N)
+2026-10-22 11:08:03.195 Df BrokersConnect[48613:20a60] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 2
+2026-10-22 11:08:03.195 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyboardSceneDelegate] forceReloadInputViews
+2026-10-22 11:08:03.196 Df BrokersConnect[48613:20a60] [com.apple.UIKit:BackgroundTask] Ending task with identifier 2 and description: <_UIBackgroundTaskInfo: 0x10843d340>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 1846 (elapsed = 0), _expireHandler: <__NSGlobalBlock__: 0x1e78c84e8>
+2026-10-22 11:08:03.196 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyboardSceneDelegate] Reloading input views for key-window scene responder: <(null): 0x0; > force:Y
+2026-10-22 11:08:03.196 Df BrokersConnect[48613:20a60] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x104f4aec0> (used by background task with identifier 2: <_UIBackgroundTaskInfo: 0x10843d340>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 1846 (elapsed = 0))
+2026-10-22 11:08:03.196 Df BrokersConnect[48613:20a60] [com.apple.UIKit:BackgroundTask] Will invalidate assertion: <BKSProcessAssertion: 0x104f4aec0> for task identifier: 2
+2026-10-22 11:08:03.197 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyboardArbiterClientLog] isWritingToolsHandlingKeyboardTracking:Y (WT ready:Y, Arbiter ready:Y)
+2026-10-22 11:08:03.211 Df BrokersConnect[48613:20a60] [com.apple.securityd:trust] (Trust 0x105973780) trustd returned 4
+2026-10-22 11:08:03.226 Df BrokersConnect[48613:20a60] [com.apple.CFNetwork:Default] System Trust Evaluation yielded status(0)
+2026-10-22 11:08:03.226 Df BrokersConnect[48613:20a60] [com.apple.securityd:trust] (Trust 0x105973600) No pending evals, starting
+2026-10-22 11:08:03.226 A  BrokersConnect[48613:20a60] (Security) SecTrustEvaluateIfNecessaryFastAsync
+2026-10-22 11:08:03.226 Df BrokersConnect[48613:20a60] [com.apple.xpc:connection] [0x105a0b340] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:03.227 Df BrokersConnect[48613:20a60] [com.apple.securityd:trust] (Trust 0x105973600) Completed async eval kickoff
+2026-10-22 11:08:03.227 Df BrokersConnect[48613:20a60] [com.apple.xpc:connection] [0x10856de00] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:03.230 Df BrokersConnect[48613:20a64] [com.apple.securityd:trust] (Trust 0x105973600) trustd returned 4
+2026-10-22 11:08:03.230 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Connection 1: TLS Trust result 0
+2026-10-22 11:08:03.230 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async_external_block_invoke_3(2148) [C1.1.1.1:2][0x105ae6860] Returning from external verify block with result: true
+2026-10-22 11:08:03.230 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_certificate_verify_callback(2430) [C1.1.1.1:2][0x105ae6860] Certificate verification result: OK
+2026-10-22 11:08:03.231 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client read_server_finished
+2026-10-22 11:08:03.231 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client send_end_of_early_data
+2026-10-22 11:08:03.231 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client send_client_encrypted_extensions
+2026-10-22 11:08:03.231 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client send_client_certificate
+2026-10-22 11:08:03.231 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client complete_second_flight
+2026-10-22 11:08:03.231 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS 1.3 client done
+2026-10-22 11:08:03.231 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS client finish_client_handshake
+2026-10-22 11:08:03.231 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C1.1.1.1:2][0x105ae6860] Client handshake state: TLS client done
+2026-10-22 11:08:03.231 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] boringssl_context_info_handler(2812) [C1.1.1.1:2][0x105ae6860] Client handshake done
+2026-10-22 11:08:03.232 A  BrokersConnect[48613:20a64] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:03.232 A  BrokersConnect[48613:20a64] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:03.232 A  BrokersConnect[48613:20a64] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:03.232 Df BrokersConnect[48613:20a64] [com.apple.network:boringssl] nw_protocol_boringssl_signal_connected(895) [C1.1.1.1:2][0x105ae6860] TLS connected [server(0) version(0x0304) ciphersuite(TLS_AES_256_GCM_SHA384) group(0x11ec) signature_alg(0x0403) alpn(h2) resumed(0) offered_ticket(0) in_early_data(0) early_data_accepted(0) false_started(0) ocsp_received(0) sct_received(0) connect_time(96ms) flight_time(6ms) rtt(5ms) write_stalls(0) read_stalls(2) pake(0x0000)]
+2026-10-22 11:08:03.232 Df BrokersConnect[48613:20a64] [com.apple.network:connection] nw_flow_connected [C1.1.1.1 IPv4#a84ade65:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (CFNetworkConnection-2511400452)
+2026-10-22 11:08:03.233 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1.1.1.1 IPv4#a84ade65:443 ready socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.251s
+2026-10-22 11:08:03.233 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1.1.1 Hostname#30e774e6:443 ready resolver (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.251s
+2026-10-22 11:08:03.233 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1.1 Hostname#30e774e6:443 ready transform (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.251s
+2026-10-22 11:08:03.233 Df BrokersConnect[48613:20a64] [com.apple.network:connection] nw_flow_connected [C1 IPv4#a84ade65:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (endpoint_flow)
+2026-10-22 11:08:03.233 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1 IPv4#a84ade65:443 ready parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_connect @0.252s
+2026-10-22 11:08:03.233 Df BrokersConnect[48613:20a64] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C1] reporting state ready
+2026-10-22 11:08:03.234 Df BrokersConnect[48613:20a64] [com.apple.xpc:connection] [0x105a0b340] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:03.234 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Connection 1: connected successfully
+2026-10-22 11:08:03.235 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Connection 1: TLS handshake complete
+2026-10-22 11:08:03.235 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Connection 1: ready C(N) E(N)
+2026-10-22 11:08:03.236 Df BrokersConnect[48613:20a64] [com.apple.network:connection] [C1] event: client:connection_reused @0.254s
+2026-10-22 11:08:03.237 Df BrokersConnect[48613:20a64] [com.apple.network:connection] nw_protocol_socket_notify [C1.1.1.1:3] nw_protocol_notification_type_connection_idle is false
+2026-10-22 11:08:03.240 Df BrokersConnect[48613:20a1a] [com.apple.network:activity] <nw_activity 50:1 [BDCEED5F-91DF-441E-8438-A6B46EA7F937] (global parent) (reporting strategy default) complete (reason success)> complete with reason 2 (success), duration 2485ms
+2026-10-22 11:08:03.240 Df BrokersConnect[48613:20a1a] [com.apple.network:activity] <nw_activity 50:2 [9C31D51B-A5CE-4808-BABA-AF64840B1FC8] (reporting strategy default) complete (reason success)> complete with reason 2 (success), duration 2486ms
+2026-10-22 11:08:03.241 Df BrokersConnect[48613:20a1a] [com.apple.network:activity] Unsetting the global parent activity <nw_activity 50:1 [BDCEED5F-91DF-441E-8438-A6B46EA7F937] (global parent) (reporting strategy default) complete (reason success)>
+2026-10-22 11:08:03.241 Df BrokersConnect[48613:20a1a] [com.apple.network:activity] Unset the global parent activity
+2026-10-22 11:08:03.241 Df BrokersConnect[48613:20a1a] [com.apple.app_launch_measurement:ApplicationLaunch] alm_release_pageins_recording_assertion: releasing pageins recording assertion
+2026-10-22 11:08:03.263 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Task <22C0250E-1D9C-45C8-A736-D3FFB82E9ACF>.<1> now using Connection 1
+2026-10-22 11:08:03.263 Df BrokersConnect[48613:20a64] [com.apple.CFNetwork:Default] Task <22C0250E-1D9C-45C8-A736-D3FFB82E9ACF>.<1> sent request, body N 0
+2026-10-22 11:08:03.263 A  BrokersConnect[48613:20a64] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:03.263 A  BrokersConnect[48613:20a64] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:03.263 A  BrokersConnect[48613:20a64] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:03.264 A  BrokersConnect[48613:20a64] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:03.264 A  BrokersConnect[48613:20a64] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:03.264 A  BrokersConnect[48613:20a64] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:03.295 Df BrokersConnect[48613:20a5e] [com.apple.CFNetwork:Default] Garbage collection for alternative services
+2026-10-22 11:08:03.327 Df BrokersConnect[48613:20a60] [com.apple.CFNetwork:Default] Task <22C0250E-1D9C-45C8-A736-D3FFB82E9ACF>.<1> received response, status 400 content K
+2026-10-22 11:08:03.327 Df BrokersConnect[48613:20a60] [com.apple.CFNetwork:Default] Task <22C0250E-1D9C-45C8-A736-D3FFB82E9ACF>.<1> done using Connection 1
+2026-10-22 11:08:03.327 Df BrokersConnect[48613:20a60] [com.apple.network:connection] [C1] event: client:connection_idle @0.345s
+2026-10-22 11:08:03.327 Df BrokersConnect[48613:20a60] [com.apple.network:connection] nw_protocol_socket_notify [C1.1.1.1:3] nw_protocol_notification_type_connection_idle is true
+2026-10-22 11:08:03.327 A  BrokersConnect[48613:20a60] (Security) SecTrustEvaluateIfNecessary
+2026-10-22 11:08:03.330 Df BrokersConnect[48613:20a60] [com.apple.xpc:connection] [0x105a0b340] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:03.449 Df BrokersConnect[48613:20a60] [com.apple.xpc:connection] [0x105a0b340] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:03.451 Df BrokersConnect[48613:20a60] [com.apple.CFNetwork:Default] Task <22C0250E-1D9C-45C8-A736-D3FFB82E9ACF>.<1> response ended
+2026-10-22 11:08:03.451 Df BrokersConnect[48613:20a60] [com.apple.CFNetwork:Summary] Task <22C0250E-1D9C-45C8-A736-D3FFB82E9ACF>.<1> summary for task success {transaction_duration_ms=578, response_status=400, connection=1, protocol="h2", domain_lookup_duration_ms=22, connect_duration_ms=101, secure_connection_duration_ms=96, private_relay=false, request_start_ms=390, request_duration_ms=0, response_start_ms=454, response_duration_ms=124, request_bytes=431, request_throughput_kbps=13415, response_bytes=481, response_throughput_kbps=30, cache_hit=false}
+2026-10-22 11:08:03.453 Df BrokersConnect[48613:20a60] [com.apple.CoreAnalytics:client] No XPC connection in Simulator
+2026-10-22 11:08:03.454 Df BrokersConnect[48613:20a62] [com.apple.CFNetwork:Default] Task <22C0250E-1D9C-45C8-A736-D3FFB82E9ACF>.<1> finished successfully
+2026-10-22 11:08:03.532 E  BrokersConnect[48613:20a62] [dev.expo.modules:expo-updates] 🟠 {"stacktrace":["BrokersConnect                      0x0000000100adb9fc $s9EXUpdates14FileDownloaderC12downloadData33_75774A0A231786B0DCB0D3DA50F03832LL11withRequest13progressBlock07successP005errorP0y10Foundation10URLRequestV_ySdcSgyAJ0E0VSg_So13NSURLResponseCtcyAA12UpdatesErrorOctFyAP_ARSgs0W0_pSgtYbcfU_ + 648","BrokersConnect                      0x0000000100ab81c8 $s9EXUpdates14FileDownloaderC12downloadData33_75774A0A231786B0DCB0D3DA50F03832LL11withRequest13progressBlock07successP005errorP0y10Foundation10URLRequestV_ySdcSgyAJ0E0VSg_So13NSURLResponseCtcyAA12UpdatesErrorOctFyAP_ARSgs0W0_pSgtYbcfU_TA + 32","BrokersConnect                      0x0000000100adbad4 $s10Foundation4DataVSgSo13NSURLResponseCSgs5Error_pSgIeghggg_So6NSDataCSgAGSo7NSErrorCSgIeyBhyyy_TR + 128","CFNetwork                           0x0000000184dbf3a0 __40-[__NSURLSessionLocal taskForClassInfo:]_block_invoke + 500","CFNetwork                           0x0000000184dd5c94 __49-[__NSCFLocalSessionTask _task_onqueue_didFinish]_bl<…>
+2026-10-22 11:08:03.565 E  BrokersConnect[48613:20a60] [dev.expo.modules:expo-updates] 🟠 {"stacktrace":["BrokersConnect                      0x0000000100aff6ec $s9EXUpdates16StartupProcedureC13appLoaderTask_35didFinishBackgroundUpdateWithStatus6update5erroryAA03AppeF0C_AA0ijL0OAA0J0CSgs5Error_pSgtFTf4dnnnn_n + 836","BrokersConnect                      0x0000000100afd810 $s9EXUpdates16StartupProcedureC13appLoaderTask_35didFinishBackgroundUpdateWithStatus6update5erroryAA03AppeF0C_AA0ijL0OAA0J0CSgs5Error_pSgtFTo + 92","BrokersConnect                      0x0000000100aaebe8 $s9EXUpdates13AppLoaderTaskC25didFinishBackgroundUpdate019_3339434A583F8B1F65J12D05F1E075305LL10withStatus6update5erroryAA0ghQ0O_AA0H0CSgAA12UpdatesErrorOSgtFytSgAA0bcD8Delegate_pXEfU_yyYbcfU_ + 300","BrokersConnect                      0x0000000100a99cc8 $sIeg_IeyB_TR + 28","libdispatch.dylib                   0x00000001801866a0 _dispatch_call_block_and_release + 24","libdispatch.dylib                   0x00000001801a0e98 _dispatch_client_callout + 12","libdispatch.dylib                   0x000000018018f724 _dispatc<…>
+2026-10-22 11:08:03.678 A  BrokersConnect[48613:20a62] (RunningBoardServices) didChangeInheritances
+2026-10-22 11:08:04.446 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x105a0b480] activating connection: mach=true listener=false peer=false name=com.apple.dt.xctestd.target
+2026-10-22 11:08:04.546 Df BrokersConnect[48613:20a62] [com.apple.dt.automationmode:Default] XAM shared observer connecting to com.apple.dt.automationmode.reader
+2026-10-22 11:08:04.546 Df BrokersConnect[48613:20a62] [com.apple.xpc:connection] [0x105a09a40] activating connection: mach=true listener=false peer=false name=com.apple.dt.automationmode.reader
+2026-10-22 11:08:04.572 Df BrokersConnect[48613:20a62] [com.apple.xpc:connection] [0x105a09a40] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:04.582 Df BrokersConnect[48613:20a62] [com.apple.xpc:connection] [0x105a09a40] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-10-22 11:08:04.582 Df BrokersConnect[48613:20a62] [com.apple.xpc:connection] [0x105a09a40] Connection returned listener port: 0x870b
+2026-10-22 11:08:04.585 Df BrokersConnect[48613:20a49] [com.apple.dt.automationmode:Default] Returning 1 for enabled state
+2026-10-22 11:08:04.585 Df BrokersConnect[48613:20a49] [com.apple.xpc:connection] [0x1084cd800] activating connection: mach=false listener=false peer=true name=com.apple.xpc.anonymous.0x105a09a40.peer[45714].0x1084cd800
+2026-10-22 11:08:04.615 Df BrokersConnect[48613:20a1a] (Foundation) void * _Nullable NSMapGet(NSMapTable * _Nonnull, const void * _Nullable): map table argument is NULL
+2026-10-22 11:08:05.568 Df BrokersConnect[48613:20a7c] [com.apple.xpc:connection] [0x105a0b0c0] activating connection: mach=true listener=false peer=false name=com.apple.remindd
+2026-10-22 11:08:05.568 Df BrokersConnect[48613:20a7c] [com.apple.reminderkit:xpc] Created new REMXPCDaemonController {self: <REMXPCDaemonController: 0x10843db00 serviceName:com.apple.remindd>}
+2026-10-22 11:08:05.570 Df BrokersConnect[48613:20a7c] [com.apple.xpc:connection] [0x105a088c0] activating connection: mach=true listener=false peer=false name=com.apple.calaccessd
+2026-10-22 11:08:07.736 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x105a0b700] activating connection: mach=true listener=false peer=false name=com.apple.fontservicesd
+2026-10-22 11:08:08.021 Df BrokersConnect[48613:20a62] [com.apple.FileURL:default] kExcludedFromBackupXattrName set on path: /Users/runner/Library/Developer/CoreSimulator/Devices/5F0B2543-07CA-40AF-87DB-18B5F80A115A/data/Containers/Data/Application/97A77A77-26CA-4D30-B1D2-705904AD559C/Library/Application Support/net.brokersconnect.app/RCTAsyncLocalStorage_V1
+2026-10-22 11:08:08.037 A  BrokersConnect[48613:20a62] (Security) SecItemCopyMatching_ios
+2026-10-22 11:08:08.038 Df BrokersConnect[48613:20a62] [com.apple.securityd:secitemratelimit] Not internal release, disabling SIRL
+2026-10-22 11:08:08.039 Df BrokersConnect[48613:20a62] [com.apple.securityd:thread-local-client-debug] SecSecurityClientGet new thread!
+2026-10-22 11:08:08.039 Df BrokersConnect[48613:20a62] [com.apple.xpc:connection] [0x10856de00] activating connection: mach=true listener=false peer=false name=com.apple.securityd
+2026-10-22 11:08:08.069 E  BrokersConnect[48613:20a7c] [com.facebook.react.log:javascript] '[expo-notifications] Error reading persisted server registration info: ', { [Error: FunctionCallException: Calling the 'getRegistrationInfoAsync' function has failed (at ExpoModulesCore/AsyncFunctionDefinition.swift:123)
+→ Caused by: ERR_NOTIFICATIONS_KEYCHAIN_ACCESS: Keychain access failed: الاستحقاق المطلوب غير موجود. (at ExpoNotifications/ServerRegistrationModule.swift:161)] code: '-34018' }
+2026-10-22 11:08:08.181 E  BrokersConnect[48613:20a62] [com.apple.coreui:framework] CoreUI: CUIThemeStore: No theme registered with id=0
+2026-10-22 11:08:08.181 F  BrokersConnect[48613:20a62] [com.apple.coreui:framework] CoreUI: CUIThemeStore: No theme registered with id=0
+2026-10-22 11:08:08.181 A  BrokersConnect[48613:20a62] (libsystem_trace.dylib) Activity for state dumps
+2026-10-22 11:08:08.182 Sd BrokersConnect[48613:0] (21AB2359-DEEC-3444-94FE-B7257E43BE34) IOHIDManager State
+{
+    DispatchQueue = 0;
+    RunLoop = 1;
+    createOptions = 0;
+    isOpen = 0;
+    openOptions = 0;
+}
+2026-10-22 11:08:08.304 Df BrokersConnect[48613:20a1a] [com.apple.FrontBoard:Common] [SBSApplicationClient:0x105a72ac0] Activating service facility
+2026-10-22 11:08:08.304 Df BrokersConnect[48613:20a62] [com.apple.FrontBoard:Common] [SBSApplicationClient:0x105a72ac0] Service facility connection activation received.
+2026-10-22 11:08:08.318 Df BrokersConnect[48613:20a62] [com.apple.CFNetwork:Default] Task <EAE442BE-C3AB-48D9-8D52-1E16BB7FEAF2>.<1> resuming, timeouts(0.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:08.318 Df BrokersConnect[48613:20a62] [com.apple.CFNetwork:Default] Task <97A079FA-39A8-4255-8D46-2270662EDA71>.<2> resuming, timeouts(0.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:08.318 Df BrokersConnect[48613:20a62] [com.apple.CFNetwork:Default] Task <EAE1DCA6-01F0-4586-96E8-57BD084F2037>.<3> resuming, timeouts(0.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:08.319 Df BrokersConnect[48613:20a62] [com.apple.CFNetwork:Default] Task <73E2E028-D16B-4277-897C-8CBBBBD8BD25>.<4> resuming, timeouts(0.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:08.329 Df BrokersConnect[48613:20a62] [com.apple.UserNotifications:Connections] [net.brokersconnect.app] Getting pending notification requests (async)
+2026-10-22 11:08:08.331 Df BrokersConnect[48613:20a49] [com.apple.xpc:connection] [0x10856f5c0] activating connection: mach=true listener=false peer=false name=com.apple.usernotifications.listener
+2026-10-22 11:08:08.336 Df BrokersConnect[48613:20a1a] [PrototypeTools:domain] Not observing PTDefaults on customer install.
+2026-10-22 11:08:08.340 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 0: creating secure tcp or quic connection
+2026-10-22 11:08:08.341 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <97A079FA-39A8-4255-8D46-2270662EDA71>.<2> waiting for setup of Connection 2
+2026-10-22 11:08:08.341 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <EAE1DCA6-01F0-4586-96E8-57BD084F2037>.<3> waiting for setup of Connection 2
+2026-10-22 11:08:08.341 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 2: enabling TLS
+2026-10-22 11:08:08.341 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 2: starting, TC(0x0)
+2026-10-22 11:08:08.342 E  BrokersConnect[48613:20a1a] [com.apple.UIKit:UIFocus] RCTScrollViewComponentView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
+2026-10-22 11:08:08.346 Df BrokersConnect[48613:20a1a] [com.apple.FileURL:default] kExcludedFromBackupXattrName set on path: /Users/runner/Library/Developer/CoreSimulator/Devices/5F0B2543-07CA-40AF-87DB-18B5F80A115A/data/Containers/Data/Application/97A77A77-26CA-4D30-B1D2-705904AD559C/Library/Caches/com.hackemist.SDImageCache/default
+2026-10-22 11:08:08.351 Df BrokersConnect[48613:20a49] [com.apple.UserNotifications:Connections] [net.brokersconnect.app] Got 0 pending notification [ hasCompletionHandler: 1 ]
+2026-10-22 11:08:08.353 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2 E4956A3C-32E5-425D-AD6B-08202F0DF217 Hostname#220e9097:443 quic-connection, url: https://www.brokersconnect.net/api/mobile/v1/jobs, definite, attribution: developer, context: com.apple.CFNetwork.NSURLSession.{6F7796B0-4620-4422-BC92-523F729611C0}{(null)}{Y}{2}{0x0} (private), proc: B3E87D8B-CACD-3EC7-AD61-3E72F5F127CA, delegated upid: 0] start
+2026-10-22 11:08:08.353 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2 Hostname#220e9097:443 initial parent-flow ((null))] event: path:start @0.000s
+2026-10-22 11:08:08.353 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2 Hostname#220e9097:443 waiting parent-flow (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.000s, uuid: 487255E4-97AD-4739-BE7D-8873B86CB548
+2026-10-22 11:08:08.353 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2 Hostname#220e9097:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_connect @0.000s
+2026-10-22 11:08:08.355 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C2] reporting state preparing
+2026-10-22 11:08:08.356 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2 Hostname#220e9097:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_child @0.003s
+2026-10-22 11:08:08.356 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1 Hostname#220e9097:443 initial path ((null))] event: path:start @0.003s
+2026-10-22 11:08:08.356 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1 Hostname#220e9097:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.003s, uuid: 487255E4-97AD-4739-BE7D-8873B86CB548
+2026-10-22 11:08:08.356 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1 Hostname#220e9097:443 in_progress transform (satisfied (Path is satisfied), interface: en0)] event: transform:start @0.003s
+2026-10-22 11:08:08.357 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1.1 Hostname#220e9097:443 initial path ((null))] event: path:start @0.003s
+2026-10-22 11:08:08.358 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1.1 Hostname#220e9097:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.005s, uuid: 965EAF70-69B6-4D11-8DE6-1ED307C27B2E
+2026-10-22 11:08:08.359 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1.1 Hostname#220e9097:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] event: resolver:start_dns @0.006s
+2026-10-22 11:08:08.361 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <EAE442BE-C3AB-48D9-8D52-1E16BB7FEAF2>.<1> setting up Connection 2
+2026-10-22 11:08:08.361 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 0: creating secure tcp or quic connection
+2026-10-22 11:08:08.361 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 3: enabling TLS
+2026-10-22 11:08:08.361 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 3: starting, TC(0x0)
+2026-10-22 11:08:08.362 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3 6AAA7695-6B23-48FF-BD67-42EEC5FD3510 Hostname#d4ee45a1:443 quic-connection, url: https://hiwdhicwsohbipxzazmb.supabase.co/rest/v1/districts, definite, attribution: developer, context: com.apple.CFNetwork.NSURLSession.{6F7796B0-4620-4422-BC92-523F729611C0}{(null)}{Y}{2}{0x0} (private), proc: B3E87D8B-CACD-3EC7-AD61-3E72F5F127CA, delegated upid: 0] start
+2026-10-22 11:08:08.362 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3 Hostname#d4ee45a1:443 initial parent-flow ((null))] event: path:start @0.000s
+2026-10-22 11:08:08.363 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3 Hostname#d4ee45a1:443 waiting parent-flow (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.000s, uuid: 1BC95259-2D85-4576-A065-1C96430A7695
+2026-10-22 11:08:08.363 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3 Hostname#d4ee45a1:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_connect @0.000s
+2026-10-22 11:08:08.364 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C3] reporting state preparing
+2026-10-22 11:08:08.366 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3 Hostname#d4ee45a1:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_child @0.003s
+2026-10-22 11:08:08.366 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3.1 Hostname#d4ee45a1:443 initial path ((null))] event: path:start @0.003s
+2026-10-22 11:08:08.366 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3.1 Hostname#d4ee45a1:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.003s, uuid: 1BC95259-2D85-4576-A065-1C96430A7695
+2026-10-22 11:08:08.366 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3.1 Hostname#d4ee45a1:443 in_progress transform (satisfied (Path is satisfied), interface: en0)] event: transform:start @0.003s
+2026-10-22 11:08:08.366 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3.1.1 Hostname#d4ee45a1:443 initial path ((null))] event: path:start @0.003s
+2026-10-22 11:08:08.373 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3.1.1 Hostname#d4ee45a1:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.010s, uuid: 5B16C022-4B43-4994-9EE3-C07EBD848560
+2026-10-22 11:08:08.379 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3.1.1 Hostname#d4ee45a1:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] event: resolver:start_dns @0.017s
+2026-10-22 11:08:08.383 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <73E2E028-D16B-4277-897C-8CBBBBD8BD25>.<4> setting up Connection 3
+2026-10-22 11:08:08.384 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_endpoint_resolver_update [C2.1.1 Hostname#220e9097:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] Adding endpoint handler for IPv4#ebbf6a06:443
+2026-10-22 11:08:08.385 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_endpoint_resolver_update [C2.1.1 Hostname#220e9097:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] Adding endpoint handler for IPv4#cb71408d:443
+2026-10-22 11:08:08.385 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1.1 Hostname#220e9097:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] event: resolver:receive_dns @0.032s
+2026-10-22 11:08:08.385 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1.1.1 IPv4#ebbf6a06:443 initial path ((null))] event: path:start @0.032s
+2026-10-22 11:08:08.385 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1.1.1 IPv4#ebbf6a06:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.032s, uuid: F74E1C13-57CC-4182-9325-2AC48716AFD3
+2026-10-22 11:08:08.389 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1.1.1 IPv4#ebbf6a06:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_connect @0.036s
+2026-10-22 11:08:08.396 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_socket_handle_socket_event [C2.1.1.1:3] Socket received CONNECTED event
+2026-10-22 11:08:08.396 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_flow_connected [C2.1.1.1 IPv4#ebbf6a06:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Transport protocol connected (socket)
+2026-10-22 11:08:08.396 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1.1.1 IPv4#ebbf6a06:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_transport @0.043s
+2026-10-22 11:08:08.397 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_session_apply_protocol_options_for_transport_block_invoke_2(2367) [C2.1.1.1:2][0x11963d1e0] TLS configured [server(0) min_version(0x0303) max_version(0x0304) name(redacted) tickets(false) false_start(false) enforce_ev(false) enforce_ats(false) ats_non_pfs_ciphersuite_allowed(false) cc_mode_enforced(false) ech(false) pqtls(true), pake(false) skip_ats_trust(false)]
+2026-10-22 11:08:08.397 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2806) [C2.1.1.1:2][0x11963d1e0] Client handshake started
+2026-10-22 11:08:08.397 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS client enter_early_data
+2026-10-22 11:08:08.397 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS client read_server_hello
+2026-10-22 11:08:08.400 Df BrokersConnect[48613:20a5e] [com.apple.network:connection] nw_endpoint_resolver_update [C3.1.1 Hostname#d4ee45a1:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] Adding endpoint handler for IPv4#d8b3c22f:443
+2026-10-22 11:08:08.400 Df BrokersConnect[48613:20a5e] [com.apple.network:connection] nw_endpoint_resolver_update [C3.1.1 Hostname#d4ee45a1:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] Adding endpoint handler for IPv4#cc1f0dc7:443
+2026-10-22 11:08:08.400 Df BrokersConnect[48613:20a5e] [com.apple.network:connection] [C3.1.1 Hostname#d4ee45a1:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] event: resolver:receive_dns @0.038s
+2026-10-22 11:08:08.401 Df BrokersConnect[48613:20a5e] [com.apple.network:connection] [C3.1.1.1 IPv4#d8b3c22f:443 initial path ((null))] event: path:start @0.038s
+2026-10-22 11:08:08.401 Df BrokersConnect[48613:20a5e] [com.apple.network:connection] [C3.1.1.1 IPv4#d8b3c22f:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.038s, uuid: 44A5F7D0-03E3-4339-A7F0-C3A19A8A2FA9
+2026-10-22 11:08:08.402 Df BrokersConnect[48613:20a5e] [com.apple.network:connection] [C3.1.1.1 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_connect @0.039s
+2026-10-22 11:08:08.405 Df BrokersConnect[48613:20a5e] [com.apple.network:connection] nw_socket_handle_socket_event [C3.1.1.1:3] Socket received CONNECTED event
+2026-10-22 11:08:08.405 Df BrokersConnect[48613:20a5e] [com.apple.network:connection] nw_flow_connected [C3.1.1.1 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Transport protocol connected (socket)
+2026-10-22 11:08:08.405 Df BrokersConnect[48613:20a5e] [com.apple.network:connection] [C3.1.1.1 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_transport @0.042s
+2026-10-22 11:08:08.406 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_session_apply_protocol_options_for_transport_block_invoke_2(2367) [C3.1.1.1:2][0x11963d460] TLS configured [server(0) min_version(0x0303) max_version(0x0304) name(redacted) tickets(false) false_start(false) enforce_ev(false) enforce_ats(false) ats_non_pfs_ciphersuite_allowed(false) cc_mode_enforced(false) ech(false) pqtls(true), pake(false) skip_ats_trust(false)]
+2026-10-22 11:08:08.406 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_context_info_handler(2806) [C3.1.1.1:2][0x11963d460] Client handshake started
+2026-10-22 11:08:08.407 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS client enter_early_data
+2026-10-22 11:08:08.407 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS client read_server_hello
+2026-10-22 11:08:08.412 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client read_hello_retry_request
+2026-10-22 11:08:08.412 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client read_server_hello
+2026-10-22 11:08:08.413 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client read_encrypted_extensions
+2026-10-22 11:08:08.413 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client read_certificate_request
+2026-10-22 11:08:08.413 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client read_server_certificate
+2026-10-22 11:08:08.413 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client read_server_certificate_verify
+2026-10-22 11:08:08.413 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async(2249) [C3.1.1.1:2][0x11963d460] Performing external trust evaluation
+2026-10-22 11:08:08.414 A  BrokersConnect[48613:20a5e] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:08.414 A  BrokersConnect[48613:20a5e] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:08.414 A  BrokersConnect[48613:20a5e] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:08.414 Df BrokersConnect[48613:20a5e] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async_external(2234) [C3.1.1.1:2][0x11963d460] Asyncing for external verify block
+2026-10-22 11:08:08.414 Df BrokersConnect[48613:20a5e] [com.apple.CFNetwork:Default] Connection 3: asked to evaluate TLS Trust
+2026-10-22 11:08:08.414 Df BrokersConnect[48613:20a5e] [com.apple.CFNetwork:Default] Task <73E2E028-D16B-4277-897C-8CBBBBD8BD25>.<4> auth completion disp=1 cred=0x0
+2026-10-22 11:08:08.414 Df BrokersConnect[48613:20a5d] [com.apple.securityd:trust] (Trust 0x108760a80) No pending evals, starting
+2026-10-22 11:08:08.415 A  BrokersConnect[48613:20a5d] (Security) SecTrustEvaluateIfNecessaryFastAsync
+2026-10-22 11:08:08.415 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x10870da40] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:08.415 Df BrokersConnect[48613:20a5d] [com.apple.securityd:trust] (Trust 0x108760a80) Completed async eval kickoff
+2026-10-22 11:08:08.417 Df BrokersConnect[48613:20a5e] [com.apple.securityd:trust] (Trust 0x108760a80) trustd returned 4
+2026-10-22 11:08:08.417 Df BrokersConnect[48613:20a5e] [com.apple.CFNetwork:Default] System Trust Evaluation yielded status(0)
+2026-10-22 11:08:08.417 Df BrokersConnect[48613:20a5e] [com.apple.securityd:trust] (Trust 0x1183a7f00) No pending evals, starting
+2026-10-22 11:08:08.417 A  BrokersConnect[48613:20a5e] (Security) SecTrustEvaluateIfNecessaryFastAsync
+2026-10-22 11:08:08.417 Df BrokersConnect[48613:20a5e] [com.apple.xpc:connection] [0x10870dcc0] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:08.417 Df BrokersConnect[48613:20a5e] [com.apple.securityd:trust] (Trust 0x1183a7f00) Completed async eval kickoff
+2026-10-22 11:08:08.417 Df BrokersConnect[48613:20a5e] [com.apple.xpc:connection] [0x10870da40] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:08.419 Df BrokersConnect[48613:20a5d] [com.apple.securityd:trust] (Trust 0x1183a7f00) trustd returned 4
+2026-10-22 11:08:08.419 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 3: TLS Trust result 0
+2026-10-22 11:08:08.419 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async_external_block_invoke_3(2148) [C3.1.1.1:2][0x11963d460] Returning from external verify block with result: true
+2026-10-22 11:08:08.419 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_certificate_verify_callback(2430) [C3.1.1.1:2][0x11963d460] Certificate verification result: OK
+2026-10-22 11:08:08.420 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client read_server_finished
+2026-10-22 11:08:08.433 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client send_end_of_early_data
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client send_client_encrypted_extensions
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client send_client_certificate
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client complete_second_flight
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS 1.3 client done
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS client finish_client_handshake
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C3.1.1.1:2][0x11963d460] Client handshake state: TLS client done
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2812) [C3.1.1.1:2][0x11963d460] Client handshake done
+2026-10-22 11:08:08.434 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:08.434 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:08.434 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] nw_protocol_boringssl_signal_connected(895) [C3.1.1.1:2][0x11963d460] TLS connected [server(0) version(0x0304) ciphersuite(TLS_AES_256_GCM_SHA384) group(0x11ec) signature_alg(0x0403) alpn(h2) resumed(0) offered_ticket(0) in_early_data(0) early_data_accepted(0) false_started(0) ocsp_received(0) sct_received(0) connect_time(28ms) flight_time(6ms) rtt(5ms) write_stalls(0) read_stalls(2) pake(0x0000)]
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_flow_connected [C3.1.1.1 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (CFNetworkConnection-2511400452)
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3.1.1.1 IPv4#d8b3c22f:443 ready socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.071s
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3.1.1 Hostname#d4ee45a1:443 ready resolver (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.071s
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3.1 Hostname#d4ee45a1:443 ready transform (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.071s
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_flow_connected [C3 IPv4#d8b3c22f:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (endpoint_flow)
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3 IPv4#d8b3c22f:443 ready parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_connect @0.071s
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C3] reporting state ready
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x10870dcc0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 3: connected successfully
+2026-10-22 11:08:08.434 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 3: TLS handshake complete
+2026-10-22 11:08:08.435 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 3: ready C(N) E(N)
+2026-10-22 11:08:08.435 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3] event: client:connection_reused @0.072s
+2026-10-22 11:08:08.435 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_protocol_socket_notify [C3.1.1.1:3] nw_protocol_notification_type_connection_idle is false
+2026-10-22 11:08:08.435 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <73E2E028-D16B-4277-897C-8CBBBBD8BD25>.<4> now using Connection 3
+2026-10-22 11:08:08.435 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <73E2E028-D16B-4277-897C-8CBBBBD8BD25>.<4> sent request, body N 0
+2026-10-22 11:08:08.435 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client read_hello_retry_request
+2026-10-22 11:08:08.435 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client read_server_hello
+2026-10-22 11:08:08.435 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client read_encrypted_extensions
+2026-10-22 11:08:08.435 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client read_certificate_request
+2026-10-22 11:08:08.435 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client read_server_certificate
+2026-10-22 11:08:08.435 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client read_server_certificate_verify
+2026-10-22 11:08:08.436 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async(2249) [C2.1.1.1:2][0x11963d1e0] Performing external trust evaluation
+2026-10-22 11:08:08.436 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:08.436 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async_external(2234) [C2.1.1.1:2][0x11963d1e0] Asyncing for external verify block
+2026-10-22 11:08:08.436 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 2: asked to evaluate TLS Trust
+2026-10-22 11:08:08.436 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:08.436 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:08.436 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:08.436 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:08.436 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:08.436 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:08.436 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <EAE442BE-C3AB-48D9-8D52-1E16BB7FEAF2>.<1> auth completion disp=1 cred=0x0
+2026-10-22 11:08:08.436 Df BrokersConnect[48613:20a5d] [com.apple.securityd:trust] (Trust 0x1196f5140) No pending evals, starting
+2026-10-22 11:08:08.436 A  BrokersConnect[48613:20a5d] (Security) SecTrustEvaluateIfNecessaryFastAsync
+2026-10-22 11:08:08.437 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x10870e6c0] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:08.437 Df BrokersConnect[48613:20a5d] [com.apple.securityd:trust] (Trust 0x1196f5140) Completed async eval kickoff
+2026-10-22 11:08:08.446 Df BrokersConnect[48613:20a5d] [com.apple.securityd:trust] (Trust 0x1196f5140) trustd returned 4
+2026-10-22 11:08:08.446 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] System Trust Evaluation yielded status(0)
+2026-10-22 11:08:08.446 Df BrokersConnect[48613:20a5d] [com.apple.securityd:trust] (Trust 0x1196f4fc0) No pending evals, starting
+2026-10-22 11:08:08.447 A  BrokersConnect[48613:20a5d] (Security) SecTrustEvaluateIfNecessaryFastAsync
+2026-10-22 11:08:08.447 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x10870ee40] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:08.447 Df BrokersConnect[48613:20a5d] [com.apple.securityd:trust] (Trust 0x1196f4fc0) Completed async eval kickoff
+2026-10-22 11:08:08.447 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x10870e6c0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:08.449 Df BrokersConnect[48613:20a5d] [com.apple.securityd:trust] (Trust 0x1196f4fc0) trustd returned 4
+2026-10-22 11:08:08.449 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 2: TLS Trust result 0
+2026-10-22 11:08:08.449 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async_external_block_invoke_3(2148) [C2.1.1.1:2][0x11963d1e0] Returning from external verify block with result: true
+2026-10-22 11:08:08.449 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_certificate_verify_callback(2430) [C2.1.1.1:2][0x11963d1e0] Certificate verification result: OK
+2026-10-22 11:08:08.449 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client read_server_finished
+2026-10-22 11:08:08.449 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client send_end_of_early_data
+2026-10-22 11:08:08.449 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client send_client_encrypted_extensions
+2026-10-22 11:08:08.449 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client send_client_certificate
+2026-10-22 11:08:08.449 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client complete_second_flight
+2026-10-22 11:08:08.449 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS 1.3 client done
+2026-10-22 11:08:08.449 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS client finish_client_handshake
+2026-10-22 11:08:08.450 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C2.1.1.1:2][0x11963d1e0] Client handshake state: TLS client done
+2026-10-22 11:08:08.450 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] boringssl_context_info_handler(2812) [C2.1.1.1:2][0x11963d1e0] Client handshake done
+2026-10-22 11:08:08.450 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:08.450 Df BrokersConnect[48613:20a5d] [com.apple.network:boringssl] nw_protocol_boringssl_signal_connected(895) [C2.1.1.1:2][0x11963d1e0] TLS connected [server(0) version(0x0304) ciphersuite(TLS_AES_128_GCM_SHA256) group(0x11ec) signature_alg(0x0804) alpn(h2) resumed(0) offered_ticket(0) in_early_data(0) early_data_accepted(0) false_started(0) ocsp_received(0) sct_received(0) connect_time(53ms) flight_time(38ms) rtt(38ms) write_stalls(0) read_stalls(2) pake(0x0000)]
+2026-10-22 11:08:08.450 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_flow_connected [C2.1.1.1 IPv4#ebbf6a06:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (CFNetworkConnection-2511400452)
+2026-10-22 11:08:08.450 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1.1.1 IPv4#ebbf6a06:443 ready socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.097s
+2026-10-22 11:08:08.450 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1.1 Hostname#220e9097:443 ready resolver (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.097s
+2026-10-22 11:08:08.450 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2.1 Hostname#220e9097:443 ready transform (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.097s
+2026-10-22 11:08:08.450 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_flow_connected [C2 IPv4#ebbf6a06:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (endpoint_flow)
+2026-10-22 11:08:08.450 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2 IPv4#ebbf6a06:443 ready parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_connect @0.097s
+2026-10-22 11:08:08.450 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C2] reporting state ready
+2026-10-22 11:08:08.450 A  BrokersConnect[48613:20a5d] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x10870ee40] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 2: connected successfully
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 2: TLS handshake complete
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Connection 2: ready C(N) E(N)
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C2] event: client:connection_reused @0.098s
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_protocol_socket_notify [C2.1.1.1:3] nw_protocol_notification_type_connection_idle is false
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <EAE442BE-C3AB-48D9-8D52-1E16BB7FEAF2>.<1> now using Connection 2
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <97A079FA-39A8-4255-8D46-2270662EDA71>.<2> now using Connection 2
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <EAE1DCA6-01F0-4586-96E8-57BD084F2037>.<3> now using Connection 2
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <EAE442BE-C3AB-48D9-8D52-1E16BB7FEAF2>.<1> sent request, body N 0
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <97A079FA-39A8-4255-8D46-2270662EDA71>.<2> sent request, body N 0
+2026-10-22 11:08:08.451 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <EAE1DCA6-01F0-4586-96E8-57BD084F2037>.<3> sent request, body N 0
+2026-10-22 11:08:08.683 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <4F72C028-33B8-4A3E-AC66-0FE08DA8B1B0>.<1> resuming, timeouts(15.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:08.683 Df BrokersConnect[48613:20a49] [com.apple.CFNetwork:Default] Task <FFA1C819-6956-42AC-962B-5FB3036DDA38>.<2> resuming, timeouts(15.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:08.709 Df BrokersConnect[48613:20a49] [com.apple.CFNetwork:Summary] Task <FFA1C819-6956-42AC-962B-5FB3036DDA38>.<2> summary for task success {transaction_duration_ms=24, response_status=-1, cache_hit=false}
+2026-10-22 11:08:08.709 Df BrokersConnect[48613:20a49] [com.apple.CFNetwork:Summary] Task <4F72C028-33B8-4A3E-AC66-0FE08DA8B1B0>.<1> summary for task success {transaction_duration_ms=25, response_status=-1, cache_hit=false}
+2026-10-22 11:08:08.709 Df BrokersConnect[48613:20a49] [com.apple.CFNetwork:Default] Task <FFA1C819-6956-42AC-962B-5FB3036DDA38>.<2> finished successfully
+2026-10-22 11:08:08.709 Df BrokersConnect[48613:20a49] [com.apple.CFNetwork:Default] Task <4F72C028-33B8-4A3E-AC66-0FE08DA8B1B0>.<1> finished successfully
+2026-10-22 11:08:08.731 Df BrokersConnect[48613:20a49] [com.hackemist.SDWebImage:Default] Detected the current OS's ImageIO PNG Decoder is buggy on indexed color PNG. Perform workaround solution...
+2026-10-22 11:08:08.830 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <73E2E028-D16B-4277-897C-8CBBBBD8BD25>.<4> received response, status 200 content K
+2026-10-22 11:08:08.832 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <73E2E028-D16B-4277-897C-8CBBBBD8BD25>.<4> done using Connection 3
+2026-10-22 11:08:08.832 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C3] event: client:connection_idle @0.469s
+2026-10-22 11:08:08.833 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] nw_protocol_socket_notify [C3.1.1.1:3] nw_protocol_notification_type_connection_idle is true
+2026-10-22 11:08:08.833 A  BrokersConnect[48613:20a5d] (Security) SecTrustEvaluateIfNecessary
+2026-10-22 11:08:08.834 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x11ad15cc0] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:08.841 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x11ad15cc0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:08.841 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <73E2E028-D16B-4277-897C-8CBBBBD8BD25>.<4> response ended
+2026-10-22 11:08:08.844 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Summary] Task <73E2E028-D16B-4277-897C-8CBBBBD8BD25>.<4> summary for task success {transaction_duration_ms=509, response_status=200, connection=3, protocol="h2", domain_lookup_duration_ms=21, connect_duration_ms=32, secure_connection_duration_ms=28, private_relay=false, request_start_ms=100, request_duration_ms=0, response_start_ms=495, response_duration_ms=11, request_bytes=293, request_throughput_kbps=32128, response_bytes=1330, response_throughput_kbps=919, cache_hit=false}
+2026-10-22 11:08:08.844 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <73E2E028-D16B-4277-897C-8CBBBBD8BD25>.<4> finished successfully
+2026-10-22 11:08:08.976 Df BrokersConnect[48613:20a62] [com.apple.CFNetwork:Default] Task <005533BA-B547-4B7F-9F8F-FFF5403E76E9>.<3> resuming, timeouts(15.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:08.976 Df BrokersConnect[48613:20a62] [com.apple.CFNetwork:Default] Task <5FE4BDB9-A6F5-4324-9E1F-32F082F0E817>.<4> resuming, timeouts(15.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:08.993 Df BrokersConnect[48613:20a5e] [com.apple.CFNetwork:Summary] Task <5FE4BDB9-A6F5-4324-9E1F-32F082F0E817>.<4> summary for task success {transaction_duration_ms=16, response_status=-1, cache_hit=false}
+2026-10-22 11:08:08.993 Df BrokersConnect[48613:20a5e] [com.apple.CFNetwork:Default] Task <5FE4BDB9-A6F5-4324-9E1F-32F082F0E817>.<4> finished successfully
+2026-10-22 11:08:08.994 Df BrokersConnect[48613:20a5e] [com.apple.CFNetwork:Summary] Task <005533BA-B547-4B7F-9F8F-FFF5403E76E9>.<3> summary for task success {transaction_duration_ms=18, response_status=-1, cache_hit=false}
+2026-10-22 11:08:08.994 Df BrokersConnect[48613:20a5e] [com.apple.CFNetwork:Default] Task <005533BA-B547-4B7F-9F8F-FFF5403E76E9>.<3> finished successfully
+2026-10-22 11:08:09.023 Df BrokersConnect[48613:20a5e] (CoreVideo) Pixel format registry initialized. Constant classes enabled.
+2026-10-22 11:08:09.344 Df BrokersConnect[48613:20a5e] [com.apple.xpc:connection] [0x11ad17d40] activating connection: mach=true listener=false peer=false name=com.apple.metal.simulator
+2026-10-22 11:08:09.345 Df BrokersConnect[48613:20a5e] [com.apple.xpc:connection] [0x10870d2c0] activating connection: mach=true listener=false peer=false name=com.apple.metal.simulator
+2026-10-22 11:08:09.346 Df BrokersConnect[48613:20a5e] [com.apple.xpc:connection] [0x10870cf00] activating connection: mach=true listener=false peer=false name=com.apple.metal.simulator
+2026-10-22 11:08:09.363 Df BrokersConnect[48613:20a5c] [com.apple.CFNetwork:Default] Task <97A079FA-39A8-4255-8D46-2270662EDA71>.<2> received response, status 200 content U
+2026-10-22 11:08:09.363 Df BrokersConnect[48613:20a5c] [com.apple.CFNetwork:Default] Task <97A079FA-39A8-4255-8D46-2270662EDA71>.<2> done using Connection 2
+2026-10-22 11:08:09.364 Df BrokersConnect[48613:20a5c] [com.apple.CFNetwork:Default] Task <97A079FA-39A8-4255-8D46-2270662EDA71>.<2> response ended
+2026-10-22 11:08:09.365 Df BrokersConnect[48613:20a60] [com.apple.CFNetwork:Summary] Task <97A079FA-39A8-4255-8D46-2270662EDA71>.<2> summary for task success {transaction_duration_ms=1030, response_status=200, connection=2, reused=1, reused_after_ms=0, request_start_ms=117, request_duration_ms=0, response_start_ms=1029, response_duration_ms=0, request_bytes=34, request_throughput_kbps=1825, response_bytes=989, response_throughput_kbps=8860, cache_hit=false}
+2026-10-22 11:08:09.365 Df BrokersConnect[48613:20a60] [com.apple.CFNetwork:Default] Task <97A079FA-39A8-4255-8D46-2270662EDA71>.<2> finished successfully
+2026-10-22 11:08:09.663 Df BrokersConnect[48613:20a5c] [com.apple.CFNetwork:Default] Task <EAE1DCA6-01F0-4586-96E8-57BD084F2037>.<3> received response, status 200 content U
+2026-10-22 11:08:09.784 Df BrokersConnect[48613:20a5c] [com.apple.CFNetwork:Default] Task <EAE1DCA6-01F0-4586-96E8-57BD084F2037>.<3> done using Connection 2
+2026-10-22 11:08:09.784 Df BrokersConnect[48613:20a5c] [com.apple.CFNetwork:Default] Task <EAE1DCA6-01F0-4586-96E8-57BD084F2037>.<3> response ended
+2026-10-22 11:08:09.784 Df BrokersConnect[48613:20a5c] [com.apple.CFNetwork:Summary] Task <EAE1DCA6-01F0-4586-96E8-57BD084F2037>.<3> summary for task success {transaction_duration_ms=1450, response_status=200, connection=2, reused=1, reused_after_ms=0, request_start_ms=117, request_duration_ms=0, response_start_ms=1328, response_duration_ms=121, request_bytes=34, request_throughput_kbps=1648, response_bytes=317, response_throughput_kbps=20, cache_hit=false}
+2026-10-22 11:08:09.784 Df BrokersConnect[48613:20a5c] [com.apple.CFNetwork:Default] Task <EAE1DCA6-01F0-4586-96E8-57BD084F2037>.<3> finished successfully
+2026-10-22 11:08:09.818 Df BrokersConnect[48613:20a5e] [com.apple.CFNetwork:Default] Task <EAE442BE-C3AB-48D9-8D52-1E16BB7FEAF2>.<1> received response, status 200 content U
+2026-10-22 11:08:09.818 Df BrokersConnect[48613:20a5e] [com.apple.CFNetwork:Default] Task <EAE442BE-C3AB-48D9-8D52-1E16BB7FEAF2>.<1> done using Connection 2
+2026-10-22 11:08:09.818 Df BrokersConnect[48613:20a5e] [com.apple.network:connection] [C2] event: client:connection_idle @1.465s
+2026-10-22 11:08:09.818 Df BrokersConnect[48613:20a5e] [com.apple.network:connection] nw_protocol_socket_notify [C2.1.1.1:3] nw_protocol_notification_type_connection_idle is true
+2026-10-22 11:08:09.818 Df BrokersConnect[48613:20a5e] [com.apple.CFNetwork:Default] Task <EAE442BE-C3AB-48D9-8D52-1E16BB7FEAF2>.<1> response ended
+2026-10-22 11:08:09.819 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Summary] Task <EAE442BE-C3AB-48D9-8D52-1E16BB7FEAF2>.<1> summary for task success {transaction_duration_ms=1485, response_status=200, connection=2, protocol="h2", domain_lookup_duration_ms=26, connect_duration_ms=61, secure_connection_duration_ms=53, private_relay=false, request_start_ms=117, request_duration_ms=0, response_start_ms=1483, response_duration_ms=0, request_bytes=131, request_throughput_kbps=7821, response_bytes=3590, response_throughput_kbps=30851, cache_hit=false}
+2026-10-22 11:08:09.819 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <EAE442BE-C3AB-48D9-8D52-1E16BB7FEAF2>.<1> finished successfully
+2026-10-22 11:08:10.050 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Task <A243E9C4-1778-4291-A9DB-289EE9E1C2E6>.<5> resuming, timeouts(15.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:10.077 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Connection 0: creating secure tcp or quic connection
+2026-10-22 11:08:10.089 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Connection 4: enabling TLS
+2026-10-22 11:08:10.089 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Connection 4: starting, TC(0x0)
+2026-10-22 11:08:10.090 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4 13D931EA-24D1-449F-BEDB-6A7DECCE210E Hostname#d4ee45a1:443 quic-connection, url: https://hiwdhicwsohbipxzazmb.supabase.co/storage/v1/object/public/company-logos/aaaaaaaa-0000-0000-0000-000000000001/logo-ad71ccd9-48b2-4b74-b782-e0ca15d2988a.png, definite, attribution: developer, context: com.apple.CFNetwork.NSURLSession.{AC5F7EF4-B0CC-48C0-A781-5475CBEFB71E}{(null)}{Y}{2}{0x0} (private), proc: B3E87D8B-CACD-3EC7-AD61-3E72F5F127CA, delegated upid: 0] start
+2026-10-22 11:08:10.090 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4 Hostname#d4ee45a1:443 initial parent-flow ((null))] event: path:start @0.000s
+2026-10-22 11:08:10.090 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4 Hostname#d4ee45a1:443 waiting parent-flow (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.000s, uuid: 0F191C5F-7F8E-4469-9BEA-B66F754CA31D
+2026-10-22 11:08:10.090 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4 Hostname#d4ee45a1:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_connect @0.000s
+2026-10-22 11:08:10.090 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C4] reporting state preparing
+2026-10-22 11:08:10.091 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4 Hostname#d4ee45a1:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_child @0.001s
+2026-10-22 11:08:10.091 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1 Hostname#d4ee45a1:443 initial path ((null))] event: path:start @0.001s
+2026-10-22 11:08:10.091 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1 Hostname#d4ee45a1:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.001s, uuid: 0F191C5F-7F8E-4469-9BEA-B66F754CA31D
+2026-10-22 11:08:10.091 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1 Hostname#d4ee45a1:443 in_progress transform (satisfied (Path is satisfied), interface: en0)] event: transform:start @0.001s
+2026-10-22 11:08:10.092 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1 Hostname#d4ee45a1:443 initial path ((null))] event: path:start @0.002s
+2026-10-22 11:08:10.092 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1 Hostname#d4ee45a1:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.002s, uuid: 2A094ACB-E298-42AB-9A84-7397A8D49296
+2026-10-22 11:08:10.092 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1 Hostname#d4ee45a1:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] event: resolver:start_dns @0.002s
+2026-10-22 11:08:10.094 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Task <A243E9C4-1778-4291-A9DB-289EE9E1C2E6>.<5> setting up Connection 4
+2026-10-22 11:08:10.094 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_endpoint_resolver_update [C4.1.1 Hostname#d4ee45a1:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] Adding endpoint handler for IPv4#d8b3c22f:443
+2026-10-22 11:08:10.094 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_endpoint_resolver_update [C4.1.1 Hostname#d4ee45a1:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] Adding endpoint handler for IPv4#cc1f0dc7:443
+2026-10-22 11:08:10.094 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1 Hostname#d4ee45a1:443 in_progress resolver (satisfied (Path is satisfied), interface: en0)] event: resolver:receive_dns @0.004s
+2026-10-22 11:08:10.095 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1.1 IPv4#d8b3c22f:443 initial path ((null))] event: path:start @0.005s
+2026-10-22 11:08:10.095 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1.1 IPv4#d8b3c22f:443 waiting path (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.005s, uuid: 74BAEFAE-6C0A-4934-A927-A727E676AE4C
+2026-10-22 11:08:10.125 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_conn_initialize_inner [C4.1.1.1:2] [-90e6f15721d05ea7] created QUIC connection (spin bit enabled)
+2026-10-22 11:08:10.128 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1.1 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_connect @0.038s
+2026-10-22 11:08:10.130 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_crypto_new_flow [C4.1.1.1:2] [-90e6f15721d05ea7] TLS stream is: [C5]
+2026-10-22 11:08:10.130 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C5 F54369D0-552C-4C93-931B-4EBEBBAEED9B IPv4#d8b3c22f:443 quic-connection, url: https://hiwdhicwsohbipxzazmb.supabase.co/storage/v1/object/public/company-logos/aaaaaaaa-0000-0000-0000-000000000001/logo-ad71ccd9-48b2-4b74-b782-e0ca15d2988a.png, tls, definite, attribution: developer, context: com.apple.CFNetwork.NSURLSession.{AC5F7EF4-B0CC-48C0-A781-5475CBEFB71E}{(null)}{Y}{2}{0x0} (private), proc: B3E87D8B-CACD-3EC7-AD61-3E72F5F127CA, delegated upid: 0] start
+2026-10-22 11:08:10.130 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C5 IPv4#d8b3c22f:443 initial socket-flow (satisfied (Path is satisfied), interface: en0)] event: path:start @0.000s
+2026-10-22 11:08:10.130 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C5 IPv4#d8b3c22f:443 waiting socket-flow (satisfied (Path is satisfied), interface: en0)] event: path:satisfied @0.000s, uuid: 74BAEFAE-6C0A-4934-A927-A727E676AE4C
+2026-10-22 11:08:10.131 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C5 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:start_connect @0.000s
+2026-10-22 11:08:10.131 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C5] reporting state preparing
+2026-10-22 11:08:10.132 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_flow_connected [C5 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Transport protocol connected (quic-connection)
+2026-10-22 11:08:10.132 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C5 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_transport @0.001s
+2026-10-22 11:08:10.133 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_session_apply_protocol_options_for_transport_block_invoke_2(2367) [C5:1][0x11bad8a60] TLS configured [server(0) min_version(0x0304) max_version(0x0304) name(redacted) tickets(false) false_start(false) enforce_ev(false) enforce_ats(false) ats_non_pfs_ciphersuite_allowed(false) cc_mode_enforced(false) ech(false) pqtls(true), pake(false) skip_ats_trust(false)]
+2026-10-22 11:08:10.133 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2806) [C5:1][0x11bad8a60] Client handshake started
+2026-10-22 11:08:10.134 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS client enter_early_data
+2026-10-22 11:08:10.137 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS client read_server_hello
+2026-10-22 11:08:10.137 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_socket_handle_socket_event [C4.1.1.1:2] Socket received CONNECTED event
+2026-10-22 11:08:10.142 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client read_hello_retry_request
+2026-10-22 11:08:10.142 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client read_server_hello
+2026-10-22 11:08:10.142 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client read_encrypted_extensions
+2026-10-22 11:08:10.142 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client read_certificate_request
+2026-10-22 11:08:10.143 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client read_server_certificate
+2026-10-22 11:08:10.143 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client read_server_certificate_verify
+2026-10-22 11:08:10.143 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async(2249) [C5:1][0x11bad8a60] Performing external trust evaluation
+2026-10-22 11:08:10.143 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.143 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:10.143 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.143 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async_external(2234) [C5:1][0x11bad8a60] Asyncing for external verify block
+2026-10-22 11:08:10.144 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Connection 4: asked to evaluate TLS Trust
+2026-10-22 11:08:10.144 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Task <A243E9C4-1778-4291-A9DB-289EE9E1C2E6>.<5> auth completion disp=1 cred=0x0
+2026-10-22 11:08:10.144 Df BrokersConnect[48613:20a63] [com.apple.securityd:trust] (Trust 0x11bafc600) No pending evals, starting
+2026-10-22 11:08:10.144 A  BrokersConnect[48613:20a63] (Security) SecTrustEvaluateIfNecessaryFastAsync
+2026-10-22 11:08:10.144 Df BrokersConnect[48613:20a63] [com.apple.xpc:connection] [0x10856e6c0] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:10.144 Df BrokersConnect[48613:20a63] [com.apple.securityd:trust] (Trust 0x11bafc600) Completed async eval kickoff
+2026-10-22 11:08:10.146 Df BrokersConnect[48613:20a63] [com.apple.securityd:trust] (Trust 0x11bafc600) trustd returned 4
+2026-10-22 11:08:10.146 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] System Trust Evaluation yielded status(0)
+2026-10-22 11:08:10.146 Df BrokersConnect[48613:20a63] [com.apple.securityd:trust] (Trust 0x11bafc3c0) No pending evals, starting
+2026-10-22 11:08:10.147 A  BrokersConnect[48613:20a63] (Security) SecTrustEvaluateIfNecessaryFastAsync
+2026-10-22 11:08:10.147 Df BrokersConnect[48613:20a63] [com.apple.xpc:connection] [0x10856ea80] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:10.149 Df BrokersConnect[48613:20a63] [com.apple.securityd:trust] (Trust 0x11bafc3c0) Completed async eval kickoff
+2026-10-22 11:08:10.149 Df BrokersConnect[48613:20a63] [com.apple.xpc:connection] [0x10856e6c0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:10.150 Df BrokersConnect[48613:20a63] [com.apple.securityd:trust] (Trust 0x11bafc3c0) trustd returned 4
+2026-10-22 11:08:10.150 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Connection 4: TLS Trust result 0
+2026-10-22 11:08:10.150 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_evaluate_trust_async_external_block_invoke_3(2148) [C5:1][0x11bad8a60] Returning from external verify block with result: true
+2026-10-22 11:08:10.150 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_certificate_verify_callback(2430) [C5:1][0x11bad8a60] Certificate verification result: OK
+2026-10-22 11:08:10.151 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client read_server_finished
+2026-10-22 11:08:10.151 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client send_end_of_early_data
+2026-10-22 11:08:10.151 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client send_client_encrypted_extensions
+2026-10-22 11:08:10.151 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client send_client_certificate
+2026-10-22 11:08:10.152 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client complete_second_flight
+2026-10-22 11:08:10.152 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.152 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:10.152 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.152 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.152 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:10.152 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.153 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS 1.3 client done
+2026-10-22 11:08:10.153 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS client finish_client_handshake
+2026-10-22 11:08:10.153 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2823) [C5:1][0x11bad8a60] Client handshake state: TLS client done
+2026-10-22 11:08:10.153 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_info_handler(2812) [C5:1][0x11bad8a60] Client handshake done
+2026-10-22 11:08:10.153 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.153 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:10.153 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.153 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] nw_protocol_boringssl_signal_connected(895) [C5:1][0x11bad8a60] TLS connected [server(0) version(0x0304) ciphersuite(TLS_AES_256_GCM_SHA384) group(0x11ec) signature_alg(0x0403) alpn(h3) resumed(0) offered_ticket(0) in_early_data(0) early_data_accepted(0) false_started(0) ocsp_received(0) sct_received(0) connect_time(20ms) flight_time(8ms) rtt(8ms) write_stalls(0) read_stalls(5) pake(0x0000)]
+2026-10-22 11:08:10.154 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_flow_connected [C5 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (tls)
+2026-10-22 11:08:10.154 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C5 IPv4#d8b3c22f:443 ready socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_connect @0.023s
+2026-10-22 11:08:10.154 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C5] reporting state ready
+2026-10-22 11:08:10.154 Df BrokersConnect[48613:20a63] [com.apple.xpc:connection] [0x10856ea80] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:10.154 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_pmtud_restart [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] PMTUD enabled, max PMTU: 1500, header size: 28, current PMTU 1228
+2026-10-22 11:08:10.155 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_crypto_tls_ready_inner [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] QUIC connection established in 26.001 ms, RTT 2.893 ms
+2026-10-22 11:08:10.155 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_flow_connected [C4.1.1.1 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Transport protocol connected (quic-connection)
+2026-10-22 11:08:10.155 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1.1 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_transport @0.065s
+2026-10-22 11:08:10.155 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_flow_connected [C4.1.1.1 IPv4#d8b3c22f:443 in_progress socket-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (CFNetworkConnection-2511400452)
+2026-10-22 11:08:10.155 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1.1 IPv4#d8b3c22f:443 ready socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.065s
+2026-10-22 11:08:10.155 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1 Hostname#d4ee45a1:443 ready resolver (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.065s
+2026-10-22 11:08:10.155 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1 Hostname#d4ee45a1:443 ready transform (satisfied (Path is satisfied), interface: en0)] event: flow:child_finish_connect @0.065s
+2026-10-22 11:08:10.155 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_flow_connected [C4 IPv4#d8b3c22f:443 in_progress parent-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (endpoint_flow)
+2026-10-22 11:08:10.155 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4 IPv4#d8b3c22f:443 ready parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:finish_connect @0.065s
+2026-10-22 11:08:10.156 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C4] reporting state ready
+2026-10-22 11:08:10.157 E  BrokersConnect[48613:20a63] [com.apple.network:] nw_protocol_instance_set_output_handler Not calling remove_input_handler on 0x11ba19a00:socket
+2026-10-22 11:08:10.157 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_migration_path_event_block_invoke [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] path fb6be831543473f7 over en0 received event established
+2026-10-22 11:08:10.157 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_migration_evaluate_primary [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] promoted path 0x11b9d6a00 over en0 to primary
+2026-10-22 11:08:10.157 Df BrokersConnect[48613:20a63] [com.apple.network:] nw_protocol_instance_report_ready [C4.1.1.1:2] Calling notify with interface en0 for flow_registration 5235BE0B-7BE9-451B-8417-8F2DB06B60AC
+2026-10-22 11:08:10.157 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1.1 IPv4#d8b3c22f:443 ready socket-flow (satisfied (Path is satisfied), interface: en0)] event: path:migrated @0.067s, uuid: 74BAEFAE-6C0A-4934-A927-A727E676AE4C
+2026-10-22 11:08:10.157 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1.1 Hostname#d4ee45a1:443 ready resolver (satisfied (Path is satisfied), interface: en0)] event: path:migrated @0.067s, uuid: 2A094ACB-E298-42AB-9A84-7397A8D49296
+2026-10-22 11:08:10.157 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4.1 Hostname#d4ee45a1:443 ready transform (satisfied (Path is satisfied), interface: en0)] event: path:migrated @0.067s, uuid: 0F191C5F-7F8E-4469-9BEA-B66F754CA31D
+2026-10-22 11:08:10.157 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4 IPv4#d8b3c22f:443 ready parent-flow (satisfied (Path is satisfied), interface: en0)] event: path:migrated @0.067s, uuid: 0F191C5F-7F8E-4469-9BEA-B66F754CA31D
+2026-10-22 11:08:10.157 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_migration_evaluate [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] evaluating path migration
+2026-10-22 11:08:10.157 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_migration_evaluate_block_invoke [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] path fb6be831543473f7 state validated (0), ifname en0, primary? 1, initial? 1, fallback? 0, preferred? 0 lossy? 0
+2026-10-22 11:08:10.157 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_migration_evaluate [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] current path is usable, no strong fallback or we are probing
+2026-10-22 11:08:10.158 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Connection 4: connected successfully
+2026-10-22 11:08:10.158 E  BrokersConnect[48613:20a63] [com.apple.network:connection] nw_connection_copy_connected_local_endpoint_block_invoke [C4] Connection has no local endpoint
+2026-10-22 11:08:10.158 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Connection 4: TLS handshake complete
+2026-10-22 11:08:10.158 E  BrokersConnect[48613:20a63] [com.apple.network:connection] nw_connection_copy_connected_local_endpoint_block_invoke [C4] Connection has no local endpoint
+2026-10-22 11:08:10.158 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Connection 4: ready C(N) E(N)
+2026-10-22 11:08:10.159 Df BrokersConnect[48613:20a63] [com.apple.network:connection] [C4] event: client:connection_reused @0.069s
+2026-10-22 11:08:10.160 Df BrokersConnect[48613:20a63] [com.apple.CFNetwork:Default] Task <A243E9C4-1778-4291-A9DB-289EE9E1C2E6>.<5> now using Connection 4
+2026-10-22 11:08:10.165 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.165 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:10.165 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.165 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_new_session_handler(1771) [C5:1][0x11bad8a60] Asyncing for session update block
+2026-10-22 11:08:10.165 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.165 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyAttributes
+2026-10-22 11:08:10.165 A  BrokersConnect[48613:20a63] (Security) SecKeyCopyPublicBytes
+2026-10-22 11:08:10.165 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_new_session_handler(1771) [C5:1][0x11bad8a60] Asyncing for session update block
+2026-10-22 11:08:10.165 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] nw_protocol_boringssl_signal_connected(895) [C5:1][0x11bad8a60] TLS connected [server(0) version(0x0304) ciphersuite(TLS_AES_256_GCM_SHA384) group(0x11ec) signature_alg(0x0403) alpn(h3) resumed(0) offered_ticket(0) in_early_data(0) early_data_accepted(0) false_started(0) ocsp_received(0) sct_received(0) connect_time(20ms) flight_time(8ms) rtt(8ms) write_stalls(0) read_stalls(5) pake(0x0000)]
+2026-10-22 11:08:10.165 Df BrokersConnect[48613:20a63] [com.apple.network:connection] nw_flow_connected [C5 IPv4#d8b3c22f:443 ready socket-flow (satisfied (Path is satisfied), interface: en0)] Output protocol connected (tls)
+2026-10-22 11:08:10.165 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_stream_create_inbound [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] creating inbound stream 3
+2026-10-22 11:08:10.166 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_stream_create_inbound [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] creating inbound stream 7
+2026-10-22 11:08:10.166 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_stream_create_inbound [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] creating inbound stream 11
+2026-10-22 11:08:10.166 Df BrokersConnect[48613:20a63] [com.apple.network:quic] quic_stream_create_inbound [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] creating inbound stream 15
+2026-10-22 11:08:10.166 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_new_session_handler_block_invoke(1774) [C5:1][0x11bad8a60] Returning from session update block
+2026-10-22 11:08:10.167 Df BrokersConnect[48613:20a63] [com.apple.network:boringssl] boringssl_context_new_session_handler_block_invoke(1774) [C5:1][0x11bad8a60] Returning from session update block
+2026-10-22 11:08:10.167 Df BrokersConnect[48613:20a63] [com.apple.cfnetwork:h3stream] 0x11bb18718 ID=0 Task <A243E9C4-1778-4291-A9DB-289EE9E1C2E6>.<5> sent request, body N 0
+2026-10-22 11:08:10.306 Df BrokersConnect[48613:20a5d] [com.apple.cfnetwork:h3stream] 0x11bb18718 ID=0 Task <A243E9C4-1778-4291-A9DB-289EE9E1C2E6>.<5> received response, status 200 content K
+2026-10-22 11:08:10.306 A  BrokersConnect[48613:20a5d] (Security) SecTrustEvaluateIfNecessary
+2026-10-22 11:08:10.307 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x10856ea80] activating connection: mach=true listener=false peer=false name=com.apple.trustd
+2026-10-22 11:08:10.310 Df BrokersConnect[48613:20a5d] [com.apple.xpc:connection] [0x10856ea80] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:08:10.310 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <A243E9C4-1778-4291-A9DB-289EE9E1C2E6>.<5> response ended
+2026-10-22 11:08:10.310 Df BrokersConnect[48613:20a5d] [com.apple.network:connection] [C4] event: client:connection_idle @0.220s
+2026-10-22 11:08:10.311 Df BrokersConnect[48613:20a5d] [com.apple.CFNetwork:Default] Task <A243E9C4-1778-4291-A9DB-289EE9E1C2E6>.<5> done using Connection 4
+2026-10-22 11:08:10.311 Df BrokersConnect[48613:20a60] [com.apple.CFNetwork:Summary] Task <A243E9C4-1778-4291-A9DB-289EE9E1C2E6>.<5> summary for task success {transaction_duration_ms=259, response_status=200, connection=4, protocol="h3", domain_lookup_duration_ms=2, connect_duration_ms=27, secure_connection_duration_ms=26, private_relay=false, request_start_ms=108, request_duration_ms=6, response_start_ms=248, response_duration_ms=10, request_bytes=196, request_throughput_kbps=243, response_bytes=4634, response_throughput_kbps=3496, cache_hit=false}
+2026-10-22 11:08:10.311 Df BrokersConnect[48613:20a5c] [com.apple.CFNetwork:Default] Task <A243E9C4-1778-4291-A9DB-289EE9E1C2E6>.<5> finished successfully
+2026-10-22 11:08:22.022 Df BrokersConnect[48613:20a1a] [com.apple.KeyboardArbiter:Client] TX focusApplication (peekAppEvent) stealKB:Y scene:net.brokersconnect.app-default
+2026-10-22 11:08:22.025 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x11ad84e00; type: 0; subtype: 0; backing type: 11; shouldSend: 1; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+2026-10-22 11:08:22.025 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDispatch] Sending UIEvent type: 0; subtype: 0; to windows: 1
+2026-10-22 11:08:22.026 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDispatch] Sending UIEvent type: 0; subtype: 0; to window: <UIWindow: 0x105a40400>; contextId: 0xA9705A3D
+2026-10-22 11:08:22.074 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x11ad84e00; type: 0; subtype: 0; backing type: 11; shouldSend: 0; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+2026-10-22 11:08:22.074 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x11ad84e00; type: 0; subtype: 0; backing type: 11; shouldSend: 0; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+2026-10-22 11:08:22.075 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x11ad84e00; type: 0; subtype: 0; backing type: 11; shouldSend: 1; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+2026-10-22 11:08:22.076 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDispatch] Sending UIEvent type: 0; subtype: 0; to windows: 1
+2026-10-22 11:08:22.076 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDispatch] Sending UIEvent type: 0; subtype: 0; to window: <UIWindow: 0x105a40400>; contextId: 0xA9705A3D
+2026-10-22 11:08:22.177 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDispatch] Evaluating dispatch of UIEvent: 0x11ad84e00; type: 0; subtype: 0; backing type: 11; shouldSend: 0; ignoreInteractionEvents: 0, systemGestureStateChange: 0
+2026-10-22 11:08:22.437 A  BrokersConnect[48613:20a1a] (UIKitCore) send gesture actions
+2026-10-22 11:08:36.546 Df BrokersConnect[48613:219bf] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x105a71da0; token: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Anet.brokersconnect.app-default; status: none> was:ancestor
+2026-10-22 11:08:36.547 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Scene target of keyboard event deferring environment did change: 0; scene: UIWindowScene: 0x108468400; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Anet.brokersconnect.app-default
+2026-10-22 11:08:38.246 Df BrokersConnect[48613:20a1a] [com.apple.runningboard:connection] Creating side-channel connection to com.apple.runningboard
+2026-10-22 11:08:38.247 Df BrokersConnect[48613:20a1a] [com.apple.xpc:connection] [0x11ad15a40] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-10-22 11:08:38.249 Df BrokersConnect[48613:20a1a] [com.apple.runningboard:process] Hit the server for a process handle 4471a9c0000bde5 that resolved to: [app<net.brokersconnect.app((null))>:48613]
+2026-10-22 11:08:38.250 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:net.brokersconnect.app-default  persistentID: B203C5D5-A023-4F13-9067-105BB0888D6A
+2026-10-22 11:08:38.251 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:UIAlertControllerStackManager] canShowAlerts Updated: <FBSSceneSettingsDiff: 0x10843e240; UIApplicationSceneSettings> {
+    subclassSettings = <BSSettingsDiff: 0x11b856e50> {
+        canShowAlerts = NO;
+    };
+}
+2026-10-22 11:08:38.257 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:38.260 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:net.brokersconnect.app-default  persistentID: B203C5D5-A023-4F13-9067-105BB0888D6A
+2026-10-22 11:08:38.260 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason added: 13; deactivation reasons: 0 -> 8192; animating application lifecycle event: 0
+2026-10-22 11:08:38.264 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Ignoring already applied deactivation reason: 13; deactivation reasons: 8192
+2026-10-22 11:08:38.264 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason added: 12; deactivation reasons: 8192 -> 12288; animating application lifecycle event: 0
+2026-10-22 11:08:38.276 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:net.brokersconnect.app-default  persistentID: B203C5D5-A023-4F13-9067-105BB0888D6A
+2026-10-22 11:08:42.370 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:net.brokersconnect.app-default  persistentID: B203C5D5-A023-4F13-9067-105BB0888D6A
+2026-10-22 11:08:42.370 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:UIAlertControllerStackManager] canShowAlerts Updated: <FBSSceneSettingsDiff: 0x11adfe440; UIApplicationSceneSettings> {
+    subclassSettings = <BSSettingsDiff: 0x11b855dd0> {
+        canShowAlerts = YES;
+    };
+}
+2026-10-22 11:08:42.371 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:UIAlertControllerStackManager] _showHiddenStackedAlertControllers : Showing top alert : (nil)
+2026-10-22 11:08:42.371 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:UIAlertControllerStackManager] _willShowAlertController: (nil)
+2026-10-22 11:08:42.371 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason removed: 13; deactivation reasons: 12288 -> 4096; animating application lifecycle event: 0
+2026-10-22 11:08:42.376 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x108468400> (B203C5D5-A023-4F13-9067-105BB0888D6A)
+2026-10-22 11:08:42.378 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:net.brokersconnect.app-default  persistentID: B203C5D5-A023-4F13-9067-105BB0888D6A
+2026-10-22 11:08:42.378 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:Application] Deactivation reason removed: 12; deactivation reasons: 4096 -> 0; animating application lifecycle event: 0
+2026-10-22 11:08:42.379 Df BrokersConnect[48613:20a1a] [com.apple.KeyboardArbiter:Client] Send setDeactivating: N (-DeactivationReason:SuspendedEventsOnly)
+2026-10-22 11:08:42.435 Df BrokersConnect[48613:20a49] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x105a71da0; token: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Anet.brokersconnect.app-default; status: ancestor> was:none
+2026-10-22 11:08:42.436 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Scene target of keyboard event deferring environment did change: 1; scene: UIWindowScene: 0x108468400; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Anet.brokersconnect.app-default
+2026-10-22 11:08:42.436 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:EventDeferring] [0x1084c0a80] Scene target of event deferring environments did update: scene: 0x108468400; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-10-22 11:08:42.436 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x108468400; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Anet.brokersconnect.app-default
+2026-10-22 11:08:42.466 Df BrokersConnect[48613:219bf] [com.apple.CFNetwork:Default] Task <6CB176FD-9F46-4EC9-A106-DA1F681DB100>.<5> resuming, timeouts(0.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:42.479 Df BrokersConnect[48613:219bf] [com.apple.network:connection] [C2] event: client:connection_reused @34.126s
+2026-10-22 11:08:42.481 Df BrokersConnect[48613:219bf] [com.apple.network:connection] nw_protocol_socket_notify [C2.1.1.1:3] nw_protocol_notification_type_connection_idle is false
+2026-10-22 11:08:42.482 Df BrokersConnect[48613:219bf] [com.apple.CFNetwork:Default] Task <6CB176FD-9F46-4EC9-A106-DA1F681DB100>.<5> now using Connection 2
+2026-10-22 11:08:42.486 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:net.brokersconnect.app-default  persistentID: B203C5D5-A023-4F13-9067-105BB0888D6A
+2026-10-22 11:08:42.503 Df BrokersConnect[48613:219bf] [com.apple.CFNetwork:Default] Task <6CB176FD-9F46-4EC9-A106-DA1F681DB100>.<5> sent request, body N 0
+2026-10-22 11:08:42.540 Df BrokersConnect[48613:219bf] [com.apple.CFNetwork:Default] Task <6CB176FD-9F46-4EC9-A106-DA1F681DB100>.<5> received response, status 200 content U
+2026-10-22 11:08:42.540 Df BrokersConnect[48613:219bf] [com.apple.CFNetwork:Default] Task <6CB176FD-9F46-4EC9-A106-DA1F681DB100>.<5> done using Connection 2
+2026-10-22 11:08:42.540 Df BrokersConnect[48613:219bf] [com.apple.network:connection] [C2] event: client:connection_idle @34.187s
+2026-10-22 11:08:42.540 Df BrokersConnect[48613:219bf] [com.apple.network:connection] nw_protocol_socket_notify [C2.1.1.1:3] nw_protocol_notification_type_connection_idle is true
+2026-10-22 11:08:42.542 Df BrokersConnect[48613:219bf] [com.apple.CFNetwork:Default] Task <6CB176FD-9F46-4EC9-A106-DA1F681DB100>.<5> response ended
+2026-10-22 11:08:42.543 Df BrokersConnect[48613:219f1] [com.apple.CFNetwork:Summary] Task <6CB176FD-9F46-4EC9-A106-DA1F681DB100>.<5> summary for task success {transaction_duration_ms=74, response_status=200, connection=2, reused=1, reused_after_ms=32662, request_start_ms=33, request_duration_ms=0, response_start_ms=71, response_duration_ms=2, request_bytes=36, request_throughput_kbps=397, response_bytes=3571, response_throughput_kbps=9874, cache_hit=true}
+2026-10-22 11:08:42.543 Df BrokersConnect[48613:219f1] [com.apple.CFNetwork:Default] Task <6CB176FD-9F46-4EC9-A106-DA1F681DB100>.<5> finished successfully
+2026-10-22 11:08:42.934 Df BrokersConnect[48613:20a1a] [com.apple.FrontBoard:SceneClient] [(FBSceneManager):sceneID:net.brokersconnect.app-default] Received action(s) in scene-update: UIOpenURLAction
+2026-10-22 11:08:42.938 Df BrokersConnect[48613:20a1a] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:net.brokersconnect.app-default  persistentID: B203C5D5-A023-4F13-9067-105BB0888D6A
+2026-10-22 11:08:43.043 E  BrokersConnect[48613:20a1a] [com.apple.UIKit:UIFocus] RCTScrollViewComponentView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
+2026-10-22 11:08:43.112 Df BrokersConnect[48613:219bf] [com.apple.CFNetwork:Default] Task <F4429944-C0C7-41FD-A046-E5B421AC9C02>.<6> resuming, timeouts(0.0, 604800.0) qos(0x19) voucher((null)) activity(00000000-0000-0000-0000-000000000000)
+2026-10-22 11:08:43.114 Df BrokersConnect[48613:219bf] [com.apple.network:connection] [C3] event: client:connection_reused @34.751s
+2026-10-22 11:08:43.114 Df BrokersConnect[48613:219bf] [com.apple.network:connection] nw_protocol_socket_notify [C3.1.1.1:3] nw_protocol_notification_type_connection_idle is false
+2026-10-22 11:08:43.114 Df BrokersConnect[48613:219bf] [com.apple.CFNetwork:Default] Task <F4429944-C0C7-41FD-A046-E5B421AC9C02>.<6> now using Connection 3
+2026-10-22 11:08:43.117 Df BrokersConnect[48613:219bf] [com.apple.CFNetwork:Default] Task <F4429944-C0C7-41FD-A046-E5B421AC9C02>.<6> sent request, body N 0
+2026-10-22 11:08:43.749 Df BrokersConnect[48613:21aa6] [com.apple.CFNetwork:Default] Task <F4429944-C0C7-41FD-A046-E5B421AC9C02>.<6> received response, status 200 content U
+2026-10-22 11:08:43.749 Df BrokersConnect[48613:21aa6] [com.apple.CFNetwork:Default] Task <F4429944-C0C7-41FD-A046-E5B421AC9C02>.<6> done using Connection 3
+2026-10-22 11:08:43.749 Df BrokersConnect[48613:21aa6] [com.apple.network:connection] [C3] event: client:connection_idle @35.386s
+2026-10-22 11:08:43.749 Df BrokersConnect[48613:21aa6] [com.apple.network:connection] nw_protocol_socket_notify [C3.1.1.1:3] nw_protocol_notification_type_connection_idle is true
+2026-10-22 11:08:43.750 Df BrokersConnect[48613:21aa6] [com.apple.CFNetwork:Default] Task <F4429944-C0C7-41FD-A046-E5B421AC9C02>.<6> response ended
+2026-10-22 11:08:43.751 Df BrokersConnect[48613:21aa6] [com.apple.CFNetwork:Summary] Task <F4429944-C0C7-41FD-A046-E5B421AC9C02>.<6> summary for task success {transaction_duration_ms=637, response_status=200, connection=3, reused=1, reused_after_ms=34281, request_start_ms=3, request_duration_ms=0, response_start_ms=635, response_duration_ms=1, request_bytes=97, request_throughput_kbps=5502, response_bytes=645, response_throughput_kbps=4640, cache_hit=false}
+2026-10-22 11:08:43.751 Df BrokersConnect[48613:21aa6] [com.apple.CFNetwork:Default] Task <F4429944-C0C7-41FD-A046-E5B421AC9C02>.<6> finished successfully
+2026-10-22 11:10:03.332 Df BrokersConnect[48613:219bf] [com.apple.CFNetwork:Default] Connection 1: cleaning up
+2026-10-22 11:10:03.333 Df BrokersConnect[48613:219bf] [com.apple.network:connection] [C1 76BA1F47-4D08-42E7-9808-A39C4CB0BA9E Hostname#30e774e6:443 quic-connection, url: https://u.expo.dev/5598b160-d5fd-42e3-9cfd-14097b6677e9, definite, attribution: developer] cancel
+2026-10-22 11:10:03.333 Df BrokersConnect[48613:219bf] [com.apple.network:connection] [C1 76BA1F47-4D08-42E7-9808-A39C4CB0BA9E Hostname#30e774e6:443 quic-connection, url: https://u.expo.dev/5598b160-d5fd-42e3-9cfd-14097b6677e9, definite, attribution: developer] cancelled
+	[C1.1.1.1 ACA4A864-360E-451F-BE9F-9A4EBA50A3EA 192.168.64.2:52796<->IPv4#a84ade65:443]
+	Connected Path: satisfied (Path is satisfied), interface: en0
+	Privacy Stance: Not Eligible
+	Duration: 120.352s, DNS @0.127s took 0.022s, TCP @0.151s took 0.003s, TLS 1.3 took 0.096s
+	bytes in/out: 5008/2192, packets in/out: 4/6, rtt: 0.007s, retransmitted bytes: 0, out-of-order bytes: 0
+	ecn packets sent/acked/marked/lost: 6/5/0/0
+2026-10-22 11:10:03.335 Df BrokersConnect[48613:219bf] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C1] reporting state cancelled
+2026-10-22 11:10:03.335 Df BrokersConnect[48613:219bf] [com.apple.CFNetwork:Default] Connection 1: done
+2026-10-22 11:10:25.095 Df BrokersConnect[48613:219bf] [com.apple.xpc:connection] [0x1084cd800] invalidated because the client process (pid 45714) either cancelled the connection or exited
+2026-10-22 11:10:25.156 Df BrokersConnect[48613:219f1] [com.apple.dt.automationmode:Default] Handling posted change notification (com.apple.dt.automationmode.state-changed)
+2026-10-22 11:10:25.156 Df BrokersConnect[48613:219f1] [com.apple.dt.automationmode:Default] XAM shared observer connecting to com.apple.dt.automationmode.reader
+2026-10-22 11:10:25.156 Df BrokersConnect[48613:219f1] [com.apple.xpc:connection] [0x11bbf5cc0] activating connection: mach=true listener=false peer=false name=com.apple.dt.automationmode.reader
+2026-10-22 11:10:25.170 Df BrokersConnect[48613:219f1] [com.apple.xpc:connection] [0x11bbf5cc0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:10:25.170 Df BrokersConnect[48613:219f1] [com.apple.dt.automationmode:Default] Comparing previous enabled state (1) to current enabled state (0)
+2026-10-22 11:10:29.209 Df BrokersConnect[48613:219bf] [com.apple.launchservices:db] NotifyToken::RegisterDispatch(com.apple.LaunchServices.database) fired for session key LSSessionKey(system: 0 uid: 501)
+2026-10-22 11:11:02.784 Df BrokersConnect[48613:20a49] [com.apple.dt.automationmode:Default] Handling posted change notification (com.apple.dt.automationmode.state-changed)
+2026-10-22 11:11:02.785 Df BrokersConnect[48613:20a49] [com.apple.dt.automationmode:Default] XAM shared observer connecting to com.apple.dt.automationmode.reader
+2026-10-22 11:11:02.786 Df BrokersConnect[48613:20a49] [com.apple.xpc:connection] [0x11bbf5cc0] activating connection: mach=true listener=false peer=false name=com.apple.dt.automationmode.reader
+2026-10-22 11:11:02.789 Df BrokersConnect[48613:20a49] [com.apple.xpc:connection] [0x11bbf5cc0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:11:02.789 Df BrokersConnect[48613:20a49] [com.apple.dt.automationmode:Default] Comparing previous enabled state (0) to current enabled state (1)
+2026-10-22 11:11:09.328 Df BrokersConnect[48613:25ddf] [com.apple.xpc:connection] [0x105a09a40] Connection returned listener port: 0x870b
+2026-10-22 11:11:09.330 Df BrokersConnect[48613:25ddf] [com.apple.dt.automationmode:Default] Returning 1 for enabled state
+2026-10-22 11:11:09.338 Df BrokersConnect[48613:25ddf] [com.apple.xpc:connection] [0x11da82400] activating connection: mach=false listener=false peer=true name=com.apple.xpc.anonymous.0x105a09a40.peer[57098].0x11da82400
+2026-10-22 11:11:10.310 Df BrokersConnect[48613:25ddb] [com.apple.network:connection] [C5 F54369D0-552C-4C93-931B-4EBEBBAEED9B IPv4#d8b3c22f:443 quic-connection, url: https://hiwdhicwsohbipxzazmb.supabase.co/storage/v1/object/public/company-logos/aaaaaaaa-0000-0000-0000-000000000001/logo-ad71ccd9-48b2-4b74-b782-e0ca15d2988a.png, tls, definite, attribution: developer] cancel
+2026-10-22 11:11:10.312 Df BrokersConnect[48613:25ddb] [com.apple.network:connection] [C5 F54369D0-552C-4C93-931B-4EBEBBAEED9B IPv4#d8b3c22f:443 quic-connection, url: https://hiwdhicwsohbipxzazmb.supabase.co/storage/v1/object/public/company-logos/aaaaaaaa-0000-0000-0000-000000000001/logo-ad71ccd9-48b2-4b74-b782-e0ca15d2988a.png, tls, definite, attribution: developer] cancelled
+	[C5 74BAEFAE-6C0A-4934-A927-A727E676AE4C 192.168.64.2:58661<->IPv4#d8b3c22f:443]
+	Connected Path: satisfied (Path is satisfied), interface: en0
+	Duration: 180.181s, QUIC @0.000s took 0.001s, TLS 1.3 took 0.020s
+	bytes in/out: 13113/5394, packets in/out: 18/10, rtt: 0.003s, retransmitted bytes: 0, out-of-order bytes: 1680
+	ecn packets sent/acked/marked/lost: 0/0/0/0
+2026-10-22 11:11:10.316 Df BrokersConnect[48613:25ddb] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C5] reporting state cancelled
+2026-10-22 11:11:10.319 Df BrokersConnect[48613:25ddb] [com.apple.network:boringssl] nw_protocol_boringssl_error(2287) [C5:1][0x11bad8a60] Lower protocol stack error post TLS handshake. [60: Operation timed out]
+2026-10-22 11:11:10.319 Df BrokersConnect[48613:25ddb] [com.apple.network:boringssl] nw_protocol_boringssl_error(2305) [C5:1][0x11bad8a60] Propagating error up the stack
+2026-10-22 11:11:10.319 E  BrokersConnect[48613:25ddb] [com.apple.network:connection] nw_read_request_report [C4] Receive failed with error "Operation timed out"
+2026-10-22 11:11:10.319 E  BrokersConnect[48613:25ddb] [com.apple.network:connection] nw_read_request_report [C4] Receive failed with error "Operation timed out"
+2026-10-22 11:11:10.319 E  BrokersConnect[48613:25ddb] [com.apple.network:connection] nw_read_request_report [C4] Receive failed with error "Operation timed out"
+2026-10-22 11:11:10.320 Df BrokersConnect[48613:25ddb] [com.apple.network:quic] quic_conn_log_summary [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] 
+	Connection attempts: 1, RETRY received: no, PTOs: 0
+	Early data: no, Keep-alives sent/acknowledged: 0/0, ECN state: unsupported, L4S: disabled
+	RTT: base 2 ms, network 3 ms, latest 3 ms, minimum 2 ms, smoothed 3 ms (variance 1 ms)
+	Path MTU: 1280, minimum MSS: 1252
+	Migration events: 0, paths validated: 0
+	Inbound unidirectional/bidirectional streams: 4/0
+	Outbound unidirectional/bidirectional streams: 1/1
+	DATA_BLOCKED frames sent/received: 0/0
+	STREAM_DATA_BLOCKED frames sent/received: 0/0
+2026-10-22 11:11:10.379 Df BrokersConnect[48613:25ddb] [com.apple.network:quic] quic_path_destroy [C4.1.1.1:2] [-014ddc581d0f1b36a148d658860f1f40c6b70b35] destroying path 0x11b9d6a00
+2026-10-22 11:11:10.382 Df BrokersConnect[48613:25ddb] [com.apple.network:connection] [C4.1.1.1 IPv4#d8b3c22f:443 failed socket-flow (satisfied (Path is satisfied), interface: en0)] event: flow:disconnect @180.292s, error Operation timed out
+2026-10-22 11:11:10.382 Df BrokersConnect[48613:25ddb] [com.apple.network:connection] [C4.1.1 Hostname#d4ee45a1:443 failed resolver (satisfied (Path is satisfied), interface: en0)] event: flow:disconnect @180.292s
+2026-10-22 11:11:10.382 Df BrokersConnect[48613:25ddb] [com.apple.network:connection] [C4.1 Hostname#d4ee45a1:443 failed transform (satisfied (Path is satisfied), interface: en0)] event: flow:disconnect @180.292s
+2026-10-22 11:11:10.382 Df BrokersConnect[48613:25ddb] [com.apple.network:connection] [C4 IPv4#d8b3c22f:443 failed parent-flow (satisfied (Path is satisfied), interface: en0)] event: flow:disconnect @180.292s
+2026-10-22 11:11:10.382 Df BrokersConnect[48613:25ddb] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C4] reporting state failed error Operation timed out
+2026-10-22 11:11:10.396 Df BrokersConnect[48613:25ddb] [com.apple.CFNetwork:Default] Connection 4: final read 1:60, complete[Y], final[Y]
+2026-10-22 11:11:10.398 Df BrokersConnect[48613:25ddb] [com.apple.CFNetwork:Default] Connection 4: cleaning up
+2026-10-22 11:11:10.398 Df BrokersConnect[48613:25ddb] [com.apple.network:connection] [C4 13D931EA-24D1-449F-BEDB-6A7DECCE210E Hostname#d4ee45a1:443 quic-connection, url: https://hiwdhicwsohbipxzazmb.supabase.co/storage/v1/object/public/company-logos/aaaaaaaa-0000-0000-0000-000000000001/logo-ad71ccd9-48b2-4b74-b782-e0ca15d2988a.png, definite, attribution: developer] cancel
+2026-10-22 11:11:10.398 E  BrokersConnect[48613:25ddb] [com.apple.network:connection] nw_connection_copy_connected_local_endpoint_block_invoke [C4] Connection has no local endpoint
+2026-10-22 11:11:10.398 Df BrokersConnect[48613:25ddb] [com.apple.network:connection] [C4 13D931EA-24D1-449F-BEDB-6A7DECCE210E Hostname#d4ee45a1:443 quic-connection, url: https://hiwdhicwsohbipxzazmb.supabase.co/storage/v1/object/public/company-logos/aaaaaaaa-0000-0000-0000-000000000001/logo-ad71ccd9-48b2-4b74-b782-e0ca15d2988a.png, definite, attribution: developer] cancelled
+	[C4.1.1.1 74BAEFAE-6C0A-4934-A927-A727E676AE4C <NULL><->IPv4#d8b3c22f:443]
+	Connected Path: satisfied (Path is satisfied), interface: en0
+	Privacy Stance: Not Eligible
+	Duration: 180.308s, DNS @0.002s took 0.002s, QUIC @0.038s took 0.027s
+	bytes in/out: 0/0, packets in/out: 0/0, rtt: 0.000s, retransmitted bytes: 0, out-of-order bytes: 0
+	ecn packets sent/acked/marked/lost: 0/0/0/0
+2026-10-22 11:11:10.399 Df BrokersConnect[48613:25ddb] [com.apple.network:connection] nw_connection_report_state_with_handler_on_nw_queue [C4] reporting state cancelled error Operation timed out
+2026-10-22 11:11:10.399 Df BrokersConnect[48613:25ddb] [com.apple.CFNetwork:Default] Connection 4: done
+2026-10-22 11:11:11.663 Df BrokersConnect[48613:25ddb] [com.apple.xpc:connection] [0x11da82400] invalidated because the client process (pid 57098) either cancelled the connection or exited
+2026-10-22 11:11:11.674 Df BrokersConnect[48613:25ddb] [com.apple.dt.automationmode:Default] Handling posted change notification (com.apple.dt.automationmode.state-changed)
+2026-10-22 11:11:11.674 Df BrokersConnect[48613:25ddb] [com.apple.dt.automationmode:Default] XAM shared observer connecting to com.apple.dt.automationmode.reader
+2026-10-22 11:11:11.674 Df BrokersConnect[48613:25ddb] [com.apple.xpc:connection] [0x11bbf5680] activating connection: mach=true listener=false peer=false name=com.apple.dt.automationmode.reader
+2026-10-22 11:11:11.695 Df BrokersConnect[48613:25ddb] [com.apple.xpc:connection] [0x11bbf5680] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-10-22 11:11:11.696 Df BrokersConnect[48613:25ddb] [com.apple.dt.automationmode:Default] Comparing previous enabled state (1) to current enabled state (0)
