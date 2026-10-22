@@ -1213,6 +1213,45 @@ describe('an email link opened in the app', () => {
     expect(server.asked('/auth/v1/logout')[0]?.url.searchParams.get('scope')).toBe('others');
   });
 
+  it('asks for the authenticator first on an account that has one, then sets the password', async () => {
+    user = authUser({ factors: [totpFactor] });
+    // GoTrue's rule: a new password at aal1, on an account that could prove aal2, is refused.
+    // Read from the token's own claims, as GoTrue does: not by matching a token
+    // minted here, whose iat moves with the clock the screens' waits advance.
+    server.on('PUT /auth/v1/user', (_url, init) => {
+      const token = (new Headers(init?.headers).get('authorization') ?? '').replace(/^Bearer /, '');
+      const payload = (token.split('.')[1] ?? '').replace(/-/g, '+').replace(/_/g, '/');
+      const claims = JSON.parse(payload ? atob(payload) : '{}') as { aal?: string };
+      if (claims.aal !== 'aal2') {
+        return {
+          status: 401,
+          body: { code: 401, error_code: 'insufficient_aal', msg: 'AAL2 session is required to update email or password when MFA is enabled.' },
+        };
+      }
+      return user;
+    });
+    renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
+
+    // The code, not a form that could only be refused as "that link has expired".
+    expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
+    expect(screen.queryByText(ar.auth.newPasswordTitle)).toBeNull();
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+
+    // Then the form, on a session GoTrue lets change the password.
+    expect(await screen.findByText(ar.auth.newPasswordTitle)).toBeTruthy();
+    // A person takes a moment between the code and the new password.
+    act(() => jest.setSystemTime(Date.now() + 2_000));
+    fireEvent.changeText(screen.getByLabelText(ar.auth.password), 'a-new-password');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
+    await press(ar.auth.resetPassword);
+
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
+    expect(screen.queryByText(ar.auth.linkExpired)).toBeNull();
+    expect(server.asked('/auth/v1/user').find((request) => request.method === 'PUT')?.body).toMatchObject({
+      password: 'a-new-password',
+    });
+  });
+
   it('says a password the same as the old one is that, not something gone wrong', async () => {
     server.on('PUT /auth/v1/user', {
       status: 422,

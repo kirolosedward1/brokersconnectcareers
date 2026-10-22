@@ -93,6 +93,7 @@ export default async function OnboardingPage({
         <div className="mt-8">
           <OnboardingForm
             locale={locale}
+            ownerId={viewer!.userId}
             defaultName={viewer!.suggestedName}
             defaultRole={defaultRole}
             districts={districts}

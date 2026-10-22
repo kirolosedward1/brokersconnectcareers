@@ -23,6 +23,9 @@ Kept only when you yourself choose the light, dark or system appearance at the b
 **Where a visit came from** — `bc.src`, in session storage (sessionStorage).
 Kept only when visit counting is on, and only if you arrived through a link someone shared, so the visit can be counted as coming from a share. Deleted when you close the tab. Visit counting — if we turn it on — uses a tool that sets no cookies and does not identify individuals (Plausible or Umami): it receives the address of the page you opened, the site you came from, and your browser and device type, and nothing from your account.
 
+**Forms you have not finished** — `bc-draft:…`, in your browser's local storage (localStorage).
+While you are signed in and typing into a job application, a job advert or the form that sets up your account, what you have typed is kept as you go, so that closing the tab, losing the connection or being asked to sign in again does not lose it. It is kept under your account only and shown back only to you, and it never includes a file you attached or your agreement to our terms. It is deleted as soon as the form is sent, when you choose "Start over", when you sign out, and in any case after seven days.
+
 ## What others set
 
 **Checking you are a person.** On the sign-in, sign-up and password-reset pages a Cloudflare Turnstile check may appear. It reads signals from your browser to tell people from automated programs. It runs in a frame from Cloudflare, under Cloudflare's privacy policy, and is not used for advertising.
@@ -51,7 +54,7 @@ Cookie consent banners exist to ask before tracking, advertising and behaviour a
 
 ## Controlling them
 
-- **Signing out** deletes the session cookies from your browser or phone.
+- **Signing out** deletes the session cookies from your browser or phone, and any unfinished forms kept in your browser.
 - You can clear cookies and local storage from your browser's settings at any time; you will then need to sign in again and choose your appearance again.
 - You can block cookies in your browser's settings, but signing in to your account will not work without them.
 

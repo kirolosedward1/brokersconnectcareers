@@ -49,7 +49,16 @@ import { unaccent } from '@electric-sql/pglite/contrib/unaccent';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { GRANTS, PRELUDE, testDbScripts } from '../../supabase/tests/setup.mjs';
 import { ROOT } from '../env.mjs';
-import { ADJUSTMENTS, loadLedger, reconciliationPlan, replayOrder, resolveLedger, UNRECORDED } from './migrations.mjs';
+import {
+  ADJUSTMENTS,
+  isProductionLedger,
+  loadLedger,
+  OUT_OF_BAND,
+  reconciliationPlan,
+  replayOrder,
+  resolveLedger,
+  UNRECORDED,
+} from './migrations.mjs';
 
 const MIGRATIONS = join(ROOT, 'supabase', 'migrations');
 const FINGERPRINT = readFileSync(join(ROOT, 'scripts', 'dr', 'fingerprint.sql'), 'utf8');
@@ -166,6 +175,7 @@ export async function buildFromLedger({ ledgerRows, statements = null }) {
   const db = await freshDb();
   const applied = new Set();
   const replayed = [];
+  const outOfBand = [];
   let fromStored = 0;
 
   const catchUpUnrecorded = async (through) => {
@@ -202,13 +212,24 @@ export async function buildFromLedger({ ledgerRows, statements = null }) {
   await catchUpUnrecorded('99999999999999');
   await run(db, 'grants', GRANTS);
 
+  // What production changed outside any file, while the file that undoes it
+  // has not run there yet. After the grants, which would otherwise hand back
+  // an execute the change revoked.
+  if (isProductionLedger(ledgerRows)) {
+    for (const change of OUT_OF_BAND) {
+      if (!applied.has(change.after) || applied.has(change.undoneBy)) continue;
+      await run(db, `changed outside any file (seen ${change.seen})`, change.sql);
+      outOfBand.push(change.seen);
+    }
+  }
+
   for (const row of ledgerRows) {
     await db.query('insert into supabase_migrations.schema_migrations (version, name) values ($1, $2)', [
       String(row.version),
       String(row.name ?? ''),
     ]);
   }
-  return { db, replayed, fromStored };
+  return { db, replayed, fromStored, outOfBand };
 }
 
 /** This checkout, built fresh in file order: what main is. */
@@ -226,8 +247,9 @@ export async function rehearse({ ledgerRows, statements = null, productionFinger
 
   // ---- 1. The database the ledger describes, in the order it ran ----------
   log('1. rebuilding the database the ledger describes, in its order');
-  const { db: target, replayed, fromStored } = await buildFromLedger({ ledgerRows, statements });
+  const { db: target, replayed, fromStored, outOfBand } = await buildFromLedger({ ledgerRows, statements });
   log(`   ${replayed.length} files replayed (${fromStored} from stored statements, ${replayed.length - fromStored} from files)`);
+  if (outOfBand.length) log(`   then ${outOfBand.length} change(s) production made outside any file (OUT_OF_BAND, seen ${outOfBand.join(', ')})`);
 
   const before = await fingerprint(target);
   let verified = null;

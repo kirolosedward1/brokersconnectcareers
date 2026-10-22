@@ -19,6 +19,7 @@ import type {
   ExperienceBand,
 } from '@/lib/supabase/database.types';
 import { logFailure } from '@/lib/observe';
+import { jobIsLive } from '@/lib/job-state';
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -115,6 +116,27 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
     }
 
     /*
+      A refusal by policy (42501) is almost always the listing: it closed,
+      was paused, or ran past its end date while the form was open. "Try
+      again" can never work then, so it is asked once and named — 'not_open'
+      — and the person is told the listing stopped taking applications. The
+      raw database text stays here rather than travelling to the browser.
+
+      Only when the listing was actually read. A lookup that failed says
+      nothing about the listing, and 'not_open' makes the form throw away
+      what was typed — so a passing database error falls through to the
+      ordinary, retryable 'failed' below.
+    */
+    if (error.code === '42501') {
+      const { data: listing, error: listingError } = await supabase
+        .from('jobs')
+        .select('status, expires_at')
+        .eq('id', parsed.data.jobId)
+        .maybeSingle();
+      if (!listingError && (!listing || !jobIsLive(listing))) return { ok: false, error: 'not_open' };
+    }
+
+    /*
       The one mutation this product exists for, and until now it failed in
       silence: the applicant saw "something went wrong" and the server kept no
       record of what. A refusal that is neither a duplicate nor a rate limit is
@@ -129,7 +151,7 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
       candidate: user.id,
       code: error.code,
     });
-    return { ok: false, error: error.message };
+    return { ok: false, error: 'failed' };
   }
 
   /*
