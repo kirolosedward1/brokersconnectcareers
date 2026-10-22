@@ -74,7 +74,14 @@ async function signedInFetch(input: RequestInfo | URL, init?: RequestInit): Prom
   if (refresh && Date.now() < refreshHeldUntil) {
     throw new TypeError('Network request failed: the auth service asked to wait');
   }
-  const response = refresh && !init?.signal ? await withinRefreshTime(input, init) : await fetch(input, init);
+  // Every auth request has a limit, not only the refresh: sign-in, sign-up, a
+  // reset, a code's check, Apple's and Google's exchange each kept their
+  // button spinning for good on a connection that stalled.
+  const auth = path.startsWith('/auth/v1/');
+  const response =
+    auth && !init?.signal
+      ? await withinTime(input, init, refresh ? REFRESH_TIMEOUT_MS : AUTH_TIMEOUT_MS)
+      : await fetch(input, init);
   if (refresh && response.status === 429 && accessTokenExpired(await encryptedSessionStorage.getItem(SESSION_KEY))) {
     refreshHeldUntil = Date.now() + waitAskedFor(response.headers.get('retry-after'));
     throw new TypeError('Network request failed: the auth service asked to wait');
@@ -115,10 +122,13 @@ async function onPhoneClock(response: Response): Promise<Response> {
   });
 }
 
-/** A refresh request, given up on (aborted) after REFRESH_TIMEOUT_MS. */
-async function withinRefreshTime(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+/** Any other auth request: longer than a refresh, as a sign-in does more. */
+const AUTH_TIMEOUT_MS = 20_000;
+
+/** An auth request, given up on (aborted) after `ms`. */
+async function withinTime(input: RequestInfo | URL, init: RequestInit | undefined, ms: number): Promise<Response> {
   const controller = new AbortController();
-  const late = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS);
+  const late = setTimeout(() => controller.abort(), ms);
   try {
     return await fetch(input, { ...init, signal: controller.signal });
   } finally {

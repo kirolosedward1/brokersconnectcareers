@@ -7,7 +7,8 @@ import { Button } from '~/components/ui/button';
 import { EmptyState } from '~/components/ui/states';
 import { useSession } from '~/lib/session';
 import { gutter, space } from '~/theme/tokens';
-import { UserRound } from '~/components/ui/lucide';
+import { Trash2, UserRound } from '~/components/ui/lucide';
+import { useTheme } from '~/theme/provider';
 
 /**
  * Signing in, and keeping others out — the email address, the password and
@@ -19,6 +20,7 @@ import { UserRound } from '~/components/ui/lucide';
 export default function SecurityScreen() {
   const t = useTranslations();
   const { session } = useSession();
+  const { colors } = useTheme();
   const header = <Stack.Screen options={{ title: t('app.account.security') }} />;
 
   if (!session) {
@@ -54,6 +56,19 @@ export default function SecurityScreen() {
         <EmailSettings email={session.user.email ?? ''} />
         <PasswordSettings provider={provider} />
         <TwoFactorSettings />
+        {/*
+          Off the Account tab itself, but kept in the app: the App Store asks
+          an app that makes accounts to let them be deleted from inside it
+          (guideline 5.1.1(v)), and a person looks for it with their sign-in.
+        */}
+        <Button
+          label={t('account.deleteTitle')}
+          variant="ghost"
+          size="sm"
+          icon={<Trash2 size={16} color={colors.destructive} />}
+          onPress={() => router.push('/account/delete')}
+          style={{ alignSelf: 'center', marginTop: space[4] }}
+        />
       </ScrollView>
     </>
   );

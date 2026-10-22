@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import { Archive, BriefcaseBusiness, Building2, Eye, MapPin, Pencil, Plus, RotateCcw, ShieldAlert, Users } from '~/components/ui/lucide';
 import { formatDate, formatNumber } from '@/lib/format';
@@ -17,6 +17,7 @@ import { Card } from '~/components/ui/card';
 import { PageFooter } from '~/components/ui/page-footer';
 import { SendForward } from '~/components/ui/icons';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
+import { Illustration } from '~/components/ui/illustration';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
@@ -26,6 +27,7 @@ import {
   useTransitionJob,
   type ConsoleListing,
 } from '~/features/employer/listings';
+import { useTabList } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
@@ -60,6 +62,7 @@ export default function ListingsScreen() {
   const nextPage = useNextPage(listings);
   // A push about a new applicant reads the counts again; the spinner is the pull's alone.
   const pull = usePullRefresh(() => listings.refetch());
+  const list = useTabList<FlashListRef<ConsoleListing>>();
 
   const header = (
     <Stack.Screen options={{ title: t('employer.jobs'), headerRight: bell }} />
@@ -76,6 +79,7 @@ export default function ListingsScreen() {
     body = (
       <EmptyState
         icon={Building2}
+        illustration="write"
         title={t('employer.createCompanyFirst')}
         body={t('employer.createCompanyFirstBody')}
         action={<Button label={t('employer.company')} onPress={() => router.navigate('/employer/company' as never)} />}
@@ -91,6 +95,7 @@ export default function ListingsScreen() {
     const total = listings.data.pages[0]?.total ?? 0;
     body = (
       <FlashList
+        {...list}
         data={rows}
         keyExtractor={(row) => row.id}
         // Keyed on the listing: the list reuses a row's component for another
@@ -127,6 +132,7 @@ export default function ListingsScreen() {
               borderColor: colors.border,
             }}
           >
+            <Illustration name="write" width={160} />
             <Text weight="medium" style={{ textAlign: 'center' }}>
               {t('employer.noJobs')}
             </Text>

@@ -92,16 +92,15 @@ describe('the filter sheet', () => {
     sort: 'salary',
   });
 
-  it('counts only what it edits — not the words, the company or the governorate', () => {
-    expect(sheetFilterCount(narrowed)).toBe(3);
+  it('counts only what it edits — the words and its groups, not the company or the governorate', () => {
+    expect(sheetFilterCount(narrowed)).toBe(4);
     expect(sheetFilterCount(EMPTY_FILTERS)).toBe(0);
   });
 
-  it('clears its own groups and keeps the rest', () => {
+  it('clears the words and its own groups, and keeps the rest', () => {
     const cleared: JobFilters = clearSheetFilters(narrowed);
     expect(cleared).toEqual({
       ...EMPTY_FILTERS,
-      q: 'مبيعات',
       companySlug: 'nile-brokers',
       governorateSlug: 'cairo',
       sort: 'salary',

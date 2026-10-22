@@ -1,11 +1,12 @@
 import { Linking, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
+import { VerifiedMark } from '~/components/companies/verified-mark';
 import { BadgeCheck, Globe, MapPin, Users } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
 import { safeHttpUrl } from '@/lib/security/sanitize';
 import { CompanyLogo } from '~/components/companies/company-logo';
-import { JobCard } from '~/components/jobs/job-card';
+import { JobCardList } from '~/components/jobs/job-card-list';
 import { HiddenNotice, HideCompany } from '~/components/moderation/hide-company';
 import { ReportButton } from '~/components/moderation/report';
 import { FollowCompanyButton, useOffersFollow } from '~/components/saved/save-controls';
@@ -14,6 +15,7 @@ import { Button } from '~/components/ui/button';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useCompany } from '~/features/companies/queries';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
 import { useHasBoard } from '~/lib/use-tabs';
@@ -36,6 +38,7 @@ export default function CompanyScreen() {
   const page = useCompany(slug);
   const pull = usePullRefresh(() => page.refetch());
   const hasBoard = useHasBoard();
+  const shrink = useShrinkingTabBar();
 
   if (page.isPending) {
     return (
@@ -70,6 +73,7 @@ export default function CompanyScreen() {
     <>
       <Stack.Screen options={{ title: '' }} />
       <ScrollView
+        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
@@ -84,7 +88,9 @@ export default function CompanyScreen() {
                 {name}
               </Text>
               {company.verification_status === 'verified' ? (
-                <Badge variant="accent" label={t('verified')} icon={<BadgeCheck size={12} color={colors.accentForeground} />} />
+                <VerifiedMark>
+                  <Badge variant="accent" label={t('verified')} icon={<BadgeCheck size={12} color={colors.accentForeground} />} />
+                </VerifiedMark>
               ) : null}
             </View>
           </View>
@@ -141,11 +147,7 @@ export default function CompanyScreen() {
             {t('openRoles', { count: total })}
           </Text>
           {jobs.length ? (
-            <View style={{ gap: space[2] }}>
-              {jobs.map((job) => (
-                <JobCard key={job.id} job={job} />
-              ))}
-            </View>
+            <JobCardList jobs={jobs} />
           ) : (
             <View
               style={{

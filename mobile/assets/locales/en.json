@@ -3,6 +3,9 @@
     "CFBundleDisplayName": "Brokers Connect",
     "NSPhotoLibraryUsageDescription": "Your photos are used to choose your profile photo, your company's logo or its documents; nothing is uploaded except what you pick.",
     "NSCameraUsageDescription": "The camera is used to photograph your company's documents for its verification.",
-    "NSFaceIDUsageDescription": "Face ID is used to lock and unlock the app, only if you turn the lock on yourself."
+    "NSFaceIDUsageDescription": "Face ID is used to lock and unlock the app, only if you turn the lock on yourself.",
+    "NSCalendarsUsageDescription": "The calendar is used to add your interview to it, only when you ask.",
+    "NSCalendarsWriteOnlyAccessUsageDescription": "The calendar is used to add your interview to it, only when you ask.",
+    "NSCalendarsFullAccessUsageDescription": "The calendar is used to add your interview to it, only when you ask."
   }
 }

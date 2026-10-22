@@ -5,7 +5,8 @@
     "saved": "Saved",
     "account": "Account",
     "applicants": "Applicants",
-    "consultants": "Consultants"
+    "consultants": "Consultants",
+    "jobsNew": "{name}, {count, plural, one {# new job} other {# new jobs}} since you last looked"
   },
   "offline": {
     "title": "No internet connection",
@@ -39,12 +40,29 @@
     "mfaNoApp": "No authenticator app on this phone opened it. Enter the key below in yours.",
     "mfaDisableConfirm": "Turn off two-step verification?",
     "mfaDisableBody": "Signing in will ask for your password only.",
-    "exportLimit": "You have downloaded a copy of your data several times today. Try again tomorrow."
+    "exportLimit": "You have downloaded a copy of your data several times today. Try again tomorrow.",
+    "notifications": "Notifications",
+    "messages": "Messages"
   },
   "jobs": {
     "loadMore": "Load more",
     "endOfList": "That is every matching job.",
-    "wizardStep": "Step <v>{current}</v> of <v>{total}</v>"
+    "wizardStep": "Step <v>{current}</v> of <v>{total}</v>",
+    "quickFilters": "Quick filters",
+    "match": "<v>{percent}%</v> match",
+    "appliedHeading": "Jobs you applied to",
+    "recentSearches": "Searched lately",
+    "recentSearchesClear": "Clear",
+    "recentSearch": "Search again for {words}",
+    "suggestions": "Suggestions",
+    "suggestArea": "Area: {name}",
+    "suggestTrack": "Track: {name}",
+    "suggestWords": "Search for {words}",
+    "suggestKindArea": "Area",
+    "suggestKindTrack": "Track",
+    "suggestKindTitle": "Job",
+    "suggestKindCompany": "Company",
+    "seenDivider": "Posted before you last looked"
   },
   "auth": {
     "forCompanies": "Register your company",
@@ -66,7 +84,9 @@
     "configFailed": "We could not get signing in ready. Check your connection and try again.",
     "configRetry": "Try again",
     "appleRevokedTitle": "You have been signed out",
-    "appleRevokedBody": "Sign in with Apple is no longer on for this app, so we signed you out on this phone. You can sign in again at any time."
+    "appleRevokedBody": "Sign in with Apple is no longer on for this app, so we signed you out on this phone. You can sign in again at any time.",
+    "continueWithEmail": "Continue with email",
+    "otherWays": "Other ways to sign in"
   },
   "onboarding": {
     "choose": "Choose",
@@ -92,41 +112,63 @@
     "unhideAgent": "Show this consultant again",
     "hideAgentConfirm": "Hide them",
     "hiddenList": "Hidden on this phone",
-    "hiddenListLede": "The companies and consultants you hid stay out of the app on this phone. Bring any of them back whenever you like.",
+    "hiddenListLede": "The listings, companies and consultants you hid stay out of the app on this phone. Bring any of them back whenever you like.",
     "hiddenCompanies": "Companies",
     "hiddenAgents": "Consultants",
     "hiddenNothing": "Nothing is hidden",
-    "hiddenNothingBody": "When you hide a company or a consultant, it appears here so you can bring it back.",
+    "hiddenNothingBody": "When you hide a listing, a company or a consultant, it appears here so you can bring it back.",
     "unnamedCompany": "A company you hid",
     "unnamedAgent": "A consultant you hid",
     "showAgain": "Show again",
-    "showAgainNamed": "Show {name} again"
+    "showAgainNamed": "Show {name} again",
+    "hiddenJobs": "Listings",
+    "unnamedJob": "A listing you hid",
+    "fewerHeading": "Fewer like these",
+    "fewerNote": "They come last among the roles suggested to you on Home, and still show on the board."
   },
   "applications": {
     "withdrawTitle": "Withdraw your application to “{title}”?",
-    "withdrawBody": "The company will no longer see it. This cannot be undone."
+    "withdrawBody": "The company will no longer see it. This cannot be undone.",
+    "timeline": "Where it stands",
+    "stepSent": "Sent",
+    "stepSeen": "Seen",
+    "stepDecision": "Decision",
+    "activeHeading": "Still in progress",
+    "decidedHeading": "Decided"
   },
   "apply": {
     "pickCv": "Choose a file",
     "pickAnother": "Choose another file",
     "profileCv": "The CV on your profile",
     "useProfileCv": "Use the CV on your profile",
-    "removeCv": "Remove the file"
+    "removeCv": "Remove the file",
+    "quickTitle": "Ready to apply with these details",
+    "quickSend": "Apply with your saved details",
+    "quickEdit": "Edit the details or add a note",
+    "quickNoCv": "Without a CV"
   },
   "profile": {
     "edit": "Edit",
     "saveFirst": "Save your profile first; then you can add your experience, education and certificates.",
     "yearsInvalid": "Enter a number from 0 to 60.",
     "numberInvalid": "Enter a whole number.",
-    "monthHint": "Year and month",
     "monthInvalid": "Write the year and month like this: 2024-03",
     "endedHint": "Leave it empty if you still work there",
     "endBeforeStart": "The end date must come after the start.",
+    "monthChoose": "Choose a month",
+    "monthYear": "Year",
+    "monthMonth": "Month",
+    "monthClear": "Clear the date",
+    "stillThere": "I still work there",
     "yearInvalid": "Enter a year between 1950 and 2100.",
-    "chooseUpTo": "Choose up to <v>{count}</v>."
+    "chooseUpTo": "Choose up to <v>{count}</v>.",
+    "ringLabel": "Your profile is <v>{percent}%</v> complete",
+    "ringHint": "Opens your profile at what is missing",
+    "notFuture": "That date has not come yet. Pick a month up to today."
   },
   "applicants": {
-    "cvLimit": "You have opened a lot of CVs this hour. Try again shortly."
+    "cvLimit": "You have opened a lot of CVs this hour. Try again shortly.",
+    "rejectConfirm": "Turn this applicant down?"
   },
   "push": {
     "title": "Notifications on this phone",
@@ -180,11 +222,186 @@
     "skip": "Skip",
     "skipHint": "Browse the jobs without an account; you can make one any time.",
     "lead": "Pay and commission in numbers on every listing, and applying takes under a minute.",
-    "factPay": "Pay in numbers",
-    "factApply": "Apply in a minute",
-    "factWhatsapp": "Talk on WhatsApp"
+    "signInGoogleHint": "Signs you in with your Google account",
+    "signInAppleHint": "Signs you in with your Apple account"
   },
   "companies": {
     "searchPlaceholder": "Search by company name"
+  },
+  "search": {
+    "clear": "Clear search"
+  },
+  "directory": {
+    "verifyTitle": "Verify your company to see the consultants",
+    "verifyBody": "You can't view the consultant directory until your company is verified with its official papers.",
+    "reviewing": "The directory opens for you as soon as we finish reviewing your account."
+  },
+  "home": {
+    "recentlyViewed": "Recently viewed",
+    "recentlyViewedClear": "Clear",
+    "statApplications": "Applied",
+    "statReplies": "Replies",
+    "statProfile": "Profile",
+    "statSaved": "Saved",
+    "statAlerts": "Alerts"
+  },
+  "share": {
+    "hiring": "Now hiring",
+    "applyOn": "Apply in the Brokers Connect app or on the website",
+    "asImage": "Share as an image",
+    "asLink": "Share the link",
+    "send": "Share the image"
+  },
+  "verified": {
+    "title": "What does verified mean?",
+    "papers": "The company uploaded its commercial register and tax card.",
+    "reviewed": "The Brokers Connect team checked those papers before giving the mark.",
+    "notAPromise": "Verification confirms the company is real, not that every detail of a listing is guaranteed. If something is wrong, report it from the listing.",
+    "close": "Got it",
+    "hint": "Explains what verified means"
+  },
+  "replies": {
+    "open": "Saved replies",
+    "title": "Saved WhatsApp replies",
+    "opener": "First message",
+    "send": "Send on WhatsApp",
+    "new": "New reply",
+    "placeholder": "e.g. Hi {name}, we'd like to meet you about {job}…",
+    "tokens": "{name} becomes the applicant's name and {job} the job title. Replies are kept on this phone only.",
+    "keep": "Save reply",
+    "remove": "Delete reply",
+    "removeTitle": "Delete this reply?"
+  },
+  "agentAlerts": {
+    "keep": "Tell me about new consultants",
+    "kept": "You'll be told about new consultants for this search",
+    "failed": "The search couldn't be saved. Try again.",
+    "title": "Your saved searches",
+    "fresh": "{count, plural, one {# new consultant} other {# new consultants}}",
+    "stop": "Stop alerts",
+    "notifyTitle": "{count, plural, one {A new consultant matches your search} other {# new consultants match your search}}"
+  },
+  "cv": {
+    "current": "Current"
+  },
+  "crash": {
+    "title": "The app closed unexpectedly last time",
+    "body": "Something closed the app. Send us the details so we can fix it.",
+    "send": "Send the details",
+    "dismiss": "OK"
+  },
+  "toast": {
+    "saved": "Saved",
+    "viewSaved": "View",
+    "unsaved": "Removed from saved",
+    "undo": "Undo",
+    "saveFailed": "Could not save it. Try again.",
+    "jobHidden": "You won't see this listing again",
+    "companyHidden": "You won't see {company}'s listings again",
+    "changesSaved": "Changes saved",
+    "withdrawn": "Application withdrawn",
+    "following": "You'll hear about every new job at {company}",
+    "unfollowed": "You stopped following {company}",
+    "entrySaved": "Saved to your CV",
+    "fewer": "We'll show fewer jobs like this",
+    "fewerOff": "Jobs like this will show as usual again"
+  },
+  "jobMenu": {
+    "open": "Open listing",
+    "share": "Share link",
+    "hideJob": "Hide this listing",
+    "hideCompany": "Hide everything from this company",
+    "swipeSave": "Save",
+    "swipeUnsave": "Remove",
+    "swipeHide": "Hide",
+    "fewer": "Show fewer like this",
+    "fewerOff": "Show jobs like this as usual"
+  },
+  "shortcuts": {
+    "searchJobs": "Search jobs",
+    "applications": "My applications",
+    "saved": "Saved jobs",
+    "postJob": "Post a job",
+    "newApplicants": "New applicants",
+    "listings": "My listings",
+    "companies": "Companies"
+  },
+  "review": {
+    "start": "Review applicants one by one",
+    "title": "Review applicants",
+    "progress": "<v>{current}</v> of <v>{total}</v>",
+    "shortlist": "Shortlist",
+    "reject": "Turn down",
+    "next": "Next",
+    "previous": "Previous",
+    "done": "All reviewed",
+    "shortlisted": "{name} shortlisted",
+    "rejected": "{name} turned down",
+    "moved": "A colleague moved them first"
+  },
+  "week": {
+    "title": "Your week",
+    "lede": "The last 7 days",
+    "newJobsAreas": "New jobs in your areas",
+    "newJobs": "New jobs on the board",
+    "opened": "Applications companies opened",
+    "views": "Profile views, last 30 days"
+  },
+  "saved": {
+    "closing": "{days, plural, =0 {Closes today} =1 {Closes tomorrow} other {Closes in # days}}",
+    "compare": {
+      "start": "Compare",
+      "startHint": "Choose two or {max} open jobs and see them side by side",
+      "choose": "Choose two or {max} jobs to compare",
+      "pickHint": "Chooses it to compare",
+      "limit": "You can compare up to {max} jobs",
+      "picked": "{count, plural, =0 {No jobs chosen yet} one {1 job chosen} other {# jobs chosen}}",
+      "go": "Compare ({count})",
+      "title": "Compare jobs",
+      "lede": "Side by side, with the best in each row marked.",
+      "scrollHint": "Swipe sideways to see the rest",
+      "best": "Best",
+      "salary": "Basic salary a month",
+      "tooFew": "Comparing needs at least two jobs",
+      "tooFewBody": "A job you chose was taken out of Saved or has closed. Go back and choose again.",
+      "back": "Back to Saved"
+    },
+    "notes": {
+      "title": "Your note",
+      "prefix": "Your note:",
+      "add": "Add a note",
+      "edit": "Edits the note",
+      "forListing": "Add a note to yourself about this listing",
+      "private": "Kept on this phone only. Nobody else sees it.",
+      "placeholder": "e.g. Spoke to them; interview on Sunday morning",
+      "count": "{count}/{max}",
+      "countSpoken": "{count} of {max} characters",
+      "saved": "Note saved",
+      "deleted": "Note deleted",
+      "delete": "Delete"
+    },
+    "remind": {
+      "set": "Remind me",
+      "setSpoken": "Remind me the day before it closes",
+      "on": "Reminder on",
+      "when": "We'll remind you on {when}",
+      "cancelHint": "Cancels the reminder",
+      "cancelled": "Reminder cancelled",
+      "denied": "Notifications are off for the app, so we can't remind you. Turn them on in Settings.",
+      "tooLate": "This listing closes within the hour: too late for a reminder",
+      "failed": "We couldn't set the reminder. Try again.",
+      "notifyTitle": "{day, select, today {This listing closes today} other {This listing closes tomorrow}}",
+      "notifyBody": "{job} at {company}. Apply before it closes."
+    }
+  },
+  "notificationsFeed": {
+    "delete": "Delete",
+    "deleted": "Notification deleted",
+    "clearAll": "Clear all",
+    "clearAllTitle": "Clear all notifications?",
+    "clearAllBody": "Every notification shown here will be deleted, and can't be brought back.",
+    "clearAllConfirm": "Clear all",
+    "cancel": "Cancel",
+    "deleteFailed": "We couldn't delete it. Try again."
   }
 }
