@@ -1,9 +1,10 @@
 import { cache } from 'react';
+import { COMPANY_PUBLIC_COLUMNS } from '@/lib/company-member';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from './error';
 import { queryWords } from '@/lib/search/arabic';
 import { logFailure } from '@/lib/observe';
-import type { CompanyRow, DistrictRow, VerificationStatus } from '@/lib/supabase/database.types';
+import type { VerificationStatus } from '@/lib/supabase/database.types';
 import { LIST_SELECT, type JobListItem } from './jobs';
 import type { CompanyListItem, CompanyProfile } from '@/lib/read-types';
 
@@ -61,7 +62,7 @@ export async function queryCompanies({
     .from('companies')
     .select(
       `
-      *,
+      ${COMPANY_PUBLIC_COLUMNS},
       district:districts (id, governorate_id, name_ar, name_en, slug),
       open_roles:jobs!inner (id)
     `,
@@ -181,21 +182,32 @@ export const getCompanyBySlug = cache(async function getCompanyBySlug(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('companies')
-    .select('*, district:districts (id, governorate_id, name_ar, name_en, slug)')
+    .select(`${COMPANY_PUBLIC_COLUMNS}, district:districts (id, governorate_id, name_ar, name_en, slug)`)
     .eq('slug', slug)
     .maybeSingle();
 
   if (error) raise(error, 'loading a company');
+  if (!data) return null;
 
   /*
     A suspended company is not on the public site at all (migration 317): its
     listings were taken down with it, and a profile page left standing would
-    keep vouching for it. Read off the row rather than filtered in the query,
-    so a database that has not had the migration yet — no such column — still
-    serves every company page instead of erroring on all of them.
+    keep vouching for it. Asked of company_suspended() rather than read off
+    the row, so the column need not be publicly selectable. Until that
+    function exists, the column is read directly, which the grants still allow.
   */
-  if ((data as { suspended_at?: string | null } | null)?.suspended_at) return null;
-  return (data as unknown as CompanyProfile) ?? null;
+  const id = (data as { id: string }).id;
+  const suspended = await supabase.rpc('company_suspended', { p_id: id });
+  if (!suspended.error) {
+    if (suspended.data) return null;
+  } else if (suspended.error.code === 'PGRST202' || suspended.error.code === '42883') {
+    const flag = await supabase.from('companies').select('suspended_at').eq('id', id).maybeSingle();
+    if (flag.error) raise(flag.error, 'loading a company');
+    if ((flag.data as { suspended_at?: string | null } | null)?.suspended_at) return null;
+  } else {
+    raise(suspended.error, 'loading a company');
+  }
+  return data as unknown as CompanyProfile;
 });
 
 export function isVerified(status: VerificationStatus): boolean {

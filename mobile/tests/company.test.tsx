@@ -16,7 +16,7 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as BillingScreen from '../src/app/(tabs)/(account)/employer/billing';
 import * as CompanyScreen from '../src/app/(tabs)/(account)/employer/company';
-import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
+import { authSession, authUser, memberPrivate, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
 import { phoneFormData, sentBody } from './multipart';
 import { placeViewsAt } from './measure';
@@ -119,6 +119,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', [employer]);
   server.on('POST /rest/v1/rpc/my_company_id', () => company?.id ?? null);
+  server.on('POST /rest/v1/rpc/my_company_private', () => memberPrivate(company));
   server.on('GET /rest/v1/companies', () => (company ? [company] : []));
   server.on('/rest/v1/districts', [newCairo]);
   server.on('GET /rest/v1/company_documents', () => documents);
@@ -441,7 +442,13 @@ describe("the company's page, for a company admin", () => {
   it('reads who this is again when an admin takes themselves off the team, which leaves the company', async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     // Someone else owns the company: this admin may take themselves off.
-    company = { ...baseCompany, owner_id: RECRUITER };
+    // The owner comes from my_company_private(), not from the company row.
+    company = { ...baseCompany, owner_id: USER_ID };
+    server.on('POST /rest/v1/rpc/my_company_private', {
+      owner_id: RECRUITER,
+      post_credits: baseCompany.post_credits,
+      suspended_at: null,
+    });
     renderRouter(app, { initialUrl: '/employer/company' });
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.teamRemove}: أحمد سمير` }));
     const reads = server.asked('/rest/v1/profiles').length;
@@ -544,6 +551,35 @@ describe('an employer without a company', () => {
 });
 
 describe('billing', () => {
+  it('reads the balance from the member function, not from the company row', async () => {
+    company = { ...baseCompany, verification_status: 'verified', post_credits: 0 };
+    server.on('POST /rest/v1/rpc/my_company_private', {
+      owner_id: baseCompany.owner_id,
+      post_credits: 2,
+      suspended_at: null,
+    });
+    renderRouter(app, { initialUrl: '/employer/billing' });
+
+    expect(await screen.findByText('2')).toBeTruthy();
+    const select = server.asked('/rest/v1/companies')[0]?.url.searchParams.get('select') ?? '';
+    expect(select.includes('post_credits')).toBe(false);
+    expect(select.includes('owner_id')).toBe(false);
+    expect(select.includes('suspended_at')).toBe(false);
+  });
+
+  it('reads the balance off the row until my_company_private exists', async () => {
+    company = { ...baseCompany, post_credits: 2 };
+    server.on('POST /rest/v1/rpc/my_company_private', {
+      status: 404,
+      body: { code: 'PGRST202', message: 'Could not find the function public.my_company_private' },
+    });
+    renderRouter(app, { initialUrl: '/employer/billing' });
+
+    expect(await screen.findByText('2')).toBeTruthy();
+    const selects = server.asked('/rest/v1/companies').map((request) => request.url.searchParams.get('select') ?? '');
+    expect(selects.some((select) => select.includes('post_credits'))).toBe(true);
+  });
+
   it('shows the credits and gives a verified company its free post — when the database says it was given', async () => {
     company = { ...baseCompany, verification_status: 'verified', post_credits: 2 };
     server.on('GET /rest/v1/orders', [

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { isAuthApiError, isAuthRetryableFetchError, isAuthSessionMissingError, type Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { readMemberCompany } from '@/lib/company-member';
 import type { Actor } from '@/lib/permissions';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
 import { readLastActor, rememberActor } from './last-actor';
@@ -14,7 +15,9 @@ import { onLocalSignOut } from '~/lib/local-sign-out';
  * Same rules, same order: a session from Supabase Auth; the profile row, whose
  * absence means "has not onboarded"; and for an employer (or an admin who runs
  * one) the company `my_company_id()` names, which is membership rather than
- * ownership so an invited recruiter has one too. A profile that could not be
+ * ownership so an invited recruiter has one too. Its owner, credit balance
+ * and suspension come from `my_company_private()` rather than the public
+ * company row, so those columns can be closed to a public read. A profile that could not be
  * read is kept apart from one that does not exist, as the website does:
  * a database blip must not send an established account back through
  * onboarding.
@@ -86,11 +89,7 @@ export async function loadViewer(session: Session): Promise<Viewer> {
   if (profile?.role === 'employer' || profile?.role === 'admin') {
     const { data: companyId, error: membershipError } = await supabase.rpc('my_company_id');
     if (membershipError) throw membershipError;
-    if (companyId) {
-      const { data, error: companyError } = await supabase.from('companies').select('*').eq('id', companyId).maybeSingle();
-      if (companyError) throw companyError;
-      company = (data as CompanyRow | null) ?? null;
-    }
+    if (companyId) company = await readMemberCompany(supabase, companyId);
   }
 
   return {

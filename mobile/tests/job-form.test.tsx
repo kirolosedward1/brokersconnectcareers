@@ -16,7 +16,7 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as EditJobScreen from '../src/app/(tabs)/(listings)/employer/jobs/[id]/edit';
 import * as NewJobScreen from '../src/app/(tabs)/(listings)/employer/jobs/new';
-import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
+import { authSession, authUser, memberPrivate, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { detail, newCairo } from './fixtures';
 import { placeViewsAt } from './measure';
 import { fakeServer } from './server';
@@ -74,6 +74,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', [employer]);
   server.on('POST /rest/v1/rpc/my_company_id', () => ownedCompany.id);
+  server.on('POST /rest/v1/rpc/my_company_private', () => memberPrivate(ownedCompany));
   server.on('GET /rest/v1/companies', [ownedCompany]);
   server.on('/rest/v1/districts', [newCairo, zayed]);
   server.on('/rest/v1/developers', [{ id: 3, name_ar: 'بالم هيلز', name_en: 'Palm Hills', slug: 'palm-hills' }]);

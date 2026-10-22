@@ -29,7 +29,7 @@ import * as PreviewScreen from '../src/app/(tabs)/(account)/account/profile/prev
 import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as DirectoryScreen from '../src/app/(tabs)/(consultants,admin)/agents/index';
 import * as ShortlistScreen from '../src/app/(tabs)/(consultants,admin)/employer/talent';
-import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
+import { authSession, authUser, memberPrivate, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { cairo, newCairo } from './fixtures';
 import { fakeServer } from './server';
 
@@ -177,6 +177,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', () => [me]);
   server.on('POST /rest/v1/rpc/my_company_id', () => company?.id ?? null);
+  server.on('POST /rest/v1/rpc/my_company_private', () => memberPrivate(company));
   server.on('GET /rest/v1/companies', () => (company ? [company] : []));
   server.on('/rest/v1/districts', [newCairo]);
   server.on('/rest/v1/governorates', [cairo]);
