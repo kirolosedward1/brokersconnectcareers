@@ -83,7 +83,11 @@ run. Its artifact, `ios-screens`, holds:
   screenshots App Store Connect asks for (the log prints their sizes);
 - `dark/`, `large-text/` and `ipad/`: the same screens in the dark appearance,
   at the largest accessibility text size and on an iPad (App Review opens an
-  iPhone app on one too), for checking rather than for the store.
+  iPhone app on one too), for checking rather than for the store;
+- `small/`: the welcome and Home on an iPhone SE (3rd generation), the
+  smallest screen iOS 26 runs on, at the largest accessibility text size —
+  every way on the welcome must be on screen (`mobile/maestro/small.yaml`).
+  Every pass's launch asserts the same of its own phone.
 
 On the iPad, iPadOS 26 draws an iPhone app in a window of its own, and Maestro
 loses that window after the first link: it read none of the app's words while

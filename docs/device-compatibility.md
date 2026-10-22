@@ -46,11 +46,14 @@ switch and SwiftUI-backed `@expo/ui`); Android at all.
 
 The repository already has the tool for most of that:
 `.github/workflows/ios-screens.yml` runs the app on iOS simulators in light,
-dark, the largest text size and on an iPad. **It covers only the largest
-iPhone.** Adding an iPhone SE (3rd generation) at the largest accessibility
-size is what would have caught the welcome screen; that needs a macOS runner
-and is the first thing to add (`mobile/scripts/store-screens.sh`, a fifth
-pass next to `large-text`).
+dark, the largest text size and on an iPad. It covered only the largest
+iPhone, which is why the welcome's overflow was never seen; this branch adds
+a fifth pass, `small`: an iPhone SE (3rd generation) at the largest
+accessibility size, opening the app on the welcome and going on to Home
+(`mobile/maestro/small.yaml`). Every pass's launch (`maestro/launch.yaml`)
+now asserts that the sign-up button and the company's way in are on the
+screen. It runs on `main` when the flows change, so merging this runs it once;
+it was not run from here (it needs a macOS runner).
 
 ### The website
 
@@ -147,8 +150,10 @@ them on an SE simulator.
 
 ## Before the next release (owner)
 
-1. Add an **iPhone SE (3rd generation) pass at the largest accessibility size**
-   to `ios-screens.yml` and run it once on this branch.
+1. Read the **`small` pass** of the iOS screens run that merging this starts
+   (Actions → iOS screens): the welcome and Home on an iPhone SE at the
+   largest text size, `small/0-welcome.png` and `small/1-home.png`. Its
+   failure would mean the cap is not enough on a real simulator.
 2. Run the device checklist in `docs/mobile.md` ("On a phone, before a
    release") on one small and one large iPhone, with VoiceOver on for the
    sign-up, apply and delete-account flows.
