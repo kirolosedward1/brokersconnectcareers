@@ -6,11 +6,12 @@ import { router } from 'expo-router';
 import { render } from '@testing-library/react-native';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { InSheet } from '~/components/ui/states';
-import { resetWelcomeForTests, WELCOME_KEY } from '~/features/welcome';
+import { resetLaunchForTests } from '~/features/launch';
+import { resetWelcomeForTests } from '~/features/welcome';
 import { catalogues } from '~/i18n/provider';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
-import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
 import { mobileConfig } from './auth-fixtures';
 import { board, browse, cairo, listing, newCairo } from './fixtures';
@@ -34,6 +35,8 @@ jest.mock('~/lib/session-storage', () => ({
 
 const server = fakeServer();
 const HIDDEN_KEY = 'bc.hidden-companies.v1';
+/** The launch curtain is hidden from VoiceOver, so queries have to be told to look at it. */
+const HIDDEN = { includeHiddenElements: true };
 const other = {
   ...listing,
   id: '5b0c7d1e-0000-4000-8000-000000000301',
@@ -49,9 +52,9 @@ beforeAll(() => {
 
 beforeEach(async () => {
   await AsyncStorage.clear();
-  // Past the first launch's welcome (tests/welcome.test.tsx has it): these open on Home.
-  await AsyncStorage.setItem(WELCOME_KEY, 'done');
-  resetWelcomeForTests();
+  // Without the welcome a signed-out launch opens on (tests/welcome.test.tsx has it): these open on Home.
+  resetWelcomeForTests(false);
+  resetLaunchForTests();
   server.on('GET /api/mobile/v1/config', mobileConfig());
   server.on('/rest/v1/districts', [newCairo]);
   server.on('/rest/v1/governorates', [cairo]);
@@ -81,7 +84,7 @@ it("draws nothing before the phone has said which companies are hidden, and then
       {
         _layout: RootLayout,
         '(tabs)/_layout': TabsLayout,
-        '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout': TabStack,
+        '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout': TabStack,
         '(tabs)/(jobs)/jobs/index': BoardScreen,
         '(tabs)/(home)/index': () => <Text>home</Text>,
       },
@@ -94,10 +97,14 @@ it("draws nothing before the phone has said which companies are hidden, and then
     // well inside this, the hidden company's listing on it.)
     await expect(waitFor(() => expect(screen.getByText(other.title_ar)).toBeTruthy(), { timeout: 2000 })).rejects.toThrow();
     expect(screen.queryByText(listing.title_ar)).toBeNull();
+    // Meanwhile the launch curtain: the logo mark, where the launch screen draws it, not an empty page.
+    expect(screen.getByTestId('launch-screen', HIDDEN)).toBeTruthy();
 
     await act(async () => release());
     expect(await screen.findByText(other.title_ar)).toBeTruthy();
     expect(screen.queryByText(listing.title_ar)).toBeNull();
+    // And the curtain lifts off the board.
+    await waitFor(() => expect(screen.queryByTestId('launch-screen', HIDDEN)).toBeNull());
   } finally {
     if (stored) getItem.mockImplementation(stored);
     else getItem.mockRestore();
@@ -106,7 +113,7 @@ it("draws nothing before the phone has said which companies are hidden, and then
 
 describe('a screen that throws while it is drawn', () => {
   const ar = catalogues.ar;
-  const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+  const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 
   it('says something went wrong and draws it again on request, and the rest of the app stays', async () => {
     // A Home that fails to draw until it is asked again.
@@ -167,7 +174,7 @@ describe('a screen the root stack presents as a sheet', () => {
   function Where({ name }: { name: string }) {
     return <Text>{`${name}: ${useContext(InSheet) ? 'sheet' : 'screen'}`}</Text>;
   }
-  const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+  const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 
   it('is told it is one; the tabs under it are not', async () => {
     renderRouter(

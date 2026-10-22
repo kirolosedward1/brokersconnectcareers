@@ -2,6 +2,7 @@ import { Pressable } from 'react-native';
 import { Stack } from 'expo-router';
 import { X } from '~/components/ui/lucide';
 import { useTranslations } from 'use-intl';
+import { BarOnly } from '~/components/navigation/page-header';
 import { useStackOptions } from '~/components/navigation/stack-options';
 import { useTheme } from '~/theme/provider';
 import { hitTarget } from '~/theme/tokens';
@@ -23,7 +24,13 @@ export default function AuthLayout() {
         return {
           ...options,
           title: '',
-          headerLeft: first ? () => <CloseSheet onPress={() => navigation.getParent()?.goBack()} /> : undefined,
+          headerLeft: first
+            ? () => (
+                <BarOnly>
+                  <CloseSheet onPress={() => navigation.getParent()?.goBack()} />
+                </BarOnly>
+              )
+            : undefined,
         };
       }}
     />

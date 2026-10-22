@@ -76,6 +76,7 @@ export default async function EditJobPage({
 
       <JobForm
         locale={locale}
+        ownerId={viewer.userId}
         job={job as JobRow}
         districts={districts}
         developers={developers}

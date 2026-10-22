@@ -133,7 +133,7 @@ async function send(path: string, init: RequestInit, withToken: boolean): Promis
     response = await attempt(token);
 
     if (response.status === 401 && token) {
-      const { data, error } = await supabase.auth.refreshSession();
+      const { data, error } = await within(supabase.auth.refreshSession(), left());
       if (error || !data.session) {
         // Only a refusal ends the session here: the refresh token is spent or
         // revoked, or the session is gone. No answer, a rate limit (carriers

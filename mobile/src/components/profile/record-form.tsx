@@ -11,6 +11,7 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useSaveRecord } from '~/features/profile/queries';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
+import { useStoredFields } from '~/lib/use-stored-fields';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 import { wholeNumber } from './fields';
@@ -27,15 +28,19 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
   const { colors } = useTheme();
   const save = useSaveRecord();
 
-  const [summary, setSummary] = useState(agent.summary_ar ?? '');
-  const [units, setUnits] = useState(agent.units_closed == null ? '' : String(agent.units_closed));
-  const [volume, setVolume] = useState(agent.volume_egp == null ? '' : String(agent.volume_egp));
+  // Kept up with the profile as it is stored (changed on the website, or by
+  // another phone, while this screen stayed open), without touching what is
+  // being typed: filled once, the next save sent the old figures back.
+  const form = useStoredFields({
+    summary: agent.summary_ar ?? '',
+    units: agent.units_closed == null ? '' : String(agent.units_closed),
+    volume: agent.volume_egp == null ? '' : String(agent.volume_egp),
+  });
+  const { summary, units, volume } = form.fields;
   const [invalid, setInvalid] = useState(false);
 
   // Leaving with the record changed and not saved asks first.
-  const typedNow = JSON.stringify([summary, units, volume]);
-  const [savedAs, setSavedAs] = useState(typedNow);
-  useLeaveGuard(typedNow !== savedAs);
+  useLeaveGuard(form.dirty, save.isPending);
 
   const percent = completeness ?? 0;
 
@@ -48,8 +53,8 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
       return;
     }
     setInvalid(false);
-    const sending = typedNow;
-    save.mutate({ summaryAr: summary.trim() || null, unitsClosed, volumeEgp }, { onSuccess: () => setSavedAs(sending) });
+    const sending = form.fields;
+    save.mutate({ summaryAr: summary.trim() || null, unitsClosed, volumeEgp }, { onSuccess: () => form.saved(sending) });
   };
 
   return (
@@ -97,7 +102,7 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
       <Field label={t('cv.objective')} hint={t('cv.objectiveHint')}>
         <TextField
           value={summary}
-          onChangeText={setSummary}
+          onChangeText={(text) => form.set({ summary: text })}
           accessibilityLabel={t('cv.objective')}
           multiline
           maxLength={1200}
@@ -106,11 +111,11 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
       </Field>
 
       <Field label={t('cv.unitsClosed')}>
-        <TextField value={units} onChangeText={setUnits} accessibilityLabel={t('cv.unitsClosed')} ltr keyboardType="number-pad" />
+        <TextField value={units} onChangeText={(text) => form.set({ units: text })} accessibilityLabel={t('cv.unitsClosed')} ltr keyboardType="number-pad" />
       </Field>
 
       <Field label={t('cv.volumeEgp')}>
-        <TextField value={volume} onChangeText={setVolume} accessibilityLabel={t('cv.volumeEgp')} ltr keyboardType="number-pad" />
+        <TextField value={volume} onChangeText={(text) => form.set({ volume: text })} accessibilityLabel={t('cv.volumeEgp')} ltr keyboardType="number-pad" />
       </Field>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[3] }}>

@@ -1,4 +1,5 @@
-# Opens LINK — the app's newest update on the expo-go channel — in Expo Go as
+# Opens LINK — the newest update on the channel just published (EXPO_GO_CHANNEL,
+# or expo-go) — in Expo Go as
 # from outside it, and answers when iOS asks first ("Open in …?").
 # scripts/expo-go-look.sh opens its screens with this and reads them itself.
 appId: host.exp.Exponent

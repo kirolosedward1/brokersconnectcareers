@@ -2,7 +2,8 @@
 
 `mobile/` is the phone version of the website: an Expo (SDK 57) / React Native
 app for candidates and employers, on the same Supabase project, built from the
-same rules. The admin console stays on the website.
+same rules. Admins get the console's queues in an Admin tab (see "The admin
+console in the app" below); the rest of the console stays on the website.
 
 It is being built in phases. This document describes what exists and the
 rules that keep the two clients one product.
@@ -22,9 +23,11 @@ iOS app ──supabase-js (publishable key + the user's JWT, row-level security)
 server action the website's form runs, as the signed-in user. The emails, the
 upload checks, the slugs, the sanitising and the rate limits therefore happen
 for the app exactly as for the site. The actions the app may call are listed in
-`src/lib/mobile-api/registry.ts` — nothing else is reachable, and no admin
-action is. Their inputs and outputs are typed in `src/lib/mobile-api/contract.ts`,
-which the app imports.
+`src/lib/mobile-api/registry.ts` — nothing else is reachable. Of the admin
+console, only the levers the app's own console screens offer are
+(`ADMIN_ACTIONS`), each behind the admin door
+(`src/lib/mobile-api/admin-door.ts`). Their inputs and outputs are typed in
+`src/lib/mobile-api/contract.ts`, which the app imports.
 
 Three kinds of write go straight to Supabase, as the website's browser code
 does: notification read-state (the `mark_notifications_read` /
@@ -112,9 +115,10 @@ compare with (a new branch), it compares with the previous commit.
   The app says its own direction (`mobile/src/lib/direction.ts`) rather than
   rely on the one React Native fixes when the screen is created, which Expo Go
   sets too late: the root layout lays every view out in it, every navigator's
-  header and back gesture is told it (React Navigation's `LocaleDirContext`),
-  and so is the tab bar — iOS lays native bars out in the language the app runs
-  in, which is English on an iPhone set to English and in Expo Go. Text fields
+  header and back gesture is told it (React Navigation's `LocaleDirContext`).
+  The tab bar is the app's own, laid out like every other view: iOS lays its
+  native bars out in the language the app runs in, which is English on an
+  iPhone set to English and in Expo Go. Text fields
   are aligned to the physical edge (`TextField`): React Native mirrors
   `textAlign` for text it lays out, not for what is typed into a field.
 - **Design.** The brand set in a quieter key for the phone
@@ -157,9 +161,23 @@ compare with (a new branch), it compares with the previous commit.
   or badge.
 - **Navigation.** Routes mirror the website's paths. Each tab is a route group
   with its own stack, and listings, company pages and the bell's feed live in
-  a group all tabs share, so they open inside the tab the reader is in. On
-  iOS 26 the tab bar shrinks to the open tab as a list scrolls down and comes
-  back as it scrolls up (`minimizeBehavior`). No screen has iOS's large title:
+  a group all tabs share, so they open inside the tab the reader is in. The
+  tab bar is the app's own (`mobile/src/components/navigation/tab-bar.tsx`), a
+  capsule floating at the foot of the screen with every tab the reader has,
+  each an icon over its name. As a list scrolls down it grows smaller and the
+  names go, every tab kept, the way Instagram's does; scrolling back up,
+  reaching the top, or another screen coming into view brings it back whole
+  (`useTabList` and `useShrinkingTabBar` in `mobile/src/features/tab-bar.ts`,
+  on each tab's list and the pages opened inside a tab). iOS 26's own bar
+  shrinks to the open tab alone instead. Pressing the open tab again goes back
+  to its first screen, then to the top of that screen's list. Its band is part
+  of the layout, so screens end above it and need no room made under their
+  last line. The Account tab shows the reader's own photo once they have put
+  one on their account. Home has a header of its own
+  (`mobile/src/components/home/home-frame.tsx`), slimmer than iOS's: the logo
+  at its start (in Arabic, the right) and the bell at its end; it slides away
+  under the status bar as the list scrolls down and comes back as it scrolls
+  up, on the tab bar's signal. No screen has iOS's large title:
   on iOS 26 one under a painted bar is not drawn until the screen is
   scrolled, and on a clear bar it is drawn mirrored at the left edge wherever
   iOS runs left to right (Expo Go, an iPhone not set to Arabic) under the bar
@@ -250,7 +268,15 @@ compare with (a new branch), it compares with the previous commit.
   (`src/lib/agent-filters.ts`, shared) and in a sheet that counts as the
   employer chooses; cards are anonymous until the company is verified, and a
   company that is not is told why once — the papers are a company admin's to
-  upload, so a recruiter is told who can. **A consultant's page**
+  upload, so a recruiter is told who can. Until the account itself is approved
+  the tab says the consultants open once the company is verified, with the way
+  to its papers (`mobile/src/components/directory/directory-closed.tsx`).
+  Its search, like the companies directory's, is a field of the app's own at
+  the top of the screen (`mobile/src/components/ui/search-field.tsx`): iOS's
+  header search bar is laid out by the phone's language, not the app's, so it
+  ran left to right under the Arabic on a phone set to English and in Expo Go.
+  The board has no search bar: its words are the filter sheet's first field,
+  as they head the website's filter panel. **A consultant's page**
   (`/agents/<slug>`, or `/agents/<id>` for a locked card) reads
   `get_agent_card()` and the CV under the employer's own session, so the
   database decides what shows; the number and the CV are asked for with
@@ -308,6 +334,48 @@ compare with (a new branch), it compares with the previous commit.
   `openNotification`, which answers with the page to open or why not.
   Returning to the app re-reads whatever has gone stale meanwhile.
 
+### Kept on the phone, and small conveniences
+
+Nothing below reaches the website; each is the app's own, per person on the
+phone (`mobile/src/lib/local-list.ts`, keyed by user id or `anon`):
+
+- **Quick filters** under the board's title (`components/jobs/quick-filters.tsx`):
+  a basic salary, primary and resale, and the two areas with the most live
+  listings by the website's browse counts — the sheet's own filters, on or off.
+- **Match** on a job card for a candidate (`features/jobs/match.ts`): the
+  website's `scoreJob` as a share of `MAX_MATCH_SCORE` (`src/lib/match.ts`),
+  shown only when the profile names a track or district and the listing
+  matches on something.
+- **An application's steps** (`components/applications/timeline.tsx`): sent,
+  seen by the company (a status past "new" counts), shortlisted or interview,
+  the decision — a rejection ends the line where it happened.
+- **The completeness ring** round the photo on Home and Account
+  (`components/profile/completeness-ring.tsx`), from `candidate_summary`; a tap
+  opens the profile.
+- **Recently viewed** on Home (`features/jobs/recent.ts`): the last ten
+  listings opened, three shown, never one from a hidden company.
+- **Sharing a listing** offers the link or a picture
+  (`components/jobs/share-card.tsx`): a 1080 × 1920 card captured with
+  `react-native-view-shot` and handed to the share sheet.
+- **Illustrations** (`components/ui/illustration.tsx`): the website's own
+  files on empty screens and onboarding's first step, on a pane of paper in
+  dark mode where the website inverts them.
+- **Verified** marks open what verification means and does not promise
+  (`components/companies/verified-mark.tsx`).
+- **Applicants** swipe aside (`components/ui/swipe-row.tsx`): left to
+  shortlist a new one, right to turn one down (asked first) — the stage
+  picker's own moves; VoiceOver gets both as actions. **Saved WhatsApp
+  replies** (`components/employer/saved-replies.tsx`) beside the opener, with
+  `{name}` and `{job}` filled in.
+- **Consultant search alerts** (`features/directory/alerts.ts`): a narrowed
+  directory kept as a search; the app asks each again when it opens or comes
+  back (at most every half hour), counts consultants not seen before, and
+  posts a notification of its own where the person has let it notify. They
+  live on the phone and run while the app is used — a server-side alert would
+  need a table and a sweep like saved job searches have.
+- **A light tap** (`lib/haptics.ts`) when a job is saved or filters are
+  applied; an application sent keeps its success.
+
 ## Signing in
 
 The sign-in sheet (`mobile/src/app/(auth)/`) is the website's auth form, rule
@@ -339,15 +407,19 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   in the admin console until October 2026; signing out is the way out for
   someone without the phone. The database asks it of admins only
   (docs/security/THREAT_MODEL.md, section 5).
-- **The welcome** (`mobile/src/app/welcome.tsx`) opens a first launch with
-  nobody signed in, under the splash screen: the website's mark at the centre
-  of an emblem with the board's three promises drifting at its edge, the
-  logo's wordmark, the headline, and the ways on — create an account, sign in, or Skip at the top,
+- **The welcome** (`mobile/src/app/welcome.tsx`) opens every launch with
+  nobody signed in, under the splash screen: the website's own hero photograph
+  (`mobile/assets/images/welcome-photo.jpg`, the same file as
+  `public/media/hero-poster.jpg`, which `tests/brand.test.ts` holds equal)
+  across the screen under a sapphire veil darkening to midnight, and over it in
+  white the logo, the headline, and the ways on —
+  create an account, sign in, or Skip at the top,
   which the App Store asks an app to allow wherever an account is not needed.
-  Skipping or signing in answers it on that phone for good
-  (`mobile/src/features/welcome.ts`); a launch by a link never shows it. A
-  session the launch finds is no answer: a phone that was signed in when a new
-  welcome came shows it at its first launch with nobody signed in.
+  Skip closes it until the app is next started; signing in closes it with the
+  sign-in sheet; a launch by a link never shows it, and goes where the link
+  leads. Signing out opens it again, faded in over the tabs once whatever was
+  signed out from has closed (`mobile/src/components/navigation/welcome-gate.tsx`).
+  Nothing about it is kept on the phone (`mobile/src/features/welcome.ts`).
 - **Onboarding** runs the website's `completeOnboarding` and adds agreeing to
   the Terms of use, which the App Store requires of an app where people publish
   to each other. It asks in short steps, with a progress bar and a way back:
@@ -361,6 +433,18 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   signing out and deleting the account, which runs the Account tab's own path
   (`mobile/src/features/account/delete.ts`); the website's onboarding page has
   the same two (`src/components/auth/leave-onboarding.tsx`).
+- **The app lock and the cover** (`mobile/src/components/navigation/app-lock.tsx`,
+  `mobile/src/features/app-lock/`). While somebody is signed in and the app is
+  not in front, the screens are covered by the page and the logo, so the
+  picture iOS keeps for the app switcher is never an applicant's number or CV.
+  "Lock the app", under Sign-in and security, asks Face ID (or the passcode)
+  at launch and after a minute in the background — for the person who turned
+  it on, on that phone only; turning it on or off asks first. Signing out is
+  the way past it; a phone that can no longer ask (its passcode turned off)
+  drops the lock rather than shut its owner out. Over the tab screens only:
+  the root stack's sheets (sign-in, onboarding, the code) sit above it.
+  Built on `expo-local-authentication`, already in the native build, so it
+  ships over the air.
 - **The Account tab** signs out of this phone only (`scope: 'local'`), as the
   website's menus sign out of that browser only, so signing out of one never
   signs the other out; a password change ends the other sessions. It
@@ -615,7 +699,12 @@ Then, each time the phone should get the newest code:
 
 - from GitHub: Actions → Expo Go → Run workflow (on any branch). It also runs
   by itself on pushes to `main` and on this repository's pull requests. The
-  run's summary links the QR code;
+  run's summary links the QR code and gives the `exp://` link to paste. A
+  channel holds one newest update, so a pull request publishes on its own,
+  `expo-go-pr-<number>` (`EXPO_GO_CHANNEL`, which `pnpm run ota expo-go`
+  honours too): the `expo-go` link below keeps opening `main`, and a branch's
+  link opens that branch until its next push, whatever other branches publish
+  meanwhile;
 - or from a computer, signed in with `npx eas-cli@latest login`:
   `pnpm run ota expo-go --message "what changed"` in `mobile/`, which finds or
   creates the project the same way and prints the same link.
@@ -714,9 +803,11 @@ production, with QA accounts made for it — never the demo accounts.
 - Onboarding: "Delete this account" under signing out deletes an account that
   never finished it, and the app is back at the start. Back from a later step
   keeps what was typed.
-- A first launch (delete the app first): the welcome comes up under the splash
-  screen with nothing jumping into place, its parts arriving in turn; Skip
-  fades it away onto Home, and it does not come back.
+- A launch with nobody signed in: the welcome comes up under the splash
+  screen with nothing jumping into place, Skip at once and the rest arriving
+  in turn; Skip fades it away onto Home. Closed and opened again (swiped away
+  in the app switcher), it is there again; signed in, it never is; signing
+  out on Account fades it in.
 - An over-the-air update (`pnpm run ota preview --message "…"` to a preview
   build): it shows after the app is closed and opened twice.
 - Offline (airplane mode): the screens say so rather than spin; signing out
@@ -838,8 +929,8 @@ go to that build only. What is not native stays out of the fingerprint
 installed build off from later updates without a word. The same test computes
 the fingerprint and checks what it is made of. So the first App Store build already carries the
 native modules this round's later features need — `expo-store-review` for the
-rating prompt, `expo-local-authentication` for the app lock — and those
-features can follow over the air.
+rating prompt, `expo-local-authentication` for the app lock (which has since
+followed over the air) — and those features can follow over the air.
 
 The native iOS build is also compiled in CI on `main` (`ios-build` in
 `.github/workflows/mobile.yml`), so a config plugin or native dependency that
@@ -849,3 +940,49 @@ as EAS does for SDK 57. Xcode 16 cannot build SDK 57: `expo-modules-jsi`'s
 Swift package needs Swift tools 6.2, and `@expo/ui`, which `expo-router`
 depends on, uses iOS 26 SwiftUI API. A Mac building locally needs Xcode 26 as
 well.
+
+## The admin console in the app
+
+An account whose role is `admin` has an **Admin** tab (`src/lib/tabs.ts`):
+the website's `/admin` overview and its queues — listings waiting for review
+(`/admin/jobs`, and one listing's review at `/admin/jobs/<id>`), open reports
+in their two queues, new and under review (`/admin/reports`), the accounts
+(`/admin/users`: every account by standing or role, searched as the website
+searches them, and one account's file at `/admin/users/<id>` with every lever
+the website's page has — approval, role, sign-in block, sessions, reporting,
+contact revealed for a reason, notes) and companies whose papers wait
+(`/admin/companies`). Links to those paths open there; any other `/admin/…`
+page opens the overview, which links to the full console on the website
+(search, the audit log, taxonomy, applications, email, appeals). An admin who
+runs a company has the company's console in the bar instead of the public
+tabs, and the consultant directory opens inside the Admin tab
+(`(consultants,admin)` in the routes).
+
+- **Reads** go straight to Supabase under the admin's session — the same
+  tables and `admin_*` functions the website's pages read
+  (`mobile/src/features/admin/queries.ts`). Row policies and the functions
+  answer an admin only.
+- **Writes** are the website's own admin actions (`ADMIN_ACTIONS` in
+  `src/lib/mobile-api/contract.ts`: `moderateJob`, `reviewCompany`,
+  `setAccountApproval`, `moderateReports`, `getDocumentUrl`, `revealContact`,
+  `addModerationNote`, `setReportingRestriction`, `setUserRole`,
+  `setSignInBlock`, `endSessions`) through `/api/mobile/v1/actions`, each one
+  admin_* function that checks, decides and writes the audit record in one
+  transaction. Every lever opens one confirmation sheet
+  (`mobile/src/components/admin/decision-sheet.tsx`, drawn once at the root):
+  a reason where somebody is owed one, the version the screen showed, and
+  "done" only once the website answers `ok`.
+- **The second factor** is asked of the app as the website asks it: the door
+  (`mobile/src/features/admin/door.ts` on the phone, `admin-door.ts` on the
+  server) opens only for a session that gave its authenticator's code, or —
+  where `ADMIN_MFA_REQUIRED` is off (it is on by default in production; the
+  app reads it from `/config`) — for an admin without one. An admin without
+  an authenticator is sent to set one up on the website, then asked for the
+  code by the app's own second-factor screen. The server refuses the levers
+  with `mfa_required` / `mfa_challenge` regardless of what the app shows.
+
+`mobile/tests/admin.test.tsx` and `mobile/tests/admin-accounts.test.tsx`
+cover who has the tab, the door, the queues, the accounts and each lever's
+request; `scripts/mobile-api.test.mjs` holds the registry to exactly the
+levers in `ADMIN_ACTIONS`, each behind the door; `supabase/tests/admin.test.mjs`
+covers the account levers of migration 355.

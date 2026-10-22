@@ -8,6 +8,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field, Textarea } from '@/components/ui/field';
 import {
   deleteTaxonomy,
+  endSessions,
   moderateJob,
   moderateReports,
   reviewCompany,
@@ -15,6 +16,8 @@ import {
   setAgentRestriction,
   setCompanySuspension,
   setJobFeatured,
+  setSignInBlock,
+  setUserRole,
   type JobModerationAction,
 } from '@/lib/actions/admin';
 import { closeReports, decideAppeal, setReportingRestriction } from '@/lib/actions/moderation';
@@ -57,7 +60,11 @@ export type AdminLever =
       abusive?: boolean;
     }
   | { do: 'reporting'; userId: string; restrict: boolean }
-  | { do: 'appeal'; appealId: string; overturn: boolean };
+  | { do: 'appeal'; appealId: string; overturn: boolean }
+  // The account itself (migration 355): its role, its door, its devices.
+  | { do: 'role'; userId: string; role: 'candidate' | 'employer' | 'admin' }
+  | { do: 'signInBlock'; userId: string; block: boolean }
+  | { do: 'sessions'; userId: string };
 
 function pull(lever: AdminLever, reason: string): Promise<ActionResult<unknown>> {
   switch (lever.do) {
@@ -89,7 +96,26 @@ function pull(lever: AdminLever, reason: string): Promise<ActionResult<unknown>>
       return setReportingRestriction({ userId: lever.userId, restrict: lever.restrict, reason });
     case 'appeal':
       return decideAppeal({ appealId: lever.appealId, overturn: lever.overturn, note: reason });
+    case 'role':
+      return setUserRole({ userId: lever.userId, role: lever.role, reason });
+    case 'signInBlock':
+      return setSignInBlock({ userId: lever.userId, block: lever.block, reason });
+    case 'sessions':
+      return endSessions({ userId: lever.userId, reason });
   }
+}
+
+/**
+ * How many devices an action signed out, when it says. Blocking sign-in and
+ * ending sessions both answer with the count, and "signed out of 3 devices"
+ * is the one thing the admin who pulled either wants to hear; the other
+ * levers answer with nothing, or with something else, and get the plain
+ * confirmation.
+ */
+function sessionsEndedOf(data: unknown): number | null {
+  if (typeof data !== 'object' || data === null || !('sessionsEnded' in data)) return null;
+  const count = (data as { sessionsEnded: unknown }).sessionsEnded;
+  return typeof count === 'number' && Number.isFinite(count) ? count : null;
 }
 
 /**
@@ -177,7 +203,14 @@ export function ConfirmAction({
       setOpen(false);
       setText('');
       setDone(true);
-      announceDone(t('doneWhat', { what: title }));
+      // Only a lever that ends sessions says how many: allowing sign-in again
+      // answers with the same shape and a count of none, which is no news.
+      const ended = lever.do === 'sessions' || (lever.do === 'signInBlock' && lever.block) ? sessionsEndedOf(result.data) : null;
+      announceDone(
+        ended === null
+          ? t('doneWhat', { what: title })
+          : `${t('doneWhat', { what: title })} · ${t('sessionsEnded', { count: ended })}`,
+      );
       router.refresh();
     });
   }

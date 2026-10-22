@@ -1,7 +1,9 @@
+import { router, type Href } from 'expo-router';
 import { isAwaitedOAuthReturn } from '~/features/auth/oauth-return';
 import { readLastActor } from '~/lib/last-actor';
 import { isPublicPath, routeFromOutside, webPathToAppPath } from '~/lib/links';
 import { openWhenReady } from '~/lib/open-path';
+import { leaveSheets, sheetsShowing } from '~/lib/sheet-gate';
 
 /**
  * Every address the system hands the app — a universal link to the website,
@@ -25,7 +27,15 @@ export async function redirectSystemPath({ path }: { path: string; initial: bool
       openWhenReady(webPathToAppPath(path));
       return null;
     }
-    return routeFromOutside(path, actor);
+    const route = routeFromOutside(path, actor);
+    // Arrived with a sheet showing (the app open, the filters up): the sheet
+    // closes first. Opened over it — the sign-in sheet, an email's link —
+    // made iOS take it down unawares, and its button did nothing after.
+    if (sheetsShowing() > 0) {
+      leaveSheets(() => router.navigate(route as Href));
+      return null;
+    }
+    return route;
   } catch {
     return '/';
   }

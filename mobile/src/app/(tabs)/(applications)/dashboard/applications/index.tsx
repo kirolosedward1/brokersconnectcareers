@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
+import type { ApplicationStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import { useHeaderBell } from '~/components/notifications/header-bell';
+import { ApplicationTimeline } from '~/components/applications/timeline';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
+import { Illustration } from '~/components/ui/illustration';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
@@ -18,10 +21,14 @@ import {
   useWithdrawApplication,
   type CandidateApplication,
 } from '~/features/applications/queries';
+import { useTabList } from '~/features/tab-bar';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
+import { toast } from '~/components/feedback/toast';
+import { useListMotion } from '~/components/motion/list-motion';
 
 /**
  * The candidate's applications — the website's /dashboard/applications: every
@@ -36,6 +43,9 @@ export default function ApplicationsScreen() {
   const applications = useMyApplications();
   // A push about a move reads the list again; the spinner is the pull's alone.
   const pull = usePullRefresh(() => applications.refetch());
+  const list = useTabList();
+  // Withdrawn, or decided and moved under its heading: the rows close up rather than jump.
+  useListMotion((applications.data ?? []).map((application) => `${application.id}:${application.status}`));
 
   let body: React.ReactNode;
   if (!session) {
@@ -53,8 +63,11 @@ export default function ApplicationsScreen() {
     body = <ErrorState error={applications.error} onRetry={() => applications.refetch()} />;
   } else {
     const rows = applications.data.filter((application) => application.job);
+    const active = rows.filter((application) => !DECIDED.has(application.status));
+    const decided = rows.filter((application) => DECIDED.has(application.status));
     body = (
       <ScrollView
+        {...list}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
         refreshControl={
@@ -76,26 +89,42 @@ export default function ApplicationsScreen() {
               borderColor: colors.border,
             }}
           >
+            <Illustration name="apply" width={140} />
             <Text weight="medium" style={{ textAlign: 'center' }}>
               {t('dashboard.emptyApplications')}
             </Text>
             <Button label={t('dashboard.emptyApplicationsCta')} onPress={() => router.navigate('/jobs')} />
           </View>
         ) : (
-          // One surface, ruled rows — the website's layout, not a card per application.
-          <View
-            style={{
-              ...corner('xl'),
-              borderWidth: StyleSheet.hairlineWidth * 2,
-              borderColor: colors.border,
-              boxShadow: shadow.card,
-              backgroundColor: colors.card,
-              overflow: 'hidden',
-            }}
-          >
-            {rows.map((application, index) => (
-              <ApplicationRow key={application.id} application={application} first={index === 0} />
-            ))}
+          // Still open first, decided after: what may yet move is what is
+          // looked for. Each group one surface of ruled rows — the website's
+          // layout, not a card per application — and named only when both are there.
+          <View style={{ gap: space[5] }}>
+            {[active, decided].map((group, index) =>
+              group.length ? (
+                <View key={index} style={{ gap: space[2] }}>
+                  {active.length && decided.length ? (
+                    <Text variant="small" weight="semibold" tone="mutedForeground" accessibilityRole="header">
+                      {t(index === 0 ? 'app.applications.activeHeading' : 'app.applications.decidedHeading')}
+                    </Text>
+                  ) : null}
+                  <View
+                    style={{
+                      ...corner('xl'),
+                      borderWidth: StyleSheet.hairlineWidth * 2,
+                      borderColor: colors.border,
+                      boxShadow: shadow.card,
+                      backgroundColor: colors.card,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {group.map((application, row) => (
+                      <ApplicationRow key={application.id} application={application} first={row === 0} />
+                    ))}
+                  </View>
+                </View>
+              ) : null,
+            )}
           </View>
         )}
       </ScrollView>
@@ -112,6 +141,9 @@ export default function ApplicationsScreen() {
   );
 }
 
+/** Where an application has come to its end: the company has answered. */
+const DECIDED = new Set<ApplicationStatus>(['hired', 'rejected']);
+
 function ApplicationRow({ application, first }: { application: CandidateApplication; first: boolean }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -126,14 +158,17 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const shown = displayJobStatus(job);
 
   const confirmWithdraw = () => {
-    Alert.alert(t('app.applications.withdrawTitle', { title }), t('app.applications.withdrawBody'), [
+    dialog.alert(t('app.applications.withdrawTitle', { title }), t('app.applications.withdrawBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('dashboard.withdraw'),
         style: 'destructive',
         onPress: () => {
           setFailed(false);
-          withdraw.mutate(application.id, { onError: () => setFailed(true) });
+          withdraw.mutate(application.id, {
+            onSuccess: () => toast.show({ message: t('app.toast.withdrawn'), tone: 'success' }),
+            onError: () => setFailed(true),
+          });
         },
       },
     ]);
@@ -174,6 +209,9 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
         </View>
         <Badge variant={STATUS_VARIANT[application.status]} label={t(`applicationStatus.${application.status}`)} />
       </View>
+
+      {/* Where it stands: sent, seen by the company, shortlisted, the decision. */}
+      <ApplicationTimeline application={application} />
 
       {/* That a person at the company has had it on screen — only while the
           outcome is open; once the status moves, the status is the news. */}

@@ -14,6 +14,7 @@ import type { CompanyDocumentRow, VerificationStatus } from '@/lib/supabase/data
 import { uuid } from '@/lib/utils';
 import { fileExtension, fileType } from '@/lib/file-type';
 import { useSessionRecovery } from '@/lib/session-expired';
+import { useUploadFailure } from '@/lib/use-upload-failure';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const TYPES = ['application/pdf', 'image/png', 'image/jpeg'];
@@ -36,6 +37,7 @@ export function VerificationPanel({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
+  const explainUpload = useUploadFailure();
 
   function upload(docType: 'commercial_register' | 'tax_card') {
     return (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,7 +67,8 @@ export function VerificationPanel({
           .upload(path, file, { contentType: type });
 
         if (uploadError) {
-          setError(tCommon('errorBody'));
+          const message = await explainUpload(uploadError);
+          if (message) setError(message);
           return;
         }
 

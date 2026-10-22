@@ -24,6 +24,7 @@ import type {
   ProfileRow,
 } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
+import { useUploadFailure } from '@/lib/use-upload-failure';
 
 const MAX_CV_BYTES = 10 * 1024 * 1024;
 const CV_TYPES = [
@@ -100,6 +101,7 @@ export function AgentProfileForm({
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
+  const explainUpload = useUploadFailure();
 
   /*
     The CV on file, and whether this save takes it down.
@@ -159,7 +161,8 @@ export function AgentProfileForm({
           .upload(path, file, { contentType: fileType(file) });
 
         if (error) {
-          setErrors({ cv: tCommon('errorBody') });
+          const message = await explainUpload(error);
+          if (message) setErrors({ cv: message });
           return;
         }
         cvPath = path;

@@ -35,10 +35,12 @@ function useCandidateId(): string | null {
  */
 export function useAgentProfile() {
   const candidateId = useCandidateId();
+  const queryClient = useQueryClient();
+  const queryKey = ['profile', 'agent', candidateId];
   return useQuery({
-    queryKey: ['profile', 'agent', candidateId],
+    queryKey,
     enabled: Boolean(candidateId),
-    queryFn: async () => {
+    queryFn: async (): Promise<{ agent: AgentProfileRow | null; developerIds: number[] | null }> => {
       const { data, error } = await supabase
         .from('agent_profiles')
         .select('*')
@@ -46,11 +48,17 @@ export function useAgentProfile() {
         .maybeSingle();
       if (error) throw error;
       const agent = (data as AgentProfileRow | null) ?? null;
-      if (!agent) return { agent: null, developerIds: [] as number[] };
-      // Allowed to fail quietly, as on the website: the chips draw unticked
-      // and the next save corrects them.
-      const { data: developers } = await supabase.from('agent_developers').select('developer_id').eq('agent_id', agent.id);
-      return { agent, developerIds: (developers ?? []).map((row) => row.developer_id as number) };
+      if (!agent) return { agent: null, developerIds: [] };
+      // Unreadable, the developers are not taken for none: the chips would
+      // draw unticked, and the next save — which sends the ticked ones —
+      // would wipe them. Those read before stand; with none read yet, null,
+      // and the form waits for them (everything else here does not).
+      const developers = await supabase.from('agent_developers').select('developer_id').eq('agent_id', agent.id);
+      if (developers.error) {
+        const before = queryClient.getQueryData<{ developerIds: number[] | null }>(queryKey);
+        return { agent, developerIds: before?.developerIds ?? null };
+      }
+      return { agent, developerIds: (developers.data ?? []).map((row) => row.developer_id as number) };
     },
   });
 }
@@ -114,8 +122,10 @@ export class SaveRefused extends Error {
   constructor(
     readonly reason: string,
     readonly fieldErrors?: Record<string, string>,
+    /** What went wrong underneath, said with the error (an upload's own message). */
+    readonly detail?: string,
   ) {
-    super(reason);
+    super(detail ? `${reason}: ${detail}` : reason);
     this.name = 'SaveRefused';
   }
 }
@@ -139,7 +149,7 @@ export function useSaveAgentProfile() {
       const uploaded =
         cv.kind === 'file'
           ? await uploadCv(userId, cv.file).catch((error: unknown) => {
-              throw error instanceof CvUploadFailed ? new SaveRefused(error.reason) : error;
+              throw error instanceof CvUploadFailed ? new SaveRefused(error.reason, undefined, error.detail) : error;
             })
           : null;
 

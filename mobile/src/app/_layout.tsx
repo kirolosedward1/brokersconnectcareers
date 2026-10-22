@@ -13,18 +13,30 @@ import { IBMPlexSansArabic_400Regular } from '@expo-google-fonts/ibm-plex-sans-a
 import { IBMPlexSansArabic_500Medium } from '@expo-google-fonts/ibm-plex-sans-arabic/500Medium';
 import { IBMPlexSansArabic_600SemiBold } from '@expo-google-fonts/ibm-plex-sans-arabic/600SemiBold';
 import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arabic/700Bold';
+import { LaunchCurtain } from '~/components/brand/launch-screen';
 import { AppError, ScreenError } from '~/components/navigation/error-boundaries';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
+import { AppLock } from '~/components/navigation/app-lock';
+import { CrashNotice } from '~/components/navigation/crash-notice';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
 import { WelcomeGate } from '~/components/navigation/welcome-gate';
 import { roomForScreen } from '~/components/ui/keyboard-room';
 import { InSheet } from '~/components/ui/states';
+import { useAppLockLoaded } from '~/features/app-lock/lock';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
+import { useHiddenJobsLoaded } from '~/features/moderation/hidden-jobs';
+import { DecisionSheetHost } from '~/components/admin/decision-sheet';
+import { VerifiedExplainerHost } from '~/components/companies/verified-mark';
+import { NoteSheetHost } from '~/components/saved/note-sheet';
+import { ToastHost } from '~/components/feedback/toast';
+import { HomeShortcuts } from '~/components/navigation/home-shortcuts';
+import { launchReady, useLaunchHeld, useLaunchReady } from '~/features/launch';
 import { useWelcomeDrawn } from '~/features/welcome';
 import { I18nProvider } from '~/i18n/provider';
+import { installCrashLog } from '~/lib/crash-log';
 import { appDirection } from '~/lib/direction';
 import { persistOptions, queryClient } from '~/lib/query';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -32,6 +44,8 @@ import { ThemeProvider, useTheme } from '~/theme/provider';
 import { font } from '~/theme/tokens';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+// An error that would close the app is written down first, for the next launch to tell.
+installCrashLog();
 
 /**
  * The tabs are always underneath: a link that opens straight onto a sheet (an
@@ -49,10 +63,11 @@ export { AppError as ErrorBoundary };
 
 /**
  * Everything the screens stand on: the website's font, cached server state,
- * the theme, the website's catalogue, and who is signed in. The splash screen
- * stays up until the font is ready and the phone has said who was signed in
- * last, so no screen is ever drawn in the system font first, nor with a tab
- * bar that changes a moment later.
+ * the theme, the website's catalogue, and who is signed in. The launch
+ * curtain (LaunchCurtain) — the logo mark, as the phone's launch screen draws
+ * it — stays over them until the font is ready and the phone has said who was
+ * signed in last, so no screen is ever seen in the system font first, nor
+ * with a tab bar that changes a moment later.
  *
  * All of it in the app's direction (src/lib/direction.ts): every view laid
  * out in it, and every navigator's header and back gesture told it, whatever
@@ -84,26 +99,34 @@ export default function RootLayout() {
             </PersistQueryClientProvider>
           </SafeAreaProvider>
         ) : null}
+        <LaunchCurtain />
       </LocaleDirContext.Provider>
     </View>
   );
 }
 
-/** Longest the splash screen waits for the welcome to be drawn, once the app is ready. */
+/** Longest the launch curtain waits for the welcome to be drawn, once the app is ready and the curtain has been up its moment. */
 const WELCOME_WAIT_MS = 1500;
 
 /**
  * The screens, once the tab bar can be drawn for the person using the app —
  * the same person a link that opened the app was routed for (+native-intent).
- * The splash screen comes down onto the first screen the launch is for: the
- * welcome, on a first signed-out launch (WelcomeGate), or Home.
+ * The launch curtain lifts onto the first screen the launch is for: the
+ * welcome, on a launch with nobody signed in (WelcomeGate), or Home.
  */
 function AppStack() {
   const { settled } = useSession();
   // A cold start draws the board kept from the last run at once: not before
   // the phone has said whose listings the reader hid.
-  const hiddenKnown = useHiddenCompaniesLoaded();
-  const ready = settled && hiddenKnown;
+  const hiddenCompaniesKnown = useHiddenCompaniesLoaded();
+  const hiddenJobsKnown = useHiddenJobsLoaded();
+  const hiddenKnown = hiddenCompaniesKnown && hiddenJobsKnown;
+  // Nor before it has said whether this person keeps the app locked: the
+  // first frame is the lock, not the screens behind it.
+  const lockKnown = useAppLockLoaded();
+  const ready = settled && hiddenKnown && lockKnown;
+  // The welcome opens only once the curtain has been up its moment (WelcomeGate): the wait for it starts then too.
+  const curtainHeld = useLaunchHeld();
   const [welcome, setWelcome] = useState<'deciding' | 'opened' | 'not'>('deciding');
   const welcomeDrawn = useWelcomeDrawn();
   const [waitedEnough, setWaitedEnough] = useState(false);
@@ -111,14 +134,17 @@ function AppStack() {
 
   // Never held for good, whatever the welcome does.
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !curtainHeld) return;
     const timer = setTimeout(() => setWaitedEnough(true), WELCOME_WAIT_MS);
     return () => clearTimeout(timer);
-  }, [ready]);
+  }, [ready, curtainHeld]);
 
   const firstScreen = welcome === 'not' || (welcome === 'opened' && welcomeDrawn) || waitedEnough;
   useEffect(() => {
-    if (ready && firstScreen) SplashScreen.hideAsync().catch(() => {});
+    if (!(ready && firstScreen)) return;
+    launchReady();
+    // Down already under the curtain, as a rule; never left up should the curtain not have been laid out.
+    SplashScreen.hideAsync().catch(() => {});
   }, [ready, firstScreen]);
 
   if (!ready) return null;
@@ -132,14 +158,23 @@ function AppStack() {
         <Stack.Screen name="mfa" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         <Stack.Screen name="auth/confirm" options={{ presentation: 'modal' }} />
         <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
-        {/* Under the splash screen at once, and answered rather than swiped away. */}
-        <Stack.Screen name="welcome" options={{ presentation: 'fullScreenModal', animation: 'none', gestureEnabled: false }} />
+        {/* Answered rather than swiped away. It fades in: at a launch over
+            the launch curtain, after a sign-out over the tabs. */}
+        <Stack.Screen name="welcome" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
       </Stack>
       <WelcomeGate onDecided={decided} />
       <SessionGate />
       <PendingPath />
       <PushBridge />
       <AppleCredentialWatch />
+      <CrashNotice />
+      <HomeShortcuts />
+      <VerifiedExplainerHost />
+      <NoteSheetHost />
+      <DecisionSheetHost />
+      <ToastHost />
+      {/* Last, so it is drawn over every screen of the stack. */}
+      <AppLock />
     </UpdateGate>
   );
 }
@@ -165,6 +200,10 @@ function rootScreenLayout(props: {
 /** The navigators' colours and title font, from the theme. */
 function Navigation({ children }: { children: ReactNode }) {
   const { scheme, colors } = useTheme();
+  // The launch curtain is light whatever the theme: dark letters over it until it lifts.
+  const firstScreenReady = useLaunchReady();
+  const curtainHeld = useLaunchHeld();
+  const curtainUp = !(firstScreenReady && curtainHeld);
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
 
   return (
@@ -187,7 +226,7 @@ function Navigation({ children }: { children: ReactNode }) {
         },
       }}
     >
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={scheme === 'dark' && !curtainUp ? 'light' : 'dark'} />
       {children}
     </NavigationTheme>
   );

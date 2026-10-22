@@ -10,6 +10,9 @@ import { createClient } from '@/lib/supabase/client';
 import { localeHref, type Locale } from '@/i18n/routing';
 import { announcePasswordChange } from '@/lib/actions/account';
 import { useSessionRecovery } from '@/lib/session-expired';
+import { passwordRefusal } from '@/lib/auth/errors';
+import { secondFactorChallenge } from '@/lib/auth/second-factor';
+import { safeNext } from '@/lib/safe-next';
 
 /**
  * Set the new password, on the session the recovery link just created.
@@ -51,11 +54,14 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
       const supabase = createClient();
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) {
-        setError(
-          /session|jwt|expired/i.test(updateError.message)
-            ? t('linkExpired')
-            : tCommon('errorBody'),
-        );
+        const refusal = passwordRefusal(updateError);
+        // The authenticator was added after the page was drawn (the page
+        // itself sends such an account to the code first): the code, then back.
+        if (refusal === 'second_factor') {
+          window.location.assign(localeHref(locale, safeNext(secondFactorChallenge('/sign-in/new-password', '')) ?? '/onboarding'));
+          return;
+        }
+        setError(refusal === 'session' ? t('linkExpired') : tCommon('errorBody'));
         return;
       }
       setDone(true);
