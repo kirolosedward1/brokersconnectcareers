@@ -2,7 +2,8 @@
 
 `mobile/` is the phone version of the website: an Expo (SDK 57) / React Native
 app for candidates and employers, on the same Supabase project, built from the
-same rules. The admin console stays on the website.
+same rules. Admins get the console's queues in an Admin tab (see "The admin
+console in the app" below); the rest of the console stays on the website.
 
 It is being built in phases. This document describes what exists and the
 rules that keep the two clients one product.
@@ -22,9 +23,10 @@ iOS app ──supabase-js (publishable key + the user's JWT, row-level security)
 server action the website's form runs, as the signed-in user. The emails, the
 upload checks, the slugs, the sanitising and the rate limits therefore happen
 for the app exactly as for the site. The actions the app may call are listed in
-`src/lib/mobile-api/registry.ts` — nothing else is reachable, and no admin
-action is. Their inputs and outputs are typed in `src/lib/mobile-api/contract.ts`,
-which the app imports.
+`src/lib/mobile-api/registry.ts` — nothing else is reachable. Of the admin
+console, only the five levers its queues need are (`ADMIN_ACTIONS`), each
+behind the admin door (`src/lib/mobile-api/admin-door.ts`). Their inputs and
+outputs are typed in `src/lib/mobile-api/contract.ts`, which the app imports.
 
 Three kinds of write go straight to Supabase, as the website's browser code
 does: notification read-state (the `mark_notifications_read` /
@@ -920,3 +922,39 @@ as EAS does for SDK 57. Xcode 16 cannot build SDK 57: `expo-modules-jsi`'s
 Swift package needs Swift tools 6.2, and `@expo/ui`, which `expo-router`
 depends on, uses iOS 26 SwiftUI API. A Mac building locally needs Xcode 26 as
 well.
+
+## The admin console in the app
+
+An account whose role is `admin` has an **Admin** tab (`src/lib/tabs.ts`):
+the website's `/admin` overview and its four queues — listings waiting for
+review (`/admin/jobs`, and one listing's review at `/admin/jobs/<id>`), open
+reports (`/admin/reports`), accounts waiting for approval or suspended
+(`/admin/users`) and companies whose papers wait (`/admin/companies`). Links to
+those paths open there; any other `/admin/…` page opens the overview, which
+links to the full console on the website (search, the audit log, taxonomy,
+applications, one account's file, email, appeals).
+
+- **Reads** go straight to Supabase under the admin's session — the same
+  tables and `admin_*` functions the website's pages read
+  (`mobile/src/features/admin/queries.ts`). Row policies and the functions
+  answer an admin only.
+- **Writes** are the website's own admin actions — `moderateJob`,
+  `reviewCompany`, `setAccountApproval`, `moderateReports` and
+  `getDocumentUrl` — through `/api/mobile/v1/actions`, each one admin_*
+  function that checks, decides and writes the audit record in one
+  transaction. Every lever opens one confirmation sheet
+  (`mobile/src/components/admin/decision-sheet.tsx`, drawn once at the root):
+  a reason where somebody is owed one, the version the screen showed, and
+  "done" only once the website answers `ok`.
+- **The second factor** is asked of the app as the website asks it: the door
+  (`mobile/src/features/admin/door.ts` on the phone, `admin-door.ts` on the
+  server) opens only for a session that gave its authenticator's code, or —
+  where `ADMIN_MFA_REQUIRED` is off (it is on by default in production; the
+  app reads it from `/config`) — for an admin without one. An admin without
+  an authenticator is sent to set one up on the website, then asked for the
+  code by the app's own second-factor screen. The server refuses the levers
+  with `mfa_required` / `mfa_challenge` regardless of what the app shows.
+
+`mobile/tests/admin.test.tsx` covers who has the tab, the door, the queues
+and each lever's request; `scripts/mobile-api.test.mjs` holds the registry to
+exactly those five levers, each behind the door.

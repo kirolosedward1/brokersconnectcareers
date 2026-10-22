@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router/js-tabs';
 import { useTranslations } from 'use-intl';
 import { accountTabIcon, TabBar, tabIcon } from '~/components/navigation/tab-bar';
-import { Bookmark, Briefcase, Building2, CircleUserRound, ClipboardList, FileText, House, Inbox, Users } from '~/components/ui/lucide';
+import { Bookmark, Briefcase, Building2, CircleUserRound, ClipboardList, FileText, House, Inbox, ShieldCheck, Users } from '~/components/ui/lucide';
+import { useAdminOverview, waitingCount } from '~/features/admin/queries';
 import { useConsultantAlerts } from '~/features/directory/alerts';
 import { useNewJobsBadge } from '~/features/jobs/new-since';
 import { markupTags } from '~/i18n/rich';
@@ -14,7 +15,9 @@ import { tabsFor, type TabName } from '~/lib/tabs';
  * the companies — and the account, where signing in starts. A candidate has
  * their console instead of the directory: applications and saved. An
  * employer has theirs: listings and applicants, the consultant directory once
- * approved, with the overview at home and the company in the account.
+ * approved, with the overview at home and the company in the account. An
+ * admin has the console's queues in a tab of their own, its badge the things
+ * waiting on a decision.
  *
  * A tab left out is a protected route, which takes its screens out of the app
  * for that person altogether; links are routed with the same list (links.ts),
@@ -23,7 +26,7 @@ import { tabsFor, type TabName } from '~/lib/tabs';
  * Each tab is a group with a stack of its own ((home), (jobs), …); a listing
  * or a company opened from any of them is pushed onto that tab's stack, so the
  * tab bar stays and Back returns to where the reader was. See
- * (home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout.tsx.
+ * (home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout.tsx.
  * Pressing the open tab again takes its stack back to its first screen, and
  * that screen's list back to its top.
  *
@@ -45,6 +48,8 @@ export default function TabsLayout() {
   const has = (tab: TabName) => tabs.includes(tab);
   // Listings published since the board was last looked at (features/jobs/new-since.ts).
   const newJobs = useNewJobsBadge();
+  // What waits on a moderator: read only for an admin the console opens for (features/admin/queries.ts).
+  const waiting = waitingCount(useAdminOverview().data);
 
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
@@ -115,6 +120,20 @@ export default function TabsLayout() {
           options={{
             title: t('app.tabs.consultants'),
             tabBarIcon: tabIcon({ default: 'person.2', selected: 'person.2.fill' }, Users),
+          }}
+        />
+      </Tabs.Protected>
+
+      <Tabs.Protected guard={has('admin')}>
+        <Tabs.Screen
+          name="(admin)"
+          options={{
+            title: t('admin.title'),
+            tabBarIcon: tabIcon({ default: 'checkmark.shield', selected: 'checkmark.shield.fill' }, ShieldCheck),
+            tabBarBadge: waiting || undefined,
+            tabBarAccessibilityLabel: waiting
+              ? t.markup('app.admin.tabWaiting', { name: t('admin.title'), count: waiting, ...markupTags })
+              : undefined,
           }}
         />
       </Tabs.Protected>

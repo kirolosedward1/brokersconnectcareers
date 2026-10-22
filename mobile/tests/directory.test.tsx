@@ -24,7 +24,7 @@ import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
-import * as AgentScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/agents/[slug]';
+import * as AgentScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/agents/[slug]';
 import * as PreviewScreen from '../src/app/(tabs)/(account)/account/profile/preview';
 import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as DirectoryScreen from '../src/app/(tabs)/(consultants)/agents/index';

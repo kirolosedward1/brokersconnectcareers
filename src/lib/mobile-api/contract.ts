@@ -325,6 +325,49 @@ export type MobileActions = {
     input: { subjectType: AppealSubjectType; subjectId: string; message: string };
     output: ActionResult;
   };
+
+  // The admin console's levers (ADMIN_ACTIONS). The website's own, each one
+  // admin_* function call that checks, decides and records in one transaction.
+  // Refused with `forbidden` for anybody else, and with `mfa_challenge` /
+  // `mfa_required` for an admin whose session has not proved what the
+  // website's console asks of it (admin-door.ts).
+  moderateJob: {
+    input: {
+      jobId: string;
+      action: 'approve' | 'reject' | 'request_changes' | 'unpublish' | 'close' | 'restore';
+      /** Sent to the company; required for every action but approve and restore. */
+      reason?: string;
+      /** The listing's version as the screen showed it, so a decision is never made on text that changed. */
+      version?: number;
+    };
+    output: ActionResult;
+  };
+  reviewCompany: {
+    input: {
+      companyId: string;
+      decision: 'verify' | 'reject' | 'request_changes' | 'revoke';
+      note?: string;
+      version?: number;
+    };
+    output: ActionResult;
+  };
+  setAccountApproval: {
+    input: { userId: string; status: 'approved' | 'pending' | 'rejected'; note?: string };
+    output: ActionResult;
+  };
+  moderateReports: {
+    input: {
+      targetType: 'job' | 'company' | 'agent';
+      targetId: string;
+      status: 'investigating' | 'resolved' | 'dismissed';
+      note?: string;
+      /** Resolve by taking the matching action too: listing down, company suspended, profile restricted. */
+      takeAction?: boolean;
+    };
+    output: ActionResult<{ moved: number }>;
+  };
+  /** A five-minute link to one verification document; asking is recorded. */
+  getDocumentUrl: { input: { documentId: string }; output: ActionResult<{ url: string }> };
 };
 
 export type MobileActionName = keyof MobileActions;
@@ -337,6 +380,15 @@ export const PUBLIC_ACTIONS = [
   'requestPasswordReset',
   'resendConfirmation',
   'recordJobView',
+] as const satisfies readonly MobileActionName[];
+
+/** The admin console's levers: an admin's alone, behind the admin door (admin-door.ts). */
+export const ADMIN_ACTIONS = [
+  'moderateJob',
+  'reviewCompany',
+  'setAccountApproval',
+  'moderateReports',
+  'getDocumentUrl',
 ] as const satisfies readonly MobileActionName[];
 
 /** Sent as multipart/form-data rather than JSON. */

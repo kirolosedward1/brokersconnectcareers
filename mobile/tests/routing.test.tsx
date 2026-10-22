@@ -4,7 +4,7 @@ import { act, renderRouter } from 'expo-router/testing-library';
 import type { Actor } from '@/lib/permissions';
 import { routeFromOutside } from '~/lib/links';
 import { tabsFor } from '~/lib/tabs';
-import { unstable_settings } from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import { unstable_settings } from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 
 /*
   The app's route tree, file for file, with stand-in screens: the real tree's
@@ -55,7 +55,7 @@ function TabBar() {
   );
 }
 
-const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)';
+const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)';
 
 const tree = {
   _layout: { default: () => <Stack screenOptions={{ headerShown: false }} />, unstable_settings: { anchor: '(tabs)' } },

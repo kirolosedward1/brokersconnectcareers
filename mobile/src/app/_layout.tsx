@@ -26,6 +26,7 @@ import { roomForScreen } from '~/components/ui/keyboard-room';
 import { InSheet } from '~/components/ui/states';
 import { useHiddenCompaniesLoaded } from '~/features/moderation/hidden-companies';
 import { useHiddenJobsLoaded } from '~/features/moderation/hidden-jobs';
+import { DecisionSheetHost } from '~/components/admin/decision-sheet';
 import { VerifiedExplainerHost } from '~/components/companies/verified-mark';
 import { NoteSheetHost } from '~/components/saved/note-sheet';
 import { ToastHost } from '~/components/feedback/toast';
@@ -165,6 +166,7 @@ function AppStack() {
       <HomeShortcuts />
       <VerifiedExplainerHost />
       <NoteSheetHost />
+      <DecisionSheetHost />
       <ToastHost />
     </UpdateGate>
   );

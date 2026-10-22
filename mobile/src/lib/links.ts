@@ -94,9 +94,17 @@ const APP_PATHS: Record<string, string> = {
   '/employer': '/',
 };
 
+/**
+ * The admin console's pages the app has (its queues and a listing's review);
+ * the rest of the website's console — the audit log, taxonomy, one account's
+ * file — opens the app's overview, which links to the website for them.
+ */
+const ADMIN_SCREENS = /^\/admin(?:\/(?:jobs(?:\/[0-9a-f-]{36})?|reports|users|companies))?$/;
+
 /** A website path (already through webPathToAppPath) as the app opens it; the query is kept. */
 export function appPathFor(path: string): string {
   const pathname = pathnameOf(path);
+  if (pathname.startsWith('/admin/') && !ADMIN_SCREENS.test(pathname)) return '/admin';
   const mapped = APP_PATHS[pathname];
   return mapped === undefined ? path : `${mapped}${path.slice(pathname.length)}`;
 }
@@ -126,6 +134,7 @@ const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabNa
   ['/agents', ['consultants'], 'exact'],
   ['/agents', ['consultants', 'home']],
   ['/employer/talent', ['consultants']],
+  ['/admin', ['admin']],
 ];
 
 function ownersOf(path: string): readonly TabName[] | null {

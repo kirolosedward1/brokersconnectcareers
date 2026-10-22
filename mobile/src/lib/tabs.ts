@@ -1,4 +1,4 @@
-import { canAccessCandidateArea, canAccessEmployerArea, type Actor } from '@/lib/permissions';
+import { canAccessAdminArea, canAccessCandidateArea, canAccessEmployerArea, type Actor } from '@/lib/permissions';
 
 /** The tabs, each named as the route group that is its stack: `(home)`, `(jobs)`… */
 export type TabName =
@@ -10,11 +10,14 @@ export type TabName =
   | 'account'
   | 'listings'
   | 'applicants'
-  | 'consultants';
+  | 'consultants'
+  | 'admin';
 
 const PUBLIC: readonly TabName[] = ['home', 'jobs', 'companies', 'account'];
 const CANDIDATE: readonly TabName[] = ['home', 'jobs', 'applications', 'saved', 'account'];
 const EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'consultants', 'account'];
+const ADMIN: readonly TabName[] = ['home', 'jobs', 'companies', 'admin', 'account'];
+const ADMIN_EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'admin', 'account'];
 
 /**
  * The tab bar each person has, in order — decided by src/lib/permissions.ts,
@@ -24,7 +27,9 @@ const EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'consult
  * directory, which is still a tap away from home (five tabs is what fits).
  * An employer's is theirs: the overview at home, their listings, their
  * applicants, the consultant directory, and the account — where the company,
- * its team and its billing are kept.
+ * its team and its billing are kept. An admin's has the console (the website's
+ * /admin queues) beside the public site's tabs — or, for an admin who also
+ * runs a company, in the directory's place beside that company's console.
  *
  * The bar changes with the role, never with the standing. Every tab's screens
  * are drawn again whenever the set of tabs changes, so a Consultants tab that
@@ -38,6 +43,7 @@ const EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'consult
  * one must be decided before it is opened — see routeFromOutside in links.ts.
  */
 export function tabsFor(actor: Actor): readonly TabName[] {
+  if (canAccessAdminArea(actor)) return canAccessEmployerArea(actor) ? ADMIN_EMPLOYER : ADMIN;
   if (canAccessEmployerArea(actor)) return EMPLOYER;
   return canAccessCandidateArea(actor) ? CANDIDATE : PUBLIC;
 }

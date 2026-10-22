@@ -9,7 +9,7 @@ import { ApiError } from '~/lib/api';
 import { firstPagesOnly, isOpeningRead, keepForNextStart, persistOptions } from '~/lib/query';
 import { SessionProvider } from '~/lib/session';
 import { ThemeProvider } from '~/theme/provider';
-import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
 import { board, browse, cairo, directory, listing, newCairo } from './fixtures';
 import { fakeServer } from './server';
