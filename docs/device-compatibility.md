@@ -30,7 +30,7 @@ or a person can fill are marked so.
 
 | Check | How | Result |
 | --- | --- | --- |
-| The app's whole suite (`pnpm check`): typecheck, lint, shared-code guard, update-publishing check, licences, Jest | Node 22, jest-expo 57.0.5, React Native 0.86.3 test renderer | 46 suites, 841 tests. All pass, except one timing-dependent sign-in test that timed out once under full load and passes on its own (82/82). That test is untouched by this branch |
+| The app's whole suite (`pnpm check`): typecheck, lint, shared-code guard, update-publishing check, licences, Jest | Node 22, jest-expo 57.0.5, React Native 0.86.3 test renderer | 71 suites, 1,142 tests, all pass (this branch's head; 70 suites, 1,137 before the QA review's fixes at be9130d). `tests/auth.test.tsx` has two tests that now and then time out at 5 s under full parallel load and pass when the suite runs alone; they predate this branch |
 | Text cut short at the accessibility sizes | A static audit of every `numberOfLines` in `src/` | **37 places fixed** (17, then 20 more that arrived from `main` while this was open), plus the select field. Now a test, `tests/large-text.test.tsx` |
 | The welcome screen on small phones at large text | Line wrapping measured with the app's own font (IBM Plex Sans Arabic via HarfBuzz/raqm), the welcome's real strings and its type scale, at 375 × 667, 375 × 812 and 440 × 956, font scales 1–3.571 | **Fixed**: see below |
 | VoiceOver/TalkBack labels | Static audit of every `Pressable`, `PressableScale`, `Switch`, `TextInput`, `TextField` and `Image` | Every control has a role; all 50 text fields carry their label; errors are announced (`useErrorsInView`). Nothing to fix |
