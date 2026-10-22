@@ -153,7 +153,9 @@ them on an SE simulator.
 1. Read the **`small` pass** of the iOS screens run that merging this starts
    (Actions → iOS screens): the welcome and Home on an iPhone SE at the
    largest text size, `small/0-welcome.png` and `small/1-home.png`. Its
-   failure would mean the cap is not enough on a real simulator.
+   failure would mean the cap is not enough on a real simulator. "iOS screens
+   to a branch" (Actions) puts a run's captures on a branch, where a session
+   without access to GitHub's artifact store can read them too.
 2. Run the device checklist in `docs/mobile.md` ("On a phone, before a
    release") on one small and one large iPhone, with VoiceOver on for the
    sign-up, apply and delete-account flows.
