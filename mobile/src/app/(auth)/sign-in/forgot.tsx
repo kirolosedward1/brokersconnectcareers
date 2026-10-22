@@ -11,6 +11,7 @@ import { Notice } from '~/components/ui/notice';
 import { TextField } from '~/components/ui/text-field';
 import { useCaptcha } from '~/features/auth/captcha';
 import { callAction } from '~/lib/api';
+import { useErrorFeedback } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 
@@ -33,6 +34,7 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState(false);
   const [outcome, setOutcome] = useState<'sent' | 'wait' | 'offline' | 'invalid' | null>(null);
+  useErrorFeedback(outcome === 'sent' ? null : outcome);
   const navigation = useNavigation();
   // Reached by replacing another screen (an expired link), this is the sheet's
   // only screen, and going back would close the sheet instead of signing in.

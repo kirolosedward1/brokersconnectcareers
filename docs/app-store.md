@@ -397,7 +397,6 @@ manifests; `app.config.ts` blocks `SYSTEM_ALERT_WINDOW`):
 | `READ_EXTERNAL_STORAGE` / `WRITE_EXTERNAL_STORAGE` | Android 12 and older only (`maxSdkVersion` 32 where the module sets it; `expo-image` declares the read one without it, and Android 13+ ignores it) | The photo/video permissions policy concerns `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO`, which the app does not declare: photos come through the system photo picker |
 | `USE_BIOMETRIC`, `USE_FINGERPRINT` | `expo-local-authentication`, shipped ahead of the app lock (docs/mobile.md, Over-the-air updates); nothing calls it yet | Normal permissions, no declaration |
 | `RECEIVE_BOOT_COMPLETED` | `expo-notifications`: keeps the reminders a candidate sets on saved listings (local notifications) after the phone restarts | Needed now that reminders exist |
-| `READ_CALENDAR`, `WRITE_CALENDAR` | `expo-calendar`, shipped ahead of "add the interview to my calendar"; nothing calls it yet | Dangerous permissions, asked at run time. When the feature is built, prefer the system's own add-event screen, which needs neither; otherwise block `READ_CALENDAR` if writing alone works. Answer "Calendar events" in Data safety only if events are ever read or sent |
 | `VIBRATE` | haptics | — |
 
 **Other Play requirements**

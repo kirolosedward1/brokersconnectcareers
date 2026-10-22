@@ -139,7 +139,7 @@ All scripts are under `scripts/dr/` and exposed as `pnpm dr:*`.
 | `pnpm dr:verify <dir>` | Schema, data hashes, every FK and CHECK re-proved, RLS and triggers exercised as real users in a rolled-back transaction | Read-only (rolled back) |
 | `pnpm dr:drift` | Compares a database with what the migrations build | Read-only |
 | `pnpm dr:rehearse` | The whole cycle on a throwaway Postgres, plus an accidental-delete recovery | Never; refuses a Supabase URL |
-| `.github/workflows/dr-backup.yml` | Nightly database + Storage backup, `age`-encrypted, uploaded to an S3-compatible bucket. Skips cleanly until its secrets exist. Never uploads GitHub artifacts, because the repo is public | Read-only |
+| `.github/workflows/dr-backup.yml` | Nightly database + Storage backup, `age`-encrypted, uploaded to an S3-compatible bucket. Fails, naming what is missing, until its secrets exist (`DR_BACKUP_DISABLED=true` as an Actions variable turns it off on purpose). Never uploads GitHub artifacts, because the repo is public | Read-only |
 
 **Turning on the nightly backup** (decisions D2, D3, D5):
 
