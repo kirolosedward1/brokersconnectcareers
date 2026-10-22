@@ -7,9 +7,10 @@ import { KeyboardRoom } from '~/components/ui/keyboard-room';
  *
  * A listing and a company page are reachable from every tab — the home feed,
  * the board, a company's own roles, an application, a bookmark, an employer's
- * own listings — and so are the bell's feed, the companies directory (a
- * candidate has no Companies tab, an employer no board) and a consultant's
- * page (from the directory, the shortlist or an applicant), so their screens
+ * own listings, a report in the admin's queue — and so are the bell's feed,
+ * the companies directory (a candidate has no Companies tab, an employer no
+ * board) and a consultant's page (from the directory, the shortlist or an
+ * applicant), so their screens
  * live here, in the group every tab expands from.
  * Pushing /jobs/<slug> from the home tab stays in the home tab, with Back to
  * the home screen, rather than jumping to the board.
@@ -31,6 +32,7 @@ export const unstable_settings = {
   listings: { anchor: 'employer/jobs/index' },
   applicants: { anchor: 'employer/applicants/index' },
   consultants: { anchor: 'agents/index' },
+  admin: { anchor: 'admin/index' },
 };
 
 export default function TabStack() {

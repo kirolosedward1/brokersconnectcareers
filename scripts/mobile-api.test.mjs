@@ -4,15 +4,17 @@
  *   node --experimental-strip-types scripts/mobile-api.test.mjs
  *
  * readBearer() decides whether a request carries something worth asking the
- * auth server about. The registry is checked by its source: which actions the
- * app may reach is a security property, and "the admin console is not one of
- * them" should fail a test the day somebody imports it, not show up in a
- * review. The HTTP behaviour (401s, 404s, 415s, no cookie fallback) is
+ * auth server about. adminDoor() decides whether an app session may pull an
+ * admin lever at all. The registry is checked by its source: which actions the
+ * app may reach is a security property, and "only these admin levers, and only
+ * behind the admin door" should fail a test the day somebody adds another, not
+ * show up in a review. The HTTP behaviour (401s, 404s, 415s, no cookie fallback) is
  * exercised against a running build by scripts/mobile-api.smoke.mjs.
  */
 import { readFileSync } from 'node:fs';
 
 const { readBearer, challenge, tokenRefused } = await import('../src/lib/mobile-api/bearer.ts');
+const { adminDoor, assuranceOf } = await import('../src/lib/mobile-api/admin-door.ts');
 const { AuthApiError, AuthRetryableFetchError, AuthSessionMissingError, AuthUnknownError } = await import('@supabase/supabase-js');
 
 let pass = 0;
@@ -66,20 +68,86 @@ is('the auth server unreachable', tokenRefused(new AuthRetryableFetchError('fetc
 is('the auth server failing (502)', tokenRefused(new AuthRetryableFetchError('Bad Gateway', 502)), false);
 is('an answer that is not the auth server’s', tokenRefused(new AuthUnknownError('?', new Error('?'))), false);
 
+console.log('\n— an admin lever opens only for a session the website\'s console would let in');
+{
+  const token = (claims) => `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.c2ln`;
+  const verified = [{ status: 'verified' }];
+  is('aal2 is read from the token', assuranceOf(token({ sub: '1', aal: 'aal2' })), 'aal2');
+  is('aal1 is aal1', assuranceOf(token({ sub: '1', aal: 'aal1' })), 'aal1');
+  is('no claim is the lower level', assuranceOf(token({ sub: '1' })), 'aal1');
+  is('an unreadable token is the lower level', assuranceOf('not.a-token'), 'aal1');
+  is('code given this session: open', adminDoor({ jwt: token({ aal: 'aal2' }), user: { factors: verified } }, true), 'open');
+  is(
+    'an authenticator not yet used this session: the challenge first',
+    adminDoor({ jwt: token({ aal: 'aal1' }), user: { factors: verified } }, false),
+    'mfa_challenge',
+  );
+  is(
+    'no authenticator where one is required: set one up first',
+    adminDoor({ jwt: token({ aal: 'aal1' }), user: { factors: [] } }, true),
+    'mfa_required',
+  );
+  is(
+    'an unfinished enrolment is not an authenticator',
+    adminDoor({ jwt: token({ aal: 'aal1' }), user: { factors: [{ status: 'unverified' }] } }, true),
+    'mfa_required',
+  );
+  is(
+    'no authenticator where none is required (the escape hatch): open',
+    adminDoor({ jwt: token({ aal: 'aal1' }), user: {} }, false),
+    'open',
+  );
+}
+
 console.log('\n— the app can reach only what the registry lists');
 {
   const registry = readFileSync(new URL('../src/lib/mobile-api/registry.ts', import.meta.url), 'utf8');
   const imports = [...registry.matchAll(/from '(@\/lib\/actions\/[\w-]+)'/g)].map((match) => match[1]);
   is('found the action imports', imports.length > 10, true);
-  is('never the admin console', imports.includes('@/lib/actions/admin'), false);
   is('never checkout', imports.includes('@/lib/actions/billing'), false);
-  is(
-    'never the admin client',
-    /createAdminClient|@\/lib\/supabase\/admin/.test(registry),
-    false,
-  );
+  is('never the admin client', /createAdminClient|@\/lib\/supabase\/admin/.test(registry), false);
 
+  // Of the admin console, only the levers the app's console has — never
+  // taxonomy, email requeues or anything else in those files — and every one
+  // of them behind the admin door. Every import statement from either admin
+  // file counts: a second `import { … } from '@/lib/actions/admin'` added
+  // further down must not slip past this.
+  const adminNames = [...registry.matchAll(/import \{([^}]*)\} from '@\/lib\/actions\/(?:admin|moderation)'/g)]
+    .flatMap((match) => match[1].split(','))
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .sort();
+  is('the admin levers the app has are exactly the console levers its screens offer', adminNames, [
+    'addModerationNote',
+    'endSessions',
+    'getDocumentUrl',
+    'moderateJob',
+    'moderateReports',
+    'revealContact',
+    'reviewCompany',
+    'setAccountApproval',
+    'setReportingRestriction',
+    'setSignInBlock',
+    'setUserRole',
+  ]);
+  // Every use of an admin lever's name, outside its import and the comments,
+  // is its registry entry — and that entry wraps it in forAdmins(...).
+  const code = registry.split('\n').filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line) && !/^\s*(import |\} from |  [a-zA-Z]+,$)/.test(line));
+  for (const name of adminNames) {
+    const uses = code.filter((line) => new RegExp(`\\b${name}\\b`).test(line));
+    is(
+      `${name} runs only behind the admin door`,
+      uses.length === 1 && new RegExp(`^\\s*${name}: \\{ run: forAdmins\\(`).test(uses[0]),
+      true,
+    );
+  }
   const contract = readFileSync(new URL('../src/lib/mobile-api/contract.ts', import.meta.url), 'utf8');
+  const adminList = contract.slice(contract.indexOf('export const ADMIN_ACTIONS'));
+  is(
+    'the contract names the same levers',
+    [...adminList.slice(0, adminList.indexOf(']')).matchAll(/'(\w+)'/g)].map((m) => m[1]).sort(),
+    adminNames,
+  );
   const publicList = contract.slice(contract.indexOf('export const PUBLIC_ACTIONS'));
   const publicNames = [...publicList.slice(0, publicList.indexOf(']')).matchAll(/'(\w+)'/g)].map((m) => m[1]);
   is(

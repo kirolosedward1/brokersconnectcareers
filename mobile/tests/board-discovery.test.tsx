@@ -25,7 +25,7 @@ import { palette } from '~/theme/tokens';
 import TabsLayout from '../src/app/(tabs)/_layout';
 import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
-import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
 import { board, browse, cairo, listing, newCairo } from './fixtures';
@@ -59,7 +59,7 @@ const ar = catalogues.ar;
 const t = createTranslator({ locale: 'ar', messages: catalogues.ar });
 const server = fakeServer();
 const user = authUser();
-const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)';
+const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)';
 
 const october: DistrictRow = { id: 12, governorate_id: 2, name_ar: 'السادس من أكتوبر', name_en: '6th of October', slug: '6th-of-october' };
 const zayed: DistrictRow = { id: 13, governorate_id: 2, name_ar: 'الشيخ زايد', name_en: 'Sheikh Zayed', slug: 'sheikh-zayed' };
