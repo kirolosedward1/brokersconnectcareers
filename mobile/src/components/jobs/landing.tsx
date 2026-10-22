@@ -6,7 +6,7 @@ import { formatEgp, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { JobTrack } from '@/lib/supabase/database.types';
 import { buildLandingSlug, JOB_TRACKS } from '@/lib/taxonomy';
-import { JobCard } from '~/components/jobs/job-card';
+import { JobCardList } from '~/components/jobs/job-card-list';
 import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
@@ -14,7 +14,10 @@ import { Text } from '~/components/ui/text';
 import { useBrowseCounts, useLanding } from '~/features/browse/queries';
 import { boardQuery, filtersToParams } from '~/features/jobs/filters';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
+import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
@@ -41,6 +44,9 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const districts = useDistricts();
   const hasBoard = useHasBoard();
   const pull = usePullRefresh(() => Promise.all([landing.refetch(), board.refetch()]));
+  const shrink = useShrinkingTabBar();
+  // The companies this phone hides stay hidden here too, as on the board and Home.
+  const hiddenCompanies = useHiddenCompanies();
 
   if (landing.isPending) return <LoadingState />;
   if (landing.isError && !landing.data) {
@@ -50,8 +56,9 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const { district, facts } = landing.data;
   const trackName = tTrack(track);
   const districtName = localized(locale, district.name_ar, district.name_en);
-  const jobs = flattenBoard(board.data?.pages);
-  const total = board.data?.pages[0]?.total ?? 0;
+  const read = flattenBoard(board.data?.pages);
+  const jobs = withoutHidden(read, hiddenCompanies);
+  const total = totalShown(board.data?.pages[0]?.total ?? 0, read.length, jobs.length);
 
   const factLines: string[] = [];
   if (facts.listings > 0) {
@@ -91,6 +98,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
     <>
       <Stack.Screen options={{ title: '' }} />
       <ScrollView
+        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
@@ -135,11 +143,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
           // Never "no jobs here" for a read that failed.
           <ErrorState error={board.error} onRetry={() => board.refetch()} />
         ) : jobs.length ? (
-          <View style={{ gap: space[2] }}>
-            {jobs.slice(0, 20).map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))}
-          </View>
+          <JobCardList jobs={jobs.slice(0, 20)} />
         ) : (
           <EmptyState
             icon={SearchX}

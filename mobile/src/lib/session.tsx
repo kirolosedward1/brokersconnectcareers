@@ -6,6 +6,7 @@ import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
 import { readLastActor, rememberActor } from './last-actor';
 import { encryptedSessionStorage } from './session-storage';
 import { SESSION_KEY, supabase } from './supabase';
+import { onLocalSignOut } from '~/lib/local-sign-out';
 
 /**
  * Who is using the app — the website's getViewer(), on the phone.
@@ -235,9 +236,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    const stopLocal = onLocalSignOut(() => {
+      if (!active) return;
+      setSession(null);
+      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'taxonomy' });
+      lastUser = null;
+      setRemembered({ loaded: true, actor: null });
+      rememberActor(null);
+    });
+
     return () => {
       active = false;
       listener.subscription.unsubscribe();
+      stopLocal();
     };
   }, [queryClient]);
 

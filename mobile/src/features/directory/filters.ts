@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
 import { useLocale, useTranslations } from 'use-intl';
-import { EMPTY_AGENT_FILTERS, serializeAgentFilters, type AgentFilters } from '@/lib/agent-filters';
+import { EMPTY_AGENT_FILTERS, parseAgentFilters, serializeAgentFilters, type AgentFilters } from '@/lib/agent-filters';
 import { localized } from '@/lib/locale';
+import { queryParams } from '@/lib/saved-search';
 import { useDistricts } from '~/features/taxonomy';
 
 /**
@@ -32,6 +33,15 @@ export function agentFiltersToParams(filters: AgentFilters): DirectoryParams {
     }
   }
   return params;
+}
+
+/**
+ * A kept search's query ("track=primary&track=resale") as route parameters.
+ * Read with every value of a repeated parameter: a plain object of the query
+ * kept only the last, and a search kept for two tracks opened with one.
+ */
+export function savedSearchParams(search: string): DirectoryParams {
+  return agentFiltersToParams(parseAgentFilters(queryParams(search)));
 }
 
 /** What the sheet edits: everything but the words, which are the search bar's. */

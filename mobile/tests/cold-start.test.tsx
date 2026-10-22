@@ -215,7 +215,7 @@ describe('the board on a cold start', () => {
     expect(await screen.findByText(ar.common.error)).toBeTruthy();
     expect(screen.UNSAFE_getByType(Modal).props.visible).toBe(true);
     // Under it, the way to change them is still there, beside "try again".
-    expect(screen.getByRole('radio', { name: ar.jobs.sortNewest })).toBeTruthy();
+    expect(screen.getByRole('button', { name: `${ar.jobs.sortBy}: ${ar.jobs.sortNewest}` })).toBeTruthy();
     expect(screen.getByRole('button', { name: ar.common.retry })).toBeTruthy();
   });
 
@@ -238,7 +238,7 @@ describe('the board on a cold start', () => {
     renderRouter(app(client), { initialUrl: '/(jobs)/jobs' });
     expect(await screen.findByRole('progressbar')).toBeTruthy();
     expect(screen.getByText(ar.jobs.filters)).toBeTruthy();
-    expect(screen.getByRole('radio', { name: ar.jobs.sortNewest }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByRole('button', { name: `${ar.jobs.sortBy}: ${ar.jobs.sortNewest}` })).toBeTruthy();
     // No count before there is one to give.
     expect(screen.queryByText('نتيجة واحدة')).toBeNull();
 
