@@ -93,7 +93,9 @@ export function LogoUpload({
             ? tValidation('fileType')
             : result.error === 'too_large'
               ? tValidation('fileTooLarge')
-              : tCommon('errorBody'),
+              : result.error === 'rate_limited'
+                ? tValidation('uploadRateLimited')
+                : tCommon('errorBody'),
         );
         return;
       }

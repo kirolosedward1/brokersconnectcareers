@@ -518,7 +518,8 @@
     "privacyProfile": "The name and number you enter here also update your account.",
     "privacyNote": "If your consultant directory profile is not hidden, this company also sees it in full — headline, tracks, districts and your sales record — and can ask for your number and CV from it, even if it is not verified. You can withdraw the application at any time from “My applications”.",
     "suspendedTitle": "Your account is suspended",
-    "suspendedBody": "You cannot apply to roles until an administrator has reviewed your account."
+    "suspendedBody": "You cannot apply to roles until an administrator has reviewed your account.",
+    "notOpen": "This listing stopped taking applications while the form was open. Nothing was sent."
   },
   "employer": {
     "company": "Company profile",
@@ -646,7 +647,8 @@
     "duplicateListingBlocked": "You already have this listing in this district more than once. Add seats to the existing one instead of posting it again.",
     "postRateLimited": "This company has created a lot of listings today. Try again tomorrow.",
     "standingBlocked": "Your account is restricted or suspended, so nothing can be sent for review right now. The notice on your dashboard says why and how to ask for a review.",
-    "companySuspendedBlocked": "Your company is suspended, so its listings can’t be submitted or published. The notice on your dashboard says why and how to ask for a review."
+    "companySuspendedBlocked": "Your company is suspended, so its listings can’t be submitted or published. The notice on your dashboard says why and how to ask for a review.",
+    "listingMovedKept": "This listing changed somewhere else while you were editing. Reload the page: your changes are kept, and you can restore them over the new version."
   },
   "jobForm": {
     "basics": "Basics",
@@ -1348,7 +1350,10 @@
     "fileType": "That file type is not supported",
     "passwordMismatch": "The two passwords do not match.",
     "tooManyLinks": "Too many links in this text. Keep only the ones that matter.",
-    "invalidUrl": "Enter a link starting with http:// or https://"
+    "invalidUrl": "Enter a link starting with http:// or https://",
+    "uploadNetwork": "The file didn’t finish uploading. Check your connection and try again — what you typed is still here.",
+    "uploadDenied": "This account can’t upload files here right now.",
+    "uploadRateLimited": "You’ve uploaded a lot of pictures today. Try again tomorrow."
   },
   "jobStatus": {
     "draft": "Draft",
@@ -1782,5 +1787,12 @@
     "textsBody": "Each licence appears here once, as one of the packages under it ships it.",
     "textFrom": "As shipped with <v>{source}</v>",
     "noText": "None of the packages ships this licence’s text. <link>The official text is on SPDX</link>."
+  },
+  "drafts": {
+    "restored": "We kept what you typed here on <time>{when}</time> and put it back.",
+    "offered": "You have unsaved changes from <time>{when}</time>, typed before this was last saved. Restore them to check them against what is here now, or discard them.",
+    "restore": "Restore my changes",
+    "discard": "Discard them",
+    "startOver": "Start over"
   }
 }
