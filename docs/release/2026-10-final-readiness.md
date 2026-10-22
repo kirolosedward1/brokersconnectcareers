@@ -55,7 +55,7 @@ sandbox cannot reach `www.brokersconnect.net` directly._
 
 | # | Sev. | Issue | State |
 |---|---|---|---|
-| M1 | Medium | The app's `pnpm audit --prod` reports 7 (1 critical `shell-quote`, 3 high). All of them sit in build and dev tooling (Expo CLI, Metro, React DevTools, Jest), not in the shipped bundle. | Open. Take the next Expo SDK patch. |
+| M1 | Medium | The app's `pnpm audit --prod` reported 7 (1 critical `shell-quote`, 3 high), all in build and dev tooling (Expo CLI, Metro, React DevTools, Jest), not in the shipped bundle. | **Down to 5, none critical** (`1a467fa`): `shell-quote` and `source-map-js` are held at fixed versions. What is left has no fix to take: `braces`, `node-forge` and `sprintf-js` have no fixed release, and `uuid` and `decode-uri-component` need major versions that `xcode` (^7) and `query-string` (^0.2) refuse. Take the next Expo SDK patch. |
 | M4 | Medium | Uploaded CVs and documents get no malware scanning. The type is checked and images are re-encoded. | Accepted risk (`SECURITY_REPORT.md` §12). |
 | M5 | Medium | Google Play is not started: no Firebase or FCM, no `ANDROID_CERT_SHA256`, no Play submit profile. | Open (`docs/app-store.md`, "Android"). |
 | M6 | Medium | Saved-job notes and reminders live only on the phone, so they are lost on reinstall or a new phone (`HANDOFF.md` item 5). | Product decision. Say so in the app. |
