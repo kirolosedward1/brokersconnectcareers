@@ -18,6 +18,10 @@ import { shareSource } from '@/lib/share-source';
 import { uuid } from '@/lib/utils';
 import { fileExtension, fileType } from '@/lib/file-type';
 import { useSessionRecovery } from '@/lib/session-expired';
+import { draftKey } from '@/lib/form-draft';
+import { useFormDraft } from '@/lib/use-form-draft';
+import { useUploadFailure } from '@/lib/use-upload-failure';
+import { DraftNotice } from '@/components/ui/draft-notice';
 
 const MAX_CV_BYTES = 10 * 1024 * 1024;
 const CV_TYPES = [
@@ -50,7 +54,29 @@ export function ApplyForm({
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
+  const explainUpload = useUploadFailure();
   const router = useRouter();
+
+  /*
+    What was typed, kept until the application goes in (lib/form-draft.ts).
+    The CV is not among it — a picked file cannot be put back into a file
+    input, and is not something to keep in a browser — so a restored form asks
+    for it again, which the notice above the fields makes plain enough.
+  */
+  const [fields, setFields] = useState({
+    fullName: defaultName,
+    whatsapp: defaultPhone,
+    experienceBand: 'junior_1_3' as string,
+    note: '',
+  });
+  const set = (key: keyof typeof fields) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setFields((current) => ({ ...current, [key]: event.target.value }));
+  const draft = useFormDraft({
+    key: draftKey('apply', userId, jobId),
+    values: fields,
+    restore: setFields,
+  });
 
   /*
     On a phone the submit button is a full screen below the phone field, so a
@@ -92,7 +118,8 @@ export function ApplyForm({
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    // Kept now, not after the pause: what follows can end in a sign-in.
+    draft.flush();
 
     startTransition(async () => {
       let cvPath: string | null = null;
@@ -110,7 +137,8 @@ export function ApplyForm({
           .upload(path, file, { upsert: false, contentType: fileType(file) });
 
         if (uploadError) {
-          setErrors({ cv: tCommon('errorBody') });
+          const message = await explainUpload(uploadError);
+          if (message) setErrors({ cv: message });
           return;
         }
         cvPath = path;
@@ -118,11 +146,11 @@ export function ApplyForm({
 
       const result = await reach(applyToJob({
         jobId,
-        fullName: String(form.get('fullName') ?? ''),
-        whatsapp: String(form.get('whatsapp') ?? ''),
-        experienceBand: String(form.get('experienceBand') ?? ''),
+        fullName: fields.fullName,
+        whatsapp: fields.whatsapp,
+        experienceBand: fields.experienceBand,
         cvPath,
-        note: String(form.get('note') ?? ''),
+        note: fields.note,
       }));
 
       if (recoverSession(result)) {
@@ -155,11 +183,19 @@ export function ApplyForm({
         }
 
         if (result.error === 'already_applied') {
+          // Nothing this form holds can be sent now.
+          draft.clear();
           setErrors({ form: t('alreadyApplied') });
           return;
         }
         if (result.error === 'rate_limit') {
           setErrors({ form: t('rateLimit') });
+          return;
+        }
+        if (result.error === 'not_open') {
+          // Nothing this form holds can be sent to this listing now.
+          draft.clear();
+          setErrors({ form: t('notOpen') });
           return;
         }
         // The server names a refused CV by its key — 'fileType': the bytes are
@@ -185,6 +221,9 @@ export function ApplyForm({
       */
       const src = shareSource();
       track('apply_completed', src ? { src } : undefined);
+
+      // It went in: nothing left to keep.
+      draft.clear();
 
       // Deliberately no router.refresh() here.
       //
@@ -242,6 +281,8 @@ export function ApplyForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
+      <DraftNotice draft={draft} />
+
       <Field
         label={t('fullName')}
         htmlFor="fullName"
@@ -251,7 +292,8 @@ export function ApplyForm({
           id="fullName"
           name="fullName"
           required
-          defaultValue={defaultName}
+          value={fields.fullName}
+          onChange={set('fullName')}
           autoComplete="name"
           maxLength={120}
         />
@@ -270,13 +312,20 @@ export function ApplyForm({
           dir="ltr"
           inputMode="tel"
           autoComplete="tel"
-          defaultValue={defaultPhone}
+          value={fields.whatsapp}
+          onChange={set('whatsapp')}
           className="numeral-field"
         />
       </Field>
 
       <Field label={t('experienceBand')} htmlFor="experienceBand">
-        <Select id="experienceBand" name="experienceBand" required defaultValue="junior_1_3">
+        <Select
+          id="experienceBand"
+          name="experienceBand"
+          required
+          value={fields.experienceBand}
+          onChange={set('experienceBand')}
+        >
           {EXPERIENCE_BANDS.map((band: ExperienceBand) => (
             <option key={band} value={band}>
               {tExp(band)}
@@ -310,7 +359,7 @@ export function ApplyForm({
       </Field>
 
       <Field label={t('note')} hint={t('noteOptional')} htmlFor="note">
-        <Textarea id="note" name="note" maxLength={500} rows={3} />
+        <Textarea id="note" name="note" maxLength={500} rows={3} value={fields.note} onChange={set('note')} />
       </Field>
 
       {/*
