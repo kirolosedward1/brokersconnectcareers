@@ -5,16 +5,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const lists = new Set<(owner: string) => void>();
 
 /**
- * Everything every list keeps for one person on this phone, gone: their
- * account was deleted. Their notes on saved listings, reminders, searches and
- * the rest are kept per person so the next one on a shared phone does not see
- * them, which also meant they outlived the account; nobody can sign in as it
- * again to see or clear them. Never throws: the account is already gone.
+ * Everything kept for one person on this phone, gone: their account was
+ * deleted. Their notes on saved listings, reminders, searches and the rest are
+ * kept per person so the next one on a shared phone does not see them, which
+ * also meant they outlived the account; nobody can sign in as it again to see
+ * or clear them. Every key kept for a person ends with `:<their id>` — these
+ * lists' and the phone's notification choices (`push:off:<id>`) alike — and an
+ * id is a UUID, so that suffix is theirs alone. Never throws: the account is
+ * already gone.
  */
 export async function forgetOwner(owner: string): Promise<void> {
+  if (!owner) return;
   for (const drop of lists) drop(owner);
   try {
-    const theirs = (await AsyncStorage.getAllKeys()).filter((key) => key.startsWith('bc.') && key.endsWith(`:${owner}`));
+    const theirs = (await AsyncStorage.getAllKeys()).filter((key) => key.endsWith(`:${owner}`));
     if (theirs.length) await AsyncStorage.multiRemove(theirs);
   } catch {
     // Storage that cannot be read now holds nothing anybody can reach without the account.

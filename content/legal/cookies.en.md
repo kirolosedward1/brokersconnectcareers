@@ -38,7 +38,7 @@ There are no advertising tools on the website, no share buttons that track you, 
 
 The app uses no cookies. It keeps only the following on your phone:
 
-- **Your sign-in session:** encrypted, with a key held in the phone's secure storage (the Keychain on an iPhone), and deleted when you sign out.
+- **Your sign-in session:** encrypted, with a key held in the phone's secure storage (the Keychain on an iPhone), and deleted when you sign out. If you signed in with Apple, also the identifier Apple gives this app for your Apple ID, so the app can end the session if you stop using Sign in with Apple for it; deleted when you sign out.
 - **The last account signed in on this phone:** its kind (consultant or company) and approval status, and its company's id and verification status, so the app knows which tabs to show when it opens, before it reaches the internet. Forgotten when you sign out.
 - **Your settings on this phone:** your appearance choice, the companies, consultants and listings you hid from lists, and your notification token and choices.
 - **What you keep for yourself, for each account on this phone separately:** the jobs you looked at lately and your recent searches; your notes and reminders on saved jobs (a reminder is a notification the phone itself shows on the day you chose); the kinds of listing you asked to see fewer of; which listings on the board you have already seen, so the new ones can be marked; and, for a company, its saved WhatsApp replies and saved consultant searches. None of it is sent to us. Someone else signing in on the same phone does not see it, and it is deleted when you delete your account in the app.

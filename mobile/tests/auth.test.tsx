@@ -730,7 +730,9 @@ describe('onboarding', () => {
     await AsyncStorage.multiSet([
       [`bc.saved-notes.v1:${mine}`, JSON.stringify([{ id: 'j1', text: 'asked for 12k', updatedAt: 1 }])],
       [`bc.recent-searches.v1:${mine}`, JSON.stringify(['مدينة نصر'])],
+      [`push:off:${mine}`, '1'],
       ['bc.saved-notes.v1:someone-else', JSON.stringify([{ id: 'j2', text: 'theirs', updatedAt: 1 }])],
+      ['push:off:someone-else', '1'],
     ]);
     renderRouter(app, { initialUrl: '/onboarding' });
     await press(ar.onboarding.leaveDelete);
@@ -739,7 +741,9 @@ describe('onboarding', () => {
 
     expect(await AsyncStorage.getItem(`bc.saved-notes.v1:${mine}`)).toBeNull();
     expect(await AsyncStorage.getItem(`bc.recent-searches.v1:${mine}`)).toBeNull();
+    expect(await AsyncStorage.getItem(`push:off:${mine}`)).toBeNull();
     expect(await AsyncStorage.getItem('bc.saved-notes.v1:someone-else')).not.toBeNull();
+    expect(await AsyncStorage.getItem('push:off:someone-else')).not.toBeNull();
   });
 
   it('stays, and says so, when the account could not be deleted', async () => {
@@ -747,6 +751,9 @@ describe('onboarding', () => {
     server.on('POST /api/mobile/v1/actions/deleteMyAccount', { ok: false, error: 'unavailable' });
     jest.mocked(Alert.alert).mockClear();
     await signedIn();
+    // What the account keeps on this phone stays with it while it still exists.
+    const mine = (await supabase.auth.getSession()).data.session!.user.id;
+    await AsyncStorage.setItem(`bc.saved-notes.v1:${mine}`, JSON.stringify([{ id: 'j1', text: 'asked for 12k', updatedAt: 1 }]));
     renderRouter(app, { initialUrl: '/onboarding' });
     await press(ar.onboarding.leaveDelete);
     await act(async () => alertButtons().find((button) => button.style === 'destructive')?.onPress?.());
@@ -755,6 +762,7 @@ describe('onboarding', () => {
     expect(screen.getByText(ar.onboarding.title)).toBeTruthy();
     const { data } = await supabase.auth.getSession();
     expect(data.session).not.toBeNull();
+    expect(await AsyncStorage.getItem(`bc.saved-notes.v1:${mine}`)).not.toBeNull();
   });
 });
 
@@ -1565,6 +1573,8 @@ describe('deleting the account', () => {
 
   it('takes an account deleted whose answer was lost for deleted, as the auth server says', async () => {
     await signedIn();
+    const mine = (await supabase.auth.getSession()).data.session!.user.id;
+    await AsyncStorage.setItem(`bc.recent-searches.v1:${mine}`, JSON.stringify(['مدينة نصر']));
     // The website deletes the account, and its answer never reaches the phone.
     server.on('POST /api/mobile/v1/actions/deleteMyAccount', () => {
       server.on('GET /auth/v1/user', {
@@ -1580,6 +1590,8 @@ describe('deleting the account', () => {
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
     expect(screen.queryByText(ar.account.deleteUnavailable)).toBeNull();
     expect((await supabase.auth.getSession()).data.session).toBeNull();
+    // Gone, so what it kept on this phone goes too.
+    expect(await AsyncStorage.getItem(`bc.recent-searches.v1:${mine}`)).toBeNull();
   });
 
   it('says it could not delete when the answer was lost and the account is still there', async () => {

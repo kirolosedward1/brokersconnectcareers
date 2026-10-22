@@ -73,7 +73,8 @@ describe('a line cut short', () => {
       const text = readFileSync(file, 'utf8');
       for (const match of text.matchAll(/numberOfLines=\{([^}]*)\}/g)) {
         const expression = match[1];
-        if (/\blarge\b|undefined/.test(expression)) continue;
+        // Lifted at the accessibility sizes: the limit is asked of useLargeText(), not merely sometimes undefined.
+        if (/\blarge\b/.test(expression)) continue;
         const tag = tagAround(text, match.index);
         // Text whose size is capped, or that never grows (the tab bar's names), never reaches them.
         if (/maxFontSizeMultiplier=|allowFontScaling=\{false\}/.test(tag)) continue;
