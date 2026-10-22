@@ -4,8 +4,8 @@
     "sharedKb": 110,
     "firstLoad": {
       "public pages": {
-        "kb": 160,
-        "measured": "133-144 KB",
+        "kb": 155,
+        "measured": "142-149 KB (2026-10-22; 151-158 KB before the catalogue was precompiled)",
         "routes": [
           "/[locale]/(site)/page",
           "/[locale]/(site)/jobs/(list)/page",
@@ -18,7 +18,7 @@
       },
       "forms that load the Supabase browser client": {
         "kb": 230,
-        "measured": "205-214 KB",
+        "measured": "204-225 KB (2026-10-22)",
         "routes": [
           "/[locale]/sign-in/page",
           "/[locale]/(site)/jobs/[slug]/apply/page",
@@ -27,8 +27,8 @@
         ]
       },
       "signed-in consoles": {
-        "kb": 160,
-        "measured": "137-141 KB",
+        "kb": 158,
+        "measured": "147-152 KB (2026-10-22)",
         "routes": [
           "/[locale]/(app)/dashboard/page",
           "/[locale]/(app)/employer/jobs/page",

@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Link } from '@/i18n/navigation';
+import { Link, redirect } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { NewPasswordForm } from '@/components/auth/new-password-form';
 import { createClient } from '@/lib/supabase/server';
+import { secondFactorChallenge } from '@/lib/auth/second-factor';
 import { AuthShell } from '../../auth-shell';
 
 export async function generateMetadata({
@@ -43,6 +44,25 @@ export default async function NewPasswordPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  /*
+    An account with an authenticator: the code before the form.
+
+    A reset link proves the inbox and nothing more, so its session is aal1,
+    and GoTrue refuses a password change at aal1 on an account that could
+    prove aal2 (insufficient_aal). The form used to be drawn anyway, and its
+    refusal read as "that link has expired" — every link, forever, for every
+    account that had turned the second factor on. The account page asks for
+    the code and comes back here once it is answered.
+  */
+  if (user) {
+    const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    // Unreadable (it is read from the session's own token, so rarely): the
+    // form, whose refusal sends such an account to the code all the same.
+    if (!assuranceError && assurance?.currentLevel === 'aal1' && assurance.nextLevel === 'aal2') {
+      redirect({ href: secondFactorChallenge('/sign-in/new-password', '')!, locale });
+    }
+  }
 
   return (
     <AuthShell>

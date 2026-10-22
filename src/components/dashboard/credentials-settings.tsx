@@ -8,6 +8,8 @@ import { Field, Input } from '@/components/ui/field';
 import { createClient } from '@/lib/supabase/client';
 import { announcePasswordChange } from '@/lib/actions/account';
 import { reach } from '@/lib/reach';
+import { knownAuthError, passwordRefusal } from '@/lib/auth/errors';
+import { westernDigits } from '@/lib/search/arabic';
 
 /**
  * Change your password, change your email.
@@ -40,6 +42,13 @@ export function CredentialsSettings({
   const [passwordDone, setPasswordDone] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [savingPassword, startPassword] = useTransition();
+  /**
+   * Secure password change (supabase/config.toml): on a session more than a
+   * day old GoTrue wants proof it is still the account's owner — a code it
+   * emails, sent back with the new password. Asked for only when GoTrue says
+   * so, which on a session a day old is nearly every visit to this page.
+   */
+  const [codeSent, setCodeSent] = useState(false);
 
   const [emailPending, setEmailPending] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -64,14 +73,35 @@ export function CredentialsSettings({
       return;
     }
 
+    // Typed on an Arabic keyboard, the digits are Arabic-Indic.
+    const nonce = codeSent ? westernDigits(String(data.get('reauthCode') ?? '')).replace(/\D/g, '') : '';
+    // Asked for and not given: sent without it, GoTrue would ask again and
+    // another email would go out, until the address hit its limit.
+    if (codeSent && !nonce) {
+      setPasswordError(tValidation('required'));
+      return;
+    }
+
     startPassword(async () => {
       const supabase = createClient();
-      const { error } = await supabase.auth.updateUser({ password });
+      const { error } = await supabase.auth.updateUser(nonce ? { password, nonce } : { password });
       if (error) {
-        setPasswordError(tCommon('errorBody'));
+        const refusal = passwordRefusal(error);
+        if (refusal === 'reauthenticate' || (refusal === 'code_invalid' && !nonce)) {
+          await sendCode();
+          return;
+        }
+        setPasswordError(
+          refusal === 'code_invalid'
+            ? t('reauthInvalid')
+            : refusal === 'other' && knownAuthError(error)?.key === 'passwordShort'
+              ? tValidation('passwordShort')
+              : tCommon('errorBody'),
+        );
         return;
       }
       form.reset();
+      setCodeSent(false);
       setPasswordDone(true);
 
       /*
@@ -90,6 +120,17 @@ export function CredentialsSettings({
       // this session's own account and nothing else.
       void reach(announcePasswordChange());
     });
+  }
+
+  /** The code GoTrue asks for, emailed to the account's own address. */
+  async function sendCode() {
+    const { error } = await createClient().auth.reauthenticate();
+    if (error) {
+      setPasswordError(knownAuthError(error)?.key === 'errTooMany' ? tAuth('errTooMany') : tCommon('errorBody'));
+      return;
+    }
+    setPasswordError(null);
+    setCodeSent(true);
   }
 
   function onEmail(event: React.FormEvent<HTMLFormElement>) {
@@ -147,6 +188,31 @@ export function CredentialsSettings({
                 dir="ltr"
               />
             </Field>
+
+            {codeSent ? (
+              <>
+                <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm">{t('reauthSent', { email })}</p>
+                <Field label={t('reauthCode')} htmlFor="reauthCode">
+                  <Input
+                    id="reauthCode"
+                    name="reauthCode"
+                    required
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={10}
+                    dir="ltr"
+                  />
+                </Field>
+                <button
+                  type="button"
+                  className="text-sm font-medium text-primary hover:underline"
+                  disabled={savingPassword}
+                  onClick={() => startPassword(sendCode)}
+                >
+                  {t('reauthResend')}
+                </button>
+              </>
+            ) : null}
 
             {passwordError ? (
               <p role="alert" className="text-sm text-destructive">

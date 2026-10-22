@@ -80,10 +80,9 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
   const company = await getCompanyBySlug(slug);
   if (!company) notFound();
 
-  const { jobs, total: openRoles } = await getCompanyOpenJobs(company.id);
+  // The company's open roles and who is reading are independent: one wait, not two.
+  const [{ jobs, total: openRoles }, viewer] = await Promise.all([getCompanyOpenJobs(company.id), getViewer()]);
   const supabase = await createClient();
-
-  const viewer = await getViewer();
 
   /*
     Who is offered the follow.

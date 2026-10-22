@@ -2,14 +2,14 @@ import { I18nManager, StyleSheet, Text } from 'react-native';
 import * as Updates from 'expo-updates';
 import { render } from '@testing-library/react-native';
 import { renderRouter, screen } from 'expo-router/testing-library';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TextField } from '~/components/ui/text-field';
-import { resetWelcomeForTests, WELCOME_KEY } from '~/features/welcome';
+import { resetWelcomeForTests } from '~/features/welcome';
+import { catalogues } from '~/i18n/provider';
 import { appDirection } from '~/lib/direction';
 import { ThemeProvider } from '~/theme/provider';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
-import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import { mobileConfig } from './auth-fixtures';
 import { board, browse, cairo, newCairo } from './fixtures';
 import { fakeServer } from './server';
@@ -40,7 +40,7 @@ jest.mock('~/lib/session-storage', () => ({
   encryptedSessionStorage: { getItem: async () => null, setItem: async () => {}, removeItem: async () => {} },
 }));
 
-const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 const server = fakeServer();
 
 beforeAll(() => {
@@ -48,9 +48,8 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-  // Past the first launch's welcome (tests/welcome.test.tsx has it): this opens on Home.
-  await AsyncStorage.setItem(WELCOME_KEY, 'done');
-  resetWelcomeForTests();
+  // Without the welcome a signed-out launch opens on (tests/welcome.test.tsx has it): this opens on Home.
+  resetWelcomeForTests(false);
   server.on('GET /api/mobile/v1/config', mobileConfig());
   server.on('/rest/v1/districts', [newCairo]);
   server.on('/rest/v1/governorates', [cairo]);
@@ -84,10 +83,14 @@ it('lays every view out right to left, tells the headers and the tab bar, and ne
   // Every view under the root: React Native lays out and aligns text by the nearest direction set.
   expect(StyleSheet.flatten(screen.getByTestId('app-direction').props.style).direction).toBe('rtl');
 
-  // The tab bar: iOS would lay it out in the language the app runs in.
-  const tabs = hosts('RNSTabsHostIOS');
-  expect(tabs.length).toBeGreaterThan(0);
-  expect(tabs[0].props.layoutDirection).toBe('rtl');
+  // The tab bar is the app's own, laid out as every view is — Home first, so
+  // at the right — with nothing on the way to it turning it left to right
+  // (iOS's own laid itself out in the language the app runs in).
+  expect(screen.getAllByRole('tab')[0].props.accessibilityLabel).toBe(catalogues.ar.app.tabs.home);
+  for (let node = screen.getByTestId('tab-bar'); node; node = node.parent as typeof node) {
+    const style = typeof node.props.style === 'function' ? undefined : StyleSheet.flatten(node.props.style);
+    expect(style?.direction).not.toBe('ltr');
+  }
 
   // The headers and their back gestures: the native stack's own direction.
   const headers = hosts('RNSScreenStackHeaderConfig');

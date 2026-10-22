@@ -91,6 +91,15 @@ the screen showed them. That pass therefore checks each screen by what macOS's
 text recognition reads on it (`mobile/scripts/screen-text.swift`), for the
 same words and error states as the iPhone passes.
 
+The website's own page for the app, `/app`
+(`src/components/get-app/get-app-landing.tsx`), shows this run's captures in
+drawn iPhone frames, from `public/app-screenshots/` — the store set, the
+dark one and the large-text one. `docs/app-page.md` says which file is
+which screen and how to refresh them from a newer run (the artifact is out
+of reach from the agent sessions, so "iOS screens to a branch",
+`screens-to-branch.yml`, copies a run's artifact onto a branch git can
+fetch). The page's store badges link nowhere (`#`) until the listing exists.
+
 They show whatever the live site lists when the workflow runs — its first
 listing and its first company — so run it when production holds the listings
 the store should show. Where it lists none, the board or the company list is
@@ -129,7 +138,7 @@ in the app, and nothing is used to track people across apps or websites.
 
 ## Guidelines that apply, and how the app meets them
 
-- **5.1.1(v) account deletion.** Account → Delete account, with the word typed
+- **5.1.1(v) account deletion.** Account → Sign-in and security → Delete account (at the foot), with the word typed
   out (`deleteMyAccount`). An account made with Sign in with Apple is asked for
   a fresh Apple authorization code first, and the website revokes the grant
   (`src/lib/apple/revoke.ts`). A company owner, whose account cannot be

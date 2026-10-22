@@ -75,8 +75,10 @@ console.log('\n— malformed credentials are refused without a round trip');
 
 console.log('\n— only listed actions exist');
 {
-  const r = await call('/api/mobile/v1/actions/moderateJob', { headers: json, body: '{}' });
-  check('an admin action is not one (404)', r.status === 404, `got ${r.status}`);
+  const r = await call('/api/mobile/v1/actions/requeueEmail', { headers: json, body: '{}' });
+  check('an admin action the app does not have is not one (404)', r.status === 404, `got ${r.status}`);
+  const lever = await call('/api/mobile/v1/actions/moderateJob', { headers: json, body: '{}' });
+  check('an admin lever the app has still wants a token (401)', lever.status === 401, `got ${lever.status}`);
   const p = await call('/api/mobile/v1/actions/__proto__', { headers: json, body: '{}' });
   check('nor is a prototype key (404)', p.status === 404, `got ${p.status}`);
   const g = await call('/api/mobile/v1/actions/reportAuthOutcome', { method: 'GET' });
@@ -145,7 +147,9 @@ console.log('\n— an email link: a GET draws a button and spends nothing');
   const html = await r.text();
   check('200, a page with one form', r.status === 200 && html.includes('<form method="post" action="/auth/confirm">'), `got ${r.status}`);
   check('carrying the token and the destination, unwrapped', html.includes(`value="${hash}"`) && html.includes('value="/onboarding?role=employer&amp;confirmed=1"'));
-  check('never cached, indexed or referred', (r.headers.get('cache-control') ?? '').includes('no-store') && (r.headers.get('x-robots-tag') ?? '').includes('noindex') && html.includes('<meta name="referrer" content="no-referrer">'));
+  // same-origin, not no-referrer: no other site is told the address, and the
+  // page's own post still carries an Origin (no-referrer made it null, 403).
+  check('never cached, indexed or referred to another site', (r.headers.get('cache-control') ?? '').includes('no-store') && (r.headers.get('x-robots-tag') ?? '').includes('noindex') && html.includes('<meta name="referrer" content="same-origin">'));
   const bad = await fetch(`${BASE}/auth/confirm?token_hash=x&type=email`, { redirect: 'manual' });
   check('a malformed link goes to sign-in, "expired"', bad.status === 303 && (bad.headers.get('location') ?? '').endsWith('/sign-in?error=link_expired'), `got ${bad.status} ${bad.headers.get('location')}`);
 }

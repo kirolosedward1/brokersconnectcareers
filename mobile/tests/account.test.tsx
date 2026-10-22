@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Alert, Linking, Pressable, type AlertButton } from 'react-native';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
@@ -288,6 +288,24 @@ describe('the photo', () => {
 });
 
 describe('signing in and security', () => {
+  it('keeps deleting the account at its foot, off the Account tab itself', async () => {
+    await signIn();
+    const result = renderRouter(app, { initialUrl: '/account' });
+    expect(await screen.findByText(ar.app.account.security)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.account.deleteTitle })).toBeNull();
+
+    result.unmount();
+
+    renderRouter(app, { initialUrl: '/account/security' });
+    const push = jest.spyOn(router, 'push').mockImplementation(() => {});
+    try {
+      fireEvent.press(await screen.findByRole('button', { name: ar.account.deleteTitle }));
+      expect(push).toHaveBeenCalledWith('/account/delete');
+    } finally {
+      push.mockRestore();
+    }
+  });
+
   it('changes the email address through Supabase, and says a confirmation is on its way', async () => {
     await signIn();
     renderRouter(app, { initialUrl: '/account/security' });
@@ -332,6 +350,50 @@ describe('signing in and security', () => {
     await waitFor(() =>
       expect(server.asked('/auth/v1/logout').map((request) => request.url.searchParams.get('scope'))).toEqual(['others']),
     );
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
+  });
+
+  it('asks for the emailed code when the session is more than a day old, as secure password change does', async () => {
+    // GoTrue's rule: no nonce on an old session is refused; the code it emailed is accepted.
+    server.on('PUT /auth/v1/user', (_url, init) => {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      if (!body.nonce) {
+        return { status: 400, body: { code: 400, error_code: 'reauthentication_needed', msg: 'Password update requires reauthentication' } };
+      }
+      if (body.nonce !== '123456') {
+        return { status: 422, body: { code: 422, error_code: 'reauthentication_not_valid', msg: 'Nonce has expired or is invalid' } };
+      }
+      return user;
+    });
+    server.on('GET /auth/v1/reauthenticate', {});
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.account.newPassword), 'a-new-password');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+
+    // Not "something went wrong": a code, sent to the account's own address.
+    expect(await screen.findByLabelText(ar.account.reauthCode)).toBeTruthy();
+    expect(server.asked('/auth/v1/reauthenticate')).toHaveLength(1);
+    expect(screen.queryByText(ar.common.errorBody)).toBeNull();
+
+    // Saved with the code left empty: said, and no second email.
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.validation.required)).toBeTruthy();
+    expect(server.asked('/auth/v1/reauthenticate')).toHaveLength(1);
+    expect(userUpdates()).toHaveLength(1);
+
+    fireEvent.changeText(screen.getByLabelText(ar.account.reauthCode), '000000');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.account.reauthInvalid)).toBeTruthy();
+
+    // Typed on an Arabic keyboard.
+    fireEvent.changeText(screen.getByLabelText(ar.account.reauthCode), '١٢٣٤٥٦');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.account.passwordSaved)).toBeTruthy();
+    expect(userUpdates().at(-1)?.body).toEqual(expect.objectContaining({ password: 'a-new-password', nonce: '123456' }));
+    expect(screen.queryByLabelText(ar.account.reauthCode)).toBeNull();
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
   });
 
@@ -384,6 +446,27 @@ describe('signing in and security', () => {
     expect(await screen.findByText(ar.account.mfaCodeInvalid)).toBeTruthy();
 
     fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+    fireEvent.press(screen.getByRole('button', { name: ar.account.mfaVerify }));
+    expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
+  });
+
+  it('keeps the first code when there is no connection, and says so rather than that it was wrong', async () => {
+    await signIn();
+    renderRouter(app, { initialUrl: '/account/security' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.mfaSetup }));
+    expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
+
+    let online = false;
+    server.on(`POST /auth/v1/factors/${totpFactor.id}/challenge`, () => {
+      if (!online) throw new TypeError('Network request failed');
+      return { id: 'challenge-1', type: 'totp', expires_at: Math.floor(Date.now() / 1000) + 300 };
+    });
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+    expect(screen.queryByText(ar.account.mfaCodeInvalid)).toBeNull();
+    expect(screen.getByLabelText(ar.account.mfaCode).props.value).toBe('123456');
+
+    online = true;
     fireEvent.press(screen.getByRole('button', { name: ar.account.mfaVerify }));
     expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
   });

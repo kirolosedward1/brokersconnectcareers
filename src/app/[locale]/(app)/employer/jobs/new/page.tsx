@@ -65,6 +65,7 @@ export default async function NewJobPage({ params }: { params: Promise<{ locale:
 
       <JobForm
         locale={locale}
+        ownerId={viewer.userId}
         job={null}
         districts={districts}
         developers={developers}

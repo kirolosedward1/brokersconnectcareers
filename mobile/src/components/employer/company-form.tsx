@@ -1,6 +1,6 @@
-import { useState, type RefObject } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { View, type ScrollView } from 'react-native';
+import { View, type ScrollView, type TextInput } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2 } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
@@ -21,6 +21,7 @@ import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { webAddress } from '~/lib/web-address';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { toast } from '~/components/feedback/toast';
 
 type Key = 'nameAr' | 'website' | 'aboutAr' | 'aboutEn' | 'form';
 
@@ -91,6 +92,9 @@ export function CompanyForm({
   const [districtId, setDistrictId] = useState<number | null>(company?.district_id ?? null);
   const [errors, setErrors] = useState<Partial<Record<Key, string>>>({});
   const inView = useErrorsInView(scroll, ['nameAr', 'aboutAr', 'aboutEn', 'website']);
+  // The return key moves on through the names to the description.
+  const nameEnField = useRef<TextInput>(null);
+  const aboutArField = useRef<TextInput>(null);
   const refuse = (next: Partial<Record<Key, string>>) => {
     setErrors(next);
     inView.show(next);
@@ -156,6 +160,7 @@ export function CompanyForm({
       {
         onSuccess: () => {
           setSaved(true);
+          toast.show({ message: t('app.toast.changesSaved'), tone: 'success' });
           // What comes back is what was just sent, on its new version — read
           // back already (useSaveCompany waits for it), and reaching this form
           // a render later, Save held till then. Not read back (no
@@ -187,13 +192,32 @@ export function CompanyForm({
   return (
     <View style={{ gap: space[4] }}>
       <Field ref={inView.place('nameAr')} label={t('companies.nameAr')} error={errors.nameAr}>
-        <TextField value={nameAr} onChangeText={setNameAr} accessibilityLabel={t('companies.nameAr')} maxLength={160} />
+        <TextField
+          value={nameAr}
+          onChangeText={setNameAr}
+          accessibilityLabel={t('companies.nameAr')}
+          maxLength={160}
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => nameEnField.current?.focus()}
+        />
       </Field>
       <Field label={t('companies.nameEn')}>
-        <TextField value={nameEn} onChangeText={setNameEn} accessibilityLabel={t('companies.nameEn')} maxLength={160} ltr />
+        <TextField
+          ref={nameEnField}
+          value={nameEn}
+          onChangeText={setNameEn}
+          accessibilityLabel={t('companies.nameEn')}
+          maxLength={160}
+          ltr
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => aboutArField.current?.focus()}
+        />
       </Field>
       <Field ref={inView.place('aboutAr')} label={t('companies.aboutAr')} error={errors.aboutAr}>
         <TextField
+          ref={aboutArField}
           value={aboutAr}
           onChangeText={setAboutAr}
           accessibilityLabel={t('companies.aboutAr')}
@@ -223,6 +247,7 @@ export function CompanyForm({
           keyboardType="url"
           autoCapitalize="none"
           autoCorrect={false}
+          textContentType="URL"
           maxLength={200}
         />
       </Field>

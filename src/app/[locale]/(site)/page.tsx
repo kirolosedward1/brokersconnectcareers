@@ -28,11 +28,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
 
-  const viewer = await getViewer();
-
   // The landing page's job is to explain the product, so it must survive the
   // database being unreachable — every read here is allowed to come back empty.
-  const districts = await optional(getDistricts(), []);
+  // The districts do not depend on who is reading: asked alongside the viewer,
+  // not after it (a signed-in viewer is an auth round trip and a profile read).
+  const [viewer, districts] = await Promise.all([getViewer(), optional(getDistricts(), [])]);
 
   if (!viewer?.profile) {
     /*

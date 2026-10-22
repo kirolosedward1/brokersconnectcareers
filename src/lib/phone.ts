@@ -51,7 +51,9 @@ const E164 = /^\+[1-9]\d{7,14}$/;
  * the first of them 1. A number with the country code that does not fit
  * that shape is a typo, and storing it means an employer calling nobody.
  */
-const EGYPT_MOBILE = /^\+201\d{9}$/;
+// The four networks' prefixes: 010 Vodafone, 011 Etisalat (e&), 012 Orange, 015 WE.
+// 013/014/016–019 are no mobile number in Egypt, and were accepted.
+const EGYPT_MOBILE = /^\+201[0125]\d{8}$/;
 
 export function isValidPhone(input: string): boolean {
   const phone = normalisePhone(input);

@@ -351,9 +351,10 @@ order.
   `BILLING_ENABLED=true`. Before charging anyone, confirm VAT treatment and Egyptian
   Tax Authority e-invoicing obligations with an accountant — which entity issues the
   invoice is a live question.
-- **`/privacy` and `/terms` are deliberately empty.** A board that stores CVs and
-  phone numbers needs a lawyer, not generated text. The routes exist so the footer
-  resolves.
+- **The legal pages are written but not yet reviewed by a lawyer.** `/privacy`,
+  `/terms`, `/cookies`, `/refunds` and `/account-deletion` render
+  `content/legal/*.md`. A board that stores CVs and phone numbers needs that
+  review before launch (`docs/legal.md`).
 - **Every page renders dynamically**, because the header reads the session. Fine for
   correctness and indexing; if server load becomes a concern, split the auth-dependent
   header into a streamed island and let the rest cache.
@@ -363,17 +364,19 @@ order.
   costs correct per-locale `lang`/`dir` on every real page — a worse trade for this
   product. Revisit when `global-not-found` is stable.
 - **English is translated but unpublished.** `ENGLISH_ENABLED` in
-  `src/i18n/routing.ts` is `false`: the locale switcher is hidden, `/en/*`
+  `src/lib/locale.ts` is `false`: the locale switcher is hidden, `/en/*`
   temporarily redirects (307) to its Arabic equivalent, hreflang pairs are
   suppressed and the sitemap emits Arabic only. Every English string is still in
   `messages/en.json` — flip the flag to bring the whole side back.
-- **Dark mode is built but not switched on.** The full palette exists in
-  `globals.css`; nothing sets the `.dark` class yet. Enabling it is a one-line
-  change — see the comment above `@custom-variant dark`.
+- **Dark mode follows a choice in the footer** (`ThemeToggle`, kept in
+  `bc-theme`), applied before the first paint so a dark reader never sees a
+  light flash.
 - **The blog has no RSS feed or admin UI.** Posts are Markdown files in
   `content/blog/<slug>.<locale>.md`, statically generated at build time. The two
   seeded articles are drafts for your team to review or replace; they explain
   structures rather than quoting market figures, because I have no data to
   support figures.
-- **Paymob is not wired.** Phase 5. `orders` and the pack definitions exist; checkout
-  does not.
+- **Paymob checkout is built but switched off.** `startCheckout`
+  (`src/lib/actions/billing.ts`) and the signed webhook (`/api/paymob/webhook`)
+  exist. Checkout refuses until `BILLING_ENABLED=true` and the Paymob keys are
+  set. The webhook refuses every callback until `PAYMOB_HMAC_SECRET` is set.

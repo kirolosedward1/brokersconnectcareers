@@ -319,6 +319,7 @@
     "errEmailTaken": "That email is already registered. Try signing in.",
     "errEmailUnconfirmed": "Confirm your email first — check your inbox.",
     "errTooMany": "Too many attempts in a short time. Wait a moment and try again.",
+    "errSamePassword": "Your new password must be different from the old one.",
     "errCaptcha": "The security check did not go through. Wait a moment and try again.",
     "forgotTitle": "Forgot your password?",
     "forgotBody": "Enter your email and we will send you a link to set a new one.",
@@ -512,12 +513,13 @@
     "labelDate": "Applied on",
     "nextRoles": "Other open roles",
     "nextRolesMatched": "Other roles that fit you",
-    "privacyTitle": "Who sees your details",
+    "privacyTitle": "Who sees your details?",
     "privacyBody": "Only the company that posted this role sees your name and photo, WhatsApp number, years of experience, and your CV and note if you attach them. Other companies and site visitors do not see your application.",
     "privacyProfile": "The name and number you enter here also update your account.",
     "privacyNote": "If your consultant directory profile is not hidden, this company also sees it in full — headline, tracks, districts and your sales record — and can ask for your number and CV from it, even if it is not verified. You can withdraw the application at any time from “My applications”.",
     "suspendedTitle": "Your account is suspended",
-    "suspendedBody": "You cannot apply to roles until an administrator has reviewed your account."
+    "suspendedBody": "You cannot apply to roles until an administrator has reviewed your account.",
+    "notOpen": "This listing stopped taking applications while the form was open. Nothing was sent."
   },
   "employer": {
     "company": "Company profile",
@@ -645,7 +647,8 @@
     "duplicateListingBlocked": "You already have this listing in this district more than once. Add seats to the existing one instead of posting it again.",
     "postRateLimited": "This company has created a lot of listings today. Try again tomorrow.",
     "standingBlocked": "Your account is restricted or suspended, so nothing can be sent for review right now. The notice on your dashboard says why and how to ask for a review.",
-    "companySuspendedBlocked": "Your company is suspended, so its listings can’t be submitted or published. The notice on your dashboard says why and how to ask for a review."
+    "companySuspendedBlocked": "Your company is suspended, so its listings can’t be submitted or published. The notice on your dashboard says why and how to ask for a review.",
+    "listingMovedKept": "This listing changed somewhere else while you were editing. Reload the page: your changes are kept, and you can restore them over the new version."
   },
   "jobForm": {
     "basics": "Basics",
@@ -1026,6 +1029,7 @@
       "no_change": "That is already the case. The page has been refreshed.",
       "invalid_action": "That action is not available.",
       "invalid_transition": "The state has changed and this action no longer applies. The page now shows the current state.",
+      "last_admin": "This is the last admin: the console would be left with nobody. Make another account an admin first.",
       "stale_version": "This changed after you opened the page. The page now shows it as it is — read it again before deciding.",
       "reason_required": "Give a reason (at least three characters).",
       "reason_too_long": "The reason is too long.",
@@ -1039,7 +1043,7 @@
       "invalid_governorate": "Choose an existing governorate.",
       "slug_taken": "That slug is already taken.",
       "unavailable": "The file is not available right now.",
-      "not_migrated": "The database needs migrations 316–319, 325–328 and 346 before this action works.",
+      "not_migrated": "The database needs migrations 316–319, 325–328, 346 and 355 before this action works.",
       "unknown": "Something unexpected went wrong. Nothing was changed.",
       "network": "The connection dropped before we could confirm. The page has been refreshed — check the state before retrying."
     },
@@ -1116,7 +1120,12 @@
       "user_appeal_overturned": "Appeal: account decision reversed",
       "user_appeal_upheld": "Appeal: account decision stands",
       "agent_appeal_overturned": "Appeal: profile restriction lifted",
-      "agent_appeal_upheld": "Appeal: profile restriction stands"
+      "agent_appeal_upheld": "Appeal: profile restriction stands",
+      "user_promoted": "Made an admin",
+      "user_demoted": "Admin access removed",
+      "user_sign_in_blocked": "Sign-in blocked",
+      "user_sign_in_unblocked": "Sign-in allowed again",
+      "user_sessions_ended": "Signed out everywhere"
     },
     "taxonomyTab": {
       "district": "Districts",
@@ -1243,7 +1252,36 @@
     "deletionRequests": "Account deletion requests",
     "deletionRequestsLede": "Company owners asking to leave. Deleting the account would delete the company, its listings and the applications to them: agree what happens to the company, do it, then close the request.",
     "deletionRequestClose": "Close request",
-    "deletionRequestAccountGone": "Account already deleted"
+    "deletionRequestAccountGone": "Account already deleted",
+    "signInBlocked": "Sign-in blocked",
+    "approveFirst": "Approve the account first: a promotion does not lift a hold.",
+    "signInAllowed": "Sign-in allowed",
+    "signInBlockedSince": "Sign-in blocked since {date}",
+    "twoStep": "Two-step sign-in",
+    "signedInDevices": "Signed-in devices",
+    "userTabs": {
+      "overview": "Overview",
+      "activity": "Activity",
+      "security": "Sign-in and security",
+      "record": "Record and notes"
+    },
+    "makeAdmin": "Make an admin",
+    "makeAdminBody": "They get the whole console: every lever, and every account’s details on request. The website asks them to set up two-step sign-in before it opens. Nobody is emailed — tell them yourself.",
+    "removeAdmin": "Remove admin access",
+    "removeAdminBody": "They become a {role} again. Everything else about the account stays as it is. You cannot remove your own access.",
+    "blockSignIn": "Block sign-in",
+    "blockSignInBody": "They are signed out of every device and cannot sign in again until you lift it. Their listings and applications are untouched — Suspend is the lever for those. Nobody is emailed.",
+    "unblockSignIn": "Allow sign-in",
+    "unblockSignInBody": "They can sign in again.",
+    "endSessions": "Sign out everywhere",
+    "endSessionsBody": "Every device signed in to this account is signed out within the hour. They can sign in again at once.",
+    "sessionsEnded": "{count, plural, =0 {No device was signed in.} one {Signed out of # device.} other {Signed out of # devices.}}",
+    "reasonOnRecord": "Why (kept on the record, sent to nobody)",
+    "savedJobsCount": "Saved listings: {count}",
+    "appealsCount": "Appeals: {count} ({open} open)",
+    "decisionsCount": "Decisions on this account: {count}",
+    "notesCount": "Notes: {count}",
+    "activityEmpty": "Nothing yet."
   },
   "reportReason": {
     "fake_listing": "Fake listing",
@@ -1334,7 +1372,8 @@
     "doorEmployerBody": "Your listing is reviewed before it goes live, and every application reaches you with the applicant’s name and WhatsApp number.",
     "byTrack": "By specialisation",
     "byArea": "By area",
-    "contact": "Contact us"
+    "contact": "Contact us",
+    "getApp": "Get the app"
   },
   "validation": {
     "required": "This field is required",
@@ -1347,7 +1386,10 @@
     "fileType": "That file type is not supported",
     "passwordMismatch": "The two passwords do not match.",
     "tooManyLinks": "Too many links in this text. Keep only the ones that matter.",
-    "invalidUrl": "Enter a link starting with http:// or https://"
+    "invalidUrl": "Enter a link starting with http:// or https://",
+    "uploadNetwork": "The file didn’t finish uploading. Check your connection and try again — what you typed is still here.",
+    "uploadDenied": "This account can’t upload files here right now.",
+    "uploadRateLimited": "You’ve uploaded a lot of pictures today. Try again tomorrow."
   },
   "jobStatus": {
     "draft": "Draft",
@@ -1466,6 +1508,178 @@
       "kindFresh": "Freshness"
     }
   },
+  "appPage": {
+    "meta": {
+      "title": "Get the Brokers Connect app",
+      "description": "Real estate sales jobs across Egypt, on your phone: the salary and commission in figures on every listing, who supplies the leads, and one-tap applications.",
+      "ogAlt": "The Brokers Connect app on an iPhone"
+    },
+    "hero": {
+      "pill": "The Brokers Connect app · iPhone · in Arabic",
+      "title": "Brokers Connect, now in your pocket",
+      "subtitle": "Real estate sales and marketing jobs across Egypt. The basic salary, the commission and the lead source in figures on every listing, and one-tap applications.",
+      "trust": "No fees for candidates"
+    },
+    "store": {
+      "appStoreTop": "Download on the",
+      "appStoreLabel": "Download on the App Store",
+      "googlePlayTop": "GET IT ON",
+      "googlePlayLabel": "Get it on Google Play",
+      "comingSoon": "Coming soon",
+      "get": "Get"
+    },
+    "highlights": {
+      "payTitle": "Pay in figures",
+      "payBody": "On every listing, before you apply.",
+      "applyTitle": "One-tap apply",
+      "applyBody": "Your CV is saved.",
+      "alertsTitle": "Instant notifications",
+      "alertsBody": "Know the moment your application moves.",
+      "verifiedTitle": "Verified companies",
+      "verifiedBody": "A badge on approved companies."
+    },
+    "transparency": {
+      "eyebrow": "Transparency",
+      "title": "The figures before you apply",
+      "body": "Every listing shows the basic salary, the commission and who supplies the leads. No “attractive package”, no “we’ll talk in the interview”.",
+      "calloutSalary": "Basic salary",
+      "calloutCommission": "Commission",
+      "calloutLeads": "Lead source",
+      "compareBadTitle": "A typical listing",
+      "compareBadBody": "Attractive package, generous commission",
+      "compareGoodTitle": "On Brokers Connect",
+      "compareGoodBody": "Basic salary + commission + lead source, in figures"
+    },
+    "search": {
+      "eyebrow": "Search",
+      "title": "The right job, without the runaround",
+      "body": "Search from the first screen, or browse by district with the number of open roles in each. Sort by newest or highest salary, and filter by track, district and lead source.",
+      "trackLabel": "Track",
+      "areaLabel": "Area",
+      "leadsLabel": "Lead source",
+      "sortLabel": "Sort",
+      "demoLabel": "The filters, to try",
+      "area": {
+        "tagamoa": "New Cairo",
+        "zayed": "Sheikh Zayed",
+        "october": "6th of October",
+        "capital": "New Capital",
+        "madinaty": "Madinaty",
+        "maadi": "Maadi",
+        "heliopolis": "Heliopolis",
+        "nasr": "Nasr City"
+      }
+    },
+    "apply": {
+      "eyebrow": "Applying",
+      "title": "Apply in a minute, then with one tap",
+      "body": "Your details and your CV are saved, so every application after the first is one tap.",
+      "step1": "Open the listing",
+      "step2": "Tap apply",
+      "step3": "Sent"
+    },
+    "notifications": {
+      "eyebrow": "Notifications",
+      "title": "Know the moment it moves",
+      "body": "A notification when a company opens your application, shortlists you or asks for an interview, and when a new role matches a saved search.",
+      "now": "now",
+      "n1": "The company opened your application.",
+      "n2": "You were moved to the shortlist.",
+      "n3": "The company is asking for an interview.",
+      "n4": "A new job matches your saved search."
+    },
+    "companies": {
+      "eyebrow": "Companies",
+      "title": "Know the company before you apply",
+      "body": "Where it is, how big it is, its open roles, and a badge on the verified ones.",
+      "point1": "Who is hiring now",
+      "point2": "A verified badge on approved companies",
+      "point3": "Follow the company, and its next role reaches you",
+      "follow": "Follow the company",
+      "following": "Following"
+    },
+    "profile": {
+      "eyebrow": "Profile",
+      "title": "Your profile, your call",
+      "body": "Your areas, your sales record and your CV in the consultant directory, for approved companies to find. You decide whether it is shown.",
+      "name": "Your name here",
+      "areas": "Areas",
+      "sales": "Sales record",
+      "cv": "CV",
+      "visible": "Shown in the consultant directory",
+      "hidden": "Hidden from companies"
+    },
+    "tour": {
+      "eyebrow": "Tour",
+      "title": "Five screens, as a consultant uses them",
+      "list": "The app’s screens",
+      "prev": "Previous screen",
+      "next": "Next screen",
+      "alt": "The {screen} screen of the Brokers Connect app",
+      "home": "Home",
+      "homeBody": "Search from the first screen, or browse by district with the number of open roles in each.",
+      "jobs": "Jobs",
+      "jobsBody": "Sort by newest or by pay, and filter by track, district and lead source.",
+      "listing": "The listing",
+      "listingBody": "The basic salary, the commission and who supplies the leads, then one tap to apply.",
+      "companies": "Companies",
+      "companiesBody": "Who is hiring right now, with the verified companies marked.",
+      "company": "The company",
+      "companyBody": "Where it is, how big it is, its roles, and the “follow the company” button."
+    },
+    "appearance": {
+      "eyebrow": "Appearance",
+      "title": "On your phone, your way",
+      "body": "Light or dark, and your own text size. The app follows the phone’s settings.",
+      "legend": "Appearance",
+      "light": "Light",
+      "dark": "Dark",
+      "large": "Large text",
+      "alt": "The Brokers Connect app’s home screen, {appearance}",
+      "altLight": "in the light appearance",
+      "altDark": "in the dark appearance",
+      "altLarge": "at the largest text size"
+    },
+    "how": {
+      "eyebrow": "Getting started",
+      "title": "How to start",
+      "step1Title": "Get the app",
+      "step1Body": "From the App Store, on iPhone.",
+      "step2Title": "Complete your profile",
+      "step2Body": "Your areas and your CV, once.",
+      "step3Title": "Apply and follow",
+      "step3Body": "One-tap applications, and the notifications reach you as they move."
+    },
+    "audiences": {
+      "seekerTitle": "Looking for a job",
+      "seekerBody": "The lead source is named on every listing, with the salary and commission in figures whenever the company publishes them.",
+      "seekerCta": "Browse jobs",
+      "employerTitle": "Hiring",
+      "employerBody": "Your listing is reviewed before it goes live, and every application reaches you with the applicant’s name and WhatsApp number.",
+      "employerCta": "Post a job"
+    },
+    "faq": {
+      "eyebrow": "Questions",
+      "title": "Common questions",
+      "q1": "Is the app free?",
+      "a1": "Yes. No fees for candidates.",
+      "q2": "Is there an Android version?",
+      "a2": "The app is on iPhone now, and Android comes next. Until then the website works from any phone.",
+      "q3": "Who can see my profile?",
+      "a3": "Approved companies only, and only if you chose to be shown in the consultant directory. You can hide it at any time.",
+      "q4": "What does “lead source” mean?",
+      "a4": "Who supplies the clients: the company, or you. It is written on every listing so you know before you apply.",
+      "q5": "How do I know a company is verified?",
+      "a5": "Verified companies carry a badge on the companies screen and on the company’s page.",
+      "q6": "How do I delete my account?",
+      "a6": "From the account deletion page.",
+      "a6Rich": "From <link>the account deletion page</link>."
+    },
+    "final": {
+      "title": "Get Brokers Connect",
+      "body": "On iPhone now, Android next."
+    }
+  },
   "blog": {
     "title": "Blog",
     "subtitle": "Explainers and advice for working the Egyptian real estate market — for consultants and for companies.",
@@ -1533,6 +1747,10 @@
     "passwordBody": "Change your password. You will stay signed in on this device.",
     "newPassword": "New password",
     "passwordSaved": "Your password has been changed.",
+    "reauthSent": "To make sure it is you, we have sent a code to {email}. Enter it here and save again.",
+    "reauthCode": "Confirmation code from the email",
+    "reauthResend": "Send a new code",
+    "reauthInvalid": "That code is not right or has expired. Ask for a new one.",
     "emailTitle": "Email",
     "emailBody": "We send a confirmation to both the old and the new address. Nothing changes until you confirm.",
     "newEmail": "New email",
@@ -1781,5 +1999,12 @@
     "textsBody": "Each licence appears here once, as one of the packages under it ships it.",
     "textFrom": "As shipped with <v>{source}</v>",
     "noText": "None of the packages ships this licence’s text. <link>The official text is on SPDX</link>."
+  },
+  "drafts": {
+    "restored": "We kept what you typed here on <time>{when}</time> and put it back.",
+    "offered": "You have unsaved changes from <time>{when}</time>, typed before this was last saved. Restore them to check them against what is here now, or discard them.",
+    "restore": "Restore my changes",
+    "discard": "Discard them",
+    "startOver": "Start over"
   }
 }

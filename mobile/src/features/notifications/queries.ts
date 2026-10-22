@@ -125,3 +125,56 @@ export function markReadLocally(
     );
   }
 }
+
+/**
+ * Delete notifications: one (swiped away) or every one up to the newest the
+ * screen showed ("clear all", so one that arrived since is not deleted
+ * unseen). Taken off the list at once and put back if the database refuses;
+ * row-level security (notifications_delete_own) lets a reader delete only
+ * their own.
+ */
+export type DeleteTarget = { id: string } | { upTo: string };
+
+export function useDeleteNotifications() {
+  const queryClient = useQueryClient();
+  const userId = useSession().session?.user.id ?? null;
+  const feedKey = ['notifications', 'feed', userId];
+  const unreadKey = ['notifications', 'unread', userId];
+
+  return useMutation({
+    mutationFn: async (target: DeleteTarget) => {
+      if (!userId) throw new Error('not signed in');
+      let query = supabase.from('notifications').delete().eq('user_id', userId);
+      query = 'id' in target ? query.eq('id', target.id) : query.lte('created_at', target.upTo);
+      const { error } = await query;
+      if (error) throw error;
+    },
+    onMutate: async (target) => {
+      await queryClient.cancelQueries({ queryKey: feedKey });
+      const feed = queryClient.getQueryData<InfiniteData<FeedPage, Cursor | null>>(feedKey);
+      const unread = queryClient.getQueryData<number>(unreadKey);
+      const gone = (row: NotificationRow) => ('id' in target ? row.id === target.id : row.created_at <= target.upTo);
+      let unreadGone = 0;
+      if (feed) {
+        queryClient.setQueryData<InfiniteData<FeedPage, Cursor | null>>(feedKey, {
+          ...feed,
+          pages: feed.pages.map((page) => ({
+            ...page,
+            rows: page.rows.filter((row) => {
+              if (!gone(row)) return true;
+              if (!row.read_at) unreadGone += 1;
+              return false;
+            }),
+          })),
+        });
+      }
+      if (typeof unread === 'number' && unreadGone) queryClient.setQueryData(unreadKey, Math.max(0, unread - unreadGone));
+      return { feed, unread };
+    },
+    onError: (_error, _target, context) => {
+      if (context?.feed) queryClient.setQueryData(feedKey, context.feed);
+      if (typeof context?.unread === 'number') queryClient.setQueryData(unreadKey, context.unread);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+}
