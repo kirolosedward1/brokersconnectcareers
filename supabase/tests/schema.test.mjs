@@ -421,7 +421,8 @@ report.section('who may call a definer function, on purpose');
     'is_approved_employer',
     'is_candidate',
     'is_company_admin',
-    // my_company_id is in no policy; migration 350 closed it to anon.
+    // my_company_id is not here: no policy calls it, and migration 350 closed
+    // it to the signed-out side, where it only ever answered null.
     'owns_company',
     'owns_job',
     'viewer_has_verified_company',

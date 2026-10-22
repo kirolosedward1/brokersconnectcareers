@@ -1,5 +1,5 @@
 -- =============================================================================
--- 353 — What production changed by hand
+-- 354 — What production changed by hand
 --
 -- A schema fingerprint of production (scripts/dr/fingerprint.sql, read on
 -- 2026-10-16) against the database its own migration ledger builds

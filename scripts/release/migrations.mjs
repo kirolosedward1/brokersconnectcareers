@@ -862,13 +862,13 @@ export const UNRECORDED = ['20260101000026_no_svg_logos'];
  *
  *   seen 2026-10-16, still there 2026-10-22: two definer functions switched to
  *   invoker, and anon's execute on one revoked. The first broke reporting a
- *   directory consultant (migration 353 says how); 353 puts both back.
+ *   directory consultant (migration 354 says how); 354 puts both back.
  */
 export const OUT_OF_BAND = [
   {
     seen: '2026-10-16',
     after: '20260101000344_doors_a_review_found_open',
-    undoneBy: '20260101000353_what_production_changed_by_hand',
+    undoneBy: '20260101000354_what_production_changed_by_hand',
     sql:
       'alter function public.agent_card_listed_to_viewer(uuid) security invoker;\n' +
       'revoke execute on function public.agent_card_listed_to_viewer(uuid) from anon;\n' +

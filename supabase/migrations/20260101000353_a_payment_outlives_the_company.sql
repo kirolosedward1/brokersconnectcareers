@@ -1,5 +1,5 @@
 -- =============================================================================
--- 352 — A payment outlives the company
+-- 353 — A payment outlives the company
 --
 -- docs/data-lifecycle.md says an order is "Retained" and its deletion
 -- "Refused while the company exists". The table said otherwise: orders.company_id

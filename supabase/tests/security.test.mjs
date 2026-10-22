@@ -459,7 +459,7 @@ report.section('304 — a hidden card is not viewed and the counter is the serve
 }
 
 // ---------------------------------------------------------------------------
-report.section('352 — a payment outlives the company');
+report.section('353 — a payment outlives the company');
 {
   const rule = await one(`
     select confdeltype from pg_constraint where conname = 'orders_company_id_fkey'`);
@@ -473,7 +473,7 @@ report.section('352 — a payment outlives the company');
       // (203) is not what refuses the delete below.
       const quiet = (await db.query(`
         insert into companies (owner_id, name_ar, slug)
-        values ('${admin}', 'شركة بلا طلبات', 'no-applications-352') returning id`)).rows[0].id;
+        values ('${admin}', 'شركة بلا طلبات', 'no-applications-353') returning id`)).rows[0].id;
       if (withOrder) {
         await db.exec(`
           insert into orders (company_id, pack_key, credits, amount_egp, status)
@@ -483,7 +483,7 @@ report.section('352 — a payment outlives the company');
         set local role authenticated;
         set local request.jwt.claim.sub = '${admin}';
         set local request.jwt.claims = '{"role":"authenticated","sub":"${admin}"}';`);
-      const gone = await db.query(`delete from companies where slug = 'no-applications-352' returning id`);
+      const gone = await db.query(`delete from companies where slug = 'no-applications-353' returning id`);
       return { ok: true, rows: gone.rows };
     } catch (error) {
       return { ok: false, error: error.message };
@@ -502,11 +502,11 @@ report.section('352 — a payment outlives the company');
 }
 
 // ---------------------------------------------------------------------------
-report.section('353 — what production changed by hand');
+report.section('354 — what production changed by hand');
 {
-  // A database 353 has not reached, with the two changes production's
+  // A database 354 has not reached, with the two changes production's
   // fingerprint showed were made outside any migration.
-  const drifted = await createTestDb({ before: '20260101000353' });
+  const drifted = await createTestDb({ before: '20260101000354' });
   await drifted.exec(`
     alter function public.agent_card_listed_to_viewer(uuid) security invoker;
     revoke execute on function public.agent_card_listed_to_viewer(uuid) from anon;
@@ -533,10 +533,10 @@ report.section('353 — what production changed by hand');
   report.check('(drifted: an employer who found a card in the directory cannot report it)',
     Boolean(stranger) && !refused.ok && /row-level security/.test(refused.error ?? ''), refused.error ?? 'filed');
 
-  for (const script of migrationScripts({ from: '20260101000353' })) await drifted.exec(script.sql);
+  for (const script of migrationScripts({ from: '20260101000354' })) await drifted.exec(script.sql);
 
   const filed = await fileReport(drifted);
-  report.check('after 353 the report is filed', filed.ok && filed.rows.length === 1, filed.error);
+  report.check('after 354 the report is filed', filed.ok && filed.rows.length === 1, filed.error);
 
   const modes = (await drifted.query(`
     select proname, prosecdef, has_function_privilege('anon', oid, 'execute') as anon

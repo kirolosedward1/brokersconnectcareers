@@ -1,13 +1,13 @@
 # Database security and data integrity audit — October 2026
 
-_Branch `claude/database-security-integrity-jua0xq`. Audit run 2026-10-15/16, re-verified against production 2026-10-22. Builds on `SECURITY_REPORT.md` (migrations 303–313); this round's fixes are migrations **352** and **353**._
+_Branch `claude/database-security-integrity-jua0xq`. Audit run 2026-10-15/16, re-verified against production 2026-10-22. Builds on `SECURITY_REPORT.md` (migrations 303–313); this round's fixes are migrations **353** and **354**._
 
 ## Verdict
 
 The schema is in good shape: every table has row-level security, every function pins its `search_path`, every privileged (definer) function checks its caller, and the ownership rules hold under a stranger-access sweep. Two problems did need fixing:
 
-1. **Production is not what its migrations say.** Two functions were switched to `SECURITY INVOKER` by hand. One of them stops employers reporting fake or abusive consultant cards they find in the directory. Migration 353 puts them back.
-2. **Deleting a company silently deleted its paid orders.** `orders.company_id` cascaded. Migration 352 makes it restrict, as `data-lifecycle.md` already said it did.
+1. **Production is not what its migrations say.** Two functions were switched to `SECURITY INVOKER` by hand. One of them stops employers reporting fake or abusive consultant cards they find in the directory. Migration 354 puts them back.
+2. **Deleting a company silently deleted its paid orders.** `orders.company_id` cascaded. Migration 353 makes it restrict, as `data-lifecycle.md` already said it did.
 
 Production also does not yet have migrations **346–349**, and those carry live security fixes (below). **Nothing in this round was applied to production.** The release steps are at the end.
 
@@ -23,9 +23,9 @@ Production also does not yet have migrations **346–349**, and those carry live
 
 | # | Severity | Finding | Status |
 |---|---|---|---|
-| 1 | **High (production)** | `agent_card_listed_to_viewer()` and `admin_summary()` were changed to `SECURITY INVOKER` on production outside any migration, and anon's execute on the first was revoked. The first is called inside the `reports_insert_signed_in` policy. As invoker, it reads `profiles` under the reporter's own row policies, so a verified employer can report a directory consultant only if that consultant applied to them. Reproduced. | **353** restores both. Test reproduces the drifted state and the upgrade. |
+| 1 | **High (production)** | `agent_card_listed_to_viewer()` and `admin_summary()` were changed to `SECURITY INVOKER` on production outside any migration, and anon's execute on the first was revoked. The first is called inside the `reports_insert_signed_in` policy. As invoker, it reads `profiles` under the reporter's own row policies, so a verified employer can report a directory consultant only if that consultant applied to them. Reproduced. | **354** restores both. Test reproduces the drifted state and the upgrade. |
 | 2 | **High (production)** | Production lacks 346–349. Until they run: a candidate can overwrite a CV's bytes after the server checked them, or delete a CV an application points at. Photos and logos can be written straight into the public buckets, bypassing the re-encode that strips GPS data. A company can replace a reviewed verification paper. A suspended company still reads its applicants' names, numbers and CVs. Reviews can act on a version the admin never saw. | Rehearsed: all apply cleanly. **Operator action** below. |
-| 3 | **Medium** | `orders.company_id ON DELETE CASCADE`. One delete of a company (admin policy, dashboard, `remove-demo.sql`) erased its payment records, which are needed for refunds, chargebacks and tax. | **352**: restrict. `remove-demo.sql` deletes demo orders explicitly. Production holds no order today. |
+| 3 | **Medium** | `orders.company_id ON DELETE CASCADE`. One delete of a company (admin policy, dashboard, `remove-demo.sql`) erased its payment records, which are needed for refunds, chargebacks and tax. | **353**: restrict. `remove-demo.sql` deletes demo orders explicitly. Production holds no order today. |
 | 4 | Medium (config) | Leaked-password protection is **off** on production, although `SUPABASE_SETTINGS.md` lists it as on. | Dashboard toggle (operator). Doc now says so. |
 | 5 | Low | `main` was red on two suites. `schema.test.mjs` still expected anon to call `my_company_id` (closed by 350), and `notifications.test.mjs` still expected a withdrawn application's receipt to survive (deleted by 351). | Tests updated to the behaviour those migrations chose. |
 
@@ -48,16 +48,16 @@ Production also does not yet have migrations **346–349**, and those carry live
 
 ## Tests
 
-`pnpm test:release && pnpm test:db && pnpm test:remove-demo && pnpm typecheck && pnpm db:lint`: **2,109 checks, 0 failures**. New checks are in `security.test.mjs` §352–353, and each fails without its migration.
+`pnpm test:release && pnpm test:db && pnpm test:remove-demo && pnpm typecheck && pnpm db:lint`: **2,109 checks, 0 failures**. New checks are in `security.test.mjs` §353–354, and each fails without its migration.
 
 ## Releasing this to production — operator steps
 
 Production changes are not applied from this branch. They follow the release runbook (`docs/release/2026-09-prod-reconciliation.md`, `docs/security/RUNBOOKS.md` §C):
 
 1. **Backup first:** take a manual backup / PITR marker (`pnpm dr:backup`, or Dashboard → Database → Backups).
-2. **Rehearse against today's production.** Run `pnpm db:rehearse:ledger --ledger <list_migrations.json> --fingerprint <fingerprint.json>`, with the fingerprint from `scripts/dr/fingerprint.sql`. The expected result is "rehearsal passed", with 346, 347, 348, 349, 352 and 353 pending. This passed on 2026-10-22.
+2. **Rehearse against today's production.** Run `pnpm db:rehearse:ledger --ledger <list_migrations.json> --fingerprint <fingerprint.json>`, with the fingerprint from `scripts/dr/fingerprint.sql`. The expected result is "rehearsal passed", with 346, 347, 348, 349, 352, 353 and 354 pending (352 is main's photo guard for the local stack). It passed on 2026-10-22, when this branch's two were still numbered 352 and 353 and main had no 352.
 3. **Optional staging step:** apply to a Supabase branch or the `brokersconnect-dr-drill` project first, and run `pnpm smoke` against a preview pointed at it.
 4. **Deploy the website from `main`, then run `pnpm db:apply --execute`** against production. Never use `db:push:url`, which re-runs everything. Each file runs in its own transaction with its ledger row.
-5. **Verify:** re-run the fingerprint and the rehearsal (no pending files, fingerprint identical to a fresh build), then `get_advisors`. Once 353 has run, the `OUT_OF_BAND` entry stops applying by itself.
+5. **Verify:** re-run the fingerprint and the rehearsal (no pending files, fingerprint identical to a fresh build), then `get_advisors`. Once 354 has run, the `OUT_OF_BAND` entry stops applying by itself.
 6. **Dashboard:** turn on leaked-password protection (Authentication → Attack Protection).
 7. **Answer the advisor without the dashboard.** Changes made in the dashboard are what caused finding 1. If an advisor warning needs answering, answer it with a migration, so the next fingerprint stays clean.
