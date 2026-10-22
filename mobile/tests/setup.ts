@@ -19,7 +19,7 @@ import { installIntlPolyfills } from '~/lib/intl-polyfills';
   Locale: Intl.Locale,
   getCanonicalLocales: Intl.getCanonicalLocales,
 };
-installIntlPolyfills({ force: true });
+installIntlPolyfills({ force: true, locales: ['ar', 'en'] });
 
 // And without the built-ins Node has and Hermes, the phone's engine, does not
 // (checked against Hermes V1, which React Native 0.86 runs): code using one
