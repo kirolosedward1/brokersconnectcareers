@@ -4,10 +4,11 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDate, formatDateTime, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
-import type { AdminAuditRow, ApplicationStatus, JobStatus, ModerationNoteRow } from '@/lib/supabase/database.types';
+import type { ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
 import { whatsappLink } from '@/lib/whatsapp';
 import { openDecision } from '~/components/admin/decision-sheet';
-import { AdminGate, ApprovalBadge, auditLabel, Fact, openOnWebsite, SectionTitle, useRoleLabel } from '~/components/admin/kit';
+import { AdminGate, ApprovalBadge, Fact, openOnWebsite, SectionTitle, useRoleLabel } from '~/components/admin/kit';
+import { Record } from '~/components/admin/record';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
@@ -24,7 +25,6 @@ import {
   LockOpen,
   LogOut,
   MessageCircle,
-  NotebookPen,
   Phone,
   RotateCcw,
   ShieldMinus,
@@ -738,85 +738,8 @@ function Security({ account, self }: { account: AccountFile; self: boolean }) {
 }
 
 /** The decisions and the notes on the account, newest first, as the website's Trail has them; and a note to add. */
-function Trail({ account, self }: { account: AccountFile; self: boolean }) {
-  const t = useTranslations();
-  const { colors } = useTheme();
-  const entries = [
-    ...account.audit.map((row) => ({ kind: 'audit' as const, at: row.created_at, row })),
-    ...account.notes.map((row) => ({ kind: 'note' as const, at: row.created_at, row })),
-  ].sort((a, b) => b.at.localeCompare(a.at));
-
-  return (
-    <Card style={{ gap: space[3] }}>
-      <SectionTitle>{t('admin.record')}</SectionTitle>
-      {/* On every file, one's own included: a note is for other admins, and admin_add_note refuses nobody. */}
-      <View style={{ flexDirection: 'row' }}>
-        <Button
-          label={t('app.admin.addNote')}
-          variant="outline"
-          size="sm"
-          icon={<NotebookPen size={16} color={colors.foreground} />}
-          onPress={() =>
-            openDecision({
-              lever: { do: 'note', targetType: 'user', targetId: account.profile.id },
-              title: t('app.admin.addNote'),
-              reason: 'required',
-              // A note is any words at all, as the website takes it; the three-character floor is for reasons.
-              reasonMin: 1,
-              reasonLabel: t('app.admin.noteLabel'),
-              reasonMax: 2000,
-              confirmLabel: t('app.admin.addNote'),
-            })
-          }
-        />
-      </View>
-      {entries.length === 0 ? (
-        <Text variant="small" tone="mutedForeground">
-          {t('admin.trailEmpty')}
-        </Text>
-      ) : (
-        entries.map((entry) =>
-          entry.kind === 'audit' ? (
-            <AuditEntry key={`a${entry.row.id}`} row={entry.row} />
-          ) : (
-            <NoteEntry key={`n${entry.row.id}`} row={entry.row} />
-          ),
-        )
-      )}
-    </Card>
-  );
-}
-
-/** One decision on the record: what was done, to what, by whom, and the reason when one was given. */
-function AuditEntry({ row }: { row: AdminAuditRow }) {
-  const t = useTranslations();
-  const locale = useLocale();
-  const { colors } = useTheme();
-  return (
-    <View style={{ gap: 2, paddingStart: space[3], borderStartWidth: 2, borderStartColor: colors.primary }}>
-      <Text variant="small" weight="medium">
-        {auditLabel(t, row.action)}
-        {row.target_label ? <Text variant="small" tone="mutedForeground">{` — ${row.target_label}`}</Text> : null}
-      </Text>
-      {row.reason ? <Text variant="small" tone="mutedForeground">{`«${row.reason}»`}</Text> : null}
-      <Text variant="caption" tone="mutedForeground">
-        {`${row.actor_name ?? t('admin.unknownActor')} · ${formatDateTime(row.created_at, locale)}`}
-      </Text>
-    </View>
-  );
-}
-
-/** One note an admin left for the others. */
-function NoteEntry({ row }: { row: ModerationNoteRow }) {
-  const t = useTranslations();
-  const locale = useLocale();
-  const { colors } = useTheme();
-  return (
-    <View style={{ gap: 2, paddingStart: space[3], borderStartWidth: 2, borderStartColor: colors.warning }}>
-      <Text variant="small">{row.body}</Text>
-      <Text variant="caption" tone="mutedForeground">
-        {`${row.author_name ?? t('admin.unknownActor')} · ${formatDateTime(row.created_at, locale)}`}
-      </Text>
-    </View>
-  );
+/** The record, as every file draws it (components/admin/record.tsx), from the rows the file already read. */
+function Trail({ account }: { account: AccountFile; self: boolean }) {
+  // On every file, one's own included: a note is for other admins, and admin_add_note refuses nobody.
+  return <Record targetType="user" targetId={account.profile.id} audit={account.audit} notes={account.notes} />;
 }
