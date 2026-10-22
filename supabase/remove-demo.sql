@@ -70,6 +70,9 @@ begin
   -- (applications_job_id_fkey restricts).
   delete from applications
    where job_id in (select id from jobs where company_id = any (v_companies));
+  -- A demo company's orders are test payments, removed on purpose: a real
+  -- company's orders outlive it (orders_company_id_fkey restricts, 350).
+  delete from orders where company_id = any (v_companies);
   delete from companies where id = any (v_companies);
 end
 $$;
