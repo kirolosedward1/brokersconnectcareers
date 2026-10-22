@@ -32,12 +32,23 @@ export function paymobConfig(): PaymobConfig | null {
   return { apiKey, integrationId, iframeId };
 }
 
+/**
+ * How long one of the three steps may go unanswered. Without a limit, a
+ * Paymob that stalled kept the buyer's "pay" button spinning and the function
+ * running until the platform killed it, with no answer either way. A step
+ * that times out fails the checkout ('checkout_failed'), and pressing again
+ * opens a new order: nothing is charged until the buyer pays in the iframe,
+ * and the abandoned order stays pending, as one whose handoff failed does.
+ */
+const STEP_TIMEOUT_MS = 15_000;
+
 async function post(path: string, body: unknown): Promise<unknown> {
   const response = await fetch(`${BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     cache: 'no-store',
+    signal: AbortSignal.timeout(STEP_TIMEOUT_MS),
   });
 
   if (!response.ok) {
