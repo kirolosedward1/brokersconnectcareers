@@ -12,14 +12,17 @@ import { Appear } from '~/components/motion/appear';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
+import { PasswordField } from '~/components/ui/password-field';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
+import { TextLink } from '~/components/ui/text-link';
 import { useCaptcha } from '~/features/auth/captcha';
 import { useAuthErrorText } from '~/features/auth/errors';
 import { confirmationPath, intentFromParams, intentParams } from '~/features/auth/intent';
 import { useLand } from '~/features/auth/land';
 import type { ProviderOutcome } from '~/features/auth/providers';
 import { callAction } from '~/lib/api';
+import { useErrorFeedback } from '~/lib/haptics';
 import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
@@ -50,6 +53,7 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  useErrorFeedback(error);
   const [pending, setPending] = useState(false);
   const [unconfirmed, setUnconfirmed] = useState(false);
   const [resent, setResent] = useState<'sent' | 'wait' | 'offline' | null>(null);
@@ -158,15 +162,11 @@ export default function SignInScreen() {
           </Field>
 
           <Field label={t('auth.password')}>
-            <TextField
+            <PasswordField
               ref={passwordField}
               value={password}
               onChangeText={setPassword}
               accessibilityLabel={t('auth.password')}
-              ltr
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
               autoComplete="current-password"
               textContentType="password"
               returnKeyType="go"
@@ -176,16 +176,7 @@ export default function SignInScreen() {
             />
           </Field>
 
-          <Text
-            variant="small"
-            weight="medium"
-            tone="primary"
-            accessibilityRole="link"
-            onPress={() => router.push('/sign-in/forgot')}
-            suppressHighlighting
-          >
-            {t('auth.forgotPassword')}
-          </Text>
+          <TextLink label={t('auth.forgotPassword')} onPress={() => router.push('/sign-in/forgot')} />
 
           {error ? <Notice tone="destructive">{error}</Notice> : null}
 

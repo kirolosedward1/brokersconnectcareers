@@ -149,7 +149,7 @@ export type AccountFile = {
 };
 
 /**
- * A missing function is a database before migration 352: the file is drawn
+ * A missing function is a database before migration 355: the file is drawn
  * without what it would have said, rather than not at all.
  */
 function notMigrated(error: { code?: string } | null): boolean {

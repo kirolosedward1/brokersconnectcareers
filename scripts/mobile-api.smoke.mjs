@@ -147,7 +147,9 @@ console.log('\n— an email link: a GET draws a button and spends nothing');
   const html = await r.text();
   check('200, a page with one form', r.status === 200 && html.includes('<form method="post" action="/auth/confirm">'), `got ${r.status}`);
   check('carrying the token and the destination, unwrapped', html.includes(`value="${hash}"`) && html.includes('value="/onboarding?role=employer&amp;confirmed=1"'));
-  check('never cached, indexed or referred', (r.headers.get('cache-control') ?? '').includes('no-store') && (r.headers.get('x-robots-tag') ?? '').includes('noindex') && html.includes('<meta name="referrer" content="no-referrer">'));
+  // same-origin, not no-referrer: no other site is told the address, and the
+  // page's own post still carries an Origin (no-referrer made it null, 403).
+  check('never cached, indexed or referred to another site', (r.headers.get('cache-control') ?? '').includes('no-store') && (r.headers.get('x-robots-tag') ?? '').includes('noindex') && html.includes('<meta name="referrer" content="same-origin">'));
   const bad = await fetch(`${BASE}/auth/confirm?token_hash=x&type=email`, { redirect: 'manual' });
   check('a malformed link goes to sign-in, "expired"', bad.status === 303 && (bad.headers.get('location') ?? '').endsWith('/sign-in?error=link_expired'), `got ${bad.status} ${bad.headers.get('location')}`);
 }

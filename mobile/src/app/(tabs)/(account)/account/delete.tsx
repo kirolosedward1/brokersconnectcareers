@@ -14,6 +14,7 @@ import { asksApple, deleteAccountHere } from '~/features/account/delete';
 import { DeletionRequestRefused, useDeletionRequest, useRequestDeletion } from '~/features/account/settings';
 import { useMobileConfig } from '~/features/config';
 import { ApiError } from '~/lib/api';
+import { useErrorFeedback } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { gutter, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
@@ -42,6 +43,7 @@ export default function DeleteAccountScreen() {
   const [typed, setTyped] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useErrorFeedback(error);
 
   const word = t('account.deleteConfirmWord');
   const confirmLabel = t.markup('account.deleteConfirmLabel', { word, b: (chunks: string) => chunks });
@@ -65,6 +67,7 @@ export default function DeleteAccountScreen() {
         : ask.error instanceof DeletionRequestRefused && ask.error.reason === 'not_owner'
           ? null
           : t('common.errorBody');
+  useErrorFeedback(askError);
 
   async function remove() {
     setError(null);

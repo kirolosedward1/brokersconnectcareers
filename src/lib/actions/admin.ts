@@ -389,7 +389,7 @@ const roleSchema = z.object({
 /**
  * Make somebody an admin, or take that away.
  *
- * admin_set_role (migration 352) allows only the moves that involve the admin
+ * admin_set_role (migration 355) allows only the moves that involve the admin
  * role — a candidate or an employer made an admin, an admin made one of those
  * again — never yourself, never the last admin, and always with a reason on
  * the record. The person is not emailed: an admin is told by an admin.
@@ -420,7 +420,7 @@ const signInBlockSchema = z.object({
 
 /**
  * Stop an account signing in at all, or let it again — the auth server's own
- * ban, set by admin_set_sign_in_block (migration 352) in the same transaction
+ * ban, set by admin_set_sign_in_block (migration 355) in the same transaction
  * as its record. Blocking also ends every session the account has, so a phone
  * already signed in is out within the hour. Nothing else about the account
  * changes: its listings and applications stay as they are, and nobody is
@@ -450,7 +450,7 @@ const endSessionsSchema = z.object({
   reason: z.string().trim().min(3).max(500),
 });
 
-/** Sign one account out of every device (admin_end_sessions, migration 352). It can sign in again at once. */
+/** Sign one account out of every device (admin_end_sessions, migration 355). It can sign in again at once. */
 export async function endSessions(input: unknown): Promise<AdminResult<{ sessionsEnded: number }>> {
   const parsed = endSessionsSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'reason_required' };

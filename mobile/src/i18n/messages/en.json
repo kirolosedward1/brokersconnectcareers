@@ -84,6 +84,8 @@
     "configRetry": "Try again",
     "appleRevokedTitle": "You have been signed out",
     "appleRevokedBody": "Sign in with Apple is no longer on for this app, so we signed you out on this phone. You can sign in again at any time.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "continueWithEmail": "Continue with email",
     "otherWays": "Other ways to sign in"
   },
@@ -432,5 +434,8 @@
     "addNote": "Add a note",
     "noteLabel": "Note (admins only)",
     "accountsLede": "Find any account; its file has the facts, what it has done, and every lever."
+  },
+  "keyboard": {
+    "done": "Done"
   }
 }

@@ -1,5 +1,5 @@
 import { useRef, useState, type ComponentType } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type TextInput } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import {
@@ -238,6 +238,8 @@ function ApplyForm({
   const apply = useApplyToJob();
   const scroll = useRef<ScrollView>(null);
   const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'experienceBand', 'cv']);
+  // The return key moves on from the name to the number.
+  const whatsappField = useRef<TextInput>(null);
 
   const [fullName, setFullName] = useState(defaultName);
   const [whatsapp, setWhatsapp] = useState(defaultPhone);
@@ -308,6 +310,7 @@ function ApplyForm({
           const reason = failure instanceof ApplyRefused ? failure.reason : 'failed';
           if (reason === 'already_applied') return showErrors({ form: t('apply.alreadyApplied') });
           if (reason === 'rate_limit') return showErrors({ form: t('apply.rateLimit') });
+          if (reason === 'not_open') return showErrors({ form: t('apply.notOpen') });
           if (reason === 'fileTooLarge' || reason === 'fileType') return showErrors({ cv: t(`validation.${reason}`) });
           if (reason === 'upload' || reason === 'invalid_cv_path') {
             const detail = failure instanceof ApplyRefused ? failure.detail : undefined;
@@ -375,11 +378,15 @@ function ApplyForm({
               autoComplete="name"
               textContentType="name"
               maxLength={120}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => whatsappField.current?.focus()}
             />
           </Field>
 
           <Field ref={inView.place('whatsapp')} label={t('apply.whatsapp')} error={errors.whatsapp}>
             <TextField
+              ref={whatsappField}
               value={whatsapp}
               onChangeText={setWhatsapp}
               accessibilityLabel={t('apply.whatsapp')}

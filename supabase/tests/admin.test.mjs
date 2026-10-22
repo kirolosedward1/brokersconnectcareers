@@ -639,7 +639,7 @@ report.section('the overview answers for an admin with real counts');
 }
 
 // ---------------------------------------------------------------------------
-report.section('accounts managed from one place (migration 352)');
+report.section('accounts managed from one place (migration 355)');
 {
   const levers = [
     `select admin_set_role('${candidate}', 'admin', 'انضم لفريق الدعم')`,

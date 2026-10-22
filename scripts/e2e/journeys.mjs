@@ -320,7 +320,10 @@ section('the employer posts a listing');
 if (employer) {
   const district = (await rest(employer.token, 'districts?select=id&limit=1')).json?.[0]?.id;
   const draft = {
-    titleAr: 'استشاري مبيعات عقارية (e2e)',
+    // Stamped: the run before this one left its listing in review, and the
+    // same title from the same company again is refused as a duplicate
+    // (migration 306) — which is the rule working, not this journey failing.
+    titleAr: `استشاري مبيعات عقارية (e2e ${Date.now()})`,
     track: 'primary',
     employmentType: 'full_time',
     experienceBand: 'junior_1_3',

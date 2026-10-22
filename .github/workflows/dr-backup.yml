@@ -1,9 +1,13 @@
 # Nightly encrypted backup of the production database and Storage, to a bucket
 # outside GitHub and outside Supabase.
 #
-# Inert until configured: with any required secret missing, the job logs what
-# is missing and exits successfully, so a fresh fork or an unconfigured repo
-# never fails red and never uploads anything.
+# Red until configured: with any required secret missing, the job names what
+# is missing, uploads nothing, and fails. It used to pass quietly instead, and
+# 25 nightly runs were green while production had no backup at all
+# (docs/release/2026-10-final-readiness.md, C4). Forks do not run scheduled
+# workflows unless someone turns them on. A repository that is not meant to
+# back up sets the Actions variable DR_BACKUP_DISABLED=true, and the job then
+# skips with a notice.
 #
 # This repository is public. Backups are therefore NEVER uploaded as workflow
 # artifacts, which any signed-in GitHub user could download. They go only to the
@@ -65,9 +69,12 @@ jobs:
                    AGE_RECIPIENT DR_S3_URI AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
             [ -n "${!v}" ] || missing+=("$v")
           done
-          if [ ${#missing[@]} -gt 0 ]; then
-            echo "::notice::DR backup not configured (missing: ${missing[*]}). Skipping."
+          if [ "${{ vars.DR_BACKUP_DISABLED }}" = "true" ]; then
+            echo "::notice::DR backup disabled for this repository (DR_BACKUP_DISABLED). Skipping."
             echo "run=false" >> "$GITHUB_OUTPUT"
+          elif [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::No backup was taken: DR backup is not configured (missing: ${missing[*]}). See docs/disaster-recovery.md."
+            exit 1
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi

@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
 /**
  * The approval states, and one view that is not one: `blocked` lists the
- * accounts the auth server will not let in (migration 352), whatever their
+ * accounts the auth server will not let in (migration 355), whatever their
  * standing — the door, not the account's standing, is what the view is for.
  */
 const STATUSES = ['all', 'pending', 'approved', 'rejected', 'blocked'] as const;
@@ -111,7 +111,7 @@ export default async function AdminUsersPage({
       // The block rides beside the standing rather than replacing it: a
       // suspended account whose door is also shut is both, and an admin
       // deciding what to lift wants to see both. Absent on a database from
-      // before migration 352, which reads as not blocked.
+      // before migration 355, which reads as not blocked.
       cell: (row) => (
         <span className="inline-flex flex-wrap gap-1">
           <ApprovalBadge status={row.approval_status} />

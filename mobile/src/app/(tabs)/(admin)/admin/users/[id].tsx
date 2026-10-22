@@ -488,7 +488,7 @@ function Counts({ entries }: { entries: { label: string; value: number }[] }) {
 }
 
 /**
- * What the account has done, in counts (admin_user_activity, migration 352 —
+ * What the account has done, in counts (admin_user_activity, migration 355 —
  * a database before it has none, and the tab says so), the latest
  * applications, and the reports it filed: how many came to nothing is what
  * separates a careful reporter from a vexatious one, and the lever on
@@ -554,7 +554,7 @@ function Activity({ account, self }: { account: AccountFile; self: boolean }) {
           </Card>
         </>
       ) : (
-        // No function to ask (a database before migration 352): said as that,
+        // No function to ask (a database before migration 355): said as that,
         // never as "nothing yet", which is an answer a moderator acts on.
         <Card>
           <Text variant="small" tone="mutedForeground">

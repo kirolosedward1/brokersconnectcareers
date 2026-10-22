@@ -968,4 +968,4 @@ tabs, and the consultant directory opens inside the Admin tab
 cover who has the tab, the door, the queues, the accounts and each lever's
 request; `scripts/mobile-api.test.mjs` holds the registry to exactly the
 levers in `ADMIN_ACTIONS`, each behind the door; `supabase/tests/admin.test.mjs`
-covers the account levers of migration 352.
+covers the account levers of migration 355.

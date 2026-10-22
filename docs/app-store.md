@@ -91,6 +91,16 @@ the screen showed them. That pass therefore checks each screen by what macOS's
 text recognition reads on it (`mobile/scripts/screen-text.swift`), for the
 same words and error states as the iPhone passes.
 
+The website's own page for the app, `/app`
+(`src/components/get-app/get-app-landing.tsx`), shows five screens in drawn
+iPhone frames from `public/app-screenshots/screen-1.png` … `screen-5.png`
+(Home, the board, applications, saved, profile — the app's tabs, in order).
+Until the captures exist those five files are labelled wireframes; replace
+them with captures of the same size (1179 by 2556) under the same names, and
+run `scripts/og-app-card.mjs` again so the page's social card
+(`public/brand/og-app.jpg`) carries the real first screen. The page's store
+badges link nowhere (`#`) until the listing exists.
+
 They show whatever the live site lists when the workflow runs — its first
 listing and its first company — so run it when production holds the listings
 the store should show. Where it lists none, the board or the company list is

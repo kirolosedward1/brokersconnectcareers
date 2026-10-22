@@ -14,7 +14,7 @@ Read first, in this order:
 2. `mobile/AGENTS.md` and `docs/mobile.md` ("The admin console in the app") — the app's rules and how it talks to the website.
 3. `docs/security/THREAT_MODEL.md` §6 — the mobile door.
 4. The app's existing admin code: `mobile/src/features/admin/{door,queries,accounts,levers}.ts`, `mobile/src/components/admin/{kit,decision-sheet}.tsx`, `mobile/src/app/(tabs)/(admin)/admin/**`, `mobile/src/lib/{tabs,links}.ts`, and the tests `mobile/tests/admin.test.tsx`, `mobile/tests/admin-accounts.test.tsx`.
-5. The website's console: `src/app/[locale]/(app)/admin/**`, `src/components/admin/**`, `src/lib/actions/admin.ts`, `src/lib/actions/moderation.ts`, `src/lib/admin/{errors,params}.ts`, and the migrations that define the `admin_*` functions (316–319, 326–328, 344, 346–347, 352 — the latest definition of a function wins).
+5. The website's console: `src/app/[locale]/(app)/admin/**`, `src/components/admin/**`, `src/lib/actions/admin.ts`, `src/lib/actions/moderation.ts`, `src/lib/admin/{errors,params}.ts`, and the migrations that define the `admin_*` functions (316–319, 326–328, 344, 346–347, 355 — the latest definition of a function wins).
 6. The mobile door: `src/lib/mobile-api/{contract,registry,admin-door,http,context}.ts` and `scripts/mobile-api.test.mjs`.
 
 ## How the two clients fit together (do not change this)

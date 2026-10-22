@@ -66,7 +66,7 @@ create table auth.mfa_factors (
 );
 
 -- Signed-in devices and their refresh tokens, as GoTrue keeps them: what
--- admin_end_sessions_of (migration 352) deletes. Only the columns it names.
+-- admin_end_sessions_of (migration 355) deletes. Only the columns it names.
 create table auth.sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null,

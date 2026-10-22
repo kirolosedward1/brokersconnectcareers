@@ -61,7 +61,7 @@ export type AdminLever =
     }
   | { do: 'reporting'; userId: string; restrict: boolean }
   | { do: 'appeal'; appealId: string; overturn: boolean }
-  // The account itself (migration 352): its role, its door, its devices.
+  // The account itself (migration 355): its role, its door, its devices.
   | { do: 'role'; userId: string; role: 'candidate' | 'employer' | 'admin' }
   | { do: 'signInBlock'; userId: string; block: boolean }
   | { do: 'sessions'; userId: string };

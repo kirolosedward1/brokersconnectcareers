@@ -206,7 +206,7 @@ describe('the accounts', () => {
     expect(screen.getByText(ar.admin.approval.approved)).toBeTruthy();
     // The waiting accounts first, as the website's queue; no words, no search.
     expect(lastSearch()).toMatchObject({ p_query: null, p_role: null, p_status: 'pending', p_offset: 0 });
-    // Named only by the view that needs it: a database before migration 352 knows the function without it.
+    // Named only by the view that needs it: a database before migration 355 knows the function without it.
     expect(lastSearch()).not.toHaveProperty('p_blocked');
 
     const field = screen.getByLabelText(ar.filters.search);
