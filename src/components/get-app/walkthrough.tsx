@@ -127,16 +127,20 @@ export function Walkthrough({
                 aria-current={index === active ? 'true' : undefined}
                 onClick={() => go(index)}
                 className={cn(
-                  'flex w-full gap-5 rounded-xl border-s-2 px-5 py-5 text-start transition-[background-color,border-color,opacity] duration-300 motion-reduce:transition-none',
-                  index === active
-                    ? 'border-primary bg-muted/60 opacity-100'
-                    : 'border-transparent opacity-70 hover:bg-muted/40 hover:opacity-100',
+                  'group flex w-full gap-5 rounded-xl border-s-2 px-5 py-5 text-start transition-[background-color,border-color] duration-300 motion-reduce:transition-none',
+                  index === active ? 'border-primary bg-muted/60' : 'border-transparent hover:bg-muted/40',
                 )}
               >
+                {/* Never dimmed: small primary type at 70% falls below 4.5:1. */}
                 <span className="numeral mt-1 text-xs font-semibold text-primary">
                   {String(index + 1).padStart(2, '0')}
                 </span>
-                <span className="min-w-0">
+                <span
+                  className={cn(
+                    'min-w-0 transition-opacity duration-300 motion-reduce:transition-none',
+                    index !== active && 'opacity-70 group-hover:opacity-100',
+                  )}
+                >
                   <span className="block text-lg font-semibold leading-snug">{step.title}</span>
                   <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
                     {step.body}
@@ -153,7 +157,10 @@ export function Walkthrough({
         <ul
           ref={scroller}
           aria-label={labels.list}
-          className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6"
+          // Scrolls sideways, so it takes focus: the arrow keys scroll it for somebody without a pointer.
+          // It runs edge to edge, so its ring is drawn inside it, where the screen does not cut it off.
+          tabIndex={0}
+          className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] focus-visible:-outline-offset-2 [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6"
         >
           {steps.map((step, index) => (
             <li
