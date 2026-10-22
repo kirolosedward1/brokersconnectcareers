@@ -199,8 +199,8 @@ export function ScreenTour({
               className="w-[66vw] max-w-[15rem] shrink-0 snap-center sm:w-60"
             >
               <PhoneFrame src={screen.src} alt={screen.alt} sizes="15rem" />
-              <p className="mt-4 font-semibold leading-snug">{screen.title}</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{screen.body}</p>
+              <p className="mt-4 text-center font-semibold leading-snug">{screen.title}</p>
+              <p className="mt-1 text-center text-sm leading-relaxed text-muted-foreground">{screen.body}</p>
             </li>
           ))}
         </ul>
