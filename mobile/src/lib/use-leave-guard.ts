@@ -54,9 +54,10 @@ export function useWorkInProgress(): boolean {
  * The same question for leaving the screen itself, while `dirty`. While
  * `sending`, the screen is held instead, and says why: what was typed is on its
  * way, leaving would not stop it, only hide how it went — and "not saved, will
- * be lost" would not be true.
+ * be lost" would not be true. `onDiscard` runs when the person chooses to throw
+ * the work away, so a draft kept on the phone goes with it.
  */
-export function useLeaveGuard(dirty: boolean, sending = false) {
+export function useLeaveGuard(dirty: boolean, sending = false, onDiscard?: () => void) {
   const t = useTranslations();
   const confirm = useConfirmDiscard();
   // Told to throw the work away, the screen stops holding itself and makes the
@@ -71,6 +72,8 @@ export function useLeaveGuard(dirty: boolean, sending = false) {
       return;
     }
     confirm(() => {
+      // Discarded on purpose: whatever the form kept of it goes too (use-kept-draft.ts).
+      onDiscard?.();
       setDiscarded(true);
       repeat();
     });

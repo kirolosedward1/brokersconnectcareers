@@ -1985,8 +1985,8 @@
     "noText": "None of the packages ships this licence’s text. <link>The official text is on SPDX</link>."
   },
   "drafts": {
-    "restored": "We kept what you typed here on <time>{when}</time> and put it back.",
-    "offered": "You have unsaved changes from <time>{when}</time>, typed before this was last saved. Restore them to check them against what is here now, or discard them.",
+    "restored": "We kept what you typed here on <v>{when}</v> and put it back.",
+    "offered": "You have unsaved changes from <v>{when}</v>, typed before this was last saved. Restore them to check them against what is here now, or discard them.",
     "restore": "Restore my changes",
     "discard": "Discard them",
     "startOver": "Start over"

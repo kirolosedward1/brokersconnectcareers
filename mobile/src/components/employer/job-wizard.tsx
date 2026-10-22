@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View, type ScrollViewInstance } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
@@ -47,6 +47,9 @@ import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
+import { draftKey } from '~/lib/kept-draft';
+import { useKeptDraft } from '~/lib/use-kept-draft';
+import { DraftNotice } from '~/components/ui/draft-notice';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
@@ -99,7 +102,23 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   // Leaving with something typed asks first; once saved, the wizard closes itself.
   const [opened] = useState(() => JSON.stringify(initialValues(job, developerIds, null)));
   const [saved, setSaved] = useState(false);
-  useLeaveGuard(!saved && JSON.stringify(draft) !== opened, !saved && save.isPending);
+  /*
+    What the wizard holds, kept on the phone as it is typed (kept-draft.ts):
+    every field and the step. Back asks first (below); iOS ending the app in
+    the background asks nobody, and that took all of it. Measured against the
+    version the fields came from, so a draft typed over an older one is
+    offered rather than poured in.
+  */
+  const kept = useKeptDraft({
+    key: actor ? draftKey('job', actor.userId, job?.id ?? null) : null,
+    values: useMemo(() => ({ values: draft, step }), [draft, step]),
+    restore: useCallback((held: { values: JobValues; step: number }) => {
+      setValues(held.values);
+      setStep(Math.min(Math.max(0, held.step), STEPS.length - 1));
+    }, []),
+    base: version ?? null,
+  });
+  useLeaveGuard(!saved && JSON.stringify(draft) !== opened, !saved && save.isPending, kept.drop);
   // Closed by its own navigation, not the app's: answered after the employer
   // switched tabs, the app's Back took whatever screen was in front there, and
   // the wizard stayed open, saved, never to close.
@@ -180,12 +199,15 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     setErrors({});
     save.mutate(toJobInput(values, { id: job?.id, version, idempotencyKey, submit: publish }), {
       // Closed once the guard has stood down (the effect above), not from here.
-      onSuccess: () => setSaved(true),
+      onSuccess: () => {
+        kept.clear();
+        setSaved(true);
+      },
       onError: (failure) => {
         if (failure instanceof ApiError && failure.status === 0) return refuse(t('app.offline.body'));
         const reason = failure instanceof JobSaveRefused ? failure.reason : 'failed';
         const fields = failure instanceof JobSaveRefused ? failure.fieldErrors : undefined;
-        if (reason === 'stale' || reason === 'invalid_transition') return refuse(t('employer.listingMoved'));
+        if (reason === 'stale' || reason === 'invalid_transition') return refuse(t('employer.listingMovedKept'));
         // Under review is not restricted: an account still pending is told it is being looked at.
         if (reason === 'standing') {
           return refuse(t(actor?.profile?.approval_status === 'pending' ? 'employer.pendingBody' : 'employer.standingBlocked'));
@@ -246,6 +268,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
       keyboardDismissMode="interactive"
       contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
     >
+      <DraftNotice draft={kept} />
       {/*
         Where the form is, and a way back to any step: a segment each, filled
         up to this one — one row at any width, where four labelled pills

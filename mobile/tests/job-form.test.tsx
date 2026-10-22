@@ -20,6 +20,7 @@ import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { detail, newCairo } from './fixtures';
 import { placeViewsAt } from './measure';
+import { draftKey } from '~/lib/kept-draft';
 import { fakeServer } from './server';
 
 /*
@@ -166,6 +167,30 @@ describe('a new listing', () => {
     expect(screen.getByText(ar.employer.pendingBody)).toBeTruthy();
     expect(screen.queryByLabelText(ar.jobForm.titleAr)).toBeNull();
     expect(server.asked('/api/mobile/v1/actions/saveJob')).toHaveLength(0);
+  });
+
+  it('keeps what was typed when the app is ended, and opens again where it was, until the employer starts over', async () => {
+    const kept = draftKey('job', USER_ID, null);
+    const first = renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+    next();
+    expect(await screen.findByLabelText(ar.jobForm.basicSalaryMin)).toBeTruthy();
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(kept)) ?? 'null')?.values.step).toBe(1));
+
+    // iOS ends the app in the background: no Back, no question asked.
+    first.unmount();
+
+    renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    expect(await screen.findByText(/^احتفظنا باللي كتبته هنا/)).toBeTruthy();
+    // On the step it was left on, with what was typed.
+    expect(screen.getByLabelText(ar.jobForm.basicSalaryMin)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.jobForm.basics }));
+    expect(await screen.findByDisplayValue('مستشار مبيعات')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: ar.drafts.startOver }));
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).toBeNull());
+    expect(screen.queryByDisplayValue('مستشار مبيعات')).toBeNull();
+    expect(screen.queryByText(/^احتفظنا باللي كتبته هنا/)).toBeNull();
   });
 
   it('walks the four steps, asks its two questions on the way, and submits what was filled in', async () => {
@@ -366,6 +391,8 @@ describe('leaving the wizard', () => {
     const result = await renderRouter(app, { initialUrl: '/employer/jobs' });
     act(() => router.push('/employer/jobs/new'));
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+    const kept = draftKey('job', USER_ID, null);
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).not.toBeNull());
 
     act(() => router.back());
     expect(alert).toHaveBeenCalledWith(ar.app.leave.title, ar.app.leave.body, expect.any(Array));
@@ -374,6 +401,8 @@ describe('leaving the wizard', () => {
     const leave = (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive');
     act(() => leave?.onPress?.());
     await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    // Thrown away on purpose: the copy kept on the phone goes too.
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).toBeNull());
     alert.mockRestore();
   });
 });
@@ -439,7 +468,7 @@ describe('a listing on the board', () => {
     await renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobForm.review }));
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
-    expect(await screen.findByText(ar.employer.listingMoved)).toBeTruthy();
+    expect(await screen.findByText(ar.employer.listingMovedKept)).toBeTruthy();
   });
 
   it('sends the version it was opened on, though the listing was read again since, and so never overwrites a colleague', async () => {
@@ -471,7 +500,7 @@ describe('a listing on the board', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
     await waitFor(() => expect(saved()).toHaveLength(1));
     expect(saved()[0].version).toBe(4);
-    expect(await screen.findByText(ar.employer.listingMoved)).toBeTruthy();
+    expect(await screen.findByText(ar.employer.listingMovedKept)).toBeTruthy();
   });
 
   it('fills the editor from a read made for this visit, not from the copy kept since the last one', async () => {
@@ -500,7 +529,7 @@ describe('a listing on the board', () => {
       fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
       await waitFor(() => expect(saved()).toHaveLength(1));
       expect(saved()[0].version).toBe(5);
-      expect(screen.queryByText(ar.employer.listingMoved)).toBeNull();
+      expect(screen.queryByText(ar.employer.listingMovedKept)).toBeNull();
     } finally {
       gcTime = 0;
     }
@@ -540,7 +569,7 @@ describe('a listing on the board', () => {
       fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
       await waitFor(() => expect(saved()).toHaveLength(1));
       expect(saved()[0].version).toBe(5);
-      expect(screen.queryByText(ar.employer.listingMoved)).toBeNull();
+      expect(screen.queryByText(ar.employer.listingMovedKept)).toBeNull();
     } finally {
       gcTime = 0;
     }
@@ -626,7 +655,7 @@ describe('a listing on the board', () => {
     fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
     await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
-    expect(screen.queryByText(ar.employer.listingMoved)).toBeNull();
+    expect(screen.queryByText(ar.employer.listingMovedKept)).toBeNull();
   });
 
   it("is not found when it is not the company's", async () => {
