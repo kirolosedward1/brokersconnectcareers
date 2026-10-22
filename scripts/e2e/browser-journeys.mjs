@@ -410,9 +410,16 @@ section('an approved employer: the console, and the company profile saved');
   }
   const companyId = (await sql("select m.company_id from company_members m join auth.users u on u.id = m.user_id where u.email = 'employer1@demo.test' limit 1"))[0]?.company_id;
   const [before] = await sql('select about_ar, version from companies where id = $1', [companyId]);
-  await page.goto(`${SITE}/employer/company`, { waitUntil: 'load' });
+  // Typed once the page is live: filled before hydration, React put the
+  // field's own default back after what was typed (seen on CI's runner).
+  await page.goto(`${SITE}/employer/company`, { waitUntil: 'networkidle' });
   const about = `نبذة محدّثة من المتصفح ${Date.now()}`;
-  await page.fill('textarea[name="aboutAr"]', about);
+  const field = page.locator('textarea[name="aboutAr"]');
+  for (let attempt = 0; attempt < 3 && (await field.inputValue()) !== about; attempt += 1) {
+    await field.fill(about);
+    await sleep(300);
+  }
+  check('the field holds exactly what was typed', (await field.inputValue()) === about);
   // The page has other forms (logo, papers, team); this is the profile's own button.
   await page.locator('form:has(textarea[name="aboutAr"]) button[type="submit"]').click();
   await sleep(2500);
