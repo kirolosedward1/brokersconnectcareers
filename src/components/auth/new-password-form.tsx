@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { localeHref, type Locale } from '@/i18n/routing';
 import { announcePasswordChange } from '@/lib/actions/account';
 import { useSessionRecovery } from '@/lib/session-expired';
-import { passwordRefusal } from '@/lib/auth/errors';
+import { knownAuthError, passwordRefusal } from '@/lib/auth/errors';
 import { secondFactorChallenge } from '@/lib/auth/second-factor';
 import { safeNext } from '@/lib/safe-next';
 
@@ -61,7 +61,19 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
           window.location.assign(localeHref(locale, safeNext(secondFactorChallenge('/sign-in/new-password', '')) ?? '/onboarding'));
           return;
         }
-        setError(refusal === 'session' ? t('linkExpired') : tCommon('errorBody'));
+        // Anything else in the shared words (the same password again, one too
+        // weak, too many tries), as the app says it: "something went wrong"
+        // left nothing to change.
+        const known = knownAuthError(updateError);
+        setError(
+          refusal === 'session'
+            ? t('linkExpired')
+            : known
+              ? known.namespace === 'auth'
+                ? t(known.key)
+                : tValidation(known.key)
+              : tCommon('errorBody'),
+        );
         return;
       }
       setDone(true);

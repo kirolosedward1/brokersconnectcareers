@@ -13,7 +13,7 @@ register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 
 const { secondFactorChallenge } = await import('../src/lib/auth/second-factor.ts');
 const { safeNext } = await import('../src/lib/safe-next.ts');
-const { passwordRefusal } = await import('../src/lib/auth/errors.ts');
+const { knownAuthError, passwordRefusal } = await import('../src/lib/auth/errors.ts');
 
 const ROOT = join(import.meta.dirname, '..');
 let pass = 0;
@@ -73,6 +73,17 @@ is('a spent emailed code', passwordRefusal({ code: 'otp_expired', message: 'Toke
 is('no session left is still the spent link', passwordRefusal({ name: 'AuthSessionMissingError', message: 'Auth session missing!' }), 'session');
 is('as is a session the server no longer has', passwordRefusal({ code: 'session_not_found', message: 'Session from session_id claim in JWT does not exist' }), 'session');
 is('anything else is not called an expired link', passwordRefusal({ code: 'weak_password', message: 'Password should be at least 10 characters.' }), 'other');
+const same = { code: 'same_password', message: 'New password should be different from the old password.' };
+is('the same password again is not an expired link', passwordRefusal(same), 'other');
+is('and has its own words in the shared mapping', knownAuthError(same)?.key, 'errSamePassword');
+is('too many tries is not an expired link', passwordRefusal({ code: 'over_request_rate_limit', message: 'Request rate limit reached' }), 'other');
+is('a refusal with nothing in it is other', passwordRefusal({}), 'other');
+is('nor is a missing message mistaken for a session', passwordRefusal({ code: 'unexpected_failure' }), 'other');
+is(
+  "the code's own refusal (no address to send it to) is not a wrong code",
+  passwordRefusal({ code: 'validation_failed', message: 'Reauthentication requires the user to have an email or a phone number' }),
+  'other',
+);
 
 console.log('\n— the reset and the settings ask for it');
 const resetPage = readFileSync(join(ROOT, 'src/app/[locale]/sign-in/new-password/page.tsx'), 'utf8');
@@ -102,6 +113,19 @@ is(
   true,
 );
 is('and send it back as the nonce', /updateUser\(nonce \? \{ password, nonce \} : \{ password \}\)/.test(settings), true);
+
+console.log('\n— any other refusal is said in the shared words, not as "something went wrong"');
+is(
+  'the reset form says a known refusal (the same password again, one too weak) in its own words',
+  /const known = knownAuthError\(updateError\);[\s\S]*?setError\(\s*refusal === 'session'\s*\? t\('linkExpired'\)\s*: known/.test(resetForm),
+  true,
+);
+is(
+  'and so do the settings, for the password and for the code',
+  (settings.match(/said\(error\)/g) ?? []).length === 2 && /function said\(error: \{ message: string; code\?: string \}\)/.test(settings),
+  true,
+);
+is('the settings no longer single out one refusal', /knownAuthError\(error\)\?\.key === 'passwordShort'/.test(settings), false);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

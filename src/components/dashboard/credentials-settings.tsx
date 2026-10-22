@@ -91,13 +91,7 @@ export function CredentialsSettings({
           await sendCode();
           return;
         }
-        setPasswordError(
-          refusal === 'code_invalid'
-            ? t('reauthInvalid')
-            : refusal === 'other' && knownAuthError(error)?.key === 'passwordShort'
-              ? tValidation('passwordShort')
-              : tCommon('errorBody'),
-        );
+        setPasswordError(refusal === 'code_invalid' ? t('reauthInvalid') : said(error));
         return;
       }
       form.reset();
@@ -122,11 +116,18 @@ export function CredentialsSettings({
     });
   }
 
+  /** A refusal in the shared words (the same password again, too many tries), or the generic line. */
+  function said(error: { message: string; code?: string }): string {
+    const known = knownAuthError(error);
+    if (!known) return tCommon('errorBody');
+    return known.namespace === 'auth' ? tAuth(known.key) : tValidation(known.key);
+  }
+
   /** The code GoTrue asks for, emailed to the account's own address. */
   async function sendCode() {
     const { error } = await createClient().auth.reauthenticate();
     if (error) {
-      setPasswordError(knownAuthError(error)?.key === 'errTooMany' ? tAuth('errTooMany') : tCommon('errorBody'));
+      setPasswordError(said(error));
       return;
     }
     setPasswordError(null);
