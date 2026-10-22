@@ -198,8 +198,13 @@ function Settled({ children }: { children: ReactNode }) {
   return useSession().settled ? children : null;
 }
 
+/** Each test's query cache, for reading something again as the app does on its own. */
+let client: QueryClient;
+beforeEach(() => {
+  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+});
+
 function Root() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
     <QueryClientProvider client={client}>
       <ThemeProvider>
@@ -415,6 +420,58 @@ describe('a reminder before a saved listing closes', () => {
 
     await waitFor(() => expect(phone.__scheduled.size).toBe(0));
     expect(await jobReminders.read(USER_ID)).toEqual([]);
+  });
+
+  it('takes back the reminder of a listing applied to even when it was set after the saved list was last read', async () => {
+    const soon = job('1', {}, 5 * DAY);
+    savedJobs = [soon];
+    let applications: unknown[] = [];
+    server.on('GET /rest/v1/applications', () => applications);
+    await signedIn();
+    renderRouter(app, { initialUrl: '/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    // Set from the Saved card a moment after its list was read: newer than that read.
+    await act(async () => {
+      await setReminder(USER_ID, soon, words, new Date(Date.now() + 60_000));
+    });
+    await waitFor(() => expect(phone.__scheduled.size).toBe(1));
+
+    // Applied: the applications read again say so; the saved list is not read again.
+    applications = [{ id: 'application-1', job_id: soon.id, status: 'submitted', created_at: '2026-10-01T10:00:00Z', job: { ...soon } }];
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['applications'] });
+    });
+    await waitFor(() => expect(phone.__scheduled.size).toBe(0));
+    expect(await jobReminders.read(USER_ID)).toEqual([]);
+  });
+
+  it('does not put back the reminder of a listing applied to while it was hidden', async () => {
+    const soon = job('1', {}, 5 * DAY);
+    await setReminder(USER_ID, soon, words);
+    savedJobs = [soon];
+    let applications: unknown[] = [];
+    server.on('GET /rest/v1/applications', () => applications);
+    await signedIn();
+    renderRouter(app, { initialUrl: '/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+
+    act(() => hideJob(soon.id, { name: soon.title_ar, slug: soon.slug }));
+    await waitFor(() => expect(phone.__scheduled.size).toBe(0));
+    // Applied while hidden (from its page, or on the website).
+    applications = [{ id: 'application-1', job_id: soon.id, status: 'submitted', created_at: '2026-10-01T10:00:00Z', job: { ...soon } }];
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['applications'] });
+    });
+    await act(async () => {});
+
+    try {
+      act(() => unhideJob(soon.id));
+      await act(async () => {});
+      expect(phone.__scheduled.size).toBe(0);
+      expect(await jobReminders.read(USER_ID)).toEqual([]);
+    } finally {
+      unhideJob(soon.id);
+    }
   });
 
   it('takes back the reminder of a listing hidden, and puts it back when the listing is', async () => {

@@ -49,10 +49,22 @@ export function useRemindersFollowSaved() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner, read, applied]);
 
+  const keptIds = kept.map((reminder) => reminder.id).join('\n');
+
+  // Applied to, as the applications now read say: its reminder goes at once,
+  // however lately it was set. Left to the saved list's next read, one set
+  // from the Saved card a moment before applying — newer than that read —
+  // still went off ("apply before it closes") an hour after the application.
+  // No reminder is offered on a listing already applied to, so none is lost.
+  useEffect(() => {
+    for (const id of keptIds.split('\n')) {
+      if (id && applied.has(id)) void cancelReminder(owner, id);
+    }
+  }, [owner, applied, keptIds]);
+
   // Hidden: its reminder held aside, for an Undo; shown again: put back.
   const hiddenJobs = useHiddenJobs();
   const before = useRef<{ owner: string; hidden: ReadonlySet<string> } | null>(null);
-  const keptIds = kept.map((reminder) => reminder.id).join('\n');
   useEffect(() => {
     const was = before.current?.owner === owner ? before.current.hidden : new Set<string>();
     before.current = { owner, hidden: hiddenJobs };

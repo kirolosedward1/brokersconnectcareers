@@ -313,6 +313,33 @@ describe('suggestions as the reader types', () => {
       await waitFor(() => expect(boardReads().some((params) => params.get('sort') === 'salary')).toBe(true));
     });
 
+    it('keeps a quick chip tapped as the order card fades, and the order with it', async () => {
+      const result = renderRouter(boardApp, { initialUrl: '/jobs' });
+      expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+      fireEvent.press(screen.getByRole('button', { name: `${ar.jobs.sortBy}: ${ar.jobs.sortNewest}` }));
+      fireEvent.press(await screen.findByRole('radio', { name: ar.jobs.sortSalary }));
+      // The card still fading: a chip tapped meanwhile.
+      fireEvent.press(screen.getAllByRole('button', { name: ar.filters.hasBasicSalaryYes })[0]);
+      await waitFor(() => expect(result.getSearchParams()).toMatchObject({ salary: 'yes' }));
+      await act(() => jest.advanceTimersByTimeAsync(800));
+      await waitFor(() => expect(result.getSearchParams()).toMatchObject({ salary: 'yes', sort: 'salary' }));
+    });
+
+    it('keeps the order chosen just before the filters were opened when they are applied', async () => {
+      const result = renderRouter(boardApp, { initialUrl: '/jobs' });
+      expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+      fireEvent.press(screen.getByRole('button', { name: `${ar.jobs.sortBy}: ${ar.jobs.sortNewest}` }));
+      fireEvent.press(await screen.findByRole('radio', { name: ar.jobs.sortSalary }));
+      // Filters tapped as the card fades: the sheet opens once it has gone, and the order lands.
+      fireEvent.press(screen.getByRole('button', { name: ar.jobs.filters }));
+      await act(() => jest.advanceTimersByTimeAsync(800));
+      await waitFor(() => expect(result.getSearchParams()).toMatchObject({ sort: 'salary' }));
+      fireEvent(await screen.findByLabelText(ar.filters.search), 'submitEditing');
+      await waitFor(() => expect(screen.queryByLabelText(ar.filters.search)).toBeNull());
+      await act(async () => {});
+      expect(result.getSearchParams()).toMatchObject({ sort: 'salary' });
+    });
+
     it("searches with the keyboard's Search key, and counts the words typed on the sheet's button", async () => {
       await typeInSheet('مدير');
       // The button's figure asks for the words too once the typing pauses.
