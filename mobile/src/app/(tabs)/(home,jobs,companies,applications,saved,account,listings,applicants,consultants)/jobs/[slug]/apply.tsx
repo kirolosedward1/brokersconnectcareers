@@ -37,6 +37,7 @@ import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useHasBoard } from '~/lib/use-tabs';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
 
@@ -216,6 +217,7 @@ function ApplyForm({
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const apply = useApplyToJob();
   const scroll = useRef<ScrollView>(null);
   const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'experienceBand', 'cv']);
@@ -366,7 +368,7 @@ function ApplyForm({
             ) : (
               <Paperclip size={16} color={colors.mutedForeground} />
             )}
-            <Text variant="small" numberOfLines={1} style={{ flex: 1 }}>
+            <Text variant="small" numberOfLines={large ? undefined : 1} style={{ flex: 1 }}>
               {attachment.kind === 'profile' ? t('app.apply.profileCv') : attachment.file.name}
             </Text>
             <Pressable

@@ -3,6 +3,7 @@ import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Check, ChevronDown, X } from '~/components/ui/lucide';
 import { useTranslations } from 'use-intl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { Text } from './text';
@@ -37,6 +38,7 @@ export function Select<T extends string | number>({
 }) {
   const t = useTranslations('common');
   const { colors } = useTheme();
+  const large = useLargeText();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const current = options.find((option) => option.value === value) ?? null;
@@ -67,8 +69,8 @@ export function Select<T extends string | number>({
           backgroundColor: pressed ? colors.muted : colors.card,
         })}
       >
-        {/* Inline, the words wrap rather than cut: it is how the largest text sizes show a choice. */}
-        <Text tone={current ? 'foreground' : 'mutedForeground'} numberOfLines={inlineLabel ? undefined : 1} style={{ flexShrink: 1 }}>
+        {/* Inline, or at the largest text sizes, the words wrap rather than cut. */}
+        <Text tone={current ? 'foreground' : 'mutedForeground'} numberOfLines={inlineLabel || large ? undefined : 1} style={{ flexShrink: 1 }}>
           {inlineLabel ? <Text tone="mutedForeground">{`${label}: `}</Text> : null}
           {current?.label ?? placeholder}
         </Text>

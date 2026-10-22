@@ -3,20 +3,22 @@
  *
  * `profiles.avatar_url` is drawn as an <img> in every employer's browser: the
  * applicant card, the shortlist, the directory card, the profile page. The
- * database trigger (migration 202) pins the *shape* of the value — the
- * account's own folder in the avatars bucket, or a Google account picture —
+ * database trigger (migrations 202, 350) pins the *shape* of the value — the
+ * account's own folder in the avatars bucket —
  * but it cannot know this deployment's storage host, so a URL with the right
  * path on somebody else's host still passes it. Rendered as it stands, that
  * is a tracking pixel: a candidate learns the IP address and the moment an
  * employer opened their application.
  *
  * So the host is pinned here, where it is known. Only the app's own Supabase
- * storage and Google's picture host are fetched; anything else falls back to
- * the monogram, which is what a missing photo looks like anyway.
+ * storage is fetched; anything else falls back to the monogram, which is what
+ * a missing photo looks like anyway. Google's picture host was fetched too
+ * while sign-up copied the Google account's photo; nothing does now, and the
+ * trigger refuses one (migrations 339 and 350), so a reader's browser never
+ * asks Google for somebody's face.
  *
  * No imports, so the auth suite can load it under Node.
  */
-const GOOGLE_PICTURES = 'lh3.googleusercontent.com';
 const AVATARS_PATH = '/storage/v1/object/public/avatars/';
 const LOGOS_PATH = '/storage/v1/object/public/company-logos/';
 
@@ -34,8 +36,6 @@ export function trustedAvatarUrl(
   }
 
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
-
-  if (parsed.protocol === 'https:' && parsed.host === GOOGLE_PICTURES) return url;
 
   return fromOwnStorage(parsed, storageOrigin, AVATARS_PATH) ? url : null;
 }

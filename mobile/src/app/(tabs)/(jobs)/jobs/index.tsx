@@ -37,6 +37,7 @@ import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
@@ -255,6 +256,7 @@ function BoardHeader({
   const locale = useLocale();
   const t = useTranslations('jobs');
   const { colors } = useTheme();
+  const large = useLargeText();
   const labelFor = useFilterLabel(filters);
   const active = activeFilterList(filters);
   const company = first?.company;
@@ -299,7 +301,7 @@ function BoardHeader({
             size="sm"
           />
           <View style={{ flex: 1 }}>
-            <Text weight="medium" numberOfLines={1}>
+            <Text weight="medium" numberOfLines={large ? undefined : 1}>
               {t('atCompany', { company: localized(locale, company.name_ar, company.name_en) })}
             </Text>
             <Text

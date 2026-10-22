@@ -40,6 +40,7 @@ import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useHoldBack } from '~/lib/use-hold-back';
 import { webAddress } from '~/lib/web-address';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
 
@@ -177,6 +178,7 @@ function OnboardingForm({
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const insets = useSafeAreaInsets();
   const districts = useDistricts();
 
@@ -372,10 +374,10 @@ function OnboardingForm({
             ) : null}
           </View>
           <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
-            <Text variant="small" weight="semibold" numberOfLines={1} style={{ textAlign: 'center' }}>
+            <Text variant="small" weight="semibold" numberOfLines={large ? undefined : 1} style={{ textAlign: 'center' }}>
               {t('onboarding.title')}
             </Text>
-            <Text variant="caption" tone="mutedForeground" numberOfLines={1} style={{ textAlign: 'center' }}>
+            <Text variant="caption" tone="mutedForeground" numberOfLines={large ? undefined : 1} style={{ textAlign: 'center' }}>
               {stepLabel}
             </Text>
           </View>

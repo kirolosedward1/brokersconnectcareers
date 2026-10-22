@@ -20,6 +20,7 @@ import { Text } from '~/components/ui/text';
 import { flattenShortlist, useShortlist, useShortlistedIds } from '~/features/directory/queries';
 import { useDistricts } from '~/features/taxonomy';
 import { useSession } from '~/lib/session';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
@@ -138,6 +139,7 @@ function ShortlistRow({ row, districts }: { row: SavedAgentCardRow; districts: M
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const shortlist = useShortlistToggle(row.id);
 
   const name = row.is_listed ? (row.is_unlocked && row.full_name ? row.full_name : t('agents.anonymous')) : t('employer.shortlistGone');
@@ -175,14 +177,14 @@ function ShortlistRow({ row, districts }: { row: SavedAgentCardRow; districts: M
 
         <View style={{ flex: 1, gap: space[1] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
-            <Text weight="semibold" numberOfLines={1} tone={row.is_listed ? 'foreground' : 'mutedForeground'} style={{ flexShrink: 1 }}>
+            <Text weight="semibold" numberOfLines={large ? undefined : 1} tone={row.is_listed ? 'foreground' : 'mutedForeground'} style={{ flexShrink: 1 }}>
               {name}
             </Text>
             {row.is_listed && !row.is_unlocked ? <Lock size={14} color={colors.mutedForeground} /> : null}
           </View>
           {row.is_listed ? (
             headline ? (
-              <Text variant="small" tone="mutedForeground" numberOfLines={2}>
+              <Text variant="small" tone="mutedForeground" numberOfLines={large ? undefined : 2}>
                 {headline}
               </Text>
             ) : null

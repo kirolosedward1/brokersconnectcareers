@@ -101,6 +101,35 @@ it('opens a first signed-out launch on the welcome, under the splash screen unti
   expect(hide).toHaveBeenCalled();
 });
 
+/** Whether `element` is drawn inside a scroll view. */
+function scrolls(element: ReturnType<typeof screen.getByRole>): boolean {
+  for (let node = element.parent; node; node = node.parent) if ((node.type as unknown) === 'RCTScrollView') return true;
+  return false;
+}
+
+it('lets the ways on scroll with the words once they would fill more than half the screen', async () => {
+  // An SE at the largest accessibility text size: the ways on were taller
+  // than the screen, the company's way in drawn off its bottom edge.
+  launch();
+  await drawn();
+  const signUp = await screen.findByRole('button', { name: ar.nav.signUp });
+  expect(scrolls(signUp)).toBe(false);
+
+  // At an ordinary size they stay pinned at the foot.
+  let ways = signUp.parent;
+  while (ways && !ways.props.onLayout) ways = ways.parent;
+  fireEvent(ways!, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 375, height: 200 } } });
+  await act(async () => {});
+  expect(scrolls(screen.getByRole('button', { name: ar.nav.signUp }))).toBe(false);
+
+  fireEvent(ways!, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 375, height: 2000 } } });
+  await act(async () => {});
+  expect(scrolls(screen.getByRole('button', { name: ar.nav.signUp }))).toBe(true);
+  // Every way on is still there.
+  expect(screen.getByRole('link', { name: ar.app.auth.forCompanies })).toBeTruthy();
+  expect(screen.getByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
+});
+
 it('closes onto Home when the reader skips it, and is not shown again', async () => {
   launch();
   await drawn();

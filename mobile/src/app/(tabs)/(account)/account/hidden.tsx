@@ -9,6 +9,7 @@ import { Text } from '~/components/ui/text';
 import { unhideAgent, useHiddenAgentEntries } from '~/features/moderation/hidden-agents';
 import { unhideCompany, useHiddenCompanyEntries } from '~/features/moderation/hidden-companies';
 import type { HiddenEntry } from '~/features/moderation/hidden-store';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 
@@ -73,6 +74,7 @@ function Section({
 }) {
   const t = useTranslations('app.moderation');
   const { colors } = useTheme();
+  const large = useLargeText();
   return (
     <View style={{ gap: space[2] }}>
       <Text variant="label" weight="semibold" tone="mutedForeground" accessibilityRole="header" style={{ paddingHorizontal: space[1] }}>
@@ -85,15 +87,15 @@ function Section({
             <View
               key={entry.id}
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: space[3],
+                flexDirection: large ? 'column' : 'row',
+                alignItems: large ? 'flex-start' : 'center',
+                gap: large ? space[2] : space[3],
                 paddingVertical: space[2],
                 borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
                 borderTopColor: colors.border,
               }}
             >
-              <Text style={{ flex: 1 }} numberOfLines={2}>
+              <Text style={large ? { alignSelf: 'stretch' } : { flex: 1 }} numberOfLines={large ? undefined : 2}>
                 {name}
               </Text>
               <Button

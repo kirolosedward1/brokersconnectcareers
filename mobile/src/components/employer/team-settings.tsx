@@ -13,6 +13,7 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { MemberRefused, useAddMember, useRemoveMember, type TeamMember } from '~/features/employer/company';
 import { EMAIL_SHAPE } from '~/lib/email-shape';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 
@@ -32,6 +33,7 @@ const REFUSAL_COPY = {
 export function TeamSettings({ members, canManage }: { members: TeamMember[]; canManage: boolean }) {
   const t = useTranslations();
   const { colors } = useTheme();
+  const large = useLargeText();
   const add = useAddMember();
   const remove = useRemoveMember();
   const [email, setEmail] = useState('');
@@ -113,7 +115,7 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
           >
             <Avatar name={name} seed={member.userId} />
             <View style={{ flex: 1 }}>
-              <Text variant="small" weight="medium" numberOfLines={1}>
+              <Text variant="small" weight="medium" numberOfLines={large ? undefined : 1}>
                 {name}
               </Text>
               <Text variant="caption" tone="mutedForeground">

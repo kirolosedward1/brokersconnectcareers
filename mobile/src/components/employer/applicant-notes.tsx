@@ -9,6 +9,7 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useAddNote, useDeleteNote } from '~/features/employer/applicants';
 import { ApiError } from '~/lib/api';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 
@@ -34,6 +35,7 @@ export function ApplicantNotes({
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const add = useAddNote();
   const remove = useDeleteNote();
   const shown = notes ?? [];
@@ -82,7 +84,7 @@ export function ApplicantNotes({
             </Text>
           </View>
         ) : null}
-        <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }} numberOfLines={1}>
+        <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }} numberOfLines={large ? undefined : 1}>
           {`— ${t('employer.notesHint')}`}
         </Text>
         <Chevron size={16} color={colors.mutedForeground} />

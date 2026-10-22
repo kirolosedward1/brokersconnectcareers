@@ -1,0 +1,112 @@
+import type { ReactNode } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { render, screen } from '@testing-library/react-native';
+import { Select } from '~/components/ui/select';
+import { catalogues, I18nProvider } from '~/i18n/provider';
+import { ThemeProvider } from '~/theme/provider';
+
+/*
+  At the accessibility text sizes (Settings → Accessibility → Display & Text
+  Size → Larger Text) no line is cut short: a name, a title or a file cut to
+  its first word and "…" is a line somebody who needs large text cannot read.
+  VoiceOver reads the whole string either way; this is for the eyes.
+*/
+
+const mockWindow = { width: 375, height: 667, scale: 2, fontScale: 1 };
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true,
+  default: () => mockWindow,
+}));
+
+afterEach(() => {
+  mockWindow.fontScale = 1;
+});
+
+// Node's own modules, required as tests/server.ts does: the app's typings have no Node in them.
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { readdirSync, readFileSync, statSync } = require('node:fs') as {
+  readdirSync: (path: string) => string[];
+  readFileSync: (path: string, encoding: 'utf8') => string;
+  statSync: (path: string) => { isDirectory: () => boolean };
+};
+const { join, relative } = require('node:path') as { join: (...parts: string[]) => string; relative: (from: string, to: string) => string };
+/* eslint-enable @typescript-eslint/no-require-imports */
+declare const __dirname: string;
+
+const SRC = join(__dirname, '..', 'src');
+
+function sources(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) return sources(path);
+    return path.endsWith('.tsx') ? [path] : [];
+  });
+}
+
+/** The JSX opening tag around `index`: from its `<` to its closing `>`. */
+function tagAround(text: string, index: number): string {
+  const start = text.lastIndexOf('<', index);
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (c === '{') depth++;
+    else if (c === '}') depth--;
+    else if (c === '>' && depth === 0 && text[i - 1] !== '=') return text.slice(start, i + 1);
+  }
+  return text.slice(start);
+}
+
+/*
+  Where a fixed line count is right at every size: the segmented control's
+  options, which at the accessibility sizes become a Select instead.
+*/
+const ALLOWED = new Set(['components/ui/segmented.tsx']);
+
+describe('a line cut short', () => {
+  it('is never cut at the accessibility sizes, unless its size is capped', () => {
+    const offenders: string[] = [];
+    for (const file of sources(SRC)) {
+      const name = relative(SRC, file);
+      if (ALLOWED.has(name)) continue;
+      const text = readFileSync(file, 'utf8');
+      for (const match of text.matchAll(/numberOfLines=\{([^}]*)\}/g)) {
+        const expression = match[1];
+        if (/\blarge\b|undefined/.test(expression)) continue;
+        // A capped size (maxFontSizeMultiplier ≤ the large-text threshold) never reaches them.
+        if (/maxFontSizeMultiplier=/.test(tagAround(text, match.index))) continue;
+        offenders.push(`${name}:${text.slice(0, match.index).split('\n').length} numberOfLines={${expression}}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('a chosen value in a Select', () => {
+  const ar = catalogues.ar;
+  const long = 'التجمع الخامس — القاهرة الجديدة، شارع التسعين الشمالي';
+
+  function Providers({ children }: { children: ReactNode }) {
+    return (
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 375, height: 667 }, insets: { top: 20, bottom: 0, left: 0, right: 0 } }}>
+        <ThemeProvider>
+          <I18nProvider>{children}</I18nProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    );
+  }
+
+  const field = () => (
+    <Select label={ar.jobs.sortBy} value="far" options={[{ value: 'far', label: long }]} placeholder="—" onChange={() => {}} />
+  );
+
+  it('is one line at the ordinary sizes', () => {
+    render(field(), { wrapper: Providers });
+    expect(screen.getByText(long).props.numberOfLines).toBe(1);
+  });
+
+  it('wraps at the accessibility sizes', () => {
+    mockWindow.fontScale = 3.571;
+    render(field(), { wrapper: Providers });
+    expect(screen.getByText(long).props.numberOfLines).toBeUndefined();
+  });
+});

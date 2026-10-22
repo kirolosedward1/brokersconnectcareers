@@ -54,6 +54,10 @@ export default function WelcomeScreen() {
   const navigation = useNavigation();
   const window = useWindowDimensions();
   const [shown, setShown] = useState(false);
+  // The text size at which the ways on were found to fill more than half the
+  // screen; at that size they scroll with the words instead of staying pinned.
+  const [tallAt, setTallAt] = useState<number | null>(null);
+  const waysScroll = tallAt === window.fontScale;
 
   // Shown at once under the splash screen (the root layout opens it without
   // animation); closed by fading away onto Home.
@@ -72,6 +76,53 @@ export default function WelcomeScreen() {
   // rather than a second button: the headline stays in view above them.
   const compact = window.height < 740;
   const emblem = Math.round(Math.min(220, window.height * (compact ? 0.2 : 0.25), (window.width - gutter * 2) / 1.6));
+
+  /*
+    The ways on stay at the foot of the screen while they leave room above
+    them. At the largest text sizes on a small phone (an SE at the largest
+    accessibility size) they were taller than the screen: the headline had
+    no room and the company's way in fell off the bottom with nothing to
+    scroll it back. There they follow the words, inside the scroll.
+  */
+  const ways = (
+    <Appear
+      play={shown}
+      delay={AT.ways}
+      onLayout={
+        waysScroll
+          ? undefined
+          : (event) => {
+              if (event.nativeEvent.layout.height > window.height / 2) setTallAt(window.fontScale);
+            }
+      }
+      style={{
+        gap: space[3],
+        paddingHorizontal: waysScroll ? 0 : gutter,
+        paddingTop: space[3],
+        paddingBottom: waysScroll ? space[2] : insets.bottom + space[4],
+      }}
+    >
+      <Button label={t('nav.signUp')} size="lg" onPress={() => router.push('/sign-up')} />
+      {compact ? (
+        <AuthSwitch question={t('auth.hasAccount')} action={t('nav.signIn')} onPress={() => router.push('/sign-in')} />
+      ) : (
+        <Button label={t('nav.signIn')} variant="outline" size="lg" onPress={() => router.push('/sign-in')} />
+      )}
+      <Text variant="small" tone="mutedForeground" style={[styles.centred, { paddingTop: space[1] }]}>
+        {`${t('app.welcome.employer')} `}
+        <Text
+          variant="small"
+          weight="semibold"
+          tone="primary"
+          accessibilityRole="link"
+          onPress={() => router.push({ pathname: '/sign-up', params: { role: 'employer' } })}
+          suppressHighlighting
+        >
+          {t('app.auth.forCompanies')}
+        </Text>
+      </Text>
+    </Appear>
+  );
 
   return (
     <View
@@ -117,7 +168,8 @@ export default function WelcomeScreen() {
           justifyContent: 'center',
           gap: compact ? space[4] : space[8],
           paddingHorizontal: gutter,
-          paddingVertical: compact ? space[2] : space[5],
+          paddingTop: compact ? space[2] : space[5],
+          paddingBottom: waysScroll ? insets.bottom + space[4] : compact ? space[2] : space[5],
         }}
       >
         <Emblem size={emblem} play={shown} />
@@ -144,39 +196,10 @@ export default function WelcomeScreen() {
             </Text>
           </Appear>
         </View>
+        {waysScroll ? ways : null}
       </ScrollView>
 
-      {/* The ways on stay at the foot of the screen, whatever the phone's size or text size. */}
-      <Appear
-        play={shown}
-        delay={AT.ways}
-        style={{
-          gap: space[3],
-          paddingHorizontal: gutter,
-          paddingTop: space[3],
-          paddingBottom: insets.bottom + space[4],
-        }}
-      >
-        <Button label={t('nav.signUp')} size="lg" onPress={() => router.push('/sign-up')} />
-        {compact ? (
-          <AuthSwitch question={t('auth.hasAccount')} action={t('nav.signIn')} onPress={() => router.push('/sign-in')} />
-        ) : (
-          <Button label={t('nav.signIn')} variant="outline" size="lg" onPress={() => router.push('/sign-in')} />
-        )}
-        <Text variant="small" tone="mutedForeground" style={[styles.centred, { paddingTop: space[1] }]}>
-          {`${t('app.welcome.employer')} `}
-          <Text
-            variant="small"
-            weight="semibold"
-            tone="primary"
-            accessibilityRole="link"
-            onPress={() => router.push({ pathname: '/sign-up', params: { role: 'employer' } })}
-            suppressHighlighting
-          >
-            {t('app.auth.forCompanies')}
-          </Text>
-        </Text>
-      </Appear>
+      {waysScroll ? null : ways}
     </View>
   );
 }
