@@ -25,10 +25,15 @@ export function isMissingCodeVerifier(error: AuthLinkError | null | undefined): 
   return /code verifier/i.test(error.message ?? '');
 }
 
+/** The path itself, or the same path carrying a query. Not a check that it is internal. */
+function pathOrQuery(path: string, base: string): boolean {
+  return path === base || path.startsWith(`${base}?`);
+}
+
 function isPasswordReset(type: string | null | undefined, next: string | null | undefined): boolean {
   if (type === 'recovery') return true;
   if (!next) return false;
-  return next === '/sign-in/new-password' || next.startsWith('/sign-in/new-password?');
+  return pathOrQuery(next, '/sign-in/new-password');
 }
 
 /**
@@ -38,7 +43,7 @@ function isPasswordReset(type: string | null | undefined, next: string | null | 
 export function isSignupConfirmation(type: string | null | undefined, next: string | null | undefined): boolean {
   if (type === 'signup') return true;
   if (next && /(?:^|[?&])confirmed=1(?:&|$)/.test(next)) return true;
-  if (type === 'email' && next && (next === '/onboarding' || next.startsWith('/onboarding?'))) return true;
+  if (type === 'email' && next && pathOrQuery(next, '/onboarding')) return true;
   return false;
 }
 
