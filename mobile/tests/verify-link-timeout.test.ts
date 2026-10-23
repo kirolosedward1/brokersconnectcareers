@@ -2,9 +2,9 @@
 import { checkLink } from '~/features/auth/verify-link';
 
 it('gives up on a stalled link check after its limit', async () => {
-  const realFetch = global.fetch;
+  const realFetch = globalThis.fetch;
   // A request that never answers, until its signal gives up on it.
-  global.fetch = jest.fn(
+  globalThis.fetch = jest.fn(
     (_input: RequestInfo | URL, init?: RequestInit) =>
       new Promise<Response>((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () => reject(new TypeError('Network request failed: aborted')));
@@ -16,9 +16,9 @@ it('gives up on a stalled link check after its limit', async () => {
     await jest.advanceTimersByTimeAsync(21_000);
     const result = await done;
     expect(result.kind).toBe('error');
-    expect(global.fetch).toHaveBeenCalled();
+    expect(globalThis.fetch).toHaveBeenCalled();
   } finally {
     jest.useRealTimers();
-    global.fetch = realFetch;
+    globalThis.fetch = realFetch;
   }
 });
