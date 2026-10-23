@@ -4,6 +4,7 @@ import { useId, useState, useTransition } from 'react';
 import { Lock, NotebookPen, Pencil, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { setSavedJobNote } from '@/lib/actions/jobs';
 import { reach } from '@/lib/reach';
 import { cleanNote, NOTE_MAX } from '@/lib/saved-note';
@@ -115,9 +116,9 @@ export function SavedJobNote({ jobId, initialNote }: { jobId: string; initialNot
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" size="sm" disabled={pending || !changed}>
+        <SubmitButton size="sm" disabled={pending || !changed}>
           {pending ? tCommon('loading') : tCommon('save')}
-        </Button>
+        </SubmitButton>
         <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => setEditing(false)}>
           {tCommon('cancel')}
         </Button>

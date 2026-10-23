@@ -22,7 +22,8 @@
     "collapseMenu": "Collapse the menu",
     "expandMenu": "Expand the menu",
     "closeMenu": "Close the menu",
-    "browseJobs": "Browse jobs"
+    "browseJobs": "Browse jobs",
+    "searchJobs": "Search open jobs"
   },
   "home": {
     "searchPlaceholder": "Search a role, company or district",
