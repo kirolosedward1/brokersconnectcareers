@@ -21,7 +21,7 @@ import { Badge } from '~/components/ui/badge';
 import { BarOnly } from '~/components/navigation/page-header';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
-import { ForwardChevron } from '~/components/ui/icons';
+import { ForwardChevron, SendForward } from '~/components/ui/icons';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { recentJobs, useListOwner, viewedFrom } from '~/features/jobs/recent';
@@ -249,6 +249,7 @@ export function JobDetail({
           <Button
             label={t('apply')}
             size="lg"
+            icon={<SendForward size={18} color={colors.primaryForeground} />}
             onPress={() =>
               session
                 ? router.push({ pathname: '/jobs/[slug]/apply', params: { slug: job.slug } })
@@ -333,6 +334,7 @@ export function JobDetail({
           <Button
             label={t('companyPage')}
             variant="outline"
+            icon={<Building2 size={16} color={colors.foreground} />}
             onPress={() => router.push({ pathname: '/companies/[slug]', params: { slug: job.company.slug } })}
           />
         </Card>
