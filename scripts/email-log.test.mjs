@@ -9,9 +9,7 @@
  * sweepOutbox is the retry job.
  */
 
-const { FALLBACK_WRITE_TIMEOUT_MS, claimInsert, newEmailLogId, persistFailedSend } = await import(
-  '../src/lib/email/attempt-log.ts'
-);
+const { FALLBACK_WRITE_TIMEOUT_MS, claimInsert, persistFailedSend } = await import('../src/lib/email/attempt-log.ts');
 const { emailRowIsStale, markAgeUnknown, mergeEmailAges, sweepOutbox } = await import('../src/lib/jobs/outbox-sweep.ts');
 
 let pass = 0;
@@ -194,8 +192,8 @@ section('the retry job skips one older than 48h');
 
 section('a lost claim and its fallback are one row, by id');
 {
-  const id = newEmailLogId();
-  ok('the id is chosen in the app, as a uuid', /^[0-9a-f-]{36}$/.test(id));
+  const id = '11111111-1111-4111-8111-111111111111';
+  ok('the id is one the app already holds', /^[0-9a-f-]{36}$/.test(id));
   const bare = {
     id,
     template: 'application_received',

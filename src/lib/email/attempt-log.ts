@@ -25,11 +25,6 @@ const MAX_ERROR_LENGTH = 500;
 /** A hung log write must not hold the request that asked for the email. */
 export const FALLBACK_WRITE_TIMEOUT_MS = 3_000;
 
-/** The outbox row id, chosen before the claim insert so a lost answer still names that row. */
-export function newEmailLogId(): string {
-  return crypto.randomUUID();
-}
-
 export type FailedEmailInsert = {
   id: string;
   template: string;
