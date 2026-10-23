@@ -5,8 +5,8 @@
 type ParseLanding = (slug: string) => { districtSlug: string } | null;
 
 /**
- * Whether the record behind a public detail URL exists for an anonymous
- * visitor — asked before the page renders, so a missing one can be a real 404.
+ * Whether the record behind a public detail URL exists for this reader —
+ * asked before the page renders, so a missing one can be a real 404.
  *
  * The detail routes stream: each has a loading.tsx, so the 200 is on the wire
  * before the page learns its record is missing, and notFound() can only draw
@@ -14,13 +14,18 @@ type ParseLanding = (slug: string) => { districtSlug: string } | null;
  * indexes these (they carry noindex), but a listing that was rejected, a
  * company taken down with a suspension, or a mistyped share link should drop
  * out on the first recrawl with the status that says so, not linger as a
- * Search Console warning.
+ * Search Console warning. The same status is what a signed-in reader gets:
+ * the page's own notFound() cannot change a status that has already been sent.
  *
- * One indexed lookup through the public REST API with the anon key, so
- * row-level security answers exactly as it answers the page: an expired
- * listing is `gone` (410), one closed by its owner still exists (it keeps
- * its page, noindexed), a draft, a listing in review or a rejected one
- * does not, and a consultant profile exists unless it is hidden.
+ * One indexed lookup through the REST API. With no session it uses the anon
+ * key; with a session it uses that token, so row-level security answers as
+ * it answers the page. An expired listing is `gone` (410), one closed by its
+ * owner still exists (it keeps its page, noindexed), and a draft exists only
+ * for a reader the policies let through.
+ *
+ * A consultant card the reader may not open at all — a candidate opening a
+ * colleague's address — is `unknown`, not `missing`. The page redirects them.
+ * Calling that a 404 would tell them the profile is absent.
  *
  * Fails open. Anything but a clean answer — no configuration, a timeout, an
  * error status — is 'unknown', and the request goes through to the page,
@@ -99,9 +104,11 @@ export function detailTargets(path: string, parseLandingSlug: ParseLanding): Tar
     return landing ? [{ table: 'districts', column: 'slug', value: landing.districtSlug }, job] : [job];
   }
   if (section === 'companies') return [{ table: 'companies', column: 'slug', value: slug }];
-  // Gated profiles are invisible to anon under RLS but still have a page
-  // (anonymised), so ask the same function the page asks.
-  return [{ rpc: 'get_agent_card', arg: 'p_slug', value: slug }];
+  // The same function the page asks. The argument is the handle: a slug, or
+  // the id a locked card is opened by. Anon cannot call it; a signed-in
+  // reader can, and an empty answer is "no card for you", which is not always
+  // "no such profile".
+  return [{ rpc: 'get_agent_card', arg: 'p_handle', value: slug }];
 }
 
 /**
@@ -110,23 +117,78 @@ export function detailTargets(path: string, parseLandingSlug: ParseLanding): Tar
  * listing as the page it belongs to, so an expired one can answer 410 there
  * too instead of streaming a soft 404.
  */
-async function lookup(target: Target, base: string, key: string, fetcher: typeof fetch): Promise<RecordState> {
-  const url =
-    'rpc' in target
-      ? `${base}/rest/v1/rpc/${target.rpc}?${target.arg}=${encodeURIComponent(target.value)}&select=id`
-      : `${base}/rest/v1/${target.table}?select=${target.table === 'jobs' ? 'status,expires_at' : target.column}&${target.column}=eq.${encodeURIComponent(target.value)}&limit=1`;
+function authHeaders(key: string, accessToken: string | null): Record<string, string> {
+  return {
+    apikey: key,
+    authorization: `Bearer ${accessToken || key}`,
+    accept: 'application/json',
+  };
+}
+
+async function readJson(
+  url: string,
+  key: string,
+  accessToken: string | null,
+  fetcher: typeof fetch,
+): Promise<unknown | null> {
+  const response = await fetcher(url, {
+    headers: authHeaders(key, accessToken),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    cache: 'no-store',
+  });
+  if (!response.ok) return null;
+  return response.json() as Promise<unknown>;
+}
+
+/**
+ * No card, for a reader who is allowed to open one, is a missing profile.
+ * No card for anyone else is not: the page sends them to their own console
+ * instead of a 404, and a 404 would say the address was empty.
+ */
+async function agentCardState(
+  handle: string,
+  base: string,
+  key: string,
+  accessToken: string | null,
+  fetcher: typeof fetch,
+): Promise<RecordState> {
+  try {
+    const rows = await readJson(
+      `${base}/rest/v1/rpc/get_agent_card?p_handle=${encodeURIComponent(handle)}&select=id`,
+      key,
+      accessToken,
+      fetcher,
+    );
+    if (!Array.isArray(rows)) return 'unknown';
+    if (rows.length) return 'exists';
+    if (!accessToken) return 'missing';
+
+    const allowed = await readJson(`${base}/rest/v1/rpc/can_browse_agent_directory`, key, accessToken, fetcher);
+    return allowed === true ? 'missing' : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+async function lookup(
+  target: Target,
+  base: string,
+  key: string,
+  accessToken: string | null,
+  fetcher: typeof fetch,
+): Promise<RecordState> {
+  if ('rpc' in target) return agentCardState(target.value, base, key, accessToken, fetcher);
 
   try {
-    const response = await fetcher(url, {
-      headers: { apikey: key, authorization: `Bearer ${key}`, accept: 'application/json' },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      cache: 'no-store',
-    });
-    if (!response.ok) return 'unknown';
-    const rows = (await response.json()) as unknown;
+    const rows = await readJson(
+      `${base}/rest/v1/${target.table}?select=${target.table === 'jobs' ? 'status,expires_at' : target.column}&${target.column}=eq.${encodeURIComponent(target.value)}&limit=1`,
+      key,
+      accessToken,
+      fetcher,
+    );
     if (!Array.isArray(rows)) return 'unknown';
     if (!rows.length) return 'missing';
-    return !('rpc' in target) && target.table === 'jobs' ? jobAvailability(rows[0]) : 'exists';
+    return target.table === 'jobs' ? jobAvailability(rows[0]) : 'exists';
   } catch {
     return 'unknown';
   }
@@ -136,6 +198,7 @@ export async function recordState(
   path: string,
   parseLandingSlug: ParseLanding,
   fetcher: typeof fetch = fetch,
+  accessToken: string | null = null,
 ): Promise<RecordState> {
   const targets = detailTargets(path, parseLandingSlug);
   if (!targets) return 'unknown';
@@ -147,7 +210,9 @@ export async function recordState(
   // A live page wins: a landing whose slug is also an expired listing is the
   // landing. Gone only when a listing has run out and nothing else is there.
   // Missing only when every candidate is definitely missing.
-  const answers = await Promise.all(targets.map((target) => lookup(target, base, key, fetcher)));
+  const answers = await Promise.all(
+    targets.map((target) => lookup(target, base, key, accessToken, fetcher)),
+  );
   if (answers.includes('exists')) return 'exists';
   if (answers.includes('gone')) return 'gone';
   if (answers.includes('unknown')) return 'unknown';

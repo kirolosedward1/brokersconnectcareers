@@ -53,6 +53,7 @@ is('a listing', detailTargets('/jobs/sales-new-cairo-123456', parseLandingSlug).
 is('a landing page asks about the district and a listing',
   detailTargets('/jobs/primary-sales-new-cairo', parseLandingSlug).map((t) => t.table), ['districts', 'jobs']);
 is('a gated profile is asked through the page\'s own function', 'rpc' in detailTargets('/agents/a-1', parseLandingSlug)[0], true);
+is('and by the handle the function takes', detailTargets('/agents/a-1', parseLandingSlug)[0].arg, 'p_handle');
 is('a malformed escape is not checked', detailTargets('/jobs/%E0%A4%A', parseLandingSlug), null);
 
 console.log('\n— what must not 404');
@@ -96,6 +97,42 @@ is('a listing nobody can see', await state('/jobs/gone-123456', []), 'missing');
 is('a landing page for no district, which is no listing either', await state('/jobs/primary-sales-atlantis', []), 'missing');
 is('a company that is not there', await state('/companies/nope', []), 'missing');
 is('a hidden profile', await state('/agents/hidden-1', []), 'missing');
+
+console.log('\n— asked as the signed-in reader');
+{
+  const seen = [];
+  const asReader = (routes) => async (url, init) => {
+    seen.push(init.headers.authorization);
+    const u = new URL(url);
+    const name = u.pathname.split('/').pop();
+    if (name === 'can_browse_agent_directory') return new Response(JSON.stringify(routes.browse === true));
+    const present = routes.present ?? [];
+    const values = [...u.searchParams.values()];
+    const eq = values.find((item) => item.startsWith('eq.'));
+    const value = eq
+      ? eq.slice(3)
+      : values.find((item) => item !== 'id' && item !== 'slug' && !item.includes(','));
+    const hit = present.includes(`${name}:${value}`);
+    return new Response(JSON.stringify(hit ? [{ id: '1', status: 'draft' }] : []));
+  };
+  const asked = (path, routes) => recordState(path, parseLandingSlug, asReader(routes), 'user-token');
+
+  is('their token is the one that asks', await asked('/jobs/zz-fake-job-000000', {}), 'missing');
+  is('and it is not the anonymous key', seen[0], 'Bearer user-token');
+  is('a draft they can open still exists', await asked('/jobs/draft-123456', { present: ['jobs:draft-123456'] }), 'exists');
+  is('a company that is not there, signed in', await asked('/companies/no-such-company', {}), 'missing');
+  is(
+    'a directory reader and no such profile',
+    await asked('/agents/nobody', { browse: true }),
+    'missing',
+  );
+  is(
+    'a reader who may not open the directory is not told it is missing',
+    await asked('/agents/sara', { browse: false }),
+    'unknown',
+  );
+  is('a card they may open', await asked('/agents/sara', { present: ['get_agent_card:sara'], browse: true }), 'exists');
+}
 
 delete process.env.NEXT_PUBLIC_SUPABASE_URL;
 is('unconfigured is never missing', await state('/jobs/gone-123456', []), 'unknown');

@@ -61,6 +61,16 @@ function localized(locale: string, path: string): string {
 }
 
 /**
+ * A rewrite replaces the response that refreshed the session. The new cookies
+ * have to travel with it, or a signed-in reader who hit a missing listing
+ * would keep the token this request just rotated out.
+ */
+function carrySession(from: NextResponse, to: NextResponse): NextResponse {
+  for (const cookie of from.headers.getSetCookie()) to.headers.append('set-cookie', cookie);
+  return to;
+}
+
+/**
  * What to serve when the middleware itself has failed.
  *
  * Every page lives under app/[locale], so a bare NextResponse.next() would 404
@@ -153,8 +163,11 @@ async function handle(request: NextRequest): Promise<NextResponse> {
   let user = null;
   let isAdmin: boolean | null | undefined;
   let secondFactorDue = false;
+  let accessToken: string | null = null;
   try {
-    ({ user, isAdmin, secondFactorDue = false } = await updateSession(request, response, { checkAdmin: inConsole }));
+    ({ user, isAdmin, secondFactorDue = false, accessToken = null } = await updateSession(request, response, {
+      checkAdmin: inConsole,
+    }));
   } catch (error) {
     console.warn(
       '[middleware] session refresh failed, treating the request as anonymous:',
@@ -207,19 +220,21 @@ async function handle(request: NextRequest): Promise<NextResponse> {
   }
 
   /*
-    A detail URL whose record an anonymous visitor cannot see gets a real 404.
+    A detail URL this reader cannot see gets a real 404, signed in or not.
 
     The job, company and agent pages stream behind a loading skeleton, so by
     the time they learn their record is missing the 200 has been sent and
     notFound() can only draw the not-found UI under it. Asked here instead,
-    before anything is sent, and answered with the catch-all route — which
-    does not stream and so 404s properly — in the visitor's own language.
+    before anything is sent, and answered by the catch-all — which calls
+    notFound() and does not stream — in the visitor's own language.
 
-    Anonymous requests only. That is every crawler, and it is the one reader
-    for whom "not visible" and "not there" are the same thing: an owner
-    previewing a draft, or somebody a hidden profile applied to, is signed in
-    and goes through to the page, which decides for them as it always has.
-    Any failure to get an answer lets the request through unchanged.
+    Signed out, the anonymous key is the reader. Signed in, the question is
+    asked again with their session, so a draft they own, a listing they
+    applied to, or a consultant card they may open still reaches the page.
+    A card they are not allowed to open at all is left to the page, which
+    redirects them. No session token means the anonymous answer cannot be
+    trusted for them, so a miss is left to the page too. Any failure to get
+    an answer lets the request through unchanged.
   */
   /*
     The gone page is only reached through the rewrite below, which carries the
@@ -230,16 +245,19 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     const url = request.nextUrl.clone();
     url.pathname = `/${locale}/__missing${path}`;
     url.search = '';
-    return NextResponse.rewrite(url);
+    return carrySession(response, NextResponse.rewrite(url));
   }
 
   if (request.method === 'GET' || request.method === 'HEAD') {
-    const state = await recordState(path, parseLandingSlug);
-    if (!user && state === 'missing') {
+    const token = user ? accessToken : null;
+    const state = await recordState(path, parseLandingSlug, fetch, token);
+    // A signed-in reader with no token cannot be judged by the anonymous
+    // answer: that answer calls their own draft missing.
+    if (state === 'missing' && !(user && !token)) {
       const url = request.nextUrl.clone();
       url.pathname = `/${locale}/__missing${path}`;
       url.search = '';
-      return NextResponse.rewrite(url);
+      return carrySession(response, NextResponse.rewrite(url));
     }
     /*
       Expired, for everyone: an anonymous reader and a signed-in one see the
@@ -257,7 +275,7 @@ async function handle(request: NextRequest): Promise<NextResponse> {
         headers.set('x-bc-gone', '1');
         const rewritten = NextResponse.rewrite(url, { request: { headers }, status: 410 });
         rewritten.headers.set('cache-control', 'no-store');
-        return rewritten;
+        return carrySession(response, rewritten);
       }
     }
   }
