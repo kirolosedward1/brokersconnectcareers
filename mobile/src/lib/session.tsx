@@ -3,6 +3,7 @@ import { isAuthApiError, isAuthRetryableFetchError, isAuthSessionMissingError, t
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Actor } from '@/lib/permissions';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
+import { forgetKeptDrafts } from './kept-draft';
 import { readLastActor, rememberActor } from './last-actor';
 import { encryptedSessionStorage } from './session-storage';
 import { SESSION_KEY, supabase } from './supabase';
@@ -77,6 +78,9 @@ export async function loadViewer(session: Session): Promise<Viewer> {
     const { data: checked, error: userError } = await supabase.auth.getUser();
     if (isAuthSessionMissingError(userError) || (isAuthApiError(userError) && [401, 403].includes(userError.status ?? 0))) {
       await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      // And what it had half typed here (kept-draft.ts): an account that is
+      // gone signs in again to nothing.
+      await forgetKeptDrafts();
     }
     if (userError) throw userError;
     if (checked.user?.id !== user.id) throw new Error('the session changed while the account was read');

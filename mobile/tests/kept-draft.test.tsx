@@ -17,6 +17,9 @@ const KEY = draftKey('test', 'user-a', 'rec');
 
 beforeEach(async () => {
   await AsyncStorage.clear();
+  // Somebody signed in, as the push bridge says at each sign-in: a sign-out
+  // in an earlier case keeps nothing until then.
+  await forgetKeptDrafts('user-a');
   // React Native's mock answers with nothing; the app removes what it subscribed.
   jest.mocked(AppState.addEventListener).mockClear().mockReturnValue({ remove: jest.fn() } as never);
 });
@@ -60,6 +63,21 @@ describe('the store', () => {
     expect((await AsyncStorage.getAllKeys()).slice().sort()).toEqual(['bc-draft:apply:user-a:j1', 'bc.theme']);
     await forgetKeptDrafts();
     expect(await AsyncStorage.getAllKeys()).toEqual(['bc.theme']);
+  });
+
+  it('signing in keeps that person\'s drafts and lets go of everybody else\'s', async () => {
+    await keepDraft(draftKey('apply', 'user-a', 'j1'), { a: 1 }, null, NOW);
+    await keepDraft(draftKey('job', 'user-b'), { b: 1 }, null, NOW);
+    await forgetKeptDrafts('user-a');
+    expect(await AsyncStorage.getAllKeys()).toEqual(['bc-draft:apply:user-a:j1']);
+  });
+
+  it('writes nothing after a sign-out — a form closing a moment later included — until somebody signs in', async () => {
+    await forgetKeptDrafts();
+    expect(await keepDraft(KEY, { late: 'keystroke' }, null, NOW)).toBe(false);
+    expect(await AsyncStorage.getItem(KEY)).toBeNull();
+    await forgetKeptDrafts('user-a');
+    expect(await keepDraft(KEY, { a: 1 }, null, NOW)).toBe(true);
   });
 });
 

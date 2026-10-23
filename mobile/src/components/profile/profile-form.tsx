@@ -1,4 +1,4 @@
-import { useRef, useState, type RefObject } from 'react';
+import { useCallback, useRef, useState, type RefObject } from 'react';
 import { Pressable, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2, Eye, EyeOff, FileText, Paperclip, ShieldCheck, Trash2, X } from '~/components/ui/lucide';
@@ -29,6 +29,10 @@ import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 import { ChipGroup, wholeNumber } from './fields';
 import { toast } from '~/components/feedback/toast';
+import { draftBase } from '@/lib/form-draft';
+import { DraftNotice } from '~/components/ui/draft-notice';
+import { draftKey } from '~/lib/kept-draft';
+import { useKeptDraft } from '~/lib/use-kept-draft';
 
 const VISIBILITIES: AgentVisibility[] = ['public', 'verified_employers_only', 'hidden'];
 const LANGUAGES = ['ar', 'en', 'fr'] as const;
@@ -44,6 +48,9 @@ type Errors = Partial<Record<'fullName' | 'whatsapp' | 'yearsExperience' | 'cv' 
  * The CV on file is named, taking it off is a choice, and a new one is
  * uploaded to the candidate's own folder before the save (the action takes a
  * path), and taken back out if the save is refused.
+ *
+ * What is typed is kept on the phone as it changes (use-kept-draft.ts), never
+ * the CV: iOS ending the app, or a session that ran out, loses none of it.
  */
 export function ProfileForm({
   profile,
@@ -64,7 +71,7 @@ export function ProfileForm({
   const districts = useDistricts().data ?? [];
   const developers = useDevelopers().data ?? [];
 
-  const form = useStoredFields({
+  const stored = {
     fullName: profile.full_name,
     whatsapp: profile.whatsapp_phone,
     visibility: (agent?.visibility ?? 'verified_employers_only') as AgentVisibility,
@@ -76,6 +83,24 @@ export function ProfileForm({
     districtIds: agent?.district_ids ?? [],
     developerIds,
     languages: agent?.languages ?? ['ar'],
+  };
+  const form = useStoredFields(stored);
+  type Kept = typeof stored;
+  const restoreDraft = useCallback(
+    (held: Kept) =>
+      form.set({ ...held, visibility: VISIBILITIES.includes(held.visibility) ? held.visibility : 'verified_employers_only' }),
+    // form.set only calls a state setter, which never changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const kept = useKeptDraft({
+    key: draftKey('agent-profile', profile.id),
+    values: form.fields,
+    restore: restoreDraft,
+    // The profile has no version column: what is stored stands in for one, so
+    // a draft typed before a save on the website is offered over it rather
+    // than poured in (draftBase).
+    base: draftBase(stored),
   });
   const { fullName, whatsapp, visibility, availability, years, headlineAr, headlineEn, tracks, districtIds, languages } = form.fields;
   const developerChoice = form.fields.developerIds;
@@ -90,7 +115,7 @@ export function ProfileForm({
   };
 
   // Leaving with anything changed since it was filled or last saved asks first.
-  useLeaveGuard(form.dirty || cv.kind !== 'keep', save.isPending);
+  useLeaveGuard(form.dirty || cv.kind !== 'keep', save.isPending, kept.drop);
 
   const hasCv = Boolean(agent?.cv_path);
 
@@ -117,6 +142,8 @@ export function ProfileForm({
     }
 
     setErrors({});
+    // Kept now, not after the pause: a refused save may bring another version in over the fields.
+    kept.flush();
     // What the form holds once this is saved (a picked file is then the one on file).
     const sending = form.fields;
     save.mutate(
@@ -141,6 +168,8 @@ export function ProfileForm({
         onSuccess: () => {
           setCv({ kind: 'keep' });
           form.saved(sending);
+          // Saved: the website holds it now, so the phone need not.
+          kept.clear();
           toast.show({ message: t('app.toast.changesSaved'), tone: 'success' });
         },
         onError: (failure) => {
@@ -165,6 +194,7 @@ export function ProfileForm({
 
   return (
     <View style={{ gap: space[5] }}>
+      <DraftNotice draft={kept} />
       <Field ref={inView.place('fullName')} label={t('onboarding.fullName')} error={errors.fullName}>
         <TextField
           value={fullName}

@@ -98,7 +98,7 @@ export default async function EmployerCompanyPage({
       ) : null}
 
       {isCompanyAdmin || !viewer.company ? (
-        <CompanyForm locale={locale} company={viewer.company} districts={districts} />
+        <CompanyForm locale={locale} ownerId={viewer.userId} company={viewer.company} districts={districts} />
       ) : null}
 
       {/* Admins only, and not out of tidiness: the commercial register and the

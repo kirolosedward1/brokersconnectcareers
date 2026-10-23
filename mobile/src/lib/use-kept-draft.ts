@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+import { mergeDraft, stillShown } from '@/lib/form-draft';
 import { dropDraft, keepDraft, pruneKeptDrafts, readKeptDraft } from '~/lib/kept-draft';
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -19,6 +20,8 @@ export type KeptDraftState = {
   drop: () => void;
   /** Sent and accepted: the draft goes. */
   clear: () => void;
+  /** Writes now rather than after the pause: before a send whose answer may replace the fields. */
+  flush: () => void;
 };
 
 /**
@@ -61,13 +64,15 @@ export function useKeptDraft<T>({
   const typedRef = useRef(typed);
 
   const ready = useRef(false);
+  /** The key the opening read last ran for: read again for the same one, the version moved under an open form. */
+  const openedFor = useRef<string | null>(null);
   const written = useRef<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Writes in the order they were asked for: an older one finishing last must not win.
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
-  const [offer, setOffer] = useState<{ values: T; savedAt: number } | null>(null);
+  const [offer, setOffer] = useState<{ values: T; savedAt: number; from?: T } | null>(null);
   const offerRef = useRef(offer);
   // What the handlers and timers read: this drawing's values. Synced before the
   // effects below run — effects run in the order they are declared.
@@ -97,36 +102,58 @@ export function useKeptDraft<T>({
     const json = JSON.stringify(current);
     if (json === written.current) return;
     written.current = json;
+    const opened = pristine.current;
     enqueue(async () => {
-      if (!(await keepDraft(key, current, baseText))) written.current = null;
+      if (!(await keepDraft(key, current, baseText, Date.now(), opened))) written.current = null;
     });
   }, [key, baseText, enqueue]);
 
   // Opening: read what was kept, then put it in or hold it back.
   useEffect(() => {
+    // Typing not yet written, or written: what this form holds that the server does not.
+    const outstanding = written.current !== null || timer.current !== null;
+    const moved = key !== null && openedFor.current === key;
+    openedFor.current = key;
     ready.current = false;
     written.current = null;
     if (!key) return;
     let live = true;
     (async () => {
+      // After any write still on its way: a flush just before a send must be what is read.
+      await queue.current.catch(() => {});
       await pruneKeptDrafts();
       const draft = await readKeptDraft<T>(key);
       if (!live) return;
       let found = false;
-      if (draft && !same(draft.values, pristine.current)) {
+      // What is on screen already (the form's version moved under it, after
+      // its own save, or fields nobody touched followed the server): nothing
+      // to give back, and it is written again below under the version it is
+      // on now.
+      const showing =
+        draft !== null && !same(draft.values, pristine.current) && stillShown(draft.values, pristine.current, latest.current);
+      if (draft && !showing && !same(draft.values, pristine.current)) {
         found = true;
         written.current = JSON.stringify(draft.values);
         const stale = baseText !== null && draft.base !== baseText;
         const typing = !same(typedRef.current(latest.current), typedRef.current(pristine.current));
         if (stale || typing) {
-          offerRef.current = { values: draft.values, savedAt: draft.savedAt };
+          offerRef.current = { values: draft.values, savedAt: draft.savedAt, from: draft.from };
           setOffer(offerRef.current);
         } else {
           restoreRef.current(draft.values);
           setRestoredAt(draft.savedAt);
         }
-      } else if (draft) {
+      } else if (draft && !showing) {
         void dropDraft(key);
+      }
+      if (moved) {
+        // The version moved under the open form, and fields nobody touched may
+        // have followed the server (a number stored in international form, a
+        // colleague's save taken over). What the form is measured against
+        // moves with them, or a draft would be written of changes nobody
+        // typed — and later put back over newer ones (mergeDraft).
+        if (draft && showing) pristine.current = mergeDraft(pristine.current, draft.values, latest.current);
+        else if (!draft && !outstanding) pristine.current = latest.current;
       }
       ready.current = true;
       // What was typed while the read was out has not been written yet — when
@@ -172,7 +199,9 @@ export function useKeptDraft<T>({
     offerRef.current = null;
     setOffer(null);
     written.current = null;
-    restoreRef.current(held.values);
+    // Only what the person changed comes back; a field they never touched
+    // keeps what was saved since (mergeDraft).
+    restoreRef.current(mergeDraft(held.values, held.from, latest.current));
     setRestoredAt(held.savedAt);
   }, []);
 
@@ -199,5 +228,5 @@ export function useKeptDraft<T>({
     pristine.current = latest.current;
   }, [forget]);
 
-  return { restoredAt, offeredAt: offer?.savedAt ?? null, accept, discard, drop, clear: drop };
+  return { restoredAt, offeredAt: offer?.savedAt ?? null, accept, discard, drop, clear: drop, flush: save };
 }

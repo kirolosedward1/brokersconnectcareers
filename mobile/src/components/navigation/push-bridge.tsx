@@ -61,10 +61,17 @@ export function PushBridge() {
     previous.current = userId;
     if (!before || before === userId) return;
     stopListeningHere();
-    // And the files they picked or exported, left in the cache, and the forms
-    // they had half typed (kept-draft.ts).
+    // And the files they picked or exported, left in the cache.
     clearPersonalCache();
-    void forgetKeptDrafts();
+  }, [userId]);
+
+  // Half-typed forms (kept-draft.ts) are the signed-in person's alone. A
+  // session that only ran out keeps them, as the website does, so signing in
+  // again carries on where they were; signing out took them already
+  // (signOutHere). Whoever signs in next keeps their own, and the phone lets
+  // go of everybody else's.
+  useEffect(() => {
+    if (userId) void forgetKeptDrafts(userId);
   }, [userId]);
 
   // Ended before anything here was listening: a cold start whose refresh the
@@ -79,10 +86,7 @@ export function PushBridge() {
     let live = true;
     (async () => {
       if (await storedSession()) return;
-      if (!live) return;
-      // Half-typed forms go whenever nobody is signed in, push token or not.
-      await forgetKeptDrafts();
-      if (!(await holdsPushToken())) return;
+      if (!live || !(await holdsPushToken())) return;
       stopListeningHere();
       clearPersonalCache();
     })().catch(() => {});

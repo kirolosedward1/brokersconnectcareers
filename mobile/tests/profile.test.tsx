@@ -8,6 +8,7 @@ import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testi
 import type { AgentExperienceRow, AgentProfileRow } from '@/lib/supabase/database.types';
 import { monthNames } from '~/components/ui/month-field';
 import { catalogues, I18nProvider } from '~/i18n/provider';
+import { draftKey } from '~/lib/kept-draft';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -257,6 +258,56 @@ describe('the profile', () => {
     );
   });
 
+  it('keeps what is typed when the app is ended and puts it back, never the CV, and keeps nothing once saved', async () => {
+    const kept = draftKey('agent-profile', profile.id);
+    const first = await open();
+    fireEvent.changeText(await screen.findByLabelText(ar.agents.headlineAr), 'مستشارة مبيعات في التجمع');
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(kept)) ?? 'null')?.values.headlineAr).toBe('مستشارة مبيعات في التجمع'));
+    expect(await AsyncStorage.getItem(kept)).not.toMatch(/cv/i);
+
+    // iOS ends the app in the background: no Back, no question asked.
+    first.unmount();
+
+    await open();
+    expect(await screen.findByText(/^احتفظنا باللي كتبته هنا/)).toBeTruthy();
+    expect(screen.getByLabelText(ar.agents.headlineAr).props.value).toBe('مستشارة مبيعات في التجمع');
+
+    fireEvent.press(saveButton());
+    await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/saveAgentProfile')?.input).toMatchObject({ headlineAr: 'مستشارة مبيعات في التجمع' }));
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).toBeNull());
+  });
+
+  it('offers a draft typed before a save made elsewhere, and restoring brings back only what was typed here', async () => {
+    const kept = draftKey('agent-profile', profile.id);
+    const first = await open();
+    fireEvent.changeText(await screen.findByLabelText(ar.agents.headlineAr), 'مستشارة مبيعات في التجمع');
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(kept)) ?? 'null')?.values.headlineAr).toBe('مستشارة مبيعات في التجمع'));
+    first.unmount();
+
+    // Saved on the website meanwhile: another field.
+    agent = { ...(agent as AgentProfileRow), headline_en: 'Saved on the website' };
+    await open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.drafts.restore }));
+    expect(screen.getByLabelText(ar.agents.headlineAr).props.value).toBe('مستشارة مبيعات في التجمع');
+    expect(screen.getByLabelText(ar.agents.headlineEn).props.value).toBe('Saved on the website');
+  });
+
+  it('does not offer back its own typing when the account changes under the form: the name followed, the typing stayed', async () => {
+    const kept = draftKey('agent-profile', profile.id);
+    let me = { ...profile };
+    server.on('/rest/v1/profiles', () => [me]);
+    await open();
+    fireEvent.changeText(await screen.findByLabelText(ar.agents.headlineAr), 'مستشارة مبيعات أولية');
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(kept)) ?? 'null')?.values.headlineAr).toBe('مستشارة مبيعات أولية'));
+
+    me = { ...me, full_name: 'سارة عادل محمود' };
+    fireEvent.press(screen.getByRole('button', { name: 'read the account again' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.onboarding.fullName).props.value).toBe('سارة عادل محمود'));
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(kept)) ?? 'null')?.values.fullName).toBe('سارة عادل محمود'));
+    expect(screen.queryByRole('button', { name: ar.drafts.restore })).toBeNull();
+    expect(screen.getByLabelText(ar.agents.headlineAr).props.value).toBe('مستشارة مبيعات أولية');
+  });
+
   it('keeps up with the account after a save the website stored in its own form', async () => {
     let me = { ...profile };
     server.on('/rest/v1/profiles', () => [me]);
@@ -271,6 +322,11 @@ describe('the profile', () => {
     fireEvent.press(saveButton());
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
     await waitFor(() => expect(screen.getByLabelText(ar.onboarding.whatsapp).props.value).toBe('+201009998887'));
+    // Nothing typed since the save: the number taking the stored form is not a draft.
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(1_000);
+    });
+    expect(await AsyncStorage.getItem(draftKey('agent-profile', profile.id))).toBeNull();
 
     // Applied from another tab with another number since.
     me = { ...me, whatsapp_phone: '+201005556667' };

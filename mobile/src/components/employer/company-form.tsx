@@ -1,4 +1,4 @@
-import { useRef, useState, type RefObject } from 'react';
+import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
@@ -22,6 +22,9 @@ import { webAddress } from '@/lib/web-address';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 import { toast } from '~/components/feedback/toast';
+import { DraftNotice } from '~/components/ui/draft-notice';
+import { draftKey } from '~/lib/kept-draft';
+import { useKeptDraft } from '~/lib/use-kept-draft';
 
 type Key = 'nameAr' | 'website' | 'aboutAr' | 'aboutEn' | 'form';
 
@@ -65,6 +68,11 @@ const sameFields = (a: Fields, b: Fields) => (Object.keys(a) as (keyof Fields)[]
  * is this form's own save coming back, or when the profile's own columns did
  * not change; a colleague's change to them leaves what is typed on the old
  * version, so saving says so, and the answer brings theirs in.
+ *
+ * What is typed is kept on the phone as it changes (use-kept-draft.ts), so iOS
+ * ending the app, or a session that ran out, loses none of it. Typed over a
+ * version that has since changed — a colleague's save, the one a stale save
+ * brings in — it is offered rather than poured over theirs.
  */
 export function CompanyForm({
   company,
@@ -109,8 +117,28 @@ export function CompanyForm({
 
   // Leaving with the profile changed and not saved asks first — anything typed
   // since a save too, while its version is still on the way.
-  const typedNow: Fields = { nameAr, nameEn, aboutAr, aboutEn, site, companyType, headcount, districtId };
-  useLeaveGuard(takeNext !== 'theirs' && !sameFields(typedNow, sent ?? fieldsOf(loaded)), save.isPending);
+  const typedNow = useMemo<Fields>(
+    () => ({ nameAr, nameEn, aboutAr, aboutEn, site, companyType, headcount, districtId }),
+    [nameAr, nameEn, aboutAr, aboutEn, site, companyType, headcount, districtId],
+  );
+  const restoreDraft = useCallback((held: Fields) => {
+    const next = { ...fieldsOf(null), ...held };
+    setNameAr(next.nameAr);
+    setNameEn(next.nameEn);
+    setAboutAr(next.aboutAr);
+    setAboutEn(next.aboutEn);
+    setSite(next.site);
+    setCompanyType(next.companyType);
+    setHeadcount(next.headcount);
+    setDistrictId(next.districtId);
+  }, []);
+  const kept = useKeptDraft({
+    key: userId ? draftKey('company', userId, company?.id ?? null) : null,
+    values: typedNow,
+    restore: restoreDraft,
+    base: loaded?.version ?? null,
+  });
+  useLeaveGuard(takeNext !== 'theirs' && !sameFields(typedNow, sent ?? fieldsOf(loaded)), save.isPending, kept.drop);
 
   if (company && loaded && company.version !== loaded.version) {
     const typed: Fields = { nameAr, nameEn, aboutAr, aboutEn, site, companyType, headcount, districtId };
@@ -142,6 +170,8 @@ export function CompanyForm({
     if (address && !safeHttpUrl(address)) local.website = t('validation.invalidUrl');
     if (Object.keys(local).length) return refuse(local);
     setErrors({});
+    // Kept now, not after the pause: a refused save may bring another version in over the fields.
+    kept.flush();
     const sending = typedNow;
     const basedOn = loaded?.version;
 
@@ -159,6 +189,8 @@ export function CompanyForm({
       },
       {
         onSuccess: () => {
+          // Saved: the website holds it now, so the phone need not.
+          kept.clear();
           setSaved(true);
           toast.show({ message: t('app.toast.changesSaved'), tone: 'success' });
           // What comes back is what was just sent, on its new version — read
@@ -191,6 +223,7 @@ export function CompanyForm({
 
   return (
     <View style={{ gap: space[4] }}>
+      <DraftNotice draft={kept} />
       <Field ref={inView.place('nameAr')} label={t('companies.nameAr')} error={errors.nameAr}>
         <TextField
           value={nameAr}

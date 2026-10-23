@@ -49,7 +49,7 @@ function storage({ quota = Infinity, broken = false } = {}) {
   return store;
 }
 
-const { DRAFT_MAX_AGE_MS, draftKey, forgetDrafts, pruneDrafts, readDraft, removeDraft, writeDraft } =
+const { DRAFT_MAX_AGE_MS, draftBase, draftKey, forgetDrafts, mergeDraft, stillShown, pruneDrafts, readDraft, removeDraft, writeDraft } =
   await import('../src/lib/form-draft.ts');
 const { afterDenied, uploadFailure } = await import('../src/lib/upload-failure.ts');
 
@@ -134,6 +134,45 @@ console.log('— storage that refuses is a form without a draft, not a broken fo
 
   storage();
   is('past the size ceiling it is not written', writeDraft(key, { long: 'x'.repeat(70_000) }, null, NOW), false);
+}
+
+console.log('— a record with no version: what the server held stands in for one');
+{
+  const held = { fields: { fullName: 'سارة', headlineAr: 'مستشارة مبيعات' }, tracks: ['primary'] };
+  is('the same record, the same base', draftBase(held), draftBase(JSON.parse(JSON.stringify(held))));
+  is('saved elsewhere since, another base', draftBase(held) === draftBase({ ...held, tracks: ['resale'] }), false);
+  is('a short word, not the record itself', /^h[0-9a-z]{1,7}$/.test(draftBase(held)), true);
+}
+
+console.log('— read again while the form is open: its own work, or something to offer?');
+{
+  const opened = { fields: { fullName: 'سارة', headlineAr: '' }, tracks: ['primary'] };
+  const typed = { fields: { fullName: 'سارة', headlineAr: 'مستشارة' }, tracks: ['primary'] };
+  is('what was typed is on screen: its own work', stillShown(typed, opened, typed), true);
+  is('a field it never touched followed the server: still its own work', stillShown(typed, opened, { ...typed, fields: { ...typed.fields, fullName: 'سارة عادل' } }), true);
+  is('what was typed was replaced by a colleague’s version: offer it', stillShown(typed, opened, { ...typed, fields: { ...typed.fields, headlineAr: 'ما كتبه الزميل' } }), false);
+  is('a list it changed, put back: offer it', stillShown({ ...opened, tracks: ['resale'] }, opened, opened), false);
+}
+
+console.log('— put back over a newer version: only what the person changed');
+{
+  const from = { fields: { headlineAr: '', headlineEn: 'Sales' }, tracks: ['primary'] };
+  const draft = { fields: { headlineAr: 'مستشار', headlineEn: 'Sales' }, tracks: ['primary'] };
+  const current = { fields: { headlineAr: '', headlineEn: 'Changed in the app' }, tracks: ['resale'] };
+  is('their typing comes back; what was saved elsewhere stays', mergeDraft(draft, from, current), {
+    fields: { headlineAr: 'مستشار', headlineEn: 'Changed in the app' },
+    tracks: ['resale'],
+  });
+  is('a list they changed comes back whole', mergeDraft({ ...from, tracks: ['rental'] }, from, current).tracks, ['rental']);
+  is('a draft from before the opening values were kept: whole, as before', mergeDraft(draft, undefined, current), draft);
+
+  storage();
+  const key = draftKey('agent-profile', 'user-a');
+  writeDraft(key, draft, 'h1', NOW, from);
+  is('the opening values are kept with it', readDraft(key, NOW)?.from, from);
+  writeDraft(key, { long: 'x'.repeat(40_000) }, null, NOW, { long: 'y'.repeat(40_000) });
+  is('past the ceiling with them, kept without them rather than not at all', readDraft(key, NOW)?.values.long.length, 40_000);
+  is('and without them', readDraft(key, NOW)?.from, undefined);
 }
 
 console.log('— why an upload failed');

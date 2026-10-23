@@ -58,9 +58,15 @@ export type Draft<T> = {
    * the version on screen now was typed over something that has since changed.
    */
   base: string | null;
+  /**
+   * What the form held when this was typed over it (its opening values), so
+   * that a draft put over a newer version brings back only what the person
+   * changed (mergeDraft). Absent from a draft written before it was kept.
+   */
+  from?: T;
 };
 
-type Stored = { v: number; at: number; base: string | null; values: unknown };
+type Stored = { v: number; at: number; base: string | null; values: unknown; from?: unknown };
 
 function storage(): Storage | null {
   try {
@@ -68,6 +74,52 @@ function storage(): Storage | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * A `base` for a record with no version column: a short fingerprint of what
+ * the server held when the form opened. Saved somewhere else since (the app,
+ * another tab), the fingerprint differs and the draft is offered rather than
+ * poured over the newer values. Not a security measure, only a change check.
+ */
+export function draftBase(held: unknown): string {
+  const text = JSON.stringify(held) ?? '';
+  let hash = 5381;
+  for (let index = 0; index < text.length; index += 1) hash = ((hash << 5) + hash + text.charCodeAt(index)) | 0;
+  return `h${(hash >>> 0).toString(36)}`;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Whether everything a draft changed from the opening values is still what
+ * the form shows. Read again while a form is open (its version moved under
+ * it), a draft whose changes are all on screen is this form's own work, not
+ * something to offer back: the fields it never touched may have followed the
+ * server meanwhile. One whose changes were replaced (a colleague's version
+ * brought in over them) is still to be offered.
+ */
+export function stillShown(draft: unknown, opened: unknown, showing: unknown): boolean {
+  if (JSON.stringify(draft) === JSON.stringify(opened)) return true;
+  if (!isRecord(draft) || !isRecord(opened) || !isRecord(showing)) return JSON.stringify(draft) === JSON.stringify(showing);
+  return Object.keys(draft).every((key) => stillShown(draft[key], opened[key], showing[key]));
+}
+
+/**
+ * A draft put back over a version of the record that has changed since it
+ * was typed: what the person changed (where `draft` differs from `from`, what
+ * the form held when they typed) is theirs; everything else is as it is now
+ * (`current`), so a change saved elsewhere to a field they never touched is
+ * not undone. Without `from` (an older draft), the draft whole.
+ */
+export function mergeDraft<T>(draft: T, from: T | undefined, current: T): T {
+  if (from === undefined) return draft;
+  if (JSON.stringify(draft) === JSON.stringify(from)) return current;
+  if (!isRecord(draft) || !isRecord(from) || !isRecord(current)) return draft;
+  const merged: Record<string, unknown> = { ...current };
+  for (const key of Object.keys(draft)) merged[key] = mergeDraft(draft[key], from[key], current[key]);
+  return merged as T;
 }
 
 /**
@@ -104,7 +156,12 @@ export function readDraft<T>(key: string, now: number = Date.now()): Draft<T> | 
       store.removeItem(key);
       return null;
     }
-    return { values: stored.values as T, savedAt: stored.at, base: stored.base };
+    return {
+      values: stored.values as T,
+      savedAt: stored.at,
+      base: stored.base,
+      ...(stored.from === undefined ? {} : { from: stored.from as T }),
+    };
   } catch {
     return null;
   }
@@ -120,11 +177,15 @@ export function writeDraft<T>(
   values: T,
   base: string | null = null,
   now: number = Date.now(),
+  from?: T,
 ): boolean {
   const store = storage();
   if (!store) return false;
   try {
-    const json = JSON.stringify({ v: SHAPE, at: now, base, values } satisfies Stored);
+    let json = JSON.stringify({ v: SHAPE, at: now, base, values, from } satisfies Stored);
+    // The opening values only help a restore over a newer version; past the
+    // ceiling, the draft is kept without them rather than not at all.
+    if (json.length > MAX_CHARS) json = JSON.stringify({ v: SHAPE, at: now, base, values } satisfies Stored);
     if (json.length > MAX_CHARS) {
       store.removeItem(key);
       return false;

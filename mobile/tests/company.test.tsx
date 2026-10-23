@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { CompanyDocumentRow, CompanyRow, OrderRow, ProfileRow } from '@/lib/supabase/database.types';
 import { catalogues, I18nProvider } from '~/i18n/provider';
+import { draftKey } from '~/lib/kept-draft';
 import { rememberActor } from '~/lib/last-actor';
 import { useEmployerSummary } from '~/features/employer/overview';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -264,6 +265,38 @@ describe("the company's page, for a company admin", () => {
     await waitFor(() => expect(server.asked('/rest/v1/companies')).toHaveLength(4));
     await waitFor(() => expect(screen.getByText(ar.common.saveSuccess)).toBeTruthy());
     expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
+  });
+
+  it('keeps what is typed when the app is ended, puts it back, and keeps nothing once it is saved', async () => {
+    const kept = draftKey('company', USER_ID, baseCompany.id);
+    const first = await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), 'نبذة طويلة بالعربي لسه ما اتحفظتش');
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(kept)) ?? 'null')?.values.aboutAr).toBe('نبذة طويلة بالعربي لسه ما اتحفظتش'));
+
+    // iOS ends the app in the background: no Back, no question asked.
+    first.unmount();
+
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    expect(await screen.findByText(/^احتفظنا باللي كتبته هنا/)).toBeTruthy();
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe('نبذة طويلة بالعربي لسه ما اتحفظتش');
+
+    fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/saveCompany')).toMatchObject({ aboutAr: 'نبذة طويلة بالعربي لسه ما اتحفظتش' }));
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).toBeNull());
+  });
+
+  it("offers what was typed over a colleague's version, once the save it overtook is refused", async () => {
+    server.on('POST /api/mobile/v1/actions/saveCompany', () => ({ ok: false, error: 'stale' }));
+    await renderRouter(app, { initialUrl: '/employer/company' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), 'ما كتبته أنا');
+    company = { ...(company as CompanyRow), about_ar: 'ما كتبه الزميل', version: 4 };
+    fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
+
+    await waitFor(() => expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe('ما كتبه الزميل'));
+    // Not lost: held back, to be put over theirs only when asked.
+    fireEvent.press(await screen.findByRole('button', { name: ar.drafts.restore }));
+    expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe('ما كتبته أنا');
   });
 
   it("shows a colleague's version once the save it overtook is refused", async () => {

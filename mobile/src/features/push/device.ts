@@ -8,6 +8,7 @@ import { AndroidImportance, IosAuthorizationStatus } from 'expo-notifications';
 import { useQuery } from '@tanstack/react-query';
 import { forgetOnboardingIntent } from '~/features/auth/kept-intent';
 import { callAction } from '~/lib/api';
+import { forgetKeptDrafts } from '~/lib/kept-draft';
 import { useSession } from '~/lib/session';
 import { encryptedSessionStorage } from '~/lib/session-storage';
 import { SESSION_KEY, supabase } from '~/lib/supabase';
@@ -210,6 +211,9 @@ export async function signOutHere(): Promise<void> {
   // iOS ending the app midway, not for a person who chose to leave: signed
   // in again, onboarding asks afresh rather than fix the role it was given.
   await forgetOnboardingIntent().catch(() => {});
+  // And the forms half typed here (kept-draft.ts), as the website's sign-out
+  // forgets its own: this phone may be handed on.
+  await forgetKeptDrafts();
   await Promise.race([
     forgetThisPhone().catch(() => {}),
     new Promise((resolve) => setTimeout(resolve, FORGET_TIMEOUT_MS)),

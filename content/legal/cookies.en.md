@@ -1,6 +1,6 @@
 ---
 title: Cookies and storage on your device
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 This page explains everything the Brokers Connect website keeps in your browser, and everything the app keeps on your phone, and why. It is part of our [Privacy policy](/privacy).
@@ -24,7 +24,7 @@ Kept only when you yourself choose the light, dark or system appearance at the b
 Kept only when visit counting is on, and only if you arrived through a link someone shared, so the visit can be counted as coming from a share. Deleted when you close the tab. Visit counting — if we turn it on — uses a tool that sets no cookies and does not identify individuals (Plausible or Umami): it receives the address of the page you opened, the site you came from, and your browser and device type, and nothing from your account.
 
 **Forms you have not finished** — `bc-draft:…`, in your browser's local storage (localStorage).
-While you are signed in and typing into a job application, a job advert or the form that sets up your account, what you have typed is kept as you go, so that closing the tab, losing the connection or being asked to sign in again does not lose it. It is kept under your account only and shown back only to you, and it never includes a file you attached or your agreement to our terms. It is deleted as soon as the form is sent, when you choose "Start over", when you sign out, and in any case after seven days.
+While you are signed in and typing into a job application, a job advert, your company's profile, your own profile or the form that sets up your account, what you have typed is kept as you go, so that closing the tab, losing the connection or being asked to sign in again does not lose it. It is kept under your account only and shown back only to you, and it never includes a file you attached or your agreement to our terms. It is deleted as soon as the form is sent, when you choose "Start over", when you sign out, and in any case after seven days.
 
 ## What others set
 
@@ -41,7 +41,7 @@ The app uses no cookies. It keeps only the following on your phone:
 - **Your sign-in session:** encrypted, with a key held in the phone's secure storage (the Keychain on an iPhone), and deleted when you sign out.
 - **The last account signed in on this phone:** its kind (consultant or company) and approval status, and its company's id and verification status, so the app knows which tabs to show when it opens, before it reaches the internet. Forgotten when you sign out.
 - **Your settings on this phone:** your appearance choice, the companies, consultants and listings you hid from lists, your notification token and choices, and whether the app asks for Face ID or your passcode when it opens.
-- **Forms you have not finished:** while you write a job advert or apply for a job, what you have typed is kept as you go, so that the phone closing the app does not lose it. Kept under your account only, never a file you attached, and deleted once the form is sent, when you choose "Start over" or leave it and discard it, when you sign out, and in any case after seven days.
+- **Forms you have not finished:** while you write a job advert, apply for a job or edit your company's profile or your own, what you have typed is kept as you go, so that the phone closing the app, or being asked to sign in again, does not lose it. Kept under your account only, never a file you attached, and deleted once the form is sent, when you choose "Start over" or leave it and discard it, when you sign out or delete your account, when someone else signs in on the phone, and in any case after seven days.
 - **What you keep for yourself in the app:** the closing-date reminders on saved jobs (they are notifications the phone shows at the time you chose), your saved consultant searches and the alerts they send, your saved WhatsApp replies, the kinds of listing you asked to see fewer of, the listings and searches you looked at lately, and where you got to on the job board, so it can show what is new since. These are kept for your account alone, are never sent to us, and are deleted from the phone when you delete your account. (The note you write on a saved job is part of your account, kept with the bookmark and shown on the website too.)
 - **For signing in:** where you were going when you started creating your account (a listing you tapped Apply on, say), until you get there; and, if you signed in with Apple on this phone, which Apple ID you used, so the app can sign you out if you stop using Apple with it. Both are forgotten when you sign out or delete your account.
 - **The last crash:** if the app closes because of an error, a short record of the error and the app's version, so the app can tell you about it the next time it opens and you can choose to send it to us. Nothing is sent unless you do.

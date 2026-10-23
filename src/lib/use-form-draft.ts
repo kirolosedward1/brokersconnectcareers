@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { pruneDrafts, readDraft, removeDraft, writeDraft } from '@/lib/form-draft';
+import { mergeDraft, pruneDrafts, readDraft, removeDraft, stillShown, writeDraft } from '@/lib/form-draft';
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -82,7 +82,7 @@ export function useFormDraft<T>({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
-  const [offer, setOffer] = useState<{ values: T; savedAt: number } | null>(null);
+  const [offer, setOffer] = useState<{ values: T; savedAt: number; from?: T } | null>(null);
   const offerRef = useRef(offer);
   offerRef.current = offer;
 
@@ -101,7 +101,7 @@ export function useFormDraft<T>({
     }
     const json = JSON.stringify(current);
     if (json === written.current) return;
-    if (writeDraft(key, current, baseText)) written.current = json;
+    if (writeDraft(key, current, baseText, Date.now(), pristine.current)) written.current = json;
   }, [key, baseText]);
 
   // Opening: read what was kept, if anything, and put it in or hold it back.
@@ -112,6 +112,13 @@ export function useFormDraft<T>({
 
     pruneDrafts();
     const draft = readDraft<T>(key);
+    if (draft && !same(draft.values, pristine.current) && stillShown(draft.values, pristine.current, latest.current)) {
+      // What is on screen already (the form's version moved under it, after
+      // its own save): nothing to give back; written again under this version.
+      ready.current = true;
+      save();
+      return;
+    }
     if (draft && !same(draft.values, pristine.current)) {
       written.current = JSON.stringify(draft.values);
       if (baseText !== null && draft.base !== baseText) {
@@ -119,7 +126,7 @@ export function useFormDraft<T>({
         // (React replaying effects, a tab closed at once) must already see
         // the offer, or it measures the form against the opening values,
         // finds nothing typed, and deletes the draft it was holding back.
-        offerRef.current = { values: draft.values, savedAt: draft.savedAt };
+        offerRef.current = { values: draft.values, savedAt: draft.savedAt, from: draft.from };
         setOffer(offerRef.current);
       } else {
         skipNext.current = true;
@@ -131,7 +138,7 @@ export function useFormDraft<T>({
       removeDraft(key);
     }
     ready.current = true;
-  }, [key, baseText]);
+  }, [key, baseText, save]);
 
   // Changing: write once the typing settles.
   useEffect(() => {
@@ -174,7 +181,9 @@ export function useFormDraft<T>({
     offerRef.current = null;
     // Written again under the version on screen: it has been looked at now.
     written.current = null;
-    restoreRef.current(held.values);
+    // Only what the person changed comes back; a field they never touched
+    // keeps what was saved since (mergeDraft).
+    restoreRef.current(mergeDraft(held.values, held.from, latest.current));
     setRestoredAt(held.savedAt);
   }, []);
 

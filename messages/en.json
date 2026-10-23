@@ -552,6 +552,7 @@
     "saveChanges": "Save changes",
     "listingMoved": "This listing changed somewhere else while you were editing. Reload the page and try again.",
     "companyMoved": "Someone else at the company saved this profile while you had it open. Reload to see their version before saving.",
+    "companyMovedKept": "Someone else at the company saved this profile while you had it open. Reload the page: your changes are kept, and you can restore them over their version.",
     "closeJob": "Close listing",
     "reopenJob": "Reopen listing",
     "editJob": "Edit",

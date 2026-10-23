@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useCallback, useMemo, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { CheckCircle2, Eye, EyeOff, FileText, ShieldCheck, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -25,6 +25,9 @@ import type {
 } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { useUploadFailure } from '@/lib/use-upload-failure';
+import { draftBase, draftKey } from '@/lib/form-draft';
+import { useFormDraft } from '@/lib/use-form-draft';
+import { DraftNotice } from '@/components/ui/draft-notice';
 
 const MAX_CV_BYTES = 10 * 1024 * 1024;
 const CV_TYPES = [
@@ -40,6 +43,26 @@ const VISIBILITY_ICON: Record<AgentVisibility, React.ReactNode> = {
 };
 
 const VISIBILITIES: AgentVisibility[] = ['public', 'verified_employers_only', 'hidden'];
+
+/** What is typed into the form's fields, as the draft keeps it. */
+type Fields = {
+  fullName: string;
+  whatsapp: string;
+  headlineAr: string;
+  headlineEn: string;
+  yearsExperience: string;
+  availability: string;
+};
+
+/** Everything the form would lose, kept as one draft (lib/use-form-draft.ts). Never the CV: a file is not kept. */
+type Kept = {
+  fields: Fields;
+  tracks: string[];
+  districtIds: number[];
+  developerIds: number[];
+  languages: string[];
+  visibility: AgentVisibility;
+};
 
 export function AgentProfileForm({
   locale,
@@ -70,14 +93,66 @@ export function AgentProfileForm({
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [tracks, setTracks] = useState<string[]>(agent?.tracks ?? []);
-  const [districtIds, setDistrictIds] = useState<number[]>(agent?.district_ids ?? []);
-  const [developerIds, setDeveloperIds] = useState<number[]>(selectedDeveloperIds);
-  const [languages, setLanguages] = useState<string[]>(agent?.languages ?? ['ar']);
-  const [visibility, setVisibility] = useState<AgentVisibility>(
-    agent?.visibility ?? 'verified_employers_only',
+  // What the server holds, as the form shows it: the opening values, and,
+  // refreshed after each save, the record a draft was typed over.
+  const held = useMemo<Kept>(
+    () => ({
+      fields: {
+        fullName: profile.full_name ?? '',
+        whatsapp: profile.whatsapp_phone ?? '',
+        headlineAr: agent?.headline_ar ?? '',
+        headlineEn: agent?.headline_en ?? '',
+        yearsExperience: String(agent?.years_experience ?? 0),
+        availability: agent?.availability ?? 'open_to_offers',
+      },
+      tracks: agent?.tracks ?? [],
+      districtIds: agent?.district_ids ?? [],
+      developerIds: selectedDeveloperIds,
+      languages: agent?.languages ?? ['ar'],
+      visibility: agent?.visibility ?? 'verified_employers_only',
+    }),
+    [profile, agent, selectedDeveloperIds],
   );
+  const [fields, setFields] = useState<Fields>(held.fields);
+  const setField = (key: keyof Fields) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setFields((current) => ({ ...current, [key]: event.target.value }));
+  const [tracks, setTracks] = useState<string[]>(held.tracks);
+  const [districtIds, setDistrictIds] = useState<number[]>(held.districtIds);
+  const [developerIds, setDeveloperIds] = useState<number[]>(held.developerIds);
+  const [languages, setLanguages] = useState<string[]>(held.languages);
+  const [visibility, setVisibility] = useState<AgentVisibility>(held.visibility);
   const visibilityRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const kept = useMemo<Kept>(
+    () => ({ fields, tracks, districtIds, developerIds, languages, visibility }),
+    [fields, tracks, districtIds, developerIds, languages, visibility],
+  );
+  const restoreDraft = useCallback((held: Kept) => {
+    setFields((current) => ({ ...current, ...held.fields }));
+    setTracks(held.tracks);
+    setDistrictIds(held.districtIds);
+    setDeveloperIds(held.developerIds);
+    setLanguages(held.languages);
+    setVisibility(VISIBILITIES.includes(held.visibility) ? held.visibility : 'verified_employers_only');
+  }, []);
+  // The profile has no version column: what the fields were filled from
+  // stands in for one (draftBase), so a draft typed before a save made in the
+  // app is offered over it rather than poured in. A refresh brings the newest
+  // row but leaves the fields as they are, so it is taken over only after
+  // this form's own save.
+  const [filledFrom, setFilledFrom] = useState(() => draftBase(held));
+  const [ownSave, setOwnSave] = useState(false);
+  if (ownSave && draftBase(held) !== filledFrom) {
+    setFilledFrom(draftBase(held));
+    setOwnSave(false);
+  }
+  const draft = useFormDraft({
+    key: draftKey('agent-profile', profile.id),
+    values: kept,
+    restore: restoreDraft,
+    base: filledFrom,
+  });
 
   /*
     One choice of three, so a radio group: one stop in the tab order, and the
@@ -147,8 +222,9 @@ export function AgentProfileForm({
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
     setSaved(false);
+    // Written now, not after the pause: the answer may be a sign-in page.
+    draft.flush();
 
     startTransition(async () => {
       let cvPath: string | null = null;
@@ -169,16 +245,16 @@ export function AgentProfileForm({
       }
 
       const result = await reach(saveAgentProfile({
-        fullName: String(form.get('fullName') ?? ''),
-        whatsapp: String(form.get('whatsapp') ?? ''),
-        headlineAr: String(form.get('headlineAr') ?? ''),
-        headlineEn: String(form.get('headlineEn') ?? ''),
-        yearsExperience: String(form.get('yearsExperience') ?? '0'),
+        fullName: fields.fullName,
+        whatsapp: fields.whatsapp,
+        headlineAr: fields.headlineAr,
+        headlineEn: fields.headlineEn,
+        yearsExperience: fields.yearsExperience || '0',
         tracks,
         districtIds,
         developerIds,
         languages,
-        availability: String(form.get('availability') ?? 'open_to_offers'),
+        availability: fields.availability || 'open_to_offers',
         visibility,
         cvPath,
         removeCv,
@@ -224,6 +300,10 @@ export function AgentProfileForm({
         return;
       }
 
+      // Saved: the server holds it now, so this browser need not; and what
+      // the refresh brings is this save.
+      draft.clear();
+      setOwnSave(true);
       setErrors({});
       setSaved(true);
       // The picker has done its job; a second save must not upload the same
@@ -238,6 +318,7 @@ export function AgentProfileForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      <DraftNotice draft={draft} />
       {/* Name and number side by side. Each is a short value, and stacked at
           the form's full width they were two 800px inputs holding twelve
           characters apiece. */}
@@ -254,7 +335,8 @@ export function AgentProfileForm({
             minLength={2}
             maxLength={120}
             autoComplete="name"
-            defaultValue={profile.full_name}
+            value={fields.fullName}
+            onChange={setField('fullName')}
           />
         </Field>
 
@@ -272,7 +354,8 @@ export function AgentProfileForm({
             inputMode="tel"
             autoComplete="tel"
             className="numeral-field"
-            defaultValue={profile.whatsapp_phone}
+            value={fields.whatsapp}
+            onChange={setField('whatsapp')}
           />
         </Field>
       </section>
@@ -335,7 +418,8 @@ export function AgentProfileForm({
             <Select
               id="availability"
               name="availability"
-              defaultValue={agent?.availability ?? 'open_to_offers'}
+              value={fields.availability}
+              onChange={setField('availability')}
             >
               {AVAILABILITIES.map((value) => (
                 <option key={value} value={value}>
@@ -355,7 +439,8 @@ export function AgentProfileForm({
               min={0}
               max={60}
               className="numeral-field sm:w-28"
-              defaultValue={agent?.years_experience ?? 0}
+              value={fields.yearsExperience}
+              onChange={setField('yearsExperience')}
             />
           </Field>
         </div>
@@ -366,7 +451,8 @@ export function AgentProfileForm({
             name="headlineAr"
             rows={2}
             maxLength={160}
-            defaultValue={agent?.headline_ar ?? ''}
+            value={fields.headlineAr}
+            onChange={setField('headlineAr')}
           />
         </Field>
 
@@ -377,7 +463,8 @@ export function AgentProfileForm({
             rows={2}
             maxLength={160}
             dir="ltr"
-            defaultValue={agent?.headline_en ?? ''}
+            value={fields.headlineEn}
+            onChange={setField('headlineEn')}
           />
         </Field>
 

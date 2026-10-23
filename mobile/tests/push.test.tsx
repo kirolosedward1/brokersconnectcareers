@@ -13,6 +13,7 @@ import { PushPrompt } from '~/components/push/push-prompt';
 import { pushAvailable, signOutHere } from '~/features/push/device';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { readLastActor, rememberActor } from '~/lib/last-actor';
+import { draftKey, keepDraft } from '~/lib/kept-draft';
 import { encryptedSessionStorage } from '~/lib/session-storage';
 import { SessionProvider, useSession } from '~/lib/session';
 import { SESSION_KEY, supabase } from '~/lib/supabase';
@@ -168,6 +169,11 @@ const app = {
   'sign-in/index': SignIn,
   'account/alerts': AlertsScreen,
 };
+
+/** A half-typed application of `owner`'s, kept on the phone (kept-draft.ts). */
+const DRAFT = (owner: string) => draftKey('apply', owner, 'job-1');
+const keepTyped = (owner: string) => keepDraft(DRAFT(owner), { note: 'متاح فوراً' });
+const kept = async (owner: string) => (await AsyncStorage.getItem(DRAFT(owner))) !== null;
 
 const registered = () => server.asked('/rest/v1/rpc/register_push_device').map((request) => request.body);
 
@@ -508,6 +514,17 @@ describe('signing out', () => {
     expect(Notifications.dismissAllNotificationsAsync).toHaveBeenCalled();
   });
 
+  it('forgets the forms half typed here: the phone may be handed on', async () => {
+    await keepTyped(USER_ID);
+    await renderRouter(app, { initialUrl: '/' });
+    await screen.findByText(ar.app.push.promptTitle);
+
+    await act(async () => {
+      await signOutHere();
+    });
+    expect(await kept(USER_ID)).toBe(false);
+  });
+
   it('stops listening on the phone when the session ends elsewhere', async () => {
     await renderRouter(app, { initialUrl: '/' });
     await screen.findByText(ar.app.push.promptTitle);
@@ -517,6 +534,26 @@ describe('signing out', () => {
       await supabase.auth.signOut({ scope: 'local' });
     });
     await waitFor(() => expect(Notifications.unregisterForNotificationsAsync).toHaveBeenCalled());
+  });
+
+  it('keeps what they had half typed when the session only ran out, as the website does: signed in again, they carry on', async () => {
+    await keepTyped(USER_ID);
+    await renderRouter(app, { initialUrl: '/' });
+    await screen.findByText(ar.app.push.promptTitle);
+
+    await act(async () => {
+      await supabase.auth.signOut({ scope: 'local' });
+    });
+    await waitFor(() => expect(Notifications.unregisterForNotificationsAsync).toHaveBeenCalled());
+    expect(await kept(USER_ID)).toBe(true);
+
+    await act(async () => {
+      await supabase.auth.signInWithPassword({ email: user.email, password: PASSWORD });
+    });
+    await screen.findByText(ar.app.push.promptTitle);
+    // Past the sign-in's own clean-up, which keeps their drafts and only theirs.
+    await act(async () => {});
+    expect(await kept(USER_ID)).toBe(true);
   });
 });
 
@@ -542,6 +579,22 @@ describe('a session that ended before the app was listening', () => {
     expect(Notifications.dismissAllNotificationsAsync).toHaveBeenCalled();
     // Nor is the next cold start drawn, or its links routed, for them.
     await waitFor(async () => expect(await readLastActor()).toBeNull());
+  });
+
+  it('keeps the forms they had half typed: they ran out of session, they did not sign out', async () => {
+    await keepTyped(USER_ID);
+    const stored = JSON.parse((await encryptedSessionStorage.getItem(SESSION_KEY)) ?? 'null') as Record<string, unknown>;
+    await encryptedSessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...stored, expires_at: Math.floor(Date.now() / 1000) - 60 }));
+    server.on('POST /auth/v1/token', {
+      status: 400,
+      body: { code: 400, error_code: 'refresh_token_not_found', msg: 'Invalid Refresh Token: Refresh Token Not Found' },
+    });
+    const { data } = await supabase.auth.getSession();
+    expect(data.session).toBeNull();
+
+    await renderRouter(app, { initialUrl: '/' });
+    await waitFor(async () => expect(await readLastActor()).toBeNull());
+    expect(await kept(USER_ID)).toBe(true);
   });
 });
 
@@ -605,6 +658,21 @@ describe('another account taking over the phone without a sign-out', () => {
     await switchToOther();
     await waitFor(() => expect(registered()).toHaveLength(2));
     expect(order).toEqual(['stopped', 'token']);
+  });
+
+  it("lets go of the last person's half-typed forms and keeps the new person's own", async () => {
+    await keepTyped(USER_ID);
+    await keepTyped(OTHER.id);
+    await renderRouter(app, { initialUrl: '/' });
+    await screen.findByText(ar.app.push.promptTitle);
+    expect(await kept(OTHER.id)).toBe(false);
+    expect(await kept(USER_ID)).toBe(true);
+
+    await keepTyped(OTHER.id);
+    server.on('/rest/v1/profiles', () => []);
+    await switchToOther();
+    await waitFor(async () => expect(await kept(USER_ID)).toBe(false));
+    expect(await kept(OTHER.id)).toBe(true);
   });
 });
 
