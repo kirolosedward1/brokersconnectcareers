@@ -19,14 +19,12 @@ export const dynamic = 'force-dynamic';
 
 export const GET = withMobileAuth(async (_request, _context, session) => {
   if (!session) return mobileJson({ error: 'unauthenticated' }, { status: 401 });
-  const door = adminDoor(session, adminMfaRequired());
-  if (door !== 'open') {
-    const supabase = await createClient();
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
-    return mobileJson({ error: profile?.role === 'admin' ? door : 'forbidden' }, { status: 403 });
-  }
   const supabase = await createClient();
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+  const { data: profile, error } = await supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+  // A role that could not be read is said so, never taken for "not an admin".
+  if (error) return mobileJson({ error: 'unavailable' }, { status: 503 });
   if (profile?.role !== 'admin') return mobileJson({ error: 'forbidden' }, { status: 403 });
+  const door = adminDoor(session, adminMfaRequired());
+  if (door !== 'open') return mobileJson({ error: door }, { status: 403 });
   return mobileJson(mailStatus() satisfies AdminMailStatus);
 });

@@ -15,6 +15,7 @@ import type {
   JobRow,
   ProfileRow,
 } from '@/lib/supabase/database.types';
+import { formatNumber } from '@/lib/format';
 import { DecisionSheetHost } from '~/components/admin/decision-sheet';
 import { shownToast, toast } from '~/components/feedback/toast';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -379,6 +380,11 @@ const app = {
   '(tabs)/(admin)/admin/agents/index': stand('the consultants'),
   '(tabs)/(admin)/admin/search/index': stand('the search'),
   '(tabs)/(admin)/admin/audit/index': stand('the audit log'),
+  '(tabs)/(admin)/admin/appeals/index': stand('the appeals'),
+  '(tabs)/(admin)/admin/taxonomy/index': stand('the taxonomy'),
+  '(tabs)/(admin)/admin/email/index': stand('the email activity'),
+  '(tabs)/(admin)/admin/operations/index': stand('the background work'),
+  '(tabs)/(admin)/admin/security/index': stand('the security'),
   mfa: stand('the code screen'),
   'mfa-enrol': stand('setting up two-step'),
 };
@@ -642,16 +648,49 @@ describe('the overview', () => {
     await waitFor(() => expect(result.getPathname()).toBe(`/admin/jobs/${JOB_ID}`));
 
     act(() => router.navigate('/admin'));
-    fireEvent.press(await screen.findByRole('link', { name: ar.admin.auditLog }));
+    // The recent decisions' own way to the whole log, above the section list's row of the same name.
+    fireEvent.press((await screen.findAllByRole('link', { name: ar.admin.auditLog }))[0]!);
     await waitFor(() => expect(result.getPathname()).toBe('/admin/audit'));
 
     act(() => router.navigate('/admin'));
-    const field = await screen.findByLabelText(ar.admin.search);
+    const field = (await screen.findAllByLabelText(ar.admin.search)).find((element) => element.props.placeholder !== undefined)!;
     expect(field.props.placeholder).toBe(ar.admin.searchEverythingPlaceholder);
     fireEvent.changeText(field, ' منى ');
     fireEvent(field, 'submitEditing');
     await waitFor(() => expect(result.getPathname()).toBe('/admin/search'));
     expect(result.getSearchParams()).toEqual({ q: 'منى' });
+  });
+
+  it('reaches every part of the console, in the website rail\'s order, with what waits in each', async () => {
+    await signIn();
+    const result = renderRouter(app, { initialUrl: '/admin' });
+    await screen.findByText(ar.app.admin.overview.sections);
+
+    const sections: readonly [label: string, path: string, waiting?: number][] = [
+      [ar.admin.jobsQueue, '/admin/jobs', summary.queue_total],
+      [ar.admin.companiesQueue, '/admin/companies', summary.companies_pending],
+      [ar.admin.reports, '/admin/reports', summary.reports_open],
+      [ar.admin.appeals, '/admin/appeals', summary.appeals_open],
+      [ar.admin.users, '/admin/users', summary.accounts_pending],
+      [ar.admin.applications, '/admin/applications'],
+      [ar.admin.agents, '/admin/agents'],
+      [ar.admin.search, '/admin/search'],
+      [ar.admin.auditLog, '/admin/audit'],
+      [ar.admin.taxonomy, '/admin/taxonomy'],
+      [ar.admin.emailActivity, '/admin/email'],
+      [ar.admin.operations, '/admin/operations'],
+      [ar.admin.security, '/admin/security'],
+    ];
+    for (const [label, path, waiting] of sections) {
+      const name = waiting ? `${label}: ${formatNumber(waiting, 'ar')}` : label;
+      const links = await screen.findAllByRole('link', { name });
+      // The last of its name: the section list closes the screen.
+      fireEvent.press(links[links.length - 1]!);
+      await waitFor(() => expect(result.getPathname()).toBe(path));
+      expect(result.getSearchParams()).toEqual({});
+      act(() => router.navigate('/admin'));
+      await screen.findByText(ar.app.admin.overview.sections);
+    }
   });
 
   it('lists the owners asking to leave while there are any, and closes a request through the website', async () => {

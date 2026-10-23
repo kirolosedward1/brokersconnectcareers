@@ -16,7 +16,7 @@ import { CheckCheck } from '~/components/ui/lucide';
 import { SearchField } from '~/components/ui/search-field';
 import { ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
-import { useAdminOverview, useAdminTrend, useDeletionRequests, type DeletionRequest } from '~/features/admin/queries';
+import { useAdminOverview, useAdminSummary, useAdminTrend, useDeletionRequests, type DeletionRequest } from '~/features/admin/queries';
 import { useTabList } from '~/features/tab-bar';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
@@ -31,7 +31,8 @@ import { corner, gutter, hitTarget, space } from '~/theme/tokens';
  * trip), and every one opens the filtered list behind it — a number you
  * cannot open is a number you cannot act on. Between the first row and the
  * second, the owners asking to leave, while there are any; under them, thirty
- * days of activity, and the decisions made lately, by whom.
+ * days of activity, and the decisions made lately, by whom; last, every part
+ * of the console, as the website's rail lists them.
  */
 export default function AdminOverviewScreen() {
   const t = useTranslations();
@@ -75,7 +76,9 @@ function Overview() {
   const overview = useAdminOverview();
   const trend = useAdminTrend();
   const deletions = useDeletionRequests();
-  const pull = usePullRefresh(() => Promise.all([overview.refetch(), trend.refetch(), deletions.refetch()]));
+  // The section list's badges are the tab's (admin_summary), read again with the rest.
+  const summary = useAdminSummary();
+  const pull = usePullRefresh(() => Promise.all([overview.refetch(), trend.refetch(), deletions.refetch(), summary.refetch()]));
   const list = useTabList();
   const [query, setQuery] = useState('');
   const n = (value: number) => formatNumber(value, locale);
@@ -266,7 +269,72 @@ function Overview() {
           )}
         </Panel>
       </View>
+
+      <Sections />
     </ScrollView>
+  );
+}
+
+/**
+ * Every part of the console, in the website rail's order and with its badges:
+ * for an admin the Admin tab is the whole app (src/lib/tabs.ts), so this list
+ * is the way into each screen, as the rail is on the website.
+ */
+function Sections() {
+  const t = useTranslations();
+  const locale = useLocale();
+  const { colors } = useTheme();
+  const summary = useAdminSummary().data;
+  const sections: readonly { path: string; label: string; waiting?: number }[] = [
+    { path: '/admin/jobs', label: t('admin.jobsQueue'), waiting: summary?.queue_total },
+    { path: '/admin/companies', label: t('admin.companiesQueue'), waiting: summary?.companies_pending },
+    { path: '/admin/reports', label: t('admin.reports'), waiting: summary?.reports_open },
+    { path: '/admin/appeals', label: t('admin.appeals'), waiting: summary?.appeals_open },
+    { path: '/admin/users', label: t('admin.users'), waiting: summary?.accounts_pending },
+    { path: '/admin/applications', label: t('admin.applications') },
+    { path: '/admin/agents', label: t('admin.agents') },
+    { path: '/admin/search', label: t('admin.search') },
+    { path: '/admin/audit', label: t('admin.auditLog') },
+    { path: '/admin/taxonomy', label: t('admin.taxonomy') },
+    { path: '/admin/email', label: t('admin.emailActivity') },
+    { path: '/admin/operations', label: t('admin.operations') },
+    { path: '/admin/security', label: t('admin.security') },
+  ];
+  return (
+    <View style={{ gap: space[2] }}>
+      <SectionTitle>{t('app.admin.overview.sections')}</SectionTitle>
+      <Panel>
+        {sections.map((section, index) => (
+          <Pressable
+            key={section.path}
+            accessibilityRole="link"
+            accessibilityLabel={section.waiting ? `${section.label}: ${formatNumber(section.waiting, locale)}` : section.label}
+            onPress={go(section.path)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: space[2],
+              minHeight: hitTarget,
+              paddingHorizontal: space[4],
+              paddingVertical: space[3],
+              borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
+              borderTopColor: colors.border,
+              backgroundColor: pressed ? colors.muted : 'transparent',
+            })}
+          >
+            <Text variant="small" weight="medium" style={{ flex: 1 }}>
+              {section.label}
+            </Text>
+            {section.waiting ? (
+              <Text variant="caption" weight="semibold" tone="primary">
+                {formatNumber(section.waiting, locale)}
+              </Text>
+            ) : null}
+            <ForwardChevron size={16} color={colors.mutedForeground} />
+          </Pressable>
+        ))}
+      </Panel>
+    </View>
   );
 }
 
