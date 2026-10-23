@@ -114,8 +114,13 @@ on conflict on constraint search_aliases_unique do nothing;
 insert into search_aliases (track, alias)
 select a.track::job_track, a.alias
 from (values
+  -- The label reads "عقارات قيد الإنشاء" now; "بيع أول" stays an alias because
+  -- it is still what the market says and what people type into the box.
+  ('primary',             'عقارات قيد الإنشاء'),
+  ('primary',             'قيد الإنشاء'),
   ('primary',             'بيع أول'),
   ('primary',             'Primary sales'),
+  ('primary',             'Off-plan'),
   ('primary',             'برايمري'),
   ('resale',              'إعادة بيع'),
   ('resale',              'Resale'),
