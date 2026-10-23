@@ -23,7 +23,8 @@
     "expandMenu": "Expand the menu",
     "closeMenu": "Close the menu",
     "browseJobs": "Browse jobs",
-    "searchJobs": "Search open jobs"
+    "searchJobs": "Search open jobs",
+    "app": "The app"
   },
   "home": {
     "searchPlaceholder": "Search a role, company or district",
@@ -144,9 +145,9 @@
     "primary": "Off-plan",
     "resale": "Resale",
     "rental": "Rentals",
-    "commercial": "Commercial",
+    "commercial": "Commercial & administrative",
     "property_management": "Property management",
-    "back_office": "Back office"
+    "back_office": "Admin roles"
   },
   "employmentType": {
     "full_time": "Full time",
@@ -1376,8 +1377,7 @@
     "doorEmployerBody": "Your listing is reviewed before it goes live, and every application reaches you with the applicant’s name and WhatsApp number.",
     "byTrack": "By specialisation",
     "byArea": "By area",
-    "contact": "Contact us",
-    "getApp": "Get the app"
+    "contact": "Contact us"
   },
   "validation": {
     "required": "This field is required",
