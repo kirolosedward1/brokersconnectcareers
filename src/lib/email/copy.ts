@@ -180,8 +180,8 @@ export const emailCopy = {
       // The subject names the listing, as the other subjects do. The short
       // line is the inbox preview: the row stays, and the company sees it
       // as withdrawn.
-      subject: (job: string) => `سُحب طلبك على وظيفة ${job}، وستظهر الشركة حالة الانسحاب`,
-      preheader: 'سُحب طلبك، وستظهر الشركة حالة الانسحاب',
+      subject: (job: string) => `سُحب طلبك على وظيفة ${job}، وستظهر للشركة حالة الانسحاب`,
+      preheader: 'سُحب طلبك، وستظهر للشركة حالة الانسحاب',
       heading: 'تم سحب طلبك',
       body: (job: string) =>
         `تم سحب طلبك على وظيفة «${job}»، وسيظهر للشركة أنك انسحبت من التقديم.`,
