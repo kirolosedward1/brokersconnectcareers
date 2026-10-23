@@ -26,6 +26,7 @@ import { supabase } from '~/lib/supabase';
 import { tabsFor } from '~/lib/tabs';
 import { ThemeProvider } from '~/theme/provider';
 import TabsLayout from '../src/app/(tabs)/_layout';
+import * as HomeScreen from '../src/app/(tabs)/(home)/index';
 import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as OverviewScreen from '../src/app/(tabs)/(admin)/admin/index';
 import * as ListingsScreen from '../src/app/(tabs)/(admin)/admin/jobs/index';
@@ -445,8 +446,9 @@ describe('the tab bar', () => {
 });
 
 describe('who has the Admin tab', () => {
-  it('is an admin: beside the public tabs, or beside the console of a company they run', () => {
-    expect(tabsFor(admin())).toEqual(['home', 'jobs', 'companies', 'admin', 'account']);
+  it('is an admin: the console and the account alone, or beside the console of a company they run', () => {
+    // Nothing of the public site's: no Home, no board, no companies directory.
+    expect(tabsFor(admin())).toEqual(['admin', 'account']);
     expect(tabsFor(admin(company))).toEqual(['home', 'listings', 'applicants', 'admin', 'account']);
     for (const role of ['candidate', 'employer'] as const) {
       const actor = { userId: USER_ID, profile: { role, approval_status: 'approved' as const }, company: null };
@@ -467,6 +469,27 @@ describe('who has the Admin tab', () => {
     const candidate = { userId: USER_ID, profile: { role: 'candidate' as const, approval_status: 'approved' as const }, company: null };
     expect(routeFromOutside('https://www.brokersconnect.net/admin', candidate)).toBe('/');
     expect(routeFromOutside('https://www.brokersconnect.net/admin', null)).toBe('/sign-in?next=%2Fadmin');
+  });
+
+  it("opens a public page the console points at inside the Admin tab, as an admin's bar has no Home", () => {
+    expect(routeFromOutside('https://www.brokersconnect.net/jobs/some-listing', admin())).toBe('/(admin)/jobs/some-listing');
+    expect(routeFromOutside('https://www.brokersconnect.net/companies/some-company', admin())).toBe('/(admin)/companies/some-company');
+    expect(routeFromOutside('https://www.brokersconnect.net/notifications', admin())).toBe('/(admin)/notifications');
+    // The board itself is the Jobs tab's alone, which an admin does not have: home, which is the console.
+    expect(routeFromOutside('https://www.brokersconnect.net/jobs', admin())).toBe('/');
+  });
+
+  it("draws only the console and the account in an admin's bar, and opens the console at the app's start", async () => {
+    await signIn();
+    const result = renderRouter({ ...tabbed, '(tabs)/(home)/index': HomeScreen }, { initialUrl: '/' });
+    await waitFor(() => expect(result.getPathname()).toBe('/admin'));
+    const names = screen.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel as string);
+    expect(names.some((name) => name.startsWith(ar.admin.title))).toBe(true);
+    expect(names.some((name) => name.startsWith(ar.app.tabs.account))).toBe(true);
+    expect(names.some((name) => name.startsWith(ar.app.tabs.home))).toBe(false);
+    expect(names.some((name) => name.startsWith(ar.nav.jobs))).toBe(false);
+    expect(names.some((name) => name.startsWith(ar.app.tabs.companies))).toBe(false);
+    expect(names).toHaveLength(2);
   });
 
   it('keeps the consultant directory for an admin who runs a company, inside the Admin tab', () => {

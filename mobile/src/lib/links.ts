@@ -123,12 +123,14 @@ export function appPathFor(path: string): string {
 const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabName[], exact?: 'exact'])[] = [
   // The board is the Jobs tab's own screen; a listing opens in any tab.
   ['/jobs', ['jobs'], 'exact'],
-  ['/jobs', ['jobs', 'home']],
-  ['/companies', ['companies', 'home']],
+  // A listing, a company and the bell open in the Admin tab for an admin,
+  // whose bar has no Home (tabs.ts).
+  ['/jobs', ['jobs', 'home', 'admin']],
+  ['/companies', ['companies', 'home', 'admin']],
   ['/dashboard/applications', ['applications']],
   ['/dashboard/saved', ['saved']],
   ['/account', ['account']],
-  ['/notifications', ['home']],
+  ['/notifications', ['home', 'admin']],
   ['/employer/jobs', ['listings']],
   ['/employer/applicants', ['applicants']],
   ['/employer/company', ['account']],

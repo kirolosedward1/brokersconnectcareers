@@ -56,9 +56,16 @@ export default function TabsLayout() {
 
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
+      {/* Always in the app, as `/` and every "back home" lead here; for an
+          admin, whose bar is the console alone, its button is hidden and the
+          screen opens the console instead ((home)/index.tsx). */}
       <Tabs.Screen
         name="(home)"
-        options={{ title: t('app.tabs.home'), tabBarIcon: tabIcon({ default: 'house', selected: 'house.fill' }, House) }}
+        options={{
+          title: t('app.tabs.home'),
+          tabBarIcon: tabIcon({ default: 'house', selected: 'house.fill' }, House),
+          tabBarItemStyle: has('home') ? undefined : { display: 'none' },
+        }}
       />
 
       <Tabs.Protected guard={has('jobs')}>
