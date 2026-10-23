@@ -6,7 +6,7 @@ import { createLocalList } from '~/lib/local-list';
 
 /**
  * "Show fewer like this": the kinds of listing — a track in a district, as
- * «بيع أول · التجمع الخامس» — this person asked to see less of, from a card's
+ * «بيع أوف بلان · التجمع الخامس» — this person asked to see less of, from a card's
  * menu. Home's suggested roles put listings of those kinds after every other
  * (candidate.ts); nothing is hidden, and the board is left as it is: it is
  * the reader's own search, and what it shows is what they asked for.

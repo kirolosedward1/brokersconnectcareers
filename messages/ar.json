@@ -142,12 +142,12 @@
     "postedWithin": "{days, plural, =1 {آخر 24 ساعة} few {آخر # أيام} other {آخر # يوم}}"
   },
   "track": {
-    "primary": "عقارات قيد الإنشاء",
-    "resale": "إعادة بيع",
+    "primary": "بيع أوف بلان",
+    "resale": "ريسيل",
     "rental": "إيجارات",
-    "commercial": "عقارات تجارية",
+    "commercial": "تجاري وإداري",
     "property_management": "إدارة أملاك",
-    "back_office": "دعم ومساندة"
+    "back_office": "باك أوفيس"
   },
   "employmentType": {
     "full_time": "دوام كامل",

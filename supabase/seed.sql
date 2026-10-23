@@ -114,8 +114,11 @@ on conflict on constraint search_aliases_unique do nothing;
 insert into search_aliases (track, alias)
 select a.track::job_track, a.alias
 from (values
-  -- The label reads "عقارات قيد الإنشاء" now; "بيع أول" stays an alias because
-  -- it is still what the market says and what people type into the box.
+  -- The labels are the market's own words now (migration 359): «بيع أوف بلان»,
+  -- «ريسيل», «تجاري وإداري», «باك أوفيس». Every earlier label stays an alias,
+  -- because it is still what some people type into the box.
+  ('primary',             'بيع أوف بلان'),
+  ('primary',             'أوف بلان'),
   ('primary',             'عقارات قيد الإنشاء'),
   ('primary',             'قيد الإنشاء'),
   ('primary',             'بيع أول'),
@@ -129,9 +132,13 @@ from (values
   ('rental',              'Rentals'),
   ('commercial',          'عقارات تجارية'),
   ('commercial',          'Commercial'),
+  ('commercial',          'تجاري وإداري'),
+  ('commercial',          'إداري وتجاري'),
+  ('commercial',          'Commercial & administrative'),
   ('property_management', 'إدارة أملاك'),
   ('property_management', 'Property management'),
   ('back_office',         'دعم ومساندة'),
-  ('back_office',         'Back office')
+  ('back_office',         'Back office'),
+  ('back_office',         'باك أوفيس')
 ) as a(track, alias)
 on conflict on constraint search_aliases_unique do nothing;
