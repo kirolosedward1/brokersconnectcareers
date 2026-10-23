@@ -1,15 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDate, formatDateTime, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
 import { whatsappLink } from '@/lib/whatsapp';
 import { openDecision } from '~/components/admin/decision-sheet';
-import { AdminGate, ApprovalBadge, Fact, openOnWebsite, SectionTitle, useRoleLabel } from '~/components/admin/kit';
+import { AdminGate, ApprovalBadge, Fact, SectionTitle, useRoleLabel } from '~/components/admin/kit';
 import { Record } from '~/components/admin/record';
 import { Avatar } from '~/components/ui/avatar';
+import { ForwardChevron } from '~/components/ui/icons';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
@@ -17,7 +18,6 @@ import {
   Ban,
   Check,
   CirclePause,
-  ExternalLink,
   Eye,
   Flag,
   FlagOff,
@@ -139,12 +139,6 @@ function File({ id }: { id: string | undefined }) {
         <Trail account={account} self={self} />
       )}
 
-      <Button
-        label={t('app.admin.onWebsite')}
-        variant="ghost"
-        icon={<ExternalLink size={18} color={colors.foreground} />}
-        onPress={() => openOnWebsite(`/admin/users/${profile.id}`)}
-      />
     </ScrollView>
   );
 }
@@ -154,8 +148,8 @@ function Facts({ children }: { children: ReactNode }) {
   return <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space[3], columnGap: space[4] }}>{children}</View>;
 }
 
-/** A row that opens a page of the website's console. */
-function WebsiteRow({ label, onPress, children }: { label: string; onPress: () => void; children: ReactNode }) {
+/** A row that opens another page of the console. */
+function LinkRow({ label, onPress, children }: { label: string; onPress: () => void; children: ReactNode }) {
   const { colors } = useTheme();
   return (
     <Pressable
@@ -171,7 +165,7 @@ function WebsiteRow({ label, onPress, children }: { label: string; onPress: () =
       })}
     >
       <View style={{ flex: 1, gap: 2 }}>{children}</View>
-      <ExternalLink size={16} color={colors.mutedForeground} />
+      <ForwardChevron size={16} color={colors.mutedForeground} />
     </Pressable>
   );
 }
@@ -221,7 +215,7 @@ function Overview({
           {companies.map((membership) => {
             const name = localized(locale, membership.company.name_ar, membership.company.name_en);
             return (
-              <WebsiteRow key={membership.company.id} label={name} onPress={() => openOnWebsite(`/admin/companies/${membership.company.id}`)}>
+              <LinkRow key={membership.company.id} label={name} onPress={() => router.push({ pathname: '/admin/companies/[id]', params: { id: membership.company.id } })}>
                 <Text weight="medium" tone="primary">
                   {name}
                 </Text>
@@ -235,7 +229,7 @@ function Overview({
                   />
                   {membership.company.suspended_at ? <Badge variant="destructive" label={t('admin.suspended')} /> : null}
                 </View>
-              </WebsiteRow>
+              </LinkRow>
             );
           })}
         </Card>
@@ -244,7 +238,7 @@ function Overview({
       {agent ? (
         <Card style={{ gap: space[2] }}>
           <SectionTitle>{t('admin.agentProfile')}</SectionTitle>
-          <WebsiteRow label={agent.slug} onPress={() => openOnWebsite(`/admin/agents/${agent.id}`)}>
+          <LinkRow label={agent.slug} onPress={() => router.push({ pathname: '/admin/agents/[id]', params: { id: agent.id } })}>
             <Text weight="medium" tone="primary" style={{ writingDirection: 'ltr' }}>
               {agent.slug}
             </Text>
@@ -256,7 +250,7 @@ function Overview({
                 label={t(`visibility.${agent.visibility}`)}
               />
             )}
-          </WebsiteRow>
+          </LinkRow>
         </Card>
       ) : null}
 

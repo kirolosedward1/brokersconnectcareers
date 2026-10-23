@@ -6,12 +6,11 @@ import { formatDate, formatNumber } from '@/lib/format';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import type { JobStatus } from '@/lib/supabase/database.types';
-import { AdminGate, ApprovalBadge, Fact, openOnWebsite, SectionTitle, useRoleLabel } from '~/components/admin/kit';
+import { AdminGate, ApprovalBadge, Fact, SectionTitle, useRoleLabel } from '~/components/admin/kit';
 import { Record } from '~/components/admin/record';
 import { Badge } from '~/components/ui/badge';
 import { Card } from '~/components/ui/card';
 import { ForwardChevron } from '~/components/ui/icons';
-import { ExternalLink } from '~/components/ui/lucide';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { UUID } from '~/features/admin/agents';
@@ -144,7 +143,7 @@ function Application({ id }: { id: string | undefined }) {
 }
 
 /** A row that opens another screen of the console — or, for a company, its page in the website's console until the app has one. */
-function LinkRow({ label, onPress, website = false, children }: { label: string; onPress: () => void; website?: boolean; children: ReactNode }) {
+function LinkRow({ label, onPress, children }: { label: string; onPress: () => void; children: ReactNode }) {
   const { colors } = useTheme();
   return (
     <Pressable
@@ -160,7 +159,7 @@ function LinkRow({ label, onPress, website = false, children }: { label: string;
       })}
     >
       <View style={{ flex: 1, gap: 2 }}>{children}</View>
-      {website ? <ExternalLink size={16} color={colors.mutedForeground} /> : <ForwardChevron size={16} color={colors.mutedForeground} />}
+      <ForwardChevron size={16} color={colors.mutedForeground} />
     </Pressable>
   );
 }
@@ -198,7 +197,7 @@ function Parties({ application }: { application: ApplicationFile }) {
         </LinkRow>
       ) : null}
       {company ? (
-        <LinkRow label={localized(locale, company.name_ar, company.name_en)} website onPress={() => openOnWebsite(`/admin/companies/${company.id}`)}>
+        <LinkRow label={localized(locale, company.name_ar, company.name_en)} onPress={() => router.push({ pathname: '/admin/companies/[id]', params: { id: company.id } })}>
           <Text weight="medium" tone="primary">
             {localized(locale, company.name_ar, company.name_en)}
           </Text>

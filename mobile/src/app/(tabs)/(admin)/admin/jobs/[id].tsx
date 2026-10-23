@@ -7,13 +7,14 @@ import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import type { JobStatus } from '@/lib/supabase/database.types';
 import { openDecision, type Decision } from '~/components/admin/decision-sheet';
-import { AdminGate, Fact, FlagList, openOnWebsite, SectionTitle } from '~/components/admin/kit';
+import { AdminGate, Fact, FlagList, SectionTitle } from '~/components/admin/kit';
 import { Record } from '~/components/admin/record';
 import { CompanySignalList } from '~/components/admin/signals';
 import { Badge } from '~/components/ui/badge';
+import { ForwardChevron } from '~/components/ui/icons';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
-import { Check, ExternalLink, EyeOff, FilePen, Lock, RotateCcw, Star, StarOff, X } from '~/components/ui/lucide';
+import { Check, EyeOff, FilePen, Lock, RotateCcw, Star, StarOff, X } from '~/components/ui/lucide';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { TextLink } from '~/components/ui/text-link';
@@ -211,13 +212,13 @@ function Review({ id }: { id: string | undefined }) {
           ))}
         </View>
         {totalApplications ? (
-          // The applications list is not in the app yet: until it is, the website's page, as the overview links it.
+          // Every application to this listing, in the console's own list.
           <Button
             label={t('admin.seeAll')}
             variant="ghost"
             size="sm"
-            icon={<ExternalLink size={16} color={colors.foreground} />}
-            onPress={() => openOnWebsite(`/admin/applications?job=${job.id}`)}
+            icon={<ForwardChevron size={16} color={colors.foreground} />}
+            onPress={() => router.push({ pathname: '/admin/applications', params: { job: job.id } })}
           />
         ) : null}
       </Card>

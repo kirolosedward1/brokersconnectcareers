@@ -123,7 +123,7 @@ beforeEach(async () => {
     headers: { 'content-range': '0-0/7' },
   });
   server.on('GET /rest/v1/reports', [
-    { id: 'r1', reason: 'fake_company', detail: 'العنوان مش موجود.', status: 'open', created_at: '2026-10-20T10:00:00Z', reporter: { id: OTHER_USER, full_name: 'منى علي' } },
+    { id: 'r1', reason: 'suspicious_company', detail: 'العنوان مش موجود.', status: 'open', created_at: '2026-10-20T10:00:00Z', reporter: { id: OTHER_USER, full_name: 'منى علي' } },
   ]);
   server.on('HEAD /rest/v1/reports', { body: null, headers: { 'content-range': '*/2' } });
   server.on('GET /rest/v1/company_moderation', () => []);
