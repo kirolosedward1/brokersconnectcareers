@@ -175,10 +175,10 @@
     "none": "No commission"
   },
   "companyType": {
-    "brokerage": "Brokerage",
-    "developer": "Developer",
-    "brokerage_jobs": "Jobs at brokerages",
-    "developer_jobs": "Jobs at developers"
+    "brokerage": "Brokerage firms",
+    "developer": "Real estate developers",
+    "brokerage_jobs": "Jobs at brokerage firms",
+    "developer_jobs": "Jobs at real estate developers"
   },
   "benefits": {
     "social_insurance": "Social insurance",

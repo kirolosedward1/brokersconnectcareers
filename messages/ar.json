@@ -175,10 +175,10 @@
     "none": "لا توجد عمولة"
   },
   "companyType": {
-    "brokerage": "شركة وساطة عقارية",
-    "developer": "مطوّر عقاري",
-    "brokerage_jobs": "وظائف شركات الوساطة",
-    "developer_jobs": "وظائف المطوّرين العقاريين"
+    "brokerage": "شركات بروكر",
+    "developer": "شركات تطوير عقاري",
+    "brokerage_jobs": "وظائف شركات البروكر",
+    "developer_jobs": "وظائف شركات التطوير العقاري"
   },
   "benefits": {
     "social_insurance": "تأمين اجتماعي",
