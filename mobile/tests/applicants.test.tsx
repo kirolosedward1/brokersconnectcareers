@@ -586,7 +586,12 @@ describe("a listing's applicants", () => {
         note: null,
         decision_note: null,
         cv_path: null,
-        candidate: { ...omar.candidate, full_name: 'نورا سليم' },
+        candidate: {
+          full_name: 'نورا سليم',
+          whatsapp_phone: '+201112223334',
+          avatar_url: null,
+          agent_profiles: null,
+        },
       },
     ];
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
@@ -599,10 +604,10 @@ describe("a listing's applicants", () => {
 
     // The card's own padding is 16. An empty action row would be a second
     // horizontal row and would push that 16 further down by the card's gap.
-    let node: { parent: typeof node | null; props?: { style?: unknown }; children?: unknown[] } | null = header;
-    let card: typeof node = null;
+    let node: ReturnType<typeof screen.getByRole> | null = header;
+    let card: ReturnType<typeof screen.getByRole> | null = null;
     while (node) {
-      if (StyleSheet.flatten(node.props?.style)?.padding === 16) {
+      if (StyleSheet.flatten(node.props.style)?.padding === 16) {
         card = node;
         break;
       }
@@ -610,7 +615,7 @@ describe("a listing's applicants", () => {
     }
     expect(card).not.toBeNull();
     const rowsInCard = (card?.children ?? []).filter(
-      (child) => StyleSheet.flatten((child as { props?: { style?: unknown } }).props?.style)?.flexDirection === 'row',
+      (child) => typeof child !== 'string' && StyleSheet.flatten(child.props.style)?.flexDirection === 'row',
     );
     expect(rowsInCard).toHaveLength(1);
   });
