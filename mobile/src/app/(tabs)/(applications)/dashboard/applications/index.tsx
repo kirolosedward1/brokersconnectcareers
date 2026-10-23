@@ -148,7 +148,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const locale = useLocale();
   const { colors } = useTheme();
   const withdraw = useWithdrawApplication();
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'unavailable' | 'failed' | null>(null);
 
   const job = application.job;
   if (!job) return null;
@@ -163,10 +163,11 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
         text: t('dashboard.withdraw'),
         style: 'destructive',
         onPress: () => {
-          setFailed(false);
+          setFailed(null);
           withdraw.mutate(application.id, {
             onSuccess: () => toast.show({ message: t('app.toast.withdrawn'), tone: 'success' }),
-            onError: () => setFailed(true),
+            onError: (error) =>
+              setFailed(error instanceof Error && error.message === 'unavailable' ? 'unavailable' : 'failed'),
           });
         },
       },
@@ -282,7 +283,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
 
       {failed ? (
         <Text variant="caption" tone="destructive" accessibilityRole="alert">
-          {t('common.errorBody')}
+          {failed === 'unavailable' ? t('myApplications.withdrawUnavailable') : t('common.errorBody')}
         </Text>
       ) : null}
     </View>

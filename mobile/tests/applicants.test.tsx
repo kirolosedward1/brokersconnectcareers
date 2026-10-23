@@ -8,6 +8,7 @@ import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-rout
 import type { ApplicationNoteRow, ProfileRow } from '@/lib/supabase/database.types';
 import type { Applicant } from '~/features/employer/applicants';
 import { parseInboxFilters } from '~/features/employer/applicants';
+import { LRI, PDI } from '~/i18n/rich';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -136,6 +137,10 @@ beforeEach(async () => {
     // The inbox's second read counts the stages; everything else is the rows.
     if (url.searchParams.get('select')?.startsWith('status,')) return rows.map((row) => ({ status: row.status }));
     return { body: rows, headers: { 'content-range': `0-${rows.length - 1}/${rows.length}` } };
+  });
+  server.on('HEAD /rest/v1/applications', (url: URL) => {
+    const standing = url.searchParams.get('status') === 'neq.withdrawn' ? rows.filter((row) => row.status !== 'withdrawn') : rows;
+    return { body: null, headers: { 'content-range': `*/${standing.length}` } };
   });
   server.on('GET /rest/v1/application_notes', notes);
   server.on('GET /rest/v1/company_members', [{ user_id: USER_ID, profile: { full_name: 'أحمد سمير' } }]);
@@ -553,6 +558,25 @@ describe("a listing's applicants", () => {
     expect(await screen.findByText('ليلى محمود')).toBeTruthy();
   });
 
+  it('asks for a standing count, so a withdrawal is not an applicant', async () => {
+    rows = [
+      ...rows,
+      {
+        ...omar,
+        id: 'a0000000-0000-4000-8000-000000000009',
+        status: 'withdrawn',
+        created_at: '2026-09-30T10:00:00Z',
+      },
+    ];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText('سارة عادل')).toBeTruthy();
+    const head = server.asked('/rest/v1/applications').find((request) => request.method === 'HEAD');
+    expect(head?.url.searchParams.get('status')).toBe('neq.withdrawn');
+    expect(head?.url.searchParams.get('job_id')).toBe(`eq.${JOB_ID}`);
+    // Two standing applications. The withdrawal is on the page and not in the count.
+    expect(screen.getByText(`${LRI}2${PDI} متقدمين`)).toBeTruthy();
+  });
+
   it("is not found when the listing is not the company's", async () => {
     server.on('GET /rest/v1/jobs', []);
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
@@ -586,6 +610,12 @@ describe('the inbox', () => {
     });
     await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` })).toBeTruthy();
+    const main = server.asked('/rest/v1/applications').find(
+      (request) => request.method === 'GET' && !request.url.searchParams.get('select')?.startsWith('status,'),
+    );
+    // Withdrawn last in the query, before the cap — not sorted into place afterwards.
+    expect(main?.url.searchParams.get('order')).toBe('withdrawn_at.asc.nullsfirst,created_at.desc');
+    expect(main?.url.searchParams.get('limit')).toBe('200');
 
     // Moved elsewhere — on the listing's pipeline, or by a colleague — and read again here.
     rows = rows.map((row) => (row.id === sara.id ? { ...row, status: 'shortlisted' } : row));

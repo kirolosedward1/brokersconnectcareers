@@ -22,15 +22,16 @@
 -- the update. forget_application_notices (351) still runs on a real delete
 -- (retention, a cascade) and now also when a row becomes withdrawn.
 --
--- Compatibility: the new server calls withdraw_application and, until that
--- function exists, deletes the row as before. This file removes that delete,
--- so it ships in the same release as the server that calls the function. A
--- server that only deletes, left running after this file, would have its
--- withdrawal refused. Rolling the code back needs the delete policy put back.
+-- Compatibility: the server calls withdraw_application. If the function is
+-- not there yet it says withdrawal is unavailable and does not delete the
+-- row. This file removes the candidate delete, so an older server that still
+-- tries to delete is refused rather than erasing the history. Either order
+-- leaves the row in place until both have landed. Rolling the code back
+-- needs the delete policy put back.
 -- =============================================================================
 
 -- rollback: forward-fix only — restoring the delete would drop the withdrawn rows' history; to undo the behaviour, restate the functions from 62, 63, 46, 14, 328, 346, 349, 355, 347, 313, 43, 345, 344, 338, 351 and 204, drop withdraw_application, and recreate applications_withdraw_candidate from 42
--- safety: ships-with-code — until withdraw_application exists the new server deletes the row, as the old one does (a missing function is PGRST202). This file drops that delete, so it ships in the same release as the server that calls the function; the old server left running against it would have its withdrawal refused rather than delete
+-- safety: ships-with-code — the server calls withdraw_application and, while that function is missing (PGRST202 or 42883), reports withdrawal unavailable and does not delete the row. This file drops the candidate delete, so an older server still trying to delete is refused by the policy. Either order keeps the row until both have landed
 -- safety: constraint — withdrawn_at is null on every existing row and no row is withdrawn, so the check holds; the partial unique index matches the old (job_id, candidate_id) uniqueness for every standing row (production has no withdrawn rows) and only lets a second row exist once one of them is withdrawn
 -- safety: rls — applications_withdraw_candidate (the candidate delete) is removed and not replaced by an update policy; the candidate withdraws only through withdraw_application, which refuses anyone else and any status past shortlisted. Employers already update through applications_update_employer; the guard now refuses a withdrawn row and a status of withdrawn from them
 -- safety: definer — withdraw_application runs as its owner so it can update a row the candidate has no update policy for, and it sets a transaction-local flag the guard requires; search_path is pinned

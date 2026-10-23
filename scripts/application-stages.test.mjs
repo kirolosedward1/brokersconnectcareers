@@ -13,8 +13,14 @@ const {
   WITHDRAWN_BADGE,
   WITHDRAWN_TEXT_DARK,
   canWithdraw,
+  compareInboxRows,
+  excludeWithdrawn,
+  orderInbox,
+  standingApplicantCount,
   timelineSteps,
   withWithdrawnLast,
+  withdrawnAtMissing,
+  withdrawnStatusMissing,
 } = await import('../src/lib/application-stages.ts');
 
 let pass = 0;
@@ -82,6 +88,69 @@ is(
   timelineSteps({ status: 'withdrawn', created_at: created, employer_viewed_at: seenAt })[1],
   { key: 'seen', state: 'done', date: seenAt },
 );
+
+console.log('\n— a withdrawal is not an applicant');
+is(
+  'count',
+  standingApplicantCount([
+    { status: 'new' },
+    { status: 'withdrawn' },
+    { status: 'hired' },
+    { status: 'withdrawn' },
+  ]),
+  2,
+);
+{
+  const asked = [];
+  const query = {
+    neq(column, value) {
+      asked.push([column, value]);
+      return query;
+    },
+  };
+  excludeWithdrawn(query);
+  is('the count filter', asked, [['status', 'withdrawn']]);
+}
+
+console.log('\n— the inbox sorts withdrawn last before it limits');
+{
+  const calls = [];
+  const query = {
+    order(column, options) {
+      calls.push({ column, ...options });
+      return query;
+    },
+    limit(n) {
+      calls.push({ limit: n });
+      return query;
+    },
+  };
+  orderInbox(query).limit(200);
+  is('order, then the cap', calls, [
+    { column: 'withdrawn_at', ascending: true, nullsFirst: true },
+    { column: 'created_at', ascending: false },
+    { limit: 200 },
+  ]);
+
+  const rows = [
+    { id: 'older-open', status: 'new', created_at: '2026-01-01T00:00:00Z', withdrawn_at: null },
+    { id: 'newer-withdrawn', status: 'withdrawn', created_at: '2026-03-01T00:00:00Z', withdrawn_at: '2026-03-02T00:00:00Z' },
+    { id: 'newer-open', status: 'shortlisted', created_at: '2026-02-01T00:00:00Z', withdrawn_at: null },
+  ];
+  const page = [...rows].sort(compareInboxRows).slice(0, 2).map((row) => row.id);
+  is('the cap keeps both open applications', page, ['newer-open', 'older-open']);
+  const after = withWithdrawnLast(
+    [...rows].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, 2),
+  ).map((row) => row.id);
+  is('sorting after the cap drops the older open application', after, ['newer-open', 'newer-withdrawn']);
+}
+
+console.log('\n— a missing column or enum is the database before the migration, not a broken read');
+is('no withdrawn_at yet', withdrawnAtMissing({ code: '42703', message: 'column applications.withdrawn_at does not exist' }), true);
+is('schema cache', withdrawnAtMissing({ code: 'PGRST204', message: 'Could not find the withdrawn_at column' }), true);
+is('some other missing column', withdrawnAtMissing({ code: '42703', message: 'column applications.other does not exist' }), false);
+is('withdrawn is not a status yet', withdrawnStatusMissing({ code: '22P02', message: 'invalid input value for enum application_status: "withdrawn"' }), true);
+is('a real failure', withdrawnStatusMissing({ code: '57014', message: 'canceling statement due to statement timeout' }), false);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

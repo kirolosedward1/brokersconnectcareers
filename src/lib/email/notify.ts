@@ -12,6 +12,7 @@ import { deliver } from './service';
 import type { SendOutcome } from './send';
 import { unsubscribeLinks } from './unsubscribe-link';
 import { isNews, stageTelling, tellingSuffix } from '@/lib/application-arrival';
+import { excludeWithdrawn, withdrawnStatusMissing } from '@/lib/application-stages';
 import { listingNotes, noteFor } from '@/lib/listing-notes';
 
 /**
@@ -1118,10 +1119,18 @@ export async function rebuildJobExpiry(
         : displayJobStatus(job) === 'expired';
     if (!stillTrue) return 'skipped';
 
-    const { count, error: countError } = await admin
-      .from('applications')
-      .select('id', { count: 'exact', head: true })
-      .eq('job_id', jobId);
+    // A withdrawal is not an applicant. The enum value arrives with the
+    // migration; until then no row can be withdrawn, so the unfiltered count
+    // is the same number.
+    let { count, error: countError } = await excludeWithdrawn(
+      admin.from('applications').select('id', { count: 'exact', head: true }).eq('job_id', jobId),
+    );
+    if (countError && withdrawnStatusMissing(countError)) {
+      ({ count, error: countError } = await admin
+        .from('applications')
+        .select('id', { count: 'exact', head: true })
+        .eq('job_id', jobId));
+    }
     if (countError || count === null) readFailed('applicant count', countError);
 
     return notifyJobExpiry(jobId, stage, count);

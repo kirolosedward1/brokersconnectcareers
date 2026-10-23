@@ -217,27 +217,20 @@ export async function withdrawApplication(applicationId: string): Promise<Action
 
   // The function marks the row withdrawn and clears cv_path. An empty result
   // is a refusal — not theirs, or past shortlisted — and is not an error, so
-  // "withdrawn" is not reported for a row that did not change. Until the
-  // function exists, the delete is what this action used to do.
+  // "withdrawn" is not reported for a row that did not change. Deleting the
+  // row is not a fallback: that is the history this action exists to keep,
+  // and the candidate delete policy is gone. A database without the function
+  // yet is told so, and the application stays.
   const { data: withdrawnRows, error } = await supabase.rpc('withdraw_application', { p_id: applicationId });
 
   if (error && (error.code === 'PGRST202' || error.code === '42883')) {
-    const { data: removed, error: deleteError } = await supabase
-      .from('applications')
-      .delete()
-      .eq('id', applicationId)
-      .select('id');
-    if (deleteError) return refused('application', deleteError);
-    if (!removed?.length) {
-      logFailure('apply', 'withdrawal refused', { application: applicationId, by: user?.id });
-      return { ok: false, error: 'forbidden' };
-    }
-  } else {
-    if (error) return refused('application', error);
-    if (!withdrawnRows?.length) {
-      logFailure('apply', 'withdrawal refused', { application: applicationId, by: user?.id });
-      return { ok: false, error: 'forbidden' };
-    }
+    logFailure('apply', 'withdraw_application is not available', { application: applicationId, code: error.code });
+    return { ok: false, error: 'unavailable' };
+  }
+  if (error) return refused('application', error);
+  if (!withdrawnRows?.length) {
+    logFailure('apply', 'withdrawal refused', { application: applicationId, by: user?.id });
+    return { ok: false, error: 'forbidden' };
   }
 
   const withdrawn = before as unknown as WithdrawnJob | null;

@@ -2018,6 +2018,7 @@
     "stepSeen": "Seen",
     "stepDecision": "Decision",
     "withdrawTitle": "Withdraw your application to “{title}”?",
-    "withdrawBody": "The company will see that you withdrew. You can apply again while the listing is open."
+    "withdrawBody": "The company will see that you withdrew. You can apply again while the listing is open.",
+    "withdrawUnavailable": "Withdrawal is not available right now, so your application was left as it is."
   }
 }

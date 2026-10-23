@@ -303,8 +303,9 @@ export function ApplicantCard({
       {applicant.note ? <Text variant="small">{`«${applicant.note}»`}</Text> : null}
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
-        {/* Contact in this market is WhatsApp, with the first message already written. */}
-        {candidate ? (
+        {/* Contact in this market is WhatsApp, with the first message already written.
+            A withdrawn application is closed, so neither this nor the saved replies open it. */}
+        {!withdrawn && candidate ? (
           <Button
             label={t('employer.whatsappCandidate')}
             accessibilityLabel={`${t('employer.whatsappCandidate')}: ${name}`}
@@ -318,7 +319,7 @@ export function ApplicantCard({
           />
         ) : null}
         {/* The company's own replies, kept on this phone (saved-replies.tsx). */}
-        {candidate ? (
+        {!withdrawn && candidate ? (
           <Button
             label={t('app.replies.open')}
             accessibilityLabel={`${t('app.replies.open')}: ${name}`}
@@ -328,7 +329,7 @@ export function ApplicantCard({
             onPress={replies.show}
           />
         ) : null}
-        {candidate && replies.mounted ? (
+        {!withdrawn && candidate && replies.mounted ? (
           <SavedRepliesSheet
             visible={replies.open}
             onClose={replies.hide}
@@ -348,7 +349,7 @@ export function ApplicantCard({
             loading={opening}
             onPress={openCv}
           />
-        ) : (
+        ) : withdrawn ? null : (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <FileX2 size={14} color={colors.mutedForeground} />
             <Text variant="caption" tone="mutedForeground">
@@ -423,7 +424,13 @@ export function ApplicantCard({
       </>
       )}
 
-      <ApplicantNotes applicationId={applicant.id} notes={notes} authors={authors} viewerId={viewerId} />
+      <ApplicantNotes
+        applicationId={applicant.id}
+        notes={notes}
+        authors={authors}
+        viewerId={viewerId}
+        readOnly={withdrawn}
+      />
     </Card>
     </SwipeRow>
   );

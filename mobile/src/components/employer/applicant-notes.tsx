@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { ChevronDown, ChevronUp, Lock, Trash2 } from '~/components/ui/lucide';
+import { WITHDRAWN_BADGE, WITHDRAWN_TEXT_DARK } from '@/lib/application-stages';
 import { formatDate, formatNumber } from '@/lib/format';
 import type { ApplicationNoteRow } from '@/lib/supabase/database.types';
 import { Button } from '~/components/ui/button';
@@ -24,16 +25,19 @@ export function ApplicantNotes({
   notes,
   authors,
   viewerId,
+  readOnly = false,
 }: {
   applicationId: string;
   /** Undefined until the company's notes have been read. */
   notes: ApplicationNoteRow[] | undefined;
   authors: Record<string, string>;
   viewerId: string | null;
+  /** A withdrawn application keeps the notes it has and offers no way to write or remove one. */
+  readOnly?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
   const add = useAddNote();
   const remove = useDeleteNote();
   const shown = notes ?? [];
@@ -60,6 +64,23 @@ export function ApplicantNotes({
   };
 
   const Chevron = open ? ChevronUp : ChevronDown;
+
+  if (readOnly) {
+    if (shown.length === 0) return null;
+    const color = scheme === 'dark' ? WITHDRAWN_TEXT_DARK : WITHDRAWN_BADGE.color;
+    return (
+      <View style={{ gap: space[2], paddingTop: space[2], borderTopWidth: 1, borderTopColor: colors.border }}>
+        {shown.map((note) => (
+          <View key={note.id} style={{ gap: 2 }}>
+            <Text style={{ fontSize: 13, lineHeight: 18, color }}>{note.body}</Text>
+            <Text style={{ fontSize: 13, lineHeight: 18, color }}>
+              {`${note.author_id ? (authors[note.author_id] ?? t('employer.notesFormerColleague')) : t('employer.notesFormerColleague')} · ${formatDate(note.created_at, locale)}`}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
 
   return (
     <View style={{ gap: space[2], paddingTop: space[2], borderTopWidth: 1, borderTopColor: colors.border }}>

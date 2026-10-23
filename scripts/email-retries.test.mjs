@@ -21,6 +21,7 @@ const {
   notifyEmployerOfApplication,
   notifyEmployerOfModeration,
   notifyVisibilityChanged,
+  rebuildJobExpiry,
 } = await import('../src/lib/email/notify.ts');
 const { REBUILDERS } = await import('../src/lib/email/rebuild.ts');
 const { sweepOutbox } = await import('../src/lib/jobs/outbox-sweep.ts');
@@ -431,6 +432,36 @@ section('an expiry notice is owed until every member who takes it has it');
   globalThis.__db.email_log = [{ template: 'job_expiring', entity_id: 'J1', dedupe_key: `job_expiring:J1:${expires}:M1` }];
   const unknown = await stillOwed(createAdminClient(), jobs, 'expiring', { cap: 10, chunk: 50 });
   ok('with the members unreadable, a copy sent counts as before', unknown.length === 0, JSON.stringify(unknown));
+}
+
+section('an expiry email counts standing applicants and leaves a withdrawal out');
+{
+  reset();
+  globalThis.__db = {
+    jobs: [
+      {
+        id: 'J1',
+        status: 'active',
+        expires_at: '2020-01-01T00:00:00.000Z',
+        title_ar: 'مستشار',
+        title_en: 'Consultant',
+        slug: 'sales-x',
+        version: 1,
+        company: { id: 'C', owner_id: 'M1', name_ar: 'الرواد' },
+      },
+    ],
+    applications: [
+      { id: 'A1', job_id: 'J1', status: 'new' },
+      { id: 'A2', job_id: 'J1', status: 'shortlisted' },
+      { id: 'A3', job_id: 'J1', status: 'withdrawn' },
+    ],
+    company_members: [{ company_id: 'C', user_id: 'M1' }],
+    profiles: [{ id: 'M1', locale: 'en', role: 'employer', notify_status: true }],
+    profile_private: [{ user_id: 'M1', unsubscribe_token: 'tok' }],
+  };
+  const outcome = await rebuildJobExpiry('J1', 'expired');
+  const text = mail.sends.map((send) => send.text).join('\n');
+  ok('sent, and the count is the two who are still applicants', outcome === 'sent' && text.includes('Total applicants: 2'), `${outcome} ${text}`);
 }
 
 section('the provider: a refused key waits, and a message it already took is not sent twice');

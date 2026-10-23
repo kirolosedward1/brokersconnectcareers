@@ -348,9 +348,11 @@ export function ApplicantCard({
         </p>
       ) : null}
 
+      {!withdrawn || application.cv_path ? (
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {/* Contact in this market is WhatsApp, with the opener already written. */}
-        {candidate ? (
+        {/* Contact in this market is WhatsApp, with the opener already written.
+            A withdrawn application is closed, so the button is not offered. */}
+        {!withdrawn && candidate ? (
           <Button asChild size="sm">
             <a
               href={whatsappLink(
@@ -379,7 +381,7 @@ export function ApplicantCard({
               {t('downloadCv')}
             </a>
           </Button>
-        ) : (
+        ) : withdrawn ? null : (
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             <FileX2 className="size-3.5" aria-hidden />
             {t('noCv')}
@@ -415,6 +417,7 @@ export function ApplicantCard({
           </label>
         )}
       </div>
+      ) : null}
 
       {/* Shown once a decision has been made. Not on `new`, where there is
           nothing to explain yet, and never required — a mandatory field here
@@ -457,6 +460,7 @@ export function ApplicantCard({
         authors={noteAuthors}
         locale={locale}
         viewerId={viewerId}
+        readOnly={withdrawn}
       />
     </article>
   );
