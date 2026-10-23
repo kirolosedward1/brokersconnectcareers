@@ -147,6 +147,21 @@ console.log('\n— the generated mail');
     true,
   );
   is('a plain link under the button', confirmation.includes('إذا لم يظهر الزر، فافتح هذا الرابط في المتصفح:') && confirmation.includes('If the button does not appear'), true);
+  const authFiles = ['confirmation.html', 'recovery.html', 'magic-link.html', 'email-change.html', 'reauthentication.html'];
+  for (const file of authFiles) {
+    const html = readFileSync(join(ROOT, 'supabase', 'templates', file), 'utf8');
+    is(
+      `${file} offers the support address and does not forbid a reply`,
+      html.includes('هل تحتاج إلى مساعدة؟ راسلنا على') &&
+        html.includes('Need help? Write to') &&
+        html.includes('mailto:info@topsuite.net') &&
+        html.includes('font-size:13px;line-height:1.7;color:#5B6475') &&
+        !html.includes('عدم الرد') &&
+        !html.includes('do not reply') &&
+        !html.includes('يُرجى عدم الرد'),
+      true,
+    );
+  }
   is(
     'the confirm link is SiteURL, the token hash, the type and next',
     confirmation.includes(
@@ -163,7 +178,7 @@ console.log('\n— the generated mail');
     heading: 'عنوان',
     blocks: [{ kind: 'text', value: 'نص' }],
     footer: {
-      automated: 'آلي',
+      contact: { lead: 'هذه الرسالة مُرسلة تلقائياً.' },
       reason: 'سبب',
       legal: [{ label: 'الخصوصية', href: `${SITE}/privacy` }],
     },

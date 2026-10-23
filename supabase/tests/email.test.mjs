@@ -20,7 +20,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTestDb, reporter } from './setup.mjs';
-import { escape as escapeHtml, safeHref } from '../../src/lib/email/components.ts';
+import { escape as escapeHtml, renderEmail, safeHref } from '../../src/lib/email/components.ts';
 import { verifySvix } from '../../src/lib/email/svix.ts';
 import { eventKind } from '../../src/lib/email/events.ts';
 import { senderProblem } from '../../src/lib/email/sender.ts';
@@ -642,6 +642,46 @@ report.section('the profile reminder is asked for, and the outbox forgets');
                                  order by recipient`)).rows.map((row) => row.recipient);
   report.is(left.join(','), 'old-queued@real.example,recent@real.example',
     'a row past the period goes; one still queued, and one inside it, stay');
+}
+
+report.section('the footer tells a reader where a reply goes');
+{
+  const { emailCopy } = await import('../../src/lib/email/copy.ts');
+  const address = 'info@topsuite.net';
+  const rendered = (locale, contact) =>
+    renderEmail({
+      locale,
+      dir: locale === 'ar' ? 'rtl' : 'ltr',
+      siteName: 'Brokers Connect',
+      preheader: 'p',
+      heading: 'h',
+      blocks: [{ kind: 'text', value: 'body' }],
+      footer: { contact, reason: 'reason', legal: [] },
+    });
+
+  const ar = rendered('ar', { lead: emailCopy.ar.footer.reply, email: address });
+  const en = rendered('en', { lead: emailCopy.en.footer.reply, email: address });
+  const neutral = rendered('ar', { lead: emailCopy.ar.footer.neutral });
+
+  report.ok(
+    ar.includes('هل تحتاج إلى مساعدة؟ يمكنك الرد على هذه الرسالة أو مراسلتنا على') &&
+      ar.includes(`mailto:${address}`) &&
+      ar.includes(`>${address}</a>`) &&
+      ar.includes('font-size:13px;line-height:1.7;color:#5B6475'),
+    'Arabic site mail names the support address at 13px in the footer colour',
+  );
+  report.ok(
+    en.includes('Need help? Reply to this email or write to') && en.includes(`mailto:${address}`),
+    'English site mail says a reply reaches that address',
+  );
+  report.ok(
+    !neutral.includes('mailto:') && neutral.includes('هذه الرسالة مُرسلة تلقائياً.'),
+    'with no support address the line stays neutral',
+  );
+  report.ok(
+    !ar.includes('عدم الرد') && !ar.includes('do not reply') && !en.includes('do not reply') && !neutral.includes('عدم الرد'),
+    'nothing tells the reader not to reply',
+  );
 }
 
 report.section('a count in an Arabic email takes its MSA form');

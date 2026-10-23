@@ -46,12 +46,13 @@ export const emailCopy = {
     siteName: 'بروكرز كونكت',
 
     footer: {
-      automated: 'هذه الرسالة مُرسلة تلقائياً، يُرجى عدم الرد عليها.',
+      // The address is appended, and linked. Without one, the neutral line is used.
+      reply: 'هل تحتاج إلى مساعدة؟ يمكنك الرد على هذه الرسالة أو مراسلتنا على',
+      neutral: 'هذه الرسالة مُرسلة تلقائياً.',
       reasonAccount: 'وصلتك هذه الرسالة لأنك مسجّل في بروكرز كونكت.',
       reasonOptional: 'وصلتك هذه الرسالة لأنك فعّلت إشعارات البريد الإلكتروني.',
       privacy: 'الخصوصية',
       terms: 'الشروط',
-      help: 'هل تحتاج إلى مساعدة؟ راسلنا على',
     },
     unsubscribe: 'إيقاف هذه الإشعارات',
 
@@ -369,12 +370,13 @@ export const emailCopy = {
     siteName: 'Brokers Connect',
 
     footer: {
-      automated: 'This is an automated message. Please do not reply to this email.',
+      // The address is appended, and linked. Without one, the neutral line is used.
+      reply: 'Need help? Reply to this email or write to',
+      neutral: 'This is an automated message.',
       reasonAccount: 'You are receiving this because you have a Brokers Connect account.',
       reasonOptional: 'You are receiving this because email notifications are on.',
       privacy: 'Privacy',
       terms: 'Terms',
-      help: 'Need a hand? Write to us at',
     },
     unsubscribe: 'Turn off these emails',
 

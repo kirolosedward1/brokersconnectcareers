@@ -130,8 +130,13 @@ const PLAIN_EN = 'If the button does not appear, open this link in your browser:
 const LOCALE = 'ar';
 const DIR = 'rtl';
 
+// Auth mail has no Reply-To, so the footer only offers the address. It is
+// hardcoded because these files are pasted into the dashboard as they are.
+const AUTH_SUPPORT = 'info@topsuite.net';
+
 const footer = {
-  automated: c.footer.automated,
+  contact: { lead: 'هل تحتاج إلى مساعدة؟ راسلنا على', email: AUTH_SUPPORT },
+  contactEn: { lead: 'Need help? Write to', email: AUTH_SUPPORT },
   reason: c.footer.reasonAccount,
   legal: [
     { label: c.footer.privacy, href: `${SITE}/privacy` },
