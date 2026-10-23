@@ -7,7 +7,7 @@
     "start": "expo start",
     "start:go": "expo start --go",
     "ios": "expo start --ios",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tests",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json && tsc --noEmit -p tests",
     "lint": "eslint .",
     "test": "jest",
     "check:shared": "node scripts/check-shared.mjs",

@@ -1,6 +1,6 @@
 {
   "//": "The tests, with Jest's globals — kept out of the app's own typecheck so `describe` and `expect` are never in scope in a screen.",
-  "extends": "../tsconfig.json",
+  "extends": "../tsconfig.typecheck.json",
   "compilerOptions": {
     "types": ["jest"]
   },
