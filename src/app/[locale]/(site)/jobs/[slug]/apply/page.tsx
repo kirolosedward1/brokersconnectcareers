@@ -54,6 +54,9 @@ export default async function ApplyPage({
 
   const isOpen = jobIsLive(job);
 
+  // The middleware answers a confirmed expiry with 410 before this renders.
+  // What remains is a listing closed by its owner, or one the lookup could
+  // not classify, and both still explain themselves here.
   if (!isOpen) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">

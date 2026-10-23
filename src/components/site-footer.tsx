@@ -12,6 +12,7 @@ import { actorOf, getViewer } from '@/lib/auth';
 import { siteNavFor } from '@/lib/permissions';
 import { env } from '@/lib/env';
 import { OPERATOR } from '@/lib/business';
+import { FooterYear } from '@/components/footer-year';
 
 /**
  * The footer is where somebody lands after reading a whole page and doing
@@ -242,7 +243,7 @@ export async function SiteFooter({ locale }: { locale: string }) {
           <div className="flex flex-col items-center gap-3 text-xs text-muted-foreground sm:flex-row sm:gap-x-4">
             <div className="space-y-1">
               <p>
-                <span className="numeral">{new Date().getFullYear()}</span> · {tMeta('siteName')} ·{' '}
+                <FooterYear /> · {tMeta('siteName')} ·{' '}
                 {t('rights')}
               </p>
               {/* Who is behind the site, on every page of it. */}

@@ -143,6 +143,8 @@ describe('appPathFor', () => {
     ['/employer', '/'],
     // The website keeps the account under /dashboard; the app has a tab for it.
     ['/dashboard/account', '/account'],
+    ['/dashboard/account/security', '/account/security'],
+    ['/dashboard/account/alerts?from=push', '/account/alerts?from=push'],
     ['/dashboard/profile?notice=directory', '/account/profile?notice=directory'],
     // The licence notices are the Account tab's too.
     ['/licenses', '/account/licenses'],

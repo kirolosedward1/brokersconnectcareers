@@ -535,12 +535,9 @@ section('the account deletes itself from the account page');
   const { page, context, errors } = await device();
   await signInThroughForm(page, email, password);
   check('they sign in once more', await landsOn(page, /\/dashboard/), page.url());
-  await page.goto(`${SITE}/dashboard/account`);
+  // Deletion is its own page off the account hub, the same screen the app uses.
+  await page.goto(`${SITE}/dashboard/account/delete`);
   const remove = page.locator('button').filter({ hasText: 'احذف حسابي نهائياً' });
-  if ((await remove.count()) === 0) {
-    // The danger zone opens behind its own button first.
-    await page.locator('button').filter({ hasText: /حذف الحساب|احذف/ }).first().click();
-  }
   check('the delete button waits for the word to be typed', await remove.first().isDisabled());
   await page.locator('label').filter({ hasText: 'عشان تأكّد' }).locator('input').fill('حذف');
   check('and opens once it is', await remove.first().isEnabled());
