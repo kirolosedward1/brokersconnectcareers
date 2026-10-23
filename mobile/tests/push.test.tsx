@@ -173,7 +173,7 @@ const registered = () => server.asked('/rest/v1/rpc/register_push_device').map((
 
 describe('asking, with a reason', () => {
   it('asks the phone only when pressed, then registers this phone for the person signed in', async () => {
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
 
     expect(await screen.findByText(ar.app.push.promptTitle)).toBeTruthy();
     expect(screen.getByText(ar.app.push.promptCandidate)).toBeTruthy();
@@ -189,14 +189,14 @@ describe('asking, with a reason', () => {
   });
 
   it('puts the prompt away for good on "not now"', async () => {
-    const first = renderRouter(app, { initialUrl: '/' });
+    const first = await renderRouter(app, { initialUrl: '/' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.push.notNow }));
     await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle) === null).toBe(true));
     first.unmount();
 
     // Read again from scratch — the phone's answer and the choice kept here — and still away.
     const reads = jest.mocked(Notifications.getPermissionsAsync).mock.calls.length;
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(jest.mocked(Notifications.getPermissionsAsync).mock.calls.length).toBeGreaterThan(reads));
     await act(async () => {});
     await act(async () => {});
@@ -206,7 +206,7 @@ describe('asking, with a reason', () => {
 
   it('registers nothing when the phone says no', async () => {
     jest.mocked(Notifications.requestPermissionsAsync).mockResolvedValue(denied as never);
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     const turnOn = await screen.findByRole('button', { name: ar.app.push.turnOn });
 
     // The system's question, answered no: from now on the phone says denied.
@@ -220,14 +220,14 @@ describe('asking, with a reason', () => {
 describe('this phone, registered', () => {
   it('registers at launch for somebody who allowed it', async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(registered()).toHaveLength(1));
   });
 
   it('does not register again for token events that carry the same token — asking for one fires them', async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
     jest.mocked(Notifications.addPushTokenListener).mockClear();
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(registered()).toHaveLength(1));
     const calls = jest.mocked(Notifications.addPushTokenListener).mock.calls;
     const listener = calls[calls.length - 1][0];
@@ -246,7 +246,7 @@ describe('this phone, registered', () => {
 
   it('is turned off and on from the account, the database told each time', async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/account/alerts' });
+    await renderRouter(app, { initialUrl: '/account/alerts' });
     await waitFor(() => expect(registered()).toHaveLength(1));
 
     const toggle = await screen.findByLabelText(ar.app.push.switch);
@@ -265,7 +265,7 @@ describe('this phone, registered', () => {
   it("says when the phone's settings have them off, with the way there", async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(denied as never);
     const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
-    renderRouter(app, { initialUrl: '/account/alerts' });
+    await renderRouter(app, { initialUrl: '/account/alerts' });
 
     expect(await screen.findByText(ar.app.push.denied)).toBeTruthy();
     expect(screen.getByLabelText(ar.app.push.switch).props.disabled).toBe(true);
@@ -283,7 +283,7 @@ describe('what to hear about', () => {
     me = { ...profile, ...chosen };
     server.on('POST /api/mobile/v1/actions/updatePushPreferences', { ok: true });
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/account/alerts' });
+    await renderRouter(app, { initialUrl: '/account/alerts' });
 
     expect(await screen.findByText(ar.app.push.kindsTitle)).toBeTruthy();
     expect(screen.getByLabelText(ar.app.push.jobAlerts).props.value).toBe(true);
@@ -308,7 +308,7 @@ describe('what to hear about', () => {
       return { ok: true };
     });
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/account/alerts' });
+    await renderRouter(app, { initialUrl: '/account/alerts' });
 
     fireEvent(await screen.findByLabelText(ar.app.push.jobAlerts), 'valueChange', false);
     // Only the switch flipped here was sent: not push_account as this phone last read it.
@@ -328,7 +328,7 @@ describe('what to hear about', () => {
       return { ok: true };
     });
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/account/alerts' });
+    await renderRouter(app, { initialUrl: '/account/alerts' });
 
     // Quiet hours on, here; saved.
     fireEvent(await screen.findByLabelText(ar.app.push.quiet), 'valueChange', true);
@@ -358,7 +358,7 @@ describe('what to hear about', () => {
     }) as typeof fetch;
     try {
       jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-      renderRouter(app, { initialUrl: '/account/alerts' });
+      await renderRouter(app, { initialUrl: '/account/alerts' });
 
       // Applications off, here; the save on its way.
       fireEvent(await screen.findByLabelText(ar.app.push.applicationsCandidate), 'valueChange', false);
@@ -382,7 +382,7 @@ describe('what to hear about', () => {
     me = { ...profile, ...chosen };
     server.on('POST /api/mobile/v1/actions/updatePushPreferences', { ok: false, error: 'failed' });
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/account/alerts' });
+    await renderRouter(app, { initialUrl: '/account/alerts' });
 
     fireEvent(await screen.findByLabelText(ar.app.push.applicationsCandidate), 'valueChange', false);
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
@@ -394,7 +394,7 @@ describe('what to hear about', () => {
     // An employer's session also reads their company: none yet is an answer.
     server.on('POST /rest/v1/rpc/my_company_id', () => null);
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/account/alerts' });
+    await renderRouter(app, { initialUrl: '/account/alerts' });
 
     expect(await screen.findByLabelText(ar.app.push.applicationsEmployer)).toBeTruthy();
     expect(screen.getByLabelText(ar.app.push.accountEmployer)).toBeTruthy();
@@ -403,7 +403,7 @@ describe('what to hear about', () => {
 
   it('offers nothing while the database does not have the switches yet', async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/account/alerts' });
+    await renderRouter(app, { initialUrl: '/account/alerts' });
 
     await screen.findByLabelText(ar.app.push.switch);
     await waitFor(() => expect(registered()).toHaveLength(1));
@@ -413,7 +413,7 @@ describe('what to hear about', () => {
   it('offers nothing while pushes are off on this phone', async () => {
     me = { ...profile, ...chosen };
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(denied as never);
-    renderRouter(app, { initialUrl: '/account/alerts' });
+    await renderRouter(app, { initialUrl: '/account/alerts' });
 
     expect(await screen.findByText(ar.app.push.denied)).toBeTruthy();
     expect(screen.queryByText(ar.app.push.kindsTitle)).toBeNull();
@@ -429,7 +429,7 @@ describe('a tapped push', () => {
 
   it('that launched the app opens where the website says the notification leads', async () => {
     jest.mocked(Notifications.getLastNotificationResponse).mockReturnValue(response(NOTIFICATION));
-    const result = renderRouter(app, { initialUrl: '/' });
+    const result = await renderRouter(app, { initialUrl: '/' });
 
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
     expect((server.asked('/api/mobile/v1/actions/openNotification')[0]?.body as { input: unknown }).input).toEqual({
@@ -440,7 +440,7 @@ describe('a tapped push', () => {
   });
 
   it('while the app runs opens the same way, and the feed when the link has gone', async () => {
-    const result = renderRouter(app, { initialUrl: '/' });
+    const result = await renderRouter(app, { initialUrl: '/' });
     await screen.findByText(ar.app.push.promptTitle);
     const listener = jest.mocked(Notifications.addNotificationResponseReceivedListener).mock.calls.at(-1)?.[0];
 
@@ -455,7 +455,7 @@ describe('a tapped push', () => {
     await supabase.auth.signOut({ scope: 'local' });
     await rememberActor(null);
     jest.mocked(Notifications.getLastNotificationResponse).mockReturnValue(response(NOTIFICATION));
-    const result = renderRouter(app, { initialUrl: '/' });
+    const result = await renderRouter(app, { initialUrl: '/' });
 
     await waitFor(() => expect(result.getPathname()).toBe('/sign-in'));
     expect(result.getSearchParams()).toEqual({ next: '/notifications' });
@@ -465,7 +465,7 @@ describe('a tapped push', () => {
 
 describe('a push while the app is open', () => {
   it('reads again what it is most often about, as well as the bell and the account', async () => {
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await screen.findByText(ar.app.push.promptTitle);
     const listener = jest.mocked(Notifications.addNotificationReceivedListener).mock.calls.at(-1)?.[0];
     const invalidated = jest.spyOn(queryClient, 'invalidateQueries');
@@ -493,7 +493,7 @@ describe('a push while the app is open', () => {
 describe('signing out', () => {
   it('tells the database to forget this phone first, then stops listening on it', async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(registered()).toHaveLength(1));
 
     await act(async () => {
@@ -509,7 +509,7 @@ describe('signing out', () => {
   });
 
   it('stops listening on the phone when the session ends elsewhere', async () => {
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await screen.findByText(ar.app.push.promptTitle);
 
     // A refresh the auth server refused: the session is gone before the phone could say anything.
@@ -536,7 +536,7 @@ describe('a session that ended before the app was listening', () => {
     const { data } = await supabase.auth.getSession();
     expect(data.session).toBeNull();
 
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(Notifications.unregisterForNotificationsAsync).toHaveBeenCalled());
     expect(await AsyncStorage.getItem('push:token')).toBeNull();
     expect(Notifications.dismissAllNotificationsAsync).toHaveBeenCalled();
@@ -554,7 +554,7 @@ describe('a cold start whose refresh has no answer', () => {
       throw new TypeError('Network request failed');
     });
 
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     // supabase-js tries the refresh for half a minute, then keeps the session:
     // long enough for any clean-up to have run, were it going to.
     await act(async () => {
@@ -578,7 +578,7 @@ describe('another account taking over the phone without a sign-out', () => {
 
   it("stops this phone hearing the last person's news, while the new one has no profile yet", async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(registered()).toHaveLength(1));
 
     // On their way to onboarding: nothing to register them for yet.
@@ -590,7 +590,7 @@ describe('another account taking over the phone without a sign-out', () => {
 
   it('registers it for the new person once that stop is done, not before it', async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(registered()).toHaveLength(1));
 
     const order: string[] = [];
@@ -611,7 +611,7 @@ describe('another account taking over the phone without a sign-out', () => {
 describe('the badge', () => {
   it("is the bell's unread count", async () => {
     unread = 3;
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(Notifications.setBadgeCountAsync).toHaveBeenCalledWith(3));
   });
 });
@@ -642,7 +642,7 @@ describe('a build without a push project', () => {
   });
 
   it('asks nothing on Home', async () => {
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await waitFor(() => expect(jest.mocked(Notifications.getPermissionsAsync)).toHaveBeenCalled());
     await act(async () => {});
     await act(async () => {});
@@ -651,7 +651,7 @@ describe('a build without a push project', () => {
 
   it('registers nothing, even with the phone allowing it, and leaves its registration alone at sign-out', async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     await act(async () => {});
     await act(async () => {});
     expect(registered()).toHaveLength(0);
@@ -664,7 +664,7 @@ describe('a build without a push project', () => {
   });
 
   it('says so in the account, with no switch that would turn on nothing', async () => {
-    renderRouter(app, { initialUrl: '/account/alerts' });
+    await renderRouter(app, { initialUrl: '/account/alerts' });
     expect(await screen.findByText(ar.app.push.unavailable)).toBeTruthy();
     expect(screen.queryByLabelText(ar.app.push.switch)).toBeNull();
   });

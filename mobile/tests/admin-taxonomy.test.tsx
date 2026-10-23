@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
@@ -13,6 +13,7 @@ import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as TaxonomyScreen from '../src/app/(tabs)/(admin)/admin/taxonomy/index';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { fakeServer } from './server';
 
@@ -132,7 +133,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': stand('the overview'),
   '(tabs)/(admin)/admin/taxonomy/index': TaxonomyScreen,
@@ -152,7 +153,7 @@ function lastRead(table: string) {
 describe('the taxonomy', () => {
   it('draws the districts first, by id, with their governorates and how much uses each', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/taxonomy' });
+    await renderRouter(app, { initialUrl: '/admin/taxonomy' });
 
     expect(await screen.findByText('التجمع الخامس')).toBeTruthy();
     expect(lastRead('districts')).toEqual({ select: '*', order: 'id.asc' });
@@ -170,7 +171,7 @@ describe('the taxonomy', () => {
 
   it('reads developers by their English name, without the governorates, and opens the tab a link names', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/taxonomy?kind=developer' });
+    await renderRouter(app, { initialUrl: '/admin/taxonomy?kind=developer' });
 
     expect(await screen.findByText('إعمار')).toBeTruthy();
     expect(lastRead('developers')).toEqual({ select: '*', order: 'name_en.asc' });
@@ -185,7 +186,7 @@ describe('the taxonomy', () => {
 
   it('shows the fixed lists read-only, and says why', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/taxonomy' });
+    await renderRouter(app, { initialUrl: '/admin/taxonomy' });
 
     fireEvent.press(await screen.findByRole('radio', { name: ar.admin.taxonomyTab.fixed }));
     expect(await screen.findByText(ar.admin.fixedListsHint)).toBeTruthy();
@@ -200,7 +201,7 @@ describe('the taxonomy', () => {
 
   it('adds an entry through the website with id null, the slug lowercased, and its governorate', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/taxonomy' });
+    await renderRouter(app, { initialUrl: '/admin/taxonomy' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.addEntry }));
     expect(await screen.findByText(ar.app.admin.taxonomy.newEntry)).toBeTruthy();
@@ -228,7 +229,7 @@ describe('the taxonomy', () => {
 
   it("applies the website's checks in the form, in its sentences, before anything is sent", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/taxonomy?kind=developer' });
+    await renderRouter(app, { initialUrl: '/admin/taxonomy?kind=developer' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.addEntry }));
     await screen.findByText(ar.app.admin.taxonomy.newEntry);
@@ -257,7 +258,7 @@ describe('the taxonomy', () => {
 
   it('renames an entry without ever sending its slug, and keeps a refused slug in the sheet in the website\'s words', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/taxonomy' });
+    await renderRouter(app, { initialUrl: '/admin/taxonomy' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.app.admin.taxonomy.edit}: التجمع الخامس` }));
     expect(await screen.findByText(ar.app.admin.taxonomy.renameTitle.replace('{name}', 'التجمع الخامس'))).toBeTruthy();
@@ -289,7 +290,7 @@ describe('the taxonomy', () => {
     let answer: (value: unknown) => void = () => {};
     server.on('POST /api/mobile/v1/actions/deleteTaxonomy', () => new Promise((resolve) => (answer = resolve)));
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/taxonomy' });
+    await renderRouter(app, { initialUrl: '/admin/taxonomy' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.deleteEntry}: ٦ أكتوبر` }));
     expect(await screen.findByText(ar.admin.deleteEntryTitle.replace('{name}', '٦ أكتوبر'))).toBeTruthy();
@@ -310,7 +311,7 @@ describe('the taxonomy', () => {
   it('says a list that could not be read failed — never that it is empty', async () => {
     server.on('GET /rest/v1/districts', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/taxonomy' });
+    await renderRouter(app, { initialUrl: '/admin/taxonomy' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.app.admin.taxonomy.empty)).toBeNull();

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlashList } from '@shopify/flash-list';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -14,6 +14,7 @@ import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as AppealsScreen from '../src/app/(tabs)/(admin)/admin/appeals/index';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { fakeServer } from './server';
 
@@ -157,7 +158,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': stand('the overview'),
   '(tabs)/(admin)/admin/appeals/index': AppealsScreen,
@@ -183,7 +184,7 @@ function confirmButton(label: string) {
 describe('the appeals', () => {
   it('reads the waiting ones oldest first with both names, and says what each is about', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/appeals' });
+    await renderRouter(app, { initialUrl: '/admin/appeals' });
 
     expect(await screen.findByText(openAppeal.message)).toBeTruthy();
     const asked = lastRead()!;
@@ -205,7 +206,7 @@ describe('the appeals', () => {
 
   it('reads the answered ones newest answer first, with the outcome, who answered and the note — and no lever', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/appeals' });
+    await renderRouter(app, { initialUrl: '/admin/appeals' });
     await screen.findByText(openAppeal.message);
 
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.appealView.decided }));
@@ -224,7 +225,7 @@ describe('the appeals', () => {
 
   it('opens the view a website link names', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/appeals?status=decided' });
+    await renderRouter(app, { initialUrl: '/admin/appeals?status=decided' });
 
     expect(await screen.findByText(decidedAppeal.message)).toBeTruthy();
     expect(lastRead()!.get('status')).toBe('neq.open');
@@ -246,7 +247,7 @@ describe('the appeals', () => {
         : { body: page(20, 5), headers: { 'content-range': '20-24/25' } };
     });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/appeals' });
+    await renderRouter(app, { initialUrl: '/admin/appeals' });
 
     expect(await screen.findByText('اعتراض 0')).toBeTruthy();
     await act(async () => screen.UNSAFE_getByType(FlashList).props.onEndReached());
@@ -259,7 +260,7 @@ describe('the appeals', () => {
   it('says a failed read failed — never that nothing is waiting', async () => {
     server.on('GET /rest/v1/moderation_appeals', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/appeals' });
+    await renderRouter(app, { initialUrl: '/admin/appeals' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.emptyQueue)).toBeNull();
@@ -267,7 +268,7 @@ describe('the appeals', () => {
 
   it('opens what the appeal is about, and the appellant', async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin/appeals' });
+    const result = await renderRouter(app, { initialUrl: '/admin/appeals' });
     await screen.findByText(openAppeal.message);
 
     fireEvent.press(screen.getByText('مستشار مبيعات'));
@@ -280,7 +281,7 @@ describe('answering an appeal', () => {
     let answer: (value: unknown) => void = () => {};
     server.on('POST /api/mobile/v1/actions/decideAppeal', () => new Promise((resolve) => (answer = resolve)));
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/appeals' });
+    await renderRouter(app, { initialUrl: '/admin/appeals' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.appealOverturn}: مستشار مبيعات` }));
     expect(await screen.findByText(ar.admin.appealOverturnBody.job)).toBeTruthy();
@@ -303,7 +304,7 @@ describe('answering an appeal', () => {
 
   it('lets a decision stand only with a note to the person, which it sends', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/appeals' });
+    await renderRouter(app, { initialUrl: '/admin/appeals' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.appealUphold}: مستشار مبيعات` }));
     expect(await screen.findByText(ar.admin.appealUpholdBody)).toBeTruthy();
@@ -325,7 +326,7 @@ describe('answering an appeal', () => {
   it("keeps the sheet open with the website's sentence when somebody else answered first", async () => {
     server.on('POST /api/mobile/v1/actions/decideAppeal', { ok: false, error: 'invalid_transition' });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/appeals' });
+    await renderRouter(app, { initialUrl: '/admin/appeals' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.appealOverturn}: مستشار مبيعات` }));
     await screen.findByText(ar.admin.appealOverturnBody.job);

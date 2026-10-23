@@ -7,7 +7,7 @@ State as of 2026-10-22 (main at `bc2408d`; branch `claude/tender-davinci-dzouqf`
 Arabic-first job board for Egypt's real-estate brokerage market (candidates = sales consultants, employers = brokerages).
 
 - **Web** (repo root): Next.js 15 + TypeScript + Supabase, pnpm, Node 22 (`.nvmrc`). Deployed by **Vercel** on every push to `main`.
-- **iOS app** (`mobile/`): Expo SDK 57 / React Native, expo-router, TanStack Query, Supabase JS. Talks to Supabase directly (RLS) and to the website's `/api/mobile/v1/*` for server actions.
+- **iOS app** (`mobile/`): Expo SDK 58 / React Native, expo-router, TanStack Query, Supabase JS. Talks to Supabase directly (RLS) and to the website's `/api/mobile/v1/*` for server actions.
 - **Database**: Supabase project ref `hiwdhicwsohbipxzazmb`. Schema lives in `supabase/migrations/` (numbered `20260101000NNN_*.sql`; latest `…355`).
 
 ## Layout
@@ -45,7 +45,7 @@ cd .. && pnpm typecheck   # web; `pnpm check` at root runs the full web/DB suite
   ```bash
   cd mobile && CI=1 node scripts/publish-update.mjs expo-go --message "…" --non-interactive
   ```
-  Needs `EXPO_TOKEN` in the environment (EAS account `kirolosedward1`, project id `5598b160-d5fd-42e3-9cfd-14097b6677e9`). Channel `expo-go`, runtime `exposdk:57.0.0`, iOS only. The script prints the update group id and the QR page (`https://qr.expo.dev/eas-update?slug=exp&projectId=…&channel=expo-go`).
+  Needs `EXPO_TOKEN` in the environment (EAS account `kirolosedward1`, project id `5598b160-d5fd-42e3-9cfd-14097b6677e9`). Channel `expo-go`, runtime `exposdk:58.0.0`, iOS only. The script prints the update group id and the QR page (`https://qr.expo.dev/eas-update?slug=exp&projectId=…&channel=expo-go`).
 - Store builds use channels `production` / `preview` (`eas.json`); runtime differs from Expo Go's.
 - **Which update a phone runs**: Account (حسابي) footer shows `<update id 8 chars> · <commit>` (from `buildMarker()` in `mobile/src/features/update.ts`; commit baked in by `app.config.ts` `extra.commit`). Expo Go applies a new update on the *next* launch — tell the user to close and reopen (sometimes twice). This caused one false "still broken" report this session.
 - **Migrations**: commit the SQL in `supabase/migrations/`, apply to production (this session used the Supabase MCP `apply_migration`; repo also has `pnpm db:apply`).

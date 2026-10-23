@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlashList } from '@shopify/flash-list';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -14,6 +14,7 @@ import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as AuditScreen from '../src/app/(tabs)/(admin)/admin/audit/index';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { fakeServer } from './server';
 
@@ -141,7 +142,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': stand('the overview'),
   '(tabs)/(admin)/admin/audit/index': AuditScreen,
@@ -159,7 +160,7 @@ function lastRead() {
 describe('the audit log', () => {
   it('draws every decision newest first, fifty a page, with what each was about and who decided', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/audit' });
+    await renderRouter(app, { initialUrl: '/admin/audit' });
 
     expect(await screen.findByText(ar.admin.auditAction.job_approve)).toBeTruthy();
     expect(lastRead()).toEqual({ select: '*', order: 'created_at.desc,id.desc', offset: '0', limit: '50' });
@@ -181,7 +182,7 @@ describe('the audit log', () => {
 
   it('asks for one kind of target, or for the direct edits, exactly as the website does', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/audit' });
+    await renderRouter(app, { initialUrl: '/admin/audit' });
     await screen.findByText(ar.admin.auditAction.job_approve);
 
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.kind.job }));
@@ -201,7 +202,7 @@ describe('the audit log', () => {
 
   it("opens the filters a website link names — a type, one admin's decisions, one target — and clears them", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/audit?type=company&actor=${OTHER_ADMIN}&target=${COMPANY_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/audit?type=company&actor=${OTHER_ADMIN}&target=${COMPANY_ID}` });
 
     expect(await screen.findByText(ar.app.admin.audit.filteredActor)).toBeTruthy();
     expect(screen.getByText(ar.app.admin.audit.filteredTarget)).toBeTruthy();
@@ -218,7 +219,7 @@ describe('the audit log', () => {
 
   it('ignores an actor that is not an account id', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/audit?actor=somebody' });
+    await renderRouter(app, { initialUrl: '/admin/audit?actor=somebody' });
 
     await screen.findByText(ar.admin.auditAction.job_approve);
     expect(lastRead()).not.toHaveProperty('actor_id');
@@ -227,7 +228,7 @@ describe('the audit log', () => {
 
   it("shows one admin's decisions from a tap on their name", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/audit' });
+    await renderRouter(app, { initialUrl: '/admin/audit' });
 
     fireEvent.press(await screen.findByRole('button', { name: 'منى علي' }));
     await waitFor(() => expect(lastRead()?.actor_id).toBe(`eq.${OTHER_ADMIN}`));
@@ -236,7 +237,7 @@ describe('the audit log', () => {
 
   it('opens what a decision was about, on its own screen', async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin/audit' });
+    const result = await renderRouter(app, { initialUrl: '/admin/audit' });
 
     fireEvent.press(await screen.findByRole('link', { name: 'مستشار مبيعات' }));
     await waitFor(() => expect(result.getPathname()).toBe(`/admin/jobs/${JOB_ID}`));
@@ -253,7 +254,7 @@ describe('the audit log', () => {
         : { body: page(50, 10), headers: { 'content-range': '50-59/60' } };
     });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/audit' });
+    await renderRouter(app, { initialUrl: '/admin/audit' });
 
     expect(await screen.findByText('إعلان 0')).toBeTruthy();
     expect(lastRead()).toMatchObject({ offset: '0', limit: '50' });
@@ -269,7 +270,7 @@ describe('the audit log', () => {
   it('says a log that could not be read failed — never that nothing was decided', async () => {
     server.on('GET /rest/v1/admin_audit_log', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/audit' });
+    await renderRouter(app, { initialUrl: '/admin/audit' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.trailEmpty)).toBeNull();
@@ -281,7 +282,7 @@ describe('the audit log', () => {
 
   it('reads nothing until the door is open: an admin asked for their code sees the door, not an empty log', async () => {
     await signIn({ aal: 'aal1' });
-    renderRouter(app, { initialUrl: '/admin/audit' });
+    await renderRouter(app, { initialUrl: '/admin/audit' });
 
     expect(await screen.findByText(ar.app.admin.door.challengeTitle)).toBeTruthy();
     expect(server.asked('/rest/v1/admin_audit_log')).toHaveLength(0);

@@ -8,13 +8,17 @@ import { safeNext } from '@/lib/safe-next';
  *
  * The templates (scripts/auth-templates.mjs) write:
  *
- *   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=<type>&redirect_to={{ .RedirectTo }}
+ *   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=<type>&next=<path>&redirect_to={{ .RedirectTo }}
  *
- * `redirect_to` is last on purpose. It is the whole URL the sign-up asked to
- * come back to — itself carrying a `?next=` — and whether GoTrue escapes it on
- * the way into the email is not something to depend on. Read as everything
- * after `redirect_to=`, it survives either way: raw, its own query cannot be
- * split off by an `&`; escaped, it is decoded exactly once.
+ * `next` is a path on this site — the destination when the link names nothing
+ * more specific (`/onboarding` for a confirmation, the new-password form for a
+ * reset). `redirect_to` is last on purpose. It is the whole URL the sign-up
+ * asked to come back to — itself carrying a `?next=` — and whether GoTrue
+ * escapes it on the way into the email is not something to depend on. Read as
+ * everything after `redirect_to=`, it survives either way: raw, its own query
+ * cannot be split off by an `&`; escaped, it is decoded exactly once. When it
+ * names a path here, that path wins over the template's default `next`,
+ * because it carries the door's role and the page the person was opening.
  *
  * Pure: no imports but the one shared rule for what "internal" means.
  */
@@ -104,15 +108,37 @@ export function landingFromRedirect(redirectTo: string | null, origin: string): 
 }
 
 /**
+ * A `next` the link named itself, as a path on this site, or null.
+ *
+ * Only a relative path is allowed — `safeNext` refuses another origin, a
+ * scheme and a protocol-relative URL. `/` is no preference, the same as
+ * GoTrue falling back to the Site URL when the form asked for nothing.
+ */
+export function relativeNext(value: string | null | undefined): string | null {
+  const path = safeNext(value);
+  return path && path !== '/' ? path : null;
+}
+
+/**
  * Where a verified link goes: a password reset always to the form that sets
  * the new password (the session it carries is for that, whatever the link
  * says); otherwise where the link asked to go, or — when it names nowhere — an
  * email change to the account page, and anything else to wherever the sign-in
  * landing decides (null: onboarding for a new account, home otherwise).
+ *
+ * The redirect the form built wins when it names a path. The template's `next`
+ * is the destination when that redirect names nothing (a dashboard magic link,
+ * an email change that did not ask). A `next` that is not a path on this site
+ * is ignored, and the default stands.
  */
-export function confirmDestination(type: ConfirmType, redirectTo: string | null, origin: string): string | null {
+export function confirmDestination(
+  type: ConfirmType,
+  redirectTo: string | null,
+  origin: string,
+  next?: string | null,
+): string | null {
   if (type === 'recovery') return '/sign-in/new-password';
-  const asked = landingFromRedirect(redirectTo, origin);
+  const asked = landingFromRedirect(redirectTo, origin) ?? relativeNext(next);
   if (asked) return asked;
   return type === 'email_change' ? '/dashboard/account' : null;
 }

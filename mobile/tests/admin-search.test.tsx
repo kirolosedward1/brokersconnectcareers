@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
@@ -12,6 +12,7 @@ import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as SearchScreen from '../src/app/(tabs)/(admin)/admin/search/index';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { fakeServer } from './server';
 
@@ -115,7 +116,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': stand('the overview'),
   '(tabs)/(admin)/admin/search/index': SearchScreen,
@@ -138,7 +139,7 @@ function search(words: string) {
 describe('the console search', () => {
   it('asks nothing until there are two characters, then sends the words trimmed', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/search' });
+    await renderRouter(app, { initialUrl: '/admin/search' });
 
     expect(await screen.findByText(ar.admin.searchLede)).toBeTruthy();
     expect(screen.getByLabelText(ar.admin.search).props.placeholder).toBe(ar.admin.searchEverythingPlaceholder);
@@ -155,7 +156,7 @@ describe('the console search', () => {
 
   it('cuts the words where the website cuts them', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/search' });
+    await renderRouter(app, { initialUrl: '/admin/search' });
     await screen.findByText(ar.admin.searchLede);
 
     search('م'.repeat(130));
@@ -165,7 +166,7 @@ describe('the console search', () => {
 
   it('groups what it finds by kind, in the website\'s words, and opens each thing on its own screen', async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin/search?q=سمير' });
+    const result = await renderRouter(app, { initialUrl: '/admin/search?q=سمير' });
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(searches()[0].body).toEqual({ p_query: 'سمير' });
@@ -189,7 +190,7 @@ describe('the console search', () => {
       Array.from({ length: 8 }, (_, i): AdminSearchRow => ({ kind: 'user', id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`, label: `حساب ${i}`, sublabel: null, state: null })),
     );
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/search?q=حساب' });
+    await renderRouter(app, { initialUrl: '/admin/search?q=حساب' });
 
     expect(await screen.findByText('حساب 5')).toBeTruthy();
     expect(screen.queryByText('حساب 6')).toBeNull();
@@ -200,7 +201,7 @@ describe('the console search', () => {
       JSON.parse(String(init?.body)).p_query === 'منى' ? [] : { status: 503, body: { code: 'PGRST002', message: 'schema cache' } },
     );
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/search?q=أحمد' });
+    await renderRouter(app, { initialUrl: '/admin/search?q=أحمد' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.searchNothing)).toBeNull();

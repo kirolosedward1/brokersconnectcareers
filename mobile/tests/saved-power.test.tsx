@@ -325,7 +325,7 @@ describe('a reminder before a saved listing closes', () => {
       return granted as never;
     });
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.remind.setSpoken }));
     const when = reminderAt(soon.expires_at) as Date;
@@ -355,7 +355,7 @@ describe('a reminder before a saved listing closes', () => {
     const soon = job('1', {}, 5 * DAY);
     savedJobs = [soon];
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.remind.setSpoken }));
     await waitFor(() => expect(phone.__scheduled.size).toBe(1));
 
@@ -376,7 +376,7 @@ describe('a reminder before a saved listing closes', () => {
       return { ok: true, data: { saved: !had } };
     });
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.remind.setSpoken }));
     await waitFor(() => expect(phone.__scheduled.size).toBe(1));
 
@@ -401,7 +401,7 @@ describe('a reminder before a saved listing closes', () => {
     // Closed by the company since; the reader only ever opens the board.
     savedJobs = [{ ...soon, status: 'closed' }];
     await signedIn();
-    renderRouter(app, { initialUrl: '/jobs' });
+    await renderRouter(app, { initialUrl: '/jobs' });
 
     await waitFor(() => expect(phone.__scheduled.size).toBe(0));
     expect(await jobReminders.read(USER_ID)).toEqual([]);
@@ -416,7 +416,7 @@ describe('a reminder before a saved listing closes', () => {
       { id: 'application-1', job_id: soon.id, status: 'submitted', created_at: '2026-10-01T10:00:00Z', job: { ...soon } },
     ]);
     await signedIn();
-    renderRouter(app, { initialUrl: '/jobs' });
+    await renderRouter(app, { initialUrl: '/jobs' });
 
     await waitFor(() => expect(phone.__scheduled.size).toBe(0));
     expect(await jobReminders.read(USER_ID)).toEqual([]);
@@ -428,7 +428,7 @@ describe('a reminder before a saved listing closes', () => {
     let applications: unknown[] = [];
     server.on('GET /rest/v1/applications', () => applications);
     await signedIn();
-    renderRouter(app, { initialUrl: '/jobs' });
+    await renderRouter(app, { initialUrl: '/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     // Set from the Saved card a moment after its list was read: newer than that read.
     await act(async () => {
@@ -452,7 +452,7 @@ describe('a reminder before a saved listing closes', () => {
     let applications: unknown[] = [];
     server.on('GET /rest/v1/applications', () => applications);
     await signedIn();
-    renderRouter(app, { initialUrl: '/jobs' });
+    await renderRouter(app, { initialUrl: '/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
 
     act(() => hideJob(soon.id, { name: soon.title_ar, slug: soon.slug }));
@@ -479,7 +479,7 @@ describe('a reminder before a saved listing closes', () => {
     await setReminder(USER_ID, soon, words);
     savedJobs = [soon];
     await signedIn();
-    renderRouter(app, { initialUrl: '/jobs' });
+    await renderRouter(app, { initialUrl: '/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     expect(phone.__scheduled.size).toBe(1);
 
@@ -494,7 +494,7 @@ describe('a reminder before a saved listing closes', () => {
 
   it("opens a tapped reminder's listing once the board's filters have closed, not under them", async () => {
     await signedIn();
-    const result = renderRouter(app, { initialUrl: '/jobs' });
+    const result = await renderRouter(app, { initialUrl: '/jobs' });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.filters }));
     const filters = () => screen.UNSAFE_getAllByType(Modal).find((modal) => modal.props.presentationStyle === 'pageSheet');
     await waitFor(() => expect(filters()?.props.visible).toBe(true));
@@ -509,7 +509,7 @@ describe('a reminder before a saved listing closes', () => {
 
   it('reads nothing for the reminders when there are none to keep in step', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: '/jobs' });
+    await renderRouter(app, { initialUrl: '/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     await act(async () => {});
     expect(server.asked('/rest/v1/saved_jobs').filter((request) => request.url.searchParams.get('select') !== 'job_id')).toEqual([]);
@@ -519,7 +519,7 @@ describe('a reminder before a saved listing closes', () => {
     const soon = job('1', {}, 5 * DAY);
     savedJobs = [soon];
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.remind.setSpoken }));
     const said = tAr('app.saved.remind.when', { when: formatDateTime(reminderAt(soon.expires_at) as Date, 'ar') });
     fireEvent.press(await screen.findByRole('button', { name: said }));
@@ -536,7 +536,7 @@ describe('a reminder before a saved listing closes', () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(denied as never);
     const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.remind.setSpoken }));
 
     await waitFor(() => expect(shownToast()).toMatchObject({ message: ar.app.saved.remind.denied, action: { label: ar.app.push.openSettings } }));
@@ -552,7 +552,7 @@ describe('a reminder before a saved listing closes', () => {
     const ended = job('2', { expires_at: new Date(Date.now() - DAY).toISOString() });
     savedJobs = [closing, ended];
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
 
     const days = closingInDays(closing.expires_at) as number;
     expect(days).toBeLessThanOrEqual(3);
@@ -618,7 +618,7 @@ describe('a reminder before a saved listing closes', () => {
   it('opens its listing when tapped, through the pushes’ own way in', async () => {
     savedJobs = [listing];
     await signedIn();
-    const result = renderRouter(app, { initialUrl: '/dashboard/saved' });
+    const result = await renderRouter(app, { initialUrl: '/dashboard/saved' });
     await screen.findByText(listing.title_ar);
     await waitFor(() => expect(Notifications.addNotificationResponseReceivedListener).toHaveBeenCalled());
     const listener = jest.mocked(Notifications.addNotificationResponseReceivedListener).mock.calls.at(-1)?.[0];
@@ -663,7 +663,7 @@ describe('a private note on a saved listing', () => {
     const one = job('1');
     savedJobs = [one];
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
 
     // Written.
     fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
@@ -698,7 +698,7 @@ describe('a private note on a saved listing', () => {
   it('focuses the field once the sheet is up, not as it mounts', async () => {
     savedJobs = [job('1')];
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
     const field = await screen.findByLabelText(ar.app.saved.notes.title);
     // autoFocus raised the keyboard while iOS was still presenting the sheet.
@@ -710,7 +710,7 @@ describe('a private note on a saved listing', () => {
   it('stands the card at the top of the screen, where the keyboard never reaches', async () => {
     savedJobs = [job('1')];
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
     await screen.findByLabelText(ar.app.saved.notes.title);
     const room = () => StyleSheet.flatten(screen.getByTestId('note-sheet-room').props.style);
@@ -728,7 +728,7 @@ describe('a private note on a saved listing', () => {
   it('keeps Save quiet until something changed', async () => {
     savedJobs = [job('1')];
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
     await screen.findByLabelText(ar.app.saved.notes.title);
     expect(screen.getByRole('button', { name: ar.common.save }).props.accessibilityState).toMatchObject({ disabled: true });
@@ -741,7 +741,7 @@ describe('a private note on a saved listing', () => {
     savedJobs = [one];
     keepNote('somebody-else', one.id, 'ليست لك');
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
     expect(await screen.findByRole('button', { name: ar.app.saved.notes.add })).toBeTruthy();
     expect(screen.queryByText('ليست لك')).toBeNull();
   });
@@ -750,13 +750,13 @@ describe('a private note on a saved listing', () => {
     savedJobs = [listing];
     await signedIn();
     keepNote(USER_ID, listing.id, 'اسأل عن العمولة');
-    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     expect(await screen.findByRole('button', { name: `${ar.app.saved.notes.prefix} اسأل عن العمولة` })).toBeTruthy();
   });
 
   it('is not offered on a listing that is not saved', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     expect(await screen.findByRole('button', { name: ar.jobs.save })).toBeTruthy();
     await waitFor(() => expect(screen.getByRole('button', { name: ar.jobs.save }).props.accessibilityState?.busy).toBeFalsy());
     expect(screen.queryByRole('button', { name: ar.app.saved.notes.forListing })).toBeNull();
@@ -804,7 +804,7 @@ describe('choosing listings to compare', () => {
   it('picks up to three on Saved, says why not a fourth, and opens them side by side', async () => {
     savedJobs = [a, b, c, d];
     await signedIn();
-    const result = renderRouter(app, { initialUrl: '/dashboard/saved' });
+    const result = await renderRouter(app, { initialUrl: '/dashboard/saved' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.compare.start }));
     expect(await screen.findAllByRole('checkbox')).toHaveLength(4);
@@ -856,7 +856,7 @@ describe('choosing listings to compare', () => {
   it('offers no comparing with fewer than two open, and leaves the ended ones out of it', async () => {
     savedJobs = [a, { ...b, expires_at: new Date(Date.now() - DAY).toISOString() }];
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
     expect(await screen.findByText(a.title_ar)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.app.saved.compare.start })).toBeNull();
   });
@@ -864,7 +864,7 @@ describe('choosing listings to compare', () => {
   it('leaves out one chosen that has closed since, as Saved does', async () => {
     savedJobs = [a, b, { ...c, status: 'closed' }];
     await signedIn();
-    renderRouter(app, { initialUrl: `/dashboard/saved/compare?ids=${a.id},${b.id},${c.id}` });
+    await renderRouter(app, { initialUrl: `/dashboard/saved/compare?ids=${a.id},${b.id},${c.id}` });
     expect(await screen.findByText(a.title_ar)).toBeTruthy();
     expect(screen.getByText(b.title_ar)).toBeTruthy();
     expect(screen.queryByText(c.title_ar)).toBeNull();
@@ -874,14 +874,14 @@ describe('choosing listings to compare', () => {
   it('says there is nothing to compare when only one chosen is still hiring', async () => {
     savedJobs = [a, { ...b, expires_at: new Date(Date.now() - DAY).toISOString() }];
     await signedIn();
-    renderRouter(app, { initialUrl: `/dashboard/saved/compare?ids=${a.id},${b.id}` });
+    await renderRouter(app, { initialUrl: `/dashboard/saved/compare?ids=${a.id},${b.id}` });
     expect(await screen.findByText(ar.app.saved.compare.tooFew)).toBeTruthy();
   });
 
   it('says so when fewer than two of those chosen are still saved', async () => {
     savedJobs = [a];
     await signedIn();
-    renderRouter(app, { initialUrl: `/dashboard/saved/compare?ids=${a.id},${b.id}` });
+    await renderRouter(app, { initialUrl: `/dashboard/saved/compare?ids=${a.id},${b.id}` });
     expect(await screen.findByText(ar.app.saved.compare.tooFew)).toBeTruthy();
     expect(screen.getByRole('button', { name: ar.app.saved.compare.back })).toBeTruthy();
   });

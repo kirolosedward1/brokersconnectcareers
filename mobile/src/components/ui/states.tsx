@@ -8,6 +8,7 @@ import {
   type DimensionValue,
   type StyleProp,
   type ViewStyle,
+  type ScrollViewInstance,
 } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -104,7 +105,7 @@ export function CenteredScroll({
   const header = useContext(HeaderHeightContext);
   const inSheet = useContext(InSheet);
   const screenHeight = useWindowDimensions().height;
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const [box, setBox] = useState<{ y: number; height: number } | null>(null);
   const [words, setWords] = useState(0);
   const [covered, setCovered] = useState({ height: 0, top: 0, bottom: 0 });

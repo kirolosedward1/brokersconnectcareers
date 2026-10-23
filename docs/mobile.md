@@ -1,6 +1,6 @@
 # The iOS app
 
-`mobile/` is the phone version of the website: an Expo (SDK 57) / React Native
+`mobile/` is the phone version of the website: an Expo (SDK 58) / React Native
 app for candidates and employers, on the same Supabase project, built from the
 same rules. Admins get the whole moderation console in an Admin tab (see
 "The admin console in the app" below).
@@ -682,7 +682,7 @@ tunnel needs the login too. The iOS Simulator does not ask.
 The app can also be published to Expo's servers as an update that Expo Go
 opens by itself, so the phone needs only the internet. It is the same code,
 with the store build's settings (it talks to production), on its own
-`expo-go` channel. It uses Expo Go's runtime version (`exposdk:57.0.0`), not
+`expo-go` channel. It uses Expo Go's runtime version (`exposdk:58.0.0`), not
 the fingerprint store builds take (`EXPO_GO_UPDATE` in `app.config.ts`).
 
 The app's EAS project is `@kirolosedward1/brokers-connect-careers`; its id,
@@ -711,7 +711,7 @@ Then, each time the phone should get the newest code:
 
 On the phone, open the channel's link: scan the QR code on that page with the
 camera, long-press it on the phone itself, or paste
-`exp://u.expo.dev/<EAS_PROJECT_ID>?channel-name=expo-go&runtime-version=exposdk:57.0.0`
+`exp://u.expo.dev/<EAS_PROJECT_ID>?channel-name=expo-go&runtime-version=exposdk:58.0.0`
 into Safari. That link is the channel, so it always opens the newest publish,
 and Expo Go keeps it under Recently opened: later it is one tap. Not an update
 picked from the project's page under Projects: each of those is that one

@@ -112,16 +112,26 @@ export function useBoardVisit(owner: string, ready: boolean): string | null | un
   const known = since !== null && since.owner === owner && since.visit === visit;
 
   useEffect(() => {
-    let tab: typeof navigation | undefined = navigation;
-    while (tab && tab.getState()?.type !== 'tab') tab = tab.getParent();
     const ended = () => setVisit((count) => count + 1);
-    const leftTab = tab?.addListener('blur', ended);
+    // Left the Jobs tab: the screen of the tabs that blurs, asked which it is
+    // as it blurs. A navigator's state says it is the tabs only once it has
+    // handled an action, which it has not yet when the app opens straight onto
+    // the board (a link, a push), so it cannot be picked out here.
+    const leftTab: (() => void)[] = [];
+    for (let screen: typeof navigation | undefined = navigation; screen; screen = screen.getParent()) {
+      const left = screen;
+      leftTab.push(
+        left.addListener('blur', () => {
+          if (left.getState()?.type === 'tab') ended();
+        }),
+      );
+    }
     // To the background — not a glance at Notification Centre, which is active → inactive → active.
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'background') ended();
     });
     return () => {
-      leftTab?.();
+      leftTab.forEach((stop) => stop());
       subscription.remove();
     };
   }, [navigation]);

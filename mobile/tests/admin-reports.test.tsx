@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlashList } from '@shopify/flash-list';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,6 +15,7 @@ import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as ReportsScreen from '../src/app/(tabs)/(admin)/admin/reports/index';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { company } from './fixtures';
 import { fakeServer } from './server';
@@ -249,7 +250,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': stand('the overview'),
   '(tabs)/(admin)/admin/reports/index': ReportsScreen,
@@ -281,7 +282,7 @@ const NO_FILTER = { p_type: null, p_reason: null, p_min_severity: null, p_from: 
 describe('the views', () => {
   it('asks for new cases the way the website does, twenty a page, and under review the same', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
 
     expect(await screen.findByText(openReport.detail as string)).toBeTruthy();
     expect(lastAsked('admin_report_cases')).toEqual({ p_view: 'new', ...NO_FILTER, p_min_reporters: null, p_limit: 20, p_offset: 0 });
@@ -297,7 +298,7 @@ describe('the views', () => {
 
   it('draws the closed reports themselves, thirty a page, with no lever on them', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
     await screen.findByText(openReport.detail as string);
 
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.reportView.resolved }));
@@ -334,7 +335,7 @@ describe('the views', () => {
       return offset === 0 ? rows(0, 30) : rows(30, 1);
     });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
 
     expect(await screen.findByText('حالة 0')).toBeTruthy();
     await act(async () => screen.UNSAFE_getByType(FlashList).props.onEndReached());
@@ -353,7 +354,7 @@ describe('the views', () => {
   it('says a failed read failed, with a retry — never that nothing is waiting', async () => {
     server.on('POST /rest/v1/rpc/admin_report_cases', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.emptyQueue)).toBeNull();
@@ -367,7 +368,7 @@ describe('the views', () => {
 describe('the filters', () => {
   it('sends the kind, the reason, the severity, the Cairo days and the repeat exactly as the website does', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
     await screen.findByText(openReport.detail as string);
 
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.kind.job }));
@@ -407,7 +408,7 @@ describe('the filters', () => {
 
   it('refuses a day that is not one, and applies nothing', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
     await screen.findByText(openReport.detail as string);
 
     fireEvent.press(screen.getByRole('button', { name: ar.admin.filtersLabel }));
@@ -419,7 +420,7 @@ describe('the filters', () => {
 
   it("opens the view and filters a website link names, the repeat counting on the open views only", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports?status=resolved&type=company&reason=scam&severity=3&from=2026-10-01&to=2026-10-20&repeat=1' });
+    await renderRouter(app, { initialUrl: '/admin/reports?status=resolved&type=company&reason=scam&severity=3&from=2026-10-01&to=2026-10-20&repeat=1' });
 
     await waitFor(() =>
       expect(lastAsked('admin_report_rows')).toEqual({
@@ -443,7 +444,7 @@ describe('the filters', () => {
 
   it('holds a link to the views and values the website has', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports?status=whatever&type=user&reason=nope&severity=9&from=2026-02-30' });
+    await renderRouter(app, { initialUrl: '/admin/reports?status=whatever&type=user&reason=nope&severity=9&from=2026-02-30' });
 
     await waitFor(() => expect(lastAsked('admin_report_cases')).toEqual({ p_view: 'new', ...NO_FILTER, p_min_reporters: null, p_limit: 20, p_offset: 0 }));
   });
@@ -452,7 +453,7 @@ describe('the filters', () => {
 describe('a report line', () => {
   it("says who sent it, their record, and what colours it — and marks the platform's own flags", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
 
     expect(await screen.findByText(openReport.detail as string)).toBeTruthy();
     expect(screen.getByText(ar.admin.reporterRecord.replace('{filed}', '4').replace('{dismissed}', '2').replace('{abusive}', '1'))).toBeTruthy();
@@ -468,7 +469,7 @@ describe('a report line', () => {
 
   it("dismisses one report as filed in bad faith, only with a reason, and only a person's open report", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
     await screen.findByText(openReport.detail as string);
 
     // The person's open report and the one under investigation offer it; the platform's flag does not.
@@ -491,7 +492,7 @@ describe('a report line', () => {
 
   it('opens the reporter\'s file', async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin/reports' });
+    const result = await renderRouter(app, { initialUrl: '/admin/reports' });
     await screen.findByText(openReport.detail as string);
 
     fireEvent.press(screen.getByText('منى علي'));
@@ -502,7 +503,7 @@ describe('a report line', () => {
 describe('a case whose target was deleted', () => {
   it('shows what it said when reported, and can only be closed — all its open reports at once, the note optional', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
     await screen.findByText(openReport.detail as string);
 
     expect(screen.getByText(ar.admin.snapshotLabel)).toBeTruthy();
@@ -533,7 +534,7 @@ describe('a case whose target was deleted', () => {
 
   it('closes them as no breach the same way', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
     await screen.findByText(openReport.detail as string);
 
     fireEvent.press(screen.getByRole('button', { name: ar.admin.closeDeletedDismiss }));
@@ -548,7 +549,7 @@ describe('a case whose target was deleted', () => {
   it("keeps the sheet open with the website's sentence when the website refuses", async () => {
     server.on('POST /api/mobile/v1/actions/closeReports', { ok: false, error: 'not_found' });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
     await screen.findByText(openReport.detail as string);
 
     fireEvent.press(screen.getByRole('button', { name: ar.admin.closeDeletedResolve }));
@@ -567,7 +568,7 @@ describe('a reported company', () => {
       JSON.parse(String(init?.body ?? '{}')).p_view === 'new' ? [companyCase] : [],
     );
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin/reports' });
+    const result = await renderRouter(app, { initialUrl: '/admin/reports' });
 
     expect(await screen.findByText('شركة النيل')).toBeTruthy();
     expect(lastAsked('admin_company_signals')).toEqual({ p_companies: [COMPANY_TARGET] });

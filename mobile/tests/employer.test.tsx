@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
@@ -13,6 +13,7 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
 import * as ListingsScreen from '../src/app/(tabs)/(listings)/employer/jobs/index';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
 import { fakeServer } from './server';
@@ -184,7 +185,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': HomeScreen,
   '(tabs)/(listings)/employer/jobs/index': ListingsScreen,
   '(tabs)/(listings)/employer/jobs/new': stand('the wizard'),
@@ -196,7 +197,7 @@ const app = {
 describe("an employer's home", () => {
   it('opens on the overview: the applicants waiting first, then the work and the company in figures', async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/' });
+    const result = await renderRouter(app, { initialUrl: '/' });
 
     expect(await screen.findByText(ar.dashboard.overview)).toBeTruthy();
     expect(await screen.findByText('3 متقدمين مستنيين منك')).toBeTruthy();
@@ -217,7 +218,7 @@ describe("an employer's home", () => {
   it('says what is left before the first listing, instead of a page of zeros', async () => {
     server.on('POST /rest/v1/rpc/employer_summary', () => summary({ live_jobs: 0, pending_jobs: 0, draft_jobs: 1, applicants_new: 0 }));
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/' });
+    const result = await renderRouter(app, { initialUrl: '/' });
 
     expect(await screen.findByText(ar.employer.setupTitle)).toBeTruthy();
     expect(screen.getByText('0 من 3')).toBeTruthy();
@@ -231,7 +232,7 @@ describe("an employer's home", () => {
   it('says the figures could not be read, with a retry — never "create your company" to one that has one', async () => {
     server.on('POST /rest/v1/rpc/employer_summary', { status: 503, body: { code: 'PGRST002', message: 'Could not query the database for the schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
 
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     expect(screen.queryByText(ar.dashboard.emptyEmployerTitle)).toBeNull();
@@ -244,7 +245,7 @@ describe("an employer's home", () => {
     company = null;
     server.on('POST /rest/v1/rpc/employer_summary', { has_company: false });
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/' });
+    const result = await renderRouter(app, { initialUrl: '/' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.emptyEmployerCta }));
     await waitFor(() => expect(result.getPathname()).toBe('/employer/company'));
@@ -259,7 +260,7 @@ describe("an employer's home", () => {
         : { appealable: false, open: null, last: null },
     );
     await signIn('pending');
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
 
     expect(await screen.findByText(ar.employer.pendingTitle)).toBeTruthy();
     expect(await screen.findByText(ar.standing.companySuspendedTitle)).toBeTruthy();
@@ -279,7 +280,7 @@ describe("an employer's listings", () => {
     ];
     notes = [{ job_id: 'j-rejected', rejection_note: 'المرتب مش واضح.' }];
     await signIn();
-    renderRouter(app, { initialUrl: '/employer/jobs' });
+    await renderRouter(app, { initialUrl: '/employer/jobs' });
 
     expect(await screen.findByText('4 نتائج')).toBeTruthy();
     // Live: closed from here; past its date: shown as ended and reopened — whatever the stored label says.
@@ -300,14 +301,14 @@ describe("an employer's listings", () => {
     ];
     notes = { status: 404, body: { code: 'PGRST205', message: "Could not find the table 'public.job_moderation' in the schema cache" } };
     await signIn();
-    renderRouter(app, { initialUrl: '/employer/jobs' });
+    await renderRouter(app, { initialUrl: '/employer/jobs' });
 
     expect(await screen.findByText('المرتب مش واضح.')).toBeTruthy();
   });
 
   it("closes a listing through the website, and says so in the website's words when it is refused", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/employer/jobs' });
+    await renderRouter(app, { initialUrl: '/employer/jobs' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.closeJob}: مستشار مبيعات` }));
     await waitFor(() =>
@@ -326,21 +327,21 @@ describe("an employer's listings", () => {
   it('asks for the company before any listing', async () => {
     company = null;
     await signIn();
-    renderRouter(app, { initialUrl: '/employer/jobs' });
+    await renderRouter(app, { initialUrl: '/employer/jobs' });
     expect(await screen.findByText(ar.employer.createCompanyFirst)).toBeTruthy();
   });
 
   it('says a suspended account can do nothing here, rather than asking it to create a company', async () => {
     company = null;
     await signIn('rejected');
-    renderRouter(app, { initialUrl: '/employer/jobs' });
+    await renderRouter(app, { initialUrl: '/employer/jobs' });
     expect(await screen.findByText(ar.account.suspendedTitle)).toBeTruthy();
   });
 
   it('never offers the first listing to a company whose listings could not be read', async () => {
     server.on('GET /rest/v1/jobs', { status: 500, body: { message: 'down' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/employer/jobs' });
+    await renderRouter(app, { initialUrl: '/employer/jobs' });
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     expect(screen.queryByText(ar.employer.noJobs) === null).toBe(true);
   });

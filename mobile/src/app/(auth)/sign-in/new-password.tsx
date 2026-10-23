@@ -1,6 +1,6 @@
 import { useAuthErrorText } from '~/features/auth/errors';
 import { useRef, useState } from 'react';
-import { View, type TextInput } from 'react-native';
+import { View, type TextInputInstance } from 'react-native';
 import { router } from 'expo-router';
 import { isAuthRetryableFetchError, type AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
@@ -40,7 +40,7 @@ export default function NewPasswordScreen() {
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
   // The return key moves on to the second password, and from there sets it.
-  const confirmField = useRef<TextInput>(null);
+  const confirmField = useRef<TextInputInstance>(null);
 
   async function submit() {
     setError(null);
