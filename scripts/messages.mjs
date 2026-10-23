@@ -886,11 +886,12 @@ console.log('\n— the email copy has two halves too');
     .map(([key]) => key);
   check('the website writes them one way too', siteMisspelled.length === 0, siteMisspelled.join(', '));
 
-  // One email, one word for "new": the applicant digest's heading said «جدد» over a body saying «جداد».
+  // One email, one word for "new". The heading once said «جدد» over a body
+  // that said «جداد». MSA uses «جدد» in the subject, the body and the heading.
   const digest = emailCopy.ar.applicantDigest;
   check(
     "the applicant digest's heading says new as its subject and body do",
-    digest.subject(3).includes('جداد') && digest.body(3).includes('جداد') && digest.heading.includes('جداد'),
+    digest.subject(3).includes('جدد') && digest.body(3).includes('جدد') && digest.heading.includes('جدد'),
     digest.heading,
   );
 }

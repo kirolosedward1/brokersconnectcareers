@@ -125,11 +125,11 @@ console.log('\n— the generated mail');
   const confirmation = readFileSync(join(ROOT, 'supabase', 'templates', 'confirmation.html'), 'utf8');
   const recovery = readFileSync(join(ROOT, 'supabase', 'templates', 'recovery.html'), 'utf8');
   is(
-    'confirmation says 24 hours, still in Egyptian',
-    confirmation.includes('اللينك ده صالح لمدة 24 ساعة، وبيشتغل مرة واحدة بس.') && confirmation.includes('أهلاً بيك في بروكرز كونكت'),
+    'confirmation says 24 hours, in MSA',
+    confirmation.includes('هذا الرابط صالح لمدة 24 ساعة، ويعمل مرة واحدة فقط.') && confirmation.includes('أهلاً بك في بروكرز كونكت'),
     true,
   );
-  is('recovery still says one hour', recovery.includes('اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.') && !recovery.includes('24 ساعة'), true);
+  is('recovery still says one hour', recovery.includes('هذا الرابط صالح لمدة ساعة، ويعمل مرة واحدة فقط.') && !recovery.includes('24 ساعة'), true);
   is('English sits under the divider', confirmation.includes('background:#E3E7EF') && confirmation.includes('lang="en"') && confirmation.includes('Confirm your email'), true);
   is(
     'footer text and footer links',
@@ -146,7 +146,7 @@ console.log('\n— the generated mail');
       confirmation.includes('background:#ffffff'),
     true,
   );
-  is('a plain link under the button', confirmation.includes('لو الزرار مش ظاهر') && confirmation.includes('If the button does not appear'), true);
+  is('a plain link under the button', confirmation.includes('إذا لم يظهر الزر، فافتح هذا الرابط في المتصفح:') && confirmation.includes('If the button does not appear'), true);
   is(
     'the confirm link is SiteURL, the token hash, the type and next',
     confirmation.includes(

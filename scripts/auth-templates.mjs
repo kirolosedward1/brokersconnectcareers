@@ -47,9 +47,10 @@
  * page the person was opening. Deploy /auth/confirm before pasting these, and
  * send one test email to see the link arrive whole.
  *
- * The Arabic is the Egyptian wording the product already sends. An English
- * copy sits under it. The confirmation link says 24 hours, which is the
- * hosted project's Email OTP expiration; the other links still say one hour.
+ * The Arabic is Modern Standard Arabic, the same wording the other emails
+ * use. An English copy sits under it. The confirmation link says 24 hours,
+ * which is the hosted project's Email OTP expiration; the other links still
+ * say one hour. Those durations stay until the OTP expiry setting changes.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -121,8 +122,8 @@ const CONFIRM_MAGIC = 'https://gotrue.invalid/confirm/magic';
 const CONFIRM_RECOVERY = 'https://gotrue.invalid/confirm/recovery';
 const CONFIRM_EMAIL_CHANGE = 'https://gotrue.invalid/confirm/new-address';
 
-/** Under the button, for a client that does not draw it. Egyptian, like the rest. */
-const PLAIN_AR = 'لو الزرار مش ظاهر، افتح اللينك ده في المتصفح:';
+/** Under the button, for a client that does not draw it. */
+const PLAIN_AR = 'إذا لم يظهر الزر، فافتح هذا الرابط في المتصفح:';
 const PLAIN_EN = 'If the button does not appear, open this link in your browser:';
 
 /** The document is Arabic and right to left. English is a second section, not a second file. */
@@ -149,23 +150,23 @@ const TEMPLATES = {
   confirmation: {
     file: 'confirmation.html',
     subject: 'أكّد بريدك الإلكتروني في بروكرز كونكت',
-    preheader: 'خطوة واحدة وحسابك يشتغل.',
+    preheader: 'خطوة واحدة ويُفعَّل حسابك.',
     heading: 'أكّد بريدك الإلكتروني',
     blocks: [
       {
         kind: 'text',
         value:
-          'أهلاً بيك في بروكرز كونكت. اضغط الزرار عشان نتأكد إن البريد ده بتاعك ونفعّل الحساب.',
+          'أهلاً بك في بروكرز كونكت. اضغط الزر لنتأكد أن هذا البريد لك ونُفعّل الحساب.',
       },
       { kind: 'button', label: 'تأكيد البريد الإلكتروني', href: CONFIRM_SIGNUP, plain: PLAIN_AR },
       {
         kind: 'text',
-        value: 'اللينك ده صالح لمدة 24 ساعة، وبيشتغل مرة واحدة بس.',
+        value: 'هذا الرابط صالح لمدة 24 ساعة، ويعمل مرة واحدة فقط.',
       },
       {
         kind: 'security',
         value:
-          'لو مش إنت اللي عملت الحساب، ما تعملش حاجة — الحساب مش هيتفعّل من غير التأكيد ده.',
+          'إذا لم تكن أنت من أنشأ الحساب، فلا تفعل شيئاً — لن يُفعَّل الحساب من دون هذا التأكيد.',
       },
     ],
     english: {
@@ -190,19 +191,19 @@ const TEMPLATES = {
   recovery: {
     file: 'recovery.html',
     subject: 'إعادة تعيين كلمة المرور',
-    preheader: 'لينك لإعادة تعيين كلمة المرور.',
+    preheader: 'رابط لإعادة تعيين كلمة المرور.',
     heading: 'إعادة تعيين كلمة المرور',
     blocks: [
       {
         kind: 'text',
-        value: 'وصلنا طلب لإعادة تعيين كلمة المرور بتاعت حسابك. اضغط الزرار عشان تحطّ واحدة جديدة.',
+        value: 'وصلنا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك. اضغط الزر لتعيين كلمة جديدة.',
       },
       { kind: 'button', label: 'إعادة تعيين كلمة المرور', href: CONFIRM_RECOVERY, plain: PLAIN_AR },
-      { kind: 'text', value: 'اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.' },
+      { kind: 'text', value: 'هذا الرابط صالح لمدة ساعة، ويعمل مرة واحدة فقط.' },
       {
         kind: 'security',
         value:
-          'لو مش إنت اللي طلبت ده، تجاهل الرسالة. كلمة المرور بتاعتك ما اتغيرتش، والحساب زي ما هو.',
+          'إذا لم تكن أنت من طلب ذلك، فتجاهل هذه الرسالة. لم تتغيّر كلمة المرور، والحساب على حاله.',
       },
     ],
     english: {
@@ -230,14 +231,14 @@ const TEMPLATES = {
     blocks: [
       {
         kind: 'text',
-        value: 'طلبت تغيير البريد الإلكتروني بتاع حسابك. اضغط الزرار عشان نأكّد العنوان الجديد.',
+        value: 'طلبت تغيير البريد الإلكتروني الخاص بحسابك. اضغط الزر لتأكيد العنوان الجديد.',
       },
       { kind: 'facts', rows: [['البريد الجديد', '{{ .NewEmail }}']] },
       { kind: 'button', label: 'تأكيد البريد الجديد', href: CONFIRM_EMAIL_CHANGE, plain: PLAIN_AR },
       {
         kind: 'security',
         value:
-          'لو مش إنت اللي طلبت ده، غيّر كلمة المرور بتاعتك فوراً — حد تاني يمكن يكون داخل على حسابك.',
+          'إذا لم تكن أنت من طلب ذلك، فغيّر كلمة المرور فوراً — قد يكون شخص آخر داخل حسابك.',
       },
     ],
     english: {
@@ -260,16 +261,16 @@ const TEMPLATES = {
 
   reauthentication: {
     file: 'reauthentication.html',
-    subject: 'كود تأكيد الهوية',
-    preheader: 'كود لتأكيد إنك إنت.',
-    heading: 'كود التأكيد',
+    subject: 'رمز تأكيد الهوية',
+    preheader: 'رمز للتأكد من هويتك.',
+    heading: 'رمز التأكيد',
     blocks: [
-      { kind: 'text', value: 'استخدم الكود ده عشان تكمّل العملية اللي بدأتها على حسابك.' },
-      { kind: 'facts', rows: [['الكود', '{{ .Token }}']] },
-      { kind: 'text', value: 'الكود صالح لمدة ساعة.' },
+      { kind: 'text', value: 'استخدم هذا الرمز لإكمال العملية التي بدأتها في حسابك.' },
+      { kind: 'facts', rows: [['الرمز', '{{ .Token }}']] },
+      { kind: 'text', value: 'الرمز صالح لمدة ساعة.' },
       {
         kind: 'security',
-        value: 'لو مش إنت اللي طلبت الكود ده، غيّر كلمة المرور بتاعتك فوراً.',
+        value: 'إذا لم تكن أنت من طلب هذا الرمز، فغيّر كلمة المرور فوراً.',
       },
     ],
     english: {
@@ -288,16 +289,16 @@ const TEMPLATES = {
 
   magic_link: {
     file: 'magic-link.html',
-    subject: 'لينك الدخول لحسابك',
-    preheader: 'لينك دخول لمرة واحدة.',
-    heading: 'ادخل على حسابك',
+    subject: 'رابط الدخول إلى حسابك',
+    preheader: 'رابط دخول لمرة واحدة.',
+    heading: 'ادخل إلى حسابك',
     blocks: [
-      { kind: 'text', value: 'اضغط الزرار عشان تدخل على حسابك من غير كلمة مرور.' },
-      { kind: 'button', label: 'ادخل على حسابك', href: CONFIRM_MAGIC, plain: PLAIN_AR },
-      { kind: 'text', value: 'اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.' },
+      { kind: 'text', value: 'اضغط الزر للدخول إلى حسابك من دون كلمة مرور.' },
+      { kind: 'button', label: 'ادخل إلى حسابك', href: CONFIRM_MAGIC, plain: PLAIN_AR },
+      { kind: 'text', value: 'هذا الرابط صالح لمدة ساعة، ويعمل مرة واحدة فقط.' },
       {
         kind: 'security',
-        value: 'لو مش إنت اللي طلبت اللينك ده، تجاهل الرسالة ومحدش هيقدر يدخل.',
+        value: 'إذا لم تكن أنت من طلب هذا الرابط، فتجاهل هذه الرسالة. لن يتمكّن أحد من الدخول.',
       },
     ],
     english: {
@@ -414,7 +415,7 @@ for (const item of written) {
   }
 }
 
-if (!written.find((item) => item.name === 'confirmation')?.html.includes('اللينك ده صالح لمدة 24 ساعة، وبيشتغل مرة واحدة بس.')) {
+if (!written.find((item) => item.name === 'confirmation')?.html.includes('هذا الرابط صالح لمدة 24 ساعة، ويعمل مرة واحدة فقط.')) {
   console.error('  BROKEN  confirmation.html: the expiry does not say 24 hours');
   broken += 1;
 }
