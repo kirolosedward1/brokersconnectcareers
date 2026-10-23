@@ -64,14 +64,17 @@ export function CompanyLogo({
         )}
       >
         {/* contain, not cover: a logo cropped to fill a square is a logo with
-            its name cut off. The white ground is deliberate — most supplied
-            marks are drawn for one, and they disappear on a dark card. */}
+            its name cut off. Edge to edge, as an app's icon fills its tile: a
+            square mark fills the box exactly, a wider one is whole with white
+            above and below. The white ground is deliberate — most supplied
+            marks are drawn for one, and they disappear on a dark card. The
+            app draws it the same (mobile/src/components/companies/company-logo.tsx). */}
         <Image
           src={logo}
           alt=""
           width={s.px}
           height={s.px}
-          className="size-full object-contain p-1"
+          className="size-full object-contain"
         />
       </span>
     );

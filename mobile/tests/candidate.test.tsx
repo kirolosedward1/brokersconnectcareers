@@ -472,7 +472,7 @@ describe('the applications', () => {
     await renderRouter(app, { initialUrl: '/dashboard/applications' });
     fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
 
-    expect(alert).toHaveBeenCalledWith('تسحب طلبك على «مستشار مبيعات»؟', ar.app.applications.withdrawBody, expect.any(Array));
+    expect(alert).toHaveBeenCalledWith('تسحب طلبك على «مستشار مبيعات»؟', ar.myApplications.withdrawBody, expect.any(Array));
     expect(server.asked('/api/mobile/v1/actions/withdrawApplication')).toHaveLength(0);
 
     const buttons = alert.mock.calls[0][2] as AlertButton[];

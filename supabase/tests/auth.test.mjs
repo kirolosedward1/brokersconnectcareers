@@ -662,10 +662,10 @@ report.section('the permission model says what the policies say');
 
   // Navigation, one list for both bars.
   const keys = (a) => siteNavFor(a).map((item) => item.key).join(',');
-  report.is(keys(anon), 'jobs,companies,blog', 'a visitor\'s nav has no directory');
-  report.is(keys(candidate), 'jobs,companies,blog', 'nor a candidate\'s');
-  report.is(keys(employer), 'jobs,companies,agents,blog', 'an employer\'s does');
-  report.is(keys(admin), 'jobs,companies,agents,blog', 'and an admin\'s');
+  report.is(keys(anon), 'searchJobs,companies,blog', 'a visitor\'s nav has no directory');
+  report.is(keys(candidate), 'searchJobs,companies,blog', 'nor a candidate\'s');
+  report.is(keys(employer), 'searchJobs,companies,agents,blog', 'an employer\'s does');
+  report.is(keys(admin), 'searchJobs,companies,agents,blog', 'and an admin\'s');
   report.is(postJobHref(anon), '/sign-in/employer?next=/employer/jobs/new', 'a visitor posts through the employer door');
   report.is(postJobHref(candidate), null, 'a candidate is not offered "post a job"');
   report.is(postJobHref(employer), '/employer/jobs/new', 'an employer posts');

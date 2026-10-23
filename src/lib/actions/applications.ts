@@ -19,9 +19,9 @@ import type {
   ExperienceBand,
 } from '@/lib/supabase/database.types';
 import { logFailure } from '@/lib/observe';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
 import { insertOnce } from '@/lib/actions/idempotency';
 import { jobIsLive } from '@/lib/job-state';
-import { APPLICATION_STAGES } from '@/lib/application-stages';
 
 const applySchema = z.object({
   jobId: z.string().uuid(),

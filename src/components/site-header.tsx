@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { LayoutDashboard, Search, ShieldCheck, Users } from 'lucide-react';
+import { LayoutDashboard, LogIn, PlusCircle, Search, ShieldCheck, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { ENGLISH_ENABLED, type Locale } from '@/i18n/routing';
 import { actorOf, getViewer } from '@/lib/auth';
@@ -65,7 +65,7 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
       <div className="shell grid h-14 grid-cols-[minmax(max-content,1fr)_auto_minmax(max-content,1fr)] items-center gap-2 sm:h-16 md:flex">
         <Link
           href="/jobs"
-          aria-label={t('jobs')}
+          aria-label={t('searchJobs')}
           className="grid size-11 place-items-center justify-self-start rounded-lg transition-colors hover:bg-muted group-data-[over-hero]/header:hover:bg-white/15 md:hidden"
         >
           <Search className="size-4" aria-hidden />
@@ -134,11 +134,17 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
           ) : (
             <>
               <Button asChild variant="ghost" className={`hidden sm:inline-flex ${ghostOnFilm}`}>
-                <Link href="/sign-in">{t('signIn')}</Link>
+                <Link href="/sign-in">
+                  <LogIn className="rtl-flip" aria-hidden />
+                  {t('signIn')}
+                </Link>
               </Button>
               {postJob ? (
                 <Button asChild className="hidden sm:inline-flex">
-                  <Link href={postJob}>{t('postJob')}</Link>
+                  <Link href={postJob}>
+                    <PlusCircle aria-hidden />
+                    {t('postJob')}
+                  </Link>
                 </Button>
               ) : null}
             </>
@@ -176,8 +182,9 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               ) : (
                 <Link
                   href="/sign-in"
-                  className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                  className="flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
                 >
+                  <LogIn className="rtl-flip size-4" aria-hidden />
                   {t('signIn')}
                 </Link>
               )}
@@ -188,8 +195,9 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
             {postJob ? (
               <Link
                 href={postJob}
-                className="mt-1 flex min-h-11 bg-primary items-center justify-center rounded-lg px-3 text-center text-sm font-medium text-primary-foreground"
+                className="mt-1 flex min-h-11 bg-primary items-center justify-center gap-2 rounded-lg px-3 text-center text-sm font-medium text-primary-foreground"
               >
+                <PlusCircle className="size-4" aria-hidden />
                 {t('postJob')}
               </Link>
             ) : null}

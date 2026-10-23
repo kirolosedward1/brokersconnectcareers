@@ -14,6 +14,7 @@ import { formatNumber } from '@/lib/utils';
 import { APPLICATION_STAGES } from '@/lib/application-stages';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional, raise } from '@/lib/queries/error';
+import { looseArabicNeedle } from '@/lib/search/needle';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
 import type {
   ApplicationNoteRow,
@@ -139,8 +140,13 @@ export default async function AllApplicantsPage({
     applicant on the platform rather than nobody, which is a confusing way to
     find out you typed a wildcard.
   */
-  const query_ = (rawQuery ?? '').trim().slice(0, 80);
-  const pattern = query_ ? `%${query_.replace(/[%_\\]/g, (c) => `\\${c}`)}%` : null;
+  /*
+    And with the letters Arabic spells more than one way left open, as the
+    console's lists and the app's inbox read a name (lib/search/needle.ts):
+    «احمد» found nobody called «أحمد» here while it found them on the phone.
+  */
+  const query_ = looseArabicNeedle((rawQuery ?? '').trim().slice(0, 80));
+  const pattern = query_ ? `%${query_}%` : null;
   const supabase = await createClient();
 
   /*
