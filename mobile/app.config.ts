@@ -1,5 +1,10 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
+// Expo loads this file as JS and does not compile a TypeScript import, so the
+// size the curtain uses is a JS module (src/components/brand/launch-size.js).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { LAUNCH_MARK_WIDTH } = require('./src/components/brand/launch-size.js') as { LAUNCH_MARK_WIDTH: number };
+
 /** The commit this bundle is published from, shown on Account so a phone can be matched to it. */
 function commitSha(): string | undefined {
   if (process.env.EAS_BUILD_GIT_COMMIT_HASH) return process.env.EAS_BUILD_GIT_COMMIT_HASH.slice(0, 7);
@@ -233,7 +238,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         // launch screen on a dark phone flashed into the light app.
         backgroundColor: '#F6F4F0',
         image: './assets/images/splash-icon.png',
-        imageWidth: 76,
+        // The curtain draws this same width (src/components/brand/launch-size.ts).
+        imageWidth: LAUNCH_MARK_WIDTH,
       },
     ],
     // The session key sits in the keychain without a biometric gate. The Face
