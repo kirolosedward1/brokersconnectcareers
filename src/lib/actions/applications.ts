@@ -19,8 +19,10 @@ import type {
   ExperienceBand,
 } from '@/lib/supabase/database.types';
 import { logFailure } from '@/lib/observe';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
 import { insertOnce } from '@/lib/actions/idempotency';
 import { jobIsLive } from '@/lib/job-state';
+import { refused } from '@/lib/observe';
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -186,6 +188,9 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
 }
 
 export async function withdrawApplication(applicationId: string): Promise<ActionResult> {
+  // Called from the app over /api/mobile/v1 too, so the id is not trusted.
+  if (!z.string().uuid().safeParse(applicationId).success) return { ok: false, error: 'invalid' };
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -210,7 +215,7 @@ export async function withdrawApplication(applicationId: string): Promise<Action
     .eq('id', applicationId)
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('application', error);
 
   if (!removed?.length) {
     // Refused by the withdrawal precondition migration 42 added, or by
@@ -318,7 +323,7 @@ async function removeOrphanedCv(
 
 const statusSchema = z.object({
   applicationId: z.string().uuid(),
-  status: z.enum(['new', 'shortlisted', 'interview', 'hired', 'rejected']),
+  status: z.enum(APPLICATION_STAGES),
   /** Optional, and deliberately so — a required field becomes "not a fit" forever. */
   decisionNote: z.string().trim().max(500).optional().nullable(),
   /**
@@ -330,7 +335,7 @@ const statusSchema = z.object({
    * their own optimistic value until they happened to refresh, and the
    * candidate was emailed twice about two different outcomes.
    */
-  from: z.enum(['new', 'shortlisted', 'interview', 'hired', 'rejected']).optional(),
+  from: z.enum(APPLICATION_STAGES).optional(),
 });
 
 /** Employer pipeline move. RLS restricts this to jobs the caller owns. */
@@ -362,7 +367,7 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     // moved. A false notification is worse than a failed one.
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('application', error);
 
   if (!moved?.length) {
     // Zero rows means one of two things and the reader deserves to know which:
@@ -492,7 +497,7 @@ export async function deleteApplicationNote(id: number): Promise<ActionResult> {
     .eq('id', id)
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('application', error);
   if (!removed?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/employer/applicants');

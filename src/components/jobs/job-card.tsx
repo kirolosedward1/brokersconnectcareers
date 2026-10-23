@@ -77,7 +77,8 @@ export function JobCard({
   return (
     <article
       className={cn(
-        'lift group relative rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5',
+        // h-full: in a grid every card takes its row's height, so two side by side are one size.
+        'lift group relative h-full rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5',
         // A closed role is not dimmed: at 70% opacity the muted lines fell to
         // 2.9:1. The "closed" badge beside the title is what says so.
       )}

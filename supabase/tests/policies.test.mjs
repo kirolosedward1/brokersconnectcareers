@@ -1238,6 +1238,34 @@ report.section('a bookmark is a candidate\'s');
   report.check('and only for themselves', !forSomebodyElse.ok);
 }
 
+report.section('a note on a saved listing is the candidate\'s own (356)');
+{
+  // The bookmark first, as the service (RLS aside); the checks below run as people.
+  await db.exec(`insert into saved_jobs (candidate_id, job_id) values ('${candidate}', '${liveJob}') on conflict do nothing`);
+
+  const own = await as(candidate, `
+    update saved_jobs set note = 'اتكلمت مع منى، المقابلة الحد'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('a candidate writes a note on their own bookmark', own.ok && own.rows.length === 1, own.error);
+
+  const theirs = await as(OUTSIDER, `
+    update saved_jobs set note = 'ليست لك'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('and nobody else reaches it (zero rows, not an error)', theirs.ok && theirs.rows.length === 0, theirs.error);
+
+  const tooLong = await as(candidate, `
+    update saved_jobs set note = repeat('x', 301)
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('301 characters are refused by the table itself', !tooLong.ok && /saved_jobs_note_length/.test(tooLong.error ?? ''), tooLong.error);
+
+  const empty = await as(candidate, `
+    update saved_jobs set note = ''
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('and so is an empty one: no note is null', !empty.ok && /saved_jobs_note_length/.test(empty.error ?? ''), empty.error);
+
+  await db.exec(`delete from saved_jobs where candidate_id = '${candidate}' and job_id = '${liveJob}'`);
+}
+
 report.section('a photo is the account\'s own photo');
 {
   const own = await as(candidate, `
@@ -1760,6 +1788,25 @@ report.section('a retried payment webhook cannot sell the same pack twice');
   const afterFailed = (await db.query(`select post_credits from companies where id='${unverifiedCo}'`)).rows[0].post_credits;
   report.check('a declined payment settles as failed', failed === 'failed', `got ${failed}`);
   report.check('and grants no credits', afterFailed === afterSecond, `${afterSecond} -> ${afterFailed}`);
+
+  // A second declined attempt changes nothing.
+  const failedAgain = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', false) as r`)).rows[0].r;
+  report.check('a second decline is a no-op', failedAgain === 'already_failed', `got ${failedAgain}`);
+
+  // A success for another Paymob order cannot settle the failed one.
+  const wrongRetry = (await db.query(`select public.settle_order('${failedId}', 'pm_test_other', true) as r`)).rows[0].r;
+  report.check('a success for another payment cannot settle a failed order', wrongRetry === 'already_failed', `got ${wrongRetry}`);
+
+  // The buyer retries on the same payment key and the card goes through: the
+  // same signed Paymob order now succeeds, and the pack is theirs.
+  const retried = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', true, 100000, 'EGP') as r`)).rows[0].r;
+  const afterRetry = (await db.query(`select post_credits from companies where id='${unverifiedCo}'`)).rows[0].post_credits;
+  report.check('a declined card then a paid one settles as paid', retried === 'paid', `got ${retried}`);
+  report.check('and grants the credits once', afterRetry === afterFailed + 1, `${afterFailed} -> ${afterRetry}`);
+  const retriedAgain = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', true) as r`)).rows[0].r;
+  report.check('and a resend of that success grants nothing', retriedAgain === 'already_paid', `got ${retriedAgain}`);
+  const lateDecline = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', false) as r`)).rows[0].r;
+  report.check('nor does a late decline undo it', lateDecline === 'already_paid', `got ${lateDecline}`);
 
   // And no signed-in user can reach it.
   const byUser = await as(employerUnverified, `select public.settle_order('${failedId}', 'pm_x', true)`);

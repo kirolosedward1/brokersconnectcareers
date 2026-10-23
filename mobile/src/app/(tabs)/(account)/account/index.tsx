@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDateTime } from '@/lib/format';
+import { localized } from '@/lib/locale';
 import {
   BellRing,
   Building2,
@@ -83,7 +84,15 @@ export default function AccountScreen() {
   const [signingOut, setSigningOut] = useState(false);
   const version = shownVersion() ?? '';
   const published = publishedAt();
-  const marker = buildMarker();
+  // Which code this phone runs, and which the website does: the two are
+  // published from the same push, so the commits match once both have taken
+  // it, and "is the fix on my phone, and is it on the site?" is read, not guessed.
+  const marker = [
+    buildMarker(),
+    config.data?.commit ? t('app.account.websiteAt', { commit: config.data.commit.slice(0, 7) }) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const themes: { value: ThemePreference; label: string }[] = [
     { value: 'light', label: t('theme.light') },
@@ -152,7 +161,7 @@ export default function AccountScreen() {
             ) : null}
             {viewer?.company ? (
               <Text variant="small" weight="medium">
-                {viewer.company.name_ar}
+                {localized(locale, viewer.company.name_ar, viewer.company.name_en)}
               </Text>
             ) : null}
             {/* The one thing here other people see. */}

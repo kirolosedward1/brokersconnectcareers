@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
+import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -15,8 +16,6 @@ import { Illustration } from '~/components/ui/illustration';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
-  canWithdraw,
-  STATUS_VARIANT,
   useMyApplications,
   useWithdrawApplication,
   type CandidateApplication,
@@ -158,7 +157,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const shown = displayJobStatus(job);
 
   const confirmWithdraw = () => {
-    dialog.alert(t('app.applications.withdrawTitle', { title }), t('app.applications.withdrawBody'), [
+    dialog.alert(t('myApplications.withdrawTitle', { title }), t('myApplications.withdrawBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('dashboard.withdraw'),
@@ -207,7 +206,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
             </View>
           </View>
         </View>
-        <Badge variant={STATUS_VARIANT[application.status]} label={t(`applicationStatus.${application.status}`)} />
+        <Badge variant={STAGE_TONE[application.status]} label={t(`applicationStatus.${application.status}`)} />
       </View>
 
       {/* Where it stands: sent, seen by the company, shortlisted, the decision. */}

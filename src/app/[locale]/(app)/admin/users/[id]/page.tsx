@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/server';
 import { must } from '@/lib/admin/read';
 import { UUID_RE, oneOf, param, type SearchParams } from '@/lib/admin/params';
 import { formatDate, formatList, formatNumber } from '@/lib/utils';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
 import type {
   AdminAuditRow,
   AdminUserActivity,
@@ -79,8 +80,7 @@ type RecentApplication = {
   job: { id: string; title_ar: string; title_en: string | null; status: JobStatus } | null;
 };
 
-/** The stages and states in the order the product moves through them, so a breakdown reads as a pipeline. */
-const STAGES: readonly ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
+/** The states in the order the product moves through them, so a breakdown reads as a pipeline (as APPLICATION_STAGES does). */
 const LISTING_STATES: readonly JobStatus[] = ['draft', 'pending_review', 'active', 'expired', 'closed', 'rejected'];
 
 /**
@@ -436,7 +436,7 @@ async function ActivityTab({
           ) : (
             <div className="space-y-3">
               <Breakdown
-                items={STAGES.filter((stage) => activity.applications.by_status[stage]).map((stage) => ({
+                items={APPLICATION_STAGES.filter((stage) => activity.applications.by_status[stage]).map((stage) => ({
                   key: stage,
                   label: tApplication(stage),
                   count: n(activity.applications.by_status[stage] ?? 0),

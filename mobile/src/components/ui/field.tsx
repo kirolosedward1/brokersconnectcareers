@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode, type Ref } from 'react';
-import { View } from 'react-native';
+import { View, type ViewInstance } from 'react-native';
 import { CircleAlert } from '~/components/ui/lucide';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
@@ -34,7 +34,7 @@ export function Field({
   error,
   children,
 }: {
-  ref?: Ref<View>;
+  ref?: Ref<ViewInstance>;
   label: string;
   hint?: string;
   error?: string | null;

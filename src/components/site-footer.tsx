@@ -175,14 +175,6 @@ export async function SiteFooter({ locale }: { locale: string }) {
                   </Link>
                 </li>
               ))}
-              {/* The app, after the sections it has screens for. Here and not
-                  in the header: the bar is full at `md`, and somebody who
-                  wants the app is at the foot of a page, not at the top. */}
-              <li>
-                <Link href="/app" className={linkClass}>
-                  {t('getApp')}
-                </Link>
-              </li>
             </ul>
           </FooterGroup>
 

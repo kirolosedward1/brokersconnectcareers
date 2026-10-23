@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { useNavigation } from 'expo-router';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useTranslations } from 'use-intl';
 import { dialog } from '~/lib/dialog';
@@ -55,18 +54,28 @@ export function useWorkInProgress(): boolean {
  * The same question for leaving the screen itself, while `dirty`. While
  * `sending`, the screen is held instead, and says why: what was typed is on its
  * way, leaving would not stop it, only hide how it went — and "not saved, will
- * be lost" would not be true.
+ * be lost" would not be true. `onDiscard` runs when the person chooses to throw
+ * the work away, so a draft kept on the phone goes with it.
  */
-export function useLeaveGuard(dirty: boolean, sending = false) {
+export function useLeaveGuard(dirty: boolean, sending = false, onDiscard?: () => void) {
   const t = useTranslations();
-  const navigation = useNavigation();
   const confirm = useConfirmDiscard();
-  useHoldsWork(dirty || sending);
-  usePreventRemove(dirty || sending, ({ data }) => {
+  // Told to throw the work away, the screen stops holding itself and makes the
+  // leave it held back. Since SDK 58 the same action sent again is held again
+  // while the screen still prevents its removal, and Discard did nothing.
+  const [discarded, setDiscarded] = useState(false);
+  const holding = !discarded && (dirty || sending);
+  useHoldsWork(holding);
+  usePreventRemove(holding, ({ repeat }) => {
     if (sending) {
       dialog.alert(t('app.leave.sendingTitle'), t('app.leave.sendingBody'), [{ text: t('app.leave.stay'), style: 'cancel' }]);
       return;
     }
-    confirm(() => navigation.dispatch(data.action));
+    confirm(() => {
+      // Discarded on purpose: whatever the form kept of it goes too (use-kept-draft.ts).
+      onDiscard?.();
+      setDiscarded(true);
+      repeat();
+    });
   });
 }

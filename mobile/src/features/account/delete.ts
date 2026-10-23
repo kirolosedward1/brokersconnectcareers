@@ -1,8 +1,16 @@
 import { Platform } from 'react-native';
 import { isAuthRetryableFetchError, type AuthError, type User } from '@supabase/supabase-js';
+import { forgetAppleSignIn } from '~/features/auth/apple-credential';
+import { forgetOnboardingIntent } from '~/features/auth/kept-intent';
 import { appleAuthorizationCode } from '~/features/auth/providers';
 import { callAction } from '~/lib/api';
+import { forgetPerson } from '~/lib/local-list';
 import { supabase } from '~/lib/supabase';
+import { signOutHere } from '~/features/push/device';
+import { TimedOut, withTimeout } from '~/lib/timeout';
+
+/** How long the auth server has to say whether the account still exists. */
+const ACCOUNT_CHECK_TIMEOUT_MS = 15_000;
 
 /** Why an account was not deleted: the website's refusals, Apple not confirming, or anything else. */
 export type DeleteRefusal = 'owns_company' | 'under_review' | 'apple' | 'failed';
@@ -50,7 +58,7 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   // deleted": the website deletes the account, then answers. Asked whether it
   // still knows this account, the auth server settles it.
   if (!result && (await accountGone())) {
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    await forgetHere(user);
     return null;
   }
   if (!result?.ok) {
@@ -65,8 +73,22 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   }
 
   // The account no longer exists (its phones went with it); what is left on this phone goes too.
-  await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  await forgetHere(user);
   return null;
+}
+
+/**
+ * Signed out, and what the phone kept for the person let go: their lists,
+ * reminders and push choices, the Apple ID they signed in with here, and
+ * where onboarding was taking them.
+ */
+async function forgetHere(user: User | null | undefined): Promise<void> {
+  // signOutHere, not a bare signOut: that waits on auth-js's lock with no
+  // limit, and a refresh holding it kept Delete spinning after the website had
+  // already deleted the account, with the person still signed in here.
+  await signOutHere();
+  await Promise.all([forgetAppleSignIn(), forgetOnboardingIntent()]);
+  if (user?.id) await forgetPerson(user.id).catch(() => {});
 }
 
 /**
@@ -75,9 +97,11 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
  * from under a token. No answer, or the account read back, is not gone.
  */
 async function accountGone(): Promise<boolean> {
-  const { data, error } = await supabase.auth
-    .getUser()
-    .catch((failure: unknown) => ({ data: { user: null }, error: failure as AuthError }));
+  // Bounded for the same lock: no answer in time is not gone.
+  const { data, error } = await withTimeout(supabase.auth.getUser(), ACCOUNT_CHECK_TIMEOUT_MS, 'the account check').catch(
+    (failure: unknown) => ({ data: { user: null }, error: failure as AuthError }),
+  );
+  if (error instanceof TimedOut) return false;
   if (data.user || !error || isAuthRetryableFetchError(error)) return false;
   return (
     error.status === 401 ||

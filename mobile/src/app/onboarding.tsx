@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { Keyboard, Pressable, StyleSheet, View, type ScrollView, type TextInput } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Session } from '@supabase/supabase-js';
 import { Stack, useLocalSearchParams } from 'expo-router';
@@ -40,7 +40,7 @@ import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useHoldBack } from '~/lib/use-hold-back';
-import { webAddress } from '~/lib/web-address';
+import { webAddress } from '@/lib/web-address';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
@@ -239,7 +239,7 @@ function OnboardingForm({
 
   // The button is at the bottom of each step, below its questions: an error
   // above them is brought into view and said.
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const inView = useErrorsInView(scroll, FIELD_ORDER);
   const refuse = (next: Record<string, string>) => {
     setErrors(next);
@@ -247,8 +247,8 @@ function OnboardingForm({
   };
   // The return key moves from the name to the number (the phone pad has none
   // of its own), and from a company's name to its website.
-  const whatsappField = useRef<TextInput>(null);
-  const websiteField = useRef<TextInput>(null);
+  const whatsappField = useRef<TextInputInstance>(null);
+  const websiteField = useRef<TextInputInstance>(null);
 
   function goTo(next: number) {
     Keyboard.dismiss();

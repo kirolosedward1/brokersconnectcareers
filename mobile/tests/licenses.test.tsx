@@ -73,7 +73,7 @@ const app = {
 
 describe('the open-source licences screen', () => {
   it('lists a package the app is built on, with its version and licence', async () => {
-    renderRouter(app, { initialUrl: '/account/licenses' });
+    await renderRouter(app, { initialUrl: '/account/licenses' });
 
     expect(await screen.findByText(ar.app.licenses.intro)).toBeTruthy();
     const reactNative = notices.packages.find((notice) => notice.name === 'react-native');
@@ -89,7 +89,7 @@ describe('the open-source licences screen', () => {
   });
 
   it('names the font and the icons, with their licences', async () => {
-    renderRouter(app, { initialUrl: '/account/licenses' });
+    await renderRouter(app, { initialUrl: '/account/licenses' });
 
     expect(await screen.findByText('IBM Plex Sans Arabic')).toBeTruthy();
     expect(screen.getByText(/^OFL-1\.1 · @expo-google-fonts\/ibm-plex-sans-arabic /)).toBeTruthy();
@@ -98,7 +98,7 @@ describe('the open-source licences screen', () => {
   });
 
   it('gives each licence its text once', async () => {
-    renderRouter(app, { initialUrl: '/account/licenses' });
+    await renderRouter(app, { initialUrl: '/account/licenses' });
 
     await screen.findByText(ar.app.licenses.intro);
     for (const { id } of notices.licenses) {

@@ -11,7 +11,7 @@ import { after } from 'next/server';
 import { isOwnedPath } from '@/lib/security/files';
 import { publish } from '@/lib/notifications/events';
 import { revokeWithAuthorizationCode } from '@/lib/apple/revoke';
-import { logFailure } from '@/lib/observe';
+import { logFailure, refused } from '@/lib/observe';
 import { sessionOwesSecondFactor } from '@/lib/auth/second-factor-server';
 
 /**
@@ -129,7 +129,7 @@ export async function deleteMyAccount(input?: unknown): Promise<ActionResult> {
   }
 
   const { error } = await admin.auth.admin.deleteUser(user.id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('account', error);
 
   for (const bucket of ['cvs', 'avatars'] as const) {
     try {
@@ -270,7 +270,7 @@ export async function updateNotificationPreferences(input: unknown): Promise<Act
     .update(parsed.data)
     .eq('id', user.id)
     .select('id');
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('account', error);
   // The switch flips optimistically and puts itself back when this says no, so
   // a write RLS filtered to nothing has to say no rather than nothing at all.
   if (!saved?.length) return { ok: false, error: 'not_found' };

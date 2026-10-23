@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { AppState } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { hashKey, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { readDate } from '@/lib/format';
 import type { JobListItem } from '@/lib/job-list';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
 import { useAppliedJobIds } from '~/features/jobs/marks';
@@ -41,13 +42,12 @@ const seen = createLocalList<Seen>('bc.board-seen.v1', {
 });
 
 /**
- * A timestamp as milliseconds, NaN when it names none. Postgres's text form
- * can end in an hours-only offset ("…+00"), which Hermes does not read; it is
- * completed first, as src/lib/format.ts does before it formats one.
+ * A timestamp as milliseconds, NaN when it names none — read by the
+ * website's own reader (src/lib/format.ts), which completes Postgres's
+ * hours-only offset ("…+00") that Hermes does not read.
  */
 export function instant(value: string | null | undefined): number {
-  if (!value) return Number.NaN;
-  return new Date(value.replace(/(:\d{2}(?:\.\d+)?)([+-]\d{2})$/, '$1$2:00')).getTime();
+  return readDate(value)?.getTime() ?? Number.NaN;
 }
 
 /** The newest published_at among these listings, as written. */
@@ -112,16 +112,26 @@ export function useBoardVisit(owner: string, ready: boolean): string | null | un
   const known = since !== null && since.owner === owner && since.visit === visit;
 
   useEffect(() => {
-    let tab: typeof navigation | undefined = navigation;
-    while (tab && tab.getState()?.type !== 'tab') tab = tab.getParent();
     const ended = () => setVisit((count) => count + 1);
-    const leftTab = tab?.addListener('blur', ended);
+    // Left the Jobs tab: the screen of the tabs that blurs, asked which it is
+    // as it blurs. A navigator's state says it is the tabs only once it has
+    // handled an action, which it has not yet when the app opens straight onto
+    // the board (a link, a push), so it cannot be picked out here.
+    const leftTab: (() => void)[] = [];
+    for (let screen: typeof navigation | undefined = navigation; screen; screen = screen.getParent()) {
+      const left = screen;
+      leftTab.push(
+        left.addListener('blur', () => {
+          if (left.getState()?.type === 'tab') ended();
+        }),
+      );
+    }
     // To the background — not a glance at Notification Centre, which is active → inactive → active.
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'background') ended();
     });
     return () => {
-      leftTab?.();
+      leftTab.forEach((stop) => stop());
       subscription.remove();
     };
   }, [navigation]);

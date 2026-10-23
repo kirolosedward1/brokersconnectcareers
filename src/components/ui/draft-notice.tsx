@@ -21,7 +21,7 @@ import type { DraftState } from '@/lib/use-form-draft';
 export function DraftNotice({ draft, className }: { draft: DraftState; className?: string }) {
   const t = useTranslations('drafts');
   const locale = useLocale();
-  const time = (chunks: React.ReactNode) => <span className="numeral">{chunks}</span>;
+  const v = (chunks: React.ReactNode) => <span className="numeral">{chunks}</span>;
 
   if (draft.offeredAt !== null) {
     return (
@@ -31,7 +31,7 @@ export function DraftNotice({ draft, className }: { draft: DraftState; className
       >
         <p className="flex items-start gap-2 leading-relaxed">
           <History className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>{t.rich('offered', { when: formatDateTime(new Date(draft.offeredAt), locale), time })}</span>
+          <span>{t.rich('offered', { when: formatDateTime(new Date(draft.offeredAt), locale), v })}</span>
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button type="button" size="sm" variant="outline" onClick={draft.accept}>
@@ -56,7 +56,7 @@ export function DraftNotice({ draft, className }: { draft: DraftState; className
       >
         <p className="flex items-start gap-2 leading-relaxed text-muted-foreground">
           <History className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>{t.rich('restored', { when: formatDateTime(new Date(draft.restoredAt), locale), time })}</span>
+          <span>{t.rich('restored', { when: formatDateTime(new Date(draft.restoredAt), locale), v })}</span>
         </p>
         <Button type="button" size="sm" variant="ghost" onClick={draft.discard}>
           {t('startOver')}

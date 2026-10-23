@@ -6,6 +6,7 @@ import { takePendingPath } from '~/lib/open-path';
 import { tabsFor } from '~/lib/tabs';
 import { awaitingOAuthReturn } from '~/features/auth/oauth-return';
 import { redirectSystemPath } from '../src/app/+native-intent';
+import { websiteAddress } from '../src/app/+not-found';
 
 const candidate: Actor = {
   userId: '11111111-1111-4111-8111-111111111111',
@@ -77,6 +78,21 @@ describe('webPathToAppPath', () => {
   ])('sends %s home', (_name, input) => {
     expect(webPathToAppPath(input)).toBe('/');
   });
+
+  // The URL parser resolves dot segments after the host was checked, and a
+  // path left starting with `//` is an outside address to expo-router, which
+  // opens it in Safari.
+  it.each([
+    'https://www.brokersconnect.net/jobs/..//evil.example/x',
+    'https://www.brokersconnect.net/en//evil.example/x',
+    'https://www.brokersconnect.net//evil.example/x',
+    'brokersconnect://jobs/..\\/evil.example/x',
+    'exp://172.20.10.2:8081/--//evil.example/x',
+  ])('never leaves %s as an outside address', (input) => {
+    expect(webPathToAppPath(input)).not.toMatch(/^\/\//);
+    expect(routeFromOutside(input, null)).not.toMatch(/^([\w+.-]+:)?\/\//);
+    expect(routeInside(input, null)).not.toMatch(/^([\w+.-]+:)?\/\//);
+  });
 });
 
 describe('inOwnTab', () => {
@@ -128,12 +144,39 @@ describe('appPathFor', () => {
     // The website keeps the account under /dashboard; the app has a tab for it.
     ['/dashboard/account', '/account'],
     ['/dashboard/profile?notice=directory', '/account/profile?notice=directory'],
+    // The licence notices are the Account tab's too.
+    ['/licenses', '/account/licenses'],
+    // The "get the app" page, opened in the app, is Home.
+    ['/app', '/'],
+    ['/app?src=whatsapp', '/?src=whatsapp'],
+    // The website's door for one side of the marketplace is the app's one sheet, told the role.
+    ['/sign-in/employer', '/sign-in?role=employer'],
+    ['/sign-up/candidate', '/sign-up?role=candidate'],
+    ['/sign-in/candidate?next=%2Fjobs%2Fabc%2Fapply', '/sign-in?role=candidate&next=%2Fjobs%2Fabc%2Fapply'],
+    // …and only for the two sides the website has.
+    ['/sign-in/admin', '/sign-in/admin'],
+    ['/sign-in/forgot', '/sign-in/forgot'],
     // Everything else is the same path.
     ['/dashboard/applications', '/dashboard/applications'],
     ['/jobs/a-1', '/jobs/a-1'],
     ['/dashboard/accounts', '/dashboard/accounts'],
   ])('%s → %s', (input, expected) => {
     expect(appPathFor(input)).toBe(expected);
+  });
+
+  it("opens the website's employer door as the sign-in sheet for an employer, from a link", () => {
+    expect(routeFromOutside('https://www.brokersconnect.net/sign-in/employer', null)).toBe('/sign-in?role=employer');
+    expect(routeFromOutside('https://www.brokersconnect.net/en/sign-up/candidate?next=%2Fjobs', null)).toBe(
+      '/sign-up?role=candidate&next=%2Fjobs',
+    );
+  });
+});
+
+describe('the address a page the app has no screen for is opened at on the website', () => {
+  it('keeps the query, which the page may need', () => {
+    expect(websiteAddress('/unsubscribe', { token: 'abc' })).toBe('/unsubscribe?token=abc');
+    expect(websiteAddress('/blog/how-commission-works', {})).toBe('/blog/how-commission-works');
+    expect(websiteAddress('/x', { a: ['1', '2'], b: undefined })).toBe('/x?a=1&a=2');
   });
 });
 

@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, ShieldCheck, Users } from 'lucide-react';
+import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, SendHorizontal, ShieldCheck, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import {
 import { CommissionPicture } from '@/components/jobs/commission-picture';
 import { commissionPicture, type CommissionPicture as CommissionPictureData } from '@/lib/earnings';
 import { JobCard } from '@/components/jobs/job-card';
+import { ApplyLink } from '@/components/jobs/apply-link';
 import { SaveJobButton } from '@/components/jobs/save-job-button';
 import { ReportJobDialog } from '@/components/jobs/report-job-dialog';
 import { AppliedNotice } from '@/components/jobs/applied-notice';
@@ -90,6 +91,8 @@ export async function JobDetailView({
    */
   const role = viewer?.profile?.role;
   const canApply = !role || role === 'candidate';
+  // The listing named in the sign-in dialog a visitor meets on Apply.
+  const intent = { job: title, company: companyName };
 
   // Has this candidate already applied? Cheap, and it changes the primary CTA.
   let alreadyApplied = false;
@@ -272,9 +275,10 @@ export async function JobDetailView({
               /* From `lg` the apply action lives in the summary beside the
                  text, where it stays in view for the whole read. Two primary
                  buttons a few hundred pixels apart is one too many. */
-              <Button asChild size="lg" className="lg:hidden">
-                <Link href={`/jobs/${job.slug}/apply`}>{t('apply')}</Link>
-              </Button>
+              <ApplyLink href={`/jobs/${job.slug}/apply`} signedIn={Boolean(viewer?.profile)} intent={intent} size="lg" className="lg:hidden">
+                <SendHorizontal className="rtl-flip" aria-hidden />
+                {t('apply')}
+              </ApplyLink>
             )}
             {/* A bookmark is a candidate's: the only page that lists them turns
                 employers away, and since migration 202 the insert policy does
@@ -391,9 +395,10 @@ export async function JobDetailView({
               ) : !canApply ? null : alreadyApplied ? (
                 <AppliedNotice full />
               ) : (
-                <Button asChild size="lg" className="w-full">
-                  <Link href={`/jobs/${job.slug}/apply`}>{t('apply')}</Link>
-                </Button>
+                <ApplyLink href={`/jobs/${job.slug}/apply`} signedIn={Boolean(viewer?.profile)} intent={intent} size="lg" className="w-full">
+                  <SendHorizontal className="rtl-flip" aria-hidden />
+                  {t('apply')}
+                </ApplyLink>
               )}
             </div>
 
@@ -446,7 +451,10 @@ export async function JobDetailView({
                 {/* This company's page, so it says so. It used to carry the
                     directory's own title, "Real estate companies", which is
                     the label of the header link to the list of all of them. */}
-                <Link href={`/companies/${job.company.slug}`}>{t('companyPage')}</Link>
+                <Link href={`/companies/${job.company.slug}`}>
+                  <Building2 aria-hidden />
+                  {t('companyPage')}
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -466,9 +474,9 @@ export async function JobDetailView({
             {alreadyApplied ? (
               <AppliedNotice full />
             ) : (
-              <Button asChild className="w-full" size="lg">
-                <Link href={`/jobs/${job.slug}/apply`}>{tApply('submit')}</Link>
-              </Button>
+              <ApplyLink href={`/jobs/${job.slug}/apply`} signedIn={Boolean(viewer?.profile)} intent={intent} size="lg" className="w-full">
+                {tApply('submit')}
+              </ApplyLink>
             )}
           </div>
           ) : null}
