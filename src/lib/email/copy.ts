@@ -184,7 +184,8 @@ export const emailCopy = {
       preheader: 'سُحب طلبك، وستظهر للشركة حالة الانسحاب',
       heading: 'تم سحب طلبك',
       body: (job: string) =>
-        `تم سحب طلبك على وظيفة «${job}»، وسيظهر للشركة أنك انسحبت من التقديم. يمكنك التقديم مرة أخرى ما دام الإعلان متاحاً.`,
+        `تم سحب طلبك على وظيفة «${job}»، وسيظهر للشركة أنك انسحبت من التقديم.`,
+      reapply: 'يمكنك التقديم مرة أخرى ما دام الإعلان متاحاً.',
       cta: 'تصفّح الوظائف',
       labelJob: 'الوظيفة',
     },
@@ -501,7 +502,8 @@ export const emailCopy = {
       preheader: 'The company can see that you withdrew.',
       heading: 'Application withdrawn',
       body: (job: string) =>
-        `Your application for "${job}" has been withdrawn, and the company can see that. You can apply again at any time while the listing is open.`,
+        `Your application for "${job}" has been withdrawn, and the company can see that.`,
+      reapply: 'You can apply again at any time while the listing is open.',
       cta: 'Browse roles',
       labelJob: 'Role',
     },

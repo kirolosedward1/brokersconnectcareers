@@ -843,6 +843,8 @@ export async function notifyApplicationWithdrawn(args: {
           { kind: 'text', value: t.body(title) },
           { kind: 'facts', rows: [[t.labelJob, title]] },
           { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs` },
+          // Last body line, 15px like the rest, directly above the support footer.
+          { kind: 'text', value: t.reapply },
         ],
       }),
     });
