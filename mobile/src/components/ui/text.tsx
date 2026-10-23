@@ -1,5 +1,5 @@
-import { Platform, Text as NativeText, type TextProps, type TextStyle } from 'react-native';
-import { appDirection } from '~/lib/direction';
+import { I18nManager, Platform, Text as NativeText, type TextProps, type TextStyle } from 'react-native';
+import { drawnDirection } from '~/lib/direction';
 import { useTheme } from '~/theme/provider';
 import { font, type as scale } from '~/theme/tokens';
 import type { Colors } from '~/theme/tokens';
@@ -11,21 +11,41 @@ type Props = TextProps & {
 };
 
 /**
- * Where a line of text starts.
+ * Where a line of text starts: the right while the app is Arabic, the left
+ * in English. The language says which (src/lib/direction.ts), not the
+ * direction the screen was created in. Expo Go can come up left to right
+ * while the app is still Arabic, and a `left` written for the phone to
+ * mirror then stays on the left.
  *
- * On the phone, `left` is the logical start: while I18nManager is right to
- * left (the app forces that), React Native swaps `left` and `right` itself.
- * Writing `right` here as well draws Arabic on the left.
- *
- * On the web nothing swaps, and react-native-web maps CSS `start` to the
- * physical left when the page has no RTL context, so Arabic uses `right`.
+ * On the phone, while I18nManager is right to left, React Native swaps
+ * `left` and `right` once. The value returned is the side that lands on the
+ * reading edge after that swap. Returning `right` while the phone is already
+ * swapping would put Arabic back on the left. The web does not swap, and
+ * react-native-web maps `start` to the physical left, so the physical side
+ * is written there directly.
  */
 export function textAlignStart(
   os: string = Platform.OS,
-  direction: 'rtl' | 'ltr' = appDirection,
+  direction: 'rtl' | 'ltr' = drawnDirection(),
+  mirrored: boolean = I18nManager.isRTL,
 ): TextStyle['textAlign'] {
-  if (os === 'web') return direction === 'rtl' ? 'right' : 'left';
-  return 'left';
+  const edge: 'left' | 'right' = direction === 'rtl' ? 'right' : 'left';
+  if (os !== 'web' && mirrored) return edge === 'right' ? 'left' : 'right';
+  return edge;
+}
+
+/**
+ * Where a line of text ends. The same language and the same swap as
+ * textAlignStart, so the end does not get flipped a second time either.
+ */
+export function textAlignEnd(
+  os: string = Platform.OS,
+  direction: 'rtl' | 'ltr' = drawnDirection(),
+  mirrored: boolean = I18nManager.isRTL,
+): TextStyle['textAlign'] {
+  const edge: 'left' | 'right' = direction === 'rtl' ? 'left' : 'right';
+  if (os !== 'web' && mirrored) return edge === 'right' ? 'left' : 'right';
+  return edge;
 }
 
 /**

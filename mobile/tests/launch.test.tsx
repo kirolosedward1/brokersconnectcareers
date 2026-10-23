@@ -54,9 +54,9 @@ it('draws the mark at the splash width, and the wordmark in the artwork\'s propo
   render(<LaunchCurtain />);
   const mark = StyleSheet.flatten(screen.getByTestId('launch-mark-image', HIDDEN).props.style);
   const word = StyleSheet.flatten(screen.getByTestId('launch-wordmark', HIDDEN).props.style);
-  // A little under three fifths of the previous 76-point mark, and the same share of the wordmark.
+  // The mark is 44 points (it was 76). The wordmark is 14 points tall (it was 20, then 12).
   expect(LAUNCH_MARK_WIDTH).toBe(44);
-  expect(LAUNCH_WORDMARK_HEIGHT).toBe(12);
+  expect(LAUNCH_WORDMARK_HEIGHT).toBe(14);
   expect(mark).toMatchObject({ width: LAUNCH_MARK_WIDTH, height: LAUNCH_MARK_WIDTH });
   expect(word).toMatchObject({ width: (1375 / 286) * LAUNCH_WORDMARK_HEIGHT, height: LAUNCH_WORDMARK_HEIGHT });
 
