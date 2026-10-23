@@ -57,6 +57,7 @@ export { default as FileWarning } from 'lucide-react-native/icons/file-exclamati
 export { default as FileX2 } from 'lucide-react-native/icons/file-x-corner';
 export { default as Flag } from 'lucide-react-native/icons/flag';
 export { default as FlagOff } from 'lucide-react-native/icons/flag-off';
+export { default as Gavel } from 'lucide-react-native/icons/gavel';
 export { default as Gift } from 'lucide-react-native/icons/gift';
 export { default as Globe } from 'lucide-react-native/icons/globe';
 export { default as GraduationCap } from 'lucide-react-native/icons/graduation-cap';
@@ -112,6 +113,7 @@ export { default as Trash2 } from 'lucide-react-native/icons/trash';
 export { default as TrendingDown } from 'lucide-react-native/icons/trending-down';
 export { default as TrendingUp } from 'lucide-react-native/icons/trending-up';
 export { default as TriangleAlert } from 'lucide-react-native/icons/triangle-alert';
+export { default as Undo2 } from 'lucide-react-native/icons/undo-2';
 export { default as Upload } from 'lucide-react-native/icons/upload';
 export { default as UserCheck } from 'lucide-react-native/icons/user-check';
 export { default as UserMinus } from 'lucide-react-native/icons/user-minus';
@@ -121,6 +123,7 @@ export { default as UserRoundCheck } from 'lucide-react-native/icons/user-round-
 export { default as UserRoundPlus } from 'lucide-react-native/icons/user-round-plus';
 export { default as UserRoundX } from 'lucide-react-native/icons/user-round-x';
 export { default as Users } from 'lucide-react-native/icons/users';
+export { default as UserX } from 'lucide-react-native/icons/user-x';
 export { default as WifiOff } from 'lucide-react-native/icons/wifi-off';
 export { default as X } from 'lucide-react-native/icons/x';
 export type { LucideIcon, LucideProps } from 'lucide-react-native';
