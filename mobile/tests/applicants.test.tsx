@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Linking, Modal, RefreshControl, Text } from 'react-native';
+import { Linking, Modal, RefreshControl, StyleSheet, Text } from 'react-native';
 import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
@@ -8,6 +8,7 @@ import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-rout
 import type { ApplicationNoteRow, ProfileRow } from '@/lib/supabase/database.types';
 import type { Applicant } from '~/features/employer/applicants';
 import { parseInboxFilters } from '~/features/employer/applicants';
+import { LRI, PDI } from '~/i18n/rich';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -136,6 +137,10 @@ beforeEach(async () => {
     // The inbox's second read counts the stages; everything else is the rows.
     if (url.searchParams.get('select')?.startsWith('status,')) return rows.map((row) => ({ status: row.status }));
     return { body: rows, headers: { 'content-range': `0-${rows.length - 1}/${rows.length}` } };
+  });
+  server.on('HEAD /rest/v1/applications', (url: URL) => {
+    const standing = url.searchParams.get('status') === 'neq.withdrawn' ? rows.filter((row) => row.status !== 'withdrawn') : rows;
+    return { body: null, headers: { 'content-range': `*/${standing.length}` } };
   });
   server.on('GET /rest/v1/application_notes', notes);
   server.on('GET /rest/v1/company_members', [{ user_id: USER_ID, profile: { full_name: 'أحمد سمير' } }]);
@@ -553,6 +558,80 @@ describe("a listing's applicants", () => {
     expect(await screen.findByText('ليلى محمود')).toBeTruthy();
   });
 
+  it('asks for a standing count, so a withdrawal is not an applicant', async () => {
+    rows = [
+      ...rows,
+      {
+        ...omar,
+        id: 'a0000000-0000-4000-8000-000000000009',
+        status: 'withdrawn',
+        created_at: '2026-09-30T10:00:00Z',
+      },
+    ];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText('سارة عادل')).toBeTruthy();
+    const head = server.asked('/rest/v1/applications').find((request) => request.method === 'HEAD');
+    expect(head?.url.searchParams.get('status')).toBe('neq.withdrawn');
+    expect(head?.url.searchParams.get('job_id')).toBe(`eq.${JOB_ID}`);
+    // Two standing applications. The withdrawal is on the page and not in the count.
+    expect(screen.getByText(`${LRI}2${PDI} متقدمين`)).toBeTruthy();
+  });
+
+  it('draws no action row on a withdrawn card, even when a CV is still on it', async () => {
+    rows = [
+      {
+        ...omar,
+        id: 'a0000000-0000-4000-8000-000000000009',
+        status: 'withdrawn',
+        note: null,
+        decision_note: null,
+        cv_path: `${USER_ID}/withdrawn.pdf`,
+        candidate: {
+          full_name: 'نورا سليم',
+          whatsapp_phone: '+201112223334',
+          avatar_url: null,
+          agent_profiles: {
+            slug: 'nora-a1b2',
+            headline_ar: 'مستشارة',
+            headline_en: null,
+            years_experience: 4,
+            tracks: ['primary'],
+            district_ids: [newCairo.id],
+            units_closed: null,
+            volume_egp: null,
+          },
+        },
+      },
+    ];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    const header = await screen.findByRole('header', { name: 'نورا سليم' });
+    expect(screen.getAllByText(ar.applicationStatus.withdrawn).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: `${ar.employer.whatsappCandidate}: نورا سليم` })).toBeNull();
+    expect(screen.queryByRole('button', { name: `${ar.app.replies.open}: نورا سليم` })).toBeNull();
+    expect(screen.queryByRole('button', { name: `${ar.employer.downloadCv}: نورا سليم` })).toBeNull();
+    expect(screen.queryByText(ar.employer.noCv)).toBeNull();
+    expect(screen.queryByRole('button', { name: new RegExp(ar.employer.moveTo) })).toBeNull();
+    expect(screen.getByHintText(ar.agents.viewProfile)).toBeTruthy();
+
+    // The card's own padding is 16. The action row is the one that wraps.
+    // Drawing it empty would still take the card's gap under the last line.
+    let node: ReturnType<typeof screen.getByRole> | null = header;
+    let card: ReturnType<typeof screen.getByRole> | null = null;
+    while (node) {
+      if (StyleSheet.flatten(node.props.style)?.padding === 16) {
+        card = node;
+        break;
+      }
+      node = node.parent;
+    }
+    expect(card).not.toBeNull();
+    expect(StyleSheet.flatten(card?.props.style)?.padding).toBe(16);
+    const actionRow = (card?.children ?? []).filter(
+      (child) => typeof child !== 'string' && StyleSheet.flatten(child.props.style)?.flexWrap === 'wrap',
+    );
+    expect(actionRow).toHaveLength(0);
+  });
+
   it("is not found when the listing is not the company's", async () => {
     server.on('GET /rest/v1/jobs', []);
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
@@ -586,6 +665,12 @@ describe('the inbox', () => {
     });
     await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` })).toBeTruthy();
+    const main = server.asked('/rest/v1/applications').find(
+      (request) => request.method === 'GET' && !request.url.searchParams.get('select')?.startsWith('status,'),
+    );
+    // Withdrawn last in the query, before the cap — not sorted into place afterwards.
+    expect(main?.url.searchParams.get('order')).toBe('withdrawn_at.asc.nullsfirst,created_at.desc');
+    expect(main?.url.searchParams.get('limit')).toBe('200');
 
     // Moved elsewhere — on the listing's pipeline, or by a colleague — and read again here.
     rows = rows.map((row) => (row.id === sara.id ? { ...row, status: 'shortlisted' } : row));

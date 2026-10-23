@@ -269,6 +269,7 @@ const BUILDERS: Record<string, Builder> = {
         { kind: 'text', value: t.body(w.job) },
         { kind: 'facts', rows: [[t.labelJob, w.job]] },
         { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs` },
+        { kind: 'text', value: t.reapply },
       ],
     };
   },

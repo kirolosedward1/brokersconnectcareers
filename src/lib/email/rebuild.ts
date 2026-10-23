@@ -69,8 +69,8 @@ export const REBUILDERS: Record<string, Rebuild> = {
  *
  *   saved_search_digest / company_follow_digest / applicant_digest — a
  *     point-in-time list. Stale is worse than absent.
- *   application_withdrawn — the application row is gone; there is nothing left
- *     to rebuild from.
+ *   application_withdrawn — the mail announces the moment they withdrew. The
+ *     row stays, but sending it again later would repeat an announcement.
  *   profile_ready / visibility_changed / account_approved / account_rejected —
  *     these carry a value at a moment (the visibility chosen, the decision
  *     made). Re-deriving would report the *current* value, which may no longer

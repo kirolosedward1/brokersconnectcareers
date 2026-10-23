@@ -98,7 +98,7 @@ export default function ListingApplicantsScreen() {
       </ScrollView>
     );
   } else {
-    const { total } = pipeline.data;
+    const { total, matched } = pipeline.data;
     const rows = pipeline.data.applicants;
     body = (
       <ScrollView
@@ -112,7 +112,7 @@ export default function ListingApplicantsScreen() {
       >
         <Text tone="mutedForeground">{t.markup('employer.pipelineCount', { count: total, ...markupTags })}</Text>
 
-        {total > rows.length ? (
+        {matched > rows.length ? (
           <View style={{ gap: space[1], padding: space[3], ...corner('lg'), backgroundColor: colors.muted }}>
             <Text variant="small">{t.markup('employer.applicantsCapped', { count: APPLICANTS_CAP, ...markupTags })}</Text>
             <Pressable

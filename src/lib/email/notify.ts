@@ -12,6 +12,7 @@ import { deliver } from './service';
 import type { SendOutcome } from './send';
 import { unsubscribeLinks } from './unsubscribe-link';
 import { isNews, stageTelling, tellingSuffix } from '@/lib/application-arrival';
+import { excludeWithdrawn, withdrawnStatusMissing } from '@/lib/application-stages';
 import { listingNotes, noteFor } from '@/lib/listing-notes';
 
 /**
@@ -811,8 +812,8 @@ export async function notifyCandidateOfStatus(applicationId: string): Promise<Se
 /**
  * Candidate: they withdrew.
  *
- * Takes the details rather than the id, because withdrawing deletes the row —
- * by the time this runs there is nothing left to read.
+ * Takes the details rather than the id. The row stays, marked withdrawn; the
+ * action already read the titles, and this mail announces that moment.
  */
 export async function notifyApplicationWithdrawn(args: {
   userId: string;
@@ -842,6 +843,8 @@ export async function notifyApplicationWithdrawn(args: {
           { kind: 'text', value: t.body(title) },
           { kind: 'facts', rows: [[t.labelJob, title]] },
           { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs` },
+          // Last body line, 15px like the rest, directly above the support footer.
+          { kind: 'text', value: t.reapply },
         ],
       }),
     });
@@ -1118,10 +1121,18 @@ export async function rebuildJobExpiry(
         : displayJobStatus(job) === 'expired';
     if (!stillTrue) return 'skipped';
 
-    const { count, error: countError } = await admin
-      .from('applications')
-      .select('id', { count: 'exact', head: true })
-      .eq('job_id', jobId);
+    // A withdrawal is not an applicant. The enum value arrives with the
+    // migration; until then no row can be withdrawn, so the unfiltered count
+    // is the same number.
+    let { count, error: countError } = await excludeWithdrawn(
+      admin.from('applications').select('id', { count: 'exact', head: true }).eq('job_id', jobId),
+    );
+    if (countError && withdrawnStatusMissing(countError)) {
+      ({ count, error: countError } = await admin
+        .from('applications')
+        .select('id', { count: 'exact', head: true })
+        .eq('job_id', jobId));
+    }
     if (countError || count === null) readFailed('applicant count', countError);
 
     return notifyJobExpiry(jobId, stage, count);

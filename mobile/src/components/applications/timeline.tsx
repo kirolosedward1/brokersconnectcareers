@@ -38,7 +38,9 @@ export function ApplicationTimeline({
           ? t('applicationStatus.hired')
           : application.status === 'rejected'
             ? t('applicationStatus.rejected')
-            : t('myApplications.stepDecision');
+            : application.status === 'withdrawn'
+              ? t('applicationStatus.withdrawn')
+              : t('myApplications.stepDecision');
     }
   };
 
@@ -56,7 +58,16 @@ export function ApplicationTimeline({
     >
       {steps.map((step, index) => {
         const reached = step.state === 'done' || step.state === 'stopped';
-        const tint = step.state === 'stopped' ? colors.destructive : reached ? colors.success : step.state === 'current' ? colors.primary : colors.border;
+        const tint =
+          step.state === 'stopped'
+            ? application.status === 'withdrawn'
+              ? '#5B6475'
+              : colors.destructive
+            : reached
+              ? colors.success
+              : step.state === 'current'
+                ? colors.primary
+                : colors.border;
         return (
           <View key={step.key} style={{ flex: 1, alignItems: 'center', gap: 4 }} testID={`step-${step.key}-${step.state}`}>
             <View style={{ alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center' }}>

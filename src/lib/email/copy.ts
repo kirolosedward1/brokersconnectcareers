@@ -177,11 +177,15 @@ export const emailCopy = {
     },
 
     applicationWithdrawn: {
-      subject: (job: string) => `سحبت طلبك على وظيفة ${job}`,
-      preheader: 'أُزيل الطلب من لدى الشركة.',
+      // The subject names the listing, as the other subjects do. The short
+      // line is the inbox preview: the row stays, and the company sees it
+      // as withdrawn.
+      subject: (job: string) => `سُحب طلبك على وظيفة ${job}، وستظهر للشركة حالة الانسحاب`,
+      preheader: 'سُحب طلبك، وستظهر للشركة حالة الانسحاب',
       heading: 'تم سحب طلبك',
       body: (job: string) =>
-        `أزلنا طلبك على وظيفة «${job}»، ولم يعد ظاهراً للشركة. يمكنك التقديم مجدداً في أي وقت ما دام الإعلان قائماً.`,
+        `تم سحب طلبك على وظيفة «${job}»، وسيظهر للشركة أنك انسحبت من التقديم.`,
+      reapply: 'يمكنك التقديم مرة أخرى ما دام الإعلان متاحاً.',
       cta: 'تصفّح الوظائف',
       labelJob: 'الوظيفة',
     },
@@ -363,6 +367,7 @@ export const emailCopy = {
       interview: 'مقابلة',
       hired: 'تم القبول',
       rejected: 'غير مناسب',
+      withdrawn: 'انسحب المتقدم',
     } satisfies Record<ApplicationStatus, string>,
   },
 
@@ -494,10 +499,11 @@ export const emailCopy = {
 
     applicationWithdrawn: {
       subject: (job: string) => `You withdrew your application for ${job}`,
-      preheader: 'The company no longer sees it.',
+      preheader: 'The company can see that you withdrew.',
       heading: 'Application withdrawn',
       body: (job: string) =>
-        `Your application for "${job}" has been withdrawn and the company can no longer see it. You can apply again at any time while the listing is open.`,
+        `Your application for "${job}" has been withdrawn, and the company can see that.`,
+      reapply: 'You can apply again at any time while the listing is open.',
       cta: 'Browse roles',
       labelJob: 'Role',
     },
@@ -662,6 +668,7 @@ export const emailCopy = {
       interview: 'Interview',
       hired: 'Hired',
       rejected: 'Not selected',
+      withdrawn: 'Withdrawn',
     } satisfies Record<ApplicationStatus, string>,
   },
 } as const;

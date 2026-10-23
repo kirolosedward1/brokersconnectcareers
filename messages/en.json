@@ -497,7 +497,8 @@
     "shortlisted": "Shortlisted",
     "interview": "Interview",
     "hired": "Hired",
-    "rejected": "Not a fit"
+    "rejected": "Not a fit",
+    "withdrawn": "Withdrawn"
   },
   "apply": {
     "title": "Apply for {job}",
@@ -2059,6 +2060,7 @@
     "stepSeen": "Seen",
     "stepDecision": "Decision",
     "withdrawTitle": "Withdraw your application to “{title}”?",
-    "withdrawBody": "The company will no longer see it. This cannot be undone."
+    "withdrawBody": "The company will see that you withdrew. You can apply again while the listing is open.",
+    "withdrawUnavailable": "Withdrawal is not available right now, so your application was left as it is."
   }
 }

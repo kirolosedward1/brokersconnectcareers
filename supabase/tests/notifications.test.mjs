@@ -68,8 +68,10 @@ report.section('duplicates: one event, one notification per person');
   report.check('and the applicant gets a receipt',
     (await count(`user_id = '${APPLICANT}' and kind = 'application_submitted'`)) === 1);
 
-  // Withdraw and apply again: the row is new, the event for the employer is not.
-  await db.exec(`delete from applications where job_id = '${job.id}' and candidate_id = '${APPLICANT}'`);
+  // Withdraw and apply again: the old row stays, marked withdrawn, and the
+  // event for the employer is not a second one.
+  await db.exec(`update applications set status = 'withdrawn', withdrawn_at = now(), cv_path = null
+                  where job_id = '${job.id}' and candidate_id = '${APPLICANT}' and status <> 'withdrawn'`);
   // Migration 351: a withdrawn application takes the candidate's notices
   // about that listing with it, so the bell lists no application they no
   // longer have.
@@ -81,7 +83,7 @@ report.section('duplicates: one event, one notification per person');
   report.check('and applying again is a receipt of its own, the one standing application’s',
     (await count(`user_id = '${APPLICANT}' and kind = 'application_submitted'`)) === 1);
 
-  const app = (await db.query(`select id from applications where job_id = '${job.id}' and candidate_id = '${APPLICANT}'`)).rows[0].id;
+  const app = (await db.query(`select id from applications where job_id = '${job.id}' and candidate_id = '${APPLICANT}' and status <> 'withdrawn'`)).rows[0].id;
   const moved = `user_id = '${APPLICANT}' and kind = 'application_moved'`;
 
   await db.exec(`update applications set status = 'shortlisted' where id = '${app}'`);
@@ -396,7 +398,8 @@ report.section('twenty applicants are one row until somebody reads it');
   report.check('and the badge counts the listing once, not three times',
     (await count(`${all} and read_at is null`)) === 1);
 
-  await db.exec(`delete from applications where job_id = '${target}' and candidate_id = '${C[1]}'`);
+  await db.exec(`update applications set status = 'withdrawn', withdrawn_at = now(), cv_path = null
+                  where job_id = '${target}' and candidate_id = '${C[1]}' and status <> 'withdrawn'`);
   await apply(C[1]);
   h = (await heads()).rows;
   report.check('withdrawing and reapplying does not count the same person twice', h[0].n === '3', JSON.stringify(h));
