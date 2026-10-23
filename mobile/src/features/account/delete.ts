@@ -1,7 +1,10 @@
 import { Platform } from 'react-native';
 import { isAuthRetryableFetchError, type AuthError, type User } from '@supabase/supabase-js';
+import { forgetAppleSignIn } from '~/features/auth/apple-credential';
+import { forgetOnboardingIntent } from '~/features/auth/kept-intent';
 import { appleAuthorizationCode } from '~/features/auth/providers';
 import { callAction } from '~/lib/api';
+import { forgetPerson } from '~/lib/local-list';
 import { supabase } from '~/lib/supabase';
 
 /** Why an account was not deleted: the website's refusals, Apple not confirming, or anything else. */
@@ -50,7 +53,7 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   // deleted": the website deletes the account, then answers. Asked whether it
   // still knows this account, the auth server settles it.
   if (!result && (await accountGone())) {
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    await forgetHere(user);
     return null;
   }
   if (!result?.ok) {
@@ -65,8 +68,19 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   }
 
   // The account no longer exists (its phones went with it); what is left on this phone goes too.
-  await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  await forgetHere(user);
   return null;
+}
+
+/**
+ * Signed out, and what the phone kept for the person let go: their lists,
+ * reminders and push choices, the Apple ID they signed in with here, and
+ * where onboarding was taking them.
+ */
+async function forgetHere(user: User | null | undefined): Promise<void> {
+  await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  await Promise.all([forgetAppleSignIn(), forgetOnboardingIntent()]);
+  if (user?.id) await forgetPerson(user.id).catch(() => {});
 }
 
 /**
