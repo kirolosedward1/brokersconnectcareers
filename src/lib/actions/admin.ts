@@ -9,6 +9,7 @@ import { publish } from '@/lib/notifications/events';
 import { isRetryable } from '@/lib/email/rebuild';
 import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { adminErrorCode } from '@/lib/admin/errors';
+import { refused } from '@/lib/observe';
 
 /**
  * The console's levers.
@@ -688,7 +689,7 @@ export async function requeueEmail(input: unknown): Promise<ActionResult> {
   const { data: requeued, error } = await supabase.rpc('requeue_email', {
     p_id: parsed.data.emailId,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('admin', error);
   if (!requeued) return { ok: false, error: 'not_found' };
 
   revalidatePath('/admin/operations');

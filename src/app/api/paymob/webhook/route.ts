@@ -72,6 +72,13 @@ export async function POST(request: NextRequest) {
       : null;
   const currency = typeof transaction.currency === 'string' ? transaction.currency : null;
 
+  // A wallet or kiosk payment is reported first as pending and later as its
+  // outcome. Pending is not a failure: settling it as one would mark the order
+  // failed before the buyer has even paid.
+  if (transaction.pending === true && !success) {
+    return NextResponse.json({ ok: true, outcome: 'pending' });
+  }
+
   if (!merchantOrderId) {
     // Signed, so it is genuinely Paymob — but not about an order of ours.
     // Nothing to do, and nothing to retry.
