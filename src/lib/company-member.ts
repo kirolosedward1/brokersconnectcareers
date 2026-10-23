@@ -70,10 +70,10 @@ export async function readCompanyPrivate(supabase: PassedClient, companyId: stri
 
 /**
  * The viewer's company: public columns from the row, the private three from
- * readCompanyPrivate(). Null when the row is gone. Throws when a read failed,
- * or when the row is there and the private columns are not — a company with
- * no owner and no balance would let its owner delete the account and would
- * hide a suspension.
+ * readCompanyPrivate(). Null when the row is gone, and when my_company_private()
+ * answers null — that caller has no company. Throws when a read failed, so a
+ * blip is not "no company": a half-read row, with no owner and no balance,
+ * would let its owner delete the account and would hide a suspension.
  */
 export async function readMemberCompany(supabase: PassedClient, companyId: string): Promise<CompanyRow | null> {
   const client = asClient(supabase);
@@ -83,7 +83,7 @@ export async function readMemberCompany(supabase: PassedClient, companyId: strin
   ]);
   if (row.error) throw row.error;
   if (!row.data || typeof row.data !== 'object') return null;
-  if (!priv) throw new Error('the company private columns could not be read');
+  if (!priv) return null;
   return { ...(row.data as CompanyRow), ...priv };
 }
 

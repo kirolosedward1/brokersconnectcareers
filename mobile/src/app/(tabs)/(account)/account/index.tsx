@@ -122,7 +122,7 @@ export default function AccountScreen() {
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
       >
         {viewer?.profile?.role === 'admin' ? (
-          <StandingNotice profile={viewer.profile} company={viewer.company} />
+          <StandingNotice profile={viewer.profile} company={viewer.company} companyOnly />
         ) : null}
         {session ? (
           <Card style={{ gap: space[1] }}>

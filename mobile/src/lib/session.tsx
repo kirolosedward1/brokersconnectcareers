@@ -61,15 +61,15 @@ type SessionState = {
 const SessionContext = createContext<SessionState | null>(null);
 
 /**
- * Throws when the profile could not be read. A failed profile read is not
- * "no profile": answered as that, it sent an established account back through
- * onboarding, and a failed re-read in the background swapped a half-typed form
- * for the loading screen. Thrown, the query keeps the last good answer, and
- * only a first read with nothing to keep becomes the unreadable viewer (below).
+ * Throws when the profile or the company could not be read. A failed read is
+ * not "no profile" or "no company": answered as those, it sent an employer
+ * whose company call dropped to the create-company form, and a failed re-read
+ * swapped a half-typed form for the loading screen. Thrown, the query keeps
+ * the last good answer, and only a first read with nothing to keep becomes
+ * the unreadable viewer (below).
  *
- * The company is the website's exception (src/lib/auth.ts). my_company_private()
- * answering null, or the read failing, is no company — the console then says
- * to create one — and must not take the whole session down.
+ * my_company_private() answering null is no company. readMemberCompany returns
+ * null for that, and the session still loads.
  */
 export async function loadViewer(session: Session): Promise<Viewer> {
   const user = session.user;
@@ -92,14 +92,9 @@ export async function loadViewer(session: Session): Promise<Viewer> {
   if (profile?.role === 'employer' || profile?.role === 'admin') {
     const { data: companyId, error: membershipError } = await supabase.rpc('my_company_id');
     if (membershipError) throw membershipError;
-    if (companyId) {
-      try {
-        company = await readMemberCompany(supabase, companyId);
-      } catch (error) {
-        console.warn('[session] could not read the company:', error instanceof Error ? error.message : error);
-        company = null;
-      }
-    }
+    // Null is no company. A blip, a 500 or a timeout throws, and the query
+    // keeps the company it already had.
+    if (companyId) company = await readMemberCompany(supabase, companyId);
   }
 
   return {

@@ -59,7 +59,7 @@ function Overview() {
       refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
     >
-      {viewer?.profile ? <StandingNotice profile={viewer.profile} company={viewer.company} /> : null}
+      {viewer?.profile ? <StandingNotice profile={viewer.profile} company={viewer.company} companyOnly /> : null}
       <Text tone="mutedForeground">{t('admin.overviewLede')}</Text>
 
       <View style={{ gap: space[2] }}>

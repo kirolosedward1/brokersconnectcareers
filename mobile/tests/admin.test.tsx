@@ -415,6 +415,17 @@ describe('an admin who also runs a company', () => {
     expect(await screen.findByText(ar.standing.companySuspendedBody)).toBeTruthy();
   });
 
+  it('says that, and not that their own account is on hold', async () => {
+    me = { ...me, approval_status: 'pending' };
+    suspendedCompany();
+    await signIn();
+    renderRouter(app, { initialUrl: '/admin' });
+
+    expect(await screen.findByText(ar.standing.companySuspendedTitle)).toBeTruthy();
+    expect(screen.queryByText(ar.standing.heldTitle)).toBeNull();
+    expect(screen.queryByText(ar.standing.suspendedTitle)).toBeNull();
+  });
+
   it('is told the same on Account', async () => {
     suspendedCompany();
     await signIn();
