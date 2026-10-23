@@ -1266,7 +1266,7 @@
       "record": "Record and notes"
     },
     "makeAdmin": "Make an admin",
-    "makeAdminBody": "They get the whole console: every lever, and every account’s details on request. Two-step sign-in stays optional unless this deployment turns it on. Nobody is emailed — tell them yourself.",
+    "makeAdminBody": "They get the whole console: every lever, and every account’s details on request. The website asks them to set up two-step sign-in before it opens. Nobody is emailed — tell them yourself.",
     "removeAdmin": "Remove admin access",
     "removeAdminBody": "They become a {role} again. Everything else about the account stays as it is. You cannot remove your own access.",
     "blockSignIn": "Block sign-in",
@@ -1748,7 +1748,7 @@
     "suspendedTitle": "Your account is suspended",
     "suspendedBody": "An administrator has suspended this account. You will not be able to use the platform until it is reviewed. If you think this is a mistake, get in touch.",
     "mfaTitle": "Two-step verification",
-    "mfaBody": "A code from an authenticator app (such as Google Authenticator) is asked for alongside your password. Optional for any account. An admin is asked for it before the console opens only when this deployment turns that on.",
+    "mfaBody": "A code from an authenticator app (such as Google Authenticator) is asked for alongside your password. Optional for any account, required for admin accounts.",
     "mfaSetup": "Set up two-step verification",
     "mfaScan": "Scan this code with your authenticator app, then enter the number it shows.",
     "mfaQrAlt": "QR code for your authenticator app",

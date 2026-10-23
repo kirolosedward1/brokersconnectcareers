@@ -21,7 +21,7 @@ Confirm: `curl -s -X POST "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=pa
 | **TOTP** | Enabled |
 | **Phone** | Disabled (no SMS provider) |
 
-Then, as each admin: `/dashboard/account` → *Two-step verification* → set up. From that moment the database refuses that admin's session at AAL1 (migration 311), and the console routes them to the code prompt. Enrolment is optional until `ADMIN_MFA_REQUIRED=true` on Vercel; unset leaves an admin who has not enrolled able to open the console. The variable does nothing for an admin who has already enrolled.
+Then, as each admin: `/dashboard/account` → *Two-step verification* → set up. From that moment the database refuses that admin's session at AAL1 (migration 311), and the console routes them to the code prompt. `ADMIN_MFA_REQUIRED=false` on Vercel is the escape hatch **only** for an admin who has not enrolled yet; it does nothing for one who has.
 
 ## Authentication → Sessions
 

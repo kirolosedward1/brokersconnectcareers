@@ -13,9 +13,8 @@ import { withTimeout } from '~/lib/timeout';
  *              deployment lets an admin without one in
  *   challenge  the account has an authenticator not yet used this session
  *              (SessionGate is already asking for the code)
- *   enrol      the deployment has turned the requirement on
- *              (ADMIN_MFA_REQUIRED=true, from /config) and the account has
- *              none yet. Unset or false leaves the console open.
+ *   enrol      the deployment requires an authenticator (ADMIN_MFA_REQUIRED,
+ *              from /config) and the account has none yet
  *   error      the session's level, or the deployment's rule (/config), could
  *              not be read: said as that, with a retry — never as "no
  *              authenticator", which would send an admin to enrol again
@@ -73,11 +72,11 @@ export function useAdminDoor(): { state: DoorState; recheck: () => Promise<void>
   else if (level.data?.next === 'aal2') state = 'challenge';
   else if (level.isError && !level.data) state = 'error';
   else if (level.data) {
-    // No authenticator. The console opens unless the deployment turned the
-    // requirement on. A missing flag is off, the same as ADMIN_MFA_REQUIRED
-    // unset on the server. A config that could not be read is said as that,
-    // with a retry: "set up two-step" is not the answer to a dropped connection.
-    if (config.data) state = config.data.adminMfaRequired === true ? 'enrol' : 'open';
+    // No authenticator. Whether that is allowed is the deployment's say — a
+    // server older than the setting is held to the stricter rule — and a
+    // config that could not be read is said as that, with a retry: "set up
+    // two-step" is not the answer to a dropped connection.
+    if (config.data) state = config.data.adminMfaRequired === false ? 'open' : 'enrol';
     else if (config.isError) state = 'error';
   }
   return { state, recheck };

@@ -21,7 +21,7 @@ Where to look, in order: `/admin/security` (events, audit trail, reveal counts),
 1. **Contain**: SQL as `postgres` (dashboard SQL editor): `update profiles set role = 'employer' where id = '<admin>';` — the guard trigger allows it for a direct connection. Then *Sign out user*.
 2. **Revoke** anything the session could have minted: check `audit_log` for `job.moderated`, `company.verification_changed`, `account.approval_changed`, `company.credits_changed` rows with this actor since the suspected time, and reverse each (`set_account_approval`, `update companies set verification_status …`, `update jobs set status …` as postgres).
 3. **Rotate**: nothing platform-wide is exposed by an admin session (it holds no service key), but review Authentication → Users for accounts created or approved in the window.
-4. **Recover**: the admin re-enrols TOTP (`/dashboard/account`) on a clean device before the role is restored. Set `ADMIN_MFA_REQUIRED=true` if the console should require a second factor again; unset leaves that requirement off. An admin who has already enrolled is still refused at aal1 either way.
+4. **Recover**: the admin re-enrols TOTP (`/dashboard/account`) on a clean device before the role is restored. Confirm `ADMIN_MFA_REQUIRED` is not `false`.
 
 ### A3. The service-role key is exposed (in a log, a commit, a screenshot)
 

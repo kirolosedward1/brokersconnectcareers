@@ -44,9 +44,9 @@ export type MobileConfig = {
   policies?: { terms: string; privacy: string };
   /**
    * Whether an admin needs an authenticator before the console opens
-   * (ADMIN_MFA_REQUIRED on the server: true only when that variable is
-   * "true"). The app enrols only when this is true. Absent, or false, the
-   * console opens for an admin who has not enrolled.
+   * (ADMIN_MFA_REQUIRED, on by default in production): the app's console asks
+   * what the website's does. Absent from a server older than the app's
+   * console, where it is taken as required.
    */
   adminMfaRequired?: boolean;
 };
