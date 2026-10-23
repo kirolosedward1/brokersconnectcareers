@@ -926,7 +926,9 @@ fingerprint and need a new build (and a review); updates published after it
 go to that build only. What is not native stays out of the fingerprint
 (`mobile/fingerprint.config.js`): Expo counts `package.json`'s scripts and
 `.gitignore` by default, and adding a check to `scripts` would have cut every
-installed build off from later updates without a word. The same test computes
+installed build off from later updates without a word. The config's `extra`
+section is left out for the same reason: it carries the commit shown on
+Account, so every commit had its own fingerprint. The same test computes
 the fingerprint and checks what it is made of. So the first App Store build already carries the
 native modules this round's later features need — `expo-store-review` for the
 rating prompt, `expo-local-authentication` for the app lock (which has since
