@@ -11,10 +11,13 @@
       ],
       "zod": [
         "./node_modules/zod"
+      ],
+      "react": [
+        "./node_modules/@types/react"
       ]
     }
   },
-  "//": "`@/` means exactly what it means on the website — ../src — because the website's shared modules import each other that way, and the app imports them (only from src/lib; scripts/check-shared.mjs enforces it). The app's own code is `~/`. zod is pinned to this project's copy so a shared schema and the app's form resolver use one instance.",
+  "//": "`@/` means exactly what it means on the website — ../src — because the website's shared modules import each other that way, and the app imports them (only from src/lib; scripts/check-shared.mjs enforces it). The app's own code is `~/`. zod is pinned to this project's copy so a shared schema and the app's form resolver use one instance. react is pinned the same way: a shared module such as retry-key.ts imports it, and the phone's typecheck installs only this project, so walking up from ../src/lib finds no copy.",
   "include": [
     "**/*.ts",
     "**/*.tsx",
