@@ -12,11 +12,9 @@ import type { ApplicationStatus } from '@/lib/supabase/database.types';
  * script that generates the Supabase Auth templates has to be able to load it
  * outside Next.
  *
- * Egyptian dialect on the Arabic side, matching the rest of the product. The
- * platform's own voice is the one people already recognise from the interface,
- * and an inbox that suddenly switches to formal broadcast Arabic reads as a
- * different company. Subjects stay literal and unexcited: what happened, and
- * to which listing.
+ * Modern Standard Arabic on the Arabic side. The website and the app stay in
+ * Egyptian (messages/ar.json); these emails are the surface that uses MSA.
+ * Subjects stay literal and unexcited: what happened, and to which listing.
  */
 
 type Locale = 'ar' | 'en';
@@ -24,10 +22,12 @@ type Locale = 'ar' | 'en';
 const arabicPlural = new Intl.PluralRules('ar');
 
 /**
- * A count in Arabic, worded as the bell words it (messages/ar.json): one and
- * two have forms of their own, three to ten take the plural, eleven and up
- * the singular again. `#` is the number. Until this, every number but one
- * took the plural: «فاضل 2 أيام», «11 وظائف جديدة».
+ * A count in Arabic. One and two have forms of their own, three to ten take
+ * the plural, eleven and up the singular again. `#` is the number. The
+ * categories are the same ones the bell uses in messages/ar.json; the words
+ * here are MSA, which these emails use, while the bell stays Egyptian. Until
+ * the categories were split, every number but one took the plural:
+ * «فاضل 2 أيام», «11 وظائف جديدة».
  */
 function arabicCount(count: number, forms: { one: string; two: string; few: string; other: string }): string {
   const category = arabicPlural.select(count);
@@ -36,87 +36,88 @@ function arabicCount(count: number, forms: { one: string; two: string; few: stri
 }
 
 const newListings = (count: number) =>
-  arabicCount(count, { one: 'وظيفة جديدة', two: 'وظيفتين جداد', few: '# وظائف جديدة', other: '# وظيفة جديدة' });
+  arabicCount(count, { one: 'وظيفة جديدة', two: 'وظيفتان جديدتان', few: '# وظائف جديدة', other: '# وظيفة جديدة' });
 
 const newApplicants = (count: number) =>
-  arabicCount(count, { one: 'متقدم جديد', two: 'متقدمين اتنين جداد', few: '# متقدمين جداد', other: '# متقدم جديد' });
+  arabicCount(count, { one: 'متقدم جديد', two: 'متقدمان جديدان', few: '# متقدمين جدد', other: '# متقدم جديد' });
 
 export const emailCopy = {
   ar: {
     siteName: 'بروكرز كونكت',
 
     footer: {
-      automated: 'الرسالة دي مرسلة تلقائياً، من فضلك ما تردّش عليها.',
-      reasonAccount: 'وصلتك الرسالة دي لأنك مسجّل في بروكرز كونكت.',
-      reasonOptional: 'وصلتك الرسالة دي لأنك مفعّل إشعارات البريد.',
+      // The address is appended, and linked. Without one, the neutral line is used.
+      reply: 'هل تحتاج إلى مساعدة؟ يمكنك الرد على هذه الرسالة أو مراسلتنا على',
+      neutral: 'هذه الرسالة مُرسلة تلقائياً.',
+      reasonAccount: 'وصلتك هذه الرسالة لأنك مسجّل في بروكرز كونكت.',
+      reasonOptional: 'وصلتك هذه الرسالة لأنك فعّلت إشعارات البريد الإلكتروني.',
       privacy: 'الخصوصية',
       terms: 'الشروط',
-      help: 'محتاج مساعدة؟ ابعتلنا على',
     },
-    unsubscribe: 'وقّف الإشعارات دي',
+    unsubscribe: 'إيقاف هذه الإشعارات',
 
     // -----------------------------------------------------------------------
     // Account
     // -----------------------------------------------------------------------
 
     welcomeCandidate: {
-      subject: 'أهلاً بيك في بروكرز كونكت',
-      preheader: 'خطوة واحدة والشركات تبدأ تشوفك.',
-      heading: 'أهلاً بيك',
-      body: 'حسابك جاهز. الشركات هنا بتدوّر على مستشارين عقاريين بالخبرة والمناطق اللي بيشتغلوا فيها، فكل ما ملفك يكون مكتمل أكتر كل ما ظهرت لناس أكتر.',
-      hint: 'الملف المكتمل بيوصل لشركات أكتر، وبيوفّر عليك إعادة كتابة نفس البيانات مع كل تقديم.',
-      cta: 'استكمل ملفك المهني',
+      subject: 'أهلاً بك في بروكرز كونكت',
+      preheader: 'خطوة واحدة وتبدأ الشركات في رؤيتك.',
+      heading: 'أهلاً بك',
+      body: 'حسابك جاهز. تبحث الشركات هنا عن مستشارين عقاريين وفق الخبرة والمناطق التي يعملون فيها، فكلما اكتمل ملفك أكثر ظهرت لعدد أكبر من الشركات.',
+      hint: 'يصل الملف المكتمل إلى شركات أكثر، ويوفّر عليك إعادة كتابة البيانات نفسها مع كل تقديم.',
+      cta: 'أكمل ملفك المهني',
     },
 
     welcomeEmployer: {
-      subject: 'أهلاً بيك في بروكرز كونكت',
-      preheader: 'ابدأ بأول إعلان وظيفة.',
-      heading: 'أهلاً بيك',
-      body: 'حساب شركتك اتعمل. تقدر تنشر وظائفك وتستقبل المتقدمين في مكان واحد، وتكلّمهم على واتساب من جوه المنصة.',
-      hint: 'بيانات الشركة المكتملة والتوثيق بيخلّوا الإعلان يجيب متقدمين أكتر وأجدّ.',
+      subject: 'أهلاً بك في بروكرز كونكت',
+      preheader: 'ابدأ بنشر أول إعلان وظيفة.',
+      heading: 'أهلاً بك',
+      body: 'تم إنشاء حساب شركتك. يمكنك نشر وظائفك واستقبال المتقدمين في مكان واحد، والتواصل معهم عبر واتساب من داخل المنصة.',
+      hint: 'اكتمال بيانات الشركة وتوثيقها يجعلان الإعلان يجذب متقدمين أكثر وأكثر جدية.',
       cta: 'ابدأ استخدام بروكرز كونكت',
     },
 
     passwordChanged: {
-      subject: 'اتغيّرت كلمة المرور بتاعتك',
-      preheader: 'تأكيد أمني على حسابك.',
-      heading: 'كلمة المرور اتغيّرت',
-      body: 'كلمة المرور بتاعت حسابك في بروكرز كونكت اتغيّرت دلوقتي.',
+      subject: 'تم تغيير كلمة المرور',
+      preheader: 'تأكيد أمني بخصوص حسابك.',
+      heading: 'تم تغيير كلمة المرور',
+      body: 'تم تغيير كلمة المرور الخاصة بحسابك في بروكرز كونكت للتو.',
       security:
-        'لو مش إنت اللي غيّرتها، اعمل «نسيت كلمة المرور» فوراً عشان تسترجع الحساب.',
+        'إذا لم تكن أنت من غيّرها، فاستخدم «نسيت كلمة المرور» فوراً لاستعادة حسابك.',
       cta: 'إعدادات الحساب',
       labelWhen: 'وقت التغيير',
     },
 
     profileReady: {
-      subject: 'ملفك المهني بقى جاهز',
-      preheader: 'ملفك ظاهر للشركات دلوقتي.',
+      subject: 'ملفك المهني جاهز',
+      preheader: 'ملفك ظاهر للشركات الآن.',
       heading: 'ملفك المهني جاهز',
-      body: 'خلّصت الأساسيات، وملفك بقى ظاهر للشركات حسب إعدادات الخصوصية اللي اخترتها.',
-      cta: 'اعرض ملفي',
+      body: 'أكملت البيانات الأساسية، وأصبح ملفك ظاهراً للشركات وفق إعدادات الخصوصية التي اخترتها.',
+      cta: 'عرض ملفي',
       labelVisibility: 'الظهور',
     },
 
     profileIncomplete: {
-      subject: 'كمّل ملفك عشان الشركات تشوفك',
-      preheader: 'باقي شوية بيانات على ملفك.',
-      heading: 'ملفك لسه ناقص',
-      body: 'الشركات بتفلتر بالخبرة والمناطق والتخصص. من غير البيانات دي ملفك مش بيظهر في نتائج بحثهم.',
-      hint: 'الرسالة دي بتتبعت مرة واحدة بس.',
-      cta: 'كمّل الملف',
+      subject: 'أكمل ملفك لتتمكن الشركات من رؤيتك',
+      preheader: 'تبقّت بعض البيانات في ملفك.',
+      heading: 'ملفك غير مكتمل بعد',
+      body: 'تفرز الشركات المرشحين حسب الخبرة والمناطق والتخصص. ومن دون هذه البيانات لن يظهر ملفك في نتائج بحثها.',
+      hint: 'تُرسل هذه الرسالة مرة واحدة فقط.',
+      cta: 'أكمل الملف',
     },
 
     visibilityChanged: {
-      subject: 'اتغيّرت إعدادات ظهور ملفك',
-      preheader: 'ملفك دلوقتي بالإعداد الجديد.',
-      heading: 'اتحدّثت إعدادات الظهور',
-      body: 'غيّرت مين يقدر يشوف ملفك في دليل المستشارين.',
-      security: 'لو مش إنت اللي غيّرتها، ادخل على إعدادات الحساب وغيّر كلمة السر.',
+      subject: 'تم تغيير إعدادات ظهور ملفك',
+      preheader: 'ملفك الآن بالإعداد الجديد.',
+      heading: 'تم تحديث إعدادات الظهور',
+      body: 'غيّرت من يمكنه رؤية ملفك في دليل المستشارين.',
+      security: 'إذا لم تكن أنت من غيّرها، فادخل إلى إعدادات الحساب وغيّر كلمة المرور.',
       cta: 'إدارة إعدادات الخصوصية',
       labelVisibility: 'الظهور الحالي',
       visibility: {
-        public: 'ظاهر للكل',
-        verified_employers_only: 'للشركات الموثّقة بس',
+        public: 'ظاهر للجميع',
+        verified_employers_only: 'للشركات الموثّقة فقط',
         hidden: 'مخفي تماماً',
       },
     },
@@ -126,12 +127,12 @@ export const emailCopy = {
     // -----------------------------------------------------------------------
 
     applicationReceived: {
-      subject: (job: string) => `وصل طلبك على ${job}`,
+      subject: (job: string) => `وصل طلبك على وظيفة ${job}`,
       preheader: 'استلمنا طلبك.',
       heading: 'استلمنا طلبك',
       body: (job: string, company: string) =>
-        `بعتنا طلبك على وظيفة «${job}» لشركة ${company}. الشركة هتشوفه وتردّ من خلال المنصة، وهنبلّغك أول ما يتحرّك.`,
-      note: 'استلام الطلب مش معناه القبول — ده تأكيد إن الطلب وصل للشركة.',
+        `أرسلنا طلبك على وظيفة «${job}» إلى شركة ${company}. ستطّلع الشركة عليه وترد عبر المنصة، وسنبلغك فور حدوث أي تحديث.`,
+      note: 'استلام الطلب لا يعني القبول — إنه تأكيد بأن الطلب وصل إلى الشركة.',
       cta: 'تابع طلباتك',
       labelJob: 'الوظيفة',
       labelCompany: 'الشركة',
@@ -140,48 +141,48 @@ export const emailCopy = {
     },
 
     newApplication: {
-      subject: (job: string) => `متقدم جديد على ${job}`,
-      preheader: 'حد قدّم على وظيفة عندك.',
-      heading: 'وصلك متقدم جديد',
-      body: (name: string, job: string) => `${name} قدّم على وظيفة «${job}».`,
-      cta: 'شوف المتقدم',
+      subject: (job: string) => `متقدم جديد على وظيفة ${job}`,
+      preheader: 'تقدّم شخص لوظيفة لديك.',
+      heading: 'لديك متقدم جديد',
+      body: (name: string, job: string) => `تقدّم ${name} لوظيفة «${job}».`,
+      cta: 'عرض المتقدم',
       labelJob: 'الوظيفة',
       labelApplicant: 'المتقدم',
       labelExperience: 'الخبرة',
     },
 
     statusChanged: {
-      subject: (job: string) => `تحديث على طلبك في ${job}`,
-      preheader: 'في تحديث على طلب التقديم بتاعك.',
-      heading: 'طلبك اتحرّك',
+      subject: (job: string) => `تحديث على طلبك على وظيفة ${job}`,
+      preheader: 'هناك تحديث على طلبك.',
+      heading: 'تم تحديث طلبك',
       body: (job: string, company: string) =>
-        `شركة ${company} حدّثت حالة طلبك على وظيفة «${job}».`,
-      cta: 'شوف التفاصيل',
+        `حدّثت شركة ${company} حالة طلبك على وظيفة «${job}».`,
+      cta: 'عرض التفاصيل',
       labelJob: 'الوظيفة',
       labelCompany: 'الشركة',
       labelStatus: 'الحالة الجديدة',
     },
 
     applicationRejected: {
-      subject: (job: string) => `تحديث بخصوص تقديمك على ${job}`,
-      preheader: 'في تحديث على طلبك.',
+      subject: (job: string) => `تحديث على طلبك على وظيفة ${job}`,
+      preheader: 'هناك تحديث على طلبك.',
       heading: 'تحديث على طلبك',
       body: (job: string, company: string) =>
-        `شركة ${company} كمّلت مراجعة المتقدمين لوظيفة «${job}»، والاختيار وقع على حد تاني المرة دي.`,
+        `أكملت شركة ${company} مراجعة المتقدمين لوظيفة «${job}»، ووقع الاختيار على مرشح آخر هذه المرة.`,
       encouragement:
-        'في شركات بتنشر وظائف جديدة على المنصة كل أسبوع. خلّي ملفك محدّث وهتلاقي فرص تانية تناسب خبرتك.',
-      cta: 'اتصفح وظائف تانية',
+        'تنشر الشركات وظائف جديدة على المنصة كل أسبوع. حافظ على تحديث ملفك وستجد فرصاً أخرى تناسب خبرتك.',
+      cta: 'تصفّح وظائف أخرى',
       labelJob: 'الوظيفة',
       labelCompany: 'الشركة',
     },
 
     applicationWithdrawn: {
-      subject: (job: string) => `سحبت طلبك على ${job}`,
-      preheader: 'الطلب اتشال من عند الشركة.',
-      heading: 'اتسحب طلبك',
+      subject: (job: string) => `سحبت طلبك على وظيفة ${job}`,
+      preheader: 'أُزيل الطلب من لدى الشركة.',
+      heading: 'تم سحب طلبك',
       body: (job: string) =>
-        `شِلنا طلبك على وظيفة «${job}»، والشركة مابقتش شايفاه. تقدر تقدّم تاني في أي وقت طول ما الإعلان شغال.`,
-      cta: 'اتصفح الوظائف',
+        `أزلنا طلبك على وظيفة «${job}»، ولم يعد ظاهراً للشركة. يمكنك التقديم مجدداً في أي وقت ما دام الإعلان قائماً.`,
+      cta: 'تصفّح الوظائف',
       labelJob: 'الوظيفة',
     },
 
@@ -191,59 +192,59 @@ export const emailCopy = {
 
     jobSubmitted: {
       subject: (job: string) => `استلمنا إعلان «${job}»`,
-      preheader: 'الإعلان تحت المراجعة.',
+      preheader: 'الإعلان قيد المراجعة.',
       heading: 'استلمنا الإعلان',
       body: (job: string) =>
-        `«${job}» دخل المراجعة. بنراجع الإعلانات عشان نمنع الإعلانات الوهمية، وده بياخد يوم عمل غالباً — وهنبعتلك أول ما نخلص.`,
+        `دخل «${job}» مرحلة المراجعة. نراجع الإعلانات لمنع الإعلانات الوهمية، ويستغرق ذلك عادةً يوم عمل واحداً — وسنراسلك فور الانتهاء.`,
       cta: 'إدارة الوظيفة',
       labelJob: 'الوظيفة',
       labelDate: 'تاريخ الإرسال',
       labelStatus: 'الحالة',
-      statusPending: 'تحت المراجعة',
+      statusPending: 'قيد المراجعة',
     },
 
     jobApproved: {
       subject: (job: string) => `تم نشر «${job}»`,
-      preheader: 'إعلانك بقى ظاهر للمتقدمين.',
-      heading: 'إعلانك اتنشر',
-      body: (job: string) => `«${job}» عدّى المراجعة وبقى ظاهر في نتائج البحث.`,
-      cta: 'شوف الإعلان',
+      preheader: 'أصبح إعلانك ظاهراً للمتقدمين.',
+      heading: 'تم نشر إعلانك',
+      body: (job: string) => `اجتاز «${job}» المراجعة وأصبح ظاهراً في نتائج البحث.`,
+      cta: 'عرض الإعلان',
       labelJob: 'الوظيفة',
       labelPublished: 'تاريخ النشر',
       labelExpires: 'ينتهي في',
     },
 
     jobRejected: {
-      subject: (job: string) => `«${job}» محتاج تعديل`,
-      preheader: 'إعلانك محتاج تعديل قبل ما يتنشر.',
-      heading: 'إعلانك محتاج تعديل',
-      body: (job: string) => `«${job}» ماعدّاش المراجعة. عدّله وابعته تاني.`,
+      subject: (job: string) => `«${job}» يحتاج إلى تعديل`,
+      preheader: 'يحتاج إعلانك إلى تعديل قبل نشره.',
+      heading: 'يحتاج إعلانك إلى تعديل',
+      body: (job: string) => `لم يجتز «${job}» المراجعة. عدّله وأعد إرساله.`,
       reason: (note: string) => `سبب الرفض: ${note}`,
-      cta: 'عدّل الإعلان',
+      cta: 'تعديل الإعلان',
       labelJob: 'الوظيفة',
     },
 
     jobExpiring: {
-      subject: (job: string) => `«${job}» هينتهي قريب`,
-      preheader: 'الإعلان قرّب على آخر يوم.',
-      heading: 'إعلانك هينتهي قريب',
+      subject: (job: string) => `«${job}» سينتهي قريباً`,
+      preheader: 'اقترب الإعلان من يومه الأخير.',
+      heading: 'إعلانك سينتهي قريباً',
       body: (job: string, days: number) =>
         days === 1
-          ? `«${job}» آخر يوم ليه بكرة. بعدها هيقف عن الظهور في نتائج البحث.`
-          : `فاضل ${arabicCount(days, { one: 'يوم', two: 'يومين', few: '# أيام', other: '# يوم' })} على انتهاء «${job}». بعدها هيقف عن الظهور في نتائج البحث.`,
+          ? `غداً هو اليوم الأخير لـ«${job}». بعد ذلك سيتوقف عن الظهور في نتائج البحث.`
+          : `تبقّى ${arabicCount(days, { one: 'يوم واحد', two: 'يومان', few: '# أيام', other: '# يوماً' })} على انتهاء «${job}». بعد ذلك سيتوقف عن الظهور في نتائج البحث.`,
       cta: 'إدارة الوظيفة',
       labelJob: 'الوظيفة',
       labelExpires: 'ينتهي في',
-      labelApplicants: 'المتقدمين',
+      labelApplicants: 'المتقدمون',
     },
 
     jobExpired: {
       subject: (job: string) => `انتهت مدة «${job}»`,
-      preheader: 'الإعلان وقف عن الظهور.',
+      preheader: 'توقف الإعلان عن الظهور.',
       heading: 'انتهت مدة الإعلان',
       body: (job: string) =>
-        `«${job}» خلص مدته ووقف عن الظهور في نتائج البحث. المتقدمين اللي وصلوك لسه موجودين في لوحة التحكم.`,
-      cta: 'انشر الإعلان تاني',
+        `انتهت مدة «${job}» وتوقف عن الظهور في نتائج البحث. لا يزال المتقدمون الذين وصلوك موجودين في لوحة التحكم.`,
+      cta: 'أعد نشر الإعلان',
       labelJob: 'الوظيفة',
       labelExpired: 'انتهى في',
       labelApplicants: 'إجمالي المتقدمين',
@@ -254,66 +255,66 @@ export const emailCopy = {
     // -----------------------------------------------------------------------
 
     accountApproved: {
-      subject: 'حسابك اتفعّل',
-      preheader: 'تقدر تنشر إعلاناتك دلوقتي.',
-      heading: 'حسابك اتفعّل',
-      body: 'راجعنا بيانات شركتك، والحساب بقى مفعّل. تقدر تنشر أول إعلان دلوقتي.',
+      subject: 'تم تفعيل حسابك',
+      preheader: 'يمكنك نشر إعلاناتك الآن.',
+      heading: 'تم تفعيل حسابك',
+      body: 'راجعنا بيانات شركتك، وأصبح الحساب مفعّلاً. يمكنك نشر أول إعلان الآن.',
       cta: 'انشر وظيفة',
     },
 
     accountRejected: {
-      subject: 'حسابك متوقف مؤقتاً',
-      preheader: 'محتاجين نراجع بيانات الشركة تاني.',
-      heading: 'حسابك متوقف مؤقتاً',
-      body: 'وقّفنا الحساب مؤقتاً لحد ما نراجع البيانات تاني.',
+      subject: 'تم إيقاف حسابك مؤقتاً',
+      preheader: 'نحتاج إلى مراجعة بيانات الشركة مرة أخرى.',
+      heading: 'تم إيقاف حسابك مؤقتاً',
+      body: 'أوقفنا الحساب مؤقتاً إلى حين مراجعة البيانات مرة أخرى.',
       reason: (note: string) => `السبب: ${note}`,
-      contact: 'لو ده مش صح، ابعتلنا من صفحة المساعدة وهنراجعها.',
+      contact: 'إذا كان ذلك غير صحيح، فراسلنا من صفحة المساعدة وسنراجع الأمر.',
     },
 
     // The same decisions, for a consultant's account.
     accountApprovedCandidate: {
-      subject: 'حسابك اتفعّل',
-      preheader: 'تقدر تقدّم على الوظائف دلوقتي.',
-      heading: 'حسابك اتفعّل',
-      body: 'راجعنا حسابك، وبقى مفعّل تاني. تقدر تقدّم على الوظائف وتحدّث ملفك.',
+      subject: 'تم تفعيل حسابك',
+      preheader: 'يمكنك التقديم على الوظائف الآن.',
+      heading: 'تم تفعيل حسابك',
+      body: 'راجعنا حسابك، وأصبح مفعّلاً مجدداً. يمكنك التقديم على الوظائف وتحديث ملفك.',
       cta: 'افتح حسابك',
     },
 
     accountRejectedCandidate: {
-      subject: 'حسابك متوقف مؤقتاً',
-      preheader: 'محتاجين نراجع بيانات حسابك تاني.',
-      heading: 'حسابك متوقف مؤقتاً',
-      body: 'وقّفنا الحساب مؤقتاً لحد ما نراجع البيانات تاني.',
+      subject: 'تم إيقاف حسابك مؤقتاً',
+      preheader: 'نحتاج إلى مراجعة بيانات حسابك مرة أخرى.',
+      heading: 'تم إيقاف حسابك مؤقتاً',
+      body: 'أوقفنا الحساب مؤقتاً إلى حين مراجعة البيانات مرة أخرى.',
     },
 
     companyVerified: {
       subject: 'تم توثيق شركتك',
-      preheader: 'علامة التوثيق ظهرت على صفحتك.',
-      heading: 'شركتك اتوثّقت',
+      preheader: 'ظهرت علامة التوثيق على صفحتك.',
+      heading: 'تم توثيق شركتك',
       body: (company: string) =>
-        `راجعنا مستندات «${company}» وكل حاجة تمام. علامة التوثيق ظهرت على صفحة الشركة وعلى كل إعلاناتك، وبقيت تقدر تشوف ملفات المستشارين اللي مخصّصة للشركات الموثّقة.`,
-      cta: 'اعرض صفحة الشركة',
+        `راجعنا مستندات «${company}» وكل شيء سليم. ظهرت علامة التوثيق على صفحة الشركة وعلى جميع إعلاناتك، وأصبح بإمكانك الاطلاع على ملفات المستشارين المخصّصة للشركات الموثّقة.`,
+      cta: 'عرض صفحة الشركة',
       labelCompany: 'الشركة',
     },
 
     companyVerificationNeeded: {
       subject: 'مطلوب إجراء لاستكمال توثيق شركتك',
-      preheader: 'ناقص مستندات على طلب التوثيق.',
-      heading: 'التوثيق محتاج إجراء منك',
+      preheader: 'تنقص طلبَ التوثيق بعضُ المستندات.',
+      heading: 'التوثيق يتطلب إجراءً منك',
       body: (company: string) =>
-        `مراجعة مستندات «${company}» ماكمّلتش. محتاجين السجل التجاري والبطاقة الضريبية بصورة واضحة وسارية.`,
-      reason: (note: string) => `الملاحظة: ${note}`,
-      cta: 'استكمل البيانات',
+        `لم تكتمل مراجعة مستندات «${company}». نحتاج إلى السجل التجاري والبطاقة الضريبية بصورة واضحة وسارية.`,
+      reason: (note: string) => `ملاحظة: ${note}`,
+      cta: 'استكمال البيانات',
       labelCompany: 'الشركة',
     },
 
     companyVerificationRevoked: {
       subject: 'تم إلغاء توثيق شركتك',
-      preheader: 'علامة التوثيق اتشالت من صفحة الشركة.',
-      heading: 'شركتك مابقتش موثّقة',
+      preheader: 'أُزيلت علامة التوثيق من صفحة الشركة.',
+      heading: 'لم تعد شركتك موثّقة',
       body: (company: string) =>
-        `علامة التوثيق اتشالت من صفحة «${company}» ومن إعلاناتها، ومعاها ملفات المستشارين المخصّصة للشركات الموثّقة. تقدر تطلب التوثيق تاني من صفحة الشركة بسجل تجاري وبطاقة ضريبية ساريين، ولو عندك سؤال ابعتلنا.`,
-      cta: 'افتح صفحة الشركة',
+        `أُزيلت علامة التوثيق من صفحة «${company}» ومن إعلاناتها، ومعها إمكانية الاطلاع على ملفات المستشارين المخصّصة للشركات الموثّقة. يمكنك طلب التوثيق مجدداً من صفحة الشركة بسجل تجاري وبطاقة ضريبية ساريين، وإذا كان لديك أي سؤال فراسلنا.`,
+      cta: 'عرض صفحة الشركة',
       labelCompany: 'الشركة',
     },
 
@@ -323,10 +324,10 @@ export const emailCopy = {
 
     digest: {
       subject: (count: number, label: string) => `${newListings(count)} في «${label}»`,
-      preheader: 'وظائف جديدة تطابق البحث المحفوظ عندك.',
-      heading: 'في جديد في بحثك',
-      body: (label: string) => `دي الوظائف اللي نزلت الأسبوع ده وبتطابق «${label}».`,
-      cta: 'شوفهم كلهم',
+      preheader: 'وظائف جديدة تطابق البحث المحفوظ لديك.',
+      heading: 'جديد في بحثك',
+      body: (label: string) => `هذه هي الوظائف التي نُشرت هذا الأسبوع وتطابق «${label}».`,
+      cta: 'عرضها جميعاً',
     },
 
     /*
@@ -335,33 +336,33 @@ export const emailCopy = {
 
       Underneath they are one row and one weekly job, which is the whole point
       of building a follow that way — but the words above cannot be shared. A
-      follower who reads "في جديد في بحثك" is being told about a saved search
+      follower who reads "جديد في بحثك" is being told about a saved search
       they do not remember making, and the next thing they do is look for it to
       turn it off. The subject line happens to work for both, so only the three
       strings that name the mechanism change.
     */
     follow: {
       subject: (count: number, label: string) => `${newListings(count)} في «${label}»`,
-      preheader: 'وظائف جديدة من شركة بتتابعها.',
-      heading: 'جديد من شركة بتتابعها',
-      body: (label: string) => `«${label}» نزّلت الوظائف دي الأسبوع ده.`,
-      cta: 'شوفهم كلهم',
+      preheader: 'وظائف جديدة من شركة تتابعها.',
+      heading: 'جديد من شركة تتابعها',
+      body: (label: string) => `نشرت «${label}» هذه الوظائف هذا الأسبوع.`,
+      cta: 'عرضها جميعاً',
     },
 
     applicantDigest: {
-      subject: (count: number) => `عندك ${newApplicants(count)}`,
-      preheader: 'ملخّص المتقدمين النهارده.',
-      heading: 'متقدمين جداد',
-      body: (count: number) => `وصلك ${newApplicants(count)} من آخر مرة بعتنالك.`,
-      cta: 'شوف المتقدمين',
+      subject: (count: number) => `لديك ${newApplicants(count)}`,
+      preheader: 'ملخّص المتقدمين اليوم.',
+      heading: 'متقدمون جدد',
+      body: (count: number) => `وصلك ${newApplicants(count)} منذ آخر رسالة أرسلناها إليك.`,
+      cta: 'عرض المتقدمين',
     },
 
     status: {
       new: 'جديد',
       shortlisted: 'في القائمة المختصرة',
       interview: 'مقابلة',
-      hired: 'اتقبل',
-      rejected: 'مش مناسب',
+      hired: 'تم القبول',
+      rejected: 'غير مناسب',
     } satisfies Record<ApplicationStatus, string>,
   },
 
@@ -369,12 +370,13 @@ export const emailCopy = {
     siteName: 'Brokers Connect',
 
     footer: {
-      automated: 'This is an automated message. Please do not reply to this email.',
+      // The address is appended, and linked. Without one, the neutral line is used.
+      reply: 'Need help? Reply to this email or write to',
+      neutral: 'This is an automated message.',
       reasonAccount: 'You are receiving this because you have a Brokers Connect account.',
       reasonOptional: 'You are receiving this because email notifications are on.',
       privacy: 'Privacy',
       terms: 'Terms',
-      help: 'Need a hand? Write to us at',
     },
     unsubscribe: 'Turn off these emails',
 

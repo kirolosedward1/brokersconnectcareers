@@ -285,15 +285,41 @@ function renderBlock(block: Block, dir: string, align: string, auth = false): st
 // The shell
 // ---------------------------------------------------------------------------
 
+export type FooterContact = {
+  /**
+   * The sentence. When `email` is set it is appended as a mailto link, so the
+   * visible line is this lead, a space, and the address.
+   */
+  lead: string;
+  email?: string;
+};
+
 export type EmailFooter = {
-  /** "This is an automated message." */
-  automated: string;
+  /**
+   * Where a reply goes. With an address, the reader is told they can write
+   * there. Without one, `lead` is a neutral line and does not forbid a reply.
+   */
+  contact: FooterContact;
+  /** Auth mail draws this English line under the Arabic one. */
+  contactEn?: FooterContact;
   /** Why they are receiving it. */
   reason: string;
   legal: { label: string; href: string }[];
   /** Optional mail only. Transactional carries none, deliberately. */
   unsubscribe?: { label: string; href: string };
 };
+
+/** The contact line: 13px in the footer colour, the address a mailto link. */
+function contactHtml(contact: FooterContact, footerColor: string, ltr: boolean): string {
+  const link = contact.email
+    ? ` <a${ltr ? '' : ' dir="ltr"'} href="${safeHref(`mailto:${contact.email}`)}" style="color:${footerColor};font-size:13px;text-decoration:underline;">${escape(contact.email)}</a>`
+    : '';
+  return `<div${ltr ? ' dir="ltr"' : ''} style="font-size:13px;line-height:1.7;color:${footerColor};">${escape(contact.lead)}${link}</div>`;
+}
+
+function contactPlain(contact: FooterContact): string {
+  return contact.email ? `${contact.lead} ${contact.email}` : contact.lead;
+}
 
 /** The English half of an auth email, drawn under the Arabic. */
 export type EmailAlternate = {
@@ -438,7 +464,8 @@ ${headingRow(dir, align, heading, '28px 28px 6px')}
           <td dir="${dir}" align="${align}" class="gutter${auth ? ' bc-footer' : ''}" style="padding:24px 28px 26px;border-top:1px solid ${LINE};font-size:12px;line-height:1.9;color:${footerColor};">
             <div style="font-weight:600;">${escape(siteName)}</div>
             <div>${escape(footer.reason)}</div>
-            <div>${escape(footer.automated)}</div>
+            ${contactHtml(footer.contact, footerColor, dir === 'ltr')}
+            ${footer.contactEn ? contactHtml(footer.contactEn, footerColor, true) : ''}
             ${legal ? `<div style="padding-top:6px;">${legal}</div>` : ''}
             ${
               footer.unsubscribe
@@ -514,7 +541,8 @@ export function renderText({
     }
   }
 
-  lines.push('—', siteName, footer.reason, footer.automated);
+  lines.push('—', siteName, footer.reason, contactPlain(footer.contact));
+  if (footer.contactEn) lines.push(contactPlain(footer.contactEn));
   for (const item of footer.legal) lines.push(`${item.label}: ${item.href}`);
   if (footer.unsubscribe) {
     lines.push(`${footer.unsubscribe.label}: ${footer.unsubscribe.href}`);

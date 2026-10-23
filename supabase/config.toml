@@ -76,11 +76,11 @@ subject = "أكّد بريدك الإلكتروني الجديد"
 content_path = "./supabase/templates/email-change.html"
 
 [auth.email.template.reauthentication]
-subject = "كود تأكيد الهوية"
+subject = "رمز تأكيد الهوية"
 content_path = "./supabase/templates/reauthentication.html"
 
 [auth.email.template.magic_link]
-subject = "لينك الدخول لحسابك"
+subject = "رابط الدخول إلى حسابك"
 content_path = "./supabase/templates/magic-link.html"
 
 # Auth mail does not go through the application's Resend integration — GoTrue

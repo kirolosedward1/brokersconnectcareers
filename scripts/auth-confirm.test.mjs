@@ -125,11 +125,11 @@ console.log('\n— the generated mail');
   const confirmation = readFileSync(join(ROOT, 'supabase', 'templates', 'confirmation.html'), 'utf8');
   const recovery = readFileSync(join(ROOT, 'supabase', 'templates', 'recovery.html'), 'utf8');
   is(
-    'confirmation says 24 hours, still in Egyptian',
-    confirmation.includes('اللينك ده صالح لمدة 24 ساعة، وبيشتغل مرة واحدة بس.') && confirmation.includes('أهلاً بيك في بروكرز كونكت'),
+    'confirmation says 24 hours, in MSA',
+    confirmation.includes('هذا الرابط صالح لمدة 24 ساعة، ويعمل مرة واحدة فقط.') && confirmation.includes('أهلاً بك في بروكرز كونكت'),
     true,
   );
-  is('recovery still says one hour', recovery.includes('اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.') && !recovery.includes('24 ساعة'), true);
+  is('recovery still says one hour', recovery.includes('هذا الرابط صالح لمدة ساعة، ويعمل مرة واحدة فقط.') && !recovery.includes('24 ساعة'), true);
   is('English sits under the divider', confirmation.includes('background:#E3E7EF') && confirmation.includes('lang="en"') && confirmation.includes('Confirm your email'), true);
   is(
     'footer text and footer links',
@@ -146,7 +146,22 @@ console.log('\n— the generated mail');
       confirmation.includes('background:#ffffff'),
     true,
   );
-  is('a plain link under the button', confirmation.includes('لو الزرار مش ظاهر') && confirmation.includes('If the button does not appear'), true);
+  is('a plain link under the button', confirmation.includes('إذا لم يظهر الزر، فافتح هذا الرابط في المتصفح:') && confirmation.includes('If the button does not appear'), true);
+  const authFiles = ['confirmation.html', 'recovery.html', 'magic-link.html', 'email-change.html', 'reauthentication.html'];
+  for (const file of authFiles) {
+    const html = readFileSync(join(ROOT, 'supabase', 'templates', file), 'utf8');
+    is(
+      `${file} offers the support address and does not forbid a reply`,
+      html.includes('هل تحتاج إلى مساعدة؟ راسلنا على') &&
+        html.includes('Need help? Write to') &&
+        html.includes('mailto:info@topsuite.net') &&
+        html.includes('font-size:13px;line-height:1.7;color:#5B6475') &&
+        !html.includes('عدم الرد') &&
+        !html.includes('do not reply') &&
+        !html.includes('يُرجى عدم الرد'),
+      true,
+    );
+  }
   is(
     'the confirm link is SiteURL, the token hash, the type and next',
     confirmation.includes(
@@ -163,7 +178,7 @@ console.log('\n— the generated mail');
     heading: 'عنوان',
     blocks: [{ kind: 'text', value: 'نص' }],
     footer: {
-      automated: 'آلي',
+      contact: { lead: 'هذه الرسالة مُرسلة تلقائياً.' },
       reason: 'سبب',
       legal: [{ label: 'الخصوصية', href: `${SITE}/privacy` }],
     },
