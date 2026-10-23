@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get('token_hash');
   if (!type || !isTokenHash(tokenHash)) return linkFailed(origin);
 
-  const next = confirmDestination(type, readRedirectTo(search), origin);
+  const next = confirmDestination(type, readRedirectTo(search), origin, searchParams.get('next'));
   const t = await getTranslations({ locale: defaultLocale, namespace: 'auth.confirm' });
   const titles: Record<ConfirmType, string> = {
     signup: t('titleEmail'),

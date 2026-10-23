@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
-<meta name="color-scheme" content="light">
-<meta name="supported-color-schemes" content="light">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <title>ادخل على حسابك</title>
 <!--[if mso]>
 <xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml>
@@ -17,58 +17,90 @@
     .shell { width:100% !important; }
     .gutter { padding-left:18px !important; padding-right:18px !important; }
   }
+  :root { color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) {
+    .bc-canvas { background:#0B1220 !important; }
+    .bc-card { background:#111827 !important; border-color:#1F2937 !important; }
+    .bc-heading, .bc-copy { color:#E5E7EB !important; }
+    .bc-logo { background:#ffffff !important; }
+    .bc-footer, .bc-footer a { color:#E5E7EB !important; }
+  }
 </style>
 </head>
-<body style="margin:0;padding:0;background:#f4f5fa;-webkit-text-size-adjust:100%;">
+<body class="bc-canvas" style="margin:0;padding:0;background:#f4f5fa;-webkit-text-size-adjust:100%;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">لينك دخول لمرة واحدة.</div>
 <!-- Stops Gmail pulling the next line of markup into the preview. -->
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f5fa;padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bc-canvas" style="background:#f4f5fa;padding:24px 12px;">
   <tr>
     <td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" dir="rtl" class="shell"
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" dir="rtl" class="shell bc-card"
              style="width:100%;max-width:600px;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,Arial,'Helvetica Neue',sans-serif;">
 
         <tr>
           <td dir="rtl" align="right" class="gutter" style="padding:22px 28px;border-bottom:1px solid #e5e7eb;">
-            <img src="https://www.brokersconnect.net/brand/logo-ar.png" width="168" height="25" alt="بروكرز كونكت"
-            style="display:block;width:168px;height:25px;border:0;outline:none;text-decoration:none;">
+            <span class="bc-logo" style="display:inline-block;background:#ffffff;border-radius:10px;padding:8px 12px;line-height:0;"><img src="https://www.brokersconnect.net/brand/logo-ar.png" width="168" height="25" alt="بروكرز كونكت"
+            style="display:block;width:168px;height:25px;border:0;outline:none;text-decoration:none;"></span>
           </td>
         </tr>
 
         <tr>
           <td dir="rtl" align="right" class="gutter" style="padding:28px 28px 6px;">
-            <h1 style="margin:0;font-size:21px;line-height:1.45;color:#111827;font-weight:700;">ادخل على حسابك</h1>
+            <h1 class="bc-heading" style="margin:0;font-size:21px;line-height:1.45;color:#111827;font-weight:700;">ادخل على حسابك</h1>
           </td>
         </tr>
 
-        <tr><td dir="rtl" align="right" style="padding:8px 28px;"><p style="margin:0;font-size:15px;line-height:1.8;color:#6b7280;">اضغط الزرار عشان تدخل على حسابك من غير كلمة مرور.</p></td></tr><tr><td dir="rtl" align="right" style="padding:20px 28px 8px;"><!--[if mso]>
+        <tr><td dir="rtl" align="right" style="padding:8px 28px;"><p class="bc-copy" style="margin:0;font-size:15px;line-height:1.8;color:#6b7280;">اضغط الزرار عشان تدخل على حسابك من غير كلمة مرور.</p></td></tr><tr><td dir="rtl" align="right" style="padding:20px 28px 8px;"><!--[if mso]>
            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
-                        href="https://www.brokersconnect.net/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;redirect_to={{ .RedirectTo }}" style="height:44px;v-text-anchor:middle;width:240px;" arcsize="20%"
+                        href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/&amp;redirect_to={{ .RedirectTo }}" style="height:44px;v-text-anchor:middle;width:240px;" arcsize="20%"
                         stroke="f" fillcolor="#3b32de">
              <w:anchorlock/>
              <center style="color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:600;">ادخل على حسابك</center>
            </v:roundrect>
          <![endif]-->
          <!--[if !mso]><!-- -->
-         <a href="https://www.brokersconnect.net/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;redirect_to={{ .RedirectTo }}"
+         <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/&amp;redirect_to={{ .RedirectTo }}"
             style="display:inline-block;background:#3b32de;color:#ffffff;border:0;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:600;padding:13px 28px;border-radius:9px;">
            ادخل على حسابك
          </a>
-         <!--<![endif]--></td></tr><tr><td dir="rtl" align="right" style="padding:8px 28px;"><p style="margin:0;font-size:15px;line-height:1.8;color:#6b7280;">اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.</p></td></tr><tr><td dir="rtl" align="right" style="padding:14px 28px 6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl"
+         <!--<![endif]--><p class="bc-copy" style="margin:12px 0 0;font-size:13px;line-height:1.7;color:#6b7280;word-break:break-all;">لو الزرار مش ظاهر، افتح اللينك ده في المتصفح:<br><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/&amp;redirect_to={{ .RedirectTo }}" style="color:#3b32de;text-decoration:underline;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/&amp;redirect_to={{ .RedirectTo }}</a></p></td></tr><tr><td dir="rtl" align="right" style="padding:8px 28px;"><p class="bc-copy" style="margin:0;font-size:15px;line-height:1.8;color:#6b7280;">اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.</p></td></tr><tr><td dir="rtl" align="right" style="padding:14px 28px 6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl"
                 style="background:#fef3e2;border-radius:10px;">
            <tr><td dir="rtl" align="right" style="padding:14px 16px;font-size:13px;line-height:1.8;color:#92400e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,Arial,'Helvetica Neue',sans-serif;">
              لو مش إنت اللي طلبت اللينك ده، تجاهل الرسالة ومحدش هيقدر يدخل.
            </td></tr>
+         </table></td></tr><tr><td dir="rtl" align="right" style="padding:16px 28px 4px;"><div style="height:1px;background:#E3E7EF;line-height:1px;font-size:1px;">&nbsp;</div></td></tr>
+        <tr>
+          <td dir="ltr" align="left" lang="en" class="gutter" style="padding:12px 28px 6px;">
+            <h1 class="bc-heading" style="margin:0;font-size:21px;line-height:1.45;color:#111827;font-weight:700;">Sign in to your account</h1>
+          </td>
+        </tr>
+        <tr><td dir="ltr" align="left" style="padding:8px 28px;"><p class="bc-copy" style="margin:0;font-size:15px;line-height:1.8;color:#6b7280;">Press the button to sign in to your account without a password.</p></td></tr><tr><td dir="ltr" align="left" style="padding:20px 28px 8px;"><!--[if mso]>
+           <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
+                        href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/&amp;redirect_to={{ .RedirectTo }}" style="height:44px;v-text-anchor:middle;width:240px;" arcsize="20%"
+                        stroke="f" fillcolor="#3b32de">
+             <w:anchorlock/>
+             <center style="color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:600;">Sign in</center>
+           </v:roundrect>
+         <![endif]-->
+         <!--[if !mso]><!-- -->
+         <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/&amp;redirect_to={{ .RedirectTo }}"
+            style="display:inline-block;background:#3b32de;color:#ffffff;border:0;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,Arial,'Helvetica Neue',sans-serif;font-size:15px;font-weight:600;padding:13px 28px;border-radius:9px;">
+           Sign in
+         </a>
+         <!--<![endif]--><p class="bc-copy" style="margin:12px 0 0;font-size:13px;line-height:1.7;color:#6b7280;word-break:break-all;">If the button does not appear, open this link in your browser:<br><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/&amp;redirect_to={{ .RedirectTo }}" style="color:#3b32de;text-decoration:underline;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/&amp;redirect_to={{ .RedirectTo }}</a></p></td></tr><tr><td dir="ltr" align="left" style="padding:8px 28px;"><p class="bc-copy" style="margin:0;font-size:15px;line-height:1.8;color:#6b7280;">This link is valid for one hour, and it works only once.</p></td></tr><tr><td dir="ltr" align="left" style="padding:14px 28px 6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="ltr"
+                style="background:#fef3e2;border-radius:10px;">
+           <tr><td dir="ltr" align="left" style="padding:14px 16px;font-size:13px;line-height:1.8;color:#92400e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,Arial,'Helvetica Neue',sans-serif;">
+             If you did not ask for this link, ignore the message and nobody can sign in.
+           </td></tr>
          </table></td></tr>
 
         <tr>
-          <td dir="rtl" align="right" class="gutter" style="padding:24px 28px 26px;border-top:1px solid #e5e7eb;font-size:12px;line-height:1.9;color:#9ca3af;">
-            <div style="font-weight:600;color:#6b7280;">بروكرز كونكت</div>
+          <td dir="rtl" align="right" class="gutter bc-footer" style="padding:24px 28px 26px;border-top:1px solid #e5e7eb;font-size:12px;line-height:1.9;color:#5B6475;">
+            <div style="font-weight:600;color:#5B6475;">بروكرز كونكت</div>
             <div>وصلتك الرسالة دي لأنك مسجّل في بروكرز كونكت.</div>
             <div>الرسالة دي مرسلة تلقائياً، من فضلك ما تردّش عليها.</div>
-            <div style="padding-top:6px;"><a href="https://www.brokersconnect.net/privacy" style="color:#9ca3af;text-decoration:underline;">الخصوصية</a> <span style="color:#e5e7eb;">|</span> <a href="https://www.brokersconnect.net/terms" style="color:#9ca3af;text-decoration:underline;">الشروط</a></div>
+            <div style="padding-top:6px;"><a href="https://www.brokersconnect.net/privacy" style="color:#5B6475;font-size:13px;text-decoration:underline;">الخصوصية</a> <span style="color:#e5e7eb;">|</span> <a href="https://www.brokersconnect.net/terms" style="color:#5B6475;font-size:13px;text-decoration:underline;">الشروط</a></div>
             
           </td>
         </tr>

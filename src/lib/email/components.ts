@@ -97,7 +97,7 @@ export type Block =
   /** SecurityNotice: the "if this wasn't you" panel. */
   | { kind: 'security'; value: string }
   | { kind: 'divider' }
-  | { kind: 'button'; label: string; href: string; variant?: 'primary' | 'secondary' }
+  | { kind: 'button'; label: string; href: string; variant?: 'primary' | 'secondary'; plain?: string }
   /** HelpSection: where to go when the email did not answer it. */
   | { kind: 'help'; value: string; link?: Button };
 
@@ -105,14 +105,14 @@ function pad(dir: string, align: string, padding: string, inner: string) {
   return `<tr><td dir="${dir}" align="${align}" style="padding:${padding};">${inner}</td></tr>`;
 }
 
-function renderBlock(block: Block, dir: string, align: string): string {
+function renderBlock(block: Block, dir: string, align: string, auth = false): string {
   switch (block.kind) {
     case 'text':
       return pad(
         dir,
         align,
         '8px 28px',
-        `<p style="margin:0;font-size:15px;line-height:1.8;color:${SOFT};">${escape(block.value)}</p>`,
+        `<p${auth ? ' class="bc-copy"' : ''} style="margin:0;font-size:15px;line-height:1.8;color:${SOFT};">${escape(block.value)}</p>`,
       );
 
     case 'facts': {
@@ -237,6 +237,12 @@ function renderBlock(block: Block, dir: string, align: string): string {
       const fg = secondary ? BRAND : WHITE;
       const border = secondary ? `border:1px solid ${BRAND};` : 'border:0;';
       const href = safeHref(block.href);
+      // The address in full, under the button, for a client that drops the
+      // button or a person who would rather paste the link. `href` is already
+      // escaped; writing it again would turn `&amp;` into `&amp;amp;`.
+      const fallback = block.plain
+        ? `<p class="bc-copy" style="margin:12px 0 0;font-size:13px;line-height:1.7;color:${SOFT};word-break:break-all;">${escape(block.plain)}<br><a href="${href}" style="color:${BRAND};text-decoration:underline;">${href}</a></p>`
+        : '';
       // Outlook renders through Word and drops border-radius and padding on an
       // anchor, so it gets a VML rectangle instead. Every other client ignores
       // the conditional comment and takes the anchor.
@@ -257,7 +263,7 @@ function renderBlock(block: Block, dir: string, align: string): string {
             style="display:inline-block;background:${bg};color:${fg};${border}text-decoration:none;font-family:${FONT};font-size:15px;font-weight:600;padding:13px 28px;border-radius:9px;">
            ${escape(block.label)}
          </a>
-         <!--<![endif]-->`,
+         <!--<![endif]-->${fallback}`,
       );
     }
 
@@ -289,6 +295,12 @@ export type EmailFooter = {
   unsubscribe?: { label: string; href: string };
 };
 
+/** The English half of an auth email, drawn under the Arabic. */
+export type EmailAlternate = {
+  heading: string;
+  blocks: Block[];
+};
+
 export function renderEmail({
   locale,
   dir,
@@ -298,6 +310,8 @@ export function renderEmail({
   heading,
   blocks,
   footer,
+  appearance = 'default',
+  alternate,
 }: {
   locale: string;
   dir: 'rtl' | 'ltr';
@@ -309,20 +323,71 @@ export function renderEmail({
   heading: string;
   blocks: Block[];
   footer: EmailFooter;
+  /**
+   * Auth mail only. Product mail stays as it was: one language, light, the
+   * footer it has always had. Auth mail adds the English section, dark mode,
+   * and the footer colour the auth templates were given.
+   */
+  appearance?: 'default' | 'auth';
+  /** English, under a divider. Auth mail only; ignored otherwise. */
+  alternate?: EmailAlternate;
 }): string {
   const align = dir === 'rtl' ? 'right' : 'left';
+  const auth = appearance === 'auth';
+  const footerColor = auth ? '#5B6475' : FAINT;
+  const linkSize = auth ? 'font-size:13px;' : '';
 
   const legal = footer.legal
     .map(
       (item) =>
-        `<a href="${safeHref(item.href)}" style="color:${FAINT};text-decoration:underline;">${escape(item.label)}</a>`,
+        `<a href="${safeHref(item.href)}" style="color:${footerColor};${linkSize}text-decoration:underline;">${escape(item.label)}</a>`,
     )
     .join(` <span style="color:${LINE};">|</span> `);
 
-  const mark = logoUrl
+  const img = logoUrl
     ? `<img src="${safeHref(logoUrl)}" width="168" height="25" alt="${escape(siteName)}"
             style="display:block;width:168px;height:25px;border:0;outline:none;text-decoration:none;">`
+    : '';
+  // The wordmark is navy on a transparent field. On the dark card it would
+  // disappear, so auth mail keeps it on a white plate that dark mode does not
+  // repaint.
+  const mark = logoUrl
+    ? auth
+      ? `<span class="bc-logo" style="display:inline-block;background:#ffffff;border-radius:10px;padding:8px 12px;line-height:0;">${img}</span>`
+      : img
     : `<span style="font-size:17px;font-weight:700;color:${BRAND};">${escape(siteName)}</span>`;
+
+  const scheme = auth ? 'light dark' : 'light';
+  const dark = auth
+    ? `
+  :root { color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) {
+    .bc-canvas { background:#0B1220 !important; }
+    .bc-card { background:#111827 !important; border-color:#1F2937 !important; }
+    .bc-heading, .bc-copy { color:#E5E7EB !important; }
+    .bc-logo { background:#ffffff !important; }
+    .bc-footer, .bc-footer a { color:#E5E7EB !important; }
+  }`
+    : '';
+
+  const headingRow = (rowDir: string, rowAlign: string, text: string, padding: string, lang?: string) => `
+        <tr>
+          <td dir="${rowDir}" align="${rowAlign}"${lang ? ` lang="${escape(lang)}"` : ''} class="gutter" style="padding:${padding};">
+            <h1${auth ? ' class="bc-heading"' : ''} style="margin:0;font-size:21px;line-height:1.45;color:${INK};font-weight:700;">${escape(text)}</h1>
+          </td>
+        </tr>`;
+
+  const english =
+    auth && alternate
+      ? `<tr><td dir="${dir}" align="${align}" style="padding:16px 28px 4px;"><div style="height:1px;background:#E3E7EF;line-height:1px;font-size:1px;">&nbsp;</div></td></tr>${headingRow(
+          'ltr',
+          'left',
+          alternate.heading,
+          '12px 28px 6px',
+          'en',
+        )}
+        ${alternate.blocks.map((block) => renderBlock(block, 'ltr', 'left', true)).join('')}`
+      : '';
 
   return `<!doctype html>
 <html lang="${escape(locale)}" dir="${dir}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -330,8 +395,8 @@ export function renderEmail({
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
-<meta name="color-scheme" content="light">
-<meta name="supported-color-schemes" content="light">
+<meta name="color-scheme" content="${scheme}">
+<meta name="supported-color-schemes" content="${scheme}">
 <title>${escape(heading)}</title>
 <!--[if mso]>
 <xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml>
@@ -342,18 +407,18 @@ export function renderEmail({
   @media only screen and (max-width:620px) {
     .shell { width:100% !important; }
     .gutter { padding-left:18px !important; padding-right:18px !important; }
-  }
+  }${dark}
 </style>
 </head>
-<body style="margin:0;padding:0;background:${CANVAS};-webkit-text-size-adjust:100%;">
+<body${auth ? ' class="bc-canvas"' : ''} style="margin:0;padding:0;background:${CANVAS};-webkit-text-size-adjust:100%;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${escape(preheader)}</div>
 <!-- Stops Gmail pulling the next line of markup into the preview. -->
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${CANVAS};padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"${auth ? ' class="bc-canvas"' : ''} style="background:${CANVAS};padding:24px 12px;">
   <tr>
     <td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" dir="${dir}" class="shell"
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" dir="${dir}" class="shell${auth ? ' bc-card' : ''}"
              style="width:100%;max-width:600px;background:${WHITE};border:1px solid ${LINE};border-radius:14px;overflow:hidden;font-family:${FONT};">
 
         <tr>
@@ -361,24 +426,19 @@ export function renderEmail({
             ${mark}
           </td>
         </tr>
+${headingRow(dir, align, heading, '28px 28px 6px')}
+
+        ${blocks.map((block) => renderBlock(block, dir, align, auth)).join('')}${english}
 
         <tr>
-          <td dir="${dir}" align="${align}" class="gutter" style="padding:28px 28px 6px;">
-            <h1 style="margin:0;font-size:21px;line-height:1.45;color:${INK};font-weight:700;">${escape(heading)}</h1>
-          </td>
-        </tr>
-
-        ${blocks.map((block) => renderBlock(block, dir, align)).join('')}
-
-        <tr>
-          <td dir="${dir}" align="${align}" class="gutter" style="padding:24px 28px 26px;border-top:1px solid ${LINE};font-size:12px;line-height:1.9;color:${FAINT};">
-            <div style="font-weight:600;color:${SOFT};">${escape(siteName)}</div>
+          <td dir="${dir}" align="${align}" class="gutter${auth ? ' bc-footer' : ''}" style="padding:24px 28px 26px;border-top:1px solid ${LINE};font-size:12px;line-height:1.9;color:${footerColor};">
+            <div style="font-weight:600;color:${auth ? footerColor : SOFT};">${escape(siteName)}</div>
             <div>${escape(footer.reason)}</div>
             <div>${escape(footer.automated)}</div>
             ${legal ? `<div style="padding-top:6px;">${legal}</div>` : ''}
             ${
               footer.unsubscribe
-                ? `<div style="padding-top:6px;"><a href="${safeHref(footer.unsubscribe.href)}" style="color:${FAINT};text-decoration:underline;">${escape(footer.unsubscribe.label)}</a></div>`
+                ? `<div style="padding-top:6px;"><a href="${safeHref(footer.unsubscribe.href)}" style="color:${footerColor};${linkSize}text-decoration:underline;">${escape(footer.unsubscribe.label)}</a></div>`
                 : ''
             }
           </td>
