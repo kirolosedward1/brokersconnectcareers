@@ -467,6 +467,12 @@
     "ops": {
       "mailUnknown": "We couldn't check whether email sending is on.",
       "retryBody": "The message goes back in the queue for one more attempt on the next sweep, within a few minutes. Nothing is sent right now."
+    },
+    "listings": {
+      "oneCompany": "One company's listings"
+    },
+    "companies": {
+      "takenDown": "{count, plural, =0 {No listing was taken down.} one {<v>#</v> listing taken down.} other {<v>#</v> listings taken down.}}"
     }
   },
   "keyboard": {

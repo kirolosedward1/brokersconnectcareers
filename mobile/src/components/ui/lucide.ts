@@ -108,6 +108,7 @@ export { default as ShieldPlus } from 'lucide-react-native/icons/shield-plus';
 export { default as SlidersHorizontal } from 'lucide-react-native/icons/sliders-horizontal';
 export { default as Sparkles } from 'lucide-react-native/icons/sparkles';
 export { default as Star } from 'lucide-react-native/icons/star';
+export { default as StarOff } from 'lucide-react-native/icons/star-off';
 export { default as Target } from 'lucide-react-native/icons/target';
 export { default as Siren } from 'lucide-react-native/icons/siren';
 export { default as ThumbsDown } from 'lucide-react-native/icons/thumbs-down';
