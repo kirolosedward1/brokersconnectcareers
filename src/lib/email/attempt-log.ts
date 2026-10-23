@@ -20,6 +20,10 @@
  * the email.
  */
 
+// Server-only (an email is sent from the server), so Node's own: uuid() in
+// '@/lib/utils' is for browsers that lack crypto.randomUUID.
+import { randomUUID } from 'node:crypto';
+
 const MAX_ERROR_LENGTH = 500;
 
 /** A hung log write must not hold the request that asked for the email. */
@@ -27,7 +31,7 @@ export const FALLBACK_WRITE_TIMEOUT_MS = 3_000;
 
 /** The outbox row id, chosen before the claim insert so a lost answer still names that row. */
 export function newEmailLogId(): string {
-  return crypto.randomUUID();
+  return randomUUID();
 }
 
 export type FailedEmailInsert = {

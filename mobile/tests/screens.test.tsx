@@ -102,7 +102,7 @@ describe('home', () => {
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     // The browse index, with the district's name from the taxonomy.
     expect(await screen.findByLabelText('القاهرة الجديدة، وظيفة واحدة')).toBeTruthy();
-    expect(screen.getByText('وظائف شركات الوساطة')).toBeTruthy();
+    expect(screen.getByText('وظائف شركات البروكر')).toBeTruthy();
   });
 
   it('says it has no connection on a first launch without one, and fills in once Retry is pressed', async () => {
