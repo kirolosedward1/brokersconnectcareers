@@ -114,7 +114,7 @@ on conflict on constraint search_aliases_unique do nothing;
 insert into search_aliases (track, alias)
 select a.track::job_track, a.alias
 from (values
-  -- The labels are the market's own words now (migration 359): «بيع أوف بلان»,
+  -- The labels are the market's own words now (migration 360): «بيع أوف بلان»,
   -- «ريسيل», «تجاري وإداري», «وظائف أدمن». Every earlier label stays an alias,
   -- because it is still what some people type into the box.
   ('primary',             'بيع أوف بلان'),
