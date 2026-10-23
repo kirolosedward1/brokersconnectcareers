@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { runScheduledJob } from '@/lib/jobs/run';
 import { retryDb } from '@/lib/jobs/db';
-import { mergeEmailAges, sweepOutbox } from '@/lib/jobs/outbox-sweep';
+import { markAgeUnknown, mergeEmailAges, sweepOutbox } from '@/lib/jobs/outbox-sweep';
 import { runInRetryContext } from '@/lib/jobs/retry-context';
 import { REBUILDERS } from '@/lib/email/rebuild';
 import { logFailure } from '@/lib/observe';
@@ -92,9 +92,9 @@ export async function GET(request: NextRequest) {
               )) ?? [];
             if (leased.length === 0) return leased;
             // The lease does not say how old the row is. Read it, so a message
-            // past 48 hours can be closed instead of sent. A failed read leaves
-            // the rows undated; the sweep then treats them as still in window,
-            // and the three-day reaper remains the backstop.
+            // past 48 hours can be closed instead of sent. A failed read, or a
+            // row missing from it, is outside the window: sending on an unknown
+            // age is how a stale message goes out.
             try {
               const { data, error } = await admin
                 .from('email_log')
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
               logFailure('email-retry', 'could not read how old the leased rows are', {
                 code: (error as { code?: string } | null)?.code,
               });
-              return leased;
+              return markAgeUnknown(leased);
             }
           },
           settle: async (id, token, outcome, detail) =>

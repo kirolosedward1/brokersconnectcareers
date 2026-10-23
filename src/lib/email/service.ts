@@ -57,8 +57,40 @@ export { MAX_EMAIL_ATTEMPTS as MAX_ATTEMPTS } from '@/lib/jobs/policy';
  */
 function emailLogSink(admin: ReturnType<typeof createAdminClient>): EmailLogSink {
   return {
+    async findExisting(lookup) {
+      // dedupe_key is unique, so it is the attempt. A null key is not: two
+      // nulls do not conflict, and the claim row cannot be found by it. Match
+      // the message — entity id, template, recipient — inside the window the
+      // caller computed. There is no message-id column; entity_id is the
+      // subject the row was written about, which is what survived the lost
+      // response.
+      if (lookup.dedupeKey) {
+        const { data, error } = await admin.from('email_log').select('id').eq('dedupe_key', lookup.dedupeKey).limit(1);
+        if (error) return { row: null, error: { code: error.code, message: error.message } };
+        const id = data?.[0]?.id;
+        return { row: id ? { id } : null, error: null };
+      }
+      let query = admin
+        .from('email_log')
+        .select('id')
+        .eq('template', lookup.template)
+        .eq('recipient', lookup.recipient)
+        .gte('created_at', lookup.createdAfter);
+      if (lookup.entityId) query = query.eq('entity_id', lookup.entityId);
+      const { data, error } = await query.limit(1);
+      if (error) return { row: null, error: { code: error.code, message: error.message } };
+      const id = data?.[0]?.id;
+      return { row: id ? { id } : null, error: null };
+    },
     async insertFailed(row) {
-      const { error } = await admin.from('email_log').insert(row);
+      // On conflict do nothing: the row that won the race — the claim whose
+      // answer was lost, or the other fallback — stays as it is, sent_at
+      // included. A null key has nothing to conflict on; the lookup above is
+      // what keeps that attempt to one row.
+      const write = row.dedupe_key
+        ? admin.from('email_log').upsert(row, { onConflict: 'dedupe_key', ignoreDuplicates: true })
+        : admin.from('email_log').insert(row);
+      const { error } = await write;
       return { error: error ? { code: error.code, message: error.message } : null };
     },
     async updateFailed(id, patch) {

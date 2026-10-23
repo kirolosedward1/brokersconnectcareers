@@ -98,39 +98,80 @@ const DEFAULT_BATCH = 10;
  * is blocked.
  *
  * Measured from the later of created_at and requeued_at, the same anchor the
- * database uses, so an admin requeue is a real second chance.
+ * database uses, so an admin requeue is a real second chance. An age that
+ * cannot be read is outside the window too: a failed read is not a fresh row.
  */
 export const EMAIL_RETRY_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 
+/**
+ * One supplied timestamp, or why it cannot be used.
+ *
+ * Absent means the caller never read the age (the lease itself does not
+ * carry it). A value that does not parse was read and could not be trusted.
+ */
+function readAge(value: string | null | undefined): number | 'absent' | 'bad' {
+  if (value == null || value === '') return 'absent';
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 'bad' : parsed;
+}
+
+/**
+ * The age was asked for and did not come back as a time: the read failed, the
+ * row was missing from it, or the timestamp does not parse. That is outside
+ * the window. A row the caller never dated — no `ageUnknown`, no timestamp —
+ * is not this case.
+ */
+export function emailAgeUnreadable(row: {
+  created_at?: string | null;
+  requeued_at?: string | null;
+  ageUnknown?: boolean;
+}): boolean {
+  if (row.ageUnknown) return true;
+  const times = [readAge(row.created_at), readAge(row.requeued_at)];
+  const readable = times.filter((time): time is number => typeof time === 'number');
+  return readable.length === 0 && times.includes('bad');
+}
+
 export function emailRowIsStale(
-  row: { created_at?: string | null; requeued_at?: string | null },
+  row: { created_at?: string | null; requeued_at?: string | null; ageUnknown?: boolean },
   now = Date.now(),
 ): boolean {
-  const created = row.created_at ? Date.parse(row.created_at) : Number.NaN;
-  const requeued = row.requeued_at ? Date.parse(row.requeued_at) : Number.NaN;
-  const anchor = Math.max(
-    Number.isNaN(created) ? Number.NEGATIVE_INFINITY : created,
-    Number.isNaN(requeued) ? Number.NEGATIVE_INFINITY : requeued,
+  // Fail closed. An age that cannot be read is not a reason to send.
+  if (emailAgeUnreadable(row)) return true;
+  const times = [readAge(row.created_at), readAge(row.requeued_at)].filter(
+    (time): time is number => typeof time === 'number',
   );
-  if (!Number.isFinite(anchor)) return false;
-  return now - anchor > EMAIL_RETRY_MAX_AGE_MS;
+  if (times.length === 0) return false;
+  return now - Math.max(...times) > EMAIL_RETRY_MAX_AGE_MS;
 }
 
 /**
  * The lease does not return created_at. The sweeper reads it and merges it
- * on, so the age check above can see the row. Rows the read missed keep no
- * age and are treated as still inside the window.
+ * on, so the age check above can see the row. A leased id the read did not
+ * return is undated on purpose (`ageUnknown`): treated as outside the window,
+ * not as fresh.
  */
 export function mergeEmailAges<T extends { id: string }>(
   leased: readonly T[],
   ages: readonly { id: string; created_at: string; requeued_at: string | null; status?: string | null }[],
-): (T & { created_at?: string; requeued_at?: string | null; status?: string })[] {
+): (T & { created_at?: string; requeued_at?: string | null; status?: string; ageUnknown?: boolean })[] {
   const byId = new Map(ages.map((row) => [row.id, row]));
   return leased.map((row) => {
     const age = byId.get(row.id);
-    if (!age) return row;
-    return { ...row, created_at: age.created_at, requeued_at: age.requeued_at, status: age.status ?? undefined };
+    if (!age) return { ...row, ageUnknown: true };
+    return {
+      ...row,
+      created_at: age.created_at,
+      requeued_at: age.requeued_at,
+      status: age.status ?? undefined,
+      ageUnknown: false,
+    };
   });
+}
+
+/** The age read threw. Every leased row is outside the window until we know otherwise. */
+export function markAgeUnknown<T extends { id: string }>(rows: readonly T[]): (T & { ageUnknown: true })[] {
+  return rows.map((row) => ({ ...row, ageUnknown: true as const }));
 }
 
 export async function sweepOutbox(
@@ -189,11 +230,13 @@ async function sweepOne(deps: OutboxSweepDeps, row: LeasedEmailRow, stats: Outbo
   // these out; this is the guard for one that changed underneath a lease.
   if (row.status === 'suppressed') return;
 
-  // Too old to send. Dead-letter rather than rebuild, so the provider is not
-  // asked and the row is not leased again next run. gave_up_at is what makes
-  // `failed` stop being retryable; the status stays `failed`.
+  // Too old to send, or so undated that it has to be treated as too old.
+  // Dead-letter rather than rebuild, so the provider is not asked and the
+  // row is not leased again next run. gave_up_at is what makes `failed` stop
+  // being retryable; the status stays `failed`.
   if (emailRowIsStale(row)) {
-    await deps.settle(row.id, row.lock_token, 'dead', 'older than 48 hours');
+    const detail = emailAgeUnreadable(row) ? 'age could not be read' : 'older than 48 hours';
+    await deps.settle(row.id, row.lock_token, 'dead', detail);
     stats.dead += 1;
     return;
   }

@@ -22,6 +22,18 @@
 
 const MAX_ERROR_LENGTH = 500;
 
+/** A hung log write must not hold the request that asked for the email. */
+export const FALLBACK_WRITE_TIMEOUT_MS = 3_000;
+
+/**
+ * How far back a row can be and still be the claim whose answer we lost.
+ *
+ * The in-process retry of that call is well under a second. Two minutes
+ * covers clock skew between this process and the database without treating
+ * yesterday's mail to the same person as this attempt.
+ */
+export const FAILED_SEND_MATCH_WINDOW_MS = 2 * 60 * 1000;
+
 export type FailedEmailInsert = {
   template: string;
   recipient: string;
@@ -38,10 +50,31 @@ export type FailedEmailInsert = {
 export type EmailLogWriteResult = { error: { code?: string | null; message: string } | null };
 
 /**
- * The two writes a failure may need. An update when the row already exists
- * (the claim worked, recording it did not) and an insert when it does not.
+ * How to find the row a claim may already have committed.
+ *
+ * `dedupe_key` is the table's only unique column, so a keyed attempt is found
+ * by that key and a second insert conflicts with it. A null key does not
+ * conflict with another null — Postgres treats those as distinct — so an
+ * attempt with no key cannot be told apart that way. It is matched on the
+ * message instead: entity id (the message's subject; the outbox row id was
+ * the answer that was lost), template, recipient, and a short created_at
+ * window. There is no separate message-id column.
+ */
+export type FailedSendLookup = {
+  dedupeKey: string | null;
+  template: string;
+  recipient: string;
+  entityId: string | null;
+  /** Rows created at or after this instant are the same attempt. */
+  createdAfter: string;
+};
+
+/**
+ * The writes a failure may need, plus the read that keeps a lost claim
+ * response from becoming a second row.
  */
 export type EmailLogSink = {
+  findExisting(lookup: FailedSendLookup): Promise<{ row: { id: string } | null } & EmailLogWriteResult>;
   insertFailed(row: FailedEmailInsert): Promise<EmailLogWriteResult>;
   updateFailed(
     id: string,
@@ -115,18 +148,41 @@ export function reportUnloggedSend(template: string, recipient: string, error: u
 }
 
 /**
+ * Bound one database call. A write that never answers used to hold the
+ * request; past the limit it is a logged failure, and a later rejection of
+ * the original call is not an unhandled error.
+ */
+export function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('email log write timed out')), ms);
+  });
+  work.then(
+    () => {},
+    () => {},
+  );
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
+}
+
+/**
  * Leave a retryable `failed` row for this attempt.
  *
  * `existingId` updates the row the claim already created, and only while it
  * is still queued or failed — a sent row keeps its sent_at. Without an id,
- * the row is inserted. A duplicate key means the row exists; that is not a
- * failure to log. Any other failure is reported and swallowed.
+ * look first. The claim insert can commit and still answer with a timeout;
+ * inserting again would be a second message for the sweeper to send. A keyed
+ * attempt is the `dedupe_key` row. An attempt with no key is the recent row
+ * for the same message, because a null `dedupe_key` is not unique. A lookup
+ * that itself fails does not insert: a missing log line is the safer side of
+ * sending twice. A duplicate key on the insert is the race where the row
+ * appeared between the read and the write, and is not a failure to log.
  */
 export async function persistFailedSend(
   sink: EmailLogSink,
   spec: FailedSendSpec,
   error: unknown,
   existingId?: string,
+  timeoutMs: number = FALLBACK_WRITE_TIMEOUT_MS,
 ): Promise<void> {
   const row: FailedEmailInsert = {
     template: spec.template,
@@ -141,17 +197,41 @@ export async function persistFailedSend(
   };
 
   try {
-    const result = existingId
-      ? await sink.updateFailed(existingId, {
-          status: 'failed',
-          error: row.error,
-          next_attempt_at: row.next_attempt_at,
-        })
-      : await sink.insertFailed(row);
-    if (result?.error && result.error.code !== '23505') {
-      reportUnloggedSend(spec.template, spec.to, result.error.message);
-    }
+    await withTimeout(writeFailedRow(sink, spec, row, existingId), timeoutMs);
   } catch (caught) {
     reportUnloggedSend(spec.template, spec.to, caught);
+  }
+}
+
+async function writeFailedRow(
+  sink: EmailLogSink,
+  spec: FailedSendSpec,
+  row: FailedEmailInsert,
+  existingId: string | undefined,
+): Promise<void> {
+  if (!existingId) {
+    const found = await sink.findExisting({
+      dedupeKey: spec.dedupeKey ?? null,
+      template: spec.template,
+      recipient: spec.to,
+      entityId: spec.entity?.id ?? null,
+      createdAfter: new Date(Date.now() - FAILED_SEND_MATCH_WINDOW_MS).toISOString(),
+    });
+    if (found.error) {
+      reportUnloggedSend(spec.template, spec.to, found.error.message);
+      return;
+    }
+    if (found.row) return;
+  }
+
+  const result = existingId
+    ? await sink.updateFailed(existingId, {
+        status: 'failed',
+        error: row.error,
+        next_attempt_at: row.next_attempt_at,
+      })
+    : await sink.insertFailed(row);
+  if (result?.error && result.error.code !== '23505') {
+    reportUnloggedSend(spec.template, spec.to, result.error.message);
   }
 }

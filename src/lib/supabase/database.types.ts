@@ -602,12 +602,13 @@ export type LeasedEmailRow = {
   lock_token: string;
   /**
    * Filled in by the sweeper after the lease, from the row itself. The lease
-   * function does not return them. Absent, the row is treated as still inside
-   * the retry window rather than dropped.
+   * function does not return them. `ageUnknown` means that read failed or
+   * missed the row: the sweeper treats it as outside the 48-hour window.
    */
   created_at?: string | null;
   requeued_at?: string | null;
   status?: EmailStatus;
+  ageUnknown?: boolean;
 };
 
 /** Somebody asking for help, or an owner asking for their account to be deleted (migrations 201, 330). */
