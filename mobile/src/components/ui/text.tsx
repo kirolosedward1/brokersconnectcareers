@@ -1,4 +1,5 @@
 import { Platform, Text as NativeText, type TextProps, type TextStyle } from 'react-native';
+import { appDirection } from '~/lib/direction';
 import { useTheme } from '~/theme/provider';
 import { font, type as scale } from '~/theme/tokens';
 import type { Colors } from '~/theme/tokens';
@@ -12,14 +13,18 @@ type Props = TextProps & {
 /**
  * Where a line of text starts.
  *
- * On the web, `left` is the physical left, so Arabic uses CSS `start`, which
- * follows the page direction. On the phone, `left` is the logical start:
- * while I18nManager is right to left (the app forces that), React Native
- * swaps `left` and `right` itself. Writing `right` here as well draws Arabic
- * on the left. That is what the app did before the web-only change.
+ * On the phone, `left` is the logical start: while I18nManager is right to
+ * left (the app forces that), React Native swaps `left` and `right` itself.
+ * Writing `right` here as well draws Arabic on the left.
+ *
+ * On the web nothing swaps, and react-native-web maps CSS `start` to the
+ * physical left when the page has no RTL context, so Arabic uses `right`.
  */
-export function textAlignStart(os: string = Platform.OS): TextStyle['textAlign'] {
-  if (os === 'web') return 'start' as TextStyle['textAlign'];
+export function textAlignStart(
+  os: string = Platform.OS,
+  direction: 'rtl' | 'ltr' = appDirection,
+): TextStyle['textAlign'] {
+  if (os === 'web') return direction === 'rtl' ? 'right' : 'left';
   return 'left';
 }
 

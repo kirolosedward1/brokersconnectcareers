@@ -1,9 +1,9 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
-
-// Expo loads this file as JS and does not compile a TypeScript import, so the
-// size the curtain uses is a JS module (src/components/brand/launch-size.js).
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { LAUNCH_MARK_WIDTH } = require('./src/components/brand/launch-size.js') as { LAUNCH_MARK_WIDTH: number };
+// The curtain and the native splash share this width. The module is JS
+// because Expo evaluates this file without compiling a TypeScript import.
+// A static import, not `require`: scripts/publish-update.test.mjs loads this
+// file as ESM, where `require` is not defined.
+import { LAUNCH_MARK_WIDTH } from './src/components/brand/launch-size.js';
 
 /** The commit this bundle is published from, shown on Account so a phone can be matched to it. */
 function commitSha(): string | undefined {

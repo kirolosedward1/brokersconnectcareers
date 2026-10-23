@@ -159,7 +159,11 @@ describe('a password', () => {
     expect(password().props.secureTextEntry).toBe(true);
     expect(password().props.autoCapitalize).toBe('none');
     expect(password().props.autoCorrect).toBe(false);
-    expect(StyleSheet.flatten(password().props.style).writingDirection).toBe('ltr');
+    const style = StyleSheet.flatten(password().props.style);
+    expect(style.writingDirection).toBe('ltr');
+    // The web's default min width is the text's own width, which pushed the eye off a 375-point screen.
+    expect(style.flex).toBe(1);
+    expect(style.minWidth).toBe(0);
   });
 
   it('keeps the eye inside the field, and does not pin the row left to right on the phone', () => {

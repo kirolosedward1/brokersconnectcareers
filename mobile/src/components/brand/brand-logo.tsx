@@ -88,10 +88,11 @@ export function BrandLogo({ size = 'header' }: { size?: keyof typeof HEIGHTS }) 
  * logo's blue, or in the page's ink in dark mode — or in `tint`, white over a
  * photograph. Not read by VoiceOver: the page around it says the name.
  */
-export function Wordmark({ height, tint }: { height: number; tint?: string }) {
+export function Wordmark({ height, tint, testID }: { height: number; tint?: string; testID?: string }) {
   const { colors, scheme } = useTheme();
   return (
     <Image
+      testID={testID}
       source={LOGO_WORDMARK}
       contentFit="contain"
       tintColor={tint ?? (scheme === 'dark' ? colors.foreground : undefined)}

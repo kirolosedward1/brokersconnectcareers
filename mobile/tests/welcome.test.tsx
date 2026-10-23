@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { router } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { welcomeTile, welcomeWordmarkHeight } from '~/components/brand/launch-size';
 import { catalogues } from '~/i18n/provider';
 import { resetLaunchForTests } from '~/features/launch';
 import { resetWelcomeForTests } from '~/features/welcome';
@@ -146,8 +147,14 @@ it('opens a signed-out launch on the welcome, over the launch curtain, which lif
   expect(skip.props.accessibilityHint).toBe(ar.app.welcome.skipHint);
   expect(screen.getByRole('button', { name: ar.nav.signUp })).toBeTruthy();
   expect(screen.getByRole('button', { name: ar.nav.signIn })).toBeTruthy();
-  // The website's logo, read as its name.
+  // The website's logo, read as its name, at the launch logo's share of its old size.
   expect(screen.getByRole('image', { name: ar.meta.siteName })).toBeTruthy();
+  const mark = StyleSheet.flatten(screen.getByTestId('welcome-mark', HIDDEN).props.style);
+  const word = StyleSheet.flatten(screen.getByTestId('welcome-wordmark', HIDDEN).props.style);
+  const tiles = [welcomeTile(false), welcomeTile(true)];
+  expect(tiles.some((tile) => mark.width === tile * 0.68 && mark.height === tile * 0.68)).toBe(true);
+  expect([welcomeWordmarkHeight(false), welcomeWordmarkHeight(true)]).toContain(word.height);
+  expect(word.width).toBe((1375 / 286) * word.height);
   expect(screen.getByText(ar.landingPage.hero.title)).toBeTruthy();
   // The curtain stays until the welcome is on screen over it, laid out or not.
   expect(screen.getByTestId('launch-screen', HIDDEN)).toBeTruthy();

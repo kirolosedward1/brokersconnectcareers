@@ -118,12 +118,16 @@ describe('a field', () => {
 });
 
 describe('a label', () => {
-  it('stays left on the phone so I18nManager mirrors it once, and uses start only on the web', () => {
+  it('stays left on the phone so I18nManager mirrors it once, and sits on the right on the web while Arabic is on', () => {
     // A native `right` is swapped again while the phone is right to left, which
-    // put Arabic back on the left. The web has no such swap, so it uses start.
+    // put Arabic back on the left. The web has no such swap, and react-native-web
+    // maps `start` to the left, so Arabic there is the physical right.
     expect(textAlignStart('ios')).toBe('left');
     expect(textAlignStart('android')).toBe('left');
-    expect(textAlignStart('web')).toBe('start');
+    expect(textAlignStart('ios', 'rtl')).toBe('left');
+    expect(textAlignStart('web')).toBe('right');
+    expect(textAlignStart('web', 'rtl')).toBe('right');
+    expect(textAlignStart('web', 'ltr')).toBe('left');
 
     render(
       <ThemeProvider>

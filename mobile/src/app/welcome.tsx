@@ -8,6 +8,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useLocale, useTranslations } from 'use-intl';
 import { SocialCircles } from '~/components/auth/social-sign-in';
 import { LOGO_MARK, Wordmark } from '~/components/brand/brand-logo';
+import { welcomeTile, welcomeWordmarkHeight } from '~/components/brand/launch-size';
 import { toast } from '~/components/feedback/toast';
 import { Appear } from '~/components/motion/appear';
 import { Button, GLASS } from '~/components/ui/button';
@@ -332,7 +333,8 @@ function Backdrop({ height, screen, play }: { height: number; screen: number; pl
 function Brand({ compact, locale }: { compact: boolean; locale: string }) {
   const t = useTranslations();
   const { colors } = useTheme();
-  const tile = compact ? 44 : 52;
+  const tile = welcomeTile(compact);
+  const mark = tile * 0.68;
   return (
     <View
       accessible
@@ -351,10 +353,16 @@ function Brand({ compact, locale }: { compact: boolean; locale: string }) {
           boxShadow: '0px 10px 28px rgba(5, 10, 25, 0.4)',
         }}
       >
-        <Image source={LOGO_MARK} contentFit="contain" style={{ width: tile * 0.68, height: tile * 0.68 }} accessible={false} />
+        <Image
+          testID="welcome-mark"
+          source={LOGO_MARK}
+          contentFit="contain"
+          style={{ width: mark, height: mark }}
+          accessible={false}
+        />
       </View>
       {locale === 'ar' ? (
-        <Wordmark height={compact ? 22 : 26} tint={colors.onHero} />
+        <Wordmark testID="welcome-wordmark" height={welcomeWordmarkHeight(compact)} tint={colors.onHero} />
       ) : (
         <Text variant="headline" weight="bold" style={{ color: colors.onHero }} accessible={false}>
           {t('meta.siteName')}
