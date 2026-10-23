@@ -2,6 +2,7 @@ import { I18nManager, StyleSheet, Text } from 'react-native';
 import * as Updates from 'expo-updates';
 import { render } from '@testing-library/react-native';
 import { renderRouter, screen } from 'expo-router/testing-library';
+import { Text as AppText, textAlignStart } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { resetWelcomeForTests } from '~/features/welcome';
 import { catalogues } from '~/i18n/provider';
@@ -113,5 +114,26 @@ describe('a field', () => {
 
   it('starts an email at the left edge, as it is read', () => {
     expect(alignment(<TextField testID="field" ltr value="" onChangeText={() => {}} />)).toBe('left');
+  });
+});
+
+describe('a label', () => {
+  it('stays left on the phone so I18nManager mirrors it once, and sits on the right on the web while Arabic is on', () => {
+    // A native `right` is swapped again while the phone is right to left, which
+    // put Arabic back on the left. The web has no such swap, and react-native-web
+    // maps `start` to the left, so Arabic there is the physical right.
+    expect(textAlignStart('ios')).toBe('left');
+    expect(textAlignStart('android')).toBe('left');
+    expect(textAlignStart('ios', 'rtl')).toBe('left');
+    expect(textAlignStart('web')).toBe('right');
+    expect(textAlignStart('web', 'rtl')).toBe('right');
+    expect(textAlignStart('web', 'ltr')).toBe('left');
+
+    render(
+      <ThemeProvider>
+        <AppText testID="label">مرحبا</AppText>
+      </ThemeProvider>,
+    );
+    expect(StyleSheet.flatten(screen.getByTestId('label').props.style).textAlign).toBe('left');
   });
 });
