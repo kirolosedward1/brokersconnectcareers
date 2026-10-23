@@ -1,5 +1,5 @@
 import type { ReactNode, Ref } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandLogo } from '~/components/brand/brand-logo';
 import { gutter, space } from '~/theme/tokens';
@@ -16,7 +16,7 @@ import { Text } from '~/components/ui/text';
  * bar, and — on a `bare` screen, drawn without a header — for the status bar,
  * which the heading sat under.
  */
-export function AuthScroll({ ref, children, bare = false }: { ref?: Ref<ScrollView>; children: ReactNode; bare?: boolean }) {
+export function AuthScroll({ ref, children, bare = false }: { ref?: Ref<ScrollViewInstance>; children: ReactNode; bare?: boolean }) {
   const insets = useSafeAreaInsets();
   const android = Platform.OS === 'android';
   return (

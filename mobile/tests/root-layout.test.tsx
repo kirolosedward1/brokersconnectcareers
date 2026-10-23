@@ -80,7 +80,7 @@ it("draws nothing before the phone has said which companies are hidden, and then
   });
 
   try {
-    renderRouter(
+    await renderRouter(
       {
         _layout: RootLayout,
         '(tabs)/_layout': TabsLayout,
@@ -124,7 +124,7 @@ describe('a screen that throws while it is drawn', () => {
     }
     const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
     try {
-      renderRouter(
+      await renderRouter(
         { _layout: RootLayout, '(tabs)/_layout': TabsLayout, [STACK]: TabStack, '(tabs)/(home)/index': Home, '(tabs)/(jobs)/jobs/index': BoardScreen },
         { initialUrl: '/' },
       );
@@ -177,7 +177,7 @@ describe('a screen the root stack presents as a sheet', () => {
   const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 
   it('is told it is one; the tabs under it are not', async () => {
-    renderRouter(
+    await renderRouter(
       {
         _layout: RootLayout,
         '(tabs)/_layout': TabsLayout,

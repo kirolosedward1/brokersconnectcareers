@@ -1,4 +1,4 @@
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { persistQueryClientRestore, persistQueryClientSave } from '@tanstack/react-query-persist-client';
@@ -11,6 +11,7 @@ import { SessionProvider } from '~/lib/session';
 import { ThemeProvider } from '~/theme/provider';
 import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
+import { DeclaredTabs } from './declared-tabs';
 import { board, browse, cairo, directory, listing, newCairo } from './fixtures';
 import { fakeServer } from './server';
 
@@ -150,12 +151,13 @@ describe('the board on a cold start', () => {
         </QueryClientProvider>
       );
     }
-    return {
+    const routes = {
       _layout: Root,
-      '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+      '(tabs)/_layout': () => <DeclaredTabs routes={routes} />,
       '(tabs)/(home,jobs,companies)/_layout': TabStack,
       '(tabs)/(jobs)/jobs/index': BoardScreen,
     };
+    return routes;
   }
 
   it('draws the kept listings at once, and reads them again behind them', async () => {
@@ -165,7 +167,7 @@ describe('the board on a cold start', () => {
     const reading = held(() => board());
     server.on('/api/mobile/v1/jobs', reading.handler);
 
-    renderRouter(app(client), { initialUrl: '/(jobs)/jobs' });
+    await renderRouter(app(client), { initialUrl: '/(jobs)/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     expect(screen.queryByRole('progressbar')).toBeNull();
     await waitFor(() => expect(server.asked('/api/mobile/v1/jobs').length).toBe(1));
@@ -185,7 +187,7 @@ describe('the board on a cold start', () => {
     );
     const pageTwo = () => server.asked('/api/mobile/v1/jobs').some((request) => request.url.searchParams.get('page') === '2');
 
-    renderRouter(app(client), { initialUrl: '/(jobs)/jobs' });
+    await renderRouter(app(client), { initialUrl: '/(jobs)/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     await waitFor(() => expect(server.asked('/api/mobile/v1/jobs').length).toBe(1));
 
@@ -205,7 +207,7 @@ describe('the board on a cold start', () => {
     const client = cache();
     const reading = held(() => ({ status: 500, body: { error: 'boom' } }));
     server.on('/api/mobile/v1/jobs', reading.handler);
-    renderRouter(app(client), { initialUrl: '/(jobs)/jobs' });
+    await renderRouter(app(client), { initialUrl: '/(jobs)/jobs' });
 
     // Opened while the first listings are on their way.
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.filters }));
@@ -223,7 +225,7 @@ describe('the board on a cold start', () => {
     const client = cache();
     const reading = held(() => board());
     server.on('/api/mobile/v1/jobs', reading.handler);
-    const result = renderRouter(app(client), { initialUrl: '/(jobs)/jobs?company=nile-brokers&track=primary&district=new-cairo' });
+    const result = await renderRouter(app(client), { initialUrl: '/(jobs)/jobs?company=nile-brokers&track=primary&district=new-cairo' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.clearFilters }));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ company: 'nile-brokers' }));
@@ -235,7 +237,7 @@ describe('the board on a cold start', () => {
     const reading = held(() => board());
     server.on('/api/mobile/v1/jobs', reading.handler);
 
-    renderRouter(app(client), { initialUrl: '/(jobs)/jobs' });
+    await renderRouter(app(client), { initialUrl: '/(jobs)/jobs' });
     expect(await screen.findByRole('progressbar')).toBeTruthy();
     expect(screen.getByText(ar.jobs.filters)).toBeTruthy();
     expect(screen.getByRole('button', { name: `${ar.jobs.sortBy}: ${ar.jobs.sortNewest}` })).toBeTruthy();

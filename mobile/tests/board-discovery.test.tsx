@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text } from 'react-native';
-import { router, Stack, Tabs } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
@@ -27,6 +27,7 @@ import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
 import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
 import { board, browse, cairo, listing, newCairo } from './fixtures';
 import { fakeServer } from './server';
@@ -39,6 +40,45 @@ import { fakeServer } from './server';
   kind of listing to the end of Home's suggestions without hiding anything.
   Against stand-ins for Supabase and the website, through the real screens.
 */
+
+
+jest.mock('expo-router', () => {
+  const actual = jest.requireActual('expo-router');
+  return {
+    ...actual,
+    useNavigation: (...args: unknown[]) => {
+      const navigation = actual.useNavigation(...args);
+      const chain: unknown[] = [];
+      let n = navigation;
+      while (n) {
+        chain.push(n.getState?.()?.type);
+        n = n.getParent?.();
+      }
+      // eslint-disable-next-line no-console
+      console.log('PROBE chain', JSON.stringify(chain));
+      let p = navigation;
+      while (p && p.getState?.()?.type !== 'tab') p = p.getParent?.();
+      if (p && !p.__wrapped) {
+        p.__wrapped = true;
+        const id = Math.random().toString(36).slice(2, 6);
+        const add = p.addListener;
+        p.addListener = (type: string, cb: (...a: unknown[]) => void) => {
+          if (type !== 'blur') return add(type, cb);
+          console.log('PROBE add', id);
+          const off = add(type, (...a: unknown[]) => {
+            console.log('PROBE blur fired', id);
+            cb(...a);
+          });
+          return () => {
+            console.log('PROBE remove', id);
+            off();
+          };
+        };
+      }
+      return navigation;
+    },
+  };
+});
 
 jest.mock('~/lib/session-storage', () => {
   const store = new Map<string, string>();
@@ -158,7 +198,7 @@ function HomeReadingTheBoard() {
 /** The board alone, in a Jobs tab of its own. */
 const boardApp = {
   _layout: { default: Root, unstable_settings: { anchor: '(tabs)' } },
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={boardApp} />,
   '(tabs)/(jobs)/jobs/index': BoardScreen,
   '(tabs)/(jobs)/jobs/[slug]': stand('the listing'),
 };
@@ -233,7 +273,7 @@ describe('suggestions as the reader types', () => {
 
   describe('in the filter sheet', () => {
     async function typeInSheet(words: string) {
-      renderRouter(boardApp, { initialUrl: '/jobs' });
+      await renderRouter(boardApp, { initialUrl: '/jobs' });
       // The board's listings are what titles and companies are suggested from.
       expect(await screen.findByText(listing.title_ar)).toBeTruthy();
       fireEvent.press(screen.getByRole('button', { name: ar.jobs.filters }));
@@ -277,7 +317,7 @@ describe('suggestions as the reader types', () => {
         release = resolve;
       });
       server.on('/api/mobile/v1/jobs', async () => (await gate, board()));
-      renderRouter(boardApp, { initialUrl: '/jobs' });
+      await renderRouter(boardApp, { initialUrl: '/jobs' });
       // The filters work before the first listings are in (a slow first start).
       fireEvent.press(await screen.findByRole('button', { name: ar.jobs.filters }));
       fireEvent.changeText(await screen.findByLabelText(ar.filters.search), 'نايل');
@@ -298,7 +338,7 @@ describe('suggestions as the reader types', () => {
         release = resolve;
       });
       server.on('/api/mobile/v1/jobs', async () => (await gate, board()));
-      renderRouter(boardApp, { initialUrl: '/jobs' });
+      await renderRouter(boardApp, { initialUrl: '/jobs' });
       // Opened while the board is still loading.
       fireEvent.press(await screen.findByRole('button', { name: `${ar.jobs.sortBy}: ${ar.jobs.sortNewest}` }));
       expect(await screen.findByRole('radio', { name: ar.jobs.sortSalary })).toBeTruthy();
@@ -314,7 +354,7 @@ describe('suggestions as the reader types', () => {
     });
 
     it('keeps a quick chip tapped as the order card fades, and the order with it', async () => {
-      const result = renderRouter(boardApp, { initialUrl: '/jobs' });
+      const result = await renderRouter(boardApp, { initialUrl: '/jobs' });
       expect(await screen.findByText(listing.title_ar)).toBeTruthy();
       fireEvent.press(screen.getByRole('button', { name: `${ar.jobs.sortBy}: ${ar.jobs.sortNewest}` }));
       fireEvent.press(await screen.findByRole('radio', { name: ar.jobs.sortSalary }));
@@ -326,7 +366,7 @@ describe('suggestions as the reader types', () => {
     });
 
     it('keeps the order chosen just before the filters were opened when they are applied', async () => {
-      const result = renderRouter(boardApp, { initialUrl: '/jobs' });
+      const result = await renderRouter(boardApp, { initialUrl: '/jobs' });
       expect(await screen.findByText(listing.title_ar)).toBeTruthy();
       fireEvent.press(screen.getByRole('button', { name: `${ar.jobs.sortBy}: ${ar.jobs.sortNewest}` }));
       fireEvent.press(await screen.findByRole('radio', { name: ar.jobs.sortSalary }));
@@ -401,7 +441,7 @@ describe('new since the last visit', () => {
   it('draws a line under what is new since the last look and counts it on the Jobs tab until the board is opened', async () => {
     let jobs = [older1, older2];
     server.on('/api/mobile/v1/jobs', () => board(jobs));
-    renderRouter(tabsApp(), { initialUrl: '/jobs' });
+    await renderRouter(tabsApp(), { initialUrl: '/jobs' });
 
     // The first look: nothing to compare with, so no line.
     expect(await screen.findByText(older1.title_ar)).toBeTruthy();
@@ -451,7 +491,7 @@ describe('new since the last visit', () => {
   it('keeps the line where it was while the filters change and come off again, in one visit', async () => {
     await AsyncStorage.setItem('bc.board-seen.v1:anon', JSON.stringify([{ at: lastLook }]));
     server.on('/api/mobile/v1/jobs', () => board([fresh1, older1]));
-    renderRouter(tabsApp(), { initialUrl: '/jobs' });
+    await renderRouter(tabsApp(), { initialUrl: '/jobs' });
     expect(await screen.findByText(ar.app.jobs.seenDivider)).toBeTruthy();
     // Seen, on the whole board: written for the next visit…
     await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem('bc.board-seen.v1:anon')) ?? '[]')).toEqual([{ at: fresh1.published_at }]));
@@ -471,7 +511,7 @@ describe('new since the last visit', () => {
     await AsyncStorage.setItem('bc.board-seen.v1:anon', JSON.stringify([{ at: lastLook }]));
     server.on('/api/mobile/v1/jobs', () => board([fresh1, older1]));
     // A narrowed board marks nothing seen (below), so the count stands — but not on the Jobs tab while it is open.
-    renderRouter(tabsApp(), { initialUrl: '/jobs?track=primary' });
+    await renderRouter(tabsApp(), { initialUrl: '/jobs?track=primary' });
     expect(await screen.findByText(fresh1.title_ar)).toBeTruthy();
     expect(screen.queryByTestId('tab-badge')).toBeNull();
     expect(screen.getByRole('tab', { name: ar.nav.jobs })).toBeTruthy();
@@ -484,7 +524,7 @@ describe('new since the last visit', () => {
   it('marks nothing as seen from a board narrowed to a track, though it draws the line there too', async () => {
     await AsyncStorage.setItem('bc.board-seen.v1:anon', JSON.stringify([{ at: lastLook }]));
     server.on('/api/mobile/v1/jobs', () => board([fresh1, older1]));
-    renderRouter(tabsApp(), { initialUrl: '/jobs?track=primary' });
+    await renderRouter(tabsApp(), { initialUrl: '/jobs?track=primary' });
 
     // Newest first, the line is true of a narrowed board as well…
     expect(await screen.findByText(ar.app.jobs.seenDivider)).toBeTruthy();
@@ -496,7 +536,7 @@ describe('new since the last visit', () => {
   });
 
   it('never asks the server for the count, and says nothing on a first launch', async () => {
-    renderRouter(tabsApp(stand('home')), { initialUrl: '/' });
+    await renderRouter(tabsApp(stand('home')), { initialUrl: '/' });
     expect(await screen.findByText('home')).toBeTruthy();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(1000);
@@ -549,7 +589,7 @@ describe('show fewer like this', () => {
 
   const homeApp = {
     _layout: Root,
-    '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+    '(tabs)/_layout': () => <DeclaredTabs routes={homeApp} />,
     '(tabs)/(home)/index': HomeScreen,
     '(tabs)/(jobs)/jobs/index': stand('the board'),
     '(tabs)/(account)/account/hidden': HiddenScreen,
@@ -564,7 +604,7 @@ describe('show fewer like this', () => {
     server.on('GET /rest/v1/agent_profiles', [agent]);
     server.on('GET /rest/v1/agent_developers', []);
     await signedIn();
-    renderRouter(homeApp, { initialUrl: '/' });
+    await renderRouter(homeApp, { initialUrl: '/' });
     expect(await screen.findByText(ar.dashboard.matchedRoles)).toBeTruthy();
     expect(suggested()).toEqual([fitting.title_ar, elsewhere.title_ar]);
 
@@ -584,7 +624,7 @@ describe('show fewer like this', () => {
     server.on('GET /rest/v1/agent_profiles', [agent]);
     server.on('GET /rest/v1/agent_developers', []);
     await signedIn();
-    renderRouter(homeApp, { initialUrl: '/' });
+    await renderRouter(homeApp, { initialUrl: '/' });
 
     expect(await screen.findByText(ar.dashboard.matchedRoles)).toBeTruthy();
     expect(suggested()).toEqual([fitting.title_ar, elsewhere.title_ar]);
@@ -619,7 +659,7 @@ describe('show fewer like this', () => {
       JSON.stringify([{ track: 'primary', districtId: newCairo.id, district: { name_ar: newCairo.name_ar, name_en: newCairo.name_en } }]),
     );
     await signedIn();
-    renderRouter(homeApp, { initialUrl: '/account/hidden' });
+    await renderRouter(homeApp, { initialUrl: '/account/hidden' });
 
     expect(await screen.findByRole('header', { name: ar.app.moderation.fewerHeading })).toBeTruthy();
     expect(screen.getByText(ar.app.moderation.fewerNote)).toBeTruthy();
@@ -632,7 +672,7 @@ describe('show fewer like this', () => {
 
   it('is offered only to a candidate: nobody else has a Home it would change', async () => {
     server.on('/api/mobile/v1/jobs', board([fitting]));
-    renderRouter(boardApp, { initialUrl: '/jobs' });
+    await renderRouter(boardApp, { initialUrl: '/jobs' });
     fireEvent(await screen.findByRole('link', { name: new RegExp(`^${fitting.title_ar}`) }), 'longPress');
     expect(await screen.findByRole('menuitem', { name: ar.app.jobMenu.share })).toBeTruthy();
     expect(screen.queryByRole('menuitem', { name: ar.app.jobMenu.fewer })).toBeNull();
@@ -642,7 +682,7 @@ describe('show fewer like this', () => {
     server.on('/api/mobile/v1/jobs', board([fitting]));
     const card = () => screen.findByRole('link', { name: new RegExp(`^${fitting.title_ar}`) });
     await signedIn();
-    renderRouter(boardApp, { initialUrl: '/jobs' });
+    await renderRouter(boardApp, { initialUrl: '/jobs' });
     fireEvent(await card(), 'longPress');
     fireEvent.press(await screen.findByRole('menuitem', { name: ar.app.jobMenu.fewer }));
     await waitFor(() => expect(shownToast()?.message).toBe(ar.app.toast.fewer));

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { View, type TextInput } from 'react-native';
+import { View, type TextInput, type TextInputInstance } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { passwordRefusal } from '@/lib/auth/errors';
 import { westernDigits } from '@/lib/search/arabic';
@@ -107,7 +107,7 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
   // The return key moves on to the second password, and from there saves.
-  const confirmField = useRef<TextInput>(null);
+  const confirmField = useRef<TextInputInstance>(null);
   /*
     Secure password change: on a session more than a day old GoTrue wants a
     code it emails, sent back with the new password — the website's form

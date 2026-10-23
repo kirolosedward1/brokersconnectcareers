@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore, type RefObject } from 'react';
-import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-native';
+import type { NativeScrollEvent, NativeSyntheticEvent, ScrollViewInstance } from 'react-native';
 import { useNavigation, useScrollToTop } from 'expo-router';
 
 /**
@@ -77,7 +77,7 @@ type Scrollable = Parameters<typeof useScrollToTop>[0] extends RefObject<infer T
  * back to this screen first.) Pressed again with the list already at its
  * top, `onPressAtTop` — the board opens its search.
  */
-export function useTabList<T extends Scrollable = ScrollView>({ onPressAtTop }: { onPressAtTop?: () => void } = {}) {
+export function useTabList<T extends Scrollable = ScrollViewInstance>({ onPressAtTop }: { onPressAtTop?: () => void } = {}) {
   const ref = useRef<T>(null);
   useScrollToTop(ref);
   const shrinking = useShrinkingTabBar();

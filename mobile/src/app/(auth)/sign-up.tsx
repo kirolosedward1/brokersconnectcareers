@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { View, type TextInput } from 'react-native';
+import { View, type TextInput, type TextInputInstance } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import type { AuthError } from '@supabase/supabase-js';
@@ -55,8 +55,8 @@ export default function SignUpScreen() {
   useErrorFeedback(error);
   const [pending, setPending] = useState(false);
   // The return key moves on to the next field, and from the last one signs up, as on sign-in.
-  const passwordField = useRef<TextInput>(null);
-  const confirmField = useRef<TextInput>(null);
+  const passwordField = useRef<TextInputInstance>(null);
+  const confirmField = useRef<TextInputInstance>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [resent, setResent] = useState<'sent' | 'wait' | 'offline' | null>(null);
 

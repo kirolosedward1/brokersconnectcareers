@@ -236,6 +236,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ['expo-localization', { supportsRTL: true, forcesRTL: true }],
     'expo-web-browser',
     'expo-font',
+    // SDK 58 gives these three config plugins of their own, which `expo install --fix` asks for.
+    'expo-image',
+    'expo-sharing',
+    'expo-status-bar',
     'expo-apple-authentication',
     // The shortcuts held from the app's icon (src/components/navigation/home-shortcuts.tsx).
     'expo-quick-actions',

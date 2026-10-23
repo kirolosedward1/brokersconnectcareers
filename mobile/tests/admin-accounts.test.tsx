@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Linking, Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlashList } from '@shopify/flash-list';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,6 +15,7 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as AccountsScreen from '../src/app/(tabs)/(admin)/admin/users/index';
 import * as AccountScreen from '../src/app/(tabs)/(admin)/admin/users/[id]';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { company } from './fixtures';
 import { fakeServer } from './server';
@@ -176,7 +177,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': stand('the overview'),
   '(tabs)/(admin)/admin/users/index': AccountsScreen,
@@ -201,7 +202,7 @@ function confirmButton(label: string) {
 describe('the accounts', () => {
   it('draws the rows admin_search_users answers, searches the words typed, and asks for each view the way the website does', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/users' });
+    await renderRouter(app, { initialUrl: '/admin/users' });
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(screen.getByText(ar.admin.approval.approved)).toBeTruthy();
@@ -227,7 +228,7 @@ describe('the accounts', () => {
   it("opens the view a website link names, and marks an account whose sign-in is blocked", async () => {
     server.on('POST /rest/v1/rpc/admin_search_users', () => [{ ...row, sign_in_blocked: true }]);
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/users?status=blocked' });
+    await renderRouter(app, { initialUrl: '/admin/users?status=blocked' });
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(lastSearch()).toMatchObject({ p_blocked: true, p_status: null, p_role: null });
@@ -238,7 +239,7 @@ describe('the accounts', () => {
 
   it("opens the role a website link names", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/users?role=employer' });
+    await renderRouter(app, { initialUrl: '/admin/users?role=employer' });
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(lastSearch()).toMatchObject({ p_role: 'employer', p_status: null });
@@ -253,7 +254,7 @@ describe('the accounts', () => {
       return offset === 0 ? page(0, 25) : page(25, 5);
     });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/users' });
+    await renderRouter(app, { initialUrl: '/admin/users' });
 
     expect(await screen.findByText('حساب 0')).toBeTruthy();
     expect(lastSearch()).toMatchObject({ p_limit: 25, p_offset: 0 });
@@ -272,7 +273,7 @@ describe('the accounts', () => {
     server.on('POST /rest/v1/rpc/admin_search_users', (url: URL, init: RequestInit | undefined) =>
       JSON.parse(String(init?.body)).p_query ? [] : { status: 503, body: { code: 'PGRST002', message: 'schema cache' } },
     );
-    renderRouter(app, { initialUrl: '/admin/users' });
+    await renderRouter(app, { initialUrl: '/admin/users' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.emptyQueue)).toBeNull();
@@ -287,7 +288,7 @@ describe('the accounts', () => {
 describe("an account's file", () => {
   it('shows who they are, how they sign in, and what they have done', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+    await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(screen.getByText(ar.onboarding.roleEmployer)).toBeTruthy();
@@ -312,7 +313,7 @@ describe("an account's file", () => {
 
   it('makes an admin through the website, only once a reason is typed', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+    await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.makeAdmin }));
     expect(await screen.findByText(ar.admin.makeAdminBody)).toBeTruthy();
@@ -329,7 +330,7 @@ describe("an account's file", () => {
 
   it('blocks sign-in from the security tab, with the reason', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+    await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
     fireEvent.press(await screen.findByRole('radio', { name: ar.admin.userTabs.security }));
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.blockSignIn }));
@@ -342,9 +343,9 @@ describe("an account's file", () => {
   });
 
   it('reveals the contact for a reason, and shows the number only once the website answered', async () => {
-    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue();
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+    await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
     let answer: (value: unknown) => void = () => {};
     server.on('POST /api/mobile/v1/actions/revealContact', () => new Promise((resolve) => (answer = resolve)));
@@ -384,7 +385,7 @@ describe("an account's file", () => {
   it('shows nothing of the contact when the website refuses', async () => {
     server.on('POST /api/mobile/v1/actions/revealContact', { ok: false, error: 'forbidden' });
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+    await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.revealContact }));
     fireEvent.changeText(await screen.findByLabelText(ar.admin.reasonOnRecord), 'طلب دعم من صاحب الحساب');
@@ -403,7 +404,7 @@ describe("an account's file", () => {
       { id: 1, actor_id: USER_ID, actor_name: 'كيرلس', action: 'user.sign_in_blocked', target_type: 'user', target_id: OTHER_USER, target_label: null, reason: 'حساب مخترق', metadata: {}, via: 'console', created_at: '2026-10-20T10:00:00Z' },
     ]);
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+    await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
     expect(await screen.findByText(ar.admin.suspendAccount)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.admin.makeAdmin })).toBeNull();
@@ -423,7 +424,7 @@ describe("an account's file", () => {
   it('says the activity could not be read on a database without the function — never "nothing yet"', async () => {
     server.on('POST /rest/v1/rpc/admin_user_activity', { status: 404, body: { code: 'PGRST202', message: 'Could not find the function' } });
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+    await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.activity }));
@@ -433,7 +434,7 @@ describe("an account's file", () => {
 
   it("offers no lever on the admin's own file", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/users/${USER_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/users/${USER_ID}` });
 
     expect(await screen.findByText(ar.admin.contactSelf)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.admin.makeAdmin })).toBeNull();
@@ -454,7 +455,7 @@ describe("an account's file", () => {
   it("offers another admin's file only the two levers the product has for an admin", async () => {
     other = { ...account, role: 'admin' };
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+    await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
     expect(await screen.findByRole('button', { name: ar.admin.removeAdmin })).toBeTruthy();
     expect(screen.getByText(ar.admin.adminNoLever)).toBeTruthy();
@@ -485,7 +486,7 @@ describe("an account's file", () => {
     ]);
     server.on('POST /rest/v1/rpc/admin_user_facts', () => ({ ...facts, sign_in_blocked_until: '2999-12-31T00:00:00Z' }));
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
+    await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.removeAdmin }));
     expect(await screen.findByText(ar.admin.removeAdminBody.replace('{role}', ar.onboarding.roleEmployer))).toBeTruthy();

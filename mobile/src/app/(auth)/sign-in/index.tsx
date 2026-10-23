@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { View, type TextInput } from 'react-native';
+import { View, type TextInput, type TextInputInstance } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import type { AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
@@ -57,7 +57,7 @@ export default function SignInScreen() {
   const [pending, setPending] = useState(false);
   const [unconfirmed, setUnconfirmed] = useState(false);
   const [resent, setResent] = useState<'sent' | 'wait' | 'offline' | null>(null);
-  const passwordField = useRef<TextInput>(null);
+  const passwordField = useRef<TextInputInstance>(null);
   const [pausedUntil, setPausedUntil] = useState(0);
   const providers = useSocialProviders();
   const oneTap = providers.apple || providers.google;

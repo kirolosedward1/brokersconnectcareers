@@ -134,7 +134,7 @@ function toBar(event: 'onLayout' | 'onResponderGrant' | 'onResponderMove' | 'onR
 }
 
 async function launch() {
-  renderRouter(app, { initialUrl: '/' });
+  await renderRouter(app, { initialUrl: '/' });
   expect(await screen.findByText('home')).toBeTruthy();
   toBar('onLayout', { nativeEvent: { layout: { x: BAR.x, y: 0, width: BAR.width, height: 56 } } });
   for (const [tab, x] of Object.entries(PLACES)) layout(screen.getByRole('tab', { name: tabNames[tab] }), x, TAB_WIDTH);

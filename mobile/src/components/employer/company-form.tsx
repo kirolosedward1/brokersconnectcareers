@@ -1,6 +1,6 @@
 import { useRef, useState, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { View, type ScrollView, type TextInput } from 'react-native';
+import { View, type ScrollView, type TextInput, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2 } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
@@ -72,7 +72,7 @@ export function CompanyForm({
 }: {
   company: CompanyRow | null;
   /** The page's scroll view: Save is below the fields, and an error is brought into view. */
-  scroll: RefObject<ScrollView | null>;
+  scroll: RefObject<ScrollViewInstance | null>;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -93,8 +93,8 @@ export function CompanyForm({
   const [errors, setErrors] = useState<Partial<Record<Key, string>>>({});
   const inView = useErrorsInView(scroll, ['nameAr', 'aboutAr', 'aboutEn', 'website']);
   // The return key moves on through the names to the description.
-  const nameEnField = useRef<TextInput>(null);
-  const aboutArField = useRef<TextInput>(null);
+  const nameEnField = useRef<TextInputInstance>(null);
+  const aboutArField = useRef<TextInputInstance>(null);
   const refuse = (next: Partial<Record<Key, string>>) => {
     setErrors(next);
     inView.show(next);

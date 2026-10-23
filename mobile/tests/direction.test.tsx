@@ -68,7 +68,7 @@ it('is right to left while the app is Arabic only, whatever React Native says', 
 });
 
 it('lays every view out right to left, tells the headers and the tab bar, and never starts the app again', async () => {
-  renderRouter(
+  await renderRouter(
     {
       _layout: RootLayout,
       '(tabs)/_layout': TabsLayout,

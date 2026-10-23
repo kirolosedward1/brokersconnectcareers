@@ -1,5 +1,5 @@
 import { useRef, type RefObject } from 'react';
-import { AccessibilityInfo, type ScrollView, type View } from 'react-native';
+import { AccessibilityInfo, type ScrollView, type View, type ScrollViewInstance, type ViewInstance } from 'react-native';
 import { haptic } from '~/lib/haptics';
 import { space } from '~/theme/tokens';
 
@@ -22,10 +22,10 @@ type Measured = { measureLayout(relativeTo: unknown, onSuccess: (x: number, y: n
  * the error tap. `above` is what covers the top of the scroll view: the
  * status bar, on a page drawn without a header.
  */
-export function useErrorsInView(scroll: RefObject<ScrollView | null>, order: readonly string[], { above = 0 }: { above?: number } = {}) {
-  const views = useRef(new Map<string, View>());
+export function useErrorsInView(scroll: RefObject<ScrollViewInstance | null>, order: readonly string[], { above = 0 }: { above?: number } = {}) {
+  const views = useRef(new Map<string, ViewInstance>());
 
-  const place = (name: string) => (view: View | null) => {
+  const place = (name: string) => (view: ViewInstance | null) => {
     if (!view) return;
     views.current.set(name, view);
     return () => {
