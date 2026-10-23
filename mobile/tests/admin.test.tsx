@@ -30,6 +30,7 @@ import * as ListingScreen from '../src/app/(tabs)/(admin)/admin/jobs/[id]';
 import * as ReportsScreen from '../src/app/(tabs)/(admin)/admin/reports/index';
 import * as AccountsScreen from '../src/app/(tabs)/(admin)/admin/users/index';
 import * as CompaniesScreen from '../src/app/(tabs)/(admin)/admin/companies/index';
+import * as CompanyScreen from '../src/app/(tabs)/(admin)/admin/companies/[id]';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { company } from './fixtures';
 import { fakeServer } from './server';
@@ -239,6 +240,10 @@ beforeEach(async () => {
   ]);
   server.on('GET /rest/v1/job_moderation', []);
   server.on('GET /rest/v1/reports', []);
+  // The review's five head counts, one per stage.
+  server.on('HEAD /rest/v1/applications', { body: null, headers: { 'content-range': '*/0' } });
+  server.on('GET /rest/v1/admin_audit_log', []);
+  server.on('GET /rest/v1/moderation_notes', []);
   server.on('POST /rest/v1/rpc/admin_report_cases', [reportCase]);
   server.on('POST /rest/v1/rpc/admin_report_rows', [reportRow]);
   server.on('POST /rest/v1/rpc/admin_search_users', [pendingAccount]);
@@ -249,11 +254,13 @@ beforeEach(async () => {
         name_ar: company.name_ar,
         name_en: null,
         slug: company.slug,
+        logo_url: null,
         verification_status: 'pending',
         suspended_at: null,
         created_at: '2026-10-20T10:00:00Z',
-        version: 2,
-        company_documents: [{ id: DOC_ID, doc_type: 'commercial_register', status: 'pending', created_at: '2026-10-20T10:00:00Z' }],
+        jobs: [{ count: 3 }],
+        company_members: [{ count: 1 }],
+        company_documents: [{ id: DOC_ID }],
       },
     ],
     headers: { 'content-range': '0-0/1' },
@@ -261,8 +268,6 @@ beforeEach(async () => {
   server.on('POST /api/mobile/v1/actions/moderateJob', { ok: true });
   server.on('POST /api/mobile/v1/actions/moderateReports', { ok: true, data: { moved: 1 } });
   server.on('POST /api/mobile/v1/actions/setAccountApproval', { ok: true });
-  server.on('POST /api/mobile/v1/actions/reviewCompany', { ok: true });
-  server.on('POST /api/mobile/v1/actions/getDocumentUrl', { ok: true, data: { url: 'https://storage.example/doc?token=abc' } });
 
   await supabase.auth.signOut({ scope: 'local' });
   await AsyncStorage.clear();
@@ -319,6 +324,7 @@ const app = {
   '(tabs)/(admin)/admin/reports/index': ReportsScreen,
   '(tabs)/(admin)/admin/users/index': AccountsScreen,
   '(tabs)/(admin)/admin/companies/index': CompaniesScreen,
+  '(tabs)/(admin)/admin/companies/[id]': CompanyScreen,
   mfa: stand('the code screen'),
 };
 
@@ -670,20 +676,21 @@ describe('the other queues', () => {
     expect(actionsCalled('setAccountApproval')[0].body).toEqual({ input: { userId: OTHER_USER, status: 'approved' } });
   });
 
-  it("opens a company's paper through a link made for that tap, and verifies the company with its version", async () => {
+  it("lists the companies whose papers wait, oldest first, and opens one's page where its papers and levers are", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/companies' });
+    const result = renderRouter(app, { initialUrl: '/admin/companies' });
 
-    fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.viewDocument}: ${ar.employer.commercialRegister}` }));
-    await waitFor(() => expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith('https://storage.example/doc?token=abc'));
-    expect(actionsCalled('getDocumentUrl')[0].body).toEqual({ input: { documentId: DOC_ID } });
+    expect(await screen.findByText(company.name_ar)).toBeTruthy();
+    // The website's own query for its verification queue: pending, with pending papers, the longest wait first.
+    const asked = server.asked('/rest/v1/companies').at(-1)!.url.searchParams;
+    expect(asked.get('verification_status')).toBe('eq.pending');
+    expect(asked.get('company_documents.status')).toBe('eq.pending');
+    expect(asked.get('order')).toBe('created_at.asc,id.asc');
+    expect(asked.get('select')).toContain('company_documents!inner(id)');
+    expect(screen.getByText(`${ar.admin.colListings}: 3 · ${ar.admin.colMembers}: 1`)).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('button', { name: `${ar.admin.verify}: ${company.name_ar}` }));
-    await screen.findByText(ar.admin.verifyCompanyBody);
-    await act(async () => {
-      fireEvent.press(screen.getAllByRole('button', { name: ar.admin.verify }).at(-1)!);
-    });
-    await waitFor(() => expect(actionsCalled('reviewCompany')).toHaveLength(1));
-    expect(actionsCalled('reviewCompany')[0].body).toEqual({ input: { companyId: company.id, decision: 'verify', version: 2 } });
+    // The papers, the people, the listings and every lever are on the company's own page (admin-companies.test.tsx).
+    fireEvent.press(screen.getByRole('link', { name: company.name_ar }));
+    await waitFor(() => expect(result.getPathname()).toBe(`/admin/companies/${company.id}`));
   });
 });

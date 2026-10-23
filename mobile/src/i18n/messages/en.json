@@ -432,7 +432,13 @@
     "call": "Call",
     "addNote": "Add a note",
     "noteLabel": "Note (admins only)",
-    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever."
+    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever.",
+    "listings": {
+      "oneCompany": "One company's listings"
+    },
+    "companies": {
+      "takenDown": "{count, plural, =0 {No listing was taken down.} one {<v>#</v> listing taken down.} other {<v>#</v> listings taken down.}}"
+    }
   },
   "keyboard": {
     "done": "Done"
