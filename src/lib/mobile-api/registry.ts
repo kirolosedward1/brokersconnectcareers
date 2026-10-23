@@ -61,7 +61,7 @@ import {
   saveProfileRecord,
 } from '@/lib/actions/cv';
 import { findSimilarListing, salaryReferenceFor, saveJob, transitionJob } from '@/lib/actions/employer-jobs';
-import { recordJobView, toggleSavedJob } from '@/lib/actions/jobs';
+import { recordJobView, setSavedJobNote, toggleSavedJob } from '@/lib/actions/jobs';
 import { completeOnboarding } from '@/lib/actions/onboarding';
 import { acceptPolicies } from '@/lib/actions/policies';
 import { reportTarget } from '@/lib/actions/reports';
@@ -198,6 +198,7 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
 
   // Jobs, searches, follows
   toggleSavedJob: { run: positional(z.string(), 'jobId', toggleSavedJob) },
+  setSavedJobNote: { run: (input) => setSavedJobNote(input) },
   recordJobView: {
     run: async (input) => {
       const slug = record(input).slug;

@@ -413,7 +413,7 @@ export type AgentExperienceRow = Timestamped & {
   ended: string | null;
   highlights: string | null;
   sort_order: number;
-  /** The form's own key, so a retry finds this row rather than writing a second (migration 356). Absent until 356 is applied. */
+  /** The form's own key, so a retry finds this row rather than writing a second (migration 350). Absent until 350 is applied. */
   idempotency_key?: string | null;
 };
 
@@ -425,7 +425,7 @@ export type AgentEducationRow = Timestamped & {
   field: string | null;
   graduated: number | null;
   sort_order: number;
-  /** The form's own key, so a retry finds this row rather than writing a second (migration 356). Absent until 356 is applied. */
+  /** The form's own key, so a retry finds this row rather than writing a second (migration 350). Absent until 350 is applied. */
   idempotency_key?: string | null;
 };
 
@@ -437,7 +437,7 @@ export type AgentCertificationRow = Timestamped & {
   issued: string | null;
   expires: string | null;
   sort_order: number;
-  /** The form's own key, so a retry finds this row rather than writing a second (migration 356). Absent until 356 is applied. */
+  /** The form's own key, so a retry finds this row rather than writing a second (migration 350). Absent until 350 is applied. */
   idempotency_key?: string | null;
 };
 
@@ -454,7 +454,7 @@ export type ApplicationNoteRow = {
   author_id: string | null;
   body: string;
   created_at: string;
-  /** The form's own key, so a retry finds this row rather than writing a second (migration 356). Absent until 356 is applied. */
+  /** The form's own key, so a retry finds this row rather than writing a second (migration 350). Absent until 350 is applied. */
   idempotency_key?: string | null;
 };
 
@@ -739,6 +739,8 @@ export type SettleLeasedOutcome = 'cancelled' | 'dead' | 'defer' | 'failed';
 export type SavedJobRow = Timestamped & {
   candidate_id: string;
   job_id: string;
+  /** The candidate's own line about the listing (migration 356): 1–300 characters, or null. */
+  note: string | null;
 };
 
 /**

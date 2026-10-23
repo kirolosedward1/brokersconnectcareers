@@ -22,7 +22,8 @@
     "collapseMenu": "Collapse the menu",
     "expandMenu": "Expand the menu",
     "closeMenu": "Close the menu",
-    "browseJobs": "Browse jobs"
+    "browseJobs": "Browse jobs",
+    "searchJobs": "Search open jobs"
   },
   "home": {
     "searchPlaceholder": "Search a role, company or district",
@@ -349,7 +350,12 @@
       "body": "Press Continue to pick up where you left off.",
       "continue": "Continue",
       "why": "This step keeps the link safe from email scanners that open it before you do."
-    }
+    },
+    "gateSave": "Sign in to save this job",
+    "gateFollow": "Sign in to follow this company",
+    "gateApply": "Sign in to apply",
+    "gateLead": "Sign in and you will be back here, with nothing lost.",
+    "gateReport": "Sign in to report this"
   },
   "onboarding": {
     "title": "Finish your profile",
@@ -508,9 +514,6 @@
     "viewApplications": "Track your applications",
     "employerCannotApply": "You're signed in as a company. Applying is for consultants only.",
     "rateLimit": "You have applied to a lot of jobs in a short time. Wait a little and try again — or tomorrow, if you have reached today's limit.",
-    "labelJob": "Role",
-    "labelCompany": "Company",
-    "labelDate": "Applied on",
     "nextRoles": "Other open roles",
     "nextRolesMatched": "Other roles that fit you",
     "privacyTitle": "Who sees your details?",
@@ -1409,7 +1412,9 @@
       "searchPlaceholder": "Property consultant, New Cairo…",
       "cta": "Browse jobs",
       "ctaEmployer": "I'm hiring",
-      "trustNoSpam": "No fees for candidates"
+      "trustNoSpam": "No fees for candidates",
+      "trustPay": "Salary and commission in figures, on every listing",
+      "trustLeads": "Every listing says who supplies the leads"
     },
     "features": {
       "title": "Why this board",
@@ -1991,5 +1996,27 @@
     "restore": "Restore my changes",
     "discard": "Discard them",
     "startOver": "Start over"
+  },
+  "savedNotes": {
+    "title": "Your note",
+    "prefix": "Your note:",
+    "add": "Add a note",
+    "edit": "Edits the note",
+    "forListing": "Add a note to yourself about this listing",
+    "private": "Only you see it, here and in the app.",
+    "placeholder": "e.g. Spoke to them; interview on Sunday morning",
+    "count": "{count}/{max}",
+    "countSpoken": "{count} of {max} characters",
+    "saved": "Note saved",
+    "deleted": "Note deleted",
+    "delete": "Delete"
+  },
+  "myApplications": {
+    "timeline": "Where it stands",
+    "stepSent": "Sent",
+    "stepSeen": "Seen",
+    "stepDecision": "Decision",
+    "withdrawTitle": "Withdraw your application to “{title}”?",
+    "withdrawBody": "The company will no longer see it. This cannot be undone."
   }
 }

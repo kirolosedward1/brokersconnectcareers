@@ -39,7 +39,8 @@ cd .. && pnpm typecheck   # web; `pnpm check` at root runs the full web/DB suite
 
 ## Deploying
 
-- **Push to `main`** = deploy. Vercel builds the web; `expo-go.yml` auto-publishes an Expo Go OTA when `mobile/**`, `src/lib/**` or `messages/**` change.
+- **Website ⇄ app parity checks**: `pnpm test:route-parity` (every website page is an app screen, a remap in `mobile/src/lib/links.ts`, or listed as website-only); `mobile.yml`'s `website` job runs the website checks that read `mobile/` on mobile-only changes.
+- **Manual OTA** (what was used this session, after each batch):
 - **Pull requests publish on their own Expo Go channel** (`expo-go-pr-<number>`, `EXPO_GO_CHANNEL`): the run's summary gives that channel's `exp://` link. The `expo-go` link the phone has keeps opening `main`. Before this, every PR publish replaced main's on the one channel, and was replaced by the next PR's minutes later — the reason an update "never arrived" once.
 - **Manual OTA** (what was used this session, after each batch):
   ```bash
@@ -89,7 +90,7 @@ Who is an admin: **only `k4hosting@gmail.com`** (promoted 2026-10-22, has a veri
 2. **CV uploads** — confirm new objects land in storage bucket `cvs` and `applications` rows reference them after real applies (read-only SQL on `storage.objects` / `applications`).
 3. **Supabase logs** — the MCP `query_logs` returned "Backend error" all session; production errors were not reviewed.
 4. **Leaked-password protection** — manual: Supabase dashboard → Authentication → Providers → Email → "Prevent use of leaked passwords".
-5. **Saved notes and reminders are device-only** (`bc.saved-notes.v1:<user>` in local storage) — lost on reinstall/new phone. By design so far.
+5. **Saved-job notes live with the bookmark since migration 356** (`saved_jobs.note`, `setSavedJobNote`): shown on the website's /dashboard/saved and in the app; notes kept on a phone before are carried over once (`carryDeviceNotes`). **Reminders stay device-only** (`bc.saved-reminders.v1:<user>`) — they are local notifications by nature.
 6. **TestFlight / App Store** — no iOS build has ever been made; EAS holds **no iOS credentials** and `eas.json` submit has no `ascAppId`/`appleTeamId`. Blocked until the user has a paid Apple Developer Program membership. Then, on their machine: `cd mobile && npx eas-cli@latest build --platform ios --profile production --auto-submit` (Apple ID + 2FA once; EAS creates and stores cert/profile/ASC key), or provide an ASC API key (.p8, Key ID, Issuer ID), Team ID and the App Store Connect app's Apple ID for non-interactive builds. Details: `docs/app-store.md`. Store builds take OTAs on channel `production`, not `expo-go`.
 7. **Unused packages** — `react-native-maps`, `expo-calendar`, `react-native-qrcode-svg` (added in 39e89ee) are imported nowhere; remove or use, and regenerate licences.
 8. Not verified on a real device or store build: anything — all testing this session was Jest + Expo Go reports from the user.

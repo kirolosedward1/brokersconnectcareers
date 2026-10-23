@@ -5,14 +5,14 @@
  * been answered by a server that had already written the row; pressed again,
  * the second request was a second row. The form makes one key when it opens
  * and sends it with every attempt; the table holds it under a unique index
- * per owner (migration 356, and 55 for listings), so the second insert is
+ * per owner (migration 357, and 55 for listings), so the second insert is
  * refused and the row the first one made is the answer.
  *
  * Looked up after any refusal, not only a unique violation: a CV at its cap
  * refuses the retry with `cap` before the index is reached, and the entry the
  * first attempt added is still what the person meant.
  *
- * Before migration 356 is applied (code deploys first), PostgREST refuses the
+ * Before migration 357 is applied (code deploys first), PostgREST refuses the
  * unknown column; the row is then written without it, exactly as before.
  *
  * Pure, so the rules can be tested without a database.

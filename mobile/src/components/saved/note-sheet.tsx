@@ -6,11 +6,10 @@ import { canSaveJobs } from '@/lib/permissions';
 import { toast, type Toast } from '~/components/feedback/toast';
 import { Appear } from '~/components/motion/appear';
 import { Button } from '~/components/ui/button';
-import { Lock, NotebookPen, Pencil, Plus, Trash2, X } from '~/components/ui/lucide';
+import { CircleAlert, Lock, NotebookPen, Pencil, Plus, Trash2, X } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
-import { useListOwner } from '~/features/jobs/recent';
-import { cleanNote, deleteNote, jobNotes, keepNote, NOTE_MAX, useJobNote, type JobNote } from '~/features/saved/notes';
+import { cleanNote, NOTE_MAX, useJobNote, useNoteActions, type JobNote } from '~/features/saved/notes';
 import { useSavedJobIds } from '~/features/saved/queries';
 import { markupTags } from '~/i18n/rich';
 import { appDirection } from '~/lib/direction';
@@ -43,14 +42,14 @@ export function NoteSheet({
   jobId: string;
   jobTitle: string;
 }) {
-  const t = useTranslations('app.saved.notes');
+  const t = useTranslations('savedNotes');
   // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
   const fence = useSheetFence();
   const tCommon = useTranslations('common');
   const tToast = useTranslations('app.toast');
   const { colors, shadow } = useTheme();
   const insets = useSafeAreaInsets();
-  const owner = useListOwner();
+  const { keep, remove: removeNote } = useNoteActions();
   const note = useJobNote(jobId);
   // Null until the reader types: until then the field shows the note as it is kept.
   const [draft, setDraft] = useState<string | null>(null);
@@ -80,12 +79,15 @@ export function NoteSheet({
   const deleted = (before: JobNote): Toast => ({
     message: t('deleted'),
     icon: Trash2,
-    action: { label: tToast('undo'), onPress: () => jobNotes.add(owner, before) },
+    action: { label: tToast('undo'), onPress: () => void keep(before.id, before.text) },
   });
 
   const save = () => {
     if (!changed) return;
-    keepNote(owner, jobId, clean);
+    // Shown at once; the server's refusal, should one come, puts the note back and says so.
+    void keep(jobId, clean).then((ok) => {
+      if (!ok) toast.show({ message: tCommon('errorBody'), icon: CircleAlert });
+    });
     haptic.tap();
     onClose();
     // Emptied and saved is the same as deleted, and says so.
@@ -95,7 +97,9 @@ export function NoteSheet({
 
   const remove = () => {
     if (!note) return;
-    deleteNote(owner, jobId);
+    void removeNote(jobId).then((ok) => {
+      if (!ok) toast.show({ message: tCommon('errorBody'), icon: CircleAlert });
+    });
     haptic.tap();
     onClose();
     toast.show(deleted(note));
@@ -265,7 +269,7 @@ export function NoteSheetHost() {
  * page); unframed it sits in the saved card's tray.
  */
 export function NoteLine({ note, onPress, framed = false, label }: { note: JobNote | null; onPress: () => void; framed?: boolean; label?: string }) {
-  const t = useTranslations('app.saved.notes');
+  const t = useTranslations('savedNotes');
   const { colors } = useTheme();
   const offer = label ?? t('add');
   return (
@@ -315,7 +319,7 @@ export function NoteLine({ note, onPress, framed = false, label }: { note: JobNo
  * note, or the offer to write one, opening the same sheet as the saved card.
  */
 export function SavedJobNote({ jobId, title }: { jobId: string; title: string }) {
-  const t = useTranslations('app.saved.notes');
+  const t = useTranslations('savedNotes');
   const { actor } = useSession();
   const { ids } = useSavedJobIds();
   const note = useJobNote(jobId);

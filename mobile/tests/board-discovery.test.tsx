@@ -100,11 +100,7 @@ beforeEach(async () => {
   server.on('/rest/v1/profiles', [profile]);
   server.on('/rest/v1/districts', [newCairo, october, zayed]);
   server.on('/rest/v1/governorates', [cairo]);
-  server.on('/rest/v1/search_aliases', [
-    { alias: 'Tagamoa', district_id: newCairo.id, track: null },
-    // The first-sale track's old name (migration 342), which its renamed label no longer carries.
-    { alias: 'بيع أول', district_id: null, track: 'primary' },
-  ]);
+  server.on('/rest/v1/search_aliases', [{ alias: 'Tagamoa', district_id: newCairo.id, track: null }]);
   server.on('/api/mobile/v1/browse', browse);
   server.on('/api/mobile/v1/jobs', board());
   server.on('GET /rest/v1/applications', []);
@@ -185,9 +181,7 @@ const boardReads = () => server.asked('/api/mobile/v1/jobs').map((request) => re
 
 describe('suggestions as the reader types', () => {
   const titled = posted('31', 'مُستشار مَبيعات', 1, { title_en: 'Sales consultant' });
-  // The track's old name, which people still type, as migration 342 keeps it for the renamed label.
-  const firstSale = { alias: 'بيع أول', district_id: null, track: 'primary' as const };
-  const sources = { locale: 'ar', districts: [newCairo, october, zayed], aliases: [firstSale], listings: [listing, titled] };
+  const sources = { locale: 'ar', districts: [newCairo, october, zayed], aliases: [], listings: [listing, titled] };
   const marked = (suggestion: SearchSuggestion) => suggestion.matched.slice(suggestion.span.start, suggestion.span.end);
   const said = (suggestions: SearchSuggestion[]) => suggestions.map((suggestion) => [suggestion.kind, suggestion.label, marked(suggestion)]);
 
@@ -211,7 +205,6 @@ describe('suggestions as the reader types', () => {
 
   it('lists the places and tracks first, a name starting with the words before one that has them inside', () => {
     expect(said(suggestionsFor('بيع', sources))).toEqual([
-      ['track', ar.track.primary, 'بيع'],
       ['track', ar.track.resale, 'بيع'],
       // «مبيعات»: the words inside a word, after the names that start with them; the shorter name first.
       ['title', titled.title_ar, 'بيع'],
@@ -232,7 +225,7 @@ describe('suggestions as the reader types', () => {
     const filters = { ...EMPTY_FILTERS, q: 'القاهره', tracks: ['resale' as const] };
     const [area] = suggestionsFor('القاهره', sources);
     expect(withSuggestion(filters, area)).toEqual({ ...filters, q: '', districtSlugs: [newCairo.slug] });
-    const [track] = suggestionsFor('بيع أول', sources);
+    const [track] = suggestionsFor('قيد الإنشاء', sources);
     expect(withSuggestion(filters, track)).toEqual({ ...filters, q: '', tracks: ['resale', 'primary'] });
     const [title] = suggestionsFor('مستشار', sources);
     expect(withSuggestion(filters, title)).toEqual({ ...filters, q: titled.title_ar });
@@ -260,7 +253,7 @@ describe('suggestions as the reader types', () => {
     it.each([
       ['القاهره', t('app.jobs.suggestArea', { name: newCairo.name_ar }), { district: newCairo.slug }],
       ['tagam', t('app.jobs.suggestArea', { name: newCairo.name_ar }), { district: newCairo.slug }],
-      ['بيع أول', t('app.jobs.suggestTrack', { name: ar.track.primary }), { track: 'primary' }],
+      ['قيد الإنشاء', t('app.jobs.suggestTrack', { name: ar.track.primary }), { track: 'primary' }],
       ['مبيعات', t('app.jobs.suggestWords', { words: listing.title_ar }), { q: listing.title_ar }],
       ['نايل', t('app.jobs.suggestWords', { words: listing.company.name_ar }), { q: listing.company.name_ar }],
     ])('typed «%s», "%s" shows the board for it at once', async (words, name, expected) => {

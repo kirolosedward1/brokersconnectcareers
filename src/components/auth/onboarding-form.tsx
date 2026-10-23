@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { HEADCOUNT_BANDS } from '@/lib/taxonomy';
 import { completeOnboarding } from '@/lib/actions/onboarding';
 import { reach } from '@/lib/reach';
+import { webAddress } from '@/lib/web-address';
 import type { DistrictRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { draftKey } from '@/lib/form-draft';
@@ -109,7 +110,8 @@ export function OnboardingForm({
           role === 'employer'
             ? {
                 nameAr: fields.companyName,
-                website: fields.companyWebsite || null,
+                // A bare domain is given its scheme, as the app gives it (lib/web-address.ts).
+                website: webAddress(fields.companyWebsite ?? ''),
                 headcountBand: fields.companyHeadcount || null,
                 districtId: fields.companyDistrict || null,
               }

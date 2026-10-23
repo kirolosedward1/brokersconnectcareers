@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { VisibilityIllustration } from '@/components/home/illustrations';
 import { HeroShell } from '@/components/home/hero-shell';
 import { TimelineSteps } from '@/components/home/timeline-steps';
+import { TrustLines } from '@/components/home/trust-lines';
 import { Illustration } from '@/components/illustration';
 import type { DistrictRow } from '@/lib/supabase/database.types';
 import { WhatsAppMark } from '@/components/brand-marks';
@@ -147,10 +148,7 @@ export async function Landing({
         {/* The row of "popular" track chips that sat here is gone: the browse
             module is the next thing on the page and offers the same tracks
             with a count beside each. */}
-        <p className="mt-5 inline-flex items-center gap-1.5 text-sm text-white/65">
-          <Check className="size-4 text-emerald-400" aria-hidden />
-          {t('hero.trustNoSpam')}
-        </p>
+        <TrustLines className="mt-5" lines={[t('hero.trustNoSpam'), t('hero.trustPay'), t('hero.trustLeads')]} />
       </HeroShell>
     );
   }

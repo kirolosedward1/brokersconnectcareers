@@ -566,19 +566,15 @@ function changedOutsideMigrations(mergeBase) {
  *              search migration. Production's ledger carried neither 068 on
  *              2026-09-28, so the later of the two moved to the free 069 and
  *              the application order stayed the same.
- *   350 → 356  a_cv_line_or_a_note_written_twice_by_one_retry: merged to main
- *              (PR #38) beside 350's my_company_is_nobodys_when_signed_out.
- *              Production's ledger on 2026-10-23 carried only the latter, and
- *              no idempotency_key column on the four tables this file adds it
- *              to, so it moved past the last applied version, 355.
  *
  * Frozen like LEGACY: a clash from now on is caught by the version rule
  * before it merges, and is renumbered on its branch.
  */
 const RENUMBERED = {
   '20260101000068_what_the_provider_said_happened.sql': '20260101000069_what_the_provider_said_happened.sql',
-  '20260101000350_a_cv_line_or_a_note_written_twice_by_one_retry.sql':
-    '20260101000356_a_cv_line_or_a_note_written_twice_by_one_retry.sql',
+  // Merged under the version my_company_is_nobodys_when_signed_out already had
+  // (and production had applied); renumbered before production ran it.
+  '20260101000350_a_cv_line_or_a_note_written_twice_by_one_retry.sql': '20260101000357_a_cv_line_or_a_note_written_twice_by_one_retry.sql',
 };
 
 function lint(options) {

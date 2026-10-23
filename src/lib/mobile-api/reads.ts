@@ -40,6 +40,14 @@ export type MobileConfig = {
    */
   policies?: { terms: string; privacy: string };
   /**
+   * The commit the website is deployed from (Vercel's VERCEL_GIT_COMMIT_SHA),
+   * null where it is not known (a local build). The over-the-air publish
+   * waits on it, so the app's new code never reaches a phone before the
+   * website it calls (.github/workflows/expo-go.yml), and Account shows it
+   * beside the app's own build marker. Absent from a server older than this.
+   */
+  commit?: string | null;
+  /**
    * Whether an admin needs an authenticator before the console opens
    * (ADMIN_MFA_REQUIRED, on by default in production): the app's console asks
    * what the website's does. Absent from a server older than the app's
