@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
       error,
       type: searchParams.get('type'),
       next: nextParam,
+      marker: searchParams.get('flow'),
     });
     if (failure === 'confirmed') {
       return NextResponse.redirect(`${origin}/sign-in?confirmed=1`);

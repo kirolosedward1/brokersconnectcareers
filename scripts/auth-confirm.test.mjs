@@ -58,6 +58,11 @@ is('a malformed escape is not guessed at', readRedirectTo('redirect_to=https%3A%
 
 console.log('\n— where the link may send somebody');
 is('the callback wrapper comes off', landingFromRedirect(formRedirect, SITE), onboarding);
+is(
+  'flow=signup in front of next still unwraps',
+  landingFromRedirect(`${SITE}/auth/callback?flow=signup&next=${encodeURIComponent(onboarding)}`, SITE),
+  onboarding,
+);
 is('any other page on this site', landingFromRedirect(`${SITE}/jobs/sales-a1b2?src=share`, SITE), '/jobs/sales-a1b2?src=share');
 is('a bare path', landingFromRedirect('/dashboard/saved', SITE), '/dashboard/saved');
 is('the Site URL alone is no preference', landingFromRedirect(SITE, SITE), null);
@@ -245,12 +250,27 @@ console.log('\n— a confirmation opened on another device');
   is('a magic link with nowhere to go is not', isSignupConfirmation('email', null), false);
 
   is(
-    'a code with no verifier, and nowhere else to go, is a confirmed address',
+    'a code with no verifier and no signup marker is still the exchange error',
     linkFailureRedirect({ flow: 'code', error: missing, next: null }),
+    'exchange_failed',
+  );
+  is(
+    'an OAuth return with no next shows the error',
+    linkFailureRedirect({ flow: 'code', error: missing, next: null, marker: 'oauth' }),
+    'exchange_failed',
+  );
+  is(
+    'OAuth never shows the notice, even when next looks like onboarding',
+    linkFailureRedirect({ flow: 'code', error: missing, next: onboarding, marker: 'oauth' }),
+    'exchange_failed',
+  );
+  is(
+    'the sign-up form\'s flow=signup marker shows the notice',
+    linkFailureRedirect({ flow: 'code', error: missing, marker: 'signup' }),
     'confirmed',
   );
   is(
-    'and so is the sign-up form\'s own callback',
+    'and so does the sign-up form\'s own callback',
     linkFailureRedirect({ flow: 'code', error: missing, next: onboarding }),
     'confirmed',
   );
@@ -293,18 +313,29 @@ console.log('\n— a confirmation opened on another device');
 
   const callback = readFileSync(join(ROOT, 'src', 'app', 'auth', 'callback', 'route.ts'), 'utf8');
   is('the callback asks where a failed code goes', /linkFailureRedirect\(\{/.test(callback) && /flow: 'code'/.test(callback), true);
+  is('and reads the flow marker', /marker: searchParams\.get\('flow'\)/.test(callback), true);
   is('and sends a confirmed address to sign-in', callback.includes('/sign-in?confirmed=1'), true);
   is('a real exchange failure still says so', callback.includes('/sign-in?error=exchange_failed'), true);
+
+  const form = readFileSync(join(ROOT, 'src', 'components', 'auth', 'auth-form.tsx'), 'utf8');
+  is('sign-up marks emailRedirectTo as a confirmation', /\/auth\/callback\?flow=signup&next=/.test(form), true);
+  is('Google and Apple mark the callback as OAuth', /searchParams\.set\('flow', 'oauth'\)/.test(form), true);
 
   const post = readFileSync(join(ROOT, 'src', 'app', 'auth', 'confirm', 'route.ts'), 'utf8');
   is('confirm still verifies the token hash', /verifyOtp\(\{ type, token_hash: tokenHash \}\)/.test(post), true);
   is('and a signup token with no session asks the reader to sign in', /!data\.session && isSignupConfirmation\(type, next\)/.test(post), true);
 
   const signIn = readFileSync(join(ROOT, 'src', 'app', '[locale]', 'sign-in', 'page.tsx'), 'utf8');
-  const notice = signIn.slice(signIn.indexOf('emailConfirmed ?'), signIn.indexOf('linkFailed || sessionExpired'));
-  is('the confirmed notice is a status, not an alert', /role="status"/.test(notice) && !/role="alert"/.test(notice), true);
-  is('in the specified green on a light green', notice.includes('text-[#1A7F37]') && notice.includes('bg-[#F0FDF4]'), true);
-  is('the failures stay an alert', /role="alert"/.test(signIn.slice(signIn.indexOf('linkFailed || sessionExpired'))), true);
+  const notice = signIn.match(/<p\s+role="status"[\s\S]*?<\/p>/);
+  is('the confirmed notice is a status, not an alert', Boolean(notice) && !/role="alert"/.test(notice[0]), true);
+  is('in the specified green on a light green', Boolean(notice) && notice[0].includes('text-[#1A7F37]') && notice[0].includes('bg-[#F0FDF4]'), true);
+  is('the failures stay an alert', /role="alert"/.test(signIn), true);
+  is(
+    'an error on the same URL wins over the confirmed notice',
+    /confirmed === '1' && !error/.test(signIn) &&
+      signIn.indexOf('linkFailed || sessionExpired') < signIn.indexOf('emailConfirmed ?'),
+    true,
+  );
 
   const ar = JSON.parse(readFileSync(join(ROOT, 'messages', 'ar.json'), 'utf8'));
   const en = JSON.parse(readFileSync(join(ROOT, 'messages', 'en.json'), 'utf8'));

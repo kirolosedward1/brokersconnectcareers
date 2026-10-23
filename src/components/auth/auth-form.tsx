@@ -156,7 +156,10 @@ export function AuthForm({
   const carryingNext = (href: string) =>
     next ? `${href}${href.includes('?') ? '&' : '?'}next=${encodeURIComponent(next)}` : href;
   const confirmedHref = carryingNext(`${onboardingHref}${audience ? '&' : '?'}confirmed=1`);
-  const confirmationPath = () => `/auth/callback?next=${encodeURIComponent(confirmedHref)}`;
+  // `flow=signup` stays in front of `next`. The callback reads `next` as the
+  // rest of the query, and this marker is how a missing verifier is told apart
+  // from a Google or Apple return that named no page.
+  const confirmationPath = () => `/auth/callback?flow=signup&next=${encodeURIComponent(confirmedHref)}`;
   const confirmationRedirect = () => `${window.location.origin}${confirmationPath()}`;
 
   const [error, setError] = useState<string | null>(null);
@@ -358,6 +361,7 @@ export function AuthForm({
   function signInWith(provider: 'google' | 'apple') {
     startTransition(async () => {
       const callback = new URL('/auth/callback', window.location.origin);
+      callback.searchParams.set('flow', 'oauth');
       if (next) callback.searchParams.set('next', next);
       else if (audience) callback.searchParams.set('next', onboardingHref);
 

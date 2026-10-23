@@ -77,9 +77,10 @@ export default async function SignInPage({
   /*
     A confirmation opened on another device. The address is confirmed and
     there is no session here, so this is a success, not one of the failures
-    above. #1A7F37 on #F0FDF4 is 4.85:1.
+    above. An `error` on the same URL wins: the link did not work. #1A7F37
+    on #F0FDF4 is 4.85:1.
   */
-  const emailConfirmed = confirmed === '1';
+  const emailConfirmed = confirmed === '1' && !error;
 
   const { google: googleEnabled, apple: appleEnabled } = await enabledProviders();
   const t = await getTranslations('auth');
@@ -102,16 +103,16 @@ export default async function SignInPage({
           </Link>
         </p>
 
-        {emailConfirmed ? (
+        {linkFailed || sessionExpired ? (
+          <p role="alert" className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+            {sessionExpired ? t('sessionExpired') : t('linkExpired')}
+          </p>
+        ) : emailConfirmed ? (
           <p
             role="status"
             className="mt-6 rounded-xl border border-[#1A7F37]/25 bg-[#F0FDF4] p-4 text-sm text-[#1A7F37]"
           >
             {t('emailConfirmed')}
-          </p>
-        ) : linkFailed || sessionExpired ? (
-          <p role="alert" className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
-            {sessionExpired ? t('sessionExpired') : t('linkExpired')}
           </p>
         ) : null}
 

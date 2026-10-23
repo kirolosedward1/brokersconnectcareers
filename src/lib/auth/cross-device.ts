@@ -52,10 +52,12 @@ export type LinkFailure = 'confirmed' | 'exchange_failed' | 'link_expired';
 /**
  * Where a failed link goes, or null when there was no failure.
  *
- * A code with nowhere else to go is the confirmation the allow-list sent back
- * without its `next`: the verifier is missing and the address is confirmed.
- * A password reset we can still recognise keeps the existing error — that
- * link did not confirm an address. An expired or invalid token does too.
+ * The confirmed notice needs an explicit sign-up. `marker` is the callback's
+ * `flow` query: `signup` is what the sign-up form puts on emailRedirectTo,
+ * `oauth` is what Google and Apple put on redirectTo. OAuth from /sign-in
+ * carries no `next`, and a missing verifier there is a failed return, not a
+ * confirmed address. A password reset we can still recognise keeps the
+ * existing error too. An expired or invalid token does as well.
  *
  * A token hash only gets the confirmed notice for a sign-up. A magic link or
  * a reset that fails is still the expired error.
@@ -65,15 +67,19 @@ export function linkFailureRedirect(input: {
   error: AuthLinkError | null | undefined;
   type?: string | null;
   next?: string | null;
+  /** The callback's `flow` query: `signup` or `oauth`. */
+  marker?: string | null;
 }): LinkFailure | null {
   if (!input.error) return null;
-  if (!isMissingCodeVerifier(input.error)) {
-    return input.flow === 'code' ? 'exchange_failed' : 'link_expired';
-  }
+  const ordinary = input.flow === 'code' ? 'exchange_failed' : 'link_expired';
+  if (!isMissingCodeVerifier(input.error)) return ordinary;
+  // OAuth names itself. Never read a failed Google or Apple return as a confirmation.
+  if (input.marker === 'oauth') return ordinary;
   if (input.flow === 'code') {
     if (isPasswordReset(input.type, input.next)) return 'exchange_failed';
-    if (isSignupConfirmation(input.type, input.next) || !input.next) return 'confirmed';
+    if (input.marker === 'signup' || isSignupConfirmation(input.type, input.next)) return 'confirmed';
     return 'exchange_failed';
   }
-  return isSignupConfirmation(input.type, input.next) ? 'confirmed' : 'link_expired';
+  if (input.marker === 'signup' || isSignupConfirmation(input.type, input.next)) return 'confirmed';
+  return 'link_expired';
 }
