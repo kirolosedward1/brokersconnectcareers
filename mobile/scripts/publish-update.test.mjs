@@ -147,8 +147,19 @@ console.log('\n— an update Expo Go opens, with no computer running');
   is('right to left still forced, as Expo Go reads it', goConfig.extra.forcesRTL, true);
   is('it waits for the newest update before it opens, so a phone never runs the one before', goConfig.updates.fallbackToCacheTimeout, 30_000);
   is('fetched from the project, like a build', goConfig.updates.url, 'https://u.expo.dev/00000000-0000-4000-8000-000000000000');
-  is('and nothing else differs from the store build', JSON.stringify({ ...goConfig, runtimeVersion: null, updates: null }),
-    JSON.stringify({ ...(await configWith({ ...production.env, EAS_PROJECT_ID: '00000000-0000-4000-8000-000000000000' })), runtimeVersion: null, updates: null }));
+  // Expo Go's loading page draws a project's icon and name, large, unless the
+  // manifest names a splash: the Expo Go publish alone carries one, a whole
+  // page with the mark at the launch screen's size, so the app opens there as
+  // the store build does. A store build has the phone's launch screen instead.
+  is('it names a splash for Expo Go\'s loading page, the mark at the launch screen\'s size', goConfig.splash, {
+    image: './assets/images/splash-expo-go.png',
+    resizeMode: 'cover',
+    backgroundColor: '#F6F4F0',
+  });
+  const storeConfig = await configWith({ ...production.env, EAS_PROJECT_ID: '00000000-0000-4000-8000-000000000000' });
+  is('which a store build does not carry (its launch screen is the phone\'s own)', storeConfig.splash, undefined);
+  const theRest = ({ runtimeVersion, updates, splash, ...rest }) => rest;
+  is('and nothing else differs from the store build', JSON.stringify(theRest(goConfig)), JSON.stringify(theRest(storeConfig)));
 
   is('the project id from the environment first', projectIdFrom({ EAS_PROJECT_ID: 'from-env' }, "const EAS_PROJECT_ID: string | null = 'in-file';"), 'from-env');
   is('then the one app.config.ts carries', projectIdFrom({}, "const EAS_PROJECT_ID: string | null = 'in-file';"), 'in-file');

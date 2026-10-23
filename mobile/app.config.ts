@@ -128,6 +128,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   // it from the next launch on (`updates`, above).
   runtimeVersion: forExpoGo ? { policy: 'sdkVersion' } : { policy: 'fingerprint' },
   updates,
+  // Expo Go's own loading page shows a project's icon and name, large, unless
+  // the manifest names a splash; it ignores the expo-splash-screen plugin
+  // below, which is for the phone's launch screen in a store build. So the
+  // Expo Go publish alone carries a whole page in the launch screen's colour
+  // with the mark at the launch screen's size (76pt at 3x) — the same opening
+  // the store build has — drawn edge to edge (`cover`), the plain background
+  // cropping harmlessly on another screen shape.
+  ...(forExpoGo ? { splash: { image: './assets/images/splash-expo-go.png', resizeMode: 'cover' as const, backgroundColor: '#F6F4F0' } } : {}),
   ios: {
     // Permanent once the app is on the App Store: confirm before the first build.
     bundleIdentifier: 'net.brokersconnect.app',
