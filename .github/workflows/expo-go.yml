@@ -267,10 +267,12 @@ jobs:
     # Xcode 26, as for the native build in mobile.yml.
     runs-on: macos-26
     timeout-minutes: 60
-    # One simulator at a time, whichever channel: the Mac runner is the
-    # expensive one, and the newest publish anywhere is the one worth looking at.
+    # One look at a time for this pull request, or for main — the same split as
+    # the publish above. A single group for every channel cancelled whichever
+    # look was already open when any other publish queued, and GitHub reports
+    # that cancellation as a failed check on the pull request that was interrupted.
     concurrency:
-      group: expo-go-look
+      group: expo-go-look-${{ github.event_name == 'pull_request' && github.event.number || 'main' }}
       cancel-in-progress: true
     defaults:
       run:
