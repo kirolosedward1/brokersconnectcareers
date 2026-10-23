@@ -13,8 +13,8 @@ import { requireEmployer } from '@/lib/auth';
 import { ApplicantsSuspended } from '@/components/employer/applicants-suspended';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
-import { UUID_RE } from '@/lib/admin/params';
 import { APPLICATION_STAGES } from '@/lib/application-stages';
+import { UUID_RE } from '@/lib/admin/params';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -38,8 +38,6 @@ type ApplicantRow = {
     agent_profiles: ApplicantProfile | null;
   } | null;
 };
-
-const PIPELINE: readonly ApplicationStatus[] = APPLICATION_STAGES;
 
 /** The inbox's cap, for the same reason: past it, the inbox's filters reach the rest. */
 const APPLICANTS_SHOWN = 200;
@@ -268,7 +266,7 @@ export default async function ApplicantsPage({
           written and the reason being typed went with it.
         */
         <div className="space-y-3">
-          {PIPELINE.flatMap((stage) => {
+          {APPLICATION_STAGES.flatMap((stage) => {
             const inStage = applications.filter((application) => application.status === stage);
             if (inStage.length === 0) return [];
 

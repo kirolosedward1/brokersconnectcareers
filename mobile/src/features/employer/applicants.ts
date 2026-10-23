@@ -12,8 +12,8 @@ import type {
   JobStatus,
   JobTrack,
 } from '@/lib/supabase/database.types';
-import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
 import { APPLICATION_STAGES } from '@/lib/application-stages';
+import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
 import { looseArabicNeedle } from '@/lib/search/needle';
 import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
@@ -27,7 +27,6 @@ import { supabase } from '~/lib/supabase';
  */
 
 export const APPLICANTS_CAP = 200;
-export const STAGES: readonly ApplicationStatus[] = APPLICATION_STAGES;
 
 export type ApplicantProfile = {
   slug: string;
@@ -139,7 +138,7 @@ export function parseInboxFilters(params: Record<string, string | string[] | und
   const track = one('track');
   const job = one('job');
   return {
-    stage: (STAGES as readonly string[]).includes(stage) ? (stage as ApplicationStatus) : null,
+    stage: (APPLICATION_STAGES as readonly string[]).includes(stage) ? (stage as ApplicationStatus) : null,
     job: UUID.test(job) ? job : null,
     q: one('q').trim().slice(0, 80),
     band: (EXPERIENCE_BANDS as readonly string[]).includes(band) ? (band as ExperienceBand) : null,
@@ -195,7 +194,7 @@ export function useInbox(filters: InboxFilters, { enabled = true }: { enabled?: 
       if (rows.error) throw rows.error;
       if (stages.error) throw stages.error;
 
-      const counts = Object.fromEntries(STAGES.map((stage) => [stage, 0])) as Record<ApplicationStatus, number>;
+      const counts = Object.fromEntries(APPLICATION_STAGES.map((stage) => [stage, 0])) as Record<ApplicationStatus, number>;
       for (const row of (stages.data ?? []) as { status: ApplicationStatus }[]) counts[row.status] += 1;
       return { rows: normalise(rows.data ?? []), counts, any: (stages.data ?? []).length };
     },

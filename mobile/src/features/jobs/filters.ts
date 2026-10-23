@@ -2,14 +2,14 @@ import { useCallback } from 'react';
 import { useLocale, useTranslations } from 'use-intl';
 import {
   activeFilterLabel,
-  BOARD_PARAMS,
   countActiveFilters,
   EMPTY_FILTERS,
+  JOB_FILTER_PARAMS,
   serializeJobFilters,
   type ActiveFilter,
   type JobFilters,
 } from '@/lib/job-filters';
-import { localized } from '@/lib/locale';
+import type { Translate } from '@/lib/notifications/title';
 import { useDistricts, useGovernorates } from '~/features/taxonomy';
 
 /**
@@ -19,8 +19,8 @@ import { useDistricts, useGovernorates } from '~/features/taxonomy';
  * same way and are read by the website's own parser (parseJobFilters).
  */
 
-/** Every parameter the board reads — the website's own list (src/lib/job-filters.ts). */
-export { BOARD_PARAMS };
+/** Every parameter the board reads — the website's own list. A filter change names all of them. */
+export const BOARD_PARAMS = JOB_FILTER_PARAMS;
 
 export type BoardParams = Record<(typeof BOARD_PARAMS)[number], string | undefined>;
 
@@ -74,41 +74,19 @@ export function boardQuery(filters: JobFilters): string {
 }
 
 /**
- * What a chip says — the website's labelFor(), in the same words: the reader's
- * own search in «quotes», a track, a place, "10,000 EGP or more", "last 7 days".
+ * What a chip says — the website's activeFilterLabel, so the same words: the
+ * reader's own search in «quotes», a track, a place, "10,000 EGP or more",
+ * "last 7 days".
  */
-export function useFilterLabel(filters: JobFilters) {
+export function useFilterLabel() {
   const locale = useLocale();
-  const tTrack = useTranslations('track');
-  const tLeads = useTranslations('leadsSource');
-  const tExp = useTranslations('experienceBand');
-  const tType = useTranslations('employmentType');
-  const tFilters = useTranslations('filters');
-  const tCompanyType = useTranslations('companyType');
-  const tCommission = useTranslations('commissionType');
+  const t = useTranslations();
   const { data: districts } = useDistricts();
   const { data: governorates } = useGovernorates();
 
   return useCallback(
     (filter: ActiveFilter): string =>
-      activeFilterLabel(filter, {
-        locale,
-        track: (value) => tTrack(value as never),
-        leads: (key) => tLeads(key as never),
-        exp: (value) => tExp(value as never),
-        type: (value) => tType(value as never),
-        companyType: (value) => tCompanyType(value as never),
-        commission: (value) => tCommission(value as never),
-        filters: (key, values) => tFilters(key, values),
-        districtName: (slug) => {
-          const district = districts?.find((item) => item.slug === slug);
-          return district ? localized(locale, district.name_ar, district.name_en) : slug;
-        },
-        governorateName: (slug) => {
-          const governorate = governorates?.find((item) => item.slug === filters.governorateSlug);
-          return governorate ? localized(locale, governorate.name_ar, governorate.name_en) : slug;
-        },
-      }),
-    [locale, districts, governorates, filters.governorateSlug, tTrack, tLeads, tExp, tType, tFilters, tCompanyType, tCommission],
+      activeFilterLabel(filter, { t: t as unknown as Translate, locale, districts, governorates }),
+    [locale, t, districts, governorates],
   );
 }

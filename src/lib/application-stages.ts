@@ -1,19 +1,35 @@
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
 
 /**
- * An application's stages, in the order a pipeline shows them, and what each
- * means to the two people it concerns — written once for the website's
- * dashboard, inbox, pipeline and console and for the app, which draw the
- * same list and the same badges. It was copied into each of those, and a
- * stage added to the database (or a colour changed) would have reached some
- * and not others.
+ * The application pipeline, as both the website and the app draw it.
  *
- * No imports but a type, so the app may bundle it (mobile/scripts/check-shared.mjs).
+ * The order, the badge each stage wears and when a candidate may withdraw
+ * were written out by hand on every page and screen that showed them, and on
+ * the server schema that accepts a move — ten copies nothing held together.
+ * A stage added to the database type now fails to compile here until it has
+ * a place in the order and a tone.
+ *
+ * Pure on purpose: the app bundles this (scripts/check-shared.mjs).
  */
-export const APPLICATION_STAGES = ['new', 'shortlisted', 'interview', 'hired', 'rejected'] as const satisfies readonly ApplicationStatus[];
 
-/** The badge each stage wears: open, moving, decided for, decided against. */
-export const STAGE_TONE: Record<ApplicationStatus, 'default' | 'primary' | 'success' | 'destructive'> = {
+/** Every stage, in the order the pipeline runs and the product counts them. */
+export const APPLICATION_STAGES = [
+  'new',
+  'shortlisted',
+  'interview',
+  'hired',
+  'rejected',
+] as const satisfies readonly ApplicationStatus[];
+
+// A status the list leaves out is a compile error rather than a missing column.
+type Missing = Exclude<ApplicationStatus, (typeof APPLICATION_STAGES)[number]>;
+const everyStage: [Missing] extends [never] ? true : Missing = true;
+void everyStage;
+
+export type StageTone = 'default' | 'primary' | 'success' | 'destructive';
+
+/** The badge each stage wears. */
+export const STAGE_TONE: Record<ApplicationStatus, StageTone> = {
   new: 'default',
   shortlisted: 'primary',
   interview: 'primary',
@@ -22,8 +38,9 @@ export const STAGE_TONE: Record<ApplicationStatus, 'default' | 'primary' | 'succ
 };
 
 /**
- * Whether the candidate may still withdraw: only while the outcome is open,
- * which is the database's rule too (migration 42).
+ * Withdrawing is offered only while the outcome is still open. The database's
+ * withdrawal precondition (migration 42) is what enforces it; this decides
+ * whether the button is drawn.
  */
 export function canWithdraw(status: ApplicationStatus): boolean {
   return status === 'new' || status === 'shortlisted';

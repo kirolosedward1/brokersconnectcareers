@@ -14,9 +14,7 @@ import { raise } from '@/lib/queries/error';
 import { formatDate, isoDate } from '@/lib/utils';
 import type { ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
-import { canWithdraw, STAGE_TONE } from '@/lib/application-stages';
-
-const STATUS_VARIANT = STAGE_TONE;
+import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
 
 export async function generateMetadata({
   params,
@@ -144,7 +142,7 @@ export default async function ApplicationsPage({
                 </p>
               </div>
 
-              <Badge variant={STATUS_VARIANT[application.status]}>
+              <Badge variant={STAGE_TONE[application.status]}>
                 {tStatus(application.status)}
               </Badge>
             </div>

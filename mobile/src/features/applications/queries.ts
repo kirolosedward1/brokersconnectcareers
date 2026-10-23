@@ -5,9 +5,6 @@ import { callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
-/** The badge each status wears and whether it may still be withdrawn: the website's own rules. */
-export { canWithdraw, STAGE_TONE as STATUS_VARIANT } from '@/lib/application-stages';
-
 export type CandidateApplication = {
   id: string;
   job_id: string;

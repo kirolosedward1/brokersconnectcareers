@@ -39,9 +39,6 @@ export type ApplicantProfile = {
   volume_egp: number | null;
 };
 
-const STATUSES: readonly ApplicationStatus[] = APPLICATION_STAGES;
-const STATUS_VARIANT = STAGE_TONE;
-
 export function ApplicantCard({
   application,
   notes,
@@ -231,7 +228,7 @@ export function ApplicantCard({
           </div>
         </div>
 
-        <Badge variant={STATUS_VARIANT[status]}>{tStatus(status)}</Badge>
+        <Badge variant={STAGE_TONE[status]}>{tStatus(status)}</Badge>
       </div>
 
       {/* Who this actually is.
@@ -398,7 +395,7 @@ export function ApplicantCard({
             disabled={pending}
             className="w-auto"
           >
-            {STATUSES.map((value) => (
+            {APPLICATION_STAGES.map((value) => (
               <option key={value} value={value}>
                 {tStatus(value)}
               </option>
