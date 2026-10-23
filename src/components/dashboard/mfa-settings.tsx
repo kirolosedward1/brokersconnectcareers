@@ -19,12 +19,12 @@ import { safeNext } from '@/lib/safe-next';
  * turn it off (which Supabase permits only from an aal2 session — a stolen
  * aal1 session cannot remove the factor that keeps it out).
  *
- * Optional for everyone and required for admins: the console sends an admin
- * here with `?mfa=required` until a factor exists, and with `?mfa=challenge`
- * until this session has used it (see requireAdmin). The database enforces
- * the second half on its own — is_admin() is false at aal1 for an admin with
- * a factor — so this page is where the console becomes usable again, not the
- * thing that keeps it closed.
+ * Optional for everyone. Required for an admin only when ADMIN_MFA_REQUIRED=true:
+ * the console then sends them here with `?mfa=required` until a factor exists,
+ * and with `?mfa=challenge` until this session has used it (see requireAdmin).
+ * The database enforces the second half on its own — is_admin() is false at aal1
+ * for an admin with a factor — so this page is where the console becomes usable
+ * again, not the thing that keeps it closed.
  *
  * Every step runs in the browser against the person's own session, the way
  * the password change does, because the calls are Supabase's and the session

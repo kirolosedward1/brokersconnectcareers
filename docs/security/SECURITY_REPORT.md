@@ -33,7 +33,7 @@ Severity is the impact on a real person, not CVSS theatre.
 | 9 | **Medium** | Company membership was imposed without consent, and `my_company_id()` prefers an admin membership, so a victim added as admin to an attacker's company had their whole console silently switch to it; the address lookup behind it was an account/role oracle open to any member. | 307: one company per account enforced by `guard_company_membership`; `company.ts`: lookup restricted to company admins, 20/day, `security_events` on refusal |
 | 10 | **Medium** | Rate limits counted a client-supplied `created_at` (back-date a row and it never counts), took no lock (N parallel requests each saw N−1), and had no short window. Listings had no cap at all. | 306/307: server-stamped `created_at`; advisory locks; applications 8/10 min + 30/day; listings 5/day unverified, 20/day verified; third identical title+district in 30 days refused; all thresholds in `abuse_limits` |
 | 11 | **Medium** | `settle_order()` trusted `merchant_order_id`, the one field Paymob's HMAC does not sign; a buyer's own signed callback could be replayed against another pending order (the partial unique index was the only thing in the way). | 312: settlement bound to the signed Paymob order id, amount (piastres) and currency; refunded/voided never succeeds; route passes the signed fields |
-| 12 | **Medium** | A stolen admin session was the whole platform: `is_admin()` asked only the profile row. | 311: `is_admin()` requires `aal = 'aal2'` once the admin has a verified TOTP factor; `requireAdmin` routes to enrolment/challenge; `MfaSettings` component; `ADMIN_MFA_REQUIRED` switch |
+| 12 | **Medium** | A stolen admin session was the whole platform: `is_admin()` asked only the profile row. | 311: `is_admin()` requires `aal = 'aal2'` once the admin has a verified TOTP factor; `requireAdmin` routes to enrolment only when `ADMIN_MFA_REQUIRED=true` (unset is off) and always to the challenge once a factor exists; `MfaSettings` component |
 | 13 | **Medium** | Live listings could change district, track, employment type and experience band without re-review, and their slug was mutable by any member. | 307: those four fields are material; slug frozen for owners |
 | 14 | **Medium** | `increment_job_view()` was anon-callable and unbounded — and also broken (the guard refused the update from a visitor's session), so view counts were both spoofable and never incremented. | 304/`jobs.ts`: closed to anon/authenticated; the server counts with the service role after the response |
 | 15 | **Low** | ~35 places returned Postgres error text to the browser (constraint and trigger names). | Mapped to fixed codes in `jobs.ts`, `company.ts`, `cv.ts`, `employer-jobs.ts`, `account.ts`, `agent-profile.ts`, `onboarding.ts`, `billing.ts`; details go to the log with identifiers |
@@ -86,7 +86,7 @@ Edge: the domain resolves straight to Vercel; there is no Cloudflare zone. The V
 
 ## 8. Admin security
 
-Admin decisions are in `audit_log` with actor, role, target and before/after (role and approval changes, verification, moderation, featuring, membership, consultant visibility, report resolution). `is_admin()` requires a second factor once enrolled; the console forces enrolment in production and routes an unproven session to the challenge; the account page hosts enrol/verify/disable. The email preview and moderation routes stay behind `is_admin()`. `/admin/security` shows a day of events, the audit trail, top reveal viewers and the live thresholds.
+Admin decisions are in `audit_log` with actor, role, target and before/after (role and approval changes, verification, moderation, featuring, membership, consultant visibility, report resolution). `is_admin()` requires a second factor once enrolled; the console requires enrolment only when `ADMIN_MFA_REQUIRED=true` (unset is off) and routes an enrolled but unproven session to the challenge; the account page hosts enrol/verify/disable. Email previews stay behind the admin role, and ask for the authenticator only when that switch is on. Moderation routes stay behind `is_admin()`. `/admin/security` shows a day of events, the audit trail, top reveal viewers and the live thresholds.
 
 ## 9. Database, indexes and scale
 
@@ -157,7 +157,7 @@ The migration linter checks ordering, uniqueness, rollback instructions and safe
 | Storage secured | **Done in code and schema**; storage versioning is a dashboard toggle (recommended) |
 | CVs private | **Done** — signed, entitled, counted |
 | Agent contacts protected | **Done** — no contact in any list or card; reveal function with allowances and ledger |
-| Admin protected | **Done in schema and app**; requires TOTP enabled in the dashboard and each admin to enrol |
+| Admin protected | **Done in schema and app**; TOTP stays enabled in the dashboard. Enrolment is required before the console only when `ADMIN_MFA_REQUIRED=true`; an enrolled admin is still refused at aal1 |
 | Rate limiting active | **Done at the database** (applies on deploy); edge rules **documented, not applied** |
 | Bot protection active | **Not yet** — needs Turnstile keys on Vercel and the CAPTCHA toggle in Supabase Auth |
 | Spam controls active | **Done** — applications, listings, reports, notifications, checkout |

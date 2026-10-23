@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 const { readBearer, challenge, tokenRefused } = await import('../src/lib/mobile-api/bearer.ts');
 const { secondFactorDue, tokenAssurance } = await import('../src/lib/auth/second-factor.ts');
 const { adminDoor, assuranceOf } = await import('../src/lib/mobile-api/admin-door.ts');
+const { adminCleared, adminMfaRequired } = await import('../src/lib/admin-mfa.ts');
 const { AuthApiError, AuthRetryableFetchError, AuthSessionMissingError, AuthUnknownError } = await import('@supabase/supabase-js');
 
 let pass = 0;
@@ -94,9 +95,32 @@ console.log('\n— an admin lever opens only for a session the website\'s consol
     'mfa_required',
   );
   is(
-    'no authenticator where none is required (the escape hatch): open',
+    'no authenticator where none is required: open',
     adminDoor({ jwt: token({ aal: 'aal1' }), user: {} }, false),
     'open',
+  );
+}
+
+console.log('\n— ADMIN_MFA_REQUIRED is off unless it is exactly true');
+{
+  const flag = (value) => adminMfaRequired({ ADMIN_MFA_REQUIRED: value, NODE_ENV: 'production' });
+  is('unset is off, including in production', adminMfaRequired({ NODE_ENV: 'production' }), false);
+  is('unset is off in development', adminMfaRequired({ NODE_ENV: 'development' }), false);
+  is('true turns it on', flag('true'), true);
+  is('false leaves it off', flag('false'), false);
+  is('any other value leaves it off', flag('1'), false);
+  is('empty leaves it off', flag(''), false);
+  is('not an admin, switch off', adminCleared(false, false, false), false);
+  is('not an admin, even with no code owed', adminCleared(false, true, false), false);
+  is('an admin, switch off, no authenticator', adminCleared(true, false, false), true);
+  is('an admin, switch off, code still owed: let through', adminCleared(true, true, false), true);
+  is('an admin, switch on, code owed: held', adminCleared(true, true, true), false);
+  is('an admin, switch on, code given: through', adminCleared(true, false, true), true);
+  const preview = readFileSync(new URL('../src/app/api/email/preview/route.ts', import.meta.url), 'utf8');
+  is(
+    'email previews use the same switch, and still read the role',
+    /adminCleared\(/.test(preview) && /role === 'admin'/.test(preview) && /adminMfaRequired\(\)/.test(preview),
+    true,
   );
 }
 
