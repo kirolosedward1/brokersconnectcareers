@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDateTime } from '@/lib/format';
+import { localized } from '@/lib/locale';
 import {
   BellRing,
   Building2,
@@ -152,7 +153,7 @@ export default function AccountScreen() {
             ) : null}
             {viewer?.company ? (
               <Text variant="small" weight="medium">
-                {viewer.company.name_ar}
+                {localized(locale, viewer.company.name_ar, viewer.company.name_en)}
               </Text>
             ) : null}
             {/* The one thing here other people see. */}
