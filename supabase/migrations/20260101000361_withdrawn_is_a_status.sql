@@ -12,6 +12,6 @@
 -- =============================================================================
 
 -- rollback: forward-fix only — PostgreSQL cannot drop a single enum value; to undo, leave 'withdrawn' unused
--- safety: ships-with-code — the value is unused until 362, and nothing in the old server writes this label. The new server calls withdraw_application and, while that function is missing, reports withdrawal unavailable and does not delete the row. Applied before or after the server, this file only adds an unused label
+-- safety: ships-with-code — the value is unused until 362, and nothing in the old server writes this label. Apply 361 and 362 while that server is live (it still deletes, and 362 leaves the delete in place), deploy #75, then apply 363. The new server calls withdraw_application and, while that function is missing, reports withdrawal unavailable and does not delete the row. This file only adds an unused label
 
 alter type public.application_status add value if not exists 'withdrawn';

@@ -18,22 +18,24 @@
 -- 052, as it stands after 338: on_application_withdrawn tells the company
 -- only when the application was shortlisted (a withdrawal from new is noise),
 -- names the listing and not a new fact about the person, skips a retention
--- purge, and dedupes on the listing and the candidate. That notice moves to
--- the update. forget_application_notices (351) still runs on a real delete
--- (retention, a cascade) and now also when a row becomes withdrawn.
+-- purge, and dedupes on the listing and the candidate. The same function now
+-- also runs after the status update. The AFTER DELETE trigger stays, so the
+-- server that is already live — the one that still deletes — keeps notifying.
+-- A statement is a delete or an update, so the two triggers do not both fire.
+-- 363 drops the delete trigger once that server is gone. forget_application_notices
+-- (351) still runs on a real delete (retention, a cascade) and now also when
+-- a row becomes withdrawn.
 --
--- Compatibility: the server calls withdraw_application. If the function is
--- not there yet it says withdrawal is unavailable and does not delete the
--- row. This file removes the candidate delete, so an older server that still
--- tries to delete is refused rather than erasing the history. Either order
--- leaves the row in place until both have landed. Rolling the code back
--- needs the delete policy put back.
+-- Order: apply 361 and this file while the old server is live, deploy #75,
+-- then apply 363. The old server deletes through applications_withdraw_candidate,
+-- which this file leaves in place. The new server calls withdraw_application
+-- and, while that function is missing, reports withdrawal unavailable and
+-- does not delete.
 -- =============================================================================
 
--- rollback: forward-fix only — restoring the delete would drop the withdrawn rows' history; to undo the behaviour, restate the functions from 62, 63, 46, 14, 328, 346, 349, 355, 347, 313, 43, 345, 344, 338, 351 and 204, drop withdraw_application, and recreate applications_withdraw_candidate from 42
--- safety: ships-with-code — the server calls withdraw_application and, while that function is missing (PGRST202 or 42883), reports withdrawal unavailable and does not delete the row. This file drops the candidate delete, so an older server still trying to delete is refused by the policy. Either order keeps the row until both have landed
+-- rollback: forward-fix only — restoring the delete would drop the withdrawn rows' history; to undo the behaviour, restate the functions from 62, 63, 46, 14, 328, 346, 349, 355, 347, 313, 43, 345, 344, 338, 351 and 204 and drop withdraw_application. This file does not remove the candidate delete; 363 does, after #75 is live
+-- safety: ships-with-code — apply 361 and 362 before deploying #75, then apply 363. This file keeps applications_withdraw_candidate and the AFTER DELETE notice, so the old server still deletes and still notifies. The new server calls withdraw_application and, while that function is missing, reports withdrawal unavailable and does not delete the row. A retention purge still sets app.retention_purge and this function returns before notifying
 -- safety: constraint — withdrawn_at is null on every existing row and no row is withdrawn, so the check holds; the partial unique index matches the old (job_id, candidate_id) uniqueness for every standing row (production has no withdrawn rows) and only lets a second row exist once one of them is withdrawn
--- safety: rls — applications_withdraw_candidate (the candidate delete) is removed and not replaced by an update policy; the candidate withdraws only through withdraw_application, which refuses anyone else and any status past shortlisted. Employers already update through applications_update_employer; the guard now refuses a withdrawn row and a status of withdrawn from them
 -- safety: definer — withdraw_application runs as its owner so it can update a row the candidate has no update policy for, and it sets a transaction-local flag the guard requires; search_path is pinned
 
 -- ---------------------------------------------------------------------------
@@ -65,7 +67,9 @@ create unique index applications_one_standing_per_job
 -- Who may withdraw, and nobody else may touch it afterwards
 -- ---------------------------------------------------------------------------
 
-drop policy if exists applications_withdraw_candidate on applications;
+-- applications_withdraw_candidate stays. The server already in production
+-- deletes through it. 363 drops that policy once #75 is live. That server
+-- never deletes.
 
 create or replace function public.withdraw_application(p_id uuid)
 returns table (application_id uuid, previous_cv_path text)
@@ -167,8 +171,11 @@ $$;
 -- The notices that used to run after the delete
 -- ---------------------------------------------------------------------------
 
--- 338's function, on the update. A withdrawal from new is still not news.
--- A retention delete is not a withdrawal and this trigger is not on delete.
+-- 338's function, on the update and still on the delete until 363.
+-- A withdrawal from new is still not news. A retention delete is not a
+-- withdrawal: the skip below is what keeps a purge quiet while the AFTER
+-- DELETE trigger is still attached. One statement deletes or updates, so
+-- the two triggers do not both fire and the company is not told twice.
 create or replace function public.on_application_withdrawn()
 returns trigger
 language plpgsql
@@ -220,8 +227,9 @@ $$;
 
 revoke execute on function public.on_application_withdrawn() from public, anon, authenticated;
 
-drop trigger if exists applications_notify_withdrawal on applications;
-create trigger applications_notify_withdrawal
+-- applications_notify_withdrawal stays AFTER DELETE (migration 52). The
+-- server that still deletes keeps its notice. 363 drops that trigger.
+create trigger applications_notify_withdrawal_on_update
   after update of status on applications
   for each row execute function public.on_application_withdrawn();
 

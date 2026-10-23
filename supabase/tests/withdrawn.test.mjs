@@ -1,5 +1,6 @@
 /**
- * A withdrawal keeps the row (migrations 361 and 362).
+ * A withdrawal keeps the row (migrations 361 and 362). 363, applied only
+ * after the new server is live, is what removes the candidate delete.
  *
  * The candidate, and only the candidate, marks a new or shortlisted
  * application withdrawn. The row, its events and the company's shortlist
@@ -183,4 +184,164 @@ report.section('a shortlisted withdrawal is news; a decided application is not')
     shut.ok && shut.rows.length === 0 && still.status === 'interview', shut.error ?? still.status);
 }
 
-report.finish();
+report.section('363 has removed the candidate delete');
+
+{
+  const policy = await one(`select count(*)::int as n from pg_policies
+                             where schemaname = 'public' and tablename = 'applications'
+                               and policyname = 'applications_withdraw_candidate'`);
+  const triggers = await q(`select tgname, pg_get_triggerdef(t.oid) as def
+                             from pg_trigger t
+                             join pg_class c on c.oid = t.tgrelid
+                             join pg_namespace n on n.oid = c.relnamespace
+                            where n.nspname = 'public' and c.relname = 'applications' and not t.tgisinternal
+                              and tgname in ('applications_notify_withdrawal', 'applications_notify_withdrawal_on_update')`);
+  const byName = Object.fromEntries(triggers.map((row) => [row.tgname, row.def]));
+  report.check('the candidate delete policy is gone', policy.n === 0, String(policy.n));
+  report.check('the old delete notice is gone and the update notice remains',
+    !byName.applications_notify_withdrawal
+      && /after update/i.test(byName.applications_notify_withdrawal_on_update ?? ''),
+    JSON.stringify(byName));
+
+  const standing = await one(`select id from applications
+                              where job_id = '${first}' and candidate_id = '${CAND}' and status = 'new'`);
+  const deleted = await asCommit(CAND, `delete from applications where id = '${standing.id}' returning id`);
+  const remains = await one(`select status from applications where id = '${standing.id}'`);
+  report.check('a candidate cannot delete the row',
+    deleted.ok && deleted.rows.length === 0 && remains.status === 'new',
+    deleted.error ?? JSON.stringify({ deleted: deleted.rows, remains }));
+
+  const fourth = await job('wd-fourth');
+  const listed = await one(`insert into applications (job_id, candidate_id, status)
+                            values ('${fourth}', '${CAND}', 'shortlisted') returning id`);
+  const before = await one(`select count(*)::int as n from notifications where kind = 'application_withdrawn'`);
+  await db.exec(`delete from applications where id = '${listed.id}'`);
+  const after = await one(`select count(*)::int as n from notifications where kind = 'application_withdrawn'`);
+  const gone = await one(`select count(*)::int as n from applications where id = '${listed.id}'`);
+  report.check('deleting a shortlisted row no longer tells the company',
+    gone.n === 0 && after.n === before.n, `${before.n} → ${after.n}, left ${gone.n}`);
+}
+
+const after363 = report.finish();
+
+// What production holds after 361 and 362, before 363. The old server still
+// deletes, that delete still notifies, and a retention purge still does not.
+const windowDb = await createTestDb({ before: '20260101000363' });
+const wq = async (sql) => (await windowDb.query(sql)).rows;
+const wone = async (sql) => (await wq(sql))[0];
+
+async function windowCommit(userId, sql) {
+  await windowDb.exec('begin');
+  try {
+    await windowDb.exec('set local role authenticated;');
+    await windowDb.exec(`set local request.jwt.claim.sub = '${userId}';`);
+    await windowDb.exec(`set local request.jwt.claims = '{"role":"authenticated","sub":"${userId}"}';`);
+    const result = await windowDb.query(sql);
+    await windowDb.exec('commit');
+    return { ok: true, rows: result.rows };
+  } catch (error) {
+    await windowDb.exec('rollback');
+    return { ok: false, error: error.message, rows: [] };
+  }
+}
+
+const reportWindow = reporter();
+const WEMP = 'cccccccc-1111-0000-0000-000000000001';
+const WCAND = 'cccccccc-2222-0000-0000-000000000001';
+const WCOMPANY = 'cccccccc-3333-0000-0000-000000000001';
+
+await windowDb.exec(`
+  insert into auth.users (id, email, email_confirmed_at, created_at, updated_at) values
+    ('${WEMP}', '${WEMP}@demo.test', now(), now(), now()),
+    ('${WCAND}', '${WCAND}@demo.test', now(), now(), now());
+  insert into profiles (id, role, full_name, whatsapp_phone) values
+    ('${WEMP}', 'employer', 'صاحب الشركة', '+201099900011'),
+    ('${WCAND}', 'candidate', 'مرشح', '+201099900012');
+  update profiles set approval_status = 'approved' where id = '${WEMP}';
+  insert into companies (id, owner_id, name_ar, slug, verification_status)
+    values ('${WCOMPANY}', '${WEMP}', 'شركة النافذة', 'withdrawn-window-co', 'verified');
+`);
+
+async function windowJob(slug) {
+  const row = await wone(`
+    insert into jobs (company_id, title_ar, slug, track, employment_type, experience_band,
+                      district_id, commission_type, leads_source, description_ar, status,
+                      published_at, expires_at)
+    values ('${WCOMPANY}', 'وظيفة ${slug}', '${slug}', 'primary', 'full_time', 'junior_1_3',
+            (select id from districts limit 1), 'none', 'company_provided', 'وصف', 'active',
+            now(), now() + interval '30 days')
+    returning id`);
+  return row.id;
+}
+
+reportWindow.section('before 363 the old delete still withdraws and still notifies');
+
+{
+  const policy = await wone(`select count(*)::int as n from pg_policies
+                              where schemaname = 'public' and tablename = 'applications'
+                                and policyname = 'applications_withdraw_candidate'`);
+  const triggers = await wq(`select tgname, pg_get_triggerdef(t.oid) as def
+                              from pg_trigger t
+                              join pg_class c on c.oid = t.tgrelid
+                              join pg_namespace n on n.oid = c.relnamespace
+                             where n.nspname = 'public' and c.relname = 'applications' and not t.tgisinternal
+                               and tgname in ('applications_notify_withdrawal', 'applications_notify_withdrawal_on_update')`);
+  const byName = Object.fromEntries(triggers.map((row) => [row.tgname, row.def]));
+  reportWindow.check('the candidate delete policy is still there', policy.n === 1, String(policy.n));
+  reportWindow.check('both notices are attached, one to delete and one to update',
+    /after delete/i.test(byName.applications_notify_withdrawal ?? '')
+      && /after update/i.test(byName.applications_notify_withdrawal_on_update ?? ''),
+    JSON.stringify(byName));
+
+  const fresh = await windowJob('wd-window-new');
+  const opened = await wone(`insert into applications (job_id, candidate_id, status)
+                             values ('${fresh}', '${WCAND}', 'new') returning id`);
+  const removed = await windowCommit(WCAND, `delete from applications where id = '${opened.id}' returning id`);
+  const left = await wone(`select count(*)::int as n from applications where id = '${opened.id}'`);
+  const quiet = await wone(`select count(*)::int as n from notifications
+                            where kind = 'application_withdrawn' and payload->>'job_id' = '${fresh}'`);
+  reportWindow.check('the old server can still delete a new application, and that is not news',
+    removed.ok && removed.rows.length === 1 && left.n === 0 && quiet.n === 0,
+    removed.error ?? JSON.stringify({ removed: removed.rows, left: left.n, quiet: quiet.n }));
+
+  const picked = await windowJob('wd-window-short');
+  const short = await wone(`insert into applications (job_id, candidate_id, status)
+                            values ('${picked}', '${WCAND}', 'shortlisted') returning id`);
+  const dropped = await windowCommit(WCAND, `delete from applications where id = '${short.id}' returning id`);
+  const told = await wone(`select count(*)::int as n from notifications
+                           where kind = 'application_withdrawn' and payload->>'job_id' = '${picked}'`);
+  reportWindow.check('deleting a shortlisted application tells the company once',
+    dropped.ok && dropped.rows.length === 1 && told.n === 1, JSON.stringify({ dropped: dropped.rows, told: told.n }));
+
+  const kept = await windowJob('wd-window-update');
+  const marked = await wone(`insert into applications (job_id, candidate_id, status)
+                             values ('${kept}', '${WCAND}', 'shortlisted') returning id`);
+  const viaFunction = await windowCommit(WCAND, `select application_id from public.withdraw_application('${marked.id}')`);
+  const once = await wone(`select count(*)::int as n from notifications
+                           where kind = 'application_withdrawn' and payload->>'job_id' = '${kept}'`);
+  const closed = await wone(`select status from applications where id = '${marked.id}'`);
+  reportWindow.check('the new withdrawal tells the company once, and the row stays',
+    viaFunction.ok && viaFunction.rows.length === 1 && once.n === 1 && closed.status === 'withdrawn',
+    viaFunction.error ?? JSON.stringify({ viaFunction: viaFunction.rows, once: once.n, closed }));
+
+  await windowDb.exec(`delete from applications where id = '${marked.id}'`);
+  const stillOnce = await wone(`select count(*)::int as n from notifications
+                                where kind = 'application_withdrawn' and payload->>'job_id' = '${kept}'`);
+  reportWindow.check('deleting that withdrawn row afterwards does not tell them again',
+    stillOnce.n === 1, String(stillOnce.n));
+
+  const aged = await windowJob('wd-window-purge');
+  await windowDb.exec(`set session_replication_role = replica;
+    insert into applications (job_id, candidate_id, status, created_at)
+      values ('${aged}', '${WCAND}', 'shortlisted', now() - interval '366 days');
+    set session_replication_role = origin;`);
+  const beforePurge = await wone(`select count(*)::int as n from notifications where kind = 'application_withdrawn'`);
+  const run = (await wone(`select public.run_privacy_retention() as r`)).r;
+  const afterPurge = await wone(`select count(*)::int as n from notifications where kind = 'application_withdrawn'`);
+  const purged = await wone(`select count(*)::int as n from applications where job_id = '${aged}'`);
+  reportWindow.check('a retention purge still deletes without a withdrawal notice',
+    run.applications === 1 && purged.n === 0 && afterPurge.n === beforePurge.n,
+    JSON.stringify({ run, purged: purged.n, before: beforePurge.n, after: afterPurge.n }));
+}
+
+process.exit(after363 && reportWindow.finish() ? 0 : 1);
