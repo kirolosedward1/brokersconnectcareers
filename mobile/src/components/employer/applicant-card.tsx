@@ -302,9 +302,13 @@ export function ApplicantCard({
 
       {applicant.note ? <Text variant="small">{`«${applicant.note}»`}</Text> : null}
 
+      {/* Contact in this market is WhatsApp, with the first message already written.
+          A withdrawn application is closed, so neither this nor the saved replies
+          nor the no-CV line is offered. With nothing left to put here — no CV
+          either — the row is not drawn: an empty row would still take the card's
+          gap, and the 16px under the last line would no longer be the card's own. */}
+      {!withdrawn || applicant.cv_path ? (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
-        {/* Contact in this market is WhatsApp, with the first message already written.
-            A withdrawn application is closed, so neither this nor the saved replies open it. */}
         {!withdrawn && candidate ? (
           <Button
             label={t('employer.whatsappCandidate')}
@@ -358,6 +362,7 @@ export function ApplicantCard({
           </View>
         )}
       </View>
+      ) : null}
       {cvError ? (
         <Text variant="small" tone="destructive" accessibilityRole="alert">
           {cvError}

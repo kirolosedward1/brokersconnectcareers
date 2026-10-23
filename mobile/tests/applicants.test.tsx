@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Linking, Modal, RefreshControl, Text } from 'react-native';
+import { Linking, Modal, RefreshControl, StyleSheet, Text } from 'react-native';
 import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
@@ -575,6 +575,44 @@ describe("a listing's applicants", () => {
     expect(head?.url.searchParams.get('job_id')).toBe(`eq.${JOB_ID}`);
     // Two standing applications. The withdrawal is on the page and not in the count.
     expect(screen.getByText(`${LRI}2${PDI} متقدمين`)).toBeTruthy();
+  });
+
+  it('draws no action row on a withdrawn card that has nothing to offer', async () => {
+    rows = [
+      {
+        ...omar,
+        id: 'a0000000-0000-4000-8000-000000000009',
+        status: 'withdrawn',
+        note: null,
+        decision_note: null,
+        cv_path: null,
+        candidate: { ...omar.candidate, full_name: 'نورا سليم' },
+      },
+    ];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    const header = await screen.findByRole('header', { name: 'نورا سليم' });
+    expect(screen.getAllByText(ar.applicationStatus.withdrawn).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: `${ar.employer.whatsappCandidate}: نورا سليم` })).toBeNull();
+    expect(screen.queryByRole('button', { name: `${ar.app.replies.open}: نورا سليم` })).toBeNull();
+    expect(screen.queryByText(ar.employer.noCv)).toBeNull();
+    expect(screen.queryByRole('button', { name: new RegExp(ar.employer.moveTo) })).toBeNull();
+
+    // The card's own padding is 16. An empty action row would be a second
+    // horizontal row and would push that 16 further down by the card's gap.
+    let node: { parent: typeof node | null; props?: { style?: unknown }; children?: unknown[] } | null = header;
+    let card: typeof node = null;
+    while (node) {
+      if (StyleSheet.flatten(node.props?.style)?.padding === 16) {
+        card = node;
+        break;
+      }
+      node = node.parent;
+    }
+    expect(card).not.toBeNull();
+    const rowsInCard = (card?.children ?? []).filter(
+      (child) => StyleSheet.flatten((child as { props?: { style?: unknown } }).props?.style)?.flexDirection === 'row',
+    );
+    expect(rowsInCard).toHaveLength(1);
   });
 
   it("is not found when the listing is not the company's", async () => {
