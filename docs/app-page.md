@@ -111,8 +111,8 @@ filters are the board's own tracks, lead sources and sort orders.
 13. **The ask, again** (dark), with a phone leaning in from the edge.
 
 On a phone, once the hero has scrolled away, a small floating bar near the
-foot of the screen carries the mark, the name and a short button to the App
-Store; it leaves while the closing band is on screen. The site header
+foot of the screen carries the mark, the name and a "get the app" button to
+the App Store; it leaves while the closing band is on screen. The site header
 scrolls away on this page instead of sticking, so the two never share the
 screen.
 
