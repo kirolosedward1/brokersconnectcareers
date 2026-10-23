@@ -78,44 +78,52 @@ export function CompareChooser({
 
   if (open.length < COMPARE_MIN) return list;
 
+  /*
+    The list stays outside the form. Each card carries the reader's note, and
+    that editor is a form of its own. A form inside this one would send the
+    compare navigation when they press Save. The chosen ids travel as hidden
+    fields; the cards themselves are not submitted.
+  */
   return (
-    <form action={localeHref(locale, '/dashboard/saved/compare')} method="get" className="space-y-4">
-      {picking ? (
-        <div className="space-y-2">
-          <p className="text-sm font-medium">{t.rich('choose', { max: COMPARE_MAX, v: numeral })}</p>
-          <p className="text-sm text-muted-foreground" aria-live="polite">
-            {t.rich('picked', { count: picked.length, v: numeral })}
-          </p>
-          {refused ? <p className="text-sm text-destructive">{t.rich('limit', { max: COMPARE_MAX, v: numeral })}</p> : null}
-          <div className="flex flex-wrap items-center gap-2">
-            {picked.map((id) => (
-              <input key={id} type="hidden" name="ids" value={id} />
-            ))}
-            <Button type="submit" disabled={picked.length < COMPARE_MIN}>
-              {t.rich('go', { count: picked.length, v: numeral })}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setPicking(false);
-                setPicked([]);
-                setRefused(false);
-              }}
-            >
-              {tCommon('cancel')}
-            </Button>
+    <div className="space-y-4">
+      <form action={localeHref(locale, '/dashboard/saved/compare')} method="get">
+        {picking ? (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">{t.rich('choose', { max: COMPARE_MAX, v: numeral })}</p>
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {t.rich('picked', { count: picked.length, v: numeral })}
+            </p>
+            {refused ? <p className="text-sm text-destructive">{t.rich('limit', { max: COMPARE_MAX, v: numeral })}</p> : null}
+            <div className="flex flex-wrap items-center gap-2">
+              {picked.map((id) => (
+                <input key={id} type="hidden" name="ids" value={id} />
+              ))}
+              <Button type="submit" disabled={picked.length < COMPARE_MIN}>
+                {t.rich('go', { count: picked.length, v: numeral })}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setPicking(false);
+                  setPicked([]);
+                  setRefused(false);
+                }}
+              >
+                {tCommon('cancel')}
+              </Button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" variant="outline" onClick={() => setPicking(true)}>
-            {t('start')}
-          </Button>
-          <p className="text-sm text-muted-foreground">{t.rich('startHint', { max: COMPARE_MAX, v: numeral })}</p>
-        </div>
-      )}
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="outline" onClick={() => setPicking(true)}>
+              {t('start')}
+            </Button>
+            <p className="text-sm text-muted-foreground">{t.rich('startHint', { max: COMPARE_MAX, v: numeral })}</p>
+          </div>
+        )}
+      </form>
       {list}
-    </form>
+    </div>
   );
 }
