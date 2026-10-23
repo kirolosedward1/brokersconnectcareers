@@ -983,8 +983,8 @@ directory and the shortlist do too (`(consultants,admin)` in the routes).
 - **The second factor** is asked of the app as the website asks it: the door
   (`mobile/src/features/admin/door.ts` on the phone, `admin-door.ts` on the
   server) opens only for a session that gave its authenticator's code, or —
-  where `ADMIN_MFA_REQUIRED` is off (it is on by default in production; the
-  app reads it from `/config`) — for an admin without one. An admin without
+  where `ADMIN_MFA_REQUIRED` is off (it is off unless that variable is `true`;
+  the app reads it from `/config`) — for an admin without one. An admin without
   an authenticator is sent to set one up on the website, then asked for the
   code by the app's own second-factor screen. The server refuses the levers
   with `mfa_required` / `mfa_challenge` regardless of what the app shows.

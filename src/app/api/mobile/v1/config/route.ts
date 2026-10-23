@@ -32,7 +32,7 @@ import type { MobileConfig } from '@/lib/mobile-api/reads';
  *   policies          the Terms' and the Privacy policy's current versions,
  *                     which a person's latest agreement has to name.
  *   adminMfaRequired  whether an admin needs an authenticator before the
- *                     console opens (ADMIN_MFA_REQUIRED) — the app's console
+ *                     console opens (ADMIN_MFA_REQUIRED=true; unset is off) — the app's console
  *                     asks what the website's does, and the server refuses
  *                     its levers otherwise (mobile-api/admin-door.ts).
  */

@@ -1,6 +1,7 @@
 import { cache } from 'react';
 import { unstable_rethrow } from 'next/navigation';
 import { redirect } from '@/i18n/navigation';
+import { adminMfaRequired } from '@/lib/admin-mfa';
 import { readMemberCompany } from '@/lib/company-member';
 import { createClient } from '@/lib/supabase/server';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
@@ -16,6 +17,8 @@ import {
   isAdmin,
   type Actor,
 } from '@/lib/permissions';
+
+export { adminMfaRequired };
 
 export type Viewer = {
   userId: string;
@@ -197,22 +200,6 @@ export async function requireCandidate(locale: Locale) {
   return viewer;
 }
 
-/**
- * Whether an admin without a second factor may use the console at all.
- *
- * On by default in production, off in development, and settable either way:
- * ADMIN_MFA_REQUIRED=false is the escape hatch for a locked-out team, and it
- * is an escape hatch rather than the setting because the database enforces
- * the stronger half regardless (migration 311 — an admin who *has* enrolled is
- * refused at aal1 by every policy, whatever this says).
- */
-export function adminMfaRequired(): boolean {
-  const flag = process.env.ADMIN_MFA_REQUIRED;
-  if (flag === 'true') return true;
-  if (flag === 'false') return false;
-  return process.env.NODE_ENV === 'production';
-}
-
 export async function requireAdmin(locale: Locale) {
   const viewer = await requireProfile(locale);
   if (!canAccessAdminArea(viewer)) {
@@ -226,7 +213,8 @@ export async function requireAdmin(locale: Locale) {
     account could prove. An admin with a factor and an aal1 session is sent
     to answer the challenge — and would find every admin query returning
     nothing until they do, because is_admin() reads the same claim. An admin
-    with no factor is sent to enrol, where the deployment says so. The account
+    with no factor is sent to enrol only when ADMIN_MFA_REQUIRED=true
+    (src/lib/admin-mfa.ts); unset leaves the console open. The account
     page is outside this guard, so neither redirect can loop.
   */
   const supabase = await createClient();

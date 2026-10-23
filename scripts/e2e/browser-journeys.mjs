@@ -437,7 +437,10 @@ section('the admin: two-step verification, then the console');
   await sql('delete from auth.mfa_factors where user_id = $1', [adminId]);
   const { page, context, errors } = await device();
   await signInThroughForm(page, 'admin@demo.test');
-  check('an admin with no second factor is sent to set one up', await landsOn(page, /\/dashboard\/account\?mfa=required/), page.url());
+  // The requirement is off unless ADMIN_MFA_REQUIRED=true, so the console opens.
+  // Enrolment is still on the account page; the rest of this journey uses it.
+  check('an admin with no second factor reaches the console', await landsOn(page, /\/admin$/), page.url());
+  await page.goto(`${SITE}/dashboard/account`, { waitUntil: 'load' });
   await page.locator('button').filter({ hasText: 'فعّل التحقق بخطوتين' }).click();
   const secret = (await page.locator('code[dir="ltr"]').first().textContent({ timeout: 15000 }))?.trim() ?? '';
   check('enrolling shows a secret for the authenticator app', /^[A-Z2-7]{16,}$/.test(secret), secret);
