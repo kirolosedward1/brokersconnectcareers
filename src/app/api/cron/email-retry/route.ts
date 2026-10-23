@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { runScheduledJob } from '@/lib/jobs/run';
 import { retryDb } from '@/lib/jobs/db';
-import { sweepOutbox } from '@/lib/jobs/outbox-sweep';
+import { mergeEmailAges, sweepOutbox } from '@/lib/jobs/outbox-sweep';
 import { runInRetryContext } from '@/lib/jobs/retry-context';
 import { REBUILDERS } from '@/lib/email/rebuild';
 import { logFailure } from '@/lib/observe';
@@ -32,10 +32,13 @@ export const maxDuration = 60;
  *
  * Bounded four ways, because an unbounded retry loop against a paid provider
  * is worse than a lost email: five attempts per message with exponential
- * backoff (~10m, 40m, 2h40m, 10h40m, jittered), a three-day window from the
- * first attempt, a cap of eight leases per row (a row that keeps crashing its
- * worker is dead-lettered rather than crashing it forever), and this run's
- * time budget. Rows that exhaust any of them are dead letters: gave_up_at
+ * backoff (~10m, 40m, 2h40m, 10h40m, jittered), a 48-hour window from the
+ * first attempt (or from an admin requeue), a cap of eight leases per row (a
+ * row that keeps crashing its worker is dead-lettered rather than crashing it
+ * forever), and this run's time budget. A leased row older than 48 hours is
+ * not resent: it is dead-lettered here. The database function still refuses
+ * anything past three days, which is the backstop for a row this run never
+ * saw. Rows that exhaust any of the bounds are dead letters: gave_up_at
  * set, listed on /admin/operations, and requeueable from there by hand.
  *
  * Rows younger than five minutes are not due yet: next_attempt_at defaults to
@@ -82,10 +85,30 @@ export async function GET(request: NextRequest) {
 
       const swept = await sweepOutbox(
         {
-          lease: async (limit) =>
-            (await retryDb(() =>
-              admin.rpc('lease_due_emails', { p_limit: limit, p_lease_seconds: LEASE_SECONDS }),
-            )) ?? [],
+          lease: async (limit) => {
+            const leased =
+              (await retryDb(() =>
+                admin.rpc('lease_due_emails', { p_limit: limit, p_lease_seconds: LEASE_SECONDS }),
+              )) ?? [];
+            if (leased.length === 0) return leased;
+            // The lease does not say how old the row is. Read it, so a message
+            // past 48 hours can be closed instead of sent. A failed read leaves
+            // the rows undated; the sweep then treats them as still in window,
+            // and the three-day reaper remains the backstop.
+            try {
+              const { data, error } = await admin
+                .from('email_log')
+                .select('id, created_at, requeued_at, status')
+                .in('id', leased.map((row) => row.id));
+              if (error) throw error;
+              return mergeEmailAges(leased, data ?? []);
+            } catch (error) {
+              logFailure('email-retry', 'could not read how old the leased rows are', {
+                code: (error as { code?: string } | null)?.code,
+              });
+              return leased;
+            }
+          },
           settle: async (id, token, outcome, detail) =>
             Boolean(
               await retryDb(() =>

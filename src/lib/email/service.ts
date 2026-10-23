@@ -5,6 +5,12 @@ import { retryDbResult } from '@/lib/jobs/db';
 import { currentRetryContext } from '@/lib/jobs/retry-context';
 import { sendEmail, type SendOutcome } from './send';
 import { TEMPLATES, isEssential, type TemplateName } from './templates';
+import {
+  persistFailedSend,
+  reportUnloggedSend,
+  scrubEmailError,
+  type EmailLogSink,
+} from './attempt-log';
 
 /**
  * The one funnel every message goes through.
@@ -40,6 +46,31 @@ import { TEMPLATES, isEssential, type TemplateName } from './templates';
  */
 
 export { MAX_EMAIL_ATTEMPTS as MAX_ATTEMPTS } from '@/lib/jobs/policy';
+
+/**
+ * The outbox writes, narrowed to the two a failure needs.
+ *
+ * claim_email is still how a row is normally born. This is the way out when
+ * that call failed, or when it succeeded and recording the outcome did not:
+ * one insert or one update, and never a write that could turn a sent row
+ * back into a failed one.
+ */
+function emailLogSink(admin: ReturnType<typeof createAdminClient>): EmailLogSink {
+  return {
+    async insertFailed(row) {
+      const { error } = await admin.from('email_log').insert(row);
+      return { error: error ? { code: error.code, message: error.message } : null };
+    },
+    async updateFailed(id, patch) {
+      const { error } = await admin
+        .from('email_log')
+        .update(patch)
+        .eq('id', id)
+        .in('status', ['queued', 'failed']);
+      return { error: error ? { code: error.code, message: error.message } : null };
+    },
+  };
+}
 
 export type Envelope = {
   subject: string;
@@ -82,13 +113,18 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
   let admin: ReturnType<typeof createAdminClient>;
   try {
     admin = createAdminClient();
-  } catch {
-    // No service-role key. Sending would still work, but nothing could be
-    // recorded or deduplicated — and an email system that cannot say what it
-    // sent is the thing this module exists to replace.
-    console.warn(`[email] no service role; not sending "${spec.template}"`);
+  } catch (error) {
+    // No service-role key, so there is no client to write a row with. Say so
+    // and stop. Sending anyway would be an email nobody could account for,
+    // which is the thing this module exists to replace. Under a retry the
+    // sweeper is told to wait, rather than cancelling the leased row as if
+    // there were nothing to send.
+    const retry = currentRetryContext();
+    if (retry) retry.deferred = true;
+    reportUnloggedSend(spec.template, spec.to, error);
     return 'skipped';
   }
+  const sink = emailLogSink(admin);
 
   // The sweeper's retry, if this call is one. Undefined for every ordinary
   // send, which then claims exactly as it always has.
@@ -114,6 +150,13 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
   if (claimError) {
     if (retry) retry.claimError = true;
     logFailure('email', 'could not claim', { template: spec.template, code: claimError.code });
+    // The claim is what normally inserts the row. On a first send it just
+    // failed, so without a row of our own the attempt is invisible to the
+    // sweeper. A retry already has the leased row; the sweep records the
+    // failure on that one, and a second insert would be a second message.
+    // If the client itself is what failed — the invalid key — the insert
+    // fails too, and is reported rather than thrown.
+    if (!retry) await persistFailedSend(sink, spec, claimError);
     return 'failed';
   }
 
@@ -162,12 +205,13 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
   // for a row claim_email has just inserted, the leased count for the
   // sweeper's retry — the replay matches no row.
   const expectedAttempts = isLeasedRow ? retry.attempts : 0;
+  const storedError = result.error ? scrubEmailError(result.error) : null;
   const { error: recordError } = await retryDbResult(() =>
     admin.rpc('record_email_attempt', {
       p_id: logId,
       p_status: result.outcome === 'sent' ? 'sent' : 'failed',
       p_provider_id: result.providerId ?? null,
-      p_error: result.error ?? null,
+      p_error: storedError,
       p_exhaust: result.outcome !== 'sent' && result.retryable !== true,
       p_expected_attempts: expectedAttempts,
     }),
@@ -179,6 +223,10 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
       email_log: logId,
       code: recordError.code,
     });
+    // The row exists (the claim inserted it) but still says `queued`. A failed
+    // send has to say `failed`, or the only record of the attempt is a row
+    // that looks unattempted. The update keeps a sent row's sent_at intact.
+    if (result.outcome === 'failed') await persistFailedSend(sink, spec, storedError ?? recordError, logId);
   }
 
   return result.outcome;

@@ -85,6 +85,54 @@ export type OutboxSweepStats = {
  */
 const DEFAULT_BATCH = 10;
 
+/**
+ * How old a message may be and still be worth sending.
+ *
+ * Past this, a status update or a receipt is news about something that has
+ * moved on. The database still stops leasing at three days (lease_due_emails,
+ * reap_email_outbox); this is the tighter bound the sweeper enforces, because
+ * changing that function would be a migration. A row inside the window is
+ * sent. A row outside it is dead-lettered — gave_up_at set, status left
+ * `failed` — which is the existing "not retryable" state, and an admin can
+ * still requeue it. `suppressed` is not used: that status means the address
+ * is blocked.
+ *
+ * Measured from the later of created_at and requeued_at, the same anchor the
+ * database uses, so an admin requeue is a real second chance.
+ */
+export const EMAIL_RETRY_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+
+export function emailRowIsStale(
+  row: { created_at?: string | null; requeued_at?: string | null },
+  now = Date.now(),
+): boolean {
+  const created = row.created_at ? Date.parse(row.created_at) : Number.NaN;
+  const requeued = row.requeued_at ? Date.parse(row.requeued_at) : Number.NaN;
+  const anchor = Math.max(
+    Number.isNaN(created) ? Number.NEGATIVE_INFINITY : created,
+    Number.isNaN(requeued) ? Number.NEGATIVE_INFINITY : requeued,
+  );
+  if (!Number.isFinite(anchor)) return false;
+  return now - anchor > EMAIL_RETRY_MAX_AGE_MS;
+}
+
+/**
+ * The lease does not return created_at. The sweeper reads it and merges it
+ * on, so the age check above can see the row. Rows the read missed keep no
+ * age and are treated as still inside the window.
+ */
+export function mergeEmailAges<T extends { id: string }>(
+  leased: readonly T[],
+  ages: readonly { id: string; created_at: string; requeued_at: string | null; status?: string | null }[],
+): (T & { created_at?: string; requeued_at?: string | null; status?: string })[] {
+  const byId = new Map(ages.map((row) => [row.id, row]));
+  return leased.map((row) => {
+    const age = byId.get(row.id);
+    if (!age) return row;
+    return { ...row, created_at: age.created_at, requeued_at: age.requeued_at, status: age.status ?? undefined };
+  });
+}
+
 export async function sweepOutbox(
   deps: OutboxSweepDeps,
   options: { batch?: number } = {},
@@ -136,6 +184,20 @@ export async function sweepOutbox(
 }
 
 async function sweepOne(deps: OutboxSweepDeps, row: LeasedEmailRow, stats: OutboxSweepStats) {
+  // Already terminal, and not because a send failed. Leave the row exactly
+  // as it is: no resend, no status change. The lease query does not hand
+  // these out; this is the guard for one that changed underneath a lease.
+  if (row.status === 'suppressed') return;
+
+  // Too old to send. Dead-letter rather than rebuild, so the provider is not
+  // asked and the row is not leased again next run. gave_up_at is what makes
+  // `failed` stop being retryable; the status stays `failed`.
+  if (emailRowIsStale(row)) {
+    await deps.settle(row.id, row.lock_token, 'dead', 'older than 48 hours');
+    stats.dead += 1;
+    return;
+  }
+
   const rebuild = deps.rebuilders[row.template];
 
   // Nothing to rebuild from. A digest is a point-in-time list and stale is

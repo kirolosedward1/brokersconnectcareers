@@ -600,6 +600,14 @@ export type LeasedEmailRow = {
   user_id: string | null;
   attempts: number;
   lock_token: string;
+  /**
+   * Filled in by the sweeper after the lease, from the row itself. The lease
+   * function does not return them. Absent, the row is treated as still inside
+   * the retry window rather than dropped.
+   */
+  created_at?: string | null;
+  requeued_at?: string | null;
+  status?: EmailStatus;
 };
 
 /** Somebody asking for help, or an owner asking for their account to be deleted (migrations 201, 330). */
@@ -1358,12 +1366,27 @@ export type Database = {
         { company_id: string; period: string; granted_at?: string }
       >;
       /**
-       * Written through claim_email/record_email_attempt rather than a plain
-       * insert, so the unique dedupe key is claimed in one statement. RLS is on
-       * with no policies at all: the only readers are the service role and
-       * admins going through email_activity().
+       * The ordinary path is claim_email then record_email_attempt, so the
+       * dedupe key is claimed in one statement. The insert shape is the
+       * fallback for a claim that itself failed and left no row: a retryable
+       * `failed` attempt, and nothing else. RLS is on with no policies at all:
+       * the only readers are the service role and admins going through
+       * email_activity().
        */
-      email_log: Table<EmailLogRow, never>;
+      email_log: Table<
+        EmailLogRow,
+        {
+          template: string;
+          recipient: string;
+          status?: EmailStatus;
+          error?: string | null;
+          dedupe_key?: string | null;
+          user_id?: string | null;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          next_attempt_at?: string | null;
+        }
+      >;
       /** Scheduled-job runs. RLS on, no policies: service role and admin functions only. */
       job_runs: Table<JobRunRow, never>;
       /** Its owner reads it; register_push_device / unregister_push_device write it; the sender disables it. */
