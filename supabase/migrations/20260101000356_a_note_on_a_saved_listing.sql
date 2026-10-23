@@ -21,7 +21,7 @@ alter table saved_jobs
     constraint saved_jobs_note_length check (note is null or char_length(note) between 1 and 300);
 
 comment on column saved_jobs.note is
-  'A line the candidate keeps for themselves about the listing, on the website and in the app alike; 1–300 characters or null.';
+  'A line the candidate keeps for themselves about the listing, on the website and in the app alike; 1-300 characters or null.';
 
 drop policy if exists saved_jobs_owner_update on saved_jobs;
 create policy saved_jobs_owner_update on saved_jobs
