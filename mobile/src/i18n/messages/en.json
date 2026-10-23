@@ -432,7 +432,15 @@
     "call": "Call",
     "addNote": "Add a note",
     "noteLabel": "Note (admins only)",
-    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever."
+    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever.",
+    "reports": {
+      "dayPlaceholder": "YYYY-MM-DD",
+      "dayInvalid": "Write the day as YYYY-MM-DD, a day that exists.",
+      "caseTotal": "{count, plural, one {<v>#</v> case} other {<v>#</v> cases}}"
+    },
+    "appeals": {
+      "filedOn": "Sent on {date}"
+    }
   },
   "keyboard": {
     "done": "Done"
