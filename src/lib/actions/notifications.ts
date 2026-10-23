@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { FALLBACK_HREF } from '@/lib/notifications/links';
 import { resolveNotification } from '@/lib/notifications/open';
+import { refused } from '@/lib/observe';
 
 /**
  * Mark the reader's feed as read — up to the newest notification they were
@@ -33,7 +34,7 @@ export async function markNotificationsRead(
   // PGRST202: no function with that argument — a database migration 301 has
   // not reached yet. The unbounded form is what it had, and still marks read.
   if (error?.code === 'PGRST202') ({ data, error } = await supabase.rpc('mark_notifications_read', {}));
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('notifications', error);
 
   // The badge is in both headers, so every page is stale.
   revalidatePath('/', 'layout');
