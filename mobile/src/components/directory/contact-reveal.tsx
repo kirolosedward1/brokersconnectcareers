@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { Download, Eye, MessageCircle } from '~/components/ui/lucide';
+import { WhatsAppIcon } from '~/components/ui/icons';
+import { Download, Eye, Phone } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { openAgentCv, RevealRefused, useRevealContact, type RevealedContact } from '~/features/directory/queries';
@@ -49,10 +50,18 @@ export function ContactReveal({ handle, hasCv }: { handle: string; hasCv: boolea
       <View style={{ gap: space[2] }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
           <Button
-            label={t('agents.contact')}
+            label={t('app.directory.whatsapp')}
+            accessibilityLabel={t('agents.contact')}
             size="lg"
-            icon={<MessageCircle size={18} color={colors.primaryForeground} />}
+            icon={<WhatsAppIcon size={18} color={colors.primaryForeground} />}
             onPress={() => Linking.openURL(revealed.whatsappUrl).catch(() => {})}
+          />
+          <Button
+            label={t('app.directory.call')}
+            variant="outline"
+            size="lg"
+            icon={<Phone size={18} color={colors.foreground} />}
+            onPress={() => Linking.openURL(`tel:${revealed.phone.replace(/[^\d+]/g, '')}`).catch(() => {})}
           />
           {/* The number as written, left to right, and copyable. */}
           <Text selectable tone="mutedForeground" style={{ writingDirection: 'ltr' }}>
