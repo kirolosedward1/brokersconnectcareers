@@ -11,7 +11,7 @@ import { resetWelcomeForTests } from '~/features/welcome';
 import { catalogues } from '~/i18n/provider';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
-import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
 import { mobileConfig } from './auth-fixtures';
 import { board, browse, cairo, listing, newCairo } from './fixtures';
@@ -84,7 +84,7 @@ it("draws nothing before the phone has said which companies are hidden, and then
       {
         _layout: RootLayout,
         '(tabs)/_layout': TabsLayout,
-        '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout': TabStack,
+        '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout': TabStack,
         '(tabs)/(jobs)/jobs/index': BoardScreen,
         '(tabs)/(home)/index': () => <Text>home</Text>,
       },
@@ -113,7 +113,7 @@ it("draws nothing before the phone has said which companies are hidden, and then
 
 describe('a screen that throws while it is drawn', () => {
   const ar = catalogues.ar;
-  const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+  const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 
   it('says something went wrong and draws it again on request, and the rest of the app stays', async () => {
     // A Home that fails to draw until it is asked again.
@@ -174,7 +174,7 @@ describe('a screen the root stack presents as a sheet', () => {
   function Where({ name }: { name: string }) {
     return <Text>{`${name}: ${useContext(InSheet) ? 'sheet' : 'screen'}`}</Text>;
   }
-  const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+  const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 
   it('is told it is one; the tabs under it are not', async () => {
     renderRouter(

@@ -2,7 +2,8 @@
 
 `mobile/` is the phone version of the website: an Expo (SDK 57) / React Native
 app for candidates and employers, on the same Supabase project, built from the
-same rules. The admin console stays on the website.
+same rules. Admins get the console's queues in an Admin tab (see "The admin
+console in the app" below); the rest of the console stays on the website.
 
 It is being built in phases. This document describes what exists and the
 rules that keep the two clients one product.
@@ -22,9 +23,11 @@ iOS app ──supabase-js (publishable key + the user's JWT, row-level security)
 server action the website's form runs, as the signed-in user. The emails, the
 upload checks, the slugs, the sanitising and the rate limits therefore happen
 for the app exactly as for the site. The actions the app may call are listed in
-`src/lib/mobile-api/registry.ts` — nothing else is reachable, and no admin
-action is. Their inputs and outputs are typed in `src/lib/mobile-api/contract.ts`,
-which the app imports.
+`src/lib/mobile-api/registry.ts` — nothing else is reachable. Of the admin
+console, only the levers the app's own console screens offer are
+(`ADMIN_ACTIONS`), each behind the admin door
+(`src/lib/mobile-api/admin-door.ts`). Their inputs and outputs are typed in
+`src/lib/mobile-api/contract.ts`, which the app imports.
 
 Three kinds of write go straight to Supabase, as the website's browser code
 does: notification read-state (the `mark_notifications_read` /
@@ -430,6 +433,18 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   signing out and deleting the account, which runs the Account tab's own path
   (`mobile/src/features/account/delete.ts`); the website's onboarding page has
   the same two (`src/components/auth/leave-onboarding.tsx`).
+- **The app lock and the cover** (`mobile/src/components/navigation/app-lock.tsx`,
+  `mobile/src/features/app-lock/`). While somebody is signed in and the app is
+  not in front, the screens are covered by the page and the logo, so the
+  picture iOS keeps for the app switcher is never an applicant's number or CV.
+  "Lock the app", under Sign-in and security, asks Face ID (or the passcode)
+  at launch and after a minute in the background — for the person who turned
+  it on, on that phone only; turning it on or off asks first. Signing out is
+  the way past it; a phone that can no longer ask (its passcode turned off)
+  drops the lock rather than shut its owner out. Over the tab screens only:
+  the root stack's sheets (sign-in, onboarding, the code) sit above it.
+  Built on `expo-local-authentication`, already in the native build, so it
+  ships over the air.
 - **The Account tab** signs out of this phone only (`scope: 'local'`), as the
   website's menus sign out of that browser only, so signing out of one never
   signs the other out; a password change ends the other sessions. It
@@ -684,7 +699,12 @@ Then, each time the phone should get the newest code:
 
 - from GitHub: Actions → Expo Go → Run workflow (on any branch). It also runs
   by itself on pushes to `main` and on this repository's pull requests. The
-  run's summary links the QR code;
+  run's summary links the QR code and gives the `exp://` link to paste. A
+  channel holds one newest update, so a pull request publishes on its own,
+  `expo-go-pr-<number>` (`EXPO_GO_CHANNEL`, which `pnpm run ota expo-go`
+  honours too): the `expo-go` link below keeps opening `main`, and a branch's
+  link opens that branch until its next push, whatever other branches publish
+  meanwhile;
 - or from a computer, signed in with `npx eas-cli@latest login`:
   `pnpm run ota expo-go --message "what changed"` in `mobile/`, which finds or
   creates the project the same way and prints the same link.
@@ -909,8 +929,8 @@ go to that build only. What is not native stays out of the fingerprint
 installed build off from later updates without a word. The same test computes
 the fingerprint and checks what it is made of. So the first App Store build already carries the
 native modules this round's later features need — `expo-store-review` for the
-rating prompt, `expo-local-authentication` for the app lock — and those
-features can follow over the air.
+rating prompt, `expo-local-authentication` for the app lock (which has since
+followed over the air) — and those features can follow over the air.
 
 The native iOS build is also compiled in CI on `main` (`ios-build` in
 `.github/workflows/mobile.yml`), so a config plugin or native dependency that
@@ -920,3 +940,49 @@ as EAS does for SDK 57. Xcode 16 cannot build SDK 57: `expo-modules-jsi`'s
 Swift package needs Swift tools 6.2, and `@expo/ui`, which `expo-router`
 depends on, uses iOS 26 SwiftUI API. A Mac building locally needs Xcode 26 as
 well.
+
+## The admin console in the app
+
+An account whose role is `admin` has an **Admin** tab (`src/lib/tabs.ts`):
+the website's `/admin` overview and its queues — listings waiting for review
+(`/admin/jobs`, and one listing's review at `/admin/jobs/<id>`), open reports
+in their two queues, new and under review (`/admin/reports`), the accounts
+(`/admin/users`: every account by standing or role, searched as the website
+searches them, and one account's file at `/admin/users/<id>` with every lever
+the website's page has — approval, role, sign-in block, sessions, reporting,
+contact revealed for a reason, notes) and companies whose papers wait
+(`/admin/companies`). Links to those paths open there; any other `/admin/…`
+page opens the overview, which links to the full console on the website
+(search, the audit log, taxonomy, applications, email, appeals). An admin who
+runs a company has the company's console in the bar instead of the public
+tabs, and the consultant directory opens inside the Admin tab
+(`(consultants,admin)` in the routes).
+
+- **Reads** go straight to Supabase under the admin's session — the same
+  tables and `admin_*` functions the website's pages read
+  (`mobile/src/features/admin/queries.ts`). Row policies and the functions
+  answer an admin only.
+- **Writes** are the website's own admin actions (`ADMIN_ACTIONS` in
+  `src/lib/mobile-api/contract.ts`: `moderateJob`, `reviewCompany`,
+  `setAccountApproval`, `moderateReports`, `getDocumentUrl`, `revealContact`,
+  `addModerationNote`, `setReportingRestriction`, `setUserRole`,
+  `setSignInBlock`, `endSessions`) through `/api/mobile/v1/actions`, each one
+  admin_* function that checks, decides and writes the audit record in one
+  transaction. Every lever opens one confirmation sheet
+  (`mobile/src/components/admin/decision-sheet.tsx`, drawn once at the root):
+  a reason where somebody is owed one, the version the screen showed, and
+  "done" only once the website answers `ok`.
+- **The second factor** is asked of the app as the website asks it: the door
+  (`mobile/src/features/admin/door.ts` on the phone, `admin-door.ts` on the
+  server) opens only for a session that gave its authenticator's code, or —
+  where `ADMIN_MFA_REQUIRED` is off (it is on by default in production; the
+  app reads it from `/config`) — for an admin without one. An admin without
+  an authenticator is sent to set one up on the website, then asked for the
+  code by the app's own second-factor screen. The server refuses the levers
+  with `mfa_required` / `mfa_challenge` regardless of what the app shows.
+
+`mobile/tests/admin.test.tsx` and `mobile/tests/admin-accounts.test.tsx`
+cover who has the tab, the door, the queues, the accounts and each lever's
+request; `scripts/mobile-api.test.mjs` holds the registry to exactly the
+levers in `ADMIN_ACTIONS`, each behind the door; `supabase/tests/admin.test.mjs`
+covers the account levers of migration 355.

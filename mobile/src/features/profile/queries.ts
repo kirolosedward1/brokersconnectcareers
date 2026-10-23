@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AgentProfileInput, MobileActions } from '@/lib/mobile-api/contract';
 import { releaseUnusedCv } from '@/lib/cv-in-use';
 import { canAccessCandidateArea } from '@/lib/permissions';
+import { useRetryKey } from '@/lib/retry-key';
 import { clean } from '@/lib/security/sanitize';
 import type {
   AgentCertificationRow,
@@ -271,31 +272,37 @@ async function entryStored(entry: CvEntryInput, known: ReadonlySet<string>): Pro
   );
 }
 
-function sendCvEntry(entry: CvEntryInput) {
+function sendCvEntry(entry: CvEntryInput, idempotencyKey: string | undefined) {
   return entry.section === 'experience'
-    ? callAction('saveExperience', entry.input)
+    ? callAction('saveExperience', { ...entry.input, idempotencyKey })
     : entry.section === 'education'
-      ? callAction('saveEducation', entry.input)
-      : callAction('saveCertification', entry.input);
+      ? callAction('saveEducation', { ...entry.input, idempotencyKey })
+      : callAction('saveCertification', { ...entry.input, idempotencyKey });
 }
 
 /** Add a CV entry, or change one (the website's actions take an id for that). */
 export function useSaveCvEntry() {
   const queryClient = useQueryClient();
+  // The same entry sent again carries the same key, and the website answers
+  // with the entry it already added (src/lib/actions/idempotency.ts).
+  const retryKey = useRetryKey();
   return useMutation({
     mutationFn: async (entry: CvEntryInput) => {
       // The section's entries as the profile showed them before this one was sent; unknown while unread.
       const before = queryClient.getQueryData<CvSections>(['profile', 'cv', entry.input.agentId]);
       const known = before ? new Set((before[LIST[entry.section]] as { id: string }[]).map((row) => row.id)) : null;
-      const result = await sendCvEntry(entry).catch(async (error: unknown) => {
+      const key = entry.input.id ? undefined : retryKey.for(entry);
+      const result = await sendCvEntry(entry, key).catch(async (error: unknown) => {
         // A new entry with no answer may be in, and only the answer lost: the
-        // database decides. A change sent again changes nothing twice.
+        // database decides. A change sent again changes nothing twice. (The
+        // key settles a retry on its own; this is for a website without it.)
         if (!entry.input.id && known && !refusedAtTheDoor(error) && (await entryStored(entry, known))) {
           return { ok: true as const };
         }
         throw error;
       });
       if (!result.ok) throw new SaveRefused(result.error, result.fieldErrors);
+      retryKey.done();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });

@@ -25,7 +25,6 @@
     "signedOutTitle": "Sign in to your account",
     "signedOutBody": "Apply for jobs, follow your applications and keep what you like — all from your phone.",
     "signedInAs": "Signed in as {email}",
-    "adminOnWeb": "Admin tools are on the website only, not in the app.",
     "openWebsite": "Open the website",
     "appearance": "App appearance",
     "contact": "Contact us",
@@ -230,6 +229,17 @@
   "companies": {
     "searchPlaceholder": "Search by company name"
   },
+  "lock": {
+    "switch": "Lock the app",
+    "hint": "Face ID or your passcode before the app opens, and after a minute away. On this phone only.",
+    "title": "Brokers Connect is locked",
+    "body": "Unlock with Face ID or your passcode to carry on.",
+    "unlock": "Unlock",
+    "signOut": "Sign out",
+    "prompt": "Unlock Brokers Connect",
+    "cancel": "Cancel",
+    "failed": "That did not unlock the app. Try again."
+  },
   "search": {
     "clear": "Clear search"
   },
@@ -405,6 +415,35 @@
     "clearAllConfirm": "Clear all",
     "cancel": "Cancel",
     "deleteFailed": "We couldn't delete it. Try again."
+  },
+  "admin": {
+    "door": {
+      "enrolTitle": "Set up two-step sign-in first",
+      "enrolBody": "The admin console asks for a code from an authenticator app each time a session starts. Set one up on the website — Account, then Sign-in and security — then come back here.",
+      "enrolOpen": "Set it up on the website",
+      "enrolDone": "I've set it up",
+      "challengeTitle": "Enter your code first",
+      "challengeBody": "This account has an authenticator app. Enter its code to open the console.",
+      "challengeGo": "Enter the code",
+      "mfa_required": "The console needs two-step sign-in on this account first.",
+      "mfa_challenge": "Enter your authenticator code first, then try again."
+    },
+    "tabWaiting": "{name}, {count, plural, one {# waiting on a decision} other {# waiting on a decision}}",
+    "showing": "<v>{shown}</v> of <v>{total}</v> here — the rest are on the website.",
+    "fullConsole": "The full console on the website",
+    "fullConsoleHint": "Search, the audit log, applications, taxonomy and each account's file.",
+    "adminConsole": "Admin console",
+    "papers": "Papers sent",
+    "onWebsite": "Open on the website",
+    "deletedTarget": "Removed since it was reported. Close these reports from the full console on the website.",
+    "companyRecord": "The company's record — rejections, duplicates, shared phones — is on its page in the full console.",
+    "reportedBy": "Reported by {name}",
+    "reportCount": "{count, plural, one {<v>#</v> report} other {<v>#</v> reports}}",
+    "openWhatsApp": "Open WhatsApp",
+    "call": "Call",
+    "addNote": "Add a note",
+    "noteLabel": "Note (admins only)",
+    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever."
   },
   "keyboard": {
     "done": "Done"

@@ -12,6 +12,7 @@ import { isOwnedPath } from '@/lib/security/files';
 import { publish } from '@/lib/notifications/events';
 import { revokeWithAuthorizationCode } from '@/lib/apple/revoke';
 import { logFailure } from '@/lib/observe';
+import { sessionOwesSecondFactor } from '@/lib/auth/second-factor-server';
 
 /**
  * Deleting your own account.
@@ -52,6 +53,15 @@ export async function deleteMyAccount(input?: unknown): Promise<ActionResult> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
+
+  /*
+    Not from a sign-in that has not given the account's second factor. The
+    account page draws nothing but the challenge until it is answered, but a
+    server action is reachable from any page, and this one cannot be undone:
+    a password alone must not be enough to erase an account its owner chose
+    to protect with a code.
+  */
+  if (await sessionOwesSecondFactor(supabase, user)) return { ok: false, error: 'unauthenticated' };
 
   /*
     owner_id, deliberately, and not membership like everywhere else: the

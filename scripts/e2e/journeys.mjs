@@ -400,8 +400,19 @@ section('doors');
 
 const noToken = await action(null, 'applyToJob', { jobId: crypto.randomUUID() });
 check('a protected action without a token is a 401', noToken.status === 401, describe(noToken));
-const unknown = await action(candidate.token, 'moderateJob', {});
-check('an admin action is not on the mobile API', unknown.status === 404, describe(unknown));
+const unknown = await action(candidate.token, 'requeueEmail', {});
+check('an admin action the app does not have is not on the mobile API', unknown.status === 404, describe(unknown));
+// The levers the app's console has are behind the admin door (src/lib/mobile-api/admin-door.ts):
+// anybody who is not an admin is turned away before the action runs, and told nothing more.
+const lever = await action(candidate.token, 'moderateJob', { jobId: crypto.randomUUID(), action: 'approve' });
+check('an admin lever refuses a candidate', lever.status === 200 && lever.json?.ok === false && lever.json?.error === 'forbidden', describe(lever));
+// An admin is held at the same door the website's console has: this is a
+// production build with ADMIN_MFA_REQUIRED unset, and the demo admin has no
+// authenticator, so the lever is refused with the word that says so.
+const adminSession = await signIn('admin@demo.test');
+check('the demo admin signs in', Boolean(adminSession.token), describe(adminSession));
+const held = await action(adminSession.token, 'moderateJob', { jobId: crypto.randomUUID(), action: 'approve' });
+check('an admin without two-step sign-in is held at the door', held.status === 200 && held.json?.ok === false && held.json?.error === 'mfa_required', describe(held));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

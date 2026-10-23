@@ -8,12 +8,12 @@ import { hideCompany, unhideCompany } from '~/features/moderation/hidden-compani
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { SessionProvider } from '~/lib/session';
 import { ThemeProvider } from '~/theme/provider';
-import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
-import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/companies/[slug]';
-import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/jobs/[slug]';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
+import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/companies/[slug]';
+import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/jobs/[slug]';
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
-import * as CompaniesScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/companies/index';
+import * as CompaniesScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/companies/index';
 import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as NotFoundScreen from '../src/app/+not-found';
 import { board, browse, cairo, company, companyPage, directory, jobPage, listing, newCairo } from './fixtures';

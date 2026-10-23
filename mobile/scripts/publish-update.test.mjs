@@ -17,6 +17,8 @@ import { fileURLToPath } from 'node:url';
 import {
   accountFromWhoami,
   appIdentityFrom,
+  expoGoChannel,
+  expoGoDeepLink,
   expoGoLink,
   expoGoTarget,
   findOrCreateProject,
@@ -157,6 +159,16 @@ console.log('\n— an update Expo Go opens, with no computer running');
     expoGoLink('p-1', '57.0.0'),
     'https://qr.expo.dev/eas-update?slug=exp&projectId=p-1&runtimeVersion=exposdk%3A57.0.0&channel=expo-go',
   );
+  is('and the link the phone opens itself names the same channel', expoGoDeepLink('p-1', '57.0.0'), 'exp://u.expo.dev/p-1?channel-name=expo-go&runtime-version=exposdk:57.0.0');
+
+  // A pull request's publish beside main: its own channel, so neither replaces the other.
+  is('the channel is expo-go unless one is named', expoGoChannel({}), 'expo-go');
+  is('an empty name is no name', expoGoChannel({ EXPO_GO_CHANNEL: '' }), 'expo-go');
+  is('a pull request publishes on its own channel', expoGoTarget(eas, { EXPO_GO_CHANNEL: 'expo-go-pr-48' }).channel, 'expo-go-pr-48');
+  is('with the same settings as the expo-go one', expoGoTarget(eas, { EXPO_GO_CHANNEL: 'expo-go-pr-48' }).env, go.env);
+  is('and its own links', expoGoLink('p-1', '57.0.0', 'expo-go-pr-48').endsWith('&channel=expo-go-pr-48'), true);
+  is('both of them', expoGoDeepLink('p-1', '57.0.0', 'expo-go-pr-48'), 'exp://u.expo.dev/p-1?channel-name=expo-go-pr-48&runtime-version=exposdk:57.0.0');
+  throws('a channel name EAS would refuse is refused first', () => expoGoChannel({ EXPO_GO_CHANNEL: 'PR #48' }), /lowercase letters, digits and dashes/);
 }
 
 console.log('\n— the EAS project for Expo Go, found or created from the token alone');

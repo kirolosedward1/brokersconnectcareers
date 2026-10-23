@@ -9,6 +9,7 @@ import { cn, formatDate, isoDate } from '@/lib/utils';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { addApplicationNote, deleteApplicationNote } from '@/lib/actions/applications';
 import { reach } from '@/lib/reach';
+import { useRetryKey } from '@/lib/retry-key';
 import type { ApplicationNoteRow } from '@/lib/supabase/database.types';
 
 /**
@@ -68,6 +69,8 @@ export function ApplicantNotes({
   );
 
   const [draft, setDraft] = useState('');
+  // A note pressed again after a lost answer is found, not written twice.
+  const noteKey = useRetryKey();
   /*
     Closed until there is something in it.
 
@@ -89,7 +92,7 @@ export function ApplicantNotes({
 
     startTransition(async () => {
       setError(null);
-      const result = await reach(addApplicationNote({ applicationId, body }));
+      const result = await reach(addApplicationNote({ applicationId, body, idempotencyKey: noteKey.for(body) }));
       if (recoverSession(result)) return;
 
       if (!result.ok) {
@@ -100,6 +103,7 @@ export function ApplicantNotes({
       // Cleared only once the server has it. A box that empties on submit and
       // then fails has taken somebody's sentence away.
       setDraft('');
+      noteKey.done();
       if (result.data?.note) setAdded((current) => [...current, result.data!.note]);
       router.refresh();
     });

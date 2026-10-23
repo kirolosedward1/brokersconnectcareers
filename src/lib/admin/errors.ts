@@ -13,6 +13,7 @@ export const ADMIN_ERROR_CODES = [
   'no_change',
   'invalid_action',
   'invalid_transition',
+  'last_admin',
   'stale_version',
   'reason_required',
   'reason_too_long',
@@ -39,6 +40,9 @@ const ALIASES: Record<string, AdminErrorCode> = {
   unverified_company_post_cap: 'post_cap',
   insufficient_post_credits: 'no_credits',
   'an admin cannot change their own approval': 'forbidden',
+  'an admin cannot change their own role': 'forbidden',
+  'an admin cannot block their own sign-in': 'forbidden',
+  'an admin cannot end their own sessions': 'forbidden',
   'no such account, or it belongs to an admin': 'not_found',
 };
 

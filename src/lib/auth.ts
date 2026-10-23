@@ -195,7 +195,7 @@ export async function requireCandidate(locale: Locale) {
  * the stronger half regardless (migration 311 — an admin who *has* enrolled is
  * refused at aal1 by every policy, whatever this says).
  */
-function adminMfaRequired(): boolean {
+export function adminMfaRequired(): boolean {
   const flag = process.env.ADMIN_MFA_REQUIRED;
   if (flag === 'true') return true;
   if (flag === 'false') return false;
