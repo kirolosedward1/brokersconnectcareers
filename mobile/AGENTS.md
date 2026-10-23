@@ -42,7 +42,7 @@ pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept eve
 - **Words come from the catalogue.** No user-facing string in code: the website's keys, or the app's
   own under `app.*` in `src/i18n/messages/{ar,en}.json` (same keys in both). Numbers inside Arabic
   sentences use `t.markup(…, markupTags)` so they are isolated left to right.
-- **Right to left.** `textAlign: 'left'` is the logical start; use `ForwardChevron` for "onward".
+- **Right to left.** `textAlignStart()` is where a line starts (`left` on the phone, so iOS mirrors it once; the physical edge on the web); use `ForwardChevron` for "onward".
 - **Routes mirror the website's paths** so links, notification hrefs and pushes name the same screens.
   `+native-intent.tsx` maps incoming URLs (`src/lib/links.ts`); `tests/routing.test.tsx` covers where
   each lands.

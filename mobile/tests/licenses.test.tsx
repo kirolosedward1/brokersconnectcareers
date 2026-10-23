@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { renderRouter, screen, within } from 'expo-router/testing-library';
 import notices from '@/lib/licenses/app.json';
@@ -83,7 +84,11 @@ describe('the open-source licences screen', () => {
     const row = screen.getByLabelText(
       `react-native, ${reactNative?.version}, MIT, Copyright (c) Meta Platforms, Inc. and affiliates.`,
     );
-    expect(within(row).getByText('react-native')).toBeTruthy();
+    const name = within(row).getByText('react-native');
+    // This run is the phone: `left` is mirrored once. `right` put the name on the wrong side.
+    expect(StyleSheet.flatten(name.props.style).textAlign).toBe('left');
+    expect(StyleSheet.flatten(name.props.style).writingDirection).toBe('ltr');
+    expect(name).toBeTruthy();
     expect(within(row).getByText(`${reactNative?.version} · MIT`)).toBeTruthy();
     expect(within(row).getByText('Copyright (c) Meta Platforms, Inc. and affiliates.')).toBeTruthy();
   });

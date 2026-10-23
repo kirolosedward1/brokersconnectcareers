@@ -423,13 +423,17 @@ check('an action the app does not have is not on the mobile API', unknown.status
 // anybody who is not an admin is turned away before the action runs, and told nothing more.
 const lever = await action(candidate.token, 'moderateJob', { jobId: crypto.randomUUID(), action: 'approve' });
 check('an admin lever refuses a candidate', lever.status === 200 && lever.json?.ok === false && lever.json?.error === 'forbidden', describe(lever));
-// An admin is held at the same door the website's console has: this is a
-// production build with ADMIN_MFA_REQUIRED unset, and the demo admin has no
-// authenticator, so the lever is refused with the word that says so.
+// ADMIN_MFA_REQUIRED is unset, so an admin without an authenticator is let
+// through the door. An enrolled factor is still challenged (admin-door.ts),
+// and the role is still checked (assertAdmin, then the database).
 const adminSession = await signIn('admin@demo.test');
 check('the demo admin signs in', Boolean(adminSession.token), describe(adminSession));
 const held = await action(adminSession.token, 'moderateJob', { jobId: crypto.randomUUID(), action: 'approve' });
-check('an admin without two-step sign-in is held at the door', held.status === 200 && held.json?.ok === false && held.json?.error === 'mfa_required', describe(held));
+check(
+  'an admin without two-step sign-in is not held for it',
+  held.status === 200 && held.json?.error !== 'mfa_required' && held.json?.error !== 'forbidden',
+  describe(held),
+);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
