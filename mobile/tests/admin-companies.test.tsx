@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlashList } from '@shopify/flash-list';
@@ -16,6 +16,7 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as CompaniesScreen from '../src/app/(tabs)/(admin)/admin/companies/index';
 import * as CompanyScreen from '../src/app/(tabs)/(admin)/admin/companies/[id]';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { company } from './fixtures';
 import { fakeServer } from './server';
@@ -184,7 +185,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': stand('the overview'),
   '(tabs)/(admin)/admin/companies/index': CompaniesScreen,
@@ -216,7 +217,7 @@ const view = (name: string) => screen.getByRole('radio', { name });
 describe('the companies', () => {
   it('draws the verification queue first, oldest first, and every other view newest first, as the website asks for them', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/companies' });
+    await renderRouter(app, { initialUrl: '/admin/companies' });
 
     expect(await screen.findByText(company.name_ar)).toBeTruthy();
     // (postgrest-js sends the select without its spaces.)
@@ -252,7 +253,7 @@ describe('the companies', () => {
 
   it('searches both names and the slug with the loose Arabic pattern, and says when nothing matched', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/companies' });
+    await renderRouter(app, { initialUrl: '/admin/companies' });
     await screen.findByText(company.name_ar);
 
     const field = screen.getByLabelText(ar.filters.search);
@@ -270,7 +271,7 @@ describe('the companies', () => {
 
   it('opens the view a website link names', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/companies?status=suspended' });
+    await renderRouter(app, { initialUrl: '/admin/companies?status=suspended' });
 
     expect(await screen.findByText(company.name_ar)).toBeTruthy();
     expect(lastAsked().get('suspended_at')).toBe('not.is.null');
@@ -287,7 +288,7 @@ describe('the companies', () => {
         : { body: page(25, 5), headers: { 'content-range': '25-29/30' } };
     });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/companies?status=all' });
+    await renderRouter(app, { initialUrl: '/admin/companies?status=all' });
 
     expect(await screen.findByText('شركة 0')).toBeTruthy();
     await act(async () => screen.UNSAFE_getByType(FlashList).props.onEndReached());
@@ -299,7 +300,7 @@ describe('the companies', () => {
   it('says a failed read failed — never that nothing is waiting', async () => {
     server.on('GET /rest/v1/companies', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/companies' });
+    await renderRouter(app, { initialUrl: '/admin/companies' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.emptyQueue)).toBeNull();
@@ -309,7 +310,7 @@ describe('the companies', () => {
 describe("a company's page", () => {
   it('shows its facts, its papers, its people, its listings, its reports and what to weigh, each a tap from its file', async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
+    const result = await renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
 
     // The name in the header, and again as the Arabic-name fact.
     expect(await screen.findAllByText(company.name_ar)).toHaveLength(2);
@@ -342,7 +343,7 @@ describe("a company's page", () => {
 
   it("opens a member's file", async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
+    const result = await renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
 
     fireEvent.press(await screen.findByRole('link', { name: 'أحمد سمير' }));
     await waitFor(() => expect(result.getPathname()).toBe(`/admin/users/${company.owner_id}`));
@@ -350,7 +351,7 @@ describe("a company's page", () => {
 
   it("opens a paper through a link made for that tap, and verifies the company with its version and an optional note", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
+    await renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.viewDocument}: ${ar.employer.commercialRegister}` }));
     await waitFor(() => expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith('https://storage.example/doc?token=abc'));
@@ -376,7 +377,7 @@ describe("a company's page", () => {
     one = { ...pendingCompany, verification_status: 'unverified' };
     papers = [];
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
+    await renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
 
     expect(await screen.findByText(ar.admin.noDocuments)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.admin.requestChanges })).toBeNull();
@@ -389,7 +390,7 @@ describe("a company's page", () => {
     one = { ...pendingCompany, verification_status: 'verified', verified_at: '2026-08-01T10:00:00Z' };
     papers = [{ ...paper, status: 'verified' }];
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
+    await renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
 
     expect(await screen.findByRole('button', { name: ar.admin.revokeVerification })).toBeTruthy();
     expect(screen.queryByRole('button', { name: `${ar.admin.verify}: ${company.name_ar}` })).toBeNull();
@@ -411,7 +412,7 @@ describe("a company's page", () => {
     let answer: (value: unknown) => void = () => {};
     server.on('POST /api/mobile/v1/actions/setCompanySuspension', () => new Promise((resolve) => (answer = resolve)));
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
+    await renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
 
     expect(await screen.findByText(ar.admin.suspendCompanyHint)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.admin.restoreCompany })).toBeNull();
@@ -437,7 +438,7 @@ describe("a company's page", () => {
     one = { ...pendingCompany, suspended_at: '2026-10-01T10:00:00Z' };
     server.on('GET /rest/v1/company_moderation', () => [{ suspension_reason: 'نصب على المتقدمين' }]);
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
+    await renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
 
     expect(await screen.findByText(/نصب على المتقدمين/)).toBeTruthy();
     expect(screen.getByText(ar.admin.restoreCompanyHint)).toBeTruthy();
@@ -457,7 +458,7 @@ describe("a company's page", () => {
   it("keeps the sheet open with the website's sentence when the website refuses, claiming nothing", async () => {
     server.on('POST /api/mobile/v1/actions/reviewCompany', { ok: false, error: 'stale_version' });
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
+    await renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.verify}: ${company.name_ar}` }));
     await screen.findByText(ar.admin.verifyCompanyBody);
@@ -470,7 +471,7 @@ describe("a company's page", () => {
 
   it('adds a note to the record through the website', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
+    await renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.admin.addNote }));
     fireEvent.changeText(await screen.findByLabelText(ar.app.admin.noteLabel), 'نتابعهم');
@@ -484,7 +485,7 @@ describe("a company's page", () => {
   it('says a page that could not be read failed, rather than drawing a company with nothing on it', async () => {
     server.on('GET /rest/v1/company_members', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
+    await renderRouter(app, { initialUrl: `/admin/companies/${company.id}` });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.noDocuments)).toBeNull();

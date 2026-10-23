@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlashList } from '@shopify/flash-list';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,6 +15,7 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as AgentsScreen from '../src/app/(tabs)/(admin)/admin/agents/index';
 import * as AgentScreen from '../src/app/(tabs)/(admin)/admin/agents/[id]';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
 import { fakeServer } from './server';
@@ -168,7 +169,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': stand('the overview'),
   '(tabs)/(admin)/admin/agents/index': AgentsScreen,
@@ -207,7 +208,7 @@ function expectNothingPrivateAskedFor() {
 describe('the consultant profiles', () => {
   it('draws every profile newest first, searches a slug as a slug and a name as a name, and asks for each view the way the website does', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/agents' });
+    await renderRouter(app, { initialUrl: '/admin/agents' });
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(screen.getByText('ahmed-sales')).toBeTruthy();
@@ -248,7 +249,7 @@ describe('the consultant profiles', () => {
       headers: { 'content-range': '0-0/1' },
     }));
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/agents?visibility=restricted' });
+    await renderRouter(app, { initialUrl: '/admin/agents?visibility=restricted' });
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(lastList()).toMatchObject({ restricted_at: 'not.is.null' });
@@ -273,7 +274,7 @@ describe('the consultant profiles', () => {
         : { body: page(25, 5), headers: { 'content-range': '25-29/30' } };
     });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/agents' });
+    await renderRouter(app, { initialUrl: '/admin/agents' });
 
     expect(await screen.findByText('استشاري 0')).toBeTruthy();
     expect(lastList()).toMatchObject({ limit: '25', offset: '0' });
@@ -291,7 +292,7 @@ describe('the consultant profiles', () => {
     server.on('GET /rest/v1/agent_profiles', (url: URL) =>
       url.searchParams.has('slug') ? { body: [], headers: { 'content-range': '*/0' } } : { status: 503, body: { code: 'PGRST002', message: 'schema cache' } },
     );
-    renderRouter(app, { initialUrl: '/admin/agents' });
+    await renderRouter(app, { initialUrl: '/admin/agents' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.emptyQueue)).toBeNull();
@@ -309,7 +310,7 @@ describe("a consultant's profile", () => {
       { id: 'r1', reason: 'impersonation', detail: 'ده مش هو.', status: 'open', created_at: '2026-10-21T10:00:00Z', reporter: { id: REPORTER, full_name: 'منى علي' } },
     ]);
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
 
     // The name twice: the header, and the owner's row.
     expect(await screen.findAllByText('أحمد سمير')).toHaveLength(2);
@@ -350,7 +351,7 @@ describe("a consultant's profile", () => {
     let answer: (value: unknown) => void = () => {};
     server.on('POST /api/mobile/v1/actions/setAgentRestriction', () => new Promise((resolve) => (answer = resolve)));
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.restrictProfile }));
     expect(screen.queryByRole('button', { name: ar.admin.liftRestriction })).toBeNull();
@@ -375,7 +376,7 @@ describe("a consultant's profile", () => {
   it('keeps a refusal in the sheet, in the website\'s words', async () => {
     server.on('POST /api/mobile/v1/actions/setAgentRestriction', { ok: false, error: 'forbidden' });
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.restrictProfile }));
     fireEvent.changeText(await screen.findByLabelText(ar.admin.reasonToConsultant), 'انتحال شخصية');
@@ -389,7 +390,7 @@ describe("a consultant's profile", () => {
   it('offers a restricted profile the lift alone, with the reason on the record, and no public page', async () => {
     file = { ...agent, visibility: 'hidden', restricted_at: '2026-10-21T10:00:00Z', restriction_reason: 'انتحال شخصية' };
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
 
     expect(await screen.findAllByText('أحمد سمير')).toHaveLength(2);
     expect(screen.getByText(/«انتحال شخصية»/)).toBeTruthy();
@@ -409,7 +410,7 @@ describe("a consultant's profile", () => {
   it('offers no public page for a hidden profile, which the directory would refuse to show', async () => {
     file = { ...agent, visibility: 'hidden' };
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
     expect(await screen.findAllByText('أحمد سمير')).toHaveLength(2);
     expect(screen.queryByRole('button', { name: ar.admin.publicPage })).toBeNull();
     expect(screen.getByRole('button', { name: ar.admin.restrictProfile })).toBeTruthy();
@@ -418,7 +419,7 @@ describe("a consultant's profile", () => {
   it('says a profile that could not be read could not be read, with a retry', async () => {
     server.on('GET /rest/v1/agent_profiles', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.common.notFound)).toBeNull();
   });

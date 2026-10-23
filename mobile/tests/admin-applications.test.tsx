@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlashList } from '@shopify/flash-list';
@@ -16,6 +16,7 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as ApplicationsScreen from '../src/app/(tabs)/(admin)/admin/applications/index';
 import * as ApplicationScreen from '../src/app/(tabs)/(admin)/admin/applications/[id]';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { company } from './fixtures';
 import { fakeServer } from './server';
@@ -156,7 +157,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': stand('the overview'),
   '(tabs)/(admin)/admin/applications/index': ApplicationsScreen,
@@ -183,7 +184,7 @@ function expectReadOnlyAndPrivate() {
 describe('the applications', () => {
   it('draws every application newest first, searches a name or an id, and asks for each view the way the website does', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/applications' });
+    await renderRouter(app, { initialUrl: '/admin/applications' });
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(screen.getByText('مستشار مبيعات')).toBeTruthy();
@@ -228,7 +229,7 @@ describe('the applications', () => {
 
   it("opens the view and the listing a website link names, and shows all again on request", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/applications?status=unopened&job=${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/applications?status=unopened&job=${JOB_ID}` });
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(lastList()).toMatchObject({ job_id: `eq.${JOB_ID}`, status: 'eq.new', employer_viewed_at: 'is.null', order: 'created_at.asc,id.asc' });
@@ -242,7 +243,7 @@ describe('the applications', () => {
 
   it("filters to one candidate's applications, and ignores a filter that is no id", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/applications?candidate=${CANDIDATE}&job=not-an-id` });
+    await renderRouter(app, { initialUrl: `/admin/applications?candidate=${CANDIDATE}&job=not-an-id` });
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(lastList()).toMatchObject({ candidate_id: `eq.${CANDIDATE}` });
@@ -263,7 +264,7 @@ describe('the applications', () => {
         : { body: page(25, 5), headers: { 'content-range': '25-29/30' } };
     });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/applications' });
+    await renderRouter(app, { initialUrl: '/admin/applications' });
 
     expect(await screen.findByText('متقدم 0')).toBeTruthy();
     expect(lastList()).toMatchObject({ limit: '25', offset: '0' });
@@ -283,7 +284,7 @@ describe('the applications', () => {
         ? { body: [], headers: { 'content-range': '*/0' } }
         : { status: 503, body: { code: 'PGRST002', message: 'schema cache' } },
     );
-    renderRouter(app, { initialUrl: '/admin/applications' });
+    await renderRouter(app, { initialUrl: '/admin/applications' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.emptyQueue)).toBeNull();
@@ -298,7 +299,7 @@ describe('the applications', () => {
 describe('an application', () => {
   it('shows what happened to it — the facts, the parties, every move — with the employer\'s notes as a count and no lever', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/applications/${APPLICATION_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/applications/${APPLICATION_ID}` });
 
     // The candidate's name twice: the header, and the parties.
     expect(await screen.findAllByText('أحمد سمير')).toHaveLength(2);
@@ -340,7 +341,7 @@ describe('an application', () => {
 
   it('opens the listing from the parties', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/applications/${APPLICATION_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/applications/${APPLICATION_ID}` });
     fireEvent.press(await screen.findByRole('link', { name: 'مستشار مبيعات' }));
     expect(await screen.findByText('the listing')).toBeTruthy();
   });
@@ -348,7 +349,7 @@ describe('an application', () => {
   it('says a history that could not be read could not be read, with a retry', async () => {
     server.on('GET /rest/v1/application_events', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/applications/${APPLICATION_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/applications/${APPLICATION_ID}` });
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.trailEmpty)).toBeNull();
     expect(screen.queryByText(ar.common.notFound)).toBeNull();

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlashList } from '@shopify/flash-list';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -15,6 +15,7 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as ListingsScreen from '../src/app/(tabs)/(admin)/admin/jobs/index';
 import * as ListingScreen from '../src/app/(tabs)/(admin)/admin/jobs/[id]';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { company } from './fixtures';
 import { fakeServer } from './server';
@@ -202,7 +203,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': stand('the overview'),
   '(tabs)/(admin)/admin/jobs/index': ListingsScreen,
@@ -233,7 +234,7 @@ const view = (name: keyof typeof ar.admin.jobView) => screen.getByRole('radio', 
 describe('the listings', () => {
   it('draws the review queue first, asking exactly what the website asks, with what each listing flags', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/jobs' });
+    await renderRouter(app, { initialUrl: '/admin/jobs' });
 
     expect(await screen.findByText('مستشار مبيعات')).toBeTruthy();
     const asked = lastAsked();
@@ -257,7 +258,7 @@ describe('the listings', () => {
 
   it('runs each view as the website runs it', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/jobs' });
+    await renderRouter(app, { initialUrl: '/admin/jobs' });
     await screen.findByText('مستشار مبيعات');
 
     fireEvent.press(view('live'));
@@ -301,7 +302,7 @@ describe('the listings', () => {
 
   it('narrows the flagged view to what the database flags, and to nothing when it flags nothing', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/jobs' });
+    await renderRouter(app, { initialUrl: '/admin/jobs' });
     await screen.findByText('مستشار مبيعات');
 
     fireEvent.press(view('flagged'));
@@ -320,7 +321,7 @@ describe('the listings', () => {
 
   it('searches an id as an id, and words over the titles and the slug with the loose Arabic pattern', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/jobs' });
+    await renderRouter(app, { initialUrl: '/admin/jobs' });
     await screen.findByText('مستشار مبيعات');
 
     const field = screen.getByLabelText(ar.filters.search);
@@ -345,7 +346,7 @@ describe('the listings', () => {
 
   it('opens the view and the company a website link names, and drops the company with its chip', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/jobs?status=all&company=${company.id}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs?status=all&company=${company.id}` });
 
     expect(await screen.findByText('مستشار مبيعات')).toBeTruthy();
     expect(lastAsked().get('company_id')).toBe(`eq.${company.id}`);
@@ -358,7 +359,7 @@ describe('the listings', () => {
 
   it('ignores a view or a company a link names that the console does not have', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/jobs?status=nowhere&company=not-a-uuid' });
+    await renderRouter(app, { initialUrl: '/admin/jobs?status=nowhere&company=not-a-uuid' });
 
     expect(await screen.findByText('مستشار مبيعات')).toBeTruthy();
     expect(lastAsked().get('status')).toBe('eq.pending_review');
@@ -375,7 +376,7 @@ describe('the listings', () => {
         : { body: page(25, 5), headers: { 'content-range': '25-29/30' } };
     });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/jobs?status=live' });
+    await renderRouter(app, { initialUrl: '/admin/jobs?status=live' });
 
     expect(await screen.findByText('إعلان 0')).toBeTruthy();
     expect(lastAsked().get('offset')).toBe('0');
@@ -393,7 +394,7 @@ describe('the listings', () => {
   it('says a failed read failed — never that nothing is waiting', async () => {
     server.on('GET /rest/v1/jobs', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/jobs' });
+    await renderRouter(app, { initialUrl: '/admin/jobs' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.emptyQueue)).toBeNull();
@@ -403,7 +404,7 @@ describe('the listings', () => {
 describe("a listing's review", () => {
   it('counts the applications per stage, weighs the company, and names the reporters', async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    const result = await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     expect(await screen.findByText(job.description_ar)).toBeTruthy();
     // Five head counts, one per stage, for this listing.
@@ -425,7 +426,7 @@ describe("a listing's review", () => {
 
   it("opens the reporter's file, and the company's page", async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    const result = await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     expect(await screen.findByText('طلبوا فلوس قبل المقابلة.')).toBeTruthy();
     // One open report, and the way to the queue.
@@ -437,7 +438,7 @@ describe("a listing's review", () => {
 
   it("opens the company's page, and all of its listings", async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    const result = await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     expect(await screen.findByText(job.description_ar)).toBeTruthy();
     fireEvent.press(screen.getByRole('link', { name: ar.admin.allCompanyListings }));
@@ -451,7 +452,7 @@ describe("a listing's review", () => {
     let answer: (value: unknown) => void = () => {};
     server.on('POST /api/mobile/v1/actions/setJobFeatured', () => new Promise((resolve) => (answer = resolve)));
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.feature }));
     expect(await screen.findByText(ar.admin.featureBody)).toBeTruthy();
@@ -473,7 +474,7 @@ describe("a listing's review", () => {
   it('offers to remove the feature from a featured listing, and no feature lever on one that is not live', async () => {
     listing = { ...job, is_featured: true };
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.unfeature }));
     // The sheet, with only the confirmation: nothing to explain, nothing to ask.
@@ -488,7 +489,7 @@ describe("a listing's review", () => {
   it('offers a listing waiting for review its three decisions and no feature lever', async () => {
     listing = { ...job, status: 'pending_review', published_at: null, expires_at: null };
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     expect(await screen.findByRole('button', { name: `${ar.admin.approve}: مستشار مبيعات` })).toBeTruthy();
     expect(screen.getByRole('button', { name: ar.admin.requestChanges })).toBeTruthy();
@@ -502,7 +503,7 @@ describe("a listing's review", () => {
       { id: 1, actor_id: USER_ID, actor_name: 'كيرلس', action: 'job.approve', target_type: 'job', target_id: JOB_ID, target_label: null, reason: null, metadata: {}, via: 'direct', created_at: '2026-10-10T10:00:00Z' },
     ]);
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     expect(await screen.findByText(ar.admin.auditAction.job_approve, { exact: false })).toBeTruthy();
     expect(screen.getByText(ar.admin.viaDirect)).toBeTruthy();
@@ -522,7 +523,7 @@ describe("a listing's review", () => {
   it('says a review that could not be read failed, rather than drawing a listing with nothing on it', async () => {
     server.on('POST /rest/v1/rpc/admin_job_signals', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(job.description_ar)).toBeNull();

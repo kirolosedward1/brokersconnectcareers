@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text } from 'react-native';
-import { router, Stack, Tabs } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
@@ -26,6 +26,7 @@ import { ThemeProvider } from '~/theme/provider';
 import * as EmailScreen from '../src/app/(tabs)/(admin)/admin/email/index';
 import * as OperationsScreen from '../src/app/(tabs)/(admin)/admin/operations/index';
 import * as SecurityScreen from '../src/app/(tabs)/(admin)/admin/security/index';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { fakeServer } from './server';
 
@@ -280,7 +281,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': stand('the overview'),
   '(tabs)/(admin)/admin/email/index': EmailScreen,
@@ -303,7 +304,7 @@ function lastActivityAsk() {
 describe('the email activity', () => {
   it('draws each state with its count, the messages with their recipients, and asks for one state at a time', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/email' });
+    await renderRouter(app, { initialUrl: '/admin/email' });
 
     // Every message first: the website's 200, no state.
     expect(await screen.findByText('mona@example.com')).toBeTruthy();
@@ -342,7 +343,7 @@ describe('the email activity', () => {
   it('opens the state a website link names, and says a read that failed as that — never "no messages yet"', async () => {
     server.on('POST /rest/v1/rpc/email_activity', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/email?status=failed' });
+    await renderRouter(app, { initialUrl: '/admin/email?status=failed' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.emailEmpty)).toBeNull();
@@ -355,7 +356,7 @@ describe('the mail-off banner', () => {
   it('names the variables in the way while mail is switched off, on every admin screen', async () => {
     server.on('GET /api/mobile/v1/admin/mail', { configured: false, missing: ['RESEND_API_KEY', 'RESEND_FROM'] });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/email' });
+    await renderRouter(app, { initialUrl: '/admin/email' });
 
     expect(await screen.findByText(ar.admin.emailOffTitle)).toBeTruthy();
     // The Resend credentials missing: messages are recorded but never sent.
@@ -374,7 +375,7 @@ describe('the mail-off banner', () => {
   it('says the outbox is not even recording when the service key is the one missing', async () => {
     server.on('GET /api/mobile/v1/admin/mail', { configured: false, missing: ['SUPABASE_SERVICE_ROLE_KEY'] });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/operations' });
+    await renderRouter(app, { initialUrl: '/admin/operations' });
 
     expect(await screen.findByText(ar.admin.emailOffOutbox)).toBeTruthy();
     expect(screen.getByText('SUPABASE_SERVICE_ROLE_KEY')).toBeTruthy();
@@ -383,7 +384,7 @@ describe('the mail-off banner', () => {
   it('says it could not find out, with a retry — never that mail is on', async () => {
     server.on('GET /api/mobile/v1/admin/mail', { status: 503, body: { error: 'unavailable' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/email' });
+    await renderRouter(app, { initialUrl: '/admin/email' });
 
     expect(await screen.findByText(ar.app.admin.ops.mailUnknown)).toBeTruthy();
     expect(screen.queryByText(ar.admin.emailOffTitle)).toBeNull();
@@ -396,7 +397,7 @@ describe('the mail-off banner', () => {
 describe('the background work', () => {
   it('lists every scheduled task in schedule order, the ones that never ran said so, then the outbox, the dead letters and the runs', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/operations' });
+    await renderRouter(app, { initialUrl: '/admin/operations' });
 
     expect(await screen.findByText(ar.admin.opsJobsTitle)).toBeTruthy();
     // The spine, then what else the database knows of: the retired job is not hidden.
@@ -428,7 +429,7 @@ describe('the background work', () => {
 
   it('offers Retry only where a requeue can send something, and requeues through the website', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/operations' });
+    await renderRouter(app, { initialUrl: '/admin/operations' });
 
     expect(await screen.findByText('ahmed@example.com')).toBeTruthy();
     // One of three: the retryable template with an entity to rebuild from. Not
@@ -451,7 +452,7 @@ describe('the background work', () => {
   it("keeps the sheet open with the website's sentence when the message cannot be rebuilt after all", async () => {
     server.on('POST /api/mobile/v1/actions/requeueEmail', { ok: false, error: 'not_retryable' });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/operations' });
+    await renderRouter(app, { initialUrl: '/admin/operations' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.opsRetry}: ahmed@example.com` }));
     await screen.findByText(ar.app.admin.ops.retryBody);
@@ -468,13 +469,13 @@ describe('the background work', () => {
     server.on('POST /rest/v1/rpc/email_dead_letters', () => []);
     server.on('POST /rest/v1/rpc/recent_job_runs', () => []);
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/operations' });
+    await renderRouter(app, { initialUrl: '/admin/operations' });
     expect(await screen.findByText(ar.admin.opsDeadEmpty)).toBeTruthy();
     expect(screen.getByText(ar.admin.opsRunsEmpty)).toBeTruthy();
 
     server.on('POST /rest/v1/rpc/email_dead_letters', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/operations' });
+    await renderRouter(app, { initialUrl: '/admin/operations' });
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.opsDeadEmpty)).toBeNull();
     expect(screen.queryByText(ar.admin.opsJobsTitle)).toBeNull();
@@ -484,7 +485,7 @@ describe('the background work', () => {
 describe('the security page', () => {
   it("draws the website's two strips, the events, the audit trail and the limits, each figure with a list opening it", async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin/security' });
+    const result = await renderRouter(app, { initialUrl: '/admin/security' });
 
     expect(await screen.findByLabelText(`${ar.admin.secEvents}: 5`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.admin.secRateLimited}: 2`)).toBeTruthy();
@@ -526,7 +527,7 @@ describe('the security page', () => {
   it('says a summary that could not be read as that, never as a quiet day', async () => {
     server.on('POST /rest/v1/rpc/security_summary', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/security' });
+    await renderRouter(app, { initialUrl: '/admin/security' });
 
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();
     expect(screen.queryByText(ar.admin.securityNoticed)).toBeNull();
@@ -537,7 +538,7 @@ describe('the security page', () => {
     server.on('GET /rest/v1/security_events', () => []);
     server.on('GET /rest/v1/audit_log', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/security' });
+    await renderRouter(app, { initialUrl: '/admin/security' });
 
     // One of the two logs failed: the screen says so rather than draw the other as the whole story.
     expect(await screen.findByText(ar.common.retry)).toBeTruthy();

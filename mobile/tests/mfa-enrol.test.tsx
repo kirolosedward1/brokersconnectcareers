@@ -110,9 +110,9 @@ const app = {
 
 describe('setting up two-step verification on the phone', () => {
   it('enrols a factor, offers the authenticator app and the key, and confirms with the first code', async () => {
-    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/' });
+    const result = await renderRouter(app, { initialUrl: '/' });
     act(() => router.push('/mfa-enrol'));
 
     expect(await screen.findByText(SECRET)).toBeTruthy();
@@ -141,7 +141,7 @@ describe('setting up two-step verification on the phone', () => {
   it('says a failed start failed, with a retry — never a key that does not exist', async () => {
     server.on('POST /auth/v1/factors', { status: 500, body: { msg: 'boom' } });
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     act(() => router.push('/mfa-enrol'));
 
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();

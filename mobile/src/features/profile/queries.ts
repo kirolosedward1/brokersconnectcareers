@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AgentProfileInput, MobileActions } from '@/lib/mobile-api/contract';
 import { releaseUnusedCv } from '@/lib/cv-in-use';
 import { canAccessCandidateArea } from '@/lib/permissions';
-import { useRetryKey } from '@/lib/retry-key';
+import { useRetryKey } from '~/lib/retry-key';
 import { clean } from '@/lib/security/sanitize';
 import type {
   AgentCertificationRow,

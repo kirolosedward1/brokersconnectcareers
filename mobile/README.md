@@ -1,7 +1,7 @@
 # Brokers Connect — iOS app
 
 The phone version of [brokersconnect.net](https://www.brokersconnect.net), built
-with Expo (SDK 57) and React Native, and connected to the same Supabase project
+with Expo (SDK 58) and React Native, and connected to the same Supabase project
 as the website. Arabic first, right to left, light and dark.
 
 How it fits together, what it shares with the website and how it is released:

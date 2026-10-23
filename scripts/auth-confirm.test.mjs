@@ -20,6 +20,7 @@ register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 const { asConfirmType, confirmDestination, isSameOriginPost, isTokenHash, landingFromRedirect, readRedirectTo } = await import(
   '../src/lib/auth/confirm-link.ts'
 );
+const { renderEmail } = await import('../src/lib/email/components.ts');
 
 const ROOT = join(import.meta.dirname, '..');
 const SITE = 'https://www.brokersconnect.net';
@@ -72,6 +73,13 @@ is('an email change goes where it asked', confirmDestination('email_change', `${
 is('or to the account page', confirmDestination('email_change', SITE, SITE), '/dashboard/account');
 is('a confirmation goes where the form asked', confirmDestination('email', formRedirect, SITE), onboarding);
 is('or leaves it to the sign-in landing', confirmDestination('email', null, SITE), null);
+is('the template next is the destination when the redirect names nothing', confirmDestination('email', null, SITE, '/onboarding'), '/onboarding');
+is('a next with its own query is kept', confirmDestination('signup', null, SITE, '/onboarding?confirmed=1'), '/onboarding?confirmed=1');
+is('the form redirect still wins over the template next', confirmDestination('email', formRedirect, SITE, '/onboarding'), onboarding);
+is('a hostile next is ignored', confirmDestination('email', null, SITE, 'https://evil.example/onboarding'), null);
+is('a protocol-relative next is ignored', confirmDestination('email', null, SITE, '//evil.example'), null);
+is('a bare slash is no preference', confirmDestination('magiclink', SITE, SITE, '/'), null);
+is('recovery ignores next', confirmDestination('recovery', null, SITE, '/onboarding'), '/sign-in/new-password');
 
 console.log('\n— what the route accepts');
 for (const type of ['signup', 'email', 'invite', 'magiclink', 'recovery', 'email_change']) is(`type ${type}`, asConfirmType(type), type);
@@ -99,13 +107,69 @@ for (const [file, wantType, redirectTo, destination] of templates) {
     ['raw, then re-escaped on the way in', redirectTo, true],
     ['escaped, then re-escaped on the way in', encodeURIComponent(redirectTo), true],
   ]) {
-    let link = new URL(hrefs[0].replace('{{ .TokenHash }}', 'c'.repeat(56)).replace('{{ .RedirectTo }}', filled));
+    const raw = hrefs[0]
+      .replaceAll('{{ .SiteURL }}', SITE)
+      .replaceAll('{{ .TokenHash }}', 'c'.repeat(56))
+      .replaceAll('{{ .RedirectTo }}', filled);
+    let link = new URL(raw);
     if (renormalize) link = new URL(`${link.origin}${link.pathname}?${new URLSearchParams(link.searchParams).toString()}`);
     const type = asConfirmType(link.searchParams.get('type'));
     is(`${file} (${how}): the type`, type, wantType);
     is(`${file} (${how}): the token`, isTokenHash(link.searchParams.get('token_hash')), true);
     is(`${file} (${how}): the destination`, confirmDestination(type, readRedirectTo(link.search), SITE), destination);
   }
+}
+
+console.log('\n— the generated mail');
+{
+  const confirmation = readFileSync(join(ROOT, 'supabase', 'templates', 'confirmation.html'), 'utf8');
+  const recovery = readFileSync(join(ROOT, 'supabase', 'templates', 'recovery.html'), 'utf8');
+  is(
+    'confirmation says 24 hours, still in Egyptian',
+    confirmation.includes('اللينك ده صالح لمدة 24 ساعة، وبيشتغل مرة واحدة بس.') && confirmation.includes('أهلاً بيك في بروكرز كونكت'),
+    true,
+  );
+  is('recovery still says one hour', recovery.includes('اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.') && !recovery.includes('24 ساعة'), true);
+  is('English sits under the divider', confirmation.includes('background:#E3E7EF') && confirmation.includes('lang="en"') && confirmation.includes('Confirm your email'), true);
+  is(
+    'footer text and footer links',
+    confirmation.includes('color:#5B6475') && confirmation.includes('font-size:13px;text-decoration:underline'),
+    true,
+  );
+  is(
+    'dark mode names the card and the text, and the logo stays on white',
+    /color-scheme: light dark/.test(confirmation) &&
+      /prefers-color-scheme: dark/.test(confirmation) &&
+      confirmation.includes('#111827') &&
+      confirmation.includes('#E5E7EB') &&
+      confirmation.includes('class="bc-logo"') &&
+      confirmation.includes('background:#ffffff'),
+    true,
+  );
+  is('a plain link under the button', confirmation.includes('لو الزرار مش ظاهر') && confirmation.includes('If the button does not appear'), true);
+  is(
+    'the confirm link is SiteURL, the token hash, the type and next',
+    confirmation.includes(
+      '{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/onboarding&amp;redirect_to={{ .RedirectTo }}',
+    ),
+    true,
+  );
+
+  const product = renderEmail({
+    locale: 'ar',
+    dir: 'rtl',
+    siteName: 'بروكرز كونكت',
+    preheader: 'معاينة',
+    heading: 'عنوان',
+    blocks: [{ kind: 'text', value: 'نص' }],
+    footer: {
+      automated: 'آلي',
+      reason: 'سبب',
+      legal: [{ label: 'الخصوصية', href: `${SITE}/privacy` }],
+    },
+  });
+  is('product mail stays light and one language', /light dark|bc-card|bc-copy|#E3E7EF/.test(product), false);
+  is('product mail footer matches the auth footer', product.includes('color:#5B6475') && !product.includes('color:#9ca3af'), true);
 }
 
 console.log('\n— the route: a GET never spends a link, a POST from elsewhere is refused');
@@ -136,6 +200,11 @@ is('a post with only Sec-Fetch-Site naming another site is refused', isSameOrigi
 is('the page’s referrer policy lets its own post say where it came from', /<meta name="referrer" content="no-referrer">/.test(route), false);
 is('and still tells no other site the address', /<meta name="referrer" content="same-origin">/.test(route), true);
 is('the route asks isSameOriginPost', /isSameOriginPost\(request\.headers\.get\('origin'\)/.test(route), true);
+is(
+  'the route reads next as well as redirect_to',
+  /confirmDestination\(type, readRedirectTo\(search\), origin, searchParams\.get\('next'\)\)/.test(get),
+  true,
+);
 is('the page is never cached or indexed', /'cache-control': 'no-store'/.test(route) && /noindex/.test(route), true);
 
 console.log('\n— signing out on the website');

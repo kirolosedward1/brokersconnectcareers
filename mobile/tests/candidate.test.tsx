@@ -211,7 +211,7 @@ const bodyOf = (path: string, index = 0) => server.asked(path)[index]?.body as R
 describe('the bell', () => {
   it('says how many are unread, and opens the feed', async () => {
     await signedIn();
-    const result = renderRouter(app, { initialUrl: '/' });
+    const result = await renderRouter(app, { initialUrl: '/' });
 
     const bell = await screen.findByRole('button', { name: ar.notifications.title });
     await waitFor(() => expect(bell.props.accessibilityValue).toMatchObject({ text: 'تنبيه واحد غير مقروء' }));
@@ -228,7 +228,7 @@ describe('the bell', () => {
   });
 
   it('is not there for somebody signed out', async () => {
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText('home screen')).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.notifications.title })).toBeNull();
     // Not even an empty place for it: iOS 26 draws one as a glass circle with nothing in it.
@@ -240,7 +240,7 @@ describe('the bell', () => {
 describe('the feed', () => {
   it('asks for the newest page, without the applicants folded into another row', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: '/notifications' });
+    await renderRouter(app, { initialUrl: '/notifications' });
     await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة');
 
     const page = server.asked('/rest/v1/notifications').find((request) => request.method === 'GET');
@@ -257,13 +257,13 @@ describe('the feed', () => {
         ? { status: 400, body: { code: '42703', message: 'column notifications.folded_into does not exist' } }
         : feed,
     );
-    renderRouter(app, { initialUrl: '/notifications' });
+    await renderRouter(app, { initialUrl: '/notifications' });
     expect(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة')).toBeTruthy();
   });
 
   it('follows a notification to where it points, through the website', async () => {
     await signedIn();
-    const result = renderRouter(app, { initialUrl: '/notifications' });
+    const result = await renderRouter(app, { initialUrl: '/notifications' });
     fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
 
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
@@ -282,7 +282,7 @@ describe('the feed', () => {
     ];
     server.on('POST /api/mobile/v1/actions/openNotification', { ok: true, data: { href: '/companies/nile-brokers' } });
     await signedIn();
-    const result = renderRouter(app, { initialUrl: '/notifications' });
+    const result = await renderRouter(app, { initialUrl: '/notifications' });
 
     fireEvent.press(await screen.findByText('النيل للوساطة نزّلت وظيفتين جداد'));
     await waitFor(() => expect(result.getPathname()).toBe('/companies/nile-brokers'));
@@ -292,7 +292,7 @@ describe('the feed', () => {
 
   it('goes back to the page the bell was opened from when that is where it leads, rather than a second copy', async () => {
     await signedIn();
-    const result = renderRouter(app, { initialUrl: '/dashboard/applications' });
+    const result = await renderRouter(app, { initialUrl: '/dashboard/applications' });
     await waitFor(() => expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']));
     act(() => router.push('/notifications'));
     fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
@@ -307,7 +307,7 @@ describe('the feed', () => {
     let answer: (value: unknown) => void = () => {};
     server.on('POST /api/mobile/v1/actions/openNotification', () => new Promise((resolve) => (answer = resolve)));
     await signedIn();
-    const result = renderRouter(app, { initialUrl: '/dashboard/applications' });
+    const result = await renderRouter(app, { initialUrl: '/dashboard/applications' });
     await waitFor(() => expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']));
     act(() => router.push('/notifications'));
     fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
@@ -327,14 +327,14 @@ describe('the feed', () => {
 
   it('says why when a tapped push opened it for a page that is gone', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: '/notifications?link=gone' });
+    await renderRouter(app, { initialUrl: '/notifications?link=gone' });
     expect(await screen.findByText(ar.notifications.linkGone)).toBeTruthy();
   });
 
   it('says so when the page a notification pointed at is gone', async () => {
     await signedIn();
     server.on('POST /api/mobile/v1/actions/openNotification', { ok: true, data: { fallback: '/notifications?link=gone' } });
-    const result = renderRouter(app, { initialUrl: '/notifications' });
+    const result = await renderRouter(app, { initialUrl: '/notifications' });
     fireEvent.press(await screen.findByText('وصل طلبك على «مستشار مبيعات»'));
 
     expect(await screen.findByText(ar.notifications.linkGone)).toBeTruthy();
@@ -343,7 +343,7 @@ describe('the feed', () => {
 
   it('marks everything read up to the newest row it showed', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: '/notifications' });
+    await renderRouter(app, { initialUrl: '/notifications' });
     fireEvent.press(await screen.findByRole('button', { name: ar.notifications.markAllRead }));
 
     await waitFor(() => expect(server.asked('/rest/v1/rpc/mark_notifications_read')).toHaveLength(1));
@@ -360,7 +360,7 @@ describe('the feed', () => {
       return { status: 204, body: null };
     });
     await signedIn();
-    renderRouter(app, { initialUrl: '/notifications' });
+    await renderRouter(app, { initialUrl: '/notifications' });
     await screen.findByText(ar.notifications.markAllRead);
     const rows = () => screen.UNSAFE_root.findAll((node) => typeof node.type === 'string' && Array.isArray(node.props.accessibilityActions) && node.props.accessibilityActions.some((a: { label: string }) => a.label === ar.app.notificationsFeed.delete));
     await waitFor(() => expect(rows().length).toBe(2));
@@ -389,7 +389,7 @@ describe('the feed', () => {
     });
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     await signedIn();
-    renderRouter(app, { initialUrl: '/notifications' });
+    await renderRouter(app, { initialUrl: '/notifications' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.notificationsFeed.clearAll }));
     expect(alert).toHaveBeenCalledTimes(1);
     expect(server.asked('/rest/v1/notifications').some((request) => request.method === 'DELETE')).toBe(false);
@@ -404,7 +404,7 @@ describe('the feed', () => {
   it('says a quiet feed is quiet, and points a candidate at the board', async () => {
     feed = [];
     await signedIn();
-    renderRouter(app, { initialUrl: '/notifications' });
+    await renderRouter(app, { initialUrl: '/notifications' });
     expect(await screen.findByText(ar.notifications.empty)).toBeTruthy();
     expect(screen.getByRole('button', { name: ar.notifications.emptyCtaCandidate })).toBeTruthy();
   });
@@ -451,7 +451,7 @@ describe('the applications', () => {
       }),
     ];
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/applications' });
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
 
     expect(await screen.findByText(ar.dashboard.applicationOpened)).toBeTruthy();
     // The badge, and the timeline's last step.
@@ -469,7 +469,7 @@ describe('the applications', () => {
   it('asks before withdrawing, then withdraws through the website', async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/applications' });
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
     fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
 
     expect(alert).toHaveBeenCalledWith('تسحب طلبك على «مستشار مبيعات»؟', ar.app.applications.withdrawBody, expect.any(Array));
@@ -494,7 +494,7 @@ describe('the applications', () => {
       return { ok: false, error: 'forbidden' };
     });
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/applications' });
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
     fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
     act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
 
@@ -510,7 +510,7 @@ describe('the applications', () => {
       return { status: 502, body: { error: 'bad_gateway' } };
     });
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/applications' });
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
     fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
     act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
 
@@ -521,7 +521,7 @@ describe('the applications', () => {
   it('never says "you have not applied" when the read failed', async () => {
     server.on('GET /rest/v1/applications', { status: 500, body: { message: 'boom' } });
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/applications' });
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
     expect(await screen.findByText(ar.common.error)).toBeTruthy();
     expect(screen.queryByText(ar.dashboard.emptyApplications)).toBeNull();
   });
@@ -529,7 +529,7 @@ describe('the applications', () => {
 
 describe('signing in on the way somewhere', () => {
   it("lands a candidate on their applications once the app has been drawn for them", async () => {
-    const result = renderRouter(app, { initialUrl: '/sign-in?next=%2Fdashboard%2Fapplications' });
+    const result = await renderRouter(app, { initialUrl: '/sign-in?next=%2Fdashboard%2Fapplications' });
     fireEvent.changeText(await screen.findByLabelText(ar.auth.email), user.email);
     fireEvent.changeText(screen.getByLabelText(ar.auth.password), PASSWORD);
     fireEvent.press(await screen.findByRole('button', { name: ar.auth.signIn, disabled: false }));

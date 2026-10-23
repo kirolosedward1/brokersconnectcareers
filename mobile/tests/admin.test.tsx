@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Modal, Text } from 'react-native';
-import { router, Stack, Tabs } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -36,6 +36,7 @@ import * as ReportsScreen from '../src/app/(tabs)/(admin)/admin/reports/index';
 import * as AccountsScreen from '../src/app/(tabs)/(admin)/admin/users/index';
 import * as CompaniesScreen from '../src/app/(tabs)/(admin)/admin/companies/index';
 import * as CompanyScreen from '../src/app/(tabs)/(admin)/admin/companies/[id]';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { company } from './fixtures';
 import { fakeServer } from './server';
@@ -365,7 +366,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': stand('home'),
   '(tabs)/(admin)/admin/index': OverviewScreen,
   '(tabs)/(admin)/admin/jobs/index': ListingsScreen,
@@ -418,7 +419,7 @@ const tabbed = {
 describe('the tab bar', () => {
   it('gives an admin the Admin tab, wearing what waits on a decision', async () => {
     await signIn();
-    renderRouter(tabbed, { initialUrl: '/' });
+    await renderRouter(tabbed, { initialUrl: '/' });
     await screen.findByText('home');
 
     // The website rail's sense of waiting (admin_summary): 3 in the queue + 2
@@ -442,7 +443,7 @@ describe('the tab bar', () => {
   it('and nobody else', async () => {
     me = { ...me, role: 'candidate' };
     await signIn();
-    renderRouter(tabbed, { initialUrl: '/' });
+    await renderRouter(tabbed, { initialUrl: '/' });
     await screen.findByText('home');
 
     const labels = screen.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel as string);
@@ -487,7 +488,7 @@ describe('who has the Admin tab', () => {
 
   it("draws only the console and the account in an admin's bar, and opens the console at the app's start", async () => {
     await signIn();
-    const result = renderRouter({ ...tabbed, '(tabs)/(home)/index': HomeScreen }, { initialUrl: '/' });
+    const result = await renderRouter({ ...tabbed, '(tabs)/(home)/index': HomeScreen }, { initialUrl: '/' });
     await waitFor(() => expect(result.getPathname()).toBe('/admin'));
     const names = screen.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel as string);
     expect(names.some((name) => name.startsWith(ar.admin.title))).toBe(true);
@@ -514,7 +515,7 @@ describe('the door', () => {
     const level = jest
       .spyOn(supabase.auth.mfa, 'getAuthenticatorAssuranceLevel')
       .mockResolvedValue({ data: null, error: Object.assign(new Error('storage'), { name: 'AuthError', status: 0 }) } as never);
-    renderRouter(app, { initialUrl: '/admin' });
+    await renderRouter(app, { initialUrl: '/admin' });
 
     expect(await screen.findByText(ar.common.error)).toBeTruthy();
     expect(screen.queryByText(ar.app.admin.door.enrolTitle)).toBeNull();
@@ -526,7 +527,7 @@ describe('the door', () => {
   it("says the deployment's rule could not be read, with a retry — never 'set up two-step' for a dropped connection", async () => {
     server.on('GET /api/mobile/v1/config', { status: 503, body: { error: 'unavailable' } });
     await signIn({ aal: 'aal1', factor: false });
-    renderRouter(app, { initialUrl: '/admin' });
+    await renderRouter(app, { initialUrl: '/admin' });
 
     expect(await screen.findByText(ar.common.error)).toBeTruthy();
     expect(screen.queryByText(ar.app.admin.door.enrolTitle)).toBeNull();
@@ -537,7 +538,7 @@ describe('the door', () => {
 
   it('asks an admin without an authenticator to set one up first — on the phone — and reads nothing of the console', async () => {
     await signIn({ aal: 'aal1', factor: false });
-    const result = renderRouter(app, { initialUrl: '/admin' });
+    const result = await renderRouter(app, { initialUrl: '/admin' });
 
     expect(await screen.findByText(ar.app.admin.door.enrolTitle)).toBeTruthy();
     expect(server.requests.some((request) => request.url.pathname.startsWith('/rest/v1/rpc/admin_'))).toBe(false);
@@ -550,14 +551,14 @@ describe('the door', () => {
   it('opens where the deployment does not require an authenticator', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ adminMfaRequired: false }));
     await signIn({ aal: 'aal1', factor: false });
-    renderRouter(app, { initialUrl: '/admin' });
+    await renderRouter(app, { initialUrl: '/admin' });
 
     expect(await screen.findByText(ar.admin.needsAttention)).toBeTruthy();
   });
 
   it('asks for the code from an admin whose authenticator has not been used this session', async () => {
     await signIn({ aal: 'aal1', factor: true });
-    const result = renderRouter(app, { initialUrl: '/admin' });
+    const result = await renderRouter(app, { initialUrl: '/admin' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.admin.door.challengeGo }));
     await waitFor(() => expect(result.getPathname()).toBe('/mfa'));
@@ -567,7 +568,7 @@ describe('the door', () => {
 describe('the overview', () => {
   it('says what waits on a decision, each figure the way to its queue', async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin' });
+    const result = await renderRouter(app, { initialUrl: '/admin' });
 
     // The first row: what waits on a person, the website's five cells.
     expect(await screen.findByLabelText(`${ar.dashboard.statQueue}: 3`)).toBeTruthy();
@@ -613,7 +614,7 @@ describe('the overview', () => {
 
   it("opens each figure's own list, by the website's path and filter", async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin' });
+    const result = await renderRouter(app, { initialUrl: '/admin' });
 
     fireEvent.press(await screen.findByLabelText(`${ar.dashboard.statLiveJobs}: 14`));
     await waitFor(() => expect(result.getPathname()).toBe('/admin/jobs'));
@@ -642,7 +643,7 @@ describe('the overview', () => {
 
   it('opens a recent decision where it was decided, the audit log, and the search', async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin' });
+    const result = await renderRouter(app, { initialUrl: '/admin' });
 
     fireEvent.press(await screen.findByRole('link', { name: `${ar.admin.auditAction.job_approve} — مستشار مبيعات` }));
     await waitFor(() => expect(result.getPathname()).toBe(`/admin/jobs/${JOB_ID}`));
@@ -663,7 +664,7 @@ describe('the overview', () => {
 
   it('reaches every part of the console, in the website rail\'s order, with what waits in each', async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin' });
+    const result = await renderRouter(app, { initialUrl: '/admin' });
     await screen.findByText(ar.app.admin.overview.sections);
 
     const sections: readonly [label: string, path: string, waiting?: number][] = [
@@ -711,7 +712,7 @@ describe('the overview', () => {
       url.searchParams.has('owner_id') ? [{ id: company.id, name_ar: company.name_ar, owner_id: OTHER_USER }] : [],
     );
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin' });
+    const result = await renderRouter(app, { initialUrl: '/admin' });
 
     expect(await screen.findByText(ar.admin.deletionRequests)).toBeTruthy();
     expect(screen.getByText('BC-7Q2M')).toBeTruthy();
@@ -739,7 +740,7 @@ describe('the overview', () => {
   it('says a request whose account is gone as that', async () => {
     server.on('GET /rest/v1/support_requests', () => [{ ...deletionRequest, user_id: null }]);
     await signIn();
-    renderRouter(app, { initialUrl: '/admin' });
+    await renderRouter(app, { initialUrl: '/admin' });
 
     expect(await screen.findByText(ar.admin.deletionRequestAccountGone)).toBeTruthy();
     // No account to look up: nothing asked of the profiles or the companies for it.
@@ -752,7 +753,7 @@ describe('the overview', () => {
   it('says the figures could not be read, never that nothing is waiting', async () => {
     server.on('POST /rest/v1/rpc/admin_overview', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin' });
+    await renderRouter(app, { initialUrl: '/admin' });
 
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     expect(screen.queryByText(ar.admin.needsAttention)).toBeNull();
@@ -762,7 +763,7 @@ describe('the overview', () => {
     server.on('GET /rest/v1/support_requests', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     server.on('POST /rest/v1/rpc/admin_trend', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
     await signIn();
-    renderRouter(app, { initialUrl: '/admin' });
+    await renderRouter(app, { initialUrl: '/admin' });
 
     expect(await screen.findByText(ar.admin.deletionRequests)).toBeTruthy();
     expect(screen.getByText(ar.dashboard.trendActivityTitle)).toBeTruthy();
@@ -774,7 +775,7 @@ describe('the overview', () => {
 describe('deciding on a listing', () => {
   it('publishes it through the website, with the version the screen showed, and says so once the website has', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     // The whole text is in front of the moderator.
     expect(await screen.findByText(job.description_ar)).toBeTruthy();
@@ -794,7 +795,7 @@ describe('deciding on a listing', () => {
 
   it('will not reject without a reason, and sends the reason it is given', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.reject }));
     const field = await screen.findByLabelText(ar.admin.reasonToCompany);
@@ -814,7 +815,7 @@ describe('deciding on a listing', () => {
   it("keeps the sheet open with the website's sentence when somebody else decided first", async () => {
     server.on('POST /api/mobile/v1/actions/moderateJob', { ok: false, error: 'invalid_transition' });
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.approve}: مستشار مبيعات` }));
     await screen.findByText(ar.admin.approveListingBody);
@@ -830,7 +831,7 @@ describe('deciding on a listing', () => {
     server.on('POST /api/mobile/v1/actions/moderateJob', { ok: false, error: 'mfa_required' });
     server.on('GET /api/mobile/v1/config', mobileConfig({ adminMfaRequired: false }));
     await signIn({ aal: 'aal1', factor: false });
-    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.approve}: مستشار مبيعات` }));
     await screen.findByText(ar.admin.approveListingBody);
@@ -845,7 +846,7 @@ describe('a decision that did not go through', () => {
   it('claims nothing after the server failed, and reads the queue again', async () => {
     server.on('POST /api/mobile/v1/actions/moderateJob', { status: 502, body: { error: 'bad_gateway' } });
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.approve}: مستشار مبيعات` }));
     await screen.findByText(ar.admin.approveListingBody);
@@ -865,7 +866,7 @@ describe('a decision that did not go through', () => {
     let answer: (value: unknown) => void = () => {};
     server.on('POST /api/mobile/v1/actions/moderateJob', () => new Promise((resolve) => (answer = resolve)));
     await signIn();
-    renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
+    await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.approve}: مستشار مبيعات` }));
     await screen.findByText(ar.admin.approveListingBody);
@@ -895,7 +896,7 @@ describe('the other queues', () => {
       JSON.parse(String(init?.body ?? '{}')).p_view === 'under_review' ? [investigated] : [],
     );
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
 
     expect(await screen.findByText(ar.admin.emptyQueue)).toBeTruthy();
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.reportView.under_review }));
@@ -911,7 +912,7 @@ describe('the other queues', () => {
     const pile = { ...reportCase, reports: 600, reporters: 600, report_ids: Array.from({ length: 600 }, (_, i) => `r${i}`) };
     server.on('POST /rest/v1/rpc/admin_report_cases', [pile]);
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
 
     expect(await screen.findByText(reportRow.detail as string)).toBeTruthy();
     const asked = server.requests.find((request) => request.url.pathname === '/rest/v1/rpc/admin_report_rows');
@@ -922,7 +923,7 @@ describe('the other queues', () => {
 
   it('takes a reported listing down and resolves its reports in one step, with the reason', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/reports' });
+    await renderRouter(app, { initialUrl: '/admin/reports' });
 
     expect(await screen.findByText(reportRow.detail as string)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: ar.admin.resolveTakeDownJob }));
@@ -939,7 +940,7 @@ describe('the other queues', () => {
 
   it('approves an account waiting for it', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/admin/users' });
+    await renderRouter(app, { initialUrl: '/admin/users' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.approveAccount}: أحمد سمير` }));
     await screen.findByText(ar.admin.approveAccountBody);
@@ -952,7 +953,7 @@ describe('the other queues', () => {
 
   it("lists the companies whose papers wait, oldest first, and opens one's page where its papers and levers are", async () => {
     await signIn();
-    const result = renderRouter(app, { initialUrl: '/admin/companies' });
+    const result = await renderRouter(app, { initialUrl: '/admin/companies' });
 
     expect(await screen.findByText(company.name_ar)).toBeTruthy();
     // The website's own query for its verification queue: pending, with pending papers, the longest wait first.
